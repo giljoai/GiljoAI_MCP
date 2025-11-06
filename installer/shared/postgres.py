@@ -54,28 +54,22 @@ class PostgreSQLDiscovery:
                 'method': str  # 'PATH', 'COMMON_LOCATION', 'CUSTOM', 'NOT_FOUND'
             }
         """
-        result = {
-            'found': False,
-            'psql_path': None,
-            'version': None,
-            'version_string': None,
-            'method': 'NOT_FOUND'
-        }
+        result = {"found": False, "psql_path": None, "version": None, "version_string": None, "method": "NOT_FOUND"}
 
         # Strategy 1: Check system PATH
         self.logger.info("Searching for PostgreSQL in system PATH...")
-        psql_path = shutil.which('psql')
+        psql_path = shutil.which("psql")
         if psql_path:
             self.logger.info(f"Found psql in PATH: {psql_path}")
-            result['found'] = True
-            result['psql_path'] = Path(psql_path)
-            result['method'] = 'PATH'
+            result["found"] = True
+            result["psql_path"] = Path(psql_path)
+            result["method"] = "PATH"
 
             # Get version
             version_info = self.get_postgresql_version(psql_path)
             if version_info:
-                result['version'] = version_info.get('version')
-                result['version_string'] = version_info.get('version_string')
+                result["version"] = version_info.get("version")
+                result["version_string"] = version_info.get("version_string")
 
             return result
 
@@ -84,27 +78,27 @@ class PostgreSQLDiscovery:
         common_locations = self._get_common_locations()
 
         for location in common_locations:
-            psql_candidate = location / 'psql' if self.system != 'Windows' else location / 'psql.exe'
+            psql_candidate = location / "psql" if self.system != "Windows" else location / "psql.exe"
 
             if psql_candidate.exists():
                 self.logger.info(f"Found psql at: {psql_candidate}")
-                result['found'] = True
-                result['psql_path'] = psql_candidate
-                result['method'] = 'COMMON_LOCATION'
+                result["found"] = True
+                result["psql_path"] = psql_candidate
+                result["method"] = "COMMON_LOCATION"
 
                 # Get version
                 version_info = self.get_postgresql_version(str(psql_candidate))
                 if version_info:
-                    result['version'] = version_info.get('version')
-                    result['version_string'] = version_info.get('version_string')
+                    result["version"] = version_info.get("version")
+                    result["version_string"] = version_info.get("version_string")
 
                 return result
 
         # Strategy 3: Use platform handler if available
-        if self.platform_handler and hasattr(self.platform_handler, 'find_postgresql'):
+        if self.platform_handler and hasattr(self.platform_handler, "find_postgresql"):
             self.logger.info("Using platform handler for PostgreSQL discovery...")
             handler_result = self.platform_handler.find_postgresql()
-            if handler_result and handler_result.get('found'):
+            if handler_result and handler_result.get("found"):
                 return handler_result
 
         # Not found
@@ -120,64 +114,72 @@ class PostgreSQLDiscovery:
         """
         locations = []
 
-        if self.system == 'Windows':
+        if self.system == "Windows":
             # Windows common locations
-            program_files = Path('C:/Program Files')
-            program_files_x86 = Path('C:/Program Files (x86)')
+            program_files = Path("C:/Program Files")
+            program_files_x86 = Path("C:/Program Files (x86)")
 
             # PostgreSQL official installer locations (versions 18 down to 14)
             for version in range(18, 13, -1):
-                locations.extend([
-                    program_files / f'PostgreSQL/{version}/bin',
-                    program_files_x86 / f'PostgreSQL/{version}/bin',
-                    program_files / f'PostgreSQL {version}/bin',
-                ])
+                locations.extend(
+                    [
+                        program_files / f"PostgreSQL/{version}/bin",
+                        program_files_x86 / f"PostgreSQL/{version}/bin",
+                        program_files / f"PostgreSQL {version}/bin",
+                    ]
+                )
 
             # EnterpriseDB locations
-            locations.extend([
-                program_files / 'PostgreSQL/bin',
-                program_files / 'edb/languagepack/v2/PostgreSQL/bin',
-            ])
+            locations.extend(
+                [
+                    program_files / "PostgreSQL/bin",
+                    program_files / "edb/languagepack/v2/PostgreSQL/bin",
+                ]
+            )
 
             # Custom drive installations (common for large databases)
-            for drive in ['D:', 'E:', 'F:', 'G:']:
-                locations.append(Path(f'{drive}/PostgreSQL/bin'))
+            for drive in ["D:", "E:", "F:", "G:"]:
+                locations.append(Path(f"{drive}/PostgreSQL/bin"))
 
-        elif self.system == 'Linux':
+        elif self.system == "Linux":
             # Linux common locations
-            locations.extend([
-                Path('/usr/bin'),
-                Path('/usr/local/bin'),
-                Path('/usr/pgsql-18/bin'),
-                Path('/usr/pgsql-17/bin'),
-                Path('/usr/pgsql-16/bin'),
-                Path('/usr/pgsql-15/bin'),
-                Path('/usr/pgsql-14/bin'),
-                Path('/usr/lib/postgresql/18/bin'),
-                Path('/usr/lib/postgresql/17/bin'),
-                Path('/usr/lib/postgresql/16/bin'),
-                Path('/usr/lib/postgresql/15/bin'),
-                Path('/usr/lib/postgresql/14/bin'),
-                Path('/opt/postgresql/bin'),
-            ])
+            locations.extend(
+                [
+                    Path("/usr/bin"),
+                    Path("/usr/local/bin"),
+                    Path("/usr/pgsql-18/bin"),
+                    Path("/usr/pgsql-17/bin"),
+                    Path("/usr/pgsql-16/bin"),
+                    Path("/usr/pgsql-15/bin"),
+                    Path("/usr/pgsql-14/bin"),
+                    Path("/usr/lib/postgresql/18/bin"),
+                    Path("/usr/lib/postgresql/17/bin"),
+                    Path("/usr/lib/postgresql/16/bin"),
+                    Path("/usr/lib/postgresql/15/bin"),
+                    Path("/usr/lib/postgresql/14/bin"),
+                    Path("/opt/postgresql/bin"),
+                ]
+            )
 
-        elif self.system == 'Darwin':  # macOS
+        elif self.system == "Darwin":  # macOS
             # macOS common locations
-            locations.extend([
-                Path('/usr/local/bin'),
-                Path('/opt/homebrew/bin'),  # Apple Silicon Homebrew
-                Path('/usr/local/opt/postgresql@18/bin'),
-                Path('/usr/local/opt/postgresql@17/bin'),
-                Path('/usr/local/opt/postgresql@16/bin'),
-                Path('/usr/local/opt/postgresql@15/bin'),
-                Path('/usr/local/opt/postgresql@14/bin'),
-                Path('/Library/PostgreSQL/18/bin'),
-                Path('/Library/PostgreSQL/17/bin'),
-                Path('/Library/PostgreSQL/16/bin'),
-                Path('/Library/PostgreSQL/15/bin'),
-                Path('/Library/PostgreSQL/14/bin'),
-                Path('/Applications/Postgres.app/Contents/Versions/latest/bin'),
-            ])
+            locations.extend(
+                [
+                    Path("/usr/local/bin"),
+                    Path("/opt/homebrew/bin"),  # Apple Silicon Homebrew
+                    Path("/usr/local/opt/postgresql@18/bin"),
+                    Path("/usr/local/opt/postgresql@17/bin"),
+                    Path("/usr/local/opt/postgresql@16/bin"),
+                    Path("/usr/local/opt/postgresql@15/bin"),
+                    Path("/usr/local/opt/postgresql@14/bin"),
+                    Path("/Library/PostgreSQL/18/bin"),
+                    Path("/Library/PostgreSQL/17/bin"),
+                    Path("/Library/PostgreSQL/16/bin"),
+                    Path("/Library/PostgreSQL/15/bin"),
+                    Path("/Library/PostgreSQL/14/bin"),
+                    Path("/Applications/Postgres.app/Contents/Versions/latest/bin"),
+                ]
+            )
 
         return locations
 
@@ -196,25 +198,17 @@ class PostgreSQLDiscovery:
             }
         """
         try:
-            result = subprocess.run(
-                [psql_path, '--version'],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
+            result = subprocess.run([psql_path, "--version"], capture_output=True, text=True, timeout=5)
 
             if result.returncode == 0:
                 version_output = result.stdout.strip()
                 self.logger.debug(f"Version output: {version_output}")
 
                 # Parse version (e.g., "psql (PostgreSQL) 18.0")
-                match = re.search(r'(\d+)\.(\d+)', version_output)
+                match = re.search(r"(\d+)\.(\d+)", version_output)
                 if match:
                     major_version = int(match.group(1))
-                    return {
-                        'version': major_version,
-                        'version_string': version_output
-                    }
+                    return {"version": major_version, "version_string": version_output}
 
             return None
 
@@ -241,43 +235,43 @@ class PostgreSQLDiscovery:
             }
         """
         result = {
-            'valid': False,
-            'psql_path': None,
-            'version': None,
-            'version_string': None,
-            'method': 'CUSTOM',
-            'error': None
+            "valid": False,
+            "psql_path": None,
+            "version": None,
+            "version_string": None,
+            "method": "CUSTOM",
+            "error": None,
         }
 
         try:
             custom_path_obj = Path(custom_path)
 
             # Check if path points directly to psql
-            if custom_path_obj.name.startswith('psql'):
+            if custom_path_obj.name.startswith("psql"):
                 psql_path = custom_path_obj
             else:
                 # Assume it's a bin directory
-                psql_path = custom_path_obj / ('psql.exe' if self.system == 'Windows' else 'psql')
+                psql_path = custom_path_obj / ("psql.exe" if self.system == "Windows" else "psql")
 
             if not psql_path.exists():
-                result['error'] = f"psql not found at {psql_path}"
+                result["error"] = f"psql not found at {psql_path}"
                 return result
 
             # Validate version
             version_info = self.get_postgresql_version(str(psql_path))
             if not version_info:
-                result['error'] = "Could not determine PostgreSQL version"
+                result["error"] = "Could not determine PostgreSQL version"
                 return result
 
-            result['valid'] = True
-            result['psql_path'] = psql_path
-            result['version'] = version_info.get('version')
-            result['version_string'] = version_info.get('version_string')
+            result["valid"] = True
+            result["psql_path"] = psql_path
+            result["version"] = version_info.get("version")
+            result["version_string"] = version_info.get("version_string")
 
             return result
 
         except Exception as e:
-            result['error'] = f"Path validation failed: {str(e)}"
+            result["error"] = f"Path validation failed: {str(e)}"
             return result
 
     def validate_version(self, version: int) -> Dict[str, Any]:
@@ -297,27 +291,27 @@ class PostgreSQLDiscovery:
         """
         if version < self.MIN_VERSION:
             return {
-                'compatible': False,
-                'message': f"PostgreSQL {version} is not supported. Minimum version: {self.MIN_VERSION}",
-                'severity': 'error'
+                "compatible": False,
+                "message": f"PostgreSQL {version} is not supported. Minimum version: {self.MIN_VERSION}",
+                "severity": "error",
             }
         elif version > self.MAX_VERSION:
             return {
-                'compatible': True,
-                'message': f"PostgreSQL {version} is newer than tested version {self.MAX_VERSION}. Compatibility not guaranteed.",
-                'severity': 'warning'
+                "compatible": True,
+                "message": f"PostgreSQL {version} is newer than tested version {self.MAX_VERSION}. Compatibility not guaranteed.",
+                "severity": "warning",
             }
         elif version < self.RECOMMENDED_VERSION:
             return {
-                'compatible': True,
-                'message': f"PostgreSQL {version} is supported but version {self.RECOMMENDED_VERSION} is recommended.",
-                'severity': 'warning'
+                "compatible": True,
+                "message": f"PostgreSQL {version} is supported but version {self.RECOMMENDED_VERSION} is recommended.",
+                "severity": "warning",
             }
         else:
             return {
-                'compatible': True,
-                'message': f"PostgreSQL {version} - Excellent! This is the recommended version.",
-                'severity': 'ok'
+                "compatible": True,
+                "message": f"PostgreSQL {version} - Excellent! This is the recommended version.",
+                "severity": "ok",
             }
 
 

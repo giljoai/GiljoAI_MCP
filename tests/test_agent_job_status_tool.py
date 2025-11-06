@@ -8,19 +8,18 @@ Handover 0066: Agent Job Status Update Tool
 """
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from fastmcp import FastMCP
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob
 from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -56,9 +55,7 @@ def test_tenant():
 def test_job(db_manager, job_manager, test_tenant):
     """Create a test job in pending status."""
     job = job_manager.create_job(
-        tenant_key=test_tenant,
-        agent_type="implementer",
-        mission="Test mission for status updates"
+        tenant_key=test_tenant, agent_type="implementer", mission="Test mission for status updates"
     )
     return job
 
@@ -77,10 +74,7 @@ class TestUpdateJobStatusValidation:
 
         # Try invalid status
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=test_job.job_id,
-            tenant_key=test_tenant,
-            new_status="invalid_status"
+            "update_job_status", job_id=test_job.job_id, tenant_key=test_tenant, new_status="invalid_status"
         )
 
         assert result["success"] is False
@@ -94,12 +88,7 @@ class TestUpdateJobStatusValidation:
         mcp = FastMCP("test-server")
         register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
-        result = await mcp.call_tool(
-            "update_job_status",
-            job_id="",
-            tenant_key=test_tenant,
-            new_status="active"
-        )
+        result = await mcp.call_tool("update_job_status", job_id="", tenant_key=test_tenant, new_status="active")
 
         assert result["success"] is False
         assert "job_id" in result["error"].lower()
@@ -114,10 +103,7 @@ class TestUpdateJobStatusValidation:
 
         fake_job_id = str(uuid4())
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=fake_job_id,
-            tenant_key=test_tenant,
-            new_status="active"
+            "update_job_status", job_id=fake_job_id, tenant_key=test_tenant, new_status="active"
         )
 
         assert result["success"] is False
@@ -141,10 +127,7 @@ class TestUpdateJobStatusTransitions:
 
         # Update to active
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=test_job.job_id,
-            tenant_key=test_tenant,
-            new_status="active"
+            "update_job_status", job_id=test_job.job_id, tenant_key=test_tenant, new_status="active"
         )
 
         assert result["success"] is True
@@ -164,11 +147,7 @@ class TestUpdateJobStatusTransitions:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         # Create job and move to active
-        job = job_manager.create_job(
-            tenant_key=test_tenant,
-            agent_type="tester",
-            mission="Test completion workflow"
-        )
+        job = job_manager.create_job(tenant_key=test_tenant, agent_type="tester", mission="Test completion workflow")
         job = job_manager.acknowledge_job(test_tenant, job.job_id)
 
         mcp = FastMCP("test-server")
@@ -176,10 +155,7 @@ class TestUpdateJobStatusTransitions:
 
         # Update to completed
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=job.job_id,
-            tenant_key=test_tenant,
-            new_status="completed"
+            "update_job_status", job_id=job.job_id, tenant_key=test_tenant, new_status="completed"
         )
 
         assert result["success"] is True
@@ -198,11 +174,7 @@ class TestUpdateJobStatusTransitions:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         # Create job and move to active
-        job = job_manager.create_job(
-            tenant_key=test_tenant,
-            agent_type="analyzer",
-            mission="Analyze requirements"
-        )
+        job = job_manager.create_job(tenant_key=test_tenant, agent_type="analyzer", mission="Analyze requirements")
         job = job_manager.acknowledge_job(test_tenant, job.job_id)
 
         mcp = FastMCP("test-server")
@@ -211,11 +183,7 @@ class TestUpdateJobStatusTransitions:
         # Update to blocked with reason
         reason = "Need database schema clarification"
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=job.job_id,
-            tenant_key=test_tenant,
-            new_status="blocked",
-            reason=reason
+            "update_job_status", job_id=job.job_id, tenant_key=test_tenant, new_status="blocked", reason=reason
         )
 
         assert result["success"] is True
@@ -239,11 +207,7 @@ class TestUpdateJobStatusTransitions:
 
         reason = "Insufficient context to start work"
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=test_job.job_id,
-            tenant_key=test_tenant,
-            new_status="blocked",
-            reason=reason
+            "update_job_status", job_id=test_job.job_id, tenant_key=test_tenant, new_status="blocked", reason=reason
         )
 
         assert result["success"] is True
@@ -265,21 +229,14 @@ class TestUpdateJobStatusMultiTenant:
         tenant2_key = TenantManager.generate_tenant_key()
 
         # Create job for tenant1
-        job = job_manager.create_job(
-            tenant_key=tenant1_key,
-            agent_type="implementer",
-            mission="Tenant 1 mission"
-        )
+        job = job_manager.create_job(tenant_key=tenant1_key, agent_type="implementer", mission="Tenant 1 mission")
 
         mcp = FastMCP("test-server")
         register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Try to update with tenant2's key
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=job.job_id,
-            tenant_key=tenant2_key,
-            new_status="active"
+            "update_job_status", job_id=job.job_id, tenant_key=tenant2_key, new_status="active"
         )
 
         assert result["success"] is False
@@ -298,35 +255,21 @@ class TestUpdateJobStatusMultiTenant:
         tenant1_key = TenantManager.generate_tenant_key()
         tenant2_key = TenantManager.generate_tenant_key()
 
-        job1 = job_manager.create_job(
-            tenant_key=tenant1_key,
-            agent_type="implementer",
-            mission="Mission for Tenant A"
-        )
+        job1 = job_manager.create_job(tenant_key=tenant1_key, agent_type="implementer", mission="Mission for Tenant A")
 
-        job2 = job_manager.create_job(
-            tenant_key=tenant2_key,
-            agent_type="implementer",
-            mission="Mission for Tenant B"
-        )
+        job2 = job_manager.create_job(tenant_key=tenant2_key, agent_type="implementer", mission="Mission for Tenant B")
 
         mcp = FastMCP("test-server")
         register_agent_job_status_tools(mcp, db_manager, tenant_manager)
 
         # Update job1
         result1 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job1.job_id,
-            tenant_key=tenant1_key,
-            new_status="active"
+            "update_job_status", job_id=job1.job_id, tenant_key=tenant1_key, new_status="active"
         )
 
         # Update job2
         result2 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job2.job_id,
-            tenant_key=tenant2_key,
-            new_status="completed"
+            "update_job_status", job_id=job2.job_id, tenant_key=tenant2_key, new_status="completed"
         )
 
         assert result1["success"] is True
@@ -349,9 +292,7 @@ class TestUpdateJobStatusTimestamps:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         job = job_manager.create_job(
-            tenant_key=test_tenant,
-            agent_type="implementer",
-            mission="Test timestamp behavior"
+            tenant_key=test_tenant, agent_type="implementer", mission="Test timestamp behavior"
         )
 
         mcp = FastMCP("test-server")
@@ -359,10 +300,7 @@ class TestUpdateJobStatusTimestamps:
 
         # First transition to active
         result1 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job.job_id,
-            tenant_key=test_tenant,
-            new_status="active"
+            "update_job_status", job_id=job.job_id, tenant_key=test_tenant, new_status="active"
         )
 
         first_started_at = result1["started_at"]
@@ -381,38 +319,23 @@ class TestUpdateJobStatusTimestamps:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         # Test completed status
-        job1 = job_manager.create_job(
-            tenant_key=test_tenant,
-            agent_type="tester",
-            mission="Test completion timestamp"
-        )
+        job1 = job_manager.create_job(tenant_key=test_tenant, agent_type="tester", mission="Test completion timestamp")
         job1 = job_manager.acknowledge_job(test_tenant, job1.job_id)
 
         mcp = FastMCP("test-server")
         register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         result1 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job1.job_id,
-            tenant_key=test_tenant,
-            new_status="completed"
+            "update_job_status", job_id=job1.job_id, tenant_key=test_tenant, new_status="completed"
         )
 
         assert result1["completed_at"] is not None
 
         # Test blocked status
-        job2 = job_manager.create_job(
-            tenant_key=test_tenant,
-            agent_type="analyzer",
-            mission="Test blocked timestamp"
-        )
+        job2 = job_manager.create_job(tenant_key=test_tenant, agent_type="analyzer", mission="Test blocked timestamp")
 
         result2 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job2.job_id,
-            tenant_key=test_tenant,
-            new_status="blocked",
-            reason="Test reason"
+            "update_job_status", job_id=job2.job_id, tenant_key=test_tenant, new_status="blocked", reason="Test reason"
         )
 
         assert result2["completed_at"] is not None
@@ -430,10 +353,7 @@ class TestUpdateJobStatusReasonParameter:
         register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=test_job.job_id,
-            tenant_key=test_tenant,
-            new_status="blocked"
+            "update_job_status", job_id=test_job.job_id, tenant_key=test_tenant, new_status="blocked"
         )
 
         assert result["success"] is True
@@ -454,7 +374,7 @@ class TestUpdateJobStatusReasonParameter:
             job_id=test_job.job_id,
             tenant_key=test_tenant,
             new_status="active",
-            reason="This should be ignored"
+            reason="This should be ignored",
         )
 
         assert result["success"] is True
@@ -476,10 +396,7 @@ class TestUpdateJobStatusErrorHandling:
         db_manager.close()
 
         result = await mcp.call_tool(
-            "update_job_status",
-            job_id=str(uuid4()),
-            tenant_key=test_tenant,
-            new_status="active"
+            "update_job_status", job_id=str(uuid4()), tenant_key=test_tenant, new_status="active"
         )
 
         assert result["success"] is False
@@ -491,9 +408,7 @@ class TestUpdateJobStatusErrorHandling:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         job = job_manager.create_job(
-            tenant_key=test_tenant,
-            agent_type="implementer",
-            mission="Test concurrent updates"
+            tenant_key=test_tenant, agent_type="implementer", mission="Test concurrent updates"
         )
 
         mcp = FastMCP("test-server")
@@ -501,17 +416,11 @@ class TestUpdateJobStatusErrorHandling:
 
         # Simulate concurrent updates (in real scenario, would use asyncio.gather)
         result1 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job.job_id,
-            tenant_key=test_tenant,
-            new_status="active"
+            "update_job_status", job_id=job.job_id, tenant_key=test_tenant, new_status="active"
         )
 
         result2 = await mcp.call_tool(
-            "update_job_status",
-            job_id=job.job_id,
-            tenant_key=test_tenant,
-            new_status="completed"
+            "update_job_status", job_id=job.job_id, tenant_key=test_tenant, new_status="completed"
         )
 
         # Both should succeed (last write wins)

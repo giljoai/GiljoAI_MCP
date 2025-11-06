@@ -26,22 +26,26 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 # Configure UTF-8 encoding for Windows console
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 # Load environment variables
 from dotenv import load_dotenv
+
+
 load_dotenv()
 
 from colorama import Fore, Style, init
+
+
 init(autoreset=True)
 
 
@@ -111,6 +115,7 @@ class MigrationV3_0_to_V3_1:
             # Test connection
             async with self.db_manager.get_session_async() as session:
                 from sqlalchemy import text
+
                 await session.execute(text("SELECT 1"))
 
             self.print_success("Database connection successful")
@@ -136,29 +141,31 @@ class MigrationV3_0_to_V3_1:
         self.print_header("Checking Migration Status")
 
         try:
-            from sqlalchemy import inspect, text
+            from sqlalchemy import text
 
             async with self.db_manager.async_engine.connect() as conn:
                 # Check if columns exist
-                result = await conn.execute(text("""
+                result = await conn.execute(
+                    text("""
                     SELECT column_name
                     FROM information_schema.columns
                     WHERE table_name = 'agents'
                     AND column_name IN ('job_id', 'mode')
-                """))
+                """)
+                )
 
                 existing_columns = [row[0] for row in result.fetchall()]
 
-            if 'job_id' in existing_columns and 'mode' in existing_columns:
+            if "job_id" in existing_columns and "mode" in existing_columns:
                 self.print_success("Migration already applied (columns exist)")
                 self.print_info("Database is already at v3.1 schema")
                 return False
 
-            if 'job_id' in existing_columns:
+            if "job_id" in existing_columns:
                 self.print_warning("Partial migration detected: job_id exists, mode missing")
                 return True
 
-            if 'mode' in existing_columns:
+            if "mode" in existing_columns:
                 self.print_warning("Partial migration detected: mode exists, job_id missing")
                 return True
 
@@ -192,32 +199,38 @@ class MigrationV3_0_to_V3_1:
 
             async with self.db_manager.async_engine.begin() as conn:
                 # Add job_id column
-                await conn.execute(text("""
+                await conn.execute(
+                    text("""
                     ALTER TABLE agents
                     ADD COLUMN IF NOT EXISTS job_id VARCHAR(36)
-                """))
+                """)
+                )
                 self.print_success("Added job_id column")
 
                 # Add mode column with default
-                await conn.execute(text("""
+                await conn.execute(
+                    text("""
                     ALTER TABLE agents
                     ADD COLUMN IF NOT EXISTS mode VARCHAR(20) DEFAULT 'claude'
-                """))
+                """)
+                )
                 self.print_success("Added mode column")
 
                 # Create index on job_id
-                await conn.execute(text("""
+                await conn.execute(
+                    text("""
                     CREATE INDEX IF NOT EXISTS idx_agent_job_id
                     ON agents(job_id)
-                """))
+                """)
+                )
                 self.print_success("Created index on job_id")
 
-            self.results['columns_added'] = True
+            self.results["columns_added"] = True
             return True
 
         except Exception as e:
             self.print_error(f"Failed to add columns: {e}")
-            self.results['columns_added'] = False
+            self.results["columns_added"] = False
             return False
 
     async def update_agent_templates(self) -> bool:
@@ -234,9 +247,10 @@ class MigrationV3_0_to_V3_1:
             return True
 
         try:
+            from sqlalchemy import select
+
             from giljo_mcp.models import AgentTemplate
             from giljo_mcp.template_seeder import _get_mcp_coordination_section
-            from sqlalchemy import select, update
 
             mcp_section = _get_mcp_coordination_section()
 
@@ -260,12 +274,12 @@ class MigrationV3_0_to_V3_1:
             else:
                 self.print_info("All templates already have MCP coordination section")
 
-            self.results['templates_updated'] = updated_count
+            self.results["templates_updated"] = updated_count
             return True
 
         except Exception as e:
             self.print_error(f"Failed to update templates: {e}")
-            self.results['templates_updated'] = 0
+            self.results["templates_updated"] = 0
             return False
 
     async def verify_migration(self) -> bool:
@@ -283,7 +297,6 @@ class MigrationV3_0_to_V3_1:
 
         try:
             from giljo_mcp.models import Agent
-            from sqlalchemy import inspect
 
             # Verify columns exist
             columns = {col.name: col for col in Agent.__table__.columns}
@@ -297,10 +310,7 @@ class MigrationV3_0_to_V3_1:
                 return False
 
             # Verify index exists
-            has_job_id_index = any(
-                "job_id" in [col.name for col in idx.columns]
-                for idx in Agent.__table__.indexes
-            )
+            has_job_id_index = any("job_id" in [col.name for col in idx.columns] for idx in Agent.__table__.indexes)
 
             if not has_job_id_index:
                 self.print_error("Verification failed: index on job_id missing")
@@ -310,6 +320,7 @@ class MigrationV3_0_to_V3_1:
 
             # Test creating an agent with project
             from uuid import uuid4
+
             from giljo_mcp.models import Project
 
             test_tenant_key = f"test_{uuid4().hex[:8]}"
@@ -322,7 +333,7 @@ class MigrationV3_0_to_V3_1:
                     id=test_project_id,
                     tenant_key=test_tenant_key,
                     name="Migration Test Project",
-                    mission="Temporary project for migration verification"
+                    mission="Temporary project for migration verification",
                 )
                 session.add(test_project)
                 await session.flush()
@@ -335,17 +346,16 @@ class MigrationV3_0_to_V3_1:
                     name="Migration Test Agent",
                     role="tester",
                     status="active",
-                    mission="Verify migration"
+                    mission="Verify migration",
                 )
                 session.add(test_agent)
                 await session.commit()
 
             # Retrieve to verify defaults (separate session to test database-level defaults)
             async with self.db_manager.get_session_async() as session:
-                from sqlalchemy import select, delete
-                result = await session.execute(
-                    select(Agent).where(Agent.id == test_agent_id)
-                )
+                from sqlalchemy import delete, select
+
+                result = await session.execute(select(Agent).where(Agent.id == test_agent_id))
                 retrieved = result.scalar_one_or_none()
 
                 if not retrieved:
@@ -405,7 +415,7 @@ class MigrationV3_0_to_V3_1:
 
             response = input(f"\n{Fore.CYAN}Proceed with migration? (yes/no): {Style.RESET_ALL}").strip().lower()
 
-            if response not in ['yes', 'y']:
+            if response not in ["yes", "y"]:
                 self.print_warning("Migration cancelled by user")
                 await self.db_manager.close_async()
                 return False
@@ -445,19 +455,10 @@ async def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Migrate GiljoAI MCP from v3.0 to v3.1",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Migrate GiljoAI MCP from v3.0 to v3.1", formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument(
-        "--auto-confirm",
-        action="store_true",
-        help="Skip confirmation prompt"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show changes without applying them"
-    )
+    parser.add_argument("--auto-confirm", action="store_true", help="Skip confirmation prompt")
+    parser.add_argument("--dry-run", action="store_true", help="Show changes without applying them")
 
     args = parser.parse_args()
 
@@ -474,6 +475,7 @@ async def main():
     except Exception as e:
         print(f"\n\n{Fore.RED}❌ FATAL ERROR: {e}{Style.RESET_ALL}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

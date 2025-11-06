@@ -356,7 +356,8 @@ def test_environment():
 
 # Parametrized tests
 @pytest.mark.parametrize(
-    ("platform", "expected_service"), [("Windows", "postgresql-x64-14"), ("Linux", "postgresql"), ("Darwin", "postgresql")]
+    ("platform", "expected_service"),
+    [("Windows", "postgresql-x64-14"), ("Linux", "postgresql"), ("Darwin", "postgresql")],
 )
 def test_service_name_by_platform(platform, expected_service):
     """Test service name detection by platform"""

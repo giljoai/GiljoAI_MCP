@@ -5,7 +5,6 @@ Provides test fixtures and database setup
 
 import asyncio
 import sys
-from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
@@ -15,16 +14,9 @@ import pytest_asyncio
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
-from tests.helpers.async_helpers import AsyncMockManager, DatabaseTestHelper, TimeoutHelper
-from tests.helpers.mock_servers import ExternalServiceMocks
-
-# Import test helpers
-from tests.helpers.test_factories import AgentFactory, MessageFactory, ProjectFactory
 
 # Import PostgreSQL test fixtures from base_fixtures
 from tests.fixtures.base_fixtures import (
@@ -34,6 +26,12 @@ from tests.fixtures.base_fixtures import (
     test_messages,
     test_project,
 )
+from tests.helpers.async_helpers import AsyncMockManager, DatabaseTestHelper, TimeoutHelper
+from tests.helpers.mock_servers import ExternalServiceMocks
+
+# Import test helpers
+from tests.helpers.test_factories import AgentFactory, MessageFactory, ProjectFactory
+
 
 # Import pytest plugin for PostgreSQL database management
 pytest_plugins = ["tests.pytest_postgresql_plugin"]
@@ -42,9 +40,9 @@ pytest_plugins = ["tests.pytest_postgresql_plugin"]
 __all__ = [
     "db_manager",
     "db_session",
-    "test_project",
     "test_agents",
     "test_messages",
+    "test_project",
 ]
 
 
@@ -111,7 +109,9 @@ def temp_claude_json(tmp_path):
     import json
 
     claude_path = tmp_path / ".claude.json"
-    claude_path.write_text(json.dumps({"mcpServers": {"giljo-mcp": {"command": "python", "args": ["-m", "giljo_mcp"]}}}))
+    claude_path.write_text(
+        json.dumps({"mcpServers": {"giljo-mcp": {"command": "python", "args": ["-m", "giljo_mcp"]}}})
+    )
     return claude_path
 
 
@@ -124,7 +124,7 @@ def mock_serena_detected(monkeypatch):
     def mock_run(cmd, *args, **kwargs):
         if "uvx" in cmd and "--version" in cmd:
             return MagicMock(returncode=0, stdout="uvx 0.1.0")
-        elif "uvx" in cmd and "serena" in cmd:
+        if "uvx" in cmd and "serena" in cmd:
             return MagicMock(returncode=0, stdout="Serena MCP v1.2.3")
         return MagicMock(returncode=1)
 
@@ -502,8 +502,8 @@ async def async_client(db_manager):
     Note: This is a simplified fixture. For full API tests, authentication
     should be properly mocked using the dependency override pattern.
     """
+
     from httpx import AsyncClient as HTTPXAsyncClient
-    from unittest.mock import AsyncMock, patch
 
     # Mock the FastAPI app import (placeholder - real tests need full API setup)
     try:
@@ -513,9 +513,10 @@ async def async_client(db_manager):
         from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 
         async def mock_get_current_user():
-            from src.giljo_mcp.models import User
             from datetime import datetime, timezone
             from uuid import uuid4
+
+            from src.giljo_mcp.models import User
 
             # Return mock authenticated user
             return User(
@@ -526,7 +527,7 @@ async def async_client(db_manager):
                 is_active=True,
                 is_admin=False,
                 created_at=datetime.now(timezone.utc),
-                hashed_password="hashed"
+                hashed_password="hashed",
             )
 
         async def mock_get_db_session():

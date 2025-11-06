@@ -14,6 +14,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from .agent_job_manager import AgentJobManager
 from .agent_selector import AgentSelector
 from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
@@ -23,7 +24,6 @@ from .models import Agent, AgentTemplate, Job, Message, Product, Project
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
 from .workflow_engine import WorkflowEngine
-from .agent_job_manager import AgentJobManager
 
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ class ProjectOrchestrator:
             template = result.scalar_one_or_none()
             if template:
                 logger.info(
-                    f"[_get_agent_template] Found tenant-specific template for " f"role={role}, tenant={tenant_key}"
+                    f"[_get_agent_template] Found tenant-specific template for role={role}, tenant={tenant_key}"
                 )
                 return template
 
@@ -176,8 +176,7 @@ class ProjectOrchestrator:
                 return template
 
             logger.warning(
-                f"[_get_agent_template] No template found for role={role}, "
-                f"tenant={tenant_key}, product={product_id}"
+                f"[_get_agent_template] No template found for role={role}, tenant={tenant_key}, product={product_id}"
             )
             return None
 
@@ -472,10 +471,14 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             serena_enabled = False
 
         if serena_enabled:
-            base = base + "\n\n" + self._generate_serena_instructions(
-                agent_role=agent_role,
-                mission_text=mission_text or "",
-                serena_cfg=serena_section,
+            base = (
+                base
+                + "\n\n"
+                + self._generate_serena_instructions(
+                    agent_role=agent_role,
+                    mission_text=mission_text or "",
+                    serena_cfg=serena_section,
+                )
             )
 
         return base
@@ -549,26 +552,26 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             "Example calls:",
             "```",
             "# discover candidate files",
-            "find_files(query=\"router|orchestrator|auth\")",
+            'find_files(query="router|orchestrator|auth")',
             "",
             "# inspect symbols in a file",
-            "get_symbols_overview(path=\"src/app.py\")",
+            'get_symbols_overview(path="src/app.py")',
             "",
             "# search for patterns",
-            "search_for_pattern(pattern=\"def create_router\", path=\"src/\")",
+            'search_for_pattern(pattern="def create_router", path="src/")',
         ]
 
         if prefer_ranges and has_read_range:
             examples_lines += [
                 "",
                 "# read a specific line range (preferred)",
-                "read_file_range(path=\"src/app.py\", start_line=120, end_line=120+24)",
+                'read_file_range(path="src/app.py", start_line=120, end_line=120+24)',
             ]
         else:
             examples_lines += [
                 "",
                 "# read file (if range reads not available)",
-                "read_file(path=\"src/app.py\")",
+                'read_file(path="src/app.py")',
             ]
 
         examples_lines += [
@@ -714,11 +717,11 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         try:
             with open(config_path, encoding="utf-8") as f:
                 import yaml
+
                 return yaml.safe_load(f) or {}
         except Exception as e:
             logger.error(f"Failed to read config: {e}")
             return {}
-
 
     async def create_project(
         self,
@@ -821,7 +824,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
             if project.status != ProjectStatus.ACTIVE.value:
                 raise ValueError(
-                    f"Cannot deactivate project in {project.status} state. " f"Only ACTIVE projects can be deactivated."
+                    f"Cannot deactivate project in {project.status} state. Only ACTIVE projects can be deactivated."
                 )
 
             project.status = ProjectStatus.INACTIVE.value
@@ -1583,10 +1586,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
     #  ====================  Phase 2: Orchestration Enhancement Methods (Handover 0020) ====================
 
     async def generate_mission_plan(
-        self,
-        product: "Product",
-        project_description: str,
-        user_id: Optional[str] = None
+        self, product: "Product", project_description: str, user_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Generate missions from vision analysis.
@@ -1612,7 +1612,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 "product_id": str(product.id),
                 "user_id": user_id,
                 "has_user_id": user_id is not None,
-            }
+            },
         )
 
         # 1. Analyze requirements
@@ -1623,10 +1623,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         missions = await self.mission_planner.generate_mission(
             product=product,
             project_description=project_description,
-            user_id=user_id  # Handover 0086A Task 2.1: pass user_id for field priorities
+            user_id=user_id,  # Handover 0086A Task 2.1: pass user_id for field priorities
         )
 
-        logger.info(f"Generated mission plan for product {product.id}: " f"{len(missions)} missions created")
+        logger.info(f"Generated mission plan for product {product.id}: {len(missions)} missions created")
 
         return missions
 
@@ -1650,7 +1650,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             requirements=requirements, tenant_key=tenant_key, product_id=product_id
         )
 
-        logger.info(f"Selected {len(agent_configs)} agents for mission: " f"{[ac.role for ac in agent_configs]}")
+        logger.info(f"Selected {len(agent_configs)} agents for mission: {[ac.role for ac in agent_configs]}")
 
         return agent_configs
 
@@ -1685,11 +1685,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         return workflow_result
 
     async def process_product_vision(
-        self,
-        tenant_key: str,
-        product_id: str,
-        project_requirements: str,
-        user_id: Optional[str] = None
+        self, tenant_key: str, product_id: str, project_requirements: str, user_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
         MAIN ORCHESTRATION WORKFLOW.
@@ -1728,7 +1724,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 "tenant_key": tenant_key,
                 "user_id": user_id,
                 "has_user_id": user_id is not None,
-            }
+            },
         )
         # 1. Load product and validate vision
         async with self.db_manager.get_session_async() as session:

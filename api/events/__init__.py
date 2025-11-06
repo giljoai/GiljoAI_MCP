@@ -21,6 +21,7 @@ from api.events.schemas import (
     WebSocketEvent,
 )
 
+
 __all__ = [
     # Event Models
     "ProjectMissionUpdatedEvent",

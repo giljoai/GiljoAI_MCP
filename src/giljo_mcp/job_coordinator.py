@@ -13,7 +13,7 @@ Multi-tenant isolation: All operations scoped by tenant_key.
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from uuid import uuid4
 
 from .repositories.agent_job_repository import AgentJobRepository
@@ -54,7 +54,7 @@ class JobCoordinator:
         parent_job_id: str,
         child_specs: List[Dict[str, Any]],
         send_notifications: bool = False,
-        validate_parent: bool = False
+        validate_parent: bool = False,
     ) -> Dict[str, Any]:
         """
         Spawn multiple child jobs from a parent job.
@@ -85,11 +85,7 @@ class JobCoordinator:
 
         # Handle empty specs
         if not child_specs:
-            return {
-                "success": True,
-                "job_ids": [],
-                "count": 0
-            }
+            return {"success": True, "job_ids": [], "count": 0}
 
         # Validate specs
         for spec in child_specs:
@@ -107,15 +103,12 @@ class JobCoordinator:
                 "mission": spec["mission"],
                 "spawned_by": parent_job_id,
                 "context_chunks": spec.get("context_chunks", []),
-                "initial_messages": spec.get("initial_messages", [])
+                "initial_messages": spec.get("initial_messages", []),
             }
             jobs.append(job_data)
 
         # Create jobs in batch
-        result = await self.job_manager.create_job_batch(
-            tenant_key=tenant_key,
-            jobs=jobs
-        )
+        result = await self.job_manager.create_job_batch(tenant_key=tenant_key, jobs=jobs)
 
         # Send notifications if requested
         if send_notifications and result.get("job_ids"):
@@ -124,20 +117,13 @@ class JobCoordinator:
                     tenant_key=tenant_key,
                     recipient_job_id=job_id,
                     notification_type="job_spawned",
-                    data={"parent_job_id": parent_job_id}
+                    data={"parent_job_id": parent_job_id},
                 )
 
-        return {
-            "success": True,
-            "job_ids": result.get("job_ids", []),
-            "count": result.get("count", 0)
-        }
+        return {"success": True, "job_ids": result.get("job_ids", []), "count": result.get("count", 0)}
 
     async def spawn_parallel_jobs(
-        self,
-        tenant_key: str,
-        parent_job_id: str,
-        job_specs: List[Dict[str, Any]]
+        self, tenant_key: str, parent_job_id: str, job_specs: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         Spawn parallel jobs without dependencies.
@@ -153,18 +139,11 @@ class JobCoordinator:
             Dict with success, job_ids, count
         """
         return await self.spawn_child_jobs(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            child_specs=job_specs,
-            send_notifications=False
+            tenant_key=tenant_key, parent_job_id=parent_job_id, child_specs=job_specs, send_notifications=False
         )
 
     async def wait_for_children(
-        self,
-        tenant_key: str,
-        parent_job_id: str,
-        timeout: float = 300.0,
-        poll_interval: float = 1.0
+        self, tenant_key: str, parent_job_id: str, timeout: float = 300.0, poll_interval: float = 1.0
     ) -> Dict[str, Any]:
         """
         Wait for all child jobs to complete.
@@ -196,10 +175,7 @@ class JobCoordinator:
 
         while True:
             # Get current child jobs
-            children = await self.job_manager.get_jobs_by_spawner(
-                tenant_key,
-                parent_job_id
-            )
+            children = await self.job_manager.get_jobs_by_spawner(tenant_key, parent_job_id)
 
             # Count statuses
             completed = sum(1 for j in children if j.status == "completed")
@@ -208,13 +184,7 @@ class JobCoordinator:
 
             # Check if all done
             if active == 0:
-                return {
-                    "all_complete": True,
-                    "completed": completed,
-                    "failed": failed,
-                    "active": 0,
-                    "timed_out": False
-                }
+                return {"all_complete": True, "completed": completed, "failed": failed, "active": 0, "timed_out": False}
 
             # Check timeout
             elapsed = asyncio.get_event_loop().time() - start_time
@@ -231,14 +201,11 @@ class JobCoordinator:
             "completed": completed,
             "failed": failed,
             "active": active,
-            "timed_out": timed_out
+            "timed_out": timed_out,
         }
 
     async def aggregate_child_results(
-        self,
-        tenant_key: str,
-        parent_job_id: str,
-        strategy: str = "collect"
+        self, tenant_key: str, parent_job_id: str, strategy: str = "collect"
     ) -> Dict[str, Any]:
         """
         Aggregate results from child jobs.
@@ -261,52 +228,37 @@ class JobCoordinator:
         """
         valid_strategies = ["collect", "merge"]
         if strategy not in valid_strategies:
-            raise ValueError(
-                f"Invalid aggregation strategy: {strategy}. "
-                f"Must be one of {valid_strategies}"
-            )
+            raise ValueError(f"Invalid aggregation strategy: {strategy}. Must be one of {valid_strategies}")
 
         # Get child jobs
-        children = await self.job_manager.get_jobs_by_spawner(
-            tenant_key,
-            parent_job_id
-        )
+        children = await self.job_manager.get_jobs_by_spawner(tenant_key, parent_job_id)
 
         if strategy == "collect":
             # Collect all results into array
             results = []
             for child in children:
-                results.append({
-                    "job_id": child.job_id,
-                    "agent_type": child.agent_type,
-                    "status": child.status,
-                    "messages": child.messages or []
-                })
+                results.append(
+                    {
+                        "job_id": child.job_id,
+                        "agent_type": child.agent_type,
+                        "status": child.status,
+                        "messages": child.messages or [],
+                    }
+                )
 
-            return {
-                "strategy": "collect",
-                "results": results,
-                "count": len(children)
-            }
+            return {"strategy": "collect", "results": results, "count": len(children)}
 
-        elif strategy == "merge":
+        if strategy == "merge":
             # Merge all messages from all children
             merged_data = []
             for child in children:
                 if child.messages:
                     merged_data.extend(child.messages)
 
-            return {
-                "strategy": "merge",
-                "merged_data": merged_data,
-                "count": len(children)
-            }
+            return {"strategy": "merge", "merged_data": merged_data, "count": len(children)}
 
     async def create_job_chain(
-        self,
-        tenant_key: str,
-        parent_job_id: str,
-        chain_specs: List[Dict[str, Any]]
+        self, tenant_key: str, parent_job_id: str, chain_specs: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         Create a sequential job dependency chain.
@@ -326,12 +278,7 @@ class JobCoordinator:
                 chain_length: int
         """
         if not chain_specs:
-            return {
-                "success": True,
-                "chain_id": None,
-                "job_ids": [],
-                "chain_length": 0
-            }
+            return {"success": True, "chain_id": None, "job_ids": [], "chain_length": 0}
 
         chain_id = f"chain-{uuid4()}"
 
@@ -344,15 +291,12 @@ class JobCoordinator:
                 "mission": spec["mission"],
                 "spawned_by": parent_job_id,
                 "context_chunks": spec.get("context_chunks", []),
-                "initial_messages": spec.get("initial_messages", [])
+                "initial_messages": spec.get("initial_messages", []),
             }
             jobs.append(job_data)
 
         # Create job batch
-        result = await self.job_manager.create_job_batch(
-            tenant_key=tenant_key,
-            jobs=jobs
-        )
+        result = await self.job_manager.create_job_batch(tenant_key=tenant_key, jobs=jobs)
 
         job_ids = result.get("job_ids", [])
 
@@ -366,7 +310,7 @@ class JobCoordinator:
                 "position": i + 1,
                 "total": len(job_ids),
                 "next_job_id": next_job_id,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             # Add metadata message to job
@@ -378,18 +322,9 @@ class JobCoordinator:
 
                 # Update job (messages are already updated on the job object)
 
-        return {
-            "success": True,
-            "chain_id": chain_id,
-            "job_ids": job_ids,
-            "chain_length": len(job_ids)
-        }
+        return {"success": True, "chain_id": chain_id, "job_ids": job_ids, "chain_length": len(job_ids)}
 
-    async def execute_next_in_chain(
-        self,
-        tenant_key: str,
-        current_job_id: str
-    ) -> Dict[str, Any]:
+    async def execute_next_in_chain(self, tenant_key: str, current_job_id: str) -> Dict[str, Any]:
         """
         Execute the next job in a dependency chain.
 
@@ -408,53 +343,30 @@ class JobCoordinator:
         # Get current job
         current_job = await self.job_manager.get_job(tenant_key, current_job_id)
         if not current_job:
-            return {
-                "success": False,
-                "error": "Current job not found"
-            }
+            return {"success": False, "error": "Current job not found"}
 
         # Find chain metadata in messages
         chain_metadata = None
-        for message in (current_job.messages or []):
+        for message in current_job.messages or []:
             if isinstance(message, dict) and message.get("type") == "chain_metadata":
                 chain_metadata = message
                 break
 
         if not chain_metadata:
-            return {
-                "success": False,
-                "error": "No chain metadata found"
-            }
+            return {"success": False, "error": "No chain metadata found"}
 
         next_job_id = chain_metadata.get("next_job_id")
 
         if not next_job_id:
             # Chain complete
-            return {
-                "success": True,
-                "next_job_id": None,
-                "chain_complete": True
-            }
+            return {"success": True, "next_job_id": None, "chain_complete": True}
 
         # Activate next job
-        await self.job_manager.update_job_status(
-            tenant_key=tenant_key,
-            job_id=next_job_id,
-            status="active"
-        )
+        await self.job_manager.update_job_status(tenant_key=tenant_key, job_id=next_job_id, status="active")
 
-        return {
-            "success": True,
-            "next_job_id": next_job_id,
-            "chain_complete": False
-        }
+        return {"success": True, "next_job_id": next_job_id, "chain_complete": False}
 
-    async def get_job_tree_status(
-        self,
-        tenant_key: str,
-        root_job_id: str,
-        max_depth: int = 10
-    ) -> Dict[str, Any]:
+    async def get_job_tree_status(self, tenant_key: str, root_job_id: str, max_depth: int = 10) -> Dict[str, Any]:
         """
         Get recursive job tree status.
 
@@ -477,12 +389,7 @@ class JobCoordinator:
         """
         # Track visited jobs to prevent cycles
         visited = set()
-        status_counts = {
-            "completed": 0,
-            "failed": 0,
-            "active": 0,
-            "pending": 0
-        }
+        status_counts = {"completed": 0, "failed": 0, "active": 0, "pending": 0}
 
         async def traverse(job_id: str, current_depth: int) -> int:
             """Recursively traverse job tree."""
@@ -507,10 +414,7 @@ class JobCoordinator:
                 return current_depth
 
             # Get children
-            children = await self.job_manager.get_jobs_by_spawner(
-                tenant_key,
-                job_id
-            )
+            children = await self.job_manager.get_jobs_by_spawner(tenant_key, job_id)
 
             # Traverse children
             max_child_depth = current_depth
@@ -530,14 +434,10 @@ class JobCoordinator:
             "failed": status_counts.get("failed", 0),
             "active": status_counts.get("active", 0),
             "pending": status_counts.get("pending", 0),
-            "tree_depth": tree_depth
+            "tree_depth": tree_depth,
         }
 
-    async def get_coordination_metrics(
-        self,
-        tenant_key: str,
-        parent_job_id: str
-    ) -> Dict[str, Any]:
+    async def get_coordination_metrics(self, tenant_key: str, parent_job_id: str) -> Dict[str, Any]:
         """
         Calculate coordination metrics for a parent job.
 
@@ -555,10 +455,7 @@ class JobCoordinator:
                 avg_completion_time: float or None (seconds)
         """
         # Get child jobs
-        children = await self.job_manager.get_jobs_by_spawner(
-            tenant_key,
-            parent_job_id
-        )
+        children = await self.job_manager.get_jobs_by_spawner(tenant_key, parent_job_id)
 
         total_children = len(children)
 
@@ -569,7 +466,7 @@ class JobCoordinator:
                 "failed": 0,
                 "active": 0,
                 "success_rate": 0.0,
-                "avg_completion_time": None
+                "avg_completion_time": None,
             }
 
         # Count statuses
@@ -584,15 +481,11 @@ class JobCoordinator:
         # Calculate average completion time for completed jobs
         completion_times = []
         for child in children:
-            if (child.status == "completed" and
-                child.started_at and child.completed_at):
+            if child.status == "completed" and child.started_at and child.completed_at:
                 duration = (child.completed_at - child.started_at).total_seconds()
                 completion_times.append(duration)
 
-        avg_completion_time = (
-            sum(completion_times) / len(completion_times)
-            if completion_times else None
-        )
+        avg_completion_time = sum(completion_times) / len(completion_times) if completion_times else None
 
         return {
             "total_children": total_children,
@@ -600,5 +493,5 @@ class JobCoordinator:
             "failed": failed,
             "active": active,
             "success_rate": success_rate,
-            "avg_completion_time": avg_completion_time
+            "avg_completion_time": avg_completion_time,
         }

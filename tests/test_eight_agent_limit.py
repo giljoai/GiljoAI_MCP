@@ -10,7 +10,6 @@ Tests validate:
 """
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, User
@@ -37,12 +36,8 @@ async def test_user(db_session: AsyncSession) -> User:
 @pytest.fixture
 async def create_template(db_session: AsyncSession):
     """Factory fixture to create agent templates"""
-    async def _create(
-        tenant_key: str,
-        name: str,
-        is_active: bool = True,
-        role: str = "implementor"
-    ) -> AgentTemplate:
+
+    async def _create(tenant_key: str, name: str, is_active: bool = True, role: str = "implementor") -> AgentTemplate:
         template = AgentTemplate(
             id=f"tpl-{name}-{hash(name) % 1000:03d}",
             tenant_key=tenant_key,
@@ -70,9 +65,7 @@ class TestValidateActiveAgentLimit:
     """Test suite for validate_active_agent_limit() validation function"""
 
     @pytest.mark.asyncio
-    async def test_deactivation_always_allowed(
-        self, db_session: AsyncSession, test_user: User, create_template
-    ):
+    async def test_deactivation_always_allowed(self, db_session: AsyncSession, test_user: User, create_template):
         """Test: Deactivating an agent should always be allowed"""
         # Create 8 active templates
         for i in range(8):
@@ -83,19 +76,14 @@ class TestValidateActiveAgentLimit:
 
         # Deactivation should always succeed
         valid, msg = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=test_user.tenant_key,
-            template_id="tpl-agent-0-0",
-            new_is_active=False
+            db=db_session, tenant_key=test_user.tenant_key, template_id="tpl-agent-0-0", new_is_active=False
         )
 
         assert valid is True
         assert msg == ""
 
     @pytest.mark.asyncio
-    async def test_activate_within_limit(
-        self, db_session: AsyncSession, test_user: User, create_template
-    ):
+    async def test_activate_within_limit(self, db_session: AsyncSession, test_user: User, create_template):
         """Test: Activating 7th agent should succeed (within 8-agent limit)"""
         # Create 6 active templates
         for i in range(6):
@@ -108,19 +96,14 @@ class TestValidateActiveAgentLimit:
 
         # Activating 7th agent should succeed (6 + 1 = 7 < 8)
         valid, msg = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=test_user.tenant_key,
-            template_id=inactive.id,
-            new_is_active=True
+            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
         )
 
         assert valid is True
         assert msg == ""
 
     @pytest.mark.asyncio
-    async def test_activate_exactly_at_limit(
-        self, db_session: AsyncSession, test_user: User, create_template
-    ):
+    async def test_activate_exactly_at_limit(self, db_session: AsyncSession, test_user: User, create_template):
         """Test: Activating 8th agent should succeed (exactly at limit)"""
         # Create 7 active templates
         for i in range(7):
@@ -133,19 +116,14 @@ class TestValidateActiveAgentLimit:
 
         # Activating 8th agent should succeed (7 + 1 = 8)
         valid, msg = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=test_user.tenant_key,
-            template_id=inactive.id,
-            new_is_active=True
+            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
         )
 
         assert valid is True
         assert msg == ""
 
     @pytest.mark.asyncio
-    async def test_activate_exceeds_limit(
-        self, db_session: AsyncSession, test_user: User, create_template
-    ):
+    async def test_activate_exceeds_limit(self, db_session: AsyncSession, test_user: User, create_template):
         """Test: Activating 9th agent should fail (exceeds 8-agent limit)"""
         # Create 8 active templates
         for i in range(8):
@@ -158,10 +136,7 @@ class TestValidateActiveAgentLimit:
 
         # Activating 9th agent should FAIL
         valid, msg = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=test_user.tenant_key,
-            template_id=inactive.id,
-            new_is_active=True
+            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
         )
 
         assert valid is False
@@ -170,9 +145,7 @@ class TestValidateActiveAgentLimit:
         assert "Claude Code context budget limit" in msg
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation(
-        self, db_session: AsyncSession, test_user: User, create_template
-    ):
+    async def test_multi_tenant_isolation(self, db_session: AsyncSession, test_user: User, create_template):
         """Test: Agent limit enforced per tenant (multi-tenant isolation)"""
         # Tenant 1: Create 8 active templates
         for i in range(8):
@@ -190,10 +163,7 @@ class TestValidateActiveAgentLimit:
 
         # Tenant 2 should be able to activate (5 + 1 = 6 < 8)
         valid, msg = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=tenant2_key,
-            template_id=inactive_t2.id,
-            new_is_active=True
+            db=db_session, tenant_key=tenant2_key, template_id=inactive_t2.id, new_is_active=True
         )
 
         assert valid is True
@@ -203,19 +173,14 @@ class TestValidateActiveAgentLimit:
         inactive_t1 = await create_template(test_user.tenant_key, "t1-agent-inactive", is_active=False)
 
         valid_t1, msg_t1 = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=test_user.tenant_key,
-            template_id=inactive_t1.id,
-            new_is_active=True
+            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive_t1.id, new_is_active=True
         )
 
         assert valid_t1 is False
         assert "Maximum 8 active agents allowed" in msg_t1
 
     @pytest.mark.asyncio
-    async def test_toggle_same_template_excluded(
-        self, db_session: AsyncSession, test_user: User, create_template
-    ):
+    async def test_toggle_same_template_excluded(self, db_session: AsyncSession, test_user: User, create_template):
         """Test: Template being toggled is excluded from count"""
         # Create 7 active templates
         for i in range(7):
@@ -229,10 +194,7 @@ class TestValidateActiveAgentLimit:
         # Toggling existing active template to inactive should succeed
         # (count excludes template being toggled: 7 active others + 1 being toggled = 8 total)
         valid, msg = await validate_active_agent_limit(
-            db=db_session,
-            tenant_key=test_user.tenant_key,
-            template_id=toggle_template.id,
-            new_is_active=False
+            db=db_session, tenant_key=test_user.tenant_key, template_id=toggle_template.id, new_is_active=False
         )
 
         assert valid is True
@@ -244,14 +206,9 @@ class TestActiveCountEndpoint:
     """Test suite for GET /api/templates/stats/active-count endpoint"""
 
     @pytest.mark.asyncio
-    async def test_active_count_zero(
-        self, client, test_user: User, auth_headers
-    ):
+    async def test_active_count_zero(self, client, test_user: User, auth_headers):
         """Test: Returns 0 active count when no templates exist"""
-        response = await client.get(
-            "/api/templates/stats/active-count",
-            headers=auth_headers
-        )
+        response = await client.get("/api/templates/stats/active-count", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -260,18 +217,13 @@ class TestActiveCountEndpoint:
         assert data["remaining_slots"] == 8
 
     @pytest.mark.asyncio
-    async def test_active_count_six(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_active_count_six(self, client, test_user: User, auth_headers, create_template):
         """Test: Returns 6 active count for default seeded agents"""
         # Create 6 active templates (default configuration)
         for i in range(6):
             await create_template(test_user.tenant_key, f"agent-{i}", is_active=True)
 
-        response = await client.get(
-            "/api/templates/stats/active-count",
-            headers=auth_headers
-        )
+        response = await client.get("/api/templates/stats/active-count", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -280,18 +232,13 @@ class TestActiveCountEndpoint:
         assert data["remaining_slots"] == 2
 
     @pytest.mark.asyncio
-    async def test_active_count_at_limit(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_active_count_at_limit(self, client, test_user: User, auth_headers, create_template):
         """Test: Returns 8 active count when at limit"""
         # Create 8 active templates
         for i in range(8):
             await create_template(test_user.tenant_key, f"agent-{i}", is_active=True)
 
-        response = await client.get(
-            "/api/templates/stats/active-count",
-            headers=auth_headers
-        )
+        response = await client.get("/api/templates/stats/active-count", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -300,9 +247,7 @@ class TestActiveCountEndpoint:
         assert data["remaining_slots"] == 0
 
     @pytest.mark.asyncio
-    async def test_active_count_mixed_active_inactive(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_active_count_mixed_active_inactive(self, client, test_user: User, auth_headers, create_template):
         """Test: Only counts is_active=True templates"""
         # Create 5 active, 3 inactive
         for i in range(5):
@@ -311,10 +256,7 @@ class TestActiveCountEndpoint:
         for i in range(3):
             await create_template(test_user.tenant_key, f"inactive-{i}", is_active=False)
 
-        response = await client.get(
-            "/api/templates/stats/active-count",
-            headers=auth_headers
-        )
+        response = await client.get("/api/templates/stats/active-count", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -336,10 +278,7 @@ class TestActiveCountEndpoint:
             await create_template(tenant2_key, f"t2-agent-{i}", is_active=True)
 
         # Should only see tenant 1's count
-        response = await client.get(
-            "/api/templates/stats/active-count",
-            headers=auth_headers
-        )
+        response = await client.get("/api/templates/stats/active-count", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -352,9 +291,7 @@ class TestUpdateTemplateWithValidation:
     """Test suite for PATCH /api/templates/{id} with 8-agent validation"""
 
     @pytest.mark.asyncio
-    async def test_activate_within_limit_succeeds(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_activate_within_limit_succeeds(self, client, test_user: User, auth_headers, create_template):
         """Test: Activating agent within limit succeeds"""
         # Create 6 active templates
         for i in range(6):
@@ -364,20 +301,14 @@ class TestUpdateTemplateWithValidation:
         inactive = await create_template(test_user.tenant_key, "agent-inactive", is_active=False)
 
         # Activate the inactive template (6 + 1 = 7 < 8)
-        response = await client.put(
-            f"/api/templates/{inactive.id}",
-            headers=auth_headers,
-            json={"is_active": True}
-        )
+        response = await client.put(f"/api/templates/{inactive.id}", headers=auth_headers, json={"is_active": True})
 
         assert response.status_code == 200
         data = response.json()
         assert data["is_active"] is True
 
     @pytest.mark.asyncio
-    async def test_activate_8th_agent_succeeds(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_activate_8th_agent_succeeds(self, client, test_user: User, auth_headers, create_template):
         """Test: Activating exactly 8th agent succeeds"""
         # Create 7 active templates
         for i in range(7):
@@ -387,20 +318,14 @@ class TestUpdateTemplateWithValidation:
         inactive = await create_template(test_user.tenant_key, "agent-8th", is_active=False)
 
         # Activate 8th agent (7 + 1 = 8)
-        response = await client.put(
-            f"/api/templates/{inactive.id}",
-            headers=auth_headers,
-            json={"is_active": True}
-        )
+        response = await client.put(f"/api/templates/{inactive.id}", headers=auth_headers, json={"is_active": True})
 
         assert response.status_code == 200
         data = response.json()
         assert data["is_active"] is True
 
     @pytest.mark.asyncio
-    async def test_activate_9th_agent_blocked(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_activate_9th_agent_blocked(self, client, test_user: User, auth_headers, create_template):
         """Test: Activating 9th agent returns 400 error"""
         # Create 8 active templates
         for i in range(8):
@@ -410,11 +335,7 @@ class TestUpdateTemplateWithValidation:
         inactive = await create_template(test_user.tenant_key, "agent-9th", is_active=False)
 
         # Attempt to activate 9th agent
-        response = await client.put(
-            f"/api/templates/{inactive.id}",
-            headers=auth_headers,
-            json={"is_active": True}
-        )
+        response = await client.put(f"/api/templates/{inactive.id}", headers=auth_headers, json={"is_active": True})
 
         assert response.status_code == 400
         error_detail = response.json()["detail"]
@@ -423,9 +344,7 @@ class TestUpdateTemplateWithValidation:
         assert "Claude Code context budget limit" in error_detail
 
     @pytest.mark.asyncio
-    async def test_deactivate_always_succeeds(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_deactivate_always_succeeds(self, client, test_user: User, auth_headers, create_template):
         """Test: Deactivating agent always succeeds regardless of count"""
         # Create 8 active templates
         templates = []
@@ -435,9 +354,7 @@ class TestUpdateTemplateWithValidation:
 
         # Deactivate one agent
         response = await client.put(
-            f"/api/templates/{templates[0].id}",
-            headers=auth_headers,
-            json={"is_active": False}
+            f"/api/templates/{templates[0].id}", headers=auth_headers, json={"is_active": False}
         )
 
         assert response.status_code == 200
@@ -445,9 +362,7 @@ class TestUpdateTemplateWithValidation:
         assert data["is_active"] is False
 
     @pytest.mark.asyncio
-    async def test_update_other_fields_no_validation(
-        self, client, test_user: User, auth_headers, create_template
-    ):
+    async def test_update_other_fields_no_validation(self, client, test_user: User, auth_headers, create_template):
         """Test: Updating fields other than is_active skips validation"""
         # Create 8 active templates
         for i in range(8):
@@ -458,9 +373,7 @@ class TestUpdateTemplateWithValidation:
 
         # Update description only (no is_active change)
         response = await client.put(
-            f"/api/templates/{template.id}",
-            headers=auth_headers,
-            json={"description": "Updated description"}
+            f"/api/templates/{template.id}", headers=auth_headers, json={"description": "Updated description"}
         )
 
         assert response.status_code == 200
@@ -480,19 +393,11 @@ class TestUpdateTemplateWithValidation:
         inactive2 = await create_template(test_user.tenant_key, "inactive-2", is_active=False)
 
         # First inactive activation should fail (8 + 1 = 9)
-        response1 = await client.put(
-            f"/api/templates/{inactive1.id}",
-            headers=auth_headers,
-            json={"is_active": True}
-        )
+        response1 = await client.put(f"/api/templates/{inactive1.id}", headers=auth_headers, json={"is_active": True})
 
         assert response1.status_code == 400
 
         # Second should also fail
-        response2 = await client.put(
-            f"/api/templates/{inactive2.id}",
-            headers=auth_headers,
-            json={"is_active": True}
-        )
+        response2 = await client.put(f"/api/templates/{inactive2.id}", headers=auth_headers, json={"is_active": True})
 
         assert response2.status_code == 400

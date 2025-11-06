@@ -10,12 +10,48 @@ Handover: One-Time Download Token System - Download Endpoints
 import asyncio
 import io
 import zipfile
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import status
 from httpx import AsyncClient
+from sqlalchemy import select
+
+from src.giljo_mcp.models import AgentTemplate
+
+
+# Seed minimal agent templates for the test tenant (0102 compatibility)
+@pytest.fixture(autouse=True)
+async def _seed_agent_templates(db_manager):
+    tenant_key = "test_tenant_key"
+    async with db_manager.get_session_async() as session:
+        result = await session.execute(
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
+        )
+        if not result.scalars().first():
+            session.add_all(
+                [
+                    AgentTemplate(
+                        name="orchestrator",
+                        role="orchestrator",
+                        category="role",
+                        template_content="# Orchestrator",
+                        tool="claude",
+                        tenant_key=tenant_key,
+                        is_active=True,
+                    ),
+                    AgentTemplate(
+                        name="implementor",
+                        role="implementor",
+                        category="role",
+                        template_content="# Implementor",
+                        tool="claude",
+                        tenant_key=tenant_key,
+                        is_active=True,
+                    ),
+                ]
+            )
+            await session.commit()
 
 
 # ============================================================================
@@ -27,9 +63,7 @@ class TestGenerateTokenEndpoint:
     """Tests for POST /api/download/generate-token endpoint (authenticated)"""
 
     @pytest.mark.asyncio
-    async def test_generate_token_slash_commands_success(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_generate_token_slash_commands_success(self, api_client: AsyncClient, auth_headers: dict):
         """Test generating token for slash commands returns valid response"""
         response = await api_client.post(
             "/api/download/generate-token",
@@ -51,9 +85,7 @@ class TestGenerateTokenEndpoint:
         assert "slash_commands.zip" in data["download_url"]
 
     @pytest.mark.asyncio
-    async def test_generate_token_agent_templates_success(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_generate_token_agent_templates_success(self, api_client: AsyncClient, auth_headers: dict):
         """Test generating token for agent templates returns valid response"""
         response = await api_client.post(
             "/api/download/generate-token",
@@ -68,9 +100,7 @@ class TestGenerateTokenEndpoint:
         assert "agent_templates.zip" in data["download_url"]
 
     @pytest.mark.asyncio
-    async def test_generate_token_invalid_content_type_fails(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_generate_token_invalid_content_type_fails(self, api_client: AsyncClient, auth_headers: dict):
         """Test invalid content_type returns 400 error"""
         response = await api_client.post(
             "/api/download/generate-token",
@@ -82,9 +112,7 @@ class TestGenerateTokenEndpoint:
         assert "invalid" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_generate_token_unauthenticated_fails(
-        self, api_client: AsyncClient
-    ):
+    async def test_generate_token_unauthenticated_fails(self, api_client: AsyncClient):
         """Test unauthenticated request to generate token fails with 401"""
         response = await api_client.post(
             "/api/download/generate-token",
@@ -103,13 +131,9 @@ class TestDownloadFileEndpoint:
     """Tests for GET /api/download/temp/{token}/{filename} endpoint (public)"""
 
     @pytest.mark.asyncio
-    async def test_download_with_valid_token_success(
-        self, api_client: AsyncClient, valid_download_token: str
-    ):
+    async def test_download_with_valid_token_success(self, api_client: AsyncClient, valid_download_token: str):
         """Test downloading file with valid token returns file"""
-        response = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.headers["content-type"] == "application/zip"
@@ -122,92 +146,66 @@ class TestDownloadFileEndpoint:
             assert len(zf.namelist()) > 0
 
     @pytest.mark.asyncio
-    async def test_download_expired_token_fails(
-        self, api_client: AsyncClient, expired_token: str
-    ):
+    async def test_download_expired_token_fails(self, api_client: AsyncClient, expired_token: str):
         """Test downloading with expired token (16+ minutes old) returns 404"""
-        response = await api_client.get(
-            f"/api/download/temp/{expired_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{expired_token}/slash_commands.zip")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         error_msg = response.json()["detail"].lower()
         assert "invalid" in error_msg or "expired" in error_msg or "used" in error_msg
 
     @pytest.mark.asyncio
-    async def test_download_already_used_token_fails(
-        self, api_client: AsyncClient, valid_download_token: str
-    ):
-        """Test downloading with already-used token fails (one-time use)"""
+    async def test_download_allows_multiple_within_expiry(self, api_client: AsyncClient, valid_download_token: str):
+        """Refactored 0102: Multiple downloads within expiry are allowed."""
         # First download succeeds
-        response1 = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-        )
+        response1 = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
         assert response1.status_code == status.HTTP_200_OK
 
-        # Second download with same token fails
-        response2 = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-        )
-        assert response2.status_code == status.HTTP_410_GONE
-        assert "already" in response2.json()["detail"].lower()
+        # Second download with same token succeeds
+        response2 = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
+        assert response2.status_code == status.HTTP_200_OK
 
     @pytest.mark.asyncio
     async def test_download_invalid_token_fails(self, api_client: AsyncClient):
         """Test downloading with non-existent token returns 404"""
         fake_token = "nonexistent-token-12345"
 
-        response = await api_client.get(
-            f"/api/download/temp/{fake_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{fake_token}/slash_commands.zip")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_download_filename_mismatch_fails(
-        self, api_client: AsyncClient, valid_download_token: str
-    ):
+    async def test_download_filename_mismatch_fails(self, api_client: AsyncClient, valid_download_token: str):
         """Test downloading with wrong filename returns 404"""
-        response = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/wrong_file.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{valid_download_token}/wrong_file.zip")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not found" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_download_cross_tenant_access_denied(
-        self, api_client: AsyncClient, other_tenant_token: str
-    ):
+    async def test_download_cross_tenant_access_denied(self, api_client: AsyncClient, other_tenant_token: str):
         """Test cross-tenant token access returns 404 (not 403 for security)"""
-        response = await api_client.get(
-            f"/api/download/temp/{other_tenant_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{other_tenant_token}/slash_commands.zip")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_download_concurrent_same_token_one_succeeds(
+    async def test_download_concurrent_same_token_all_succeed(
         self, api_client: AsyncClient, valid_download_token: str
     ):
-        """Test concurrent downloads with same token - only one succeeds"""
+        """0102: Multiple downloads allowed within expiry; all should succeed."""
 
         async def attempt_download():
-            response = await api_client.get(
-                f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-            )
+            response = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
             return response.status_code
 
         # 5 concurrent download attempts
         tasks = [attempt_download() for _ in range(5)]
         status_codes = await asyncio.gather(*tasks)
 
-        # Exactly one should succeed (200), rest should fail (410 or 404)
+        # All should succeed (200)
         success_count = sum(1 for code in status_codes if code == 200)
-        fail_count = sum(1 for code in status_codes if code in [404, 410])
-
-        assert success_count == 1
-        assert fail_count == 4
+        assert success_count == 5
 
     @pytest.mark.asyncio
     async def test_download_file_cleanup_after_success(
@@ -215,16 +213,13 @@ class TestDownloadFileEndpoint:
     ):
         """Test file cleanup occurs after successful download"""
         # Download file
-        response = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
         assert response.status_code == status.HTTP_200_OK
 
         # Wait for cleanup (async background task)
         await asyncio.sleep(0.5)
 
         # Verify file no longer exists
-        from pathlib import Path
 
         temp_path = temp_dir / valid_download_token
         assert not temp_path.exists()
@@ -239,38 +234,31 @@ class TestDownloadSecurity:
     """Security-focused tests for download endpoints"""
 
     @pytest.mark.asyncio
-    async def test_directory_traversal_prevention(self, api_client: AsyncClient):
+    async def test_directory_traversal_prevention(self, api_client: AsyncClient, auth_headers: dict):
         """Test directory traversal attacks are prevented"""
         malicious_token = "../../../etc/passwd"
 
         response = await api_client.get(
-            f"/api/download/temp/{malicious_token}/slash_commands.zip"
+            f"/api/download/temp/{malicious_token}/slash_commands.zip",
+            headers=auth_headers,
         )
 
         assert response.status_code in [400, 404]
 
     @pytest.mark.asyncio
-    async def test_no_cache_headers_present(
-        self, api_client: AsyncClient, valid_download_token: str
-    ):
+    async def test_no_cache_headers_present(self, api_client: AsyncClient, valid_download_token: str):
         """Test response includes no-cache headers"""
-        response = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
 
         assert response.status_code == status.HTTP_200_OK
         cache_control = response.headers.get("cache-control", "")
         assert "no-cache" in cache_control or "no-store" in cache_control
 
     @pytest.mark.asyncio
-    async def test_download_without_auth_succeeds_with_token(
-        self, api_client: AsyncClient, valid_download_token: str
-    ):
+    async def test_download_without_auth_succeeds_with_token(self, api_client: AsyncClient, valid_download_token: str):
         """Test download works without authentication (token IS the auth)"""
         # No auth headers provided
-        response = await api_client.get(
-            f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-        )
+        response = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -284,12 +272,11 @@ class TestDownloadErrorHandling:
     """Tests for error handling in download endpoints"""
 
     @pytest.mark.asyncio
-    async def test_generate_token_server_error_handling(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_generate_token_server_error_handling(self, api_client: AsyncClient, auth_headers: dict):
         """Test server errors during token generation return 500"""
+        # Patch new TokenManager path used by 0102 implementation
         with patch(
-            "src.giljo_mcp.download_tokens.TokenManager.generate_token",
+            "src.giljo_mcp.downloads.token_manager.TokenManager.generate_token",
             side_effect=Exception("Database error"),
         ):
             response = await api_client.post(
@@ -301,14 +288,10 @@ class TestDownloadErrorHandling:
             assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     @pytest.mark.asyncio
-    async def test_download_file_missing_returns_500(
-        self, api_client: AsyncClient, valid_download_token: str
-    ):
+    async def test_download_file_missing_returns_500(self, api_client: AsyncClient, valid_download_token: str):
         """Test missing file (after token validation) returns 500"""
         with patch("pathlib.Path.exists", return_value=False):
-            response = await api_client.get(
-                f"/api/download/temp/{valid_download_token}/slash_commands.zip"
-            )
+            response = await api_client.get(f"/api/download/temp/{valid_download_token}/slash_commands.zip")
 
             assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
             assert "internal" in response.json()["detail"].lower()

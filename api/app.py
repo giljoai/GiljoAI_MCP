@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
+
 # Set up logging early to catch import issues
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 logger.info("Loading FastAPI application...")
 
 from dotenv import load_dotenv
+
 
 try:
     from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -81,21 +83,21 @@ try:
         downloads,
         mcp_http,
         mcp_installer,
-        messages,
-        setup_security,
         mcp_tools,
+        messages,
         network,
         orchestration,
         products,
         projects,
         prompts,
         serena,
+        setup_security,
         slash_commands,
         statistics,
         tasks,
         templates,
-        users,
         user_settings,
+        users,
         vision_documents,
     )
     from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
@@ -123,13 +125,15 @@ class APIState:
         self.connections: dict[str, WebSocket] = {}
         self.heartbeat_task: Optional[asyncio.Task] = None
         self.cleanup_task: Optional[asyncio.Task] = None
+        self.health_monitor = None
+        self.health_monitor_task: Optional[asyncio.Task] = None
 
 
 state = APIState()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa: ARG001
+async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # app parameter is required by FastAPI even if unused
     # Startup
@@ -141,7 +145,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         # Initialize configuration
         logger.info("Initializing configuration...")
         state.config = get_config()  # Use the singleton getter
-        logger.info(f"Configuration loaded successfully")
+        logger.info("Configuration loaded successfully")
         # v3.0: DeploymentMode removed - server always binds 0.0.0.0, firewall controls access
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}", exc_info=True)
@@ -264,7 +268,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                         token_manager = TokenManager(session)
                         result = await token_manager.cleanup_expired_tokens()
                         # Backward-compatible handling: support int or dict
-                        deleted_total = result.get('total', 0) if isinstance(result, dict) else int(result or 0)
+                        deleted_total = result.get("total", 0) if isinstance(result, dict) else int(result or 0)
                         if deleted_total > 0:
                             logger.info(f"Download token cleanup: {deleted_total} tokens removed")
                         else:
@@ -280,17 +284,63 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as e:
         logger.error(f"Failed to start download token cleanup task: {e}", exc_info=True)
 
+    # Start agent health monitoring service (Handover 0107)
+    try:
+        logger.info("Initializing agent health monitoring...")
+        health_config_dict = state.config.data.get('health_monitoring', {})
+
+        # Only start if enabled in config
+        if health_config_dict.get('enabled', True):
+            from giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
+            from giljo_mcp.monitoring.health_config import HealthCheckConfig
+
+            # Build configuration from config.yaml
+            timeout_config = health_config_dict.get('timeouts', {})
+            health_config = HealthCheckConfig(
+                waiting_timeout_minutes=timeout_config.get('waiting_timeout', 2),
+                active_no_progress_minutes=timeout_config.get('active_no_progress', 5),
+                heartbeat_timeout_minutes=timeout_config.get('heartbeat_timeout', 10),
+                timeout_overrides={
+                    'orchestrator': timeout_config.get('orchestrator', 15),
+                    'implementer': timeout_config.get('implementer', 10),
+                    'tester': timeout_config.get('tester', 8),
+                    'analyzer': timeout_config.get('analyzer', 5),
+                    'reviewer': timeout_config.get('reviewer', 6),
+                    'documenter': timeout_config.get('documenter', 5),
+                },
+                scan_interval_seconds=health_config_dict.get('scan_interval_seconds', 300),
+                auto_fail_on_timeout=health_config_dict.get('auto_fail_on_timeout', False),
+                notify_orchestrator=health_config_dict.get('notify_orchestrator', True)
+            )
+
+            # Initialize monitor with dependencies
+            state.health_monitor = AgentHealthMonitor(
+                db_manager=state.db_manager,
+                ws_manager=state.websocket_manager,
+                config=health_config
+            )
+
+            # Start monitoring service
+            await state.health_monitor.start()
+            logger.info(f"Agent health monitoring started (scan interval: {health_config.scan_interval_seconds}s)")
+        else:
+            logger.info("Agent health monitoring disabled in configuration")
+    except Exception as e:
+        logger.error(f"Failed to start agent health monitoring: {e}", exc_info=True)
+        logger.warning("Continuing without health monitoring")
+
     # v3.0: Removed localhost auto-login - unified authentication for all connections
 
     # Check setup state on startup (version tracking and validation)
     if state.db_manager:
         try:
             logger.info("Checking setup state...")
-            from src.giljo_mcp.setup.state_manager import SetupStateManager
+            from pathlib import Path
 
             # Get current version from config
             import yaml
-            from pathlib import Path
+
+            from src.giljo_mcp.setup.state_manager import SetupStateManager
 
             config_path = Path.cwd() / "config.yaml"
             if config_path.exists():
@@ -317,7 +367,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                 # Validate current state
                 valid, failures = state_manager.validate_state()
                 if not valid:
-                    logger.warning(f"⚠️ Setup validation failures detected:")
+                    logger.warning("⚠️ Setup validation failures detected:")
                     for failure in failures:
                         logger.warning(f"  - {failure}")
                     logger.warning("Review setup configuration or run migration")
@@ -361,6 +411,15 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as e:
         logger.error(f"Error canceling background tasks: {e}", exc_info=True)
 
+    # Stop health monitoring gracefully
+    if state.health_monitor:
+        try:
+            logger.info("Stopping agent health monitoring...")
+            await state.health_monitor.stop()
+            logger.info("Agent health monitoring stopped")
+        except Exception as e:
+            logger.error(f"Error stopping health monitor: {e}", exc_info=True)
+
     # Close all WebSocket connections
     try:
         logger.info("Closing WebSocket connections...")
@@ -384,7 +443,6 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
-    from giljo_mcp.config_manager import get_config
 
     app = FastAPI(
         title="GiljoAI MCP Orchestrator API v3.0.0",
@@ -461,7 +519,7 @@ def create_app() -> FastAPI:
     try:
         config_path = Path(__file__).parent.parent / "config.yaml"
         if config_path.exists():
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
                 security_config = config.get("security", {})
                 cors_config = security_config.get("cors", {})
@@ -500,7 +558,7 @@ def create_app() -> FastAPI:
         # Validate no wildcard patterns for security
         has_wildcards = any("*" in origin for origin in cors_origins)
         if has_wildcards:
-            logger.warning(f"CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
+            logger.warning("CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
 
     # Dynamic network adapter IP detection for CORS updates
     try:
@@ -527,10 +585,9 @@ def create_app() -> FastAPI:
                 logger.info(f"Network adapter IP changed: {adapter_name} -> {current_ip}")
             else:
                 logger.info(f"Network adapter IP unchanged: {adapter_name} @ {current_ip}")
-        else:
-            # Adapter disconnected - log warning and fall back to localhost
-            if adapter_name:
-                logger.warning(f"Network adapter '{adapter_name}' disconnected - using localhost fallback")
+        # Adapter disconnected - log warning and fall back to localhost
+        elif adapter_name:
+            logger.warning(f"Network adapter '{adapter_name}' disconnected - using localhost fallback")
 
     except ImportError:
         logger.debug("Network detector not available - skipping dynamic IP detection")
@@ -550,6 +607,7 @@ def create_app() -> FastAPI:
     # Development: Higher limit or disabled via environment variable
     # Production: Standard 60 requests per minute
     import os
+
     rate_limit = int(os.getenv("API_RATE_LIMIT", "300"))  # Default 300 for development
     if os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true":
         logger.info("[Rate Limit] Rate limiting disabled via environment variable")
@@ -599,6 +657,17 @@ def create_app() -> FastAPI:
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(setup_security.router, prefix="/api/setup", tags=["setup-security"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
+
+    if os.getenv("ENABLE_DEVPANEL", "false").lower() == "true":
+        try:
+            from .endpoints import developer_panel
+
+            app.include_router(developer_panel.router)
+            logger.info("Developer Panel routes enabled (localhost-only)")
+        except Exception as dev_exc:
+            logger.error(f"Failed to include Developer Panel routes: {dev_exc}", exc_info=True)
+    else:
+        logger.info("Developer Panel disabled (set ENABLE_DEVPANEL=true to enable)")
     app.include_router(network.router, prefix="/api/network", tags=["network"])
 
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)
@@ -675,23 +744,25 @@ def create_app() -> FastAPI:
 
                 # STEP 3: Store connection with authentication context
                 auth_context = {
-                    'user': auth_result.get('user', {}),
-                    'context': auth_result.get('context', 'normal')  # 'setup' or 'normal'
+                    "user": auth_result.get("user", {}),
+                    "context": auth_result.get("context", "normal"),  # 'setup' or 'normal'
                 }
                 # Determine auth type from query parameters
                 if token:
-                    auth_context['auth_type'] = 'jwt'
+                    auth_context["auth_type"] = "jwt"
                 elif api_key:
-                    auth_context['auth_type'] = 'api_key'
+                    auth_context["auth_type"] = "api_key"
                 else:
-                    auth_context['auth_type'] = 'setup'
+                    auth_context["auth_type"] = "setup"
 
                 await state.websocket_manager.connect(websocket, client_id, auth_context=auth_context)
                 state.connections[client_id] = websocket
 
                 # Log successful connection
-                auth_type = auth_context.get('auth_type', 'setup')
-                logger.info(f"WebSocket connected: {client_id} (context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})")
+                auth_type = auth_context.get("auth_type", "setup")
+                logger.info(
+                    f"WebSocket connected: {client_id} (context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})"
+                )
 
             finally:
                 # Clean up session if created - use SAME context manager instance
@@ -766,12 +837,19 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):  # noqa: ARG001
-        """Custom HTTP exception handler"""
+        """Custom HTTP exception handler (JSON, with detail for tooling/tests)"""
         logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
-        return JSONResponse(status_code=exc.status_code, content={"error": exc.detail, "status_code": exc.status_code})
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": exc.detail,
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+            },
+        )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(request, exc):  # noqa: ARG001
+    async def general_exception_handler(request, exc):
         """General exception handler"""
         logger.error(f"Unhandled exception: {exc}", exc_info=True)
         logger.error(f"Request path: {request.url.path if hasattr(request, 'url') else 'unknown'}")

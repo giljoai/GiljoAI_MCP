@@ -11,17 +11,20 @@ Related to: handovers/0024_HANDOVER_20251016_TWO_LAYOUT_AUTH_PATTERN.md
 Phase 3: Simplify Backend
 """
 
+from datetime import datetime, timezone
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from passlib.hash import bcrypt
 
-from src.giljo_mcp.models import User, SetupState
-from datetime import datetime, timezone
+from src.giljo_mcp.models import SetupState, User
 
 
 @pytest.mark.asyncio
-async def test_auth_me_returns_user_when_authenticated(test_client: AsyncClient, authenticated_headers: dict, test_user: User):
+async def test_auth_me_returns_user_when_authenticated(
+    test_client: AsyncClient, authenticated_headers: dict, test_user: User
+):
     """
     Test /api/auth/me returns user data when authenticated.
 
@@ -70,7 +73,9 @@ async def test_auth_me_returns_401_when_not_authenticated(test_client: AsyncClie
 
 
 @pytest.mark.asyncio
-async def test_auth_me_no_setup_mode_response_even_if_setup_active(test_client: AsyncClient, authenticated_headers: dict, test_user: User):
+async def test_auth_me_no_setup_mode_response_even_if_setup_active(
+    test_client: AsyncClient, authenticated_headers: dict, test_user: User
+):
     """
     Test /api/auth/me does NOT return setup mode response even if setup mode is active.
 
@@ -89,7 +94,7 @@ async def test_auth_me_no_setup_mode_response_even_if_setup_active(test_client: 
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),  # Required when database_initialized=True
             first_admin_created=False,  # No admin created yet
-            setup_version="3.0.0"
+            setup_version="3.0.0",
         )
         session.add(setup_state)
         await session.commit()
@@ -124,10 +129,7 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
     from src.giljo_mcp.auth.dependencies import get_db_session
 
     # Test 1: No SetupState (fresh install)
-    response1 = await test_client.post(
-        "/api/auth/login",
-        json={"username": "testuser", "password": "testpassword123"}
-    )
+    response1 = await test_client.post("/api/auth/login", json={"username": "testuser", "password": "testpassword123"})
     assert response1.status_code == 200
     cookies1 = response1.cookies
 
@@ -144,7 +146,7 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),  # Required
             first_admin_created=False,
-            setup_version="3.0.0"
+            setup_version="3.0.0",
         )
         session.add(setup_state)
         await session.commit()
@@ -160,6 +162,7 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
     async for session in db_session_gen():
         # Update setup state
         from sqlalchemy import select
+
         stmt = select(SetupState).where(SetupState.tenant_key == test_user.tenant_key)
         result = await session.execute(stmt)
         setup_state = result.scalar_one_or_none()
@@ -186,8 +189,8 @@ async def test_auth_me_with_api_key_authentication(test_client: AsyncClient, tes
     Verifies that API key authentication also returns user data without setup mode complexity.
     """
     from api.app import app
+    from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
     from src.giljo_mcp.auth.dependencies import get_db_session
-    from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
     from src.giljo_mcp.models import APIKey
 
     # Create API key
@@ -204,17 +207,14 @@ async def test_auth_me_with_api_key_authentication(test_client: AsyncClient, tes
             key_hash=key_hash,
             key_prefix=key_prefix,
             permissions=["*"],
-            is_active=True
+            is_active=True,
         )
         session.add(api_key_record)
         await session.commit()
         break
 
     # Use API key to access /me endpoint
-    response = await test_client.get(
-        "/api/auth/me",
-        headers={"X-API-Key": api_key_plaintext}
-    )
+    response = await test_client.get("/api/auth/me", headers={"X-API-Key": api_key_plaintext})
 
     assert response.status_code == 200
     data = response.json()
@@ -247,7 +247,7 @@ async def test_auth_me_multi_tenant_isolation(test_client: AsyncClient, test_use
             email="other@example.com",
             role="developer",
             tenant_key="other_tenant",  # Different tenant
-            is_active=True
+            is_active=True,
         )
         session.add(other_tenant_user)
         await session.commit()
@@ -255,10 +255,7 @@ async def test_auth_me_multi_tenant_isolation(test_client: AsyncClient, test_use
         break
 
     # Login as test_user (default tenant)
-    response = await test_client.post(
-        "/api/auth/login",
-        json={"username": "testuser", "password": "testpassword123"}
-    )
+    response = await test_client.post("/api/auth/login", json={"username": "testuser", "password": "testpassword123"})
     assert response.status_code == 200
     cookies = response.cookies
 
@@ -275,15 +272,17 @@ async def test_auth_me_multi_tenant_isolation(test_client: AsyncClient, test_use
 
 # Fixtures (reuse from test_auth_endpoints.py but included for clarity)
 
+
 @pytest_asyncio.fixture
 async def test_client():
     """Create async HTTP client for testing auth endpoints."""
-    from httpx import AsyncClient, ASGITransport
-    from api.app import app
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.auth.dependencies import get_db_session
-    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+    from httpx import ASGITransport, AsyncClient
     from sqlalchemy import text
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+    from src.giljo_mcp.database import DatabaseManager
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     # Ensure test database exists
     await PostgreSQLTestHelper.ensure_test_database_exists()
@@ -331,7 +330,7 @@ async def test_user(test_client):
             email="test@example.com",
             role="developer",
             tenant_key="default",
-            is_active=True
+            is_active=True,
         )
         session.add(user)
         await session.commit()
@@ -342,9 +341,6 @@ async def test_user(test_client):
 @pytest_asyncio.fixture
 async def authenticated_headers(test_client: AsyncClient, test_user: User):
     """Get authenticated JWT cookie."""
-    response = await test_client.post(
-        "/api/auth/login",
-        json={"username": "testuser", "password": "testpassword123"}
-    )
+    response = await test_client.post("/api/auth/login", json={"username": "testuser", "password": "testpassword123"})
     assert response.status_code == 200
     return response.cookies

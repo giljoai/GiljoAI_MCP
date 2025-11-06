@@ -10,7 +10,6 @@ import logging
 import os
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 import httpx
 
@@ -57,11 +56,11 @@ async def download_file(url: str, api_key: str, timeout: int = 30) -> bytes:
     """
     async with httpx.AsyncClient(timeout=timeout) as client:
         headers = {"X-API-Key": api_key}
-        
+
         logger.info(f"Downloading file from: {url}")
         response = await client.get(url, headers=headers)
         response.raise_for_status()
-        
+
         logger.info(f"Downloaded {len(response.content)} bytes")
         return response.content
 
@@ -84,12 +83,12 @@ def extract_zip_to_directory(zip_bytes: bytes, target_dir: Path) -> list[str]:
     """
     # Ensure target directory exists
     target_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Extract ZIP
     extracted_files = []
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
         zipf.extractall(target_dir)
         extracted_files = zipf.namelist()
-    
+
     logger.info(f"Extracted {len(extracted_files)} files to {target_dir}")
     return extracted_files

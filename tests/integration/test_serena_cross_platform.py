@@ -134,7 +134,7 @@ class TestCrossPlatformDetection:
 
         def mock_run(cmd, *args, **kwargs):
             captured_kwargs.append(kwargs)
-            raise FileNotFoundError()
+            raise FileNotFoundError
 
         monkeypatch.setattr(subprocess, "run", mock_run)
 
@@ -267,7 +267,6 @@ class TestCrossPlatformFileOperations:
 
     def test_line_ending_independence(self, tmp_path):
         """Test YAML parsing works with any line endings."""
-        import yaml
 
         from src.giljo_mcp.services.config_service import ConfigService
 

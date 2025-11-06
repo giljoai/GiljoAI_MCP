@@ -28,11 +28,11 @@ Usage:
 
 import json
 import logging
+import re
 import shutil
 import zipfile
 from pathlib import Path
 from typing import Optional, Tuple
-import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -53,11 +53,7 @@ class FileStaging:
     with multi-tenant isolation and directory traversal protection.
     """
 
-    def __init__(
-        self,
-        base_path: Optional[Path] = None,
-        db_session: Optional[AsyncSession] = None
-    ):
+    def __init__(self, base_path: Optional[Path] = None, db_session: Optional[AsyncSession] = None):
         """
         Initialize FileStaging.
 
@@ -68,11 +64,7 @@ class FileStaging:
         self.base_path = base_path or Path.cwd() / "temp"
         self.db_session = db_session
 
-    async def create_staging_directory(
-        self,
-        tenant_key: str,
-        token: str
-    ) -> Path:
+    async def create_staging_directory(self, tenant_key: str, token: str) -> Path:
         """
         Create staging directory for a token.
 
@@ -138,13 +130,11 @@ class FileStaging:
             templates = {"gil_handover.md": all_templates["gil_handover.md"]}
 
             # Create ZIP file with single command
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for filename, content in templates.items():
                     zf.writestr(filename, content)
 
-            logger.info(
-                f"Staged slash commands ZIP: {zip_path} (1 file)"
-            )
+            logger.info(f"Staged slash commands ZIP: {zip_path} (1 file)")
             return (zip_path, "Successfully staged 1 slash command")
         except OSError as e:
             msg = f"Disk error creating slash commands ZIP: {e}"
@@ -187,31 +177,35 @@ class FileStaging:
             zip_path = staging_path / "agent_templates.zip"
 
             # Query active templates for tenant
-            stmt = select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True
-            ).order_by(AgentTemplate.name)
+            stmt = (
+                select(AgentTemplate)
+                .where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
+            )
 
             result = await session.execute(stmt)
-            templates = result.scalars().all()
+            all_active = result.scalars().all()
 
-            if not templates:
+            if not all_active:
                 msg = f"No active templates found for tenant: {tenant_key}"
                 logger.warning(msg)
                 return (None, msg)
 
-            # Create ZIP file
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-                for template in templates:
-                    # Use template name as filename (e.g., "orchestrator.md")
-                    filename = f"{template.name}.md"
-                    content = template.template_content or ""
+            # Apply packaging selection (cap to 8 distinct roles)
+            from .template_renderer import _slugify_filename, render_claude_agent, select_templates_for_packaging
+
+            selected = select_templates_for_packaging(all_active, max_roles=8)
+
+            # Create ZIP file with Claude-compatible YAML/Markdown
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for template in selected:
+                    filename = f"{_slugify_filename(template.name)}.md"
+                    content = render_claude_agent(template)
                     zf.writestr(filename, content)
 
             logger.info(
-                f"Staged agent templates ZIP: {zip_path} ({len(templates)} files)"
+                f"Staged agent templates ZIP: {zip_path} ({len(selected)} files from {len(all_active)} active templates)"
             )
-            return (zip_path, f"Successfully staged {len(templates)} agent templates")
+            return (zip_path, f"Successfully staged {len(selected)} agent templates")
         except OSError as e:
             msg = f"Disk error staging agent templates: {e}"
             logger.error(msg)
@@ -221,11 +215,7 @@ class FileStaging:
             logger.error(msg)
             return (None, msg)
 
-    async def save_metadata(
-        self,
-        staging_dir: Path,
-        metadata: dict
-    ) -> Path:
+    async def save_metadata(self, staging_dir: Path, metadata: dict) -> Path:
         """
         Save metadata JSON file to staging directory.
 
@@ -248,16 +238,9 @@ class FileStaging:
 
         except Exception as e:
             logger.error(f"Error saving metadata: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to save metadata"
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata")
 
-    async def cleanup(
-        self,
-        tenant_key: str,
-        token: str
-    ) -> bool:
+    async def cleanup(self, tenant_key: str, token: str) -> bool:
         """
         Remove staging directory and all contents.
 
@@ -289,11 +272,7 @@ class FileStaging:
             logger.warning(f"Error cleaning up staging directory: {e}")
             return False
 
-    async def get_staging_path(
-        self,
-        tenant_key: str,
-        token: str
-    ) -> Path:
+    async def get_staging_path(self, tenant_key: str, token: str) -> Path:
         """
         Get staging directory path for a token.
 
@@ -309,6 +288,6 @@ class FileStaging:
     @staticmethod
     def validate_filename(filename: str) -> bool:
         """Validate filename to prevent directory traversal and invalid characters."""
-        if '..' in filename or '/' in filename or '\\' in filename:
+        if ".." in filename or "/" in filename or "\\" in filename:
             return False
-        return re.match(r'^[a-zA-Z0-9._-]+$', filename) is not None
+        return re.match(r"^[a-zA-Z0-9._-]+$", filename) is not None

@@ -9,21 +9,15 @@ Tests unusual scenarios, error conditions, and boundary cases:
 - Succession reason variants
 """
 
-import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import MCPAgentJob, Project
 from tests.fixtures.succession_fixtures import (
     SuccessionTestData,
-    orchestrator_at_90_percent,
-    orchestrator_below_threshold,
-    orchestrator_over_100_percent,
 )
 
 

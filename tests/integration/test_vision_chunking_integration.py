@@ -18,19 +18,15 @@ To run these tests:
 For CI/CD: Use PostgreSQL container for integration tests.
 """
 
-import pytest
-from pathlib import Path
-import tempfile
 import uuid
-from datetime import datetime, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+import pytest
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.giljo_mcp.models import Base, VisionDocument, MCPContextIndex, Product
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+from src.giljo_mcp.models import Base, Product, VisionDocument
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.repositories.context_repository import ContextRepository
 
 
 @pytest.fixture
@@ -42,9 +38,7 @@ async def test_db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    async_session_maker = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session_maker() as session:
         yield session
@@ -60,7 +54,7 @@ async def test_product(test_db_session):
         id=str(uuid.uuid4()),
         tenant_key="test-tenant",
         name="Integration Test Product",
-        description="Product for integration testing"
+        description="Product for integration testing",
     )
     test_db_session.add(product)
     await test_db_session.flush()
@@ -114,7 +108,7 @@ A revolutionary task management system that uses AI to prioritize tasks.
         document_name="Product Vision",
         content=content,
         storage_type="inline",
-        document_type="vision"
+        document_type="vision",
     )
 
     assert doc is not None
@@ -124,9 +118,7 @@ A revolutionary task management system that uses AI to prioritize tasks.
     await test_db_session.commit()
 
     # Chunk the document
-    result = await chunker.chunk_vision_document(
-        test_db_session, "test-tenant", doc.id
-    )
+    result = await chunker.chunk_vision_document(test_db_session, "test-tenant", doc.id)
 
     # Verify chunking result
     assert result["success"] is True
@@ -145,9 +137,7 @@ A revolutionary task management system that uses AI to prioritize tasks.
         WHERE tenant_key = :tenant_key
         AND vision_document_id = :doc_id
     """)
-    result_proxy = await test_db_session.execute(
-        stmt, {"tenant_key": "test-tenant", "doc_id": doc.id}
-    )
+    result_proxy = await test_db_session.execute(stmt, {"tenant_key": "test-tenant", "doc_id": doc.id})
     count_row = result_proxy.fetchone()
     chunk_count = count_row[0]
 
@@ -184,14 +174,12 @@ async def test_vision_rechunking_deletes_old_chunks(test_db_session, test_produc
         document_name="Versioned Doc",
         content=content_v1,
         storage_type="inline",
-        document_type="vision"
+        document_type="vision",
     )
     await test_db_session.commit()
 
     # First chunking
-    result1 = await chunker.chunk_vision_document(
-        test_db_session, "test-tenant", doc.id
-    )
+    result1 = await chunker.chunk_vision_document(test_db_session, "test-tenant", doc.id)
     await test_db_session.commit()
 
     first_chunk_count = result1["chunks_created"]
@@ -215,9 +203,7 @@ Lots of technical details that will require chunking.
     await test_db_session.commit()
 
     # Re-chunk document
-    result2 = await chunker.chunk_vision_document(
-        test_db_session, "test-tenant", doc.id
-    )
+    result2 = await chunker.chunk_vision_document(test_db_session, "test-tenant", doc.id)
     await test_db_session.commit()
 
     # Verify old chunks deleted
@@ -231,9 +217,7 @@ Lots of technical details that will require chunking.
         WHERE tenant_key = :tenant_key
         AND vision_document_id = :doc_id
     """)
-    result_proxy = await test_db_session.execute(
-        stmt, {"tenant_key": "test-tenant", "doc_id": doc.id}
-    )
+    result_proxy = await test_db_session.execute(stmt, {"tenant_key": "test-tenant", "doc_id": doc.id})
     count_row = result_proxy.fetchone()
     current_chunk_count = count_row[0]
 
@@ -258,16 +242,8 @@ async def test_multi_tenant_isolation_during_chunking(test_db_session):
     chunker = VisionDocumentChunker()
 
     # Create products for two tenants
-    product1 = Product(
-        id=str(uuid.uuid4()),
-        tenant_key="tenant-alpha",
-        name="Alpha Product"
-    )
-    product2 = Product(
-        id=str(uuid.uuid4()),
-        tenant_key="tenant-beta",
-        name="Beta Product"
-    )
+    product1 = Product(id=str(uuid.uuid4()), tenant_key="tenant-alpha", name="Alpha Product")
+    product2 = Product(id=str(uuid.uuid4()), tenant_key="tenant-beta", name="Beta Product")
     test_db_session.add_all([product1, product2])
     await test_db_session.flush()
 
@@ -279,7 +255,7 @@ async def test_multi_tenant_isolation_during_chunking(test_db_session):
         document_name="Alpha Doc",
         content="# Alpha Content\nThis belongs to tenant alpha.",
         storage_type="inline",
-        document_type="vision"
+        document_type="vision",
     )
 
     doc2 = await vision_repo.create(
@@ -289,7 +265,7 @@ async def test_multi_tenant_isolation_during_chunking(test_db_session):
         document_name="Beta Doc",
         content="# Beta Content\nThis belongs to tenant beta.",
         storage_type="inline",
-        document_type="vision"
+        document_type="vision",
     )
     await test_db_session.commit()
 
@@ -316,9 +292,7 @@ async def test_multi_tenant_isolation_during_chunking(test_db_session):
     assert beta_count > 0
 
     # Try to chunk tenant-beta doc with tenant-alpha key (should fail)
-    result = await chunker.chunk_vision_document(
-        test_db_session, "tenant-alpha", doc2.id
-    )
+    result = await chunker.chunk_vision_document(test_db_session, "tenant-alpha", doc2.id)
     assert result["success"] is False
     assert "not found" in result["error"].lower()
 
@@ -363,16 +337,14 @@ This document is stored in a file, not inline.
         document_type="vision",
         content_hash="placeholder",
         chunked=False,
-        chunk_count=0
+        chunk_count=0,
     )
     test_db_session.add(doc)
     await test_db_session.flush()
     await test_db_session.commit()
 
     # Chunk the document
-    result = await chunker.chunk_vision_document(
-        test_db_session, "test-tenant", doc.id
-    )
+    result = await chunker.chunk_vision_document(test_db_session, "test-tenant", doc.id)
 
     # Verify chunking succeeded
     assert result["success"] is True
@@ -386,9 +358,7 @@ This document is stored in a file, not inline.
         AND vision_document_id = :doc_id
         LIMIT 1
     """)
-    result_proxy = await test_db_session.execute(
-        stmt, {"tenant_key": "test-tenant", "doc_id": doc.id}
-    )
+    result_proxy = await test_db_session.execute(stmt, {"tenant_key": "test-tenant", "doc_id": doc.id})
     chunk_content = result_proxy.fetchone()[0]
 
     assert "File-Based Vision Document" in chunk_content or "Feature" in chunk_content

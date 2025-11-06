@@ -73,7 +73,7 @@ F:\GiljoAI_MCP/
 
 **Code Reduction**: 3,350 total lines (25.6% reduction from previous 4,500+ lines across dual installers)
 
-The installer follows an 8-step process:
+The installer follows a 9-step process:
 
 1. **Welcome Screen** - Yellow branding and version display
 2. **Python Version Check** - Requires Python 3.10+
@@ -81,8 +81,9 @@ The installer follows an 8-step process:
 4. **Dependency Installation** - Virtual environment + requirements
 5. **Configuration Generation** - .env + config.yaml (v3.0 format)
 6. **Database Setup** - Database creation, roles, tables, pg_trgm extension
-7. **Service Launch** - API + Frontend startup
-8. **Browser Launch** - Opens http://localhost:7274/welcome for first admin setup
+7. **Migration Execution** - Alembic migrations for constraints and backfills (v3.0+)
+8. **Service Launch** - API + Frontend startup
+9. **Browser Launch** - Opens http://localhost:7274/welcome for first admin setup
 
 ### Cross-Platform Compatibility
 
@@ -533,6 +534,83 @@ async def create_database_tables():
     await db_manager.create_tables_async()
     
     print("✅ Database tables created successfully")
+```
+
+**Alembic Migration Execution** (v3.0+):
+```python
+def run_database_migrations():
+    """
+    Run Alembic migrations after table creation
+
+    CRITICAL: Must run AFTER create_tables_async() to ensure tables exist.
+    This applies CHECK constraints, defaults, and backfill logic from migrations.
+
+    Why This Matters:
+    - Base.metadata.create_all() creates table structure from SQLAlchemy models
+    - Alembic migrations add constraints, indexes, and backfill data
+    - Both are required for complete schema setup
+    """
+    print("🔄 Running database migrations (alembic upgrade head)...")
+
+    # Execute Alembic migrations
+    import subprocess
+    import sys
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        capture_output=True,
+        text=True,
+        timeout=120  # 2 minute timeout
+    )
+
+    if proc.returncode == 0:
+        print("✅ Database migrations completed successfully")
+
+        # Parse output to see which migrations ran
+        migrations_applied = []
+        for line in proc.stdout.split('\n'):
+            if 'Running upgrade' in line:
+                migrations_applied.append(line.strip())
+
+        if migrations_applied:
+            print(f"📋 Applied {len(migrations_applied)} migration(s)")
+            for migration in migrations_applied:
+                print(f"  {migration}")
+        else:
+            print("ℹ️  No new migrations to apply (database already up to date)")
+    else:
+        print(f"❌ Database migration failed: {proc.stderr}")
+        raise RuntimeError("Migration failed")
+```
+
+**Migration Execution Flow**:
+1. **Create database and roles** - Database creation, user creation, privileges
+2. **Create tables** - `Base.metadata.create_all()` creates table structure
+3. **Run migrations** - `alembic upgrade head` applies constraints and backfills
+4. **Seed templates** - Insert default agent templates (post-migration)
+
+**Critical Example - Migration 6adac1467121**:
+- Adds `cli_tool` column with CHECK constraint: `IN ('claude', 'codex', 'gemini', 'generic')`
+- Adds `background_color` column for agent template UI
+- Backfills existing rows with default values (CASE statement)
+- These steps ONLY happen if Alembic runs (not in create_all)
+
+**Why Two-Step Approach**:
+- **SQLAlchemy models** define current schema (fast, reliable)
+- **Alembic migrations** handle schema evolution (constraints, backfills, data transformations)
+- Running both ensures fresh installs match upgraded installations
+
+**Error Handling**:
+```python
+# For fresh installs: Migration failure is CRITICAL
+if is_fresh_install and migration_failed:
+    print("❌ Migration failed on fresh install - this is a critical error")
+    raise RuntimeError("Migration failed")
+
+# For upgrades: Migration failure is a warning (may be expected)
+if not is_fresh_install and migration_failed:
+    print("⚠️  Migration encountered issues - manual migration may be required")
+    # Continue installation
 ```
 
 **Template Seeding** (Handover 0041):

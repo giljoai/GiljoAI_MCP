@@ -18,8 +18,10 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv()
@@ -27,12 +29,12 @@ load_dotenv()
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.giljo_mcp.context_manager import validate_config_data
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product
-from src.giljo_mcp.context_manager import validate_config_data
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -42,14 +44,14 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
         logger.warning(f"CLAUDE.md not found at {claude_md_path}")
         return None
 
-    content = claude_md_path.read_text(encoding='utf-8')
+    content = claude_md_path.read_text(encoding="utf-8")
 
     # Look for architecture section
     arch_patterns = [
-        r'##\s*Architecture\s*(?:Overview)?\s*\n+([^\n#]+)',  # ## Architecture Overview\n<text> (not another header)
-        r'###\s*Architecture\s*(?:Overview)?\s*\n+([^\n#]+)',  # ### Architecture Overview\n<text> (not another header)
-        r'Architecture:\s*(.+?)(?=\n|$)',  # Architecture: <text>
-        r'System:\s*(.+?)(?=\n|$)'  # System: <text>
+        r"##\s*Architecture\s*(?:Overview)?\s*\n+([^\n#]+)",  # ## Architecture Overview\n<text> (not another header)
+        r"###\s*Architecture\s*(?:Overview)?\s*\n+([^\n#]+)",  # ### Architecture Overview\n<text> (not another header)
+        r"Architecture:\s*(.+?)(?=\n|$)",  # Architecture: <text>
+        r"System:\s*(.+?)(?=\n|$)",  # System: <text>
     ]
 
     for pattern in arch_patterns:
@@ -57,17 +59,16 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
         if match:
             arch = match.group(1).strip()
             # Skip if it's just whitespace or looks like a header
-            if arch and not arch.startswith('#'):
+            if arch and not arch.startswith("#"):
                 return arch
 
     # Fallback: try to infer from content
-    if 'FastAPI' in content and 'PostgreSQL' in content:
-        if 'Vue' in content:
+    if "FastAPI" in content and "PostgreSQL" in content:
+        if "Vue" in content:
             return "FastAPI + PostgreSQL + Vue.js"
-        elif 'React' in content:
+        if "React" in content:
             return "FastAPI + PostgreSQL + React"
-        else:
-            return "FastAPI + PostgreSQL"
+        return "FastAPI + PostgreSQL"
 
     return None
 
@@ -77,37 +78,37 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> List[str]:
     if not claude_md_path.exists():
         return []
 
-    content = claude_md_path.read_text(encoding='utf-8')
+    content = claude_md_path.read_text(encoding="utf-8")
     tech_stack = []
 
     # Common patterns
-    python_match = re.search(r'Python\s+([\d\.]+)', content, re.IGNORECASE)
+    python_match = re.search(r"Python\s+([\d\.]+)", content, re.IGNORECASE)
     if python_match:
         tech_stack.append(f"Python {python_match.group(1)}")
 
-    postgres_match = re.search(r'PostgreSQL\s+([\d]+)', content, re.IGNORECASE)
+    postgres_match = re.search(r"PostgreSQL\s+([\d]+)", content, re.IGNORECASE)
     if postgres_match:
         tech_stack.append(f"PostgreSQL {postgres_match.group(1)}")
 
     # Frontend frameworks
-    for framework in ['Vue 3', 'Vue.js', 'React', 'Angular', 'Svelte']:
+    for framework in ["Vue 3", "Vue.js", "React", "Angular", "Svelte"]:
         if framework in content:
             tech_stack.append(framework)
             break
 
     # Backend frameworks
-    for framework in ['FastAPI', 'Django', 'Flask', 'Express.js']:
+    for framework in ["FastAPI", "Django", "Flask", "Express.js"]:
         if framework in content:
             tech_stack.append(framework)
             break
 
     # Tools
-    if 'Docker' in content:
-        tech_stack.append('Docker')
-    if 'Alembic' in content:
-        tech_stack.append('Alembic')
-    if 'SQLAlchemy' in content:
-        tech_stack.append('SQLAlchemy')
+    if "Docker" in content:
+        tech_stack.append("Docker")
+    if "Alembic" in content:
+        tech_stack.append("Alembic")
+    if "SQLAlchemy" in content:
+        tech_stack.append("SQLAlchemy")
 
     return tech_stack
 
@@ -117,14 +118,14 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> List[str]:
     if not claude_md_path.exists():
         return []
 
-    content = claude_md_path.read_text(encoding='utf-8')
+    content = claude_md_path.read_text(encoding="utf-8")
     test_commands = []
 
     # Look for test command patterns - must be in command context (after : or on new line or after $)
     # Match patterns like "pytest tests/" or "Run: pytest" but not "use pytest for"
     pytest_patterns = [
-        r'(?:^|\n|:|\$)\s*pytest\s+\S+[^\n]*',  # After newline, colon, or $
-        r'```[^\n]*\n\s*pytest\s+\S+[^\n]*',  # In code block
+        r"(?:^|\n|:|\$)\s*pytest\s+\S+[^\n]*",  # After newline, colon, or $
+        r"```[^\n]*\n\s*pytest\s+\S+[^\n]*",  # In code block
     ]
 
     for pattern in pytest_patterns:
@@ -132,23 +133,23 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> List[str]:
         if pytest_match:
             cmd = pytest_match.group(0).strip()
             # Clean up prefixes
-            cmd = re.sub(r'^[$:]\s*', '', cmd)
-            if cmd.startswith('pytest'):
+            cmd = re.sub(r"^[$:]\s*", "", cmd)
+            if cmd.startswith("pytest"):
                 test_commands.append(cmd)
                 break
 
-    npm_test_match = re.search(r'npm\s+run\s+test[^\n]*', content)
+    npm_test_match = re.search(r"npm\s+run\s+test[^\n]*", content)
     if npm_test_match:
         test_commands.append(npm_test_match.group(0).strip())
 
     # Fallback defaults (only if commands are mentioned but no specific command found)
     if not test_commands:
         # Only add fallback if the word "pytest" appears and testing is mentioned
-        if re.search(r'\bpytest\b', content, re.IGNORECASE) and 'test' in content.lower():
-            test_commands.append('pytest tests/')
+        if re.search(r"\bpytest\b", content, re.IGNORECASE) and "test" in content.lower():
+            test_commands.append("pytest tests/")
         # Only add npm test if npm is mentioned with test context
-        if re.search(r'\bnpm\b', content, re.IGNORECASE) and 'test' in content.lower():
-            test_commands.append('npm run test')
+        if re.search(r"\bnpm\b", content, re.IGNORECASE) and "test" in content.lower():
+            test_commands.append("npm run test")
 
     return test_commands
 
@@ -165,21 +166,21 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
         return None
 
     try:
-        with open(package_json, encoding='utf-8') as f:
+        with open(package_json, encoding="utf-8") as f:
             data = json.load(f)
 
-        dependencies = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
+        dependencies = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
 
-        if 'vue' in dependencies:
-            version = dependencies['vue']
-            if version.startswith('^3') or version.startswith('3.'):
+        if "vue" in dependencies:
+            version = dependencies["vue"]
+            if version.startswith("^3") or version.startswith("3."):
                 return "Vue 3"
             return "Vue.js"
-        elif 'react' in dependencies:
+        if "react" in dependencies:
             return "React"
-        elif '@angular/core' in dependencies:
+        if "@angular/core" in dependencies:
             return "Angular"
-        elif 'svelte' in dependencies:
+        if "svelte" in dependencies:
             return "Svelte"
 
     except Exception as e:
@@ -193,25 +194,25 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
     requirements_txt = root_path / "requirements.txt"
 
     if requirements_txt.exists():
-        content = requirements_txt.read_text(encoding='utf-8').lower()
+        content = requirements_txt.read_text(encoding="utf-8").lower()
 
-        if 'fastapi' in content:
+        if "fastapi" in content:
             return "FastAPI"
-        elif 'django' in content:
+        if "django" in content:
             return "Django"
-        elif 'flask' in content:
+        if "flask" in content:
             return "Flask"
 
     # Check pyproject.toml
     pyproject_toml = root_path / "pyproject.toml"
     if pyproject_toml.exists():
-        content = pyproject_toml.read_text(encoding='utf-8').lower()
+        content = pyproject_toml.read_text(encoding="utf-8").lower()
 
-        if 'fastapi' in content:
+        if "fastapi" in content:
             return "FastAPI"
-        elif 'django' in content:
+        if "django" in content:
             return "Django"
-        elif 'flask' in content:
+        if "flask" in content:
             return "Flask"
 
     return None
@@ -223,16 +224,16 @@ def detect_codebase_structure(root_path: Path) -> Dict[str, str]:
 
     # Common directories to check
     dirs_to_check = {
-        'api': 'REST API endpoints',
-        'frontend': 'Frontend application',
-        'src': 'Core application code',
-        'tests': 'Test suites',
-        'docs': 'Documentation',
-        'installer': 'Installation scripts',
-        'scripts': 'Utility scripts',
-        'migrations': 'Database migrations',
-        'static': 'Static assets',
-        'templates': 'Templates'
+        "api": "REST API endpoints",
+        "frontend": "Frontend application",
+        "src": "Core application code",
+        "tests": "Test suites",
+        "docs": "Documentation",
+        "installer": "Installation scripts",
+        "scripts": "Utility scripts",
+        "migrations": "Database migrations",
+        "static": "Static assets",
+        "templates": "Templates",
     }
 
     for dir_name, description in dirs_to_check.items():
@@ -245,7 +246,7 @@ def detect_codebase_structure(root_path: Path) -> Dict[str, str]:
     if src_path.exists():
         # Find main package
         for item in src_path.iterdir():
-            if item.is_dir() and not item.name.startswith('.'):
+            if item.is_dir() and not item.name.startswith("."):
                 structure[f"src/{item.name}"] = f"{item.name.replace('_', ' ').title()} package"
                 break
 
@@ -257,6 +258,7 @@ def check_serena_mcp_available() -> bool:
     try:
         # Check if serena-mcp package is importable
         import importlib.util
+
         spec = importlib.util.find_spec("serena_mcp")
         return spec is not None
     except Exception:
@@ -323,10 +325,7 @@ def extract_project_config_data(root_path: Path) -> Dict[str, Any]:
     return config_data
 
 
-def populate_product_config_data(
-    product_id: Optional[str] = None,
-    dry_run: bool = False
-) -> Dict[str, Any]:
+def populate_product_config_data(product_id: Optional[str] = None, dry_run: bool = False) -> Dict[str, Any]:
     """
     Populate config_data for products.
 
@@ -338,7 +337,7 @@ def populate_product_config_data(
         Summary of operation
     """
     # Get database URL from environment
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise ValueError("DATABASE_URL environment variable not set")
 
@@ -347,12 +346,7 @@ def populate_product_config_data(
     # Use current directory as project root
     root_path = Path.cwd()
 
-    results = {
-        "processed": 0,
-        "updated": 0,
-        "errors": 0,
-        "skipped": 0
-    }
+    results = {"processed": 0, "updated": 0, "errors": 0, "skipped": 0}
 
     with db.get_session() as session:
         # Get products to process
@@ -404,15 +398,8 @@ def populate_product_config_data(
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Populate config_data for products")
-    parser.add_argument(
-        "--product-id",
-        help="Specific product ID to process (if not provided, process all)"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be done without writing to database"
-    )
+    parser.add_argument("--product-id", help="Specific product ID to process (if not provided, process all)")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without writing to database")
 
     args = parser.parse_args()
 
@@ -421,21 +408,18 @@ def main():
     if args.dry_run:
         logger.info("DRY RUN MODE - No database changes will be made")
 
-    results = populate_product_config_data(
-        product_id=args.product_id,
-        dry_run=args.dry_run
-    )
+    results = populate_product_config_data(product_id=args.product_id, dry_run=args.dry_run)
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("POPULATION SUMMARY")
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info(f"Products processed: {results['processed']}")
     logger.info(f"Products updated: {results['updated']}")
     logger.info(f"Products skipped (already have config_data): {results['skipped']}")
     logger.info(f"Errors: {results['errors']}")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
-    if results['errors'] > 0:
+    if results["errors"] > 0:
         sys.exit(1)
 
 

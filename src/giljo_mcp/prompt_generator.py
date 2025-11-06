@@ -36,24 +36,25 @@ Date: 2025-10-31
 Priority: MISSION CRITICAL (DEPRECATED 2025-11-02)
 """
 
-import warnings
 import logging
+import warnings
+
 
 # Emit deprecation warning on import
 warnings.warn(
-    "OrchestratorPromptGenerator is deprecated. "
-    "Use ThinClientPromptGenerator instead. "
-    "See Handover 0088.",
+    "OrchestratorPromptGenerator is deprecated. Use ThinClientPromptGenerator instead. See Handover 0088.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from typing import Any, Dict, List, Optional
 
-from src.giljo_mcp.models import Project, Product, VisionDocument, MCPContextIndex, AgentTemplate
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.giljo_mcp.models import AgentTemplate, Product, Project, VisionDocument
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ MAX_AGENT_TYPES = 8  # Hard limit on agent diversity
 @dataclass
 class ContextData:
     """Aggregated context from MCP discovery."""
+
     product: Optional[Product]
     project: Project
     vision_chunks: List[Dict[str, Any]]
@@ -91,6 +93,7 @@ class ContextData:
 @dataclass
 class TokenEstimate:
     """Token usage estimate with budget validation."""
+
     prompt_tokens: int
     mission_tokens: int
     agent_tokens: int
@@ -101,7 +104,7 @@ class TokenEstimate:
     warnings: List[str]
 
     @classmethod
-    def calculate(cls, prompt: str, agent_count: int, budget: int = DEFAULT_TOKEN_BUDGET) -> 'TokenEstimate':
+    def calculate(cls, prompt: str, agent_count: int, budget: int = DEFAULT_TOKEN_BUDGET) -> "TokenEstimate":
         """Calculate token estimate for generated prompt."""
         prompt_tokens = len(prompt) // CHARS_PER_TOKEN
         mission_tokens = prompt_tokens - ORCHESTRATOR_RESERVE
@@ -127,7 +130,7 @@ class TokenEstimate:
             budget=budget,
             utilization_percent=round(utilization, 1),
             within_budget=within_budget,
-            warnings=warnings
+            warnings=warnings,
         )
 
 
@@ -211,11 +214,7 @@ class OrchestratorPromptGenerator:
         final_prompt = self._assemble_prompt(sections, context, tool)
 
         # Phase 4: Validate token budget
-        estimate = TokenEstimate.calculate(
-            final_prompt,
-            len(context.agent_templates),
-            self.token_budget
-        )
+        estimate = TokenEstimate.calculate(final_prompt, len(context.agent_templates), self.token_budget)
 
         # Log generation
         logger.info(
@@ -239,8 +238,8 @@ class OrchestratorPromptGenerator:
                 "prompt_tokens": estimate.prompt_tokens,
                 "mission_tokens": estimate.mission_tokens,
                 "agent_tokens": estimate.agent_tokens,
-                "total_tokens": estimate.total
-            }
+                "total_tokens": estimate.total,
+            },
         }
 
     async def _gather_context(self, project_id: str) -> ContextData:
@@ -267,10 +266,7 @@ class OrchestratorPromptGenerator:
         logger.debug(f"[CONTEXT] Gathering context for project={project_id}")
 
         # Get project with tenant isolation
-        stmt = select(Project).where(
-            Project.id == project_id,
-            Project.tenant_key == self.tenant_key
-        )
+        stmt = select(Project).where(Project.id == project_id, Project.tenant_key == self.tenant_key)
         result = await self.db.execute(stmt)
         project = result.scalar_one_or_none()
 
@@ -280,10 +276,7 @@ class OrchestratorPromptGenerator:
         # Get product (if project is associated)
         product = None
         if project.product_id:
-            stmt = select(Product).where(
-                Product.id == project.product_id,
-                Product.tenant_key == self.tenant_key
-            )
+            stmt = select(Product).where(Product.id == project.product_id, Product.tenant_key == self.tenant_key)
             result = await self.db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -311,7 +304,7 @@ class OrchestratorPromptGenerator:
             vision_chunks=vision_chunks,
             field_priorities=field_priorities,
             agent_templates=agent_templates,
-            product_settings=product_settings
+            product_settings=product_settings,
         )
 
     async def _fetch_vision_chunks(self, product_id: Optional[str]) -> List[Dict[str, Any]]:
@@ -320,23 +313,26 @@ class OrchestratorPromptGenerator:
             return []
 
         # Get vision documents for product
-        stmt = select(VisionDocument).where(
-            VisionDocument.product_id == product_id,
-            VisionDocument.is_active == True
-        ).limit(5)  # Limit to top 5 vision docs
+        stmt = (
+            select(VisionDocument)
+            .where(VisionDocument.product_id == product_id, VisionDocument.is_active == True)
+            .limit(5)
+        )  # Limit to top 5 vision docs
 
         result = await self.db.execute(stmt)
         vision_docs = result.scalars().all()
 
         chunks = []
         for doc in vision_docs:
-            chunks.append({
-                "id": doc.id,
-                "title": doc.document_name,
-                "version": doc.version,
-                "content_preview": doc.vision_document[:500] if doc.vision_document else doc.vision_path,
-                "is_chunked": doc.chunked
-            })
+            chunks.append(
+                {
+                    "id": doc.id,
+                    "title": doc.document_name,
+                    "version": doc.version,
+                    "content_preview": doc.vision_document[:500] if doc.vision_document else doc.vision_path,
+                    "is_chunked": doc.chunked,
+                }
+            )
 
         return chunks
 
@@ -370,22 +366,25 @@ class OrchestratorPromptGenerator:
     async def _fetch_agent_templates(self) -> List[Dict[str, Any]]:
         """Fetch available agent templates for tenant."""
         # Get active templates for tenant
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == self.tenant_key,
-            AgentTemplate.is_active == True
-        ).limit(self.max_agents)  # Enforce max agent types
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == self.tenant_key, AgentTemplate.is_active == True)
+            .limit(self.max_agents)
+        )  # Enforce max agent types
 
         result = await self.db.execute(stmt)
         templates = result.scalars().all()
 
         template_list = []
         for template in templates:
-            template_list.append({
-                "name": template.name,
-                "agent_type": template.role,
-                "tool": template.tool or "claude",
-                "description": template.description[:200] if template.description else "No description"
-            })
+            template_list.append(
+                {
+                    "name": template.name,
+                    "agent_type": template.role,
+                    "tool": template.tool or "claude",
+                    "description": template.description[:200] if template.description else "No description",
+                }
+            )
 
         return template_list
 
@@ -398,7 +397,7 @@ class OrchestratorPromptGenerator:
             "tech_stack": product.config_data.get("tech_stack", "Not specified"),
             "architecture": product.config_data.get("architecture", "Not specified"),
             "features": product.config_data.get("features", []),
-            "dependencies": product.config_data.get("dependencies", [])
+            "dependencies": product.config_data.get("dependencies", []),
         }
 
     async def _build_prompt_sections(self, context: ContextData, tool: str) -> Dict[str, str]:
@@ -495,13 +494,13 @@ You have access to MCP tools to discover context. Use them STRATEGICALLY:
    → get_context('{product_id}', field_priorities=true)
    Returns: User's priority settings (1=critical, 2=important, 3-4=optional)
 
-   🎯 PRIORITY 1 FIELDS (MUST INCLUDE): {', '.join(priority_fields) if priority_fields else 'None configured'}
+   🎯 PRIORITY 1 FIELDS (MUST INCLUDE): {", ".join(priority_fields) if priority_fields else "None configured"}
    🎯 RULE: Only include Priority 1 fields in mission
    🎯 RULE: Include Priority 2 if token budget allows
    🎯 RULE: NEVER include Priority 3-4 (user marked optional)
 
 4️⃣ Available Agent Templates
-   → list_templates('{context.tenant_key if hasattr(context, 'tenant_key') else self.tenant_key}')
+   → list_templates('{context.tenant_key if hasattr(context, "tenant_key") else self.tenant_key}')
    Returns: {len(context.agent_templates)} agent types you can assign
    ⚠️ LIMIT: Max {self.max_agents} agent types (hard constraint)
 """
@@ -654,10 +653,10 @@ END ORCHESTRATOR STAGING PROMPT
     def _assemble_prompt(self, sections: Dict[str, str], context: ContextData, tool: str) -> str:
         """Assemble all sections into final prompt."""
         return (
-            sections["header"] +
-            sections["discovery"] +
-            sections["mission"] +
-            sections["agents"] +
-            sections["coordination"] +
-            sections["execution"]
+            sections["header"]
+            + sections["discovery"]
+            + sections["mission"]
+            + sections["agents"]
+            + sections["coordination"]
+            + sections["execution"]
         )

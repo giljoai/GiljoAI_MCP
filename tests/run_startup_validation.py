@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def main():
     """Run startup validation tests and generate report"""
     print("=" * 80)
@@ -18,18 +19,10 @@ def main():
 
     # Run tests without coverage
     result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            str(test_file),
-            "-v",
-            "--no-cov",
-            "--tb=short",
-            "-q"
-        ],
+        [sys.executable, "-m", "pytest", str(test_file), "-v", "--no-cov", "--tb=short", "-q"],
+        check=False,
         capture_output=True,
-        text=True
+        text=True,
     )
 
     print(result.stdout)
@@ -45,6 +38,7 @@ def main():
     print("=" * 80)
 
     return result.returncode
+
 
 if __name__ == "__main__":
     sys.exit(main())

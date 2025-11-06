@@ -11,26 +11,25 @@ Tests the complete end-to-end workflow of:
 Following TDD principles: Integration tests verify real-world user workflows.
 """
 
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
+import jwt
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-import jwt
-
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app import app
 from api.endpoints import mcp_installer
-from src.giljo_mcp.models import User
 from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
+from src.giljo_mcp.models import User
 
 
 # ============================================================================
 # Test Fixtures
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession):
@@ -45,7 +44,7 @@ async def test_user(db_session: AsyncSession):
         role="developer",
         is_active=True,
         tenant_key=f"test_tenant_{uuid4().hex[:8]}",
-        full_name="Test Network User"
+        full_name="Test Network User",
     )
 
     db_session.add(user)
@@ -53,15 +52,10 @@ async def test_user(db_session: AsyncSession):
     await db_session.refresh(user)
 
     # Create API key for user
-    from src.giljo_mcp.models import APIKey
     from src.giljo_mcp.auth.api_key_manager import APIKeyManager
 
     api_key_manager = APIKeyManager(db_session)
-    api_key_result = await api_key_manager.create_api_key(
-        user_id=user.id,
-        name="test_key",
-        tenant_key=user.tenant_key
-    )
+    api_key_result = await api_key_manager.create_api_key(user_id=user.id, name="test_key", tenant_key=user.tenant_key)
 
     # Store API key on user for test access
     user.api_key = api_key_result["key"]
@@ -82,7 +76,7 @@ async def second_test_user(db_session: AsyncSession):
         role="developer",
         is_active=True,
         tenant_key=f"test_tenant_2_{uuid4().hex[:8]}",
-        full_name="Second Test User"
+        full_name="Second Test User",
     )
 
     db_session.add(user)
@@ -94,9 +88,7 @@ async def second_test_user(db_session: AsyncSession):
 
     api_key_manager = APIKeyManager(db_session)
     api_key_result = await api_key_manager.create_api_key(
-        user_id=user.id,
-        name="test_key_2",
-        tenant_key=user.tenant_key
+        user_id=user.id, name="test_key_2", tenant_key=user.tenant_key
     )
 
     user.api_key = api_key_result["key"]
@@ -114,10 +106,12 @@ async def localhost_user(db_session: AsyncSession):
 def authenticated_client(test_user: User):
     """Client authenticated as test user via API key"""
     client = TestClient(app)
-    client.headers.update({
-        "X-API-Key": test_user.api_key,
-        "X-Forwarded-For": "192.168.1.100"  # Network request
-    })
+    client.headers.update(
+        {
+            "X-API-Key": test_user.api_key,
+            "X-Forwarded-For": "192.168.1.100",  # Network request
+        }
+    )
     return client
 
 
@@ -125,10 +119,12 @@ def authenticated_client(test_user: User):
 def localhost_client(localhost_user: User):
     """Client authenticated via localhost auto-login"""
     client = TestClient(app)
-    client.headers.update({
-        "X-Forwarded-For": "127.0.0.1",  # Localhost - triggers auto-login
-        "X-Real-IP": "127.0.0.1"
-    })
+    client.headers.update(
+        {
+            "X-Forwarded-For": "127.0.0.1",  # Localhost - triggers auto-login
+            "X-Real-IP": "127.0.0.1",
+        }
+    )
     return client
 
 
@@ -136,15 +132,18 @@ def localhost_client(localhost_user: User):
 def unauthenticated_client():
     """Client without authentication (network request)"""
     client = TestClient(app)
-    client.headers.update({
-        "X-Forwarded-For": "192.168.1.100"  # Network without credentials
-    })
+    client.headers.update(
+        {
+            "X-Forwarded-For": "192.168.1.100"  # Network without credentials
+        }
+    )
     return client
 
 
 # ============================================================================
 # TEST 1: Full Download Workflow (Windows)
 # ============================================================================
+
 
 class TestWindowsDownloadWorkflow:
     """Test complete Windows script download workflow"""
@@ -210,13 +209,15 @@ class TestWindowsDownloadWorkflow:
         # Should contain a timestamp (ISO format)
         # Format: 2025-01-15T12:34:56Z
         import re
-        timestamp_pattern = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z'
+
+        timestamp_pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z"
         assert re.search(timestamp_pattern, script) is not None
 
 
 # ============================================================================
 # TEST 2: Full Download Workflow (Unix)
 # ============================================================================
+
 
 class TestUnixDownloadWorkflow:
     """Test complete Unix script download workflow"""
@@ -270,6 +271,7 @@ class TestUnixDownloadWorkflow:
 # TEST 3: Share Link Generation and Use
 # ============================================================================
 
+
 class TestShareLinkWorkflow:
     """Test share link generation and token-based download workflow"""
 
@@ -300,7 +302,7 @@ class TestShareLinkWorkflow:
         assert "/unix" in data["unix_url"]
 
         # Expires_at should be valid ISO timestamp
-        expires_at = datetime.fromisoformat(data["expires_at"].replace('Z', '+00:00'))
+        expires_at = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
         assert expires_at > datetime.now(timezone.utc)
 
     def test_share_link_token_is_valid_jwt(self, authenticated_client):
@@ -312,11 +314,7 @@ class TestShareLinkWorkflow:
         token = data["token"]
 
         # Decode JWT (should not raise exception)
-        payload = jwt.decode(
-            token,
-            mcp_installer.SECRET_KEY,
-            algorithms=[mcp_installer.ALGORITHM]
-        )
+        payload = jwt.decode(token, mcp_installer.SECRET_KEY, algorithms=[mcp_installer.ALGORITHM])
 
         # Verify payload structure
         assert "user_id" in payload
@@ -331,7 +329,7 @@ class TestShareLinkWorkflow:
         assert response.status_code == 200
         data = response.json()
 
-        expires_at = datetime.fromisoformat(data["expires_at"].replace('Z', '+00:00'))
+        expires_at = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
 
         # Should expire approximately 7 days from now
@@ -385,14 +383,10 @@ class TestShareLinkWorkflow:
         expired_payload = {
             "user_id": "test-user-123",
             "expires_at": (datetime.utcnow() - timedelta(days=1)).isoformat() + "Z",
-            "type": "mcp_installer_download"
+            "type": "mcp_installer_download",
         }
 
-        expired_token = jwt.encode(
-            expired_payload,
-            mcp_installer.SECRET_KEY,
-            algorithm=mcp_installer.ALGORITHM
-        )
+        expired_token = jwt.encode(expired_payload, mcp_installer.SECRET_KEY, algorithm=mcp_installer.ALGORITHM)
 
         # Try to download with expired token
         public_client = TestClient(app)
@@ -438,19 +432,15 @@ class TestShareLinkWorkflow:
 # TEST 4: Multi-Tenant Isolation
 # ============================================================================
 
+
 class TestMultiTenantIsolation:
     """Test multi-tenant isolation - users get their own credentials only"""
 
-    def test_different_users_get_different_credentials(
-        self, test_user, second_test_user
-    ):
+    def test_different_users_get_different_credentials(self, test_user, second_test_user):
         """Test two users get scripts with their own credentials"""
         # User 1 downloads script
         client1 = TestClient(app)
-        client1.headers.update({
-            "X-API-Key": test_user.api_key,
-            "X-Forwarded-For": "192.168.1.100"
-        })
+        client1.headers.update({"X-API-Key": test_user.api_key, "X-Forwarded-For": "192.168.1.100"})
 
         response1 = client1.get("/api/mcp-installer/windows")
         assert response1.status_code == 200
@@ -458,10 +448,7 @@ class TestMultiTenantIsolation:
 
         # User 2 downloads script
         client2 = TestClient(app)
-        client2.headers.update({
-            "X-API-Key": second_test_user.api_key,
-            "X-Forwarded-For": "192.168.1.101"
-        })
+        client2.headers.update({"X-API-Key": second_test_user.api_key, "X-Forwarded-For": "192.168.1.101"})
 
         response2 = client2.get("/api/mcp-installer/windows")
         assert response2.status_code == 200
@@ -477,16 +464,11 @@ class TestMultiTenantIsolation:
         assert test_user.username in script1
         assert second_test_user.username in script2
 
-    def test_user_a_token_does_not_work_for_user_b(
-        self, test_user, second_test_user
-    ):
+    def test_user_a_token_does_not_work_for_user_b(self, test_user, second_test_user):
         """Test User A's share link token provides User A's credentials, not User B's"""
         # User A generates share link
         client_a = TestClient(app)
-        client_a.headers.update({
-            "X-API-Key": test_user.api_key,
-            "X-Forwarded-For": "192.168.1.100"
-        })
+        client_a.headers.update({"X-API-Key": test_user.api_key, "X-Forwarded-For": "192.168.1.100"})
 
         share_response = client_a.post("/api/mcp-installer/share-link")
         token_a = share_response.json()["token"]
@@ -513,10 +495,7 @@ class TestMultiTenantIsolation:
 
         # Each user's script should only contain their tenant context
         client1 = TestClient(app)
-        client1.headers.update({
-            "X-API-Key": test_user.api_key,
-            "X-Forwarded-For": "192.168.1.100"
-        })
+        client1.headers.update({"X-API-Key": test_user.api_key, "X-Forwarded-For": "192.168.1.100"})
 
         response1 = client1.get("/api/mcp-installer/windows")
         script1 = response1.text
@@ -529,6 +508,7 @@ class TestMultiTenantIsolation:
 # TEST 5: Template Variable Substitution
 # ============================================================================
 
+
 class TestTemplateRendering:
     """Test template placeholder replacement"""
 
@@ -540,13 +520,7 @@ class TestTemplateRendering:
         script = response.text
 
         # Should NOT contain any unreplaced placeholders
-        placeholders = [
-            "{server_url}",
-            "{api_key}",
-            "{username}",
-            "{organization}",
-            "{timestamp}"
-        ]
+        placeholders = ["{server_url}", "{api_key}", "{username}", "{organization}", "{timestamp}"]
 
         for placeholder in placeholders:
             assert placeholder not in script, f"Unreplaced placeholder: {placeholder}"
@@ -558,13 +532,7 @@ class TestTemplateRendering:
         assert response.status_code == 200
         script = response.text
 
-        placeholders = [
-            "{server_url}",
-            "{api_key}",
-            "{username}",
-            "{organization}",
-            "{timestamp}"
-        ]
+        placeholders = ["{server_url}", "{api_key}", "{username}", "{organization}", "{timestamp}"]
 
         for placeholder in placeholders:
             assert placeholder not in script
@@ -576,7 +544,8 @@ class TestTemplateRendering:
 
         # Should contain a valid HTTP URL
         import re
-        url_pattern = r'http://[\w\.\-:]+:\d+'
+
+        url_pattern = r"http://[\w\.\-:]+:\d+"
         matches = re.findall(url_pattern, script)
 
         assert len(matches) > 0, "No server URL found in script"
@@ -589,6 +558,7 @@ class TestTemplateRendering:
     async def test_user_full_name_embedded_in_script(self, db_session):
         """Test user's full name is embedded in script"""
         from uuid import uuid4
+
         from src.giljo_mcp.auth.api_key_manager import APIKeyManager
 
         # Create user with full name
@@ -600,7 +570,7 @@ class TestTemplateRendering:
             role="developer",
             is_active=True,
             tenant_key=f"named_{uuid4().hex[:8]}",
-            full_name="John Doe"
+            full_name="John Doe",
         )
 
         db_session.add(user)
@@ -610,17 +580,12 @@ class TestTemplateRendering:
         # Create API key
         api_key_manager = APIKeyManager(db_session)
         api_key_result = await api_key_manager.create_api_key(
-            user_id=user.id,
-            name="test_key",
-            tenant_key=user.tenant_key
+            user_id=user.id, name="test_key", tenant_key=user.tenant_key
         )
 
         # Download script
         client = TestClient(app)
-        client.headers.update({
-            "X-API-Key": api_key_result["key"],
-            "X-Forwarded-For": "192.168.1.100"
-        })
+        client.headers.update({"X-API-Key": api_key_result["key"], "X-Forwarded-For": "192.168.1.100"})
 
         response = client.get("/api/mcp-installer/windows")
         script = response.text
@@ -635,14 +600,15 @@ class TestTemplateRendering:
 
         # Extract timestamp (format: YYYY-MM-DDTHH:MM:SSZ)
         import re
-        timestamp_pattern = r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)'
+
+        timestamp_pattern = r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)"
         matches = re.findall(timestamp_pattern, script)
 
         assert len(matches) > 0, "No timestamp found in script"
 
         # Verify it's parseable as ISO timestamp
         timestamp_str = matches[0]
-        timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
 
         # Timestamp should be recent (within last minute)
         now = datetime.now(timezone.utc)
@@ -653,6 +619,7 @@ class TestTemplateRendering:
 # ============================================================================
 # TEST 6: Cross-Platform Consistency
 # ============================================================================
+
 
 class TestCrossPlatformConsistency:
     """Test Windows and Unix scripts have consistent MCP config"""
@@ -725,13 +692,14 @@ class TestCrossPlatformConsistency:
 # TEST 7: Error Handling
 # ============================================================================
 
+
 class TestErrorHandling:
     """Test error handling scenarios"""
 
     def test_missing_template_returns_500(self, authenticated_client):
         """Test missing template file returns 500 Internal Server Error"""
         # Temporarily mock template path to non-existent file
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             response = authenticated_client.get("/api/mcp-installer/windows")
 
             # Should return 500 (internal server error)
@@ -745,7 +713,7 @@ class TestErrorHandling:
         payload = {
             "user_id": "test-123",
             "expires_at": (datetime.utcnow() + timedelta(days=1)).isoformat() + "Z",
-            "type": "mcp_installer_download"
+            "type": "mcp_installer_download",
         }
 
         token = jwt.encode(payload, mcp_installer.SECRET_KEY, algorithm=mcp_installer.ALGORITHM)
@@ -783,6 +751,7 @@ class TestErrorHandling:
 # TEST 8: Performance and Scalability
 # ============================================================================
 
+
 class TestPerformance:
     """Test performance characteristics"""
 
@@ -805,10 +774,7 @@ class TestPerformance:
 
         def download_script():
             client = TestClient(app)
-            client.headers.update({
-                "X-API-Key": test_user.api_key,
-                "X-Forwarded-For": "192.168.1.100"
-            })
+            client.headers.update({"X-API-Key": test_user.api_key, "X-Forwarded-For": "192.168.1.100"})
             response = client.get("/api/mcp-installer/windows")
             return response.status_code
 
@@ -825,6 +791,7 @@ class TestPerformance:
 # ============================================================================
 # TEST 9: Script Content Validation
 # ============================================================================
+
 
 class TestScriptContentValidation:
     """Validate generated script content is syntactically correct"""
@@ -854,7 +821,7 @@ class TestScriptContentValidation:
         script = response.text
 
         # Check shebang is first line
-        lines = script.split('\n')
+        lines = script.split("\n")
         assert lines[0].startswith("#!/bin/bash"), "Shebang must be first line"
 
         # Check for common shell syntax errors
@@ -888,6 +855,7 @@ class TestScriptContentValidation:
 # TEST 10: Edge Cases
 # ============================================================================
 
+
 class TestEdgeCases:
     """Test edge cases and unusual scenarios"""
 
@@ -895,6 +863,7 @@ class TestEdgeCases:
     async def test_user_with_special_characters_in_username(self, db_session):
         """Test user with special characters in username gets valid script"""
         from uuid import uuid4
+
         from src.giljo_mcp.auth.api_key_manager import APIKeyManager
 
         special_user = User(
@@ -904,7 +873,7 @@ class TestEdgeCases:
             password_hash="$2b$12$test",
             role="developer",
             is_active=True,
-            tenant_key=f"special_{uuid4().hex[:8]}"
+            tenant_key=f"special_{uuid4().hex[:8]}",
         )
 
         db_session.add(special_user)
@@ -914,16 +883,11 @@ class TestEdgeCases:
         # Create API key
         api_key_manager = APIKeyManager(db_session)
         api_key_result = await api_key_manager.create_api_key(
-            user_id=special_user.id,
-            name="special_key",
-            tenant_key=special_user.tenant_key
+            user_id=special_user.id, name="special_key", tenant_key=special_user.tenant_key
         )
 
         client = TestClient(app)
-        client.headers.update({
-            "X-API-Key": api_key_result["key"],
-            "X-Forwarded-For": "192.168.1.100"
-        })
+        client.headers.update({"X-API-Key": api_key_result["key"], "X-Forwarded-For": "192.168.1.100"})
 
         response = client.get("/api/mcp-installer/windows")
 
@@ -953,6 +917,7 @@ class TestEdgeCases:
     async def test_inactive_user_cannot_download(self, db_session):
         """Test inactive user cannot download scripts"""
         from uuid import uuid4
+
         from src.giljo_mcp.auth.api_key_manager import APIKeyManager
 
         inactive_user = User(
@@ -962,7 +927,7 @@ class TestEdgeCases:
             password_hash="$2b$12$test",
             role="developer",
             is_active=False,  # Inactive
-            tenant_key=f"inactive_{uuid4().hex[:8]}"
+            tenant_key=f"inactive_{uuid4().hex[:8]}",
         )
 
         db_session.add(inactive_user)
@@ -972,16 +937,11 @@ class TestEdgeCases:
         # Create API key
         api_key_manager = APIKeyManager(db_session)
         api_key_result = await api_key_manager.create_api_key(
-            user_id=inactive_user.id,
-            name="inactive_key",
-            tenant_key=inactive_user.tenant_key
+            user_id=inactive_user.id, name="inactive_key", tenant_key=inactive_user.tenant_key
         )
 
         client = TestClient(app)
-        client.headers.update({
-            "X-API-Key": api_key_result["key"],
-            "X-Forwarded-For": "192.168.1.100"
-        })
+        client.headers.update({"X-API-Key": api_key_result["key"], "X-Forwarded-For": "192.168.1.100"})
 
         response = client.get("/api/mcp-installer/windows")
 

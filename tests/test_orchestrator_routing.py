@@ -8,14 +8,11 @@ Coverage target: >90%
 """
 
 import pytest
-import asyncio
-from unittest.mock import MagicMock
-from datetime import datetime, timezone
 
-from src.giljo_mcp.orchestrator import ProjectOrchestrator
-from src.giljo_mcp.models import Agent, AgentTemplate, Project, MCPAgentJob
-from src.giljo_mcp.enums import AgentRole, ProjectStatus
 from src.giljo_mcp.database import get_db_manager
+from src.giljo_mcp.enums import AgentRole, ProjectStatus
+from src.giljo_mcp.models import Agent, AgentTemplate, MCPAgentJob, Project
+from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
 
 @pytest.fixture
@@ -320,6 +317,7 @@ async def test_spawn_legacy_agent_creates_job(orchestrator, test_project, codex_
     # Query job from database
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent.job_id)
         result = await session.execute(stmt)
         job = result.scalar_one_or_none()
@@ -475,6 +473,7 @@ async def test_acknowledge_job_syncs_agent_status(orchestrator, test_project, co
     # Verify Agent status synced to active
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         stmt = select(Agent).where(Agent.id == agent.id)
         result = await session.execute(stmt)
         updated_agent = result.scalar_one()
@@ -520,6 +519,7 @@ async def test_complete_job_syncs_agent_status(orchestrator, test_project, codex
     # Verify Agent status synced to completed
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         stmt = select(Agent).where(Agent.id == agent.id)
         result = await session.execute(stmt)
         updated_agent = result.scalar_one()
@@ -567,6 +567,7 @@ async def test_report_error_syncs_agent_status(orchestrator, test_project, codex
     # Verify Agent status synced to failed
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         stmt = select(Agent).where(Agent.id == agent.id)
         result = await session.execute(stmt)
         updated_agent = result.scalar_one()

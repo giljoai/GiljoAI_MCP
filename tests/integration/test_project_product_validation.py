@@ -11,13 +11,15 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from sqlalchemy import select
 
 from api.app import create_app
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
-from sqlalchemy import select
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -35,10 +37,7 @@ async def app():
     app = create_app()
 
     # Initialize test database
-    db_manager = DatabaseManager(
-        PostgreSQLTestHelper.get_test_db_url(async_driver=False),
-        is_async=True
-    )
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
     await db_manager.create_tables_async()
 
     # Store in app state
@@ -79,7 +78,7 @@ async def test_data(app, tenant_key):
             name="Active Product",
             description="Product for testing active project validation",
             tenant_key=tenant_key,
-            is_active=True
+            is_active=True,
         )
         session.add(active_product)
         await session.flush()
@@ -89,7 +88,7 @@ async def test_data(app, tenant_key):
             name="Inactive Product",
             description="Product for testing inactive validation",
             tenant_key=tenant_key,
-            is_active=False
+            is_active=False,
         )
         session.add(inactive_product)
         await session.flush()
@@ -100,7 +99,7 @@ async def test_data(app, tenant_key):
             mission="Test project under active product",
             tenant_key=tenant_key,
             product_id=active_product.id,
-            status="inactive"
+            status="inactive",
         )
         session.add(active_project)
         await session.flush()
@@ -111,7 +110,7 @@ async def test_data(app, tenant_key):
             mission="Test project under inactive product",
             tenant_key=tenant_key,
             product_id=inactive_product.id,
-            status="inactive"
+            status="inactive",
         )
         session.add(inactive_project)
         await session.flush()
@@ -122,7 +121,7 @@ async def test_data(app, tenant_key):
             mission="Test project without parent product",
             tenant_key=tenant_key,
             product_id=None,
-            status="inactive"
+            status="inactive",
         )
         session.add(orphan_project)
         await session.flush()
@@ -134,7 +133,7 @@ async def test_data(app, tenant_key):
             "inactive_product_id": inactive_product.id,
             "active_project_id": active_project.id,
             "inactive_project_id": inactive_project.id,
-            "orphan_project_id": orphan_project.id
+            "orphan_project_id": orphan_project.id,
         }
 
 
@@ -152,11 +151,7 @@ class TestProjectProductValidation:
         """
         project_id = test_data["active_project_id"]
 
-        response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"status": "active"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{project_id}", json={"status": "active"}, headers=headers)
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
@@ -170,16 +165,14 @@ class TestProjectProductValidation:
         """
         project_id = test_data["inactive_project_id"]
 
-        response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"status": "active"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{project_id}", json={"status": "active"}, headers=headers)
 
         assert response.status_code == 400, f"Expected 400, got {response.status_code}: {response.text}"
         data = response.json()
         assert "detail" in data
-        assert "not active" in data["detail"].lower(), f"Error message should mention inactive product: {data['detail']}"
+        assert "not active" in data["detail"].lower(), (
+            f"Error message should mention inactive product: {data['detail']}"
+        )
         assert "Inactive Product" in data["detail"], f"Error message should include product name: {data['detail']}"
 
     @pytest.mark.asyncio
@@ -190,11 +183,7 @@ class TestProjectProductValidation:
         """
         project_id = test_data["orphan_project_id"]
 
-        response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"status": "active"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{project_id}", json={"status": "active"}, headers=headers)
 
         # Orphan projects should activate successfully (no parent to validate)
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -209,11 +198,7 @@ class TestProjectProductValidation:
         """
         project_id = test_data["inactive_project_id"]
 
-        response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"name": "Updated Project Name"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{project_id}", json={"name": "Updated Project Name"}, headers=headers)
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
@@ -228,11 +213,7 @@ class TestProjectProductValidation:
         project_id = test_data["inactive_project_id"]
 
         # Should succeed even though parent product is inactive
-        response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"status": "completed"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{project_id}", json={"status": "completed"}, headers=headers)
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
@@ -250,9 +231,7 @@ class TestProjectProductValidation:
         different_tenant_headers = {"X-Tenant-Key": "tk_different_tenant"}
 
         response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"status": "active"},
-            headers=different_tenant_headers
+            f"/api/projects/{project_id}", json={"status": "active"}, headers=different_tenant_headers
         )
 
         # Should fail because project belongs to different tenant
@@ -268,9 +247,7 @@ class TestProjectProductValidation:
 
         async with db_manager.get_session_async() as session:
             # Fetch project under inactive product
-            project_query = select(Project).where(
-                Project.id == test_data["inactive_project_id"]
-            )
+            project_query = select(Project).where(Project.id == test_data["inactive_project_id"])
             result = await session.execute(project_query)
             project = result.scalar_one()
 
@@ -293,11 +270,7 @@ class TestProjectProductValidation:
         """
         project_id = test_data["inactive_project_id"]
 
-        response = client.patch(
-            f"/api/projects/{project_id}",
-            json={"status": "active"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{project_id}", json={"status": "active"}, headers=headers)
 
         assert response.status_code == 400
         data = response.json()
@@ -324,7 +297,7 @@ class TestProjectProductValidation:
                 mission="Project with non-existent product_id",
                 tenant_key=tenant_key,
                 product_id="00000000-0000-0000-0000-000000000000",  # Non-existent
-                status="inactive"
+                status="inactive",
             )
             session.add(corrupt_project)
             await session.flush()
@@ -332,11 +305,7 @@ class TestProjectProductValidation:
             corrupt_project_id = corrupt_project.id
 
         # Try to activate
-        response = client.patch(
-            f"/api/projects/{corrupt_project_id}",
-            json={"status": "active"},
-            headers=headers
-        )
+        response = client.patch(f"/api/projects/{corrupt_project_id}", json={"status": "active"}, headers=headers)
 
         assert response.status_code == 400, f"Expected 400, got {response.status_code}"
         data = response.json()

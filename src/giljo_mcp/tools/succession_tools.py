@@ -9,7 +9,7 @@ Tools:
 """
 
 import logging
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from fastmcp import FastMCP
 from sqlalchemy import select
@@ -19,6 +19,7 @@ from giljo_mcp.models import MCPAgentJob
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,9 +28,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-def register_succession_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_succession_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register orchestrator succession tools with the MCP server."""
 
     @mcp.tool()
@@ -86,16 +85,11 @@ def register_succession_tools(
             orchestrator = result.scalar_one_or_none()
 
             if not orchestrator:
-                raise ValueError(
-                    f"Orchestrator job {current_job_id} not found for tenant {tenant_key}"
-                )
+                raise ValueError(f"Orchestrator job {current_job_id} not found for tenant {tenant_key}")
 
             # Verify agent type is orchestrator
             if orchestrator.agent_type != "orchestrator":
-                raise ValueError(
-                    f"Job {current_job_id} is not an orchestrator "
-                    f"(type: {orchestrator.agent_type})"
-                )
+                raise ValueError(f"Job {current_job_id} is not an orchestrator (type: {orchestrator.agent_type})")
 
             # Verify orchestrator is not already complete
             if orchestrator.status == "complete":
@@ -140,7 +134,6 @@ def register_succession_tools(
                 ),
             }
 
-
     @mcp.tool()
     async def check_succession_status(
         job_id: str,
@@ -182,9 +175,7 @@ def register_succession_tools(
                 raise ValueError(f"Orchestrator job {job_id} not found")
 
             if orchestrator.agent_type != "orchestrator":
-                raise ValueError(
-                    f"Job {job_id} is not an orchestrator (type: {orchestrator.agent_type})"
-                )
+                raise ValueError(f"Job {job_id} is not an orchestrator (type: {orchestrator.agent_type})")
 
             # Initialize succession manager
             manager = OrchestratorSuccessionManager(session, tenant_key)
@@ -209,10 +200,7 @@ def register_succession_tools(
                     f"Consider planning succession for upcoming phase transition."
                 )
             else:
-                recommendation = (
-                    f"Context usage at {usage_percentage:.1f}%. "
-                    f"No succession needed at this time."
-                )
+                recommendation = f"Context usage at {usage_percentage:.1f}%. No succession needed at this time."
 
             return {
                 "should_trigger": should_trigger,
@@ -260,14 +248,10 @@ async def _internal_trigger_succession(
         raise ValueError(f"Orchestrator job {job_id} not found")
 
     if orchestrator.agent_type != "orchestrator":
-        raise ValueError(
-            f"Job {job_id} is not an orchestrator (type: {orchestrator.agent_type})"
-        )
+        raise ValueError(f"Job {job_id} is not an orchestrator (type: {orchestrator.agent_type})")
 
     if orchestrator.status == "complete":
-        raise ValueError(
-            f"Orchestrator {job_id} is already complete. Cannot trigger succession."
-        )
+        raise ValueError(f"Orchestrator {job_id} is already complete. Cannot trigger succession.")
 
     # Initialize succession manager
     manager = OrchestratorSuccessionManager(session, tenant_key)

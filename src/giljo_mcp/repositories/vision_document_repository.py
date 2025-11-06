@@ -9,16 +9,14 @@ All operations enforce tenant_key filtering for security (zero cross-tenant leak
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, select
-from sqlalchemy.future import select as future_select
 
-from ..models import VisionDocument, Product, MCPContextIndex
 from ..database import DatabaseManager
+from ..models import MCPContextIndex, Product, VisionDocument
 from .base import BaseRepository
 
 
@@ -57,7 +55,7 @@ class VisionDocumentRepository:
         is_active: bool = True,
         display_order: int = 0,
         version: str = "1.0.0",
-        meta_data: Optional[Dict] = None
+        meta_data: Optional[Dict] = None,
     ) -> VisionDocument:
         """
         Create a new vision document with automatic content hashing.
@@ -84,10 +82,7 @@ class VisionDocumentRepository:
             ValueError: If product doesn't exist or belong to tenant
         """
         # Validate product exists and belongs to tenant
-        stmt = select(Product).where(
-            Product.id == product_id,
-            Product.tenant_key == tenant_key
-        )
+        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
         result = await session.execute(stmt)
         product = result.scalar_one_or_none()
 
@@ -95,7 +90,7 @@ class VisionDocumentRepository:
             raise ValueError(f"Product {product_id} not found for tenant {tenant_key}")
 
         # Generate content hash (SHA-256)
-        content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
         # Create vision document instance
         doc = VisionDocument(
@@ -113,7 +108,7 @@ class VisionDocumentRepository:
             version=version,
             chunked=False,
             chunk_count=0,
-            meta_data=meta_data or {}
+            meta_data=meta_data or {},
         )
 
         session.add(doc)
@@ -121,12 +116,7 @@ class VisionDocumentRepository:
 
         return doc
 
-    async def get_by_id(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        document_id: str
-    ) -> Optional[VisionDocument]:
+    async def get_by_id(self, session: AsyncSession, tenant_key: str, document_id: str) -> Optional[VisionDocument]:
         """
         Get vision document by ID with tenant filter (CRITICAL security).
 
@@ -138,19 +128,12 @@ class VisionDocumentRepository:
         Returns:
             VisionDocument instance or None if not found
         """
-        stmt = select(VisionDocument).where(
-            VisionDocument.id == document_id,
-            VisionDocument.tenant_key == tenant_key
-        )
+        stmt = select(VisionDocument).where(VisionDocument.id == document_id, VisionDocument.tenant_key == tenant_key)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_by_product(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        product_id: str,
-        active_only: bool = True
+        self, session: AsyncSession, tenant_key: str, product_id: str, active_only: bool = True
     ) -> List[VisionDocument]:
         """
         List all vision documents for a product with tenant isolation.
@@ -165,8 +148,7 @@ class VisionDocumentRepository:
             List of VisionDocument instances ordered by display_order
         """
         stmt = select(VisionDocument).where(
-            VisionDocument.tenant_key == tenant_key,
-            VisionDocument.product_id == product_id
+            VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product_id
         )
 
         if active_only:
@@ -177,11 +159,7 @@ class VisionDocumentRepository:
         return list(result.scalars().all())
 
     async def update_content(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        document_id: str,
-        new_content: str
+        self, session: AsyncSession, tenant_key: str, document_id: str, new_content: str
     ) -> Optional[VisionDocument]:
         """
         Update vision document content with automatic hash recalculation and chunked reset.
@@ -210,7 +188,7 @@ class VisionDocumentRepository:
         if doc.storage_type in ("inline", "hybrid"):
             doc.vision_document = new_content
 
-        doc.content_hash = hashlib.sha256(new_content.encode('utf-8')).hexdigest()
+        doc.content_hash = hashlib.sha256(new_content.encode("utf-8")).hexdigest()
 
         # Reset chunked status (content changed, needs re-chunking)
         doc.chunked = False
@@ -224,12 +202,7 @@ class VisionDocumentRepository:
         await session.flush()
         return doc
 
-    async def delete(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        document_id: str
-    ) -> Dict[str, Any]:
+    async def delete(self, session: AsyncSession, tenant_key: str, document_id: str) -> Dict[str, Any]:
         """
         Delete vision document and all associated chunks.
 
@@ -250,8 +223,7 @@ class VisionDocumentRepository:
 
         # Count chunks before deletion (for stats)
         stmt = select(MCPContextIndex).where(
-            MCPContextIndex.vision_document_id == document_id,
-            MCPContextIndex.tenant_key == tenant_key
+            MCPContextIndex.vision_document_id == document_id, MCPContextIndex.tenant_key == tenant_key
         )
         result = await session.execute(stmt)
         chunk_count = len(result.scalars().all())
@@ -266,16 +238,10 @@ class VisionDocumentRepository:
             "success": True,
             "document_id": document_id,
             "document_name": document_name,
-            "chunks_deleted": chunk_count
+            "chunks_deleted": chunk_count,
         }
 
-    async def mark_chunked(
-        self,
-        session: AsyncSession,
-        document_id: str,
-        chunk_count: int,
-        total_tokens: int
-    ) -> None:
+    async def mark_chunked(self, session: AsyncSession, document_id: str, chunk_count: int, total_tokens: int) -> None:
         """
         Mark document as chunked with metadata.
 
@@ -294,9 +260,7 @@ class VisionDocumentRepository:
             chunk_count: Number of chunks created
             total_tokens: Total estimated tokens in document
         """
-        stmt = select(VisionDocument).where(
-            VisionDocument.id == document_id
-        )
+        stmt = select(VisionDocument).where(VisionDocument.id == document_id)
         result = await session.execute(stmt)
         doc = result.scalar_one_or_none()
 
@@ -308,16 +272,12 @@ class VisionDocumentRepository:
 
             # Ensure content hash is current
             if doc.vision_document:
-                doc.content_hash = hashlib.sha256(doc.vision_document.encode('utf-8')).hexdigest()
+                doc.content_hash = hashlib.sha256(doc.vision_document.encode("utf-8")).hexdigest()
 
             await session.flush()
 
     def get_by_type(
-        self,
-        session: Session,
-        tenant_key: str,
-        product_id: str,
-        document_type: str
+        self, session: Session, tenant_key: str, product_id: str, document_type: str
     ) -> List[VisionDocument]:
         """
         Get all vision documents of a specific type for a product.
@@ -331,19 +291,20 @@ class VisionDocumentRepository:
         Returns:
             List of VisionDocument instances
         """
-        return session.query(VisionDocument).filter(
-            VisionDocument.tenant_key == tenant_key,
-            VisionDocument.product_id == product_id,
-            VisionDocument.document_type == document_type,
-            VisionDocument.is_active == True
-        ).order_by(VisionDocument.display_order).all()
+        return (
+            session.query(VisionDocument)
+            .filter(
+                VisionDocument.tenant_key == tenant_key,
+                VisionDocument.product_id == product_id,
+                VisionDocument.document_type == document_type,
+                VisionDocument.is_active == True,
+            )
+            .order_by(VisionDocument.display_order)
+            .all()
+        )
 
     def set_active_status(
-        self,
-        session: Session,
-        tenant_key: str,
-        document_id: str,
-        is_active: bool
+        self, session: Session, tenant_key: str, document_id: str, is_active: bool
     ) -> Optional[VisionDocument]:
         """
         Set active status of a vision document.
@@ -367,11 +328,7 @@ class VisionDocumentRepository:
         return doc
 
     def update_display_order(
-        self,
-        session: Session,
-        tenant_key: str,
-        document_id: str,
-        new_order: int
+        self, session: Session, tenant_key: str, document_id: str, new_order: int
     ) -> Optional[VisionDocument]:
         """
         Update display order of a vision document.
@@ -394,13 +351,7 @@ class VisionDocumentRepository:
 
         return doc
 
-    def count_by_product(
-        self,
-        session: Session,
-        tenant_key: str,
-        product_id: str,
-        active_only: bool = True
-    ) -> int:
+    def count_by_product(self, session: Session, tenant_key: str, product_id: str, active_only: bool = True) -> int:
         """
         Count vision documents for a product.
 
@@ -414,8 +365,7 @@ class VisionDocumentRepository:
             Number of vision documents
         """
         query = session.query(VisionDocument).filter(
-            VisionDocument.tenant_key == tenant_key,
-            VisionDocument.product_id == product_id
+            VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product_id
         )
 
         if active_only:

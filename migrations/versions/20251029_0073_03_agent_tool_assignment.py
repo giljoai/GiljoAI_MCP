@@ -36,16 +36,18 @@ Rollback strategy: Full downgrade support (column drop)
 Multi-tenant isolation: Preserved (columns scoped to existing tenant_key)
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic
-revision: str = '20251029_0073_03'
-down_revision: Union[str, Sequence[str], None] = '20251029_0073_02'
+revision: str = "20251029_0073_03"
+down_revision: Union[str, Sequence[str], None] = "20251029_0073_02"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -77,15 +79,15 @@ def upgrade() -> None:
     # =============================
     print("[0073-03] Step 1: Analyzing current agent jobs state...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM mcp_agent_jobs"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM mcp_agent_jobs"))
     total_jobs = result.scalar()
     print(f"[0073-03]   - Total agent jobs in database: {total_jobs}")
 
-    result = connection.execute(text(
-        "SELECT agent_type, COUNT(*) as count FROM mcp_agent_jobs GROUP BY agent_type ORDER BY count DESC LIMIT 10"
-    ))
+    result = connection.execute(
+        text(
+            "SELECT agent_type, COUNT(*) as count FROM mcp_agent_jobs GROUP BY agent_type ORDER BY count DESC LIMIT 10"
+        )
+    )
     agent_distribution = result.fetchall()
 
     print("[0073-03]   Agent type distribution (top 10):")
@@ -97,14 +99,14 @@ def upgrade() -> None:
     print("[0073-03] Step 2: Adding tool_type column...")
 
     op.add_column(
-        'mcp_agent_jobs',
+        "mcp_agent_jobs",
         sa.Column(
-            'tool_type',
+            "tool_type",
             sa.String(20),
             nullable=False,
-            server_default='universal',
-            comment='AI coding tool assigned to this agent job (claude-code, codex, gemini, universal)'
-        )
+            server_default="universal",
+            comment="AI coding tool assigned to this agent job (claude-code, codex, gemini, universal)",
+        ),
     )
     print("[0073-03]   - Added 'tool_type' column (VARCHAR(20), default='universal')")
 
@@ -113,9 +115,7 @@ def upgrade() -> None:
     print("[0073-03] Step 3: Adding tool_type validation constraint...")
 
     op.create_check_constraint(
-        'ck_mcp_agent_job_tool_type',
-        'mcp_agent_jobs',
-        "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')"
+        "ck_mcp_agent_job_tool_type", "mcp_agent_jobs", "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')"
     )
     print("[0073-03]   - Added tool_type constraint (4 valid values)")
 
@@ -124,13 +124,13 @@ def upgrade() -> None:
     print("[0073-03] Step 4: Adding agent_name column...")
 
     op.add_column(
-        'mcp_agent_jobs',
+        "mcp_agent_jobs",
         sa.Column(
-            'agent_name',
+            "agent_name",
             sa.String(255),
             nullable=True,
-            comment='Human-readable agent display name (e.g., Backend Agent, Database Agent)'
-        )
+            comment="Human-readable agent display name (e.g., Backend Agent, Database Agent)",
+        ),
     )
     print("[0073-03]   - Added 'agent_name' column (VARCHAR(255), nullable)")
 
@@ -139,12 +139,7 @@ def upgrade() -> None:
     print("[0073-03] Step 5: Creating index for tool assignment queries...")
 
     # Composite index: tenant_key + tool_type (for multi-tenant tool filtering)
-    op.create_index(
-        'idx_mcp_agent_jobs_tenant_tool',
-        'mcp_agent_jobs',
-        ['tenant_key', 'tool_type'],
-        unique=False
-    )
+    op.create_index("idx_mcp_agent_jobs_tenant_tool", "mcp_agent_jobs", ["tenant_key", "tool_type"], unique=False)
     print("[0073-03]   - Created index 'idx_mcp_agent_jobs_tenant_tool' (tenant_key, tool_type)")
 
     # STEP 6: Populate agent_name from agent_type (best effort)
@@ -152,15 +147,15 @@ def upgrade() -> None:
     print("[0073-03] Step 6: Populating agent_name from agent_type...")
 
     # Create friendly names by converting agent_type to title case
-    op.execute(text("""
+    op.execute(
+        text("""
         UPDATE mcp_agent_jobs
         SET agent_name = INITCAP(REPLACE(agent_type, '_', ' ')) || ' Agent'
         WHERE agent_name IS NULL
-    """))
+    """)
+    )
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM mcp_agent_jobs WHERE agent_name IS NOT NULL"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM mcp_agent_jobs WHERE agent_name IS NOT NULL"))
     populated_names = result.scalar()
 
     print(f"[0073-03]   - Populated {populated_names} agent_name(s) from agent_type")
@@ -170,11 +165,13 @@ def upgrade() -> None:
     print("[0073-03] Step 7: Verifying migration...")
 
     # Check that all jobs have valid tool_type
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT COUNT(*)
         FROM mcp_agent_jobs
         WHERE tool_type NOT IN ('claude-code', 'codex', 'gemini', 'universal')
-    """))
+    """)
+    )
     invalid_tools = result.scalar()
 
     if invalid_tools > 0:
@@ -187,28 +184,32 @@ def upgrade() -> None:
     # ========================
     print("[0073-03] Step 8: Final state summary...")
 
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT tool_type, COUNT(*) as count
         FROM mcp_agent_jobs
         GROUP BY tool_type
         ORDER BY count DESC
-    """))
+    """)
+    )
     tool_distribution = result.fetchall()
 
     print("[0073-03]   Tool assignment distribution:")
     for tool_type, count in tool_distribution:
         print(f"[0073-03]     - {tool_type}: {count} job(s)")
 
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT
             COUNT(*) FILTER (WHERE agent_name IS NOT NULL) as with_name,
             COUNT(*) FILTER (WHERE agent_name IS NULL) as without_name,
             COUNT(*) as total
         FROM mcp_agent_jobs
-    """))
+    """)
+    )
     row = result.fetchone()
 
-    print(f"[0073-03]   Agent name coverage:")
+    print("[0073-03]   Agent name coverage:")
     print(f"[0073-03]     - Total jobs: {row[2]}")
     print(f"[0073-03]     - With agent_name: {row[0]}")
     print(f"[0073-03]     - Without agent_name: {row[1]}")
@@ -246,13 +247,15 @@ def downgrade() -> None:
     # =================================================
     print("[0073-03 Downgrade] Step 1: Checking for tool-specific assignments...")
 
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT tool_type, COUNT(*) as count
         FROM mcp_agent_jobs
         WHERE tool_type != 'universal'
         GROUP BY tool_type
         ORDER BY count DESC
-    """))
+    """)
+    )
     tool_specific_jobs = result.fetchall()
 
     if tool_specific_jobs:
@@ -265,33 +268,31 @@ def downgrade() -> None:
     # =============================
     print("[0073-03 Downgrade] Step 2: Dropping tool_type index...")
 
-    op.drop_index('idx_mcp_agent_jobs_tenant_tool', table_name='mcp_agent_jobs')
+    op.drop_index("idx_mcp_agent_jobs_tenant_tool", table_name="mcp_agent_jobs")
     print("[0073-03]   - Dropped 'idx_mcp_agent_jobs_tenant_tool' index")
 
     # STEP 3: Drop tool_type constraint
     # ==================================
     print("[0073-03 Downgrade] Step 3: Dropping tool_type constraint...")
 
-    op.drop_constraint('ck_mcp_agent_job_tool_type', 'mcp_agent_jobs', type_='check')
+    op.drop_constraint("ck_mcp_agent_job_tool_type", "mcp_agent_jobs", type_="check")
     print("[0073-03]   - Dropped 'ck_mcp_agent_job_tool_type' constraint")
 
     # STEP 4: Drop columns
     # ====================
     print("[0073-03 Downgrade] Step 4: Removing tool assignment columns...")
 
-    op.drop_column('mcp_agent_jobs', 'agent_name')
+    op.drop_column("mcp_agent_jobs", "agent_name")
     print("[0073-03]   - Dropped 'agent_name' column")
 
-    op.drop_column('mcp_agent_jobs', 'tool_type')
+    op.drop_column("mcp_agent_jobs", "tool_type")
     print("[0073-03]   - Dropped 'tool_type' column")
 
     # STEP 5: Verify downgrade success
     # =================================
     print("[0073-03 Downgrade] Step 5: Verifying downgrade...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM mcp_agent_jobs"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM mcp_agent_jobs"))
     total_jobs = result.scalar()
 
     print(f"[0073-03]   - {total_jobs} agent job(s) remain functional")

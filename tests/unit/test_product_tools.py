@@ -4,16 +4,15 @@ Unit tests for product configuration management tools
 Tests get_product_config(), update_product_config(), and get_product_settings()
 """
 
-import pytest
 from datetime import datetime, timezone
-from sqlalchemy import select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product, Project, Agent
+import pytest
+
+from giljo_mcp.models import Agent, Product, Project
 from giljo_mcp.tools.product import (
     get_product_config,
-    update_product_config,
     get_product_settings,
+    update_product_config,
 )
 
 
@@ -124,9 +123,7 @@ async def orchestrator_agent(db_session, project_with_product):
 class TestGetProductConfigFiltered:
     """Test get_product_config() with filtered=True (role-based filtering)"""
 
-    async def test_implementer_gets_filtered_config(
-        self, db_session, project_with_product, implementer_agent
-    ):
+    async def test_implementer_gets_filtered_config(self, db_session, project_with_product, implementer_agent):
         """Test that implementer gets only relevant fields"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -157,9 +154,7 @@ class TestGetProductConfigFiltered:
         assert "api_docs" not in config
         assert "documentation_style" not in config
 
-    async def test_tester_gets_filtered_config(
-        self, db_session, project_with_product, tester_agent
-    ):
+    async def test_tester_gets_filtered_config(self, db_session, project_with_product, tester_agent):
         """Test that tester gets only testing-relevant fields"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -185,16 +180,14 @@ class TestGetProductConfigFiltered:
         assert "deployment_modes" not in config
         assert "api_docs" not in config
 
-    async def test_role_detection_from_agent_name(
-        self, db_session, project_with_product, implementer_agent
-    ):
+    async def test_role_detection_from_agent_name(self, db_session, project_with_product, implementer_agent):
         """Test that role is detected from agent name when not provided"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
             filtered=True,
             agent_name="implementer-1",  # Role detected from name
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
         config = result["config"]
@@ -204,9 +197,7 @@ class TestGetProductConfigFiltered:
         assert "tech_stack" in config
         assert "test_commands" not in config  # Not in implementer scope
 
-    async def test_unknown_role_uses_default_filtering(
-        self, db_session, project_with_product
-    ):
+    async def test_unknown_role_uses_default_filtering(self, db_session, project_with_product):
         """Test that unknown roles get analyzer-level filtering (default)"""
         # Create agent with unknown role
         unknown_agent = Agent(
@@ -225,8 +216,8 @@ class TestGetProductConfigFiltered:
             filtered=True,
             agent_name="custom-agent",
             agent_role="custom",
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
         config = result["config"]
@@ -242,15 +233,13 @@ class TestGetProductConfigFiltered:
 class TestGetProductConfigUnfiltered:
     """Test get_product_config() with filtered=False (full config)"""
 
-    async def test_orchestrator_gets_full_config(
-        self, db_session, project_with_product, orchestrator_agent
-    ):
+    async def test_orchestrator_gets_full_config(self, db_session, project_with_product, orchestrator_agent):
         """Test that orchestrator with filtered=False gets ALL fields"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
             filtered=False,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
         config = result["config"]
@@ -271,15 +260,13 @@ class TestGetProductConfigUnfiltered:
         assert "deployment_modes" in config
         assert "serena_mcp_enabled" in config
 
-    async def test_worker_can_request_full_config(
-        self, db_session, project_with_product, implementer_agent
-    ):
+    async def test_worker_can_request_full_config(self, db_session, project_with_product, implementer_agent):
         """Test that worker agents can request full config with filtered=False"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
             filtered=False,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
         config = result["config"]
@@ -320,8 +307,8 @@ class TestGetProductConfigErrors:
             project_id=str(project_no_product.id),
             filtered=True,
             agent_name="implementer-1",
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "no product" in result["error"].lower()
@@ -332,8 +319,8 @@ class TestGetProductConfigErrors:
             project_id=str(project_with_product.id),
             filtered=True,
             # Missing agent_name
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "agent_name required" in result["error"].lower()
@@ -373,9 +360,7 @@ class TestGetProductConfigErrors:
 class TestUpdateProductConfig:
     """Test update_product_config() function"""
 
-    async def test_merge_mode_updates_existing_fields(
-        self, db_session, project_with_product, product_with_config
-    ):
+    async def test_merge_mode_updates_existing_fields(self, db_session, project_with_product, product_with_config):
         """Test that merge=True updates existing fields without removing others"""
         updates = {
             "architecture": "Updated Microservices Architecture",
@@ -386,8 +371,8 @@ class TestUpdateProductConfig:
             project_id=str(project_with_product.id),
             config_updates=updates,
             merge=True,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
         assert result["updated_fields"] == ["architecture", "database_type"]
@@ -401,9 +386,7 @@ class TestUpdateProductConfig:
         assert "tech_stack" in product_with_config.config_data
         assert "critical_features" in product_with_config.config_data
 
-    async def test_merge_mode_adds_new_fields(
-        self, db_session, project_with_product, product_with_config
-    ):
+    async def test_merge_mode_adds_new_fields(self, db_session, project_with_product, product_with_config):
         """Test that merge=True adds new fields to config"""
         updates = {
             "new_field": "New Value",
@@ -414,8 +397,8 @@ class TestUpdateProductConfig:
             project_id=str(project_with_product.id),
             config_updates=updates,
             merge=True,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
         assert "new_field" in result["updated_fields"]
@@ -426,9 +409,7 @@ class TestUpdateProductConfig:
         assert product_with_config.config_data["new_field"] == "New Value"
         assert product_with_config.config_data["monitoring"]["enabled"] is True
 
-    async def test_replace_mode_overwrites_config(
-        self, db_session, project_with_product, product_with_config
-    ):
+    async def test_replace_mode_overwrites_config(self, db_session, project_with_product, product_with_config):
         """Test that merge=False replaces entire config"""
         new_config = {
             "architecture": "New Architecture",
@@ -440,8 +421,8 @@ class TestUpdateProductConfig:
             project_id=str(project_with_product.id),
             config_updates=new_config,
             merge=False,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
 
@@ -453,9 +434,7 @@ class TestUpdateProductConfig:
         assert "critical_features" not in product_with_config.config_data
         assert "test_commands" not in product_with_config.config_data
 
-    async def test_deep_merge_nested_objects(
-        self, db_session, project_with_product, product_with_config
-    ):
+    async def test_deep_merge_nested_objects(self, db_session, project_with_product, product_with_config):
         """Test that nested objects are deep merged"""
         updates = {
             "codebase_structure": {
@@ -468,8 +447,8 @@ class TestUpdateProductConfig:
             project_id=str(project_with_product.id),
             config_updates=updates,
             merge=True,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is True
 
@@ -484,9 +463,7 @@ class TestUpdateProductConfig:
 class TestUpdateProductConfigValidation:
     """Test validation errors in update_product_config()"""
 
-    async def test_missing_required_field_architecture(
-        self, db_session, project_with_product
-    ):
+    async def test_missing_required_field_architecture(self, db_session, project_with_product):
         """Test validation fails if architecture is missing in replace mode"""
         invalid_config = {
             "serena_mcp_enabled": True,
@@ -498,16 +475,14 @@ class TestUpdateProductConfigValidation:
             project_id=str(project_with_product.id),
             config_updates=invalid_config,
             merge=False,  # Replace mode
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "validation" in result["error"].lower()
         assert "architecture" in result["error"].lower()
 
-    async def test_missing_required_field_serena_mcp_enabled(
-        self, db_session, project_with_product
-    ):
+    async def test_missing_required_field_serena_mcp_enabled(self, db_session, project_with_product):
         """Test validation fails if serena_mcp_enabled is missing in replace mode"""
         invalid_config = {
             "architecture": "Test",
@@ -519,16 +494,14 @@ class TestUpdateProductConfigValidation:
             project_id=str(project_with_product.id),
             config_updates=invalid_config,
             merge=False,  # Replace mode
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "validation" in result["error"].lower()
         assert "serena_mcp_enabled" in result["error"].lower()
 
-    async def test_invalid_type_tech_stack(
-        self, db_session, project_with_product
-    ):
+    async def test_invalid_type_tech_stack(self, db_session, project_with_product):
         """Test validation fails if tech_stack is not an array"""
         invalid_config = {
             "architecture": "Test",
@@ -540,16 +513,14 @@ class TestUpdateProductConfigValidation:
             project_id=str(project_with_product.id),
             config_updates=invalid_config,
             merge=False,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "validation" in result["error"].lower()
         assert "tech_stack must be an array" in result["error"]
 
-    async def test_invalid_type_codebase_structure(
-        self, db_session, project_with_product
-    ):
+    async def test_invalid_type_codebase_structure(self, db_session, project_with_product):
         """Test validation fails if codebase_structure is not an object"""
         invalid_config = {
             "architecture": "Test",
@@ -561,16 +532,14 @@ class TestUpdateProductConfigValidation:
             project_id=str(project_with_product.id),
             config_updates=invalid_config,
             merge=False,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "validation" in result["error"].lower()
         assert "codebase_structure must be an object" in result["error"]
 
-    async def test_invalid_type_serena_mcp_enabled(
-        self, db_session, project_with_product
-    ):
+    async def test_invalid_type_serena_mcp_enabled(self, db_session, project_with_product):
         """Test validation fails if serena_mcp_enabled is not boolean"""
         invalid_config = {
             "architecture": "Test",
@@ -581,16 +550,14 @@ class TestUpdateProductConfigValidation:
             project_id=str(project_with_product.id),
             config_updates=invalid_config,
             merge=False,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         assert result["success"] is False
         assert "validation" in result["error"].lower()
         assert "serena_mcp_enabled must be a boolean" in result["error"]
 
-    async def test_merge_mode_allows_partial_updates(
-        self, db_session, project_with_product, product_with_config
-    ):
+    async def test_merge_mode_allows_partial_updates(self, db_session, project_with_product, product_with_config):
         """Test that merge mode doesn't require all fields (partial updates OK)"""
         partial_update = {
             "database_type": "PostgreSQL 20",  # Just one field
@@ -600,8 +567,8 @@ class TestUpdateProductConfigValidation:
             project_id=str(project_with_product.id),
             config_updates=partial_update,
             merge=True,
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         # Should succeed with merge mode
         assert result["success"] is True
@@ -612,13 +579,9 @@ class TestUpdateProductConfigValidation:
 class TestGetProductSettings:
     """Test get_product_settings() alias function"""
 
-    async def test_settings_alias_returns_full_config(
-        self, db_session, project_with_product, product_with_config
-    ):
+    async def test_settings_alias_returns_full_config(self, db_session, project_with_product, product_with_config):
         """Test that get_product_settings() returns unfiltered config"""
-        result = await get_product_settings(
-            project_id=str(project_with_product.id), session=db_session
-        )
+        result = await get_product_settings(project_id=str(project_with_product.id), session=db_session)
 
         assert result["success"] is True
         config = result["config"]
@@ -630,13 +593,9 @@ class TestGetProductSettings:
         assert "api_docs" in config
         assert "serena_mcp_enabled" in config
 
-    async def test_settings_alias_for_orchestrators(
-        self, db_session, project_with_product, orchestrator_agent
-    ):
+    async def test_settings_alias_for_orchestrators(self, db_session, project_with_product, orchestrator_agent):
         """Test that orchestrators use get_product_settings() for full access"""
-        result = await get_product_settings(
-            project_id=str(project_with_product.id), session=db_session
-        )
+        result = await get_product_settings(project_id=str(project_with_product.id), session=db_session)
 
         assert result["success"] is True
 
@@ -646,8 +605,8 @@ class TestGetProductSettings:
             filtered=True,
             agent_name="orchestrator",
             agent_role="orchestrator",
-        session=db_session,
-    )
+            session=db_session,
+        )
 
         # Both should return full config for orchestrator
         assert result["config"] == filtered_result["config"]

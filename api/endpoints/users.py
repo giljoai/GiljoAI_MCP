@@ -21,7 +21,8 @@ import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
+
 # REMOVED: PlainTextResponse import (no longer needed)
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -233,7 +234,7 @@ async def create_user(
             )
 
     # Hash default password 'GiljoMCP' (Handover 0023)
-    password_hash = bcrypt.hash('GiljoMCP')
+    password_hash = bcrypt.hash("GiljoMCP")
 
     # Create user (inherits tenant_key from admin)
     new_user = User(
@@ -572,7 +573,7 @@ async def reset_password(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Reset password to default 'GiljoMCP'
-    user.password_hash = bcrypt.hash('GiljoMCP')
+    user.password_hash = bcrypt.hash("GiljoMCP")
 
     # Set must_change_password flag
     user.must_change_password = True
@@ -629,6 +630,7 @@ async def get_field_priority_config(
     # Return system defaults if no custom config
     logger.debug(f"Returning default field priority config for user {current_user.username}")
     from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+
     return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
 
 
@@ -760,6 +762,7 @@ async def reset_field_priority_config(
 
     # Return system defaults
     from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+
     return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
 
 

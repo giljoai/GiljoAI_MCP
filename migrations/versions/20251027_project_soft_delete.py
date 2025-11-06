@@ -14,16 +14,18 @@ Revises: 20251027_single_proj
 Create Date: 2025-10-27 18:00:00.000000
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
-revision: str = '20251027_project_soft_delete'
-down_revision: Union[str, Sequence[str], None] = '20251027_single_proj'
+revision: str = "20251027_project_soft_delete"
+down_revision: Union[str, Sequence[str], None] = "20251027_single_proj"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -43,9 +45,14 @@ def upgrade() -> None:
     # =============================
     print("  - Adding deleted_at column to projects table")
 
-    op.add_column('projects',
-        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True,
-                 comment='Timestamp when project was soft deleted (NULL for active projects)')
+    op.add_column(
+        "projects",
+        sa.Column(
+            "deleted_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=True,
+            comment="Timestamp when project was soft deleted (NULL for active projects)",
+        ),
     )
 
     # STEP 2: Add partial index for performance
@@ -55,11 +62,11 @@ def upgrade() -> None:
     # Partial index only on deleted projects (WHERE deleted_at IS NOT NULL)
     # This optimizes queries for deleted projects list and purge operations
     op.create_index(
-        'idx_projects_deleted_at',
-        'projects',
-        ['deleted_at'],
+        "idx_projects_deleted_at",
+        "projects",
+        ["deleted_at"],
         unique=False,
-        postgresql_where=text('deleted_at IS NOT NULL')
+        postgresql_where=text("deleted_at IS NOT NULL"),
     )
 
     print("[Handover 0070 Migration] Soft delete support added successfully\n")
@@ -79,11 +86,11 @@ def downgrade() -> None:
 
     # Remove index first
     print("  - Dropping partial index")
-    op.drop_index('idx_projects_deleted_at', table_name='projects')
+    op.drop_index("idx_projects_deleted_at", table_name="projects")
 
     # Remove column
     print("  - Dropping deleted_at column")
-    op.drop_column('projects', 'deleted_at')
+    op.drop_column("projects", "deleted_at")
 
     print("[Handover 0070 Migration Rollback] Soft delete support removed\n")
     print("WARNING: All previously deleted projects are now visible again.\n")

@@ -10,12 +10,10 @@ Tests cover:
 - Redis optional (graceful degradation)
 """
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_cache import TemplateCache
@@ -95,9 +93,7 @@ def test_build_cache_key_with_product(template_cache):
 async def test_memory_cache_hit(template_cache, sample_template, mock_db_manager):
     """Test memory cache returns cached template without database query"""
     # Pre-populate memory cache
-    cache_key = template_cache._build_cache_key(
-        "orchestrator", "tenant-123", None
-    )
+    cache_key = template_cache._build_cache_key("orchestrator", "tenant-123", None)
     template_cache._memory_cache[cache_key] = sample_template
 
     # Request template
@@ -193,9 +189,7 @@ async def test_cascade_tenant_fallback(template_cache, mock_db_manager):
     mock_result_tenant.scalar_one_or_none = AsyncMock(return_value=tenant_template)
 
     # First call returns None (product), second returns tenant template
-    mock_session.execute = AsyncMock(
-        side_effect=[mock_result_product, mock_result_tenant]
-    )
+    mock_session.execute = AsyncMock(side_effect=[mock_result_product, mock_result_tenant])
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock()
     mock_db_manager.get_session.return_value = mock_session
@@ -229,9 +223,7 @@ async def test_cascade_system_default_fallback(template_cache, mock_db_manager):
     mock_result_system.scalar_one_or_none = AsyncMock(return_value=system_template)
 
     # Three calls: product (None), tenant (None), system (found)
-    mock_session.execute = AsyncMock(
-        side_effect=[mock_result_none, mock_result_none, mock_result_system]
-    )
+    mock_session.execute = AsyncMock(side_effect=[mock_result_none, mock_result_none, mock_result_system])
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock()
     mock_db_manager.get_session.return_value = mock_session
@@ -295,7 +287,7 @@ async def test_multi_tenant_isolation(template_cache, mock_db_manager):
         # This is a simplified check - in real scenario would parse SQL
         mock_result = AsyncMock()
         # Default to tenant1 for first call, tenant2 for second
-        if not hasattr(mock_execute_side_effect, 'call_count'):
+        if not hasattr(mock_execute_side_effect, "call_count"):
             mock_execute_side_effect.call_count = 0
 
         if mock_execute_side_effect.call_count == 0:
@@ -343,9 +335,7 @@ async def test_invalidate_memory_cache(template_cache, sample_template):
 @pytest.mark.asyncio
 async def test_invalidate_redis_cache(template_cache_with_redis, sample_template, mock_redis):
     """Test invalidation removes template from Redis"""
-    cache_key = template_cache_with_redis._build_cache_key(
-        "orchestrator", "tenant-123", None
-    )
+    cache_key = template_cache_with_redis._build_cache_key("orchestrator", "tenant-123", None)
 
     # Invalidate
     await template_cache_with_redis.invalidate("orchestrator", "tenant-123", None)
@@ -394,15 +384,11 @@ async def test_redis_cache_hit(template_cache_with_redis, sample_template, mock_
     import pickle
 
     # Mock Redis to return serialized template
-    cache_key = template_cache_with_redis._build_cache_key(
-        "orchestrator", "tenant-123", None
-    )
+    cache_key = template_cache_with_redis._build_cache_key("orchestrator", "tenant-123", None)
     mock_redis.get = AsyncMock(return_value=pickle.dumps(sample_template))
 
     # Request template
-    result = await template_cache_with_redis.get_template(
-        "orchestrator", "tenant-123", None
-    )
+    result = await template_cache_with_redis.get_template("orchestrator", "tenant-123", None)
 
     # Verify Redis hit
     assert result == sample_template
@@ -428,17 +414,13 @@ async def test_redis_cache_write(template_cache_with_redis, sample_template, moc
     mock_redis.get = AsyncMock(return_value=None)
 
     # Request template
-    result = await template_cache_with_redis.get_template(
-        "orchestrator", "tenant-123", None
-    )
+    result = await template_cache_with_redis.get_template("orchestrator", "tenant-123", None)
 
     # Verify template returned
     assert result == sample_template
 
     # Verify Redis setex was called with TTL=3600
-    cache_key = template_cache_with_redis._build_cache_key(
-        "orchestrator", "tenant-123", None
-    )
+    cache_key = template_cache_with_redis._build_cache_key("orchestrator", "tenant-123", None)
     assert mock_redis.setex.called
     call_args = mock_redis.setex.call_args[0]
     assert call_args[0] == cache_key
@@ -463,9 +445,7 @@ async def test_redis_failure_graceful_degradation(
     mock_db_manager.get_session.return_value = mock_session
 
     # Request template (should not raise exception)
-    result = await template_cache_with_redis.get_template(
-        "orchestrator", "tenant-123", None
-    )
+    result = await template_cache_with_redis.get_template("orchestrator", "tenant-123", None)
 
     # Verify template returned from database
     assert result == sample_template

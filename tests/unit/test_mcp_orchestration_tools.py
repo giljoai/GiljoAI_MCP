@@ -11,9 +11,7 @@ Following TDD: Write tests FIRST, then implement to make them pass.
 """
 
 import uuid
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import pytest_asyncio
@@ -54,9 +52,7 @@ class TestOrchestrationTools:
             session.add(self.product)
 
             # Create test project
-            self.project = await ToolsTestHelper.create_test_project(
-                session, "Orchestration Test Project"
-            )
+            self.project = await ToolsTestHelper.create_test_project(session, "Orchestration Test Project")
             self.project.tenant_key = self.tenant_key
             self.project.product_id = self.product.id
             await session.commit()
@@ -83,9 +79,7 @@ class TestOrchestrationTools:
         ]
 
         for tool_name in expected_tools:
-            assert tool_name in registered_tools, (
-                f"Tool {tool_name} not registered. Available: {registered_tools}"
-            )
+            assert tool_name in registered_tools, f"Tool {tool_name} not registered. Available: {registered_tools}"
 
     @pytest.mark.asyncio
     async def test_orchestrate_project_success(self):
@@ -101,11 +95,7 @@ class TestOrchestrationTools:
             mock_orchestrator.process_product_vision = AsyncMock(
                 return_value={
                     "project_id": self.project.id,
-                    "mission_plan": {
-                        "missions": [
-                            {"agent_type": "implementer", "mission": "Implement features"}
-                        ]
-                    },
+                    "mission_plan": {"missions": [{"agent_type": "implementer", "mission": "Implement features"}]},
                     "selected_agents": ["implementer", "tester"],
                     "spawned_jobs": ["job-1", "job-2"],
                     "workflow_result": Mock(status="completed"),
@@ -132,9 +122,7 @@ class TestOrchestrationTools:
                 register_orchestration_tools(mock_server, self.db_manager)
                 orchestrate_project = registrar.get_registered_tool("orchestrate_project")
 
-                result = await orchestrate_project(
-                    project_id=self.project.id, tenant_key=self.tenant_key
-                )
+                result = await orchestrate_project(project_id=self.project.id, tenant_key=self.tenant_key)
 
                 # Verify results
                 assert isinstance(result, dict)
@@ -166,9 +154,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             orchestrate_project = registrar.get_registered_tool("orchestrate_project")
 
-            result = await orchestrate_project(
-                project_id=str(uuid.uuid4()), tenant_key=self.tenant_key
-            )
+            result = await orchestrate_project(project_id=str(uuid.uuid4()), tenant_key=self.tenant_key)
 
             # Should return error
             assert isinstance(result, dict)
@@ -200,9 +186,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             orchestrate_project = registrar.get_registered_tool("orchestrate_project")
 
-            result = await orchestrate_project(
-                project_id=self.project.id, tenant_key=different_tenant_key
-            )
+            result = await orchestrate_project(project_id=self.project.id, tenant_key=different_tenant_key)
 
             # Should return not found (tenant isolation)
             assert isinstance(result, dict)
@@ -242,9 +226,7 @@ class TestOrchestrationTools:
                 register_orchestration_tools(mock_server, self.db_manager)
                 orchestrate_project = registrar.get_registered_tool("orchestrate_project")
 
-                result = await orchestrate_project(
-                    project_id=self.project.id, tenant_key=self.tenant_key
-                )
+                result = await orchestrate_project(project_id=self.project.id, tenant_key=self.tenant_key)
 
                 # Should return error
                 assert isinstance(result, dict)
@@ -280,9 +262,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_agent_mission = registrar.get_registered_tool("get_agent_mission")
 
-            result = await get_agent_mission(
-                agent_id=mock_agent.id, tenant_key=self.tenant_key
-            )
+            result = await get_agent_mission(agent_id=mock_agent.id, tenant_key=self.tenant_key)
 
             # Verify markdown mission returned
             assert isinstance(result, dict)
@@ -311,9 +291,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_agent_mission = registrar.get_registered_tool("get_agent_mission")
 
-            result = await get_agent_mission(
-                agent_id=str(uuid.uuid4()), tenant_key=self.tenant_key
-            )
+            result = await get_agent_mission(agent_id=str(uuid.uuid4()), tenant_key=self.tenant_key)
 
             # Should return error
             assert isinstance(result, dict)
@@ -349,9 +327,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_agent_mission = registrar.get_registered_tool("get_agent_mission")
 
-            result = await get_agent_mission(
-                agent_id=mock_agent.id, tenant_key=self.tenant_key
-            )
+            result = await get_agent_mission(agent_id=mock_agent.id, tenant_key=self.tenant_key)
 
             # Should return error
             assert isinstance(result, dict)
@@ -373,9 +349,7 @@ class TestOrchestrationTools:
 
             # Mock project lookup
             mock_project_result = Mock()
-            mock_project_result.scalar_one_or_none.return_value = Mock(
-                id=self.project.id, tenant_key=self.tenant_key
-            )
+            mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock MCPAgentJob lookup
             from src.giljo_mcp.models import MCPAgentJob
@@ -408,16 +382,12 @@ class TestOrchestrationTools:
             mock_jobs_result.scalars.return_value.all.return_value = mock_jobs
 
             # Execute returns different results for different queries
-            mock_db_session.execute = AsyncMock(
-                side_effect=[mock_project_result, mock_jobs_result]
-            )
+            mock_db_session.execute = AsyncMock(side_effect=[mock_project_result, mock_jobs_result])
 
             register_orchestration_tools(mock_server, self.db_manager)
             get_workflow_status = registrar.get_registered_tool("get_workflow_status")
 
-            result = await get_workflow_status(
-                project_id=self.project.id, tenant_key=self.tenant_key
-            )
+            result = await get_workflow_status(project_id=self.project.id, tenant_key=self.tenant_key)
 
             # Verify status
             assert isinstance(result, dict)
@@ -442,24 +412,18 @@ class TestOrchestrationTools:
 
             # Mock project lookup
             mock_project_result = Mock()
-            mock_project_result.scalar_one_or_none.return_value = Mock(
-                id=self.project.id, tenant_key=self.tenant_key
-            )
+            mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock no jobs
             mock_jobs_result = Mock()
             mock_jobs_result.scalars.return_value.all.return_value = []
 
-            mock_db_session.execute = AsyncMock(
-                side_effect=[mock_project_result, mock_jobs_result]
-            )
+            mock_db_session.execute = AsyncMock(side_effect=[mock_project_result, mock_jobs_result])
 
             register_orchestration_tools(mock_server, self.db_manager)
             get_workflow_status = registrar.get_registered_tool("get_workflow_status")
 
-            result = await get_workflow_status(
-                project_id=self.project.id, tenant_key=self.tenant_key
-            )
+            result = await get_workflow_status(project_id=self.project.id, tenant_key=self.tenant_key)
 
             # Should return zero counts
             assert isinstance(result, dict)
@@ -490,9 +454,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_workflow_status = registrar.get_registered_tool("get_workflow_status")
 
-            result = await get_workflow_status(
-                project_id=str(uuid.uuid4()), tenant_key=self.tenant_key
-            )
+            result = await get_workflow_status(project_id=str(uuid.uuid4()), tenant_key=self.tenant_key)
 
             # Should return error
             assert isinstance(result, dict)
@@ -514,9 +476,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             orchestrate_project = registrar.get_registered_tool("orchestrate_project")
 
-            result = await orchestrate_project(
-                project_id=self.project.id, tenant_key="tk_test"
-            )
+            result = await orchestrate_project(project_id=self.project.id, tenant_key="tk_test")
 
             # Should handle error gracefully
             assert isinstance(result, dict)
@@ -537,9 +497,7 @@ class TestOrchestrationTools:
 
             # Mock project lookup
             mock_project_result = Mock()
-            mock_project_result.scalar_one_or_none.return_value = Mock(
-                id=self.project.id, tenant_key=self.tenant_key
-            )
+            mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock jobs with failures
             from src.giljo_mcp.models import MCPAgentJob
@@ -564,16 +522,12 @@ class TestOrchestrationTools:
             mock_jobs_result = Mock()
             mock_jobs_result.scalars.return_value.all.return_value = mock_jobs
 
-            mock_db_session.execute = AsyncMock(
-                side_effect=[mock_project_result, mock_jobs_result]
-            )
+            mock_db_session.execute = AsyncMock(side_effect=[mock_project_result, mock_jobs_result])
 
             register_orchestration_tools(mock_server, self.db_manager)
             get_workflow_status = registrar.get_registered_tool("get_workflow_status")
 
-            result = await get_workflow_status(
-                project_id=self.project.id, tenant_key=self.tenant_key
-            )
+            result = await get_workflow_status(project_id=self.project.id, tenant_key=self.tenant_key)
 
             # Verify failed count
             assert isinstance(result, dict)
@@ -636,9 +590,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_agent_mission = registrar.get_registered_tool("get_agent_mission")
 
-            result = await get_agent_mission(
-                agent_id=str(uuid.uuid4()), tenant_key=different_tenant_key
-            )
+            result = await get_agent_mission(agent_id=str(uuid.uuid4()), tenant_key=different_tenant_key)
 
             # Should return not found due to tenant mismatch
             assert isinstance(result, dict)
@@ -677,9 +629,7 @@ class TestOrchestrationTools:
 
             # Mock project
             mock_project_result = Mock()
-            mock_project_result.scalar_one_or_none.return_value = Mock(
-                id=self.project.id, tenant_key=self.tenant_key
-            )
+            mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock 5 jobs: 3 completed, 1 active, 1 pending
             from src.giljo_mcp.models import MCPAgentJob
@@ -695,16 +645,12 @@ class TestOrchestrationTools:
             mock_jobs_result = Mock()
             mock_jobs_result.scalars.return_value.all.return_value = mock_jobs
 
-            mock_db_session.execute = AsyncMock(
-                side_effect=[mock_project_result, mock_jobs_result]
-            )
+            mock_db_session.execute = AsyncMock(side_effect=[mock_project_result, mock_jobs_result])
 
             register_orchestration_tools(mock_server, self.db_manager)
             get_workflow_status = registrar.get_registered_tool("get_workflow_status")
 
-            result = await get_workflow_status(
-                project_id=self.project.id, tenant_key=self.tenant_key
-            )
+            result = await get_workflow_status(project_id=self.project.id, tenant_key=self.tenant_key)
 
             # Progress should be 3/5 = 60%
             assert result["completed_agents"] == 3

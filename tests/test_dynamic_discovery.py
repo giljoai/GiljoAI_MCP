@@ -17,7 +17,6 @@ from src.giljo_mcp.models import Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestDynamicDiscovery:
     """Comprehensive test suite for dynamic discovery system"""
 

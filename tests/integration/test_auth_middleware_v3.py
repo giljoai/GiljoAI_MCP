@@ -14,12 +14,11 @@ This is part of Phase 1 Step 3: Updating middleware to remove mode-based logic.
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware import AuthMiddleware
-from src.giljo_mcp.auth.localhost_user import ensure_localhost_user, get_localhost_user
+from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
 from src.giljo_mcp.models import User
 
 
@@ -88,21 +87,12 @@ async def app_with_auth_middleware(db_session: AsyncSession) -> FastAPI:
     return app
 
 
-def test_middleware_localhost_auto_login(
-    app_with_auth_middleware: FastAPI,
-    localhost_user: User
-):
+def test_middleware_localhost_auto_login(app_with_auth_middleware: FastAPI, localhost_user: User):
     """Test middleware auto-authenticates localhost requests (127.0.0.1)"""
     client = TestClient(app_with_auth_middleware)
 
     # Simulate request from localhost (IPv4)
-    response = client.get(
-        "/test",
-        headers={
-            "X-Forwarded-For": "127.0.0.1",
-            "X-Real-IP": "127.0.0.1"
-        }
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": "127.0.0.1", "X-Real-IP": "127.0.0.1"})
 
     assert response.status_code == 200
     data = response.json()
@@ -112,21 +102,12 @@ def test_middleware_localhost_auto_login(
     assert data["tenant_key"] == "default"
 
 
-def test_middleware_localhost_ipv6_auto_login(
-    app_with_auth_middleware: FastAPI,
-    localhost_user: User
-):
+def test_middleware_localhost_ipv6_auto_login(app_with_auth_middleware: FastAPI, localhost_user: User):
     """Test middleware auto-authenticates localhost requests (::1)"""
     client = TestClient(app_with_auth_middleware)
 
     # Simulate request from localhost (IPv6)
-    response = client.get(
-        "/test",
-        headers={
-            "X-Forwarded-For": "::1",
-            "X-Real-IP": "::1"
-        }
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": "::1", "X-Real-IP": "::1"})
 
     assert response.status_code == 200
     data = response.json()
@@ -140,13 +121,7 @@ def test_middleware_network_requires_auth(app_with_auth_middleware: FastAPI):
     client = TestClient(app_with_auth_middleware)
 
     # Simulate request from network without credentials
-    response = client.get(
-        "/test",
-        headers={
-            "X-Forwarded-For": "192.168.1.100",
-            "X-Real-IP": "192.168.1.100"
-        }
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": "192.168.1.100", "X-Real-IP": "192.168.1.100"})
 
     # Should return 401 Unauthorized
     assert response.status_code == 401
@@ -154,21 +129,14 @@ def test_middleware_network_requires_auth(app_with_auth_middleware: FastAPI):
     assert "Authentication required" in response.json()["error"]
 
 
-def test_middleware_network_with_api_key(
-    app_with_auth_middleware: FastAPI,
-    test_user: User
-):
+def test_middleware_network_with_api_key(app_with_auth_middleware: FastAPI, test_user: User):
     """Test middleware accepts valid API key from network"""
     client = TestClient(app_with_auth_middleware)
 
     # Request from network WITH valid API key
     response = client.get(
         "/test",
-        headers={
-            "X-Forwarded-For": "192.168.1.100",
-            "X-Real-IP": "192.168.1.100",
-            "X-API-Key": test_user.api_key
-        }
+        headers={"X-Forwarded-For": "192.168.1.100", "X-Real-IP": "192.168.1.100", "X-API-Key": test_user.api_key},
     )
 
     assert response.status_code == 200
@@ -179,10 +147,7 @@ def test_middleware_network_with_api_key(
     assert data["tenant_key"] == test_user.tenant_key
 
 
-def test_middleware_network_with_bearer_token(
-    app_with_auth_middleware: FastAPI,
-    test_user: User
-):
+def test_middleware_network_with_bearer_token(app_with_auth_middleware: FastAPI, test_user: User):
     """Test middleware accepts valid Bearer token from network"""
     client = TestClient(app_with_auth_middleware)
 
@@ -192,8 +157,8 @@ def test_middleware_network_with_bearer_token(
         headers={
             "X-Forwarded-For": "192.168.1.100",
             "X-Real-IP": "192.168.1.100",
-            "Authorization": f"Bearer {test_user.api_key}"
-        }
+            "Authorization": f"Bearer {test_user.api_key}",
+        },
     )
 
     assert response.status_code == 200
@@ -210,11 +175,7 @@ def test_middleware_network_with_invalid_api_key(app_with_auth_middleware: FastA
     # Request from network with INVALID API key
     response = client.get(
         "/test",
-        headers={
-            "X-Forwarded-For": "192.168.1.100",
-            "X-Real-IP": "192.168.1.100",
-            "X-API-Key": "invalid_key_12345"
-        }
+        headers={"X-Forwarded-For": "192.168.1.100", "X-Real-IP": "192.168.1.100", "X-API-Key": "invalid_key_12345"},
     )
 
     assert response.status_code == 401
@@ -226,13 +187,7 @@ def test_middleware_public_health_endpoint(app_with_auth_middleware: FastAPI):
     client = TestClient(app_with_auth_middleware)
 
     # Request health endpoint without credentials
-    response = client.get(
-        "/health",
-        headers={
-            "X-Forwarded-For": "192.168.1.100",
-            "X-Real-IP": "192.168.1.100"
-        }
-    )
+    response = client.get("/health", headers={"X-Forwarded-For": "192.168.1.100", "X-Real-IP": "192.168.1.100"})
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
@@ -243,13 +198,7 @@ def test_middleware_public_docs_endpoint(app_with_auth_middleware: FastAPI):
     client = TestClient(app_with_auth_middleware)
 
     # Request docs endpoint without credentials
-    response = client.get(
-        "/docs",
-        headers={
-            "X-Forwarded-For": "192.168.1.100",
-            "X-Real-IP": "192.168.1.100"
-        }
-    )
+    response = client.get("/docs", headers={"X-Forwarded-For": "192.168.1.100", "X-Real-IP": "192.168.1.100"})
 
     assert response.status_code == 200
     assert "docs" in response.json()
@@ -289,29 +238,23 @@ def test_middleware_no_mode_checks_in_source():
         assert pattern not in source, f"Middleware contains forbidden pattern: {pattern}"
 
 
-@pytest.mark.parametrize("client_ip,expected_auth", [
-    ("127.0.0.1", True),     # localhost IPv4
-    ("::1", True),            # localhost IPv6
-    ("192.168.1.1", False),   # private network
-    ("10.0.0.1", False),      # private network
-    ("8.8.8.8", False),       # public internet
-])
+@pytest.mark.parametrize(
+    "client_ip,expected_auth",
+    [
+        ("127.0.0.1", True),  # localhost IPv4
+        ("::1", True),  # localhost IPv6
+        ("192.168.1.1", False),  # private network
+        ("10.0.0.1", False),  # private network
+        ("8.8.8.8", False),  # public internet
+    ],
+)
 def test_middleware_ip_based_auto_login(
-    app_with_auth_middleware: FastAPI,
-    localhost_user: User,
-    client_ip: str,
-    expected_auth: bool
+    app_with_auth_middleware: FastAPI, localhost_user: User, client_ip: str, expected_auth: bool
 ):
     """Test middleware auto-login based on client IP"""
     client = TestClient(app_with_auth_middleware)
 
-    response = client.get(
-        "/test",
-        headers={
-            "X-Forwarded-For": client_ip,
-            "X-Real-IP": client_ip
-        }
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": client_ip, "X-Real-IP": client_ip})
 
     if expected_auth:
         # Localhost should be auto-authenticated
@@ -324,18 +267,12 @@ def test_middleware_ip_based_auto_login(
         assert response.status_code == 401
 
 
-def test_middleware_request_state_population(
-    app_with_auth_middleware: FastAPI,
-    localhost_user: User
-):
+def test_middleware_request_state_population(app_with_auth_middleware: FastAPI, localhost_user: User):
     """Test middleware properly populates request.state"""
     client = TestClient(app_with_auth_middleware)
 
     # Test localhost request
-    response = client.get(
-        "/test",
-        headers={"X-Forwarded-For": "127.0.0.1"}
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": "127.0.0.1"})
 
     assert response.status_code == 200
     data = response.json()
@@ -370,27 +307,24 @@ def test_middleware_empty_forwarded_header(app_with_auth_middleware: FastAPI):
     client = TestClient(app_with_auth_middleware)
 
     # Request with empty X-Forwarded-For
-    response = client.get(
-        "/test",
-        headers={"X-Forwarded-For": ""}
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": ""})
 
     # Should require authentication
     assert response.status_code == 401
 
 
-@pytest.mark.parametrize("public_path", [
-    "/health",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/api/setup/status",
-    "/api/auth/login",
-])
-def test_middleware_public_paths(
-    app_with_auth_middleware: FastAPI,
-    public_path: str
-):
+@pytest.mark.parametrize(
+    "public_path",
+    [
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/api/setup/status",
+        "/api/auth/login",
+    ],
+)
+def test_middleware_public_paths(app_with_auth_middleware: FastAPI, public_path: str):
     """Test all public paths are accessible without auth"""
     # Add these endpoints to the test app for completeness
     app = app_with_auth_middleware
@@ -402,19 +336,13 @@ def test_middleware_public_paths(
     client = TestClient(app)
 
     # Request from network without credentials
-    response = client.get(
-        public_path,
-        headers={"X-Forwarded-For": "192.168.1.100"}
-    )
+    response = client.get(public_path, headers={"X-Forwarded-For": "192.168.1.100"})
 
     # Public paths should be accessible
     assert response.status_code == 200
 
 
-def test_middleware_authenticated_user_object(
-    app_with_auth_middleware: FastAPI,
-    test_user: User
-):
+def test_middleware_authenticated_user_object(app_with_auth_middleware: FastAPI, test_user: User):
     """Test middleware stores user object in request.state"""
     client = TestClient(app_with_auth_middleware)
 
@@ -427,11 +355,7 @@ def test_middleware_authenticated_user_object(
         }
 
     response = client.get(
-        "/test-user-obj",
-        headers={
-            "X-Forwarded-For": "192.168.1.100",
-            "X-API-Key": test_user.api_key
-        }
+        "/test-user-obj", headers={"X-Forwarded-For": "192.168.1.100", "X-API-Key": test_user.api_key}
     )
 
     assert response.status_code == 200
@@ -445,10 +369,7 @@ def test_middleware_error_message_clarity(app_with_auth_middleware: FastAPI):
     client = TestClient(app_with_auth_middleware)
 
     # Request from network without credentials
-    response = client.get(
-        "/test",
-        headers={"X-Forwarded-For": "192.168.1.100"}
-    )
+    response = client.get("/test", headers={"X-Forwarded-For": "192.168.1.100"})
 
     assert response.status_code == 401
     error_data = response.json()
@@ -460,11 +381,7 @@ def test_middleware_error_message_clarity(app_with_auth_middleware: FastAPI):
     assert len(error_data["detail"]) > 0  # Has meaningful detail
 
 
-def test_middleware_concurrent_requests(
-    app_with_auth_middleware: FastAPI,
-    localhost_user: User,
-    test_user: User
-):
+def test_middleware_concurrent_requests(app_with_auth_middleware: FastAPI, localhost_user: User, test_user: User):
     """Test middleware handles concurrent requests correctly"""
     import threading
 
@@ -472,20 +389,11 @@ def test_middleware_concurrent_requests(
     results = []
 
     def make_localhost_request():
-        response = client.get(
-            "/test",
-            headers={"X-Forwarded-For": "127.0.0.1"}
-        )
+        response = client.get("/test", headers={"X-Forwarded-For": "127.0.0.1"})
         results.append(("localhost", response.status_code, response.json()))
 
     def make_network_request():
-        response = client.get(
-            "/test",
-            headers={
-                "X-Forwarded-For": "192.168.1.100",
-                "X-API-Key": test_user.api_key
-            }
-        )
+        response = client.get("/test", headers={"X-Forwarded-For": "192.168.1.100", "X-API-Key": test_user.api_key})
         results.append(("network", response.status_code, response.json()))
 
     # Run concurrent requests

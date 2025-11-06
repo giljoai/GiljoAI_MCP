@@ -9,10 +9,9 @@ Usage:
 This will create properly formatted .md files ready for Claude Code.
 """
 
-import json
-from pathlib import Path
-from typing import Dict, List, Any
 import argparse
+from pathlib import Path
+from typing import Dict, List
 
 
 def get_agent_color_icon_mapping() -> Dict[str, Dict[str, str]]:
@@ -69,7 +68,7 @@ def generate_claude_template(
     tools: List[str],
     behavioral_rules: str,
     success_criteria: str,
-    custom_mission: str = ""
+    custom_mission: str = "",
 ) -> str:
     """Generate a 100% validated Claude Code agent template."""
 
@@ -82,14 +81,14 @@ def generate_claude_template(
 
     # Create the template
     template = f"""---
-name: GiljoAI {agent_type.replace('-', ' ').title()} Agent
+name: GiljoAI {agent_type.replace("-", " ").title()} Agent
 description: {description}
 tools:
 {tool_list}
 model: sonnet
 ---
 
-# GiljoAI {agent_type.replace('-', ' ').title()} Agent
+# GiljoAI {agent_type.replace("-", " ").title()} Agent
 
 {description}
 
@@ -143,7 +142,7 @@ mcp.call_tool("send_agent_message", {{
 
 ## Success Criteria
 
-{success_criteria.replace('✅', '[OK]')}
+{success_criteria.replace("✅", "[OK]")}
 
 ## Error Handling
 
@@ -161,8 +160,8 @@ If you encounter errors:
 - Optimize for token efficiency
 - Your status updates drive the Kanban board visibility
 
-Agent Color: {agent_info['color']}
-Agent Icon: {agent_info['icon']}
+Agent Color: {agent_info["color"]}
+Agent Icon: {agent_info["icon"]}
 """
 
     return template
@@ -183,7 +182,7 @@ def export_templates(output_dir: Path):
                 "mcp__giljo_mcp__create_agent_job",
                 "mcp__giljo_mcp__generate_mission_plan",
                 "mcp__giljo_mcp__select_agents",
-                "mcp__giljo_mcp__coordinate_workflow"
+                "mcp__giljo_mcp__coordinate_workflow",
             ],
             "behavioral_rules": """- Analyze project holistically before planning
 - Select optimal agents based on requirements
@@ -194,7 +193,7 @@ def export_templates(output_dir: Path):
 ✅ Mission plan generated and validated
 ✅ Optimal agents selected and deployed
 ✅ All workflows coordinated successfully
-✅ Project objectives achieved"""
+✅ Project objectives achieved""",
         },
         "implementer": {
             "description": "Code implementation specialist for feature development",
@@ -205,7 +204,7 @@ def export_templates(output_dir: Path):
                 "mcp__giljo_mcp__get_job_context",
                 "mcp__giljo_mcp__read_file",
                 "mcp__giljo_mcp__write_file",
-                "mcp__giljo_mcp__search_codebase"
+                "mcp__giljo_mcp__search_codebase",
             ],
             "behavioral_rules": """- Write clean, maintainable code
 - Follow project coding standards
@@ -216,7 +215,7 @@ def export_templates(output_dir: Path):
 ✅ All tests pass
 ✅ Code follows project standards
 ✅ Documentation complete
-✅ Performance targets met"""
+✅ Performance targets met""",
         },
         "tester": {
             "description": "Testing specialist ensuring code quality and reliability",
@@ -226,7 +225,7 @@ def export_templates(output_dir: Path):
                 "mcp__giljo_mcp__receive_agent_messages",
                 "mcp__giljo_mcp__run_tests",
                 "mcp__giljo_mcp__create_test",
-                "mcp__giljo_mcp__analyze_coverage"
+                "mcp__giljo_mcp__analyze_coverage",
             ],
             "behavioral_rules": """- Test edge cases thoroughly
 - Maintain high code coverage
@@ -237,8 +236,8 @@ def export_templates(output_dir: Path):
 ✅ All tests passing
 ✅ Edge cases covered
 ✅ Performance benchmarks met
-✅ No critical bugs remaining"""
-        }
+✅ No critical bugs remaining""",
+        },
     }
 
     # Create output directory
@@ -251,12 +250,12 @@ def export_templates(output_dir: Path):
             description=config["description"],
             tools=config["tools"],
             behavioral_rules=config["behavioral_rules"],
-            success_criteria=config["success_criteria"]
+            success_criteria=config["success_criteria"],
         )
 
         # Write to file
         output_file = output_dir / f"giljo-{agent_type}.md"
-        output_file.write_text(template, encoding='utf-8')
+        output_file.write_text(template, encoding="utf-8")
         print(f"[OK] Exported: {output_file}")
 
     print(f"\n[SUCCESS] Successfully exported {len(agents)} Claude Code agent templates to {output_dir}")
@@ -270,7 +269,7 @@ def main():
         "--output-dir",
         type=Path,
         default=Path(".claude/agents"),
-        help="Output directory for agent templates (default: .claude/agents)"
+        help="Output directory for agent templates (default: .claude/agents)",
     )
 
     args = parser.parse_args()

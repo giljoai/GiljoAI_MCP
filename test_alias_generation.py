@@ -12,8 +12,8 @@ Usage:
     python test_alias_generation.py
 """
 
-import string
 import random
+import string
 import time
 from collections import Counter
 
@@ -34,7 +34,7 @@ def generate_unique_alias(existing_aliases: set) -> str:
     max_attempts = 100  # Prevent infinite loop
 
     for _ in range(max_attempts):
-        alias = ''.join(random.choices(chars, k=6))
+        alias = "".join(random.choices(chars, k=6))
         if alias not in existing_aliases:
             existing_aliases.add(alias)
             return alias
@@ -90,7 +90,7 @@ def test_alias_uniqueness():
         print(f"Duplicates: {duplicates[:10]}")
     else:
         print(f"PASS: All {num_aliases} aliases are unique")
-        print(f"Collision rate: 0%")
+        print("Collision rate: 0%")
 
 
 def test_alias_performance():
@@ -108,8 +108,7 @@ def test_alias_performance():
         elapsed = time.time() - start
 
         # Prevent division by zero for very fast operations
-        if elapsed < 0.001:
-            elapsed = 0.001
+        elapsed = max(elapsed, 0.001)
 
         avg_time = (elapsed / size) * 1000  # ms per alias
         print(f"\nGenerated {size} aliases:")
@@ -125,7 +124,7 @@ def test_collision_probability():
     print("=" * 60)
 
     # Alias space: 36^6 = 2,176,782,336 possible combinations
-    alias_space = 36 ** 6
+    alias_space = 36**6
     print(f"Total possible aliases: {alias_space:,}")
 
     # Test collision probability for different project counts
@@ -137,7 +136,8 @@ def test_collision_probability():
         # P(collision) ≈ 1 - e^(-n^2 / (2*N))
         # where n = number of items, N = size of space
         import math
-        prob = 1 - math.exp(-(count ** 2) / (2 * alias_space))
+
+        prob = 1 - math.exp(-(count**2) / (2 * alias_space))
         print(f"  {count:,} projects: {prob * 100:.6f}%")
 
 

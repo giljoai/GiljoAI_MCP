@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
@@ -43,7 +44,8 @@ features:
 
             manager = UnifiedTemplateManager()
             template = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
 
             assert "SERENA MCP TOOLS" in template
@@ -71,7 +73,8 @@ features:
 
             manager = UnifiedTemplateManager()
             template = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
 
             assert "SERENA MCP TOOLS" not in template
@@ -85,7 +88,9 @@ features:
             mock_config.return_value = mock_instance
 
             manager = UnifiedTemplateManager()
-            template = await manager.get_template(role="analyzer", variables={"project_name": "Test", "custom_mission": "Analyze system"})
+            template = await manager.get_template(
+                role="analyzer", variables={"project_name": "Test", "custom_mission": "Analyze system"}
+            )
 
             assert "SERENA MCP FOR ANALYSIS" in template
             assert "get_symbols_overview" in template
@@ -100,7 +105,9 @@ features:
             mock_config.return_value = mock_instance
 
             manager = UnifiedTemplateManager()
-            template = await manager.get_template(role="implementer", variables={"project_name": "Test", "custom_mission": "Implement feature"})
+            template = await manager.get_template(
+                role="implementer", variables={"project_name": "Test", "custom_mission": "Implement feature"}
+            )
 
             assert "SERENA MCP FOR IMPLEMENTATION" in template
             assert "SYMBOLIC EDITING" in template
@@ -117,7 +124,9 @@ features:
             mock_config.return_value = mock_instance
 
             manager = UnifiedTemplateManager()
-            template = await manager.get_template(role="tester", variables={"project_name": "Test", "custom_mission": "Write tests"})
+            template = await manager.get_template(
+                role="tester", variables={"project_name": "Test", "custom_mission": "Write tests"}
+            )
 
             assert "SERENA MCP FOR TESTING" in template
             assert "TESTING WORKFLOW:" in template
@@ -131,7 +140,9 @@ features:
             mock_config.return_value = mock_instance
 
             manager = UnifiedTemplateManager()
-            template = await manager.get_template(role="reviewer", variables={"project_name": "Test", "custom_mission": "Review code"})
+            template = await manager.get_template(
+                role="reviewer", variables={"project_name": "Test", "custom_mission": "Review code"}
+            )
 
             assert "SERENA MCP FOR CODE REVIEW" in template
             assert "REVIEW WORKFLOW:" in template
@@ -145,7 +156,9 @@ features:
             mock_config.return_value = mock_instance
 
             manager = UnifiedTemplateManager()
-            template = await manager.get_template(role="documenter", variables={"project_name": "Test", "custom_mission": "Document API"})
+            template = await manager.get_template(
+                role="documenter", variables={"project_name": "Test", "custom_mission": "Document API"}
+            )
 
             assert "SERENA MCP FOR DOCUMENTATION" in template
             assert "DOCUMENTATION WORKFLOW:" in template
@@ -162,13 +175,16 @@ features:
 
             # Test orchestrator injection
             template = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
             # Serena guidance should appear after "YOUR DISCOVERY APPROACH"
             assert template.find("YOUR DISCOVERY APPROACH") < template.find("SERENA MCP TOOLS")
 
             # Test analyzer injection
-            template = await manager.get_template(role="analyzer", variables={"project_name": "Test", "custom_mission": "Analyze"})
+            template = await manager.get_template(
+                role="analyzer", variables={"project_name": "Test", "custom_mission": "Analyze"}
+            )
             # Serena guidance should appear after "DISCOVERY WORKFLOW:"
             assert template.find("DISCOVERY WORKFLOW:") < template.find("SERENA MCP FOR ANALYSIS")
 
@@ -182,7 +198,8 @@ features:
 
             manager = UnifiedTemplateManager()
             template = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
 
             # Variables are injected, so serena_enabled would be used
@@ -248,14 +265,16 @@ features:
 
             # The key difference is validated by checking different templates are generated
             template1 = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
 
             # Mock disabled
             mock_instance.get_serena_config.return_value = {"enabled": False}
 
             template2 = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
 
             # Templates should be different
@@ -296,7 +315,8 @@ features:
 
             # Should still return a template (fallback)
             template = await manager.get_template(
-                role="orchestrator", variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"}
+                role="orchestrator",
+                variables={"project_name": "Test", "project_mission": "Test mission", "product_name": "Test product"},
             )
 
             # Should still have base template content

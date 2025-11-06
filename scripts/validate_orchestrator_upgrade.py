@@ -13,24 +13,27 @@ Checks:
 import os
 import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import Product, AgentTemplate
-from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
 from sqlalchemy import inspect
+
+from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
+from src.giljo_mcp.database import get_db_manager
+from src.giljo_mcp.models import AgentTemplate, Product
 
 
 def validate_migration():
     """Validate config_data column exists with GIN index"""
     print("Validating database migration...")
 
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if not database_url:
         print("DATABASE_URL environment variable not set")
         return False
@@ -40,17 +43,14 @@ def validate_migration():
     inspector = inspect(engine)
 
     # Check column exists
-    columns = [col['name'] for col in inspector.get_columns('products')]
-    if 'config_data' not in columns:
+    columns = [col["name"] for col in inspector.get_columns("products")]
+    if "config_data" not in columns:
         print("config_data column not found in products table")
         return False
 
     # Check GIN index exists
-    indexes = inspector.get_indexes('products')
-    gin_index_found = any(
-        idx.get('name') == 'idx_product_config_data_gin'
-        for idx in indexes
-    )
+    indexes = inspector.get_indexes("products")
+    gin_index_found = any(idx.get("name") == "idx_product_config_data_gin" for idx in indexes)
 
     if not gin_index_found:
         print("GIN index not found (may be normal if using partial indexing)")
@@ -63,7 +63,7 @@ def validate_filtering():
     """Validate role-based filtering works"""
     print("\nValidating role-based filtering...")
 
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if not database_url:
         print("DATABASE_URL environment variable not set")
         return False
@@ -79,8 +79,8 @@ def validate_filtering():
                 "tech_stack": ["Python"],
                 "test_commands": ["pytest"],
                 "api_docs": "/docs/api.md",
-                "serena_mcp_enabled": True
-            }
+                "serena_mcp_enabled": True,
+            },
         )
         session.add(test_product)
         session.commit()
@@ -122,17 +122,18 @@ def validate_orchestrator_template():
     """Validate enhanced orchestrator template is seeded as default"""
     print("\nValidating orchestrator template...")
 
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if not database_url:
         print("DATABASE_URL environment variable not set")
         return False
 
     db = get_db_manager(database_url=database_url)
     with db.get_session() as session:
-        template = session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         if not template:
             print("Default orchestrator template not found")
@@ -146,7 +147,7 @@ def validate_orchestrator_template():
             "3-tool rule": "3-tool" in content,
             "Discovery workflow": "discovery" in content and "serena" in content,
             "Delegation enforcement": "delegate" in content,
-            "After-action docs": "completion report" in content or "devlog" in content
+            "After-action docs": "completion report" in content or "devlog" in content,
         }
 
         for check_name, passed in checks.items():
@@ -160,9 +161,9 @@ def validate_orchestrator_template():
 
 def main():
     """Run all validations"""
-    print("="*60)
+    print("=" * 60)
     print("ORCHESTRATOR UPGRADE VALIDATION")
-    print("="*60)
+    print("=" * 60)
 
     results = []
 
@@ -170,9 +171,9 @@ def main():
     results.append(("Filtering", validate_filtering()))
     results.append(("Template", validate_orchestrator_template()))
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("VALIDATION RESULTS")
-    print("="*60)
+    print("=" * 60)
 
     all_passed = all(result[1] for result in results)
 
@@ -180,14 +181,13 @@ def main():
         status = "PASS" if passed else "FAIL"
         print(f"{status}: {name}")
 
-    print("="*60)
+    print("=" * 60)
 
     if all_passed:
         print("\nALL VALIDATIONS PASSED")
         return 0
-    else:
-        print("\nSOME VALIDATIONS FAILED")
-        return 1
+    print("\nSOME VALIDATIONS FAILED")
+    return 1
 
 
 if __name__ == "__main__":

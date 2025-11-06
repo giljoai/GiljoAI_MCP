@@ -13,12 +13,13 @@ These tests validate:
 6. Mission stored in database, NOT in prompt
 """
 
-import pytest
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from giljo_mcp.models import MCPAgentJob, Project, Product
+import pytest
+
+from giljo_mcp.models import MCPAgentJob, Project
 from giljo_mcp.tools.orchestration import register_orchestration_tools
 
 
@@ -31,7 +32,7 @@ async def test_project(db_session, test_tenant):
         description="Test project for amendments",
         tenant_key=test_tenant.tenant_key,
         status="active",
-        context_budget=150000
+        context_budget=150000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -53,14 +54,11 @@ async def test_orchestrator_job(db_session, test_project, test_tenant):
         context_used=0,
         instance_number=1,
         metadata={
-            'field_priorities': {
-                'product_vision': 10,
-                'architecture': 7
-            },
-            'user_id': str(uuid4()),
-            'tool': 'claude-code',
-            'created_via': 'thin_client_generator'
-        }
+            "field_priorities": {"product_vision": 10, "architecture": 7},
+            "user_id": str(uuid4()),
+            "tool": "claude-code",
+            "created_via": "thin_client_generator",
+        },
     )
     db_session.add(orchestrator)
     await db_session.commit()
@@ -80,10 +78,10 @@ async def test_agent_job(db_session, test_project, test_tenant, test_orchestrato
         status="pending",
         spawned_by=test_orchestrator_job.job_id,
         metadata={
-            'created_via': 'thin_client_spawn',
-            'created_at': datetime.now(timezone.utc).isoformat(),
-            'thin_client': True
-        }
+            "created_via": "thin_client_spawn",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "thin_client": True,
+        },
     )
     db_session.add(agent)
     await db_session.commit()
@@ -95,12 +93,10 @@ async def test_agent_job(db_session, test_project, test_tenant, test_orchestrato
 # AMENDMENT A: WebSocket Integration Tests
 # =============================================================================
 
+
 @pytest.mark.asyncio
 async def test_websocket_broadcast_orchestrator_instructions(
-    db_session,
-    test_orchestrator_job,
-    test_project,
-    test_tenant
+    db_session, test_orchestrator_job, test_project, test_tenant
 ):
     """
     Test Amendment A: WebSocket broadcasting in get_orchestrator_instructions()
@@ -112,8 +108,9 @@ async def test_websocket_broadcast_orchestrator_instructions(
     - Broadcast is to correct tenant
     - Non-blocking error handling
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     # Setup
     mcp = FastMCP("test-mcp")
@@ -127,44 +124,39 @@ async def test_websocket_broadcast_orchestrator_instructions(
     register_orchestration_tools(mcp, db_manager)
 
     # Patch app state to return mock WebSocket manager
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_ws_manager
 
         # Call get_orchestrator_instructions
         from giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
         result = await get_orchestrator_instructions(
-            orchestrator_id=test_orchestrator_job.job_id,
-            tenant_key=test_tenant.tenant_key
+            orchestrator_id=test_orchestrator_job.job_id, tenant_key=test_tenant.tenant_key
         )
 
         # Verify result
-        assert 'error' not in result
-        assert result['orchestrator_id'] == test_orchestrator_job.job_id
-        assert result['thin_client'] is True
+        assert "error" not in result
+        assert result["orchestrator_id"] == test_orchestrator_job.job_id
+        assert result["thin_client"] is True
 
         # Verify WebSocket broadcast was called
         mock_ws_manager.broadcast_to_tenant.assert_called_once()
 
         # Verify broadcast parameters
         call_args = mock_ws_manager.broadcast_to_tenant.call_args
-        assert call_args.kwargs['tenant_key'] == test_tenant.tenant_key
-        assert call_args.kwargs['event_type'] == "orchestrator:instructions_fetched"
+        assert call_args.kwargs["tenant_key"] == test_tenant.tenant_key
+        assert call_args.kwargs["event_type"] == "orchestrator:instructions_fetched"
 
-        data = call_args.kwargs['data']
-        assert data['orchestrator_id'] == test_orchestrator_job.job_id
-        assert data['project_id'] == str(test_project.id)
-        assert 'estimated_tokens' in data
-        assert data['status'] == 'active'
-        assert data['thin_client'] is True
+        data = call_args.kwargs["data"]
+        assert data["orchestrator_id"] == test_orchestrator_job.job_id
+        assert data["project_id"] == str(test_project.id)
+        assert "estimated_tokens" in data
+        assert data["status"] == "active"
+        assert data["thin_client"] is True
 
 
 @pytest.mark.asyncio
-async def test_websocket_broadcast_graceful_failure(
-    db_session,
-    test_orchestrator_job,
-    test_tenant
-):
+async def test_websocket_broadcast_graceful_failure(db_session, test_orchestrator_job, test_tenant):
     """
     Test Amendment A: Non-blocking WebSocket error handling
 
@@ -173,8 +165,9 @@ async def test_websocket_broadcast_graceful_failure(
     - Error is logged but not propagated
     - Tool still returns success
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     # Setup
     mcp = FastMCP("test-mcp")
@@ -186,32 +179,28 @@ async def test_websocket_broadcast_graceful_failure(
 
     register_orchestration_tools(mcp, db_manager)
 
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_ws_manager
 
         from giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
         # Should NOT raise exception despite WebSocket error
         result = await get_orchestrator_instructions(
-            orchestrator_id=test_orchestrator_job.job_id,
-            tenant_key=test_tenant.tenant_key
+            orchestrator_id=test_orchestrator_job.job_id, tenant_key=test_tenant.tenant_key
         )
 
         # Verify tool still succeeds
-        assert 'error' not in result
-        assert result['orchestrator_id'] == test_orchestrator_job.job_id
+        assert "error" not in result
+        assert result["orchestrator_id"] == test_orchestrator_job.job_id
 
 
 # =============================================================================
 # AMENDMENT B: Agent Thin Client Tests
 # =============================================================================
 
+
 @pytest.mark.asyncio
-async def test_get_agent_mission_thin_client(
-    db_session,
-    test_agent_job,
-    test_tenant
-):
+async def test_get_agent_mission_thin_client(db_session, test_agent_job, test_tenant):
     """
     Test Amendment B: get_agent_mission() enhanced for thin client
 
@@ -221,8 +210,9 @@ async def test_get_agent_mission_thin_client(
     - Includes thin_client flag
     - Token estimate calculated
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -230,27 +220,21 @@ async def test_get_agent_mission_thin_client(
 
     from giljo_mcp.tools.orchestration import get_agent_mission
 
-    result = await get_agent_mission(
-        agent_job_id=test_agent_job.job_id,
-        tenant_key=test_tenant.tenant_key
-    )
+    result = await get_agent_mission(agent_job_id=test_agent_job.job_id, tenant_key=test_tenant.tenant_key)
 
     # Verify result structure
-    assert result['success'] is True
-    assert result['agent_job_id'] == test_agent_job.job_id
-    assert result['agent_type'] == "backend"
-    assert result['mission'] == test_agent_job.mission
-    assert result['project_id'] == str(test_agent_job.project_id)
-    assert result['thin_client'] is True
-    assert 'estimated_tokens' in result
-    assert result['estimated_tokens'] > 0
+    assert result["success"] is True
+    assert result["agent_job_id"] == test_agent_job.job_id
+    assert result["agent_type"] == "backend"
+    assert result["mission"] == test_agent_job.mission
+    assert result["project_id"] == str(test_agent_job.project_id)
+    assert result["thin_client"] is True
+    assert "estimated_tokens" in result
+    assert result["estimated_tokens"] > 0
 
 
 @pytest.mark.asyncio
-async def test_get_agent_mission_not_found(
-    db_session,
-    test_tenant
-):
+async def test_get_agent_mission_not_found(db_session, test_tenant):
     """
     Test Amendment B: Error handling for missing agent
 
@@ -259,8 +243,9 @@ async def test_get_agent_mission_not_found(
     - Includes troubleshooting steps
     - Multi-tenant isolation enforced
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -268,26 +253,18 @@ async def test_get_agent_mission_not_found(
 
     from giljo_mcp.tools.orchestration import get_agent_mission
 
-    result = await get_agent_mission(
-        agent_job_id="nonexistent-id",
-        tenant_key=test_tenant.tenant_key
-    )
+    result = await get_agent_mission(agent_job_id="nonexistent-id", tenant_key=test_tenant.tenant_key)
 
     # Verify error response
-    assert result['error'] == 'NOT_FOUND'
-    assert 'message' in result
-    assert 'troubleshooting' in result
-    assert len(result['troubleshooting']) > 0
-    assert result['severity'] == 'ERROR'
+    assert result["error"] == "NOT_FOUND"
+    assert "message" in result
+    assert "troubleshooting" in result
+    assert len(result["troubleshooting"]) > 0
+    assert result["severity"] == "ERROR"
 
 
 @pytest.mark.asyncio
-async def test_spawn_agent_job_thin_prompt(
-    db_session,
-    test_project,
-    test_tenant,
-    test_orchestrator_job
-):
+async def test_spawn_agent_job_thin_prompt(db_session, test_project, test_tenant, test_orchestrator_job):
     """
     Test Amendment B: spawn_agent_job() generates thin prompts
 
@@ -298,8 +275,9 @@ async def test_spawn_agent_job_thin_prompt(
     - Mission NOT embedded in prompt
     - Token estimates calculated
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -309,7 +287,7 @@ async def test_spawn_agent_job_thin_prompt(
     mock_ws_manager = AsyncMock()
     mock_ws_manager.broadcast_to_tenant = AsyncMock()
 
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_ws_manager
 
         from giljo_mcp.tools.orchestration import spawn_agent_job
@@ -322,51 +300,48 @@ async def test_spawn_agent_job_thin_prompt(
             mission=mission_text,
             project_id=str(test_project.id),
             tenant_key=test_tenant.tenant_key,
-            parent_job_id=test_orchestrator_job.job_id
+            parent_job_id=test_orchestrator_job.job_id,
         )
 
         # Verify success
-        assert result['success'] is True
-        assert 'agent_job_id' in result
-        assert result['thin_client'] is True
-        assert result['mission_stored'] is True
+        assert result["success"] is True
+        assert "agent_job_id" in result
+        assert result["thin_client"] is True
+        assert result["mission_stored"] is True
 
         # Verify prompt is thin
-        prompt = result['agent_prompt']
-        prompt_lines = prompt.split('\n')
+        prompt = result["agent_prompt"]
+        prompt_lines = prompt.split("\n")
         assert len(prompt_lines) <= 20, f"Prompt should be ~10-15 lines, got {len(prompt_lines)}"
 
         # Verify mission NOT in prompt
         assert mission_text not in prompt, "Mission should NOT be embedded in prompt"
 
         # Verify prompt contains get_agent_mission instruction
-        assert 'get_agent_mission' in prompt
-        assert result['agent_job_id'] in prompt
+        assert "get_agent_mission" in prompt
+        assert result["agent_job_id"] in prompt
 
         # Verify token estimates
-        assert result['prompt_tokens'] < 100, "Prompt should be <100 tokens"
-        assert result['mission_tokens'] > 0
+        assert result["prompt_tokens"] < 100, "Prompt should be <100 tokens"
+        assert result["mission_tokens"] > 0
 
         # Verify agent job created in database
-        agent_job = await db_session.get(MCPAgentJob, result['agent_job_id'])
+        agent_job = await db_session.get(MCPAgentJob, result["agent_job_id"])
         assert agent_job is not None
         assert agent_job.mission == mission_text
         assert agent_job.spawned_by == test_orchestrator_job.job_id
 
 
 @pytest.mark.asyncio
-async def test_agent_prompt_is_thin(
-    db_session,
-    test_project,
-    test_tenant
-):
+async def test_agent_prompt_is_thin(db_session, test_project, test_tenant):
     """
     Test Amendment B: Validate agent prompts are thin (~10 lines)
 
     Critical validation that prompts are NOT fat (1000+ lines)
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -374,7 +349,7 @@ async def test_agent_prompt_is_thin(
 
     mock_ws_manager = AsyncMock()
 
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_ws_manager
 
         from giljo_mcp.tools.orchestration import spawn_agent_job
@@ -387,30 +362,27 @@ async def test_agent_prompt_is_thin(
             agent_name="Frontend Builder",
             mission=large_mission,
             project_id=str(test_project.id),
-            tenant_key=test_tenant.tenant_key
+            tenant_key=test_tenant.tenant_key,
         )
 
         # Prompt should STILL be thin even with large mission
-        prompt = result['agent_prompt']
-        prompt_lines = len(prompt.split('\n'))
+        prompt = result["agent_prompt"]
+        prompt_lines = len(prompt.split("\n"))
 
         assert prompt_lines <= 20, f"Prompt MUST be thin (~10-15 lines), got {prompt_lines}"
         assert large_mission not in prompt, "Large mission MUST NOT be in prompt"
 
 
 @pytest.mark.asyncio
-async def test_agent_mission_stored_not_embedded(
-    db_session,
-    test_project,
-    test_tenant
-):
+async def test_agent_mission_stored_not_embedded(db_session, test_project, test_tenant):
     """
     Test Amendment B: Critical validation that mission is stored, not embedded
 
     This is THE defining characteristic of thin client architecture.
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -418,7 +390,7 @@ async def test_agent_mission_stored_not_embedded(
 
     mock_ws_manager = AsyncMock()
 
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_ws_manager
 
         from giljo_mcp.tools.orchestration import spawn_agent_job
@@ -430,25 +402,19 @@ async def test_agent_mission_stored_not_embedded(
             agent_name="QA Tester",
             mission=mission,
             project_id=str(test_project.id),
-            tenant_key=test_tenant.tenant_key
+            tenant_key=test_tenant.tenant_key,
         )
 
         # Verify mission is NOT in prompt
-        assert mission not in result['agent_prompt'], \
-            "CRITICAL: Mission must NOT be embedded in prompt"
+        assert mission not in result["agent_prompt"], "CRITICAL: Mission must NOT be embedded in prompt"
 
         # Verify mission IS in database
-        agent_job = await db_session.get(MCPAgentJob, result['agent_job_id'])
-        assert agent_job.mission == mission, \
-            "CRITICAL: Mission must be stored in database"
+        agent_job = await db_session.get(MCPAgentJob, result["agent_job_id"])
+        assert agent_job.mission == mission, "CRITICAL: Mission must be stored in database"
 
 
 @pytest.mark.asyncio
-async def test_websocket_broadcast_agent_created(
-    db_session,
-    test_project,
-    test_tenant
-):
+async def test_websocket_broadcast_agent_created(db_session, test_project, test_tenant):
     """
     Test Amendment B: WebSocket broadcast when agent spawned
 
@@ -458,8 +424,9 @@ async def test_websocket_broadcast_agent_created(
     - Includes thin_client flag
     - Token estimates included
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -468,7 +435,7 @@ async def test_websocket_broadcast_agent_created(
     mock_ws_manager = AsyncMock()
     mock_ws_manager.broadcast_to_tenant = AsyncMock()
 
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_ws_manager
 
         from giljo_mcp.tools.orchestration import spawn_agent_job
@@ -478,33 +445,31 @@ async def test_websocket_broadcast_agent_created(
             agent_name="Sub-Orchestrator",
             mission="Coordinate sub-agents",
             project_id=str(test_project.id),
-            tenant_key=test_tenant.tenant_key
+            tenant_key=test_tenant.tenant_key,
         )
 
         # Verify WebSocket broadcast
         mock_ws_manager.broadcast_to_tenant.assert_called_once()
 
         call_args = mock_ws_manager.broadcast_to_tenant.call_args
-        assert call_args.kwargs['event_type'] == "agent:created"
+        assert call_args.kwargs["event_type"] == "agent:created"
 
-        data = call_args.kwargs['data']
-        assert data['agent_job_id'] == result['agent_job_id']
-        assert data['agent_type'] == "orchestrator"
-        assert data['agent_name'] == "Sub-Orchestrator"
-        assert data['thin_client'] is True
-        assert 'prompt_tokens' in data
-        assert 'mission_tokens' in data
+        data = call_args.kwargs["data"]
+        assert data["agent_job_id"] == result["agent_job_id"]
+        assert data["agent_type"] == "orchestrator"
+        assert data["agent_name"] == "Sub-Orchestrator"
+        assert data["thin_client"] is True
+        assert "prompt_tokens" in data
+        assert "mission_tokens" in data
 
 
 # =============================================================================
 # MULTI-TENANT ISOLATION TESTS
 # =============================================================================
 
+
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation_get_agent_mission(
-    db_session,
-    test_agent_job
-):
+async def test_multi_tenant_isolation_get_agent_mission(db_session, test_agent_job):
     """
     Test Amendment B: Multi-tenant isolation in get_agent_mission()
 
@@ -513,8 +478,9 @@ async def test_multi_tenant_isolation_get_agent_mission(
     - Returns NOT_FOUND error
     - No data leakage
     """
-    from giljo_mcp.database import DatabaseManager
     from fastmcp import FastMCP
+
+    from giljo_mcp.database import DatabaseManager
 
     mcp = FastMCP("test-mcp")
     db_manager = DatabaseManager(":memory:")
@@ -523,15 +489,12 @@ async def test_multi_tenant_isolation_get_agent_mission(
     from giljo_mcp.tools.orchestration import get_agent_mission
 
     # Try to access with wrong tenant
-    result = await get_agent_mission(
-        agent_job_id=test_agent_job.job_id,
-        tenant_key="wrong_tenant_key"
-    )
+    result = await get_agent_mission(agent_job_id=test_agent_job.job_id, tenant_key="wrong_tenant_key")
 
     # Verify access denied
-    assert result['error'] == 'NOT_FOUND'
-    assert 'mission' not in result
-    assert 'agent_name' not in result
+    assert result["error"] == "NOT_FOUND"
+    assert "mission" not in result
+    assert "agent_name" not in result
 
 
 if __name__ == "__main__":

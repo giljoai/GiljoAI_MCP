@@ -22,22 +22,21 @@ Test Approach:
 Backend Integration Tester Agent - Production-grade integration testing.
 """
 
-import pytest
-from datetime import datetime, timezone
-from typing import Any, Dict
 from uuid import uuid4
 
-from src.giljo_mcp.orchestrator import ProjectOrchestrator
-from src.giljo_mcp.mission_planner import MissionPlanner
+import pytest
+
 from src.giljo_mcp.agent_selector import AgentSelector
-from src.giljo_mcp.workflow_engine import WorkflowEngine
-from src.giljo_mcp.models import Product, Project, AgentTemplate
+from src.giljo_mcp.mission_planner import MissionPlanner
+from src.giljo_mcp.models import AgentTemplate, Product, Project
 from src.giljo_mcp.orchestration_types import (
+    AgentConfig,
     Mission,
     RequirementAnalysis,
-    AgentConfig,
     WorkflowResult,
 )
+from src.giljo_mcp.orchestrator import ProjectOrchestrator
+from src.giljo_mcp.workflow_engine import WorkflowEngine
 
 
 # Sample vision document for testing
@@ -472,16 +471,18 @@ class TestMissionGenerationIntegration:
             # Find matching template from agent_templates fixture
             matching_template = next(
                 (t for t in agent_templates if t.role == agent_role),
-                agent_templates[0]  # Fallback to first template
+                agent_templates[0],  # Fallback to first template
             )
 
-            selected_agents.append(AgentConfig(
-                role=agent_role,
-                template_id=matching_template.id,
-                template_content=matching_template.template_content,
-                priority=priority,
-                mission_scope=f"{agent_role} work for project",
-            ))
+            selected_agents.append(
+                AgentConfig(
+                    role=agent_role,
+                    template_id=matching_template.id,
+                    template_content=matching_template.template_content,
+                    priority=priority,
+                    mission_scope=f"{agent_role} work for project",
+                )
+            )
 
         # Generate missions based on analysis
         missions = await mission_planner.generate_missions(
@@ -509,16 +510,12 @@ class TestMissionGenerationIntegration:
             # Should reference tech stack or features
             content_lower = mission.content.lower()
             has_tech_context = any(
-                tech.lower() in content_lower
-                for tech in sample_product.config_data.get("tech_stack", [])
+                tech.lower() in content_lower for tech in sample_product.config_data.get("tech_stack", [])
             )
             has_feature_context = any(
-                feature.lower() in content_lower
-                for feature in sample_product.config_data.get("features", [])
+                feature.lower() in content_lower for feature in sample_product.config_data.get("features", [])
             )
-            assert has_tech_context or has_feature_context, (
-                f"Mission for {role} lacks tech/feature context"
-            )
+            assert has_tech_context or has_feature_context, f"Mission for {role} lacks tech/feature context"
 
 
 class TestAgentSelectionIntegration:
@@ -585,9 +582,7 @@ class TestAgentSelectionIntegration:
 
         # Verify priority mapping
         # Required work should have required agents
-        required_roles = [
-            ac.role for ac in agent_configs if ac.priority == "required"
-        ]
+        required_roles = [ac.role for ac in agent_configs if ac.priority == "required"]
         assert len(required_roles) > 0
 
         # Verify backend agent is included (required in work_types)
@@ -786,9 +781,7 @@ class TestMultiTenantIsolation:
             )
             # If it doesn't raise, verify it didn't access tenant B data
             # This is a security failure if we get here without isolation
-            pytest.fail(
-                "Cross-tenant product access should be blocked or isolated"
-            )
+            pytest.fail("Cross-tenant product access should be blocked or isolated")
         except (ValueError, PermissionError) as e:
             # Expected - tenant isolation should prevent access
             assert "not found" in str(e).lower() or "permission" in str(e).lower()
@@ -884,17 +877,16 @@ class TestTokenReductionVerification:
         # Create sample selected agents
         selected_agents = []
         for agent_role, priority in analysis.work_types.items():
-            matching_template = next(
-                (t for t in agent_templates if t.role == agent_role),
-                agent_templates[0]
+            matching_template = next((t for t in agent_templates if t.role == agent_role), agent_templates[0])
+            selected_agents.append(
+                AgentConfig(
+                    role=agent_role,
+                    template_id=matching_template.id,
+                    template_content=matching_template.template_content,
+                    priority=priority,
+                    mission_scope=f"{agent_role} work",
+                )
             )
-            selected_agents.append(AgentConfig(
-                role=agent_role,
-                template_id=matching_template.id,
-                template_content=matching_template.template_content,
-                priority=priority,
-                mission_scope=f"{agent_role} work",
-            ))
 
         # Generate missions
         missions = await mission_planner.generate_missions(
@@ -905,16 +897,13 @@ class TestTokenReductionVerification:
         )
 
         # Calculate total mission tokens
-        total_mission_tokens = sum(
-            mission.token_count for mission in missions.values()
-        )
+        total_mission_tokens = sum(mission.token_count for mission in missions.values())
 
         # Verify token reduction
         # Each agent gets a filtered, condensed mission
         # Total should be less than original vision
         assert total_mission_tokens < original_tokens, (
-            f"Total mission tokens ({total_mission_tokens}) should be less than "
-            f"original ({original_tokens})"
+            f"Total mission tokens ({total_mission_tokens}) should be less than original ({original_tokens})"
         )
 
         # Calculate reduction percentage
@@ -922,23 +911,15 @@ class TestTokenReductionVerification:
         # With multiple agents, total might exceed original but each agent
         # gets a fraction of the context
         tokens_per_agent = total_mission_tokens / len(missions)
-        per_agent_reduction = (
-            (original_tokens - tokens_per_agent) / original_tokens
-        ) * 100
+        per_agent_reduction = ((original_tokens - tokens_per_agent) / original_tokens) * 100
 
         # Each individual agent should have significant reduction
-        assert per_agent_reduction > 50, (
-            f"Per-agent token reduction ({per_agent_reduction:.1f}%) should exceed 50%"
-        )
+        assert per_agent_reduction > 50, f"Per-agent token reduction ({per_agent_reduction:.1f}%) should exceed 50%"
 
         # Verify all missions are within token budget
         for role, mission in missions.items():
-            assert mission.token_count >= 500, (
-                f"Mission for {role} too small ({mission.token_count} tokens)"
-            )
-            assert mission.token_count <= 2000, (
-                f"Mission for {role} too large ({mission.token_count} tokens)"
-            )
+            assert mission.token_count >= 500, f"Mission for {role} too small ({mission.token_count} tokens)"
+            assert mission.token_count <= 2000, f"Mission for {role} too large ({mission.token_count} tokens)"
 
 
 class TestMissionQuality:
@@ -993,17 +974,16 @@ class TestMissionQuality:
         # Create sample selected agents
         selected_agents = []
         for agent_role, priority in analysis.work_types.items():
-            matching_template = next(
-                (t for t in agent_templates if t.role == agent_role),
-                agent_templates[0]
+            matching_template = next((t for t in agent_templates if t.role == agent_role), agent_templates[0])
+            selected_agents.append(
+                AgentConfig(
+                    role=agent_role,
+                    template_id=matching_template.id,
+                    template_content=matching_template.template_content,
+                    priority=priority,
+                    mission_scope=f"{agent_role} work",
+                )
             )
-            selected_agents.append(AgentConfig(
-                role=agent_role,
-                template_id=matching_template.id,
-                template_content=matching_template.template_content,
-                priority=priority,
-                mission_scope=f"{agent_role} work",
-            ))
 
         missions = await mission_planner.generate_missions(
             analysis=analysis,
@@ -1019,31 +999,22 @@ class TestMissionQuality:
             role_lower = role.lower()
 
             # Mission should mention the role or related concepts
-            role_relevant = (
-                role_lower in content_lower
-                or any(keyword in content_lower for keyword in ["implement", "test", "review", "develop"])
+            role_relevant = role_lower in content_lower or any(
+                keyword in content_lower for keyword in ["implement", "test", "review", "develop"]
             )
             assert role_relevant, f"Mission for {role} lacks role-relevant content"
 
             # 2. Includes tech stack context
-            has_tech = any(
-                tech.lower() in content_lower
-                for tech in sample_product.config_data.get("tech_stack", [])
-            )
+            has_tech = any(tech.lower() in content_lower for tech in sample_product.config_data.get("tech_stack", []))
             assert has_tech, f"Mission for {role} lacks tech stack context"
 
             # 3. Has success criteria
-            assert mission.success_criteria is not None, (
-                f"Mission for {role} lacks success criteria"
-            )
-            assert len(mission.success_criteria) > 0, (
-                f"Mission for {role} has empty success criteria"
-            )
+            assert mission.success_criteria is not None, f"Mission for {role} lacks success criteria"
+            assert len(mission.success_criteria) > 0, f"Mission for {role} has empty success criteria"
 
             # 4. Within token budget
             assert 500 <= mission.token_count <= 2000, (
-                f"Mission for {role} outside token budget "
-                f"({mission.token_count} tokens)"
+                f"Mission for {role} outside token budget ({mission.token_count} tokens)"
             )
 
             # 5. Has priority

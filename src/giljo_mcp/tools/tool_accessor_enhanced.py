@@ -130,9 +130,7 @@ class EnhancedToolAccessor:
 
     @measure_performance("create_project")
     @with_retry(max_attempts=3)
-    async def create_project(
-        self, name: str, mission: str, product_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def create_project(self, name: str, mission: str, product_id: Optional[str] = None) -> dict[str, Any]:
         """Create a new project with transaction rollback on failure"""
         try:
             async with self._get_transactional_session() as session:

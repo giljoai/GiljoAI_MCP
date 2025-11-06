@@ -20,6 +20,7 @@ from sqlalchemy import select
 
 from ..models import Job
 
+
 logger = logging.getLogger(__name__)
 
 # Valid status values
@@ -83,9 +84,7 @@ async def set_agent_status(
             raise ValueError("tenant_key cannot be empty")
 
         if not status or status not in VALID_STATUSES:
-            raise ValueError(
-                f"Invalid status: {status}. Must be one of: {', '.join(sorted(VALID_STATUSES))}"
-            )
+            raise ValueError(f"Invalid status: {status}. Must be one of: {', '.join(sorted(VALID_STATUSES))}")
 
         # Validate progress range
         if progress is not None and (progress < 0 or progress > 100):
@@ -99,17 +98,15 @@ async def set_agent_status(
             raise ValueError(f"reason is required when status='{status}'")
 
         # Import database manager and websocket manager
-        from ..database import DatabaseManager
         from api.websocket import websocket_manager
+
+        from ..database import DatabaseManager
 
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
             # Get job with tenant isolation
-            stmt = select(Job).where(
-                Job.job_id == job_id,
-                Job.tenant_key == tenant_key
-            )
+            stmt = select(Job).where(Job.job_id == job_id, Job.tenant_key == tenant_key)
             result = await session.execute(stmt)
             job = result.scalar_one_or_none()
 
@@ -122,8 +119,7 @@ async def set_agent_status(
             # Validate state machine - cannot transition from terminal states
             if old_status in TERMINAL_STATES:
                 raise ValueError(
-                    f"Cannot transition from terminal state '{old_status}'. "
-                    f"Job is already in final state."
+                    f"Cannot transition from terminal state '{old_status}'. Job is already in final state."
                 )
 
             # Update status
@@ -166,15 +162,14 @@ async def set_agent_status(
                     progress=progress,
                     current_task=current_task,
                     block_reason=reason if status == "blocked" else None,
-                    estimated_completion=estimated_completion
+                    estimated_completion=estimated_completion,
                 )
             except Exception as ws_error:
                 logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                 # Non-critical - continue without WebSocket broadcast
 
             logger.info(
-                f"[set_agent_status] Job {job_id} status updated: "
-                f"{old_status} -> {status}, tenant={tenant_key}"
+                f"[set_agent_status] Job {job_id} status updated: {old_status} -> {status}, tenant={tenant_key}"
             )
 
             return {
@@ -190,7 +185,7 @@ async def set_agent_status(
         raise
     except Exception as e:
         logger.error(f"[set_agent_status] Error updating status: {e}", exc_info=True)
-        raise ValueError(f"Failed to update agent status: {str(e)}")
+        raise ValueError(f"Failed to update agent status: {e!s}")
 
 
 def register_agent_status_tools(server, db_manager, tenant_manager=None):

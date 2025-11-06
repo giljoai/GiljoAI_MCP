@@ -44,13 +44,9 @@ class ContextManagementSystem:
         self.loader = DynamicContextLoader(db_manager)
         self.summarizer = ContextSummarizer(db_manager)
 
-        logger.info(
-            f"ContextManagementSystem initialized with chunk size {target_chunk_size}"
-        )
+        logger.info(f"ContextManagementSystem initialized with chunk size {target_chunk_size}")
 
-    def process_vision_document(
-        self, tenant_key: str, product_id: str, content: str
-    ) -> Dict[str, Any]:
+    def process_vision_document(self, tenant_key: str, product_id: str, content: str) -> Dict[str, Any]:
         """
         Complete workflow: chunk and index vision document.
 
@@ -67,38 +63,25 @@ class ContextManagementSystem:
 
         if not chunks:
             logger.warning(f"No chunks created for product {product_id}")
-            return {
-                "success": False,
-                "chunks_created": 0,
-                "total_tokens": 0,
-                "message": "No content to chunk"
-            }
+            return {"success": False, "chunks_created": 0, "total_tokens": 0, "message": "No content to chunk"}
 
         # Store chunks in database
         chunk_ids = self.indexer.store_chunks(tenant_key, product_id, chunks)
 
         total_tokens = sum(c["tokens"] for c in chunks)
 
-        logger.info(
-            f"Processed vision document for product {product_id}: "
-            f"{len(chunks)} chunks, {total_tokens} tokens"
-        )
+        logger.info(f"Processed vision document for product {product_id}: {len(chunks)} chunks, {total_tokens} tokens")
 
         return {
             "success": True,
             "chunks_created": len(chunks),
             "chunk_ids": chunk_ids,
             "total_tokens": total_tokens,
-            "chunks": chunks
+            "chunks": chunks,
         }
 
     def load_context_for_agent(
-        self,
-        tenant_key: str,
-        product_id: str,
-        query: str,
-        role: Optional[str] = None,
-        max_tokens: int = 10000
+        self, tenant_key: str, product_id: str, query: str, role: Optional[str] = None, max_tokens: int = 10000
     ) -> Dict[str, Any]:
         """
         Load relevant context chunks for an agent.
@@ -114,11 +97,7 @@ class ContextManagementSystem:
             Loaded context dict
         """
         chunks = self.loader.load_relevant_chunks(
-            tenant_key=tenant_key,
-            product_id=product_id,
-            query=query,
-            role=role,
-            max_tokens=max_tokens
+            tenant_key=tenant_key, product_id=product_id, query=query, role=role, max_tokens=max_tokens
         )
 
         total_tokens = sum(c["tokens"] for c in chunks)
@@ -128,15 +107,11 @@ class ContextManagementSystem:
             "chunks": chunks,
             "total_chunks": len(chunks),
             "total_tokens": total_tokens,
-            "average_relevance": avg_relevance
+            "average_relevance": avg_relevance,
         }
 
     def create_condensed_mission(
-        self,
-        tenant_key: str,
-        product_id: str,
-        full_content: str,
-        condensed_mission: str
+        self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
     ) -> Dict[str, Any]:
         """
         Create condensed mission and track token reduction.
@@ -151,15 +126,10 @@ class ContextManagementSystem:
             Summary statistics dict
         """
         return self.summarizer.create_summary(
-            tenant_key=tenant_key,
-            product_id=product_id,
-            full_content=full_content,
-            condensed_mission=condensed_mission
+            tenant_key=tenant_key, product_id=product_id, full_content=full_content, condensed_mission=condensed_mission
         )
 
-    def get_token_reduction_stats(
-        self, tenant_key: str, product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_token_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get token reduction statistics.
 
@@ -170,14 +140,9 @@ class ContextManagementSystem:
         Returns:
             Statistics dict
         """
-        return self.summarizer.get_reduction_stats(
-            tenant_key=tenant_key,
-            product_id=product_id
-        )
+        return self.summarizer.get_reduction_stats(tenant_key=tenant_key, product_id=product_id)
 
-    def get_all_chunks(
-        self, tenant_key: str, product_id: str
-    ) -> List[Any]:
+    def get_all_chunks(self, tenant_key: str, product_id: str) -> List[Any]:
         """
         Get all chunks for a product.
 
@@ -190,9 +155,7 @@ class ContextManagementSystem:
         """
         return self.indexer.get_chunks_by_product(tenant_key, product_id)
 
-    def delete_product_context(
-        self, tenant_key: str, product_id: str
-    ) -> int:
+    def delete_product_context(self, tenant_key: str, product_id: str) -> int:
         """
         Delete all context for a product.
 

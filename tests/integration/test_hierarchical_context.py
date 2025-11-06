@@ -8,11 +8,13 @@ Tests the complete flow:
 4. Multi-agent coordination maintains proper context boundaries
 """
 
-import pytest
 import json
+
+import pytest
+
+from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
 from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import Product, Project, Agent
-from src.giljo_mcp.context_manager import get_full_config, get_filtered_config, is_orchestrator
+from src.giljo_mcp.models import Agent, Product, Project
 
 
 @pytest.fixture
@@ -39,26 +41,17 @@ def sample_product(db_session):
                 "frontend": "Vue 3 dashboard with Vuetify",
                 "src/giljo_mcp": "Core orchestration engine",
                 "tests": "Comprehensive test suites",
-                "docs": "Documentation and manuals"
+                "docs": "Documentation and manuals",
             },
             "critical_features": [
                 "Multi-tenant isolation",
                 "Agent orchestration",
                 "Message queue coordination",
                 "Vision document chunking",
-                "Database-backed templates"
+                "Database-backed templates",
             ],
-            "test_commands": [
-                "pytest tests/",
-                "pytest tests/unit/",
-                "pytest tests/integration/",
-                "npm run test"
-            ],
-            "test_config": {
-                "coverage_threshold": 80,
-                "framework": "pytest",
-                "parallel": True
-            },
+            "test_commands": ["pytest tests/", "pytest tests/unit/", "pytest tests/integration/", "npm run test"],
+            "test_config": {"coverage_threshold": 80, "framework": "pytest", "parallel": True},
             "api_docs": "/docs/api_reference.md",
             "documentation_style": "Markdown with mermaid diagrams",
             "serena_mcp_enabled": True,
@@ -66,8 +59,8 @@ def sample_product(db_session):
             "frontend_framework": "Vue 3",
             "backend_framework": "FastAPI",
             "deployment_modes": ["localhost", "server"],
-            "known_issues": ["Performance optimization needed for large vision documents"]
-        }
+            "known_issues": ["Performance optimization needed for large vision documents"],
+        },
     )
     db_session.add(product)
     db_session.commit()
@@ -88,7 +81,7 @@ def sample_project(db_session, sample_product):
         product_id=sample_product.id,
         name="Test Project Hierarchical",
         mission="Test hierarchical context loading",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     db_session.commit()
@@ -109,11 +102,20 @@ class TestOrchestratorFullContext:
 
         # Verify all fields present
         expected_fields = [
-            "architecture", "tech_stack", "codebase_structure",
-            "critical_features", "test_commands", "test_config",
-            "api_docs", "documentation_style", "serena_mcp_enabled",
-            "database_type", "frontend_framework", "backend_framework",
-            "deployment_modes", "known_issues"
+            "architecture",
+            "tech_stack",
+            "codebase_structure",
+            "critical_features",
+            "test_commands",
+            "test_config",
+            "api_docs",
+            "documentation_style",
+            "serena_mcp_enabled",
+            "database_type",
+            "frontend_framework",
+            "backend_framework",
+            "deployment_modes",
+            "known_issues",
         ]
 
         for field in expected_fields:
@@ -141,7 +143,7 @@ class TestOrchestratorFullContext:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(orchestrator)
         db_session.commit()
@@ -314,7 +316,7 @@ class TestMultiAgentCoordination:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="active"
+            status="active",
         )
 
         # Create implementer
@@ -323,7 +325,7 @@ class TestMultiAgentCoordination:
             project_id=sample_project.id,
             name="implementer-dev-1",
             role="implementer",
-            status="active"
+            status="active",
         )
 
         # Create tester
@@ -332,7 +334,7 @@ class TestMultiAgentCoordination:
             project_id=sample_project.id,
             name="tester-qa-1",
             role="tester",
-            status="active"
+            status="active",
         )
 
         db_session.add_all([orchestrator, implementer, tester])
@@ -372,7 +374,7 @@ class TestMultiAgentCoordination:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="database_initialized"
+            status="database_initialized",
         )
 
         implementer = Agent(
@@ -380,7 +382,7 @@ class TestMultiAgentCoordination:
             project_id=sample_project.id,
             name="implementer-1",
             role="implementer",
-            status="active"
+            status="active",
         )
 
         db_session.add_all([orchestrator, implementer])
@@ -432,6 +434,7 @@ class TestContextConsistency:
 
 
 # Helper functions
+
 
 def estimate_tokens(config_dict: dict) -> int:
     """

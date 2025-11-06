@@ -4,10 +4,7 @@ Unit tests for Product Activation response fields
 Verifies that all API endpoints return the is_active field correctly
 """
 
-import json
 from datetime import datetime
-from pydantic import ValidationError
-import pytest
 
 from api.endpoints.products import ProductResponse
 
@@ -20,7 +17,7 @@ class TestProductResponseSchema:
         # Verify field exists in model
         fields = ProductResponse.model_fields
         assert "is_active" in fields, "is_active field missing from ProductResponse model"
-        
+
         # Verify field type and default
         field = ProductResponse.model_fields["is_active"]
         assert field.is_required() is False, "is_active should not be required"
@@ -34,9 +31,9 @@ class TestProductResponseSchema:
             vision_path=None,
             created_at=datetime(2024, 1, 1),
             updated_at=None,
-            is_active=False
+            is_active=False,
         )
-        
+
         assert response.is_active is False
         assert response.id == "test-1"
 
@@ -49,9 +46,9 @@ class TestProductResponseSchema:
             vision_path=None,
             created_at=datetime(2024, 1, 1),
             updated_at=None,
-            is_active=True
+            is_active=True,
         )
-        
+
         assert response.is_active is True
         assert response.id == "test-2"
 
@@ -70,12 +67,12 @@ class TestProductResponseSchema:
             unresolved_tasks=1,
             unfinished_projects=1,
             vision_documents_count=0,
-            is_active=True
+            is_active=True,
         )
-        
+
         # Serialize to dict
         data = response.model_dump()
-        
+
         # Verify is_active is in serialized output
         assert "is_active" in data
         assert data["is_active"] is True
@@ -83,10 +80,10 @@ class TestProductResponseSchema:
     def test_product_response_json_schema(self):
         """Test that ProductResponse JSON schema includes is_active"""
         schema = ProductResponse.model_json_schema()
-        
+
         # Verify is_active is in schema properties
         assert "is_active" in schema["properties"], "is_active missing from JSON schema"
-        
+
         # Verify is_active type
         is_active_schema = schema["properties"]["is_active"]
         assert is_active_schema.get("type") == "boolean"
@@ -101,7 +98,7 @@ class TestProductResponseSchema:
                 vision_path=None,
                 created_at=datetime(2024, 1, 1),
                 updated_at=None,
-                is_active=True
+                is_active=True,
             ),
             ProductResponse(
                 id="prod-2",
@@ -110,7 +107,7 @@ class TestProductResponseSchema:
                 vision_path=None,
                 created_at=datetime(2024, 1, 2),
                 updated_at=None,
-                is_active=False
+                is_active=False,
             ),
             ProductResponse(
                 id="prod-3",
@@ -119,13 +116,13 @@ class TestProductResponseSchema:
                 vision_path=None,
                 created_at=datetime(2024, 1, 3),
                 updated_at=None,
-                is_active=False
-            )
+                is_active=False,
+            ),
         ]
-        
+
         # Serialize list
         data = [p.model_dump() for p in products]
-        
+
         # Verify is_active in each item
         assert data[0]["is_active"] is True
         assert data[1]["is_active"] is False
@@ -144,9 +141,9 @@ class TestProductActivationButtonLogic:
             vision_path=None,
             created_at=datetime(2024, 1, 1),
             updated_at=None,
-            is_active=False
+            is_active=False,
         )
-        
+
         # Frontend logic: button_text = "Deactivate" if product.is_active else "Activate"
         button_text = "Deactivate" if product.is_active else "Activate"
         assert button_text == "Activate"
@@ -160,9 +157,9 @@ class TestProductActivationButtonLogic:
             vision_path=None,
             created_at=datetime(2024, 1, 1),
             updated_at=None,
-            is_active=True
+            is_active=True,
         )
-        
+
         # Frontend logic: button_text = "Deactivate" if product.is_active else "Activate"
         button_text = "Deactivate" if product.is_active else "Activate"
         assert button_text == "Deactivate"
@@ -176,18 +173,18 @@ class TestProductActivationButtonLogic:
             vision_path=None,
             created_at=datetime(2024, 1, 1),
             updated_at=None,
-            is_active=False
+            is_active=False,
         )
-        
+
         # Initially inactive - show Activate button
         button_text = "Deactivate" if product.is_active else "Activate"
         assert button_text == "Activate"
-        
+
         # User clicks Activate - server returns is_active=True
         product.is_active = True
         button_text = "Deactivate" if product.is_active else "Activate"
         assert button_text == "Deactivate"
-        
+
         # User clicks Deactivate - server returns is_active=False
         product.is_active = False
         button_text = "Deactivate" if product.is_active else "Activate"
@@ -212,20 +209,17 @@ class TestProductResponseWithAllFields:
             unfinished_projects=2,
             unresolved_tasks=5,
             vision_documents_count=3,
-            config_data={
-                "tech_stack": {"languages": "Python"},
-                "architecture": {"pattern": "MVC"}
-            },
+            config_data={"tech_stack": {"languages": "Python"}, "architecture": {"pattern": "MVC"}},
             has_config_data=True,
-            is_active=True  # THE FIX: This field must be present
+            is_active=True,  # THE FIX: This field must be present
         )
-        
+
         # Verify all fields including is_active
         assert response.id == "prod-complete"
         assert response.is_active is True
         assert response.config_data is not None
         assert response.has_config_data is True
-        
+
         # Verify serialization includes is_active
         data = response.model_dump()
         assert data["is_active"] is True

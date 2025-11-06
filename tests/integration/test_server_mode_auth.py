@@ -27,10 +27,9 @@ Prerequisites:
 
 import asyncio
 import time
-from typing import Optional
 
-import pytest
 import httpx
+import pytest
 
 
 class AuthTestHelper:
@@ -40,6 +39,7 @@ class AuthTestHelper:
     def generate_test_api_key() -> str:
         """Generate a test API key (mock implementation)"""
         import secrets
+
         return f"giljo_test_{secrets.token_urlsafe(32)}"
 
     @staticmethod
@@ -56,14 +56,10 @@ class AuthTestHelper:
                 return {
                     "required": response.status_code == 401,
                     "status_code": response.status_code,
-                    "detail": response.json() if response.status_code in [401, 403] else None
+                    "detail": response.json() if response.status_code in [401, 403] else None,
                 }
             except Exception as e:
-                return {
-                    "required": None,
-                    "status_code": None,
-                    "error": str(e)
-                }
+                return {"required": None, "status_code": None, "error": str(e)}
 
 
 @pytest.mark.server_mode
@@ -74,11 +70,7 @@ class TestServerModeAuthentication:
     @pytest.fixture(scope="class")
     def server_config(self):
         """Server configuration for testing"""
-        return {
-            "mode": "server",
-            "api_port": 7272,
-            "base_url": "http://localhost:7272"
-        }
+        return {"mode": "server", "api_port": 7272, "base_url": "http://localhost:7272"}
 
     @pytest.fixture
     def valid_api_key(self):
@@ -110,11 +102,7 @@ class TestServerModeAuthentication:
 
         CRITICAL: This test ensures the API is secure when network-exposed
         """
-        protected_endpoints = [
-            "/api/v1/projects/",
-            "/api/v1/agents/",
-            "/api/v1/messages/send"
-        ]
+        protected_endpoints = ["/api/v1/projects/", "/api/v1/agents/", "/api/v1/messages/send"]
 
         results = []
 
@@ -126,18 +114,16 @@ class TestServerModeAuthentication:
                     # Request WITHOUT API key
                     response = await client.get(url)
 
-                    results.append({
-                        "endpoint": endpoint,
-                        "status": response.status_code,
-                        "auth_required": response.status_code == 401
-                    })
+                    results.append(
+                        {
+                            "endpoint": endpoint,
+                            "status": response.status_code,
+                            "auth_required": response.status_code == 401,
+                        }
+                    )
 
                 except Exception as e:
-                    results.append({
-                        "endpoint": endpoint,
-                        "status": None,
-                        "error": str(e)
-                    })
+                    results.append({"endpoint": endpoint, "status": None, "error": str(e)})
 
         # Log results
         print("\nAPI Key Requirement Test:")
@@ -163,13 +149,7 @@ class TestServerModeAuthentication:
         Purpose: Verify that only valid API keys are accepted
         Expected: 401 Unauthorized with invalid key
         """
-        invalid_keys = [
-            "invalid_key_12345",
-            "fake_api_key",
-            "",
-            "Bearer invalid",
-            "malicious_key"
-        ]
+        invalid_keys = ["invalid_key_12345", "fake_api_key", "", "Bearer invalid", "malicious_key"]
 
         results = []
 
@@ -178,22 +158,18 @@ class TestServerModeAuthentication:
                 headers = {"X-API-Key": invalid_key}
 
                 try:
-                    response = await client.get(
-                        f"{server_config['base_url']}/api/v1/projects/",
-                        headers=headers
+                    response = await client.get(f"{server_config['base_url']}/api/v1/projects/", headers=headers)
+
+                    results.append(
+                        {
+                            "key": invalid_key[:20] + "..." if len(invalid_key) > 20 else invalid_key,
+                            "status": response.status_code,
+                            "rejected": response.status_code == 401,
+                        }
                     )
 
-                    results.append({
-                        "key": invalid_key[:20] + "..." if len(invalid_key) > 20 else invalid_key,
-                        "status": response.status_code,
-                        "rejected": response.status_code == 401
-                    })
-
                 except Exception as e:
-                    results.append({
-                        "key": invalid_key[:20],
-                        "error": str(e)
-                    })
+                    results.append({"key": invalid_key[:20], "error": str(e)})
 
         # Log results
         print("\nInvalid API Key Rejection Test:")
@@ -205,8 +181,7 @@ class TestServerModeAuthentication:
         # All invalid keys should be rejected
         all_rejected = all(r.get("rejected") for r in results)
 
-        assert all_rejected, \
-            "SECURITY ISSUE: Some invalid API keys were accepted!"
+        assert all_rejected, "SECURITY ISSUE: Some invalid API keys were accepted!"
 
     @pytest.mark.asyncio
     async def test_valid_api_key_grants_access(self, server_config, valid_api_key):
@@ -222,13 +197,9 @@ class TestServerModeAuthentication:
         headers = {"X-API-Key": valid_api_key}
 
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                f"{server_config['base_url']}/api/v1/projects/",
-                headers=headers
-            )
+            response = await client.get(f"{server_config['base_url']}/api/v1/projects/", headers=headers)
 
-            assert response.status_code == 200, \
-                f"Valid API key rejected. Status: {response.status_code}"
+            assert response.status_code == 200, f"Valid API key rejected. Status: {response.status_code}"
 
             # Verify response is valid JSON
             data = response.json()
@@ -248,14 +219,10 @@ class TestServerModeAuthentication:
         headers = {"Authorization": f"Bearer {valid_api_key}"}
 
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                f"{server_config['base_url']}/api/v1/projects/",
-                headers=headers
-            )
+            response = await client.get(f"{server_config['base_url']}/api/v1/projects/", headers=headers)
 
             # Should accept Bearer format
-            assert response.status_code in [200, 401], \
-                f"Unexpected status: {response.status_code}"
+            assert response.status_code in [200, 401], f"Unexpected status: {response.status_code}"
 
             if response.status_code == 401:
                 print("WARNING: Authorization header (Bearer) format not supported")
@@ -275,35 +242,24 @@ class TestServerModeAuthentication:
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             # GET should be allowed
-            get_response = await client.get(
-                f"{server_config['base_url']}/api/v1/projects/",
-                headers=headers
-            )
+            get_response = await client.get(f"{server_config['base_url']}/api/v1/projects/", headers=headers)
 
             # POST should be forbidden
-            post_data = {
-                "name": "Test Project",
-                "mission": "Test",
-                "agents": []
-            }
+            post_data = {"name": "Test Project", "mission": "Test", "agents": []}
 
             post_response = await client.post(
-                f"{server_config['base_url']}/api/v1/projects/",
-                json=post_data,
-                headers=headers
+                f"{server_config['base_url']}/api/v1/projects/", json=post_data, headers=headers
             )
 
-            print(f"\nPermission Enforcement Test:")
+            print("\nPermission Enforcement Test:")
             print(f"  GET /projects/: {get_response.status_code}")
             print(f"  POST /projects/: {post_response.status_code}")
 
             # GET should succeed
-            assert get_response.status_code == 200, \
-                f"Read-only key should allow GET. Got: {get_response.status_code}"
+            assert get_response.status_code == 200, f"Read-only key should allow GET. Got: {get_response.status_code}"
 
             # POST should be forbidden
-            assert post_response.status_code == 403, \
-                f"Read-only key should deny POST. Got: {post_response.status_code}"
+            assert post_response.status_code == 403, f"Read-only key should deny POST. Got: {post_response.status_code}"
 
     @pytest.mark.asyncio
     async def test_api_key_rate_limiting(self, server_config, valid_api_key):
@@ -324,10 +280,7 @@ class TestServerModeAuthentication:
         async with httpx.AsyncClient(timeout=5.0) as client:
             for _ in range(num_requests):
                 try:
-                    response = await client.get(
-                        f"{server_config['base_url']}/health",
-                        headers=headers
-                    )
+                    response = await client.get(f"{server_config['base_url']}/health", headers=headers)
                     responses.append(response.status_code)
                 except Exception:
                     responses.append(None)
@@ -366,34 +319,24 @@ class TestServerModeAuthentication:
         num_concurrent = 20
 
         async with httpx.AsyncClient(timeout=5.0) as client:
-            tasks = [
-                client.get(
-                    f"{server_config['base_url']}/health",
-                    headers=headers
-                )
-                for _ in range(num_concurrent)
-            ]
+            tasks = [client.get(f"{server_config['base_url']}/health", headers=headers) for _ in range(num_concurrent)]
 
             start = time.perf_counter()
             responses = await asyncio.gather(*tasks, return_exceptions=True)
             duration = time.perf_counter() - start
 
         # Analyze results
-        successful = sum(
-            1 for r in responses
-            if isinstance(r, httpx.Response) and r.status_code == 200
-        )
+        successful = sum(1 for r in responses if isinstance(r, httpx.Response) and r.status_code == 200)
         success_rate = successful / num_concurrent * 100
 
-        print(f"\nConcurrent Authenticated Requests Test:")
+        print("\nConcurrent Authenticated Requests Test:")
         print(f"  Concurrent Requests: {num_concurrent}")
         print(f"  Successful: {successful}/{num_concurrent}")
         print(f"  Success Rate: {success_rate:.1f}%")
         print(f"  Total Duration: {duration * 1000:.2f}ms")
         print(f"  Avg per Request: {duration / num_concurrent * 1000:.2f}ms")
 
-        assert success_rate >= 90.0, \
-            f"Success rate {success_rate:.1f}% below target of 90%"
+        assert success_rate >= 90.0, f"Success rate {success_rate:.1f}% below target of 90%"
 
 
 @pytest.mark.server_mode
@@ -412,12 +355,7 @@ class TestTenantIsolationWithAPIKeys:
         return "tenant2_key_replace_with_real_key"
 
     @pytest.mark.asyncio
-    async def test_api_key_enforces_tenant_isolation(
-        self,
-        server_config,
-        tenant1_api_key,
-        tenant2_api_key
-    ):
+    async def test_api_key_enforces_tenant_isolation(self, server_config, tenant1_api_key, tenant2_api_key):
         """
         TEST: API keys enforce tenant isolation
 
@@ -433,19 +371,11 @@ class TestTenantIsolationWithAPIKeys:
 
         # Step 1: Create project with Tenant 1 key
         headers1 = {"X-API-Key": tenant1_api_key}
-        project_data = {
-            "name": "Tenant 1 Project",
-            "mission": "Test tenant isolation",
-            "agents": []
-        }
+        project_data = {"name": "Tenant 1 Project", "mission": "Test tenant isolation", "agents": []}
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Create project as tenant 1
-            create_response = await client.post(
-                f"{base_url}/api/v1/projects/",
-                json=project_data,
-                headers=headers1
-            )
+            create_response = await client.post(f"{base_url}/api/v1/projects/", json=project_data, headers=headers1)
 
             if create_response.status_code != 200:
                 pytest.skip(f"Could not create project: {create_response.status_code}")
@@ -455,24 +385,19 @@ class TestTenantIsolationWithAPIKeys:
             # Step 2: Try to access with Tenant 2 key
             headers2 = {"X-API-Key": tenant2_api_key}
 
-            access_response = await client.get(
-                f"{base_url}/api/v1/projects/{tenant1_project_id}",
-                headers=headers2
-            )
+            access_response = await client.get(f"{base_url}/api/v1/projects/{tenant1_project_id}", headers=headers2)
 
             # Tenant 2 should NOT be able to access Tenant 1's project
-            assert access_response.status_code in [403, 404], \
-                f"SECURITY ISSUE: Tenant 2 accessed Tenant 1's project! " \
-                f"Status: {access_response.status_code}"
-
-            # Step 3: Verify Tenant 1 can still access their own project
-            verify_response = await client.get(
-                f"{base_url}/api/v1/projects/{tenant1_project_id}",
-                headers=headers1
+            assert access_response.status_code in [403, 404], (
+                f"SECURITY ISSUE: Tenant 2 accessed Tenant 1's project! Status: {access_response.status_code}"
             )
 
-            assert verify_response.status_code == 200, \
+            # Step 3: Verify Tenant 1 can still access their own project
+            verify_response = await client.get(f"{base_url}/api/v1/projects/{tenant1_project_id}", headers=headers1)
+
+            assert verify_response.status_code == 200, (
                 f"Tenant 1 cannot access their own project: {verify_response.status_code}"
+            )
 
             print("\n✓ Tenant isolation verified: Cross-tenant access blocked")
 

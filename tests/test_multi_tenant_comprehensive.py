@@ -24,7 +24,6 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestMultiTenantIsolation:
     """Comprehensive tests for multi-tenant isolation."""
 

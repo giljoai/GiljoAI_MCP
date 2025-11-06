@@ -404,14 +404,14 @@ class AuthManager:
         if cookie_header:
             # Parse cookies from Cookie header
             cookies = {}
-            for cookie in cookie_header.split(';'):
+            for cookie in cookie_header.split(";"):
                 cookie = cookie.strip()
-                if '=' in cookie:
-                    key, value = cookie.split('=', 1)
+                if "=" in cookie:
+                    key, value = cookie.split("=", 1)
                     cookies[key.strip()] = value.strip()
 
             # Get access_token from cookies
-            token = cookies.get('access_token')
+            token = cookies.get("access_token")
             if token:
                 logger.debug("REST API: Found JWT token in httpOnly cookie")
 
@@ -469,7 +469,7 @@ class AuthManager:
                 return await self._build_api_key_result(key_info, request)
 
         # No valid credentials
-        logger.warning(f"[Network Auth] Authentication failed - no valid credentials found")
+        logger.warning("[Network Auth] Authentication failed - no valid credentials found")
         return {"authenticated": False, "error": "Authentication required for network access"}
 
     async def _build_api_key_result(self, key_info: dict[str, Any], request: Request) -> dict[str, Any]:

@@ -14,19 +14,16 @@ PRODUCTION-GRADE: Validates real-time event delivery with tenant isolation
 """
 
 import asyncio
-import pytest
+from typing import Dict, List
 from uuid import uuid4
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List, Dict, Set
 
-from fastapi import WebSocket
+import pytest
+from api.websocket_manager import ConnectionInfo, WebSocketManager
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import User, Product, Project
-from api.websocket_manager import WebSocketManager, ConnectionInfo
-from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
+from api.dependencies.websocket import WebSocketDependency
 from api.events.schemas import EventFactory
+from src.giljo_mcp.models import User
 
 
 @pytest.fixture
@@ -43,7 +40,7 @@ def test_user_a(db: Session):
         email=f"usera_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_a_{uuid4().hex[:8]}",
         role="user",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db.add(user)
     db.commit()
@@ -59,7 +56,7 @@ def test_user_b(db: Session):
         email=f"userb_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_b_{uuid4().hex[:8]}",
         role="user",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db.add(user)
     db.commit()
@@ -69,6 +66,7 @@ def test_user_b(db: Session):
 
 class MockWebSocket:
     """Mock WebSocket for testing"""
+
     def __init__(self, client_id: str, tenant_key: str):
         self.client_id = client_id
         self.tenant_key = tenant_key
@@ -94,6 +92,7 @@ class TestWebSocketBroadcast:
     Test 1: WebSocket event propagation to multiple clients
     Validates broadcast reaches all connected clients in tenant
     """
+
     async def test_websocket_event_propagation_to_multiple_clients(
         self, websocket_manager: WebSocketManager, test_user_a: User
     ):
@@ -103,15 +102,12 @@ class TestWebSocketBroadcast:
         # Arrange: Connect 5 clients for same tenant
         clients = []
         for i in range(5):
-            client = MockWebSocket(
-                client_id=f"client_{i}",
-                tenant_key=test_user_a.tenant_key
-            )
+            client = MockWebSocket(client_id=f"client_{i}", tenant_key=test_user_a.tenant_key)
             websocket_manager.active_connections[f"client_{i}"] = ConnectionInfo(
                 websocket=client,
                 user_id=test_user_a.id,
                 tenant_key=test_user_a.tenant_key,
-                username=test_user_a.username
+                username=test_user_a.username,
             )
             clients.append(client)
 
@@ -122,14 +118,12 @@ class TestWebSocketBroadcast:
             mission="Test mission",
             token_estimate=1000,
             generated_by="orchestrator",
-            user_config_applied=True
+            user_config_applied=True,
         )
 
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
         sent_count = await ws_dep.broadcast_to_tenant(
-            tenant_key=test_user_a.tenant_key,
-            event_type="project:mission_updated",
-            data=event_data["data"]
+            tenant_key=test_user_a.tenant_key, event_type="project:mission_updated", data=event_data["data"]
         )
 
         # Assert: All 5 clients received broadcast
@@ -146,6 +140,7 @@ class TestWebSocketBroadcast:
     Test 2: Multi-tenant isolation in broadcasts
     Validates zero cross-tenant leakage
     """
+
     async def test_multi_tenant_isolation_in_broadcasts(
         self, websocket_manager: WebSocketManager, test_user_a: User, test_user_b: User
     ):
@@ -162,25 +157,25 @@ class TestWebSocketBroadcast:
             websocket=client_a1,
             user_id=test_user_a.id,
             tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            username=test_user_a.username,
         )
         websocket_manager.active_connections["client_a2"] = ConnectionInfo(
             websocket=client_a2,
             user_id=test_user_a.id,
             tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            username=test_user_a.username,
         )
         websocket_manager.active_connections["client_b1"] = ConnectionInfo(
             websocket=client_b1,
             user_id=test_user_b.id,
             tenant_key=test_user_b.tenant_key,
-            username=test_user_b.username
+            username=test_user_b.username,
         )
         websocket_manager.active_connections["client_b2"] = ConnectionInfo(
             websocket=client_b2,
             user_id=test_user_b.id,
             tenant_key=test_user_b.tenant_key,
-            username=test_user_b.username
+            username=test_user_b.username,
         )
 
         # Act: Broadcast event to tenant A only
@@ -190,14 +185,12 @@ class TestWebSocketBroadcast:
             project_id=str(uuid4()),
             agent_type="implementor",
             mission="Test mission",
-            status="pending"
+            status="pending",
         )
 
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
         sent_count = await ws_dep.broadcast_to_tenant(
-            tenant_key=test_user_a.tenant_key,
-            event_type="agent:created",
-            data=event_data["data"]
+            tenant_key=test_user_a.tenant_key, event_type="agent:created", data=event_data["data"]
         )
 
         # Assert: Only tenant A clients received broadcast
@@ -216,6 +209,7 @@ class TestWebSocketBroadcast:
     Test 3: broadcast_to_tenant reaches all tenant clients
     Validates broadcast_to_tenant method implementation
     """
+
     async def test_broadcast_to_tenant_reaches_all_tenant_clients(
         self, websocket_manager: WebSocketManager, test_user_a: User
     ):
@@ -230,16 +224,14 @@ class TestWebSocketBroadcast:
                 websocket=client,
                 user_id=test_user_a.id,
                 tenant_key=test_user_a.tenant_key,
-                username=test_user_a.username
+                username=test_user_a.username,
             )
             clients.append(client)
 
         # Act: Broadcast to tenant
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
         sent_count = await ws_dep.broadcast_to_tenant(
-            tenant_key=test_user_a.tenant_key,
-            event_type="test:event",
-            data={"message": "Hello all clients"}
+            tenant_key=test_user_a.tenant_key, event_type="test:event", data={"message": "Hello all clients"}
         )
 
         # Assert: All 10 clients received message
@@ -253,9 +245,8 @@ class TestWebSocketBroadcast:
     Test 4: exclude_client parameter works
     Validates exclude_client functionality in broadcast
     """
-    async def test_exclude_client_parameter_works(
-        self, websocket_manager: WebSocketManager, test_user_a: User
-    ):
+
+    async def test_exclude_client_parameter_works(self, websocket_manager: WebSocketManager, test_user_a: User):
         """
         PRODUCTION-GRADE: Validate exclude_client parameter
         """
@@ -265,22 +256,13 @@ class TestWebSocketBroadcast:
         client3 = MockWebSocket("client_3", test_user_a.tenant_key)
 
         websocket_manager.active_connections["client_1"] = ConnectionInfo(
-            websocket=client1,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client1, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
         websocket_manager.active_connections["client_2"] = ConnectionInfo(
-            websocket=client2,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client2, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
         websocket_manager.active_connections["client_3"] = ConnectionInfo(
-            websocket=client3,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client3, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
 
         # Act: Broadcast excluding client_2
@@ -289,7 +271,7 @@ class TestWebSocketBroadcast:
             tenant_key=test_user_a.tenant_key,
             event_type="test:event",
             data={"message": "Not for client_2"},
-            exclude_client="client_2"
+            exclude_client="client_2",
         )
 
         # Assert: Only 2 clients received (client_1 and client_3)
@@ -303,28 +285,22 @@ class TestWebSocketBroadcast:
     Test 5: Event ordering preserved
     Validates events received in same order as sent
     """
-    async def test_event_ordering_preserved(
-        self, websocket_manager: WebSocketManager, test_user_a: User
-    ):
+
+    async def test_event_ordering_preserved(self, websocket_manager: WebSocketManager, test_user_a: User):
         """
         PRODUCTION-GRADE: Event ordering consistency
         """
         # Arrange: Connect client
         client = MockWebSocket("client_1", test_user_a.tenant_key)
         websocket_manager.active_connections["client_1"] = ConnectionInfo(
-            websocket=client,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
 
         # Act: Send 10 events in sequence
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
         for i in range(10):
             await ws_dep.broadcast_to_tenant(
-                tenant_key=test_user_a.tenant_key,
-                event_type="test:sequence",
-                data={"sequence": i}
+                tenant_key=test_user_a.tenant_key, event_type="test:sequence", data={"sequence": i}
             )
 
         # Assert: Events received in correct order
@@ -337,9 +313,8 @@ class TestWebSocketBroadcast:
     Test 6: Concurrent broadcasts handled
     Validates race condition prevention in concurrent broadcasts
     """
-    async def test_concurrent_broadcasts_handled(
-        self, websocket_manager: WebSocketManager, test_user_a: User
-    ):
+
+    async def test_concurrent_broadcasts_handled(self, websocket_manager: WebSocketManager, test_user_a: User):
         """
         PRODUCTION-GRADE: Concurrent broadcast handling
         """
@@ -351,7 +326,7 @@ class TestWebSocketBroadcast:
                 websocket=client,
                 user_id=test_user_a.id,
                 tenant_key=test_user_a.tenant_key,
-                username=test_user_a.username
+                username=test_user_a.username,
             )
             clients.append(client)
 
@@ -360,9 +335,7 @@ class TestWebSocketBroadcast:
 
         async def broadcast(index: int):
             return await ws_dep.broadcast_to_tenant(
-                tenant_key=test_user_a.tenant_key,
-                event_type="test:concurrent",
-                data={"broadcast_id": index}
+                tenant_key=test_user_a.tenant_key, event_type="test:concurrent", data={"broadcast_id": index}
             )
 
         tasks = [broadcast(i) for i in range(20)]
@@ -383,9 +356,8 @@ class TestWebSocketBroadcast:
     Test 7: Client disconnect during broadcast
     Validates graceful handling of client disconnection
     """
-    async def test_client_disconnect_during_broadcast(
-        self, websocket_manager: WebSocketManager, test_user_a: User
-    ):
+
+    async def test_client_disconnect_during_broadcast(self, websocket_manager: WebSocketManager, test_user_a: User):
         """
         PRODUCTION-GRADE: Handle client disconnect gracefully
         """
@@ -395,22 +367,13 @@ class TestWebSocketBroadcast:
         client3 = MockWebSocket("client_3", test_user_a.tenant_key)
 
         websocket_manager.active_connections["client_1"] = ConnectionInfo(
-            websocket=client1,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client1, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
         websocket_manager.active_connections["client_2"] = ConnectionInfo(
-            websocket=client2,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client2, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
         websocket_manager.active_connections["client_3"] = ConnectionInfo(
-            websocket=client3,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client3, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
 
         # Disconnect client_2 before broadcast
@@ -419,9 +382,7 @@ class TestWebSocketBroadcast:
         # Act: Broadcast to tenant (should handle disconnect gracefully)
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
         sent_count = await ws_dep.broadcast_to_tenant(
-            tenant_key=test_user_a.tenant_key,
-            event_type="test:event",
-            data={"message": "Test"}
+            tenant_key=test_user_a.tenant_key, event_type="test:event", data={"message": "Test"}
         )
 
         # Assert: Broadcast to remaining clients succeeded
@@ -437,6 +398,7 @@ class TestWebSocketBroadcast:
     Test 8: Zero cross-tenant leakage
     Validates complete tenant isolation across multiple broadcasts
     """
+
     async def test_zero_cross_tenant_leakage(
         self, websocket_manager: WebSocketManager, test_user_a: User, test_user_b: User
     ):
@@ -453,7 +415,7 @@ class TestWebSocketBroadcast:
                 websocket=client_a,
                 user_id=test_user_a.id,
                 tenant_key=test_user_a.tenant_key,
-                username=test_user_a.username
+                username=test_user_a.username,
             )
             tenant_a_clients.append(client_a)
 
@@ -462,7 +424,7 @@ class TestWebSocketBroadcast:
                 websocket=client_b,
                 user_id=test_user_b.id,
                 tenant_key=test_user_b.tenant_key,
-                username=test_user_b.username
+                username=test_user_b.username,
             )
             tenant_b_clients.append(client_b)
 
@@ -472,16 +434,12 @@ class TestWebSocketBroadcast:
         for i in range(10):
             # Tenant A broadcast
             await ws_dep.broadcast_to_tenant(
-                tenant_key=test_user_a.tenant_key,
-                event_type="tenant_a:event",
-                data={"tenant": "A", "sequence": i}
+                tenant_key=test_user_a.tenant_key, event_type="tenant_a:event", data={"tenant": "A", "sequence": i}
             )
 
             # Tenant B broadcast
             await ws_dep.broadcast_to_tenant(
-                tenant_key=test_user_b.tenant_key,
-                event_type="tenant_b:event",
-                data={"tenant": "B", "sequence": i}
+                tenant_key=test_user_b.tenant_key, event_type="tenant_b:event", data={"tenant": "B", "sequence": i}
             )
 
         # Assert: Tenant A clients only received tenant A events
@@ -514,9 +472,7 @@ class TestWebSocketBroadcast:
 class TestWebSocketBroadcastEdgeCases:
     """Edge cases and error scenarios"""
 
-    async def test_broadcast_to_empty_tenant(
-        self, websocket_manager: WebSocketManager, test_user_a: User
-    ):
+    async def test_broadcast_to_empty_tenant(self, websocket_manager: WebSocketManager, test_user_a: User):
         """
         Validate broadcast when no clients connected for tenant
         """
@@ -525,27 +481,20 @@ class TestWebSocketBroadcastEdgeCases:
 
         # Act: Broadcast to tenant with no clients
         sent_count = await ws_dep.broadcast_to_tenant(
-            tenant_key=test_user_a.tenant_key,
-            event_type="test:event",
-            data={"message": "No one listening"}
+            tenant_key=test_user_a.tenant_key, event_type="test:event", data={"message": "No one listening"}
         )
 
         # Assert: Zero clients notified (no error)
         assert sent_count == 0
 
-    async def test_broadcast_with_invalid_event_data(
-        self, websocket_manager: WebSocketManager, test_user_a: User
-    ):
+    async def test_broadcast_with_invalid_event_data(self, websocket_manager: WebSocketManager, test_user_a: User):
         """
         Validate error handling for invalid event data
         """
         # Arrange: Connect client
         client = MockWebSocket("client_1", test_user_a.tenant_key)
         websocket_manager.active_connections["client_1"] = ConnectionInfo(
-            websocket=client,
-            user_id=test_user_a.id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client, user_id=test_user_a.id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
 
         # Act & Assert: Broadcast with None data (should handle gracefully)
@@ -556,7 +505,7 @@ class TestWebSocketBroadcastEdgeCases:
             sent_count = await ws_dep.broadcast_to_tenant(
                 tenant_key=test_user_a.tenant_key,
                 event_type="test:event",
-                data=None  # Invalid
+                data=None,  # Invalid
             )
             # If no error, verify it was handled
             assert sent_count >= 0
@@ -580,24 +529,16 @@ class TestWebSocketBroadcastEdgeCases:
         client_b = MockWebSocket("client_b", test_user_b.tenant_key)
 
         websocket_manager.active_connections["client_a"] = ConnectionInfo(
-            websocket=client_a,
-            user_id=same_user_id,
-            tenant_key=test_user_a.tenant_key,
-            username=test_user_a.username
+            websocket=client_a, user_id=same_user_id, tenant_key=test_user_a.tenant_key, username=test_user_a.username
         )
         websocket_manager.active_connections["client_b"] = ConnectionInfo(
-            websocket=client_b,
-            user_id=same_user_id,
-            tenant_key=test_user_b.tenant_key,
-            username=test_user_b.username
+            websocket=client_b, user_id=same_user_id, tenant_key=test_user_b.tenant_key, username=test_user_b.username
         )
 
         # Act: Broadcast to tenant A
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
         sent_count = await ws_dep.broadcast_to_tenant(
-            tenant_key=test_user_a.tenant_key,
-            event_type="test:event",
-            data={"message": "Tenant A only"}
+            tenant_key=test_user_a.tenant_key, event_type="test:event", data={"message": "Tenant A only"}
         )
 
         # Assert: Only tenant A client received message (tenant_key isolation)

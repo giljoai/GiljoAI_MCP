@@ -4,12 +4,11 @@ Unit tests for SerenaDetector service.
 Tests detection of uvx and Serena MCP installation status.
 """
 
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
-import subprocess
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -42,12 +41,8 @@ class TestSerenaDetector:
             # First call: uvx --version succeeds
             # Second call: uvx serena --version fails
             mock_run.side_effect = [
-                Mock(
-                    returncode=0, stdout="uvx 0.4.18\n", stderr=""
-                ),  # uvx available
-                subprocess.CalledProcessError(
-                    1, "uvx serena --version", stderr="Package 'serena' not found"
-                ),
+                Mock(returncode=0, stdout="uvx 0.4.18\n", stderr=""),  # uvx available
+                subprocess.CalledProcessError(1, "uvx serena --version", stderr="Package 'serena' not found"),
             ]
 
             result = self.detector.detect()
@@ -63,9 +58,7 @@ class TestSerenaDetector:
             # Both uvx and serena checks succeed
             mock_run.side_effect = [
                 Mock(returncode=0, stdout="uvx 0.4.18\n", stderr=""),  # uvx available
-                Mock(
-                    returncode=0, stdout="Serena MCP v1.2.3\n", stderr=""
-                ),  # serena available
+                Mock(returncode=0, stdout="Serena MCP v1.2.3\n", stderr=""),  # serena available
             ]
 
             result = self.detector.detect()
@@ -124,9 +117,7 @@ class TestSerenaDetector:
         """Test detection handles non-zero return codes gracefully."""
         with patch("subprocess.run") as mock_run:
             # uvx check returns non-zero
-            mock_run.side_effect = subprocess.CalledProcessError(
-                127, "uvx --version", stderr="Command not found"
-            )
+            mock_run.side_effect = subprocess.CalledProcessError(127, "uvx --version", stderr="Command not found")
 
             result = self.detector.detect()
 
@@ -176,9 +167,7 @@ class TestSerenaDetector:
             # Version output with extra whitespace
             mock_run.side_effect = [
                 Mock(returncode=0, stdout="uvx 0.4.18\n", stderr=""),
-                Mock(
-                    returncode=0, stdout="  Serena MCP v1.2.3  \n\n", stderr=""
-                ),
+                Mock(returncode=0, stdout="  Serena MCP v1.2.3  \n\n", stderr=""),
             ]
 
             result = self.detector.detect()

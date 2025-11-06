@@ -8,10 +8,12 @@ Tests cover:
 - Multi-tenant isolation
 - Error handling
 """
-import pytest
+
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import select, func
+
+import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
@@ -38,9 +40,7 @@ class TestTemplateSeedingBasics:
 
         # Verify in database
         result = await db_session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         db_count = result.scalar()
         assert db_count == 6, "Database should contain 6 templates"
@@ -53,11 +53,7 @@ class TestTemplateSeedingBasics:
         # Assert - check all 6 roles exist
         expected_roles = {"orchestrator", "analyzer", "implementer", "tester", "reviewer", "documenter"}
 
-        result = await db_session.execute(
-            select(AgentTemplate.role).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate.role).where(AgentTemplate.tenant_key == tenant_key))
         seeded_roles = {row[0] for row in result.all()}
 
         assert seeded_roles == expected_roles, f"Expected roles {expected_roles}, got {seeded_roles}"
@@ -68,11 +64,7 @@ class TestTemplateSeedingBasics:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -91,10 +83,7 @@ class TestTemplateMetadata:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "orchestrator"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
         )
         template = result.scalar_one()
 
@@ -119,11 +108,7 @@ class TestTemplateMetadata:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -157,11 +142,7 @@ class TestTemplateMetadata:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -186,9 +167,7 @@ class TestIdempotency:
 
         # Verify still only 6 templates
         result = await db_session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         db_count = result.scalar()
         assert db_count == 6, "Should still have exactly 6 templates, no duplicates"
@@ -211,7 +190,7 @@ class TestIdempotency:
             is_active=True,
             is_default=False,
             tags=["custom"],
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(manual_template)
         await db_session.commit()
@@ -224,9 +203,7 @@ class TestIdempotency:
 
         # Verify still only 1 template
         result = await db_session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         db_count = result.scalar()
         assert db_count == 1, "Should still have only the manual template"
@@ -250,21 +227,13 @@ class TestMultiTenantIsolation:
         assert count2 == 6
 
         # Verify tenant 1 templates
-        result1 = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant1
-            )
-        )
+        result1 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant1))
         tenant1_templates = result1.scalars().all()
         assert len(tenant1_templates) == 6
         assert all(t.tenant_key == tenant1 for t in tenant1_templates)
 
         # Verify tenant 2 templates
-        result2 = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant2
-            )
-        )
+        result2 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant2))
         tenant2_templates = result2.scalars().all()
         assert len(tenant2_templates) == 6
         assert all(t.tenant_key == tenant2 for t in tenant2_templates)
@@ -284,9 +253,7 @@ class TestMultiTenantIsolation:
 
         # Act - Check tenant 2 (should be empty)
         result = await db_session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant2
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant2)
         )
         tenant2_count = result.scalar()
 
@@ -323,9 +290,7 @@ class TestErrorHandling:
         # Create new session to verify persistence
         # (In real scenario, this would be a new session)
         result = await db_session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         db_count = result.scalar()
 
@@ -345,14 +310,14 @@ class TestTemplateContent:
         # Assert - Load from database
         result = await db_session.execute(
             select(AgentTemplate.template_content).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "orchestrator"
+                AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator"
             )
         )
         db_content = result.scalar_one()
 
         # Load legacy template for comparison
         from src.giljo_mcp.template_manager import UnifiedTemplateManager
+
         template_mgr = UnifiedTemplateManager()
         legacy_content = template_mgr._legacy_templates["orchestrator"]
 
@@ -366,19 +331,16 @@ class TestTemplateContent:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             # Check that declared variables appear in content as {variable}
             for variable in template.variables:
                 placeholder = f"{{{variable}}}"
-                assert placeholder in template.template_content, \
+                assert placeholder in template.template_content, (
                     f"Template {template.role} should contain placeholder {placeholder}"
+                )
 
     async def test_templates_contain_role_specific_keywords(self, db_session: AsyncSession, tenant_key: str):
         """Test that templates contain expected role-specific keywords"""
@@ -392,14 +354,13 @@ class TestTemplateContent:
             "implementer": ["implementation", "code", "specifications"],
             "tester": ["test", "validation", "coverage"],
             "reviewer": ["review", "quality", "standards"],
-            "documenter": ["documentation", "document", "guide"]
+            "documenter": ["documentation", "document", "guide"],
         }
 
         for role, keywords in role_keywords.items():
             result = await db_session.execute(
                 select(AgentTemplate.template_content).where(
-                    AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.role == role
+                    AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == role
                 )
             )
             content = result.scalar_one().lower()

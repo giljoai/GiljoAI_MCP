@@ -5,7 +5,7 @@ Handover 0018: Context Management System API
 Provides endpoints for vision document chunking, indexing, and dynamic context loading.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -187,20 +187,18 @@ async def chunk_vision_document(
 
     Multi-tenant isolation enforced via tenant_key.
     """
+    from sqlalchemy import select
+
     from api.app import state
     from giljo_mcp.context_management import ContextManagementSystem
     from giljo_mcp.models import Product
-    from sqlalchemy import select
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.get_session_async() as db:
-            stmt = select(Product).where(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
+            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -214,14 +212,15 @@ async def chunk_vision_document(
                 content = product.vision_document
                 original_size = len(content)
             elif product.vision_path:
-                import aiofiles
                 from pathlib import Path
+
+                import aiofiles
 
                 vision_path = Path(product.vision_path)
                 if not vision_path.exists():
                     raise HTTPException(status_code=404, detail="Vision document file not found")
 
-                async with aiofiles.open(vision_path, 'r', encoding='utf-8') as f:
+                async with aiofiles.open(vision_path, encoding="utf-8") as f:
                     content = await f.read()
                     original_size = len(content)
             else:
@@ -234,7 +233,7 @@ async def chunk_vision_document(
                     chunks_created=0,
                     total_tokens=0,
                     original_size=original_size,
-                    message="Vision document already chunked. Use force_rechunk=true to rechunk."
+                    message="Vision document already chunked. Use force_rechunk=true to rechunk.",
                 )
 
             cms = ContextManagementSystem(state.db_manager)
@@ -251,10 +250,9 @@ async def chunk_vision_document(
                     total_tokens=result["total_tokens"],
                     original_size=original_size,
                     reduction_percentage=None,
-                    message="Vision document chunked and indexed successfully"
+                    message="Vision document chunked and indexed successfully",
                 )
-            else:
-                raise HTTPException(status_code=500, detail=result.get("message", "Failed to chunk vision document"))
+            raise HTTPException(status_code=500, detail=result.get("message", "Failed to chunk vision document"))
 
     except HTTPException:
         raise
@@ -288,10 +286,7 @@ async def search_context(
 
         if product_id:
             chunks = cms.loader.load_relevant_chunks(
-                tenant_key=tenant_key,
-                product_id=product_id,
-                query=query,
-                max_tokens=100000
+                tenant_key=tenant_key, product_id=product_id, query=query, max_tokens=100000
             )[:limit]
         else:
             chunks = cms.indexer.search_chunks(tenant_key, query, limit)
@@ -304,16 +299,13 @@ async def search_context(
                 content=c.get("content", ""),
                 tokens=c.get("tokens", 0),
                 chunk_number=c.get("chunk_number", 0),
-                relevance_score=c.get("relevance_score")
+                relevance_score=c.get("relevance_score"),
             )
             for c in chunks
         ]
 
         return SearchContextResponse(
-            query=query,
-            chunks=context_chunks,
-            total_chunks=len(context_chunks),
-            total_tokens=total_tokens
+            query=query, chunks=context_chunks, total_chunks=len(context_chunks), total_tokens=total_tokens
         )
 
     except Exception as e:
@@ -347,7 +339,7 @@ async def load_context_for_agent(
             product_id=request.product_id,
             query=request.mission,
             role=request.agent_type,
-            max_tokens=request.max_tokens
+            max_tokens=request.max_tokens,
         )
 
         context_chunks = [
@@ -356,7 +348,7 @@ async def load_context_for_agent(
                 content=c.get("content", ""),
                 tokens=c.get("tokens", 0),
                 chunk_number=c.get("chunk_number", 0),
-                relevance_score=c.get("relevance_score")
+                relevance_score=c.get("relevance_score"),
             )
             for c in result["chunks"]
         ]
@@ -367,7 +359,7 @@ async def load_context_for_agent(
             total_chunks=result["total_chunks"],
             total_tokens=result["total_tokens"],
             average_relevance=result["average_relevance"],
-            reduction_percentage=None
+            reduction_percentage=None,
         )
 
     except Exception as e:
@@ -409,7 +401,7 @@ async def get_token_stats(
                 original_tokens=total_tokens,
                 condensed_tokens=total_tokens,
                 reduction_percentage=0.0,
-                chunks_count=len(chunks)
+                chunks_count=len(chunks),
             )
 
         return TokenStatsResponse(
@@ -417,7 +409,7 @@ async def get_token_stats(
             original_tokens=stats.get("original_tokens", 0),
             condensed_tokens=stats.get("condensed_tokens", 0),
             reduction_percentage=stats.get("reduction_percentage", 0.0),
-            chunks_count=stats.get("chunks_count", 0)
+            chunks_count=stats.get("chunks_count", 0),
         )
 
     except HTTPException:
@@ -435,26 +427,24 @@ async def health_check(
 
     Returns system status, chunk count, and search performance.
     """
+    import time
+
+    from sqlalchemy import func, select
+
     from api.app import state
     from giljo_mcp.models import MCPContextIndex
-    from sqlalchemy import select, func
-    import time
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.get_session_async() as db:
-            stmt = select(func.count()).select_from(MCPContextIndex).where(
-                MCPContextIndex.tenant_key == tenant_key
-            )
+            stmt = select(func.count()).select_from(MCPContextIndex).where(MCPContextIndex.tenant_key == tenant_key)
             result = await db.execute(stmt)
             chunk_count = result.scalar()
 
             start_time = time.time()
-            search_stmt = select(MCPContextIndex).where(
-                MCPContextIndex.tenant_key == tenant_key
-            ).limit(1)
+            search_stmt = select(MCPContextIndex).where(MCPContextIndex.tenant_key == tenant_key).limit(1)
             await db.execute(search_stmt)
             search_time_ms = (time.time() - start_time) * 1000
 
@@ -462,13 +452,10 @@ async def health_check(
                 status="healthy",
                 chunk_count=chunk_count or 0,
                 search_performance_ms=round(search_time_ms, 2),
-                message="Context management system operational"
+                message="Context management system operational",
             )
 
     except Exception as e:
         return HealthCheckResponse(
-            status="degraded",
-            chunk_count=0,
-            search_performance_ms=None,
-            message=f"Error: {str(e)}"
+            status="degraded", chunk_count=0, search_performance_ms=None, message=f"Error: {e!s}"
         )

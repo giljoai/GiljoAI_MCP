@@ -4,6 +4,7 @@ Phase 3: Orchestrator Upgrade - TDD Implementation
 """
 
 import pytest
+
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
 
@@ -61,16 +62,16 @@ class TestOrchestratorTemplateContent:
         assert "get_vision" in orchestrator_template, "Template must mention get_vision tool"
         assert "get_vision_index" in orchestrator_template, "Template should explain vision index"
         assert "total_parts" in orchestrator_template, "Template should explain multi-part vision handling"
-        assert (
-            "ALL parts" in orchestrator_template or "all parts" in orchestrator_template
-        ), "Template must emphasize reading all vision parts"
+        assert "ALL parts" in orchestrator_template or "all parts" in orchestrator_template, (
+            "Template must emphasize reading all vision parts"
+        )
 
     def test_contains_product_settings(self, orchestrator_template):
         """Test that template includes product settings review"""
         assert "get_product_settings" in orchestrator_template, "Template must mention get_product_settings"
-        assert (
-            "config_data" in orchestrator_template or "config" in orchestrator_template.lower()
-        ), "Template should reference configuration data"
+        assert "config_data" in orchestrator_template or "config" in orchestrator_template.lower(), (
+            "Template should reference configuration data"
+        )
 
     def test_contains_discovery_keyword(self, orchestrator_template):
         """Test that template emphasizes discovery"""
@@ -78,49 +79,49 @@ class TestOrchestratorTemplateContent:
         assert "discovery" in template_lower, "Template must contain 'discovery' concept"
         # Count occurrences - should appear multiple times
         discovery_count = template_lower.count("discovery")
-        assert (
-            discovery_count >= 3
-        ), f"Template should emphasize discovery (found {discovery_count} times, expected >= 3)"
+        assert discovery_count >= 3, (
+            f"Template should emphasize discovery (found {discovery_count} times, expected >= 3)"
+        )
 
     def test_contains_delegation_keyword(self, orchestrator_template):
         """Test that template emphasizes delegation"""
         template_lower = orchestrator_template.lower()
-        assert (
-            "delegation" in template_lower or "delegate" in template_lower
-        ), "Template must contain 'delegation' concept"
+        assert "delegation" in template_lower or "delegate" in template_lower, (
+            "Template must contain 'delegation' concept"
+        )
         # Count occurrences - should appear multiple times
         delegate_count = template_lower.count("delegate")
-        assert (
-            delegate_count >= 3
-        ), f"Template should emphasize delegation (found {delegate_count} times, expected >= 3)"
+        assert delegate_count >= 3, (
+            f"Template should emphasize delegation (found {delegate_count} times, expected >= 3)"
+        )
 
     def test_contains_specific_mission_examples(self, orchestrator_template):
         """Test that template includes specific vs generic mission examples"""
         assert "❌" in orchestrator_template or "NEVER:" in orchestrator_template, "Template should show anti-patterns"
-        assert (
-            "✅" in orchestrator_template or "ALWAYS:" in orchestrator_template
-        ), "Template should show correct patterns"
+        assert "✅" in orchestrator_template or "ALWAYS:" in orchestrator_template, (
+            "Template should show correct patterns"
+        )
 
     def test_contains_project_closure_requirements(self, orchestrator_template):
         """Test that template specifies project closure documentation"""
         assert "PROJECT CLOSURE" in orchestrator_template, "Template must have project closure section"
-        assert (
-            "Completion Report" in orchestrator_template or "completion report" in orchestrator_template
-        ), "Template must mention completion report"
+        assert "Completion Report" in orchestrator_template or "completion report" in orchestrator_template, (
+            "Template must mention completion report"
+        )
         assert "Devlog" in orchestrator_template or "devlog" in orchestrator_template, "Template must mention devlog"
-        assert (
-            "Session Memory" in orchestrator_template or "session memory" in orchestrator_template
-        ), "Template must mention session memory"
+        assert "Session Memory" in orchestrator_template or "session memory" in orchestrator_template, (
+            "Template must mention session memory"
+        )
         # Should require THREE artifacts
-        assert (
-            "three" in orchestrator_template.lower() or "3" in orchestrator_template
-        ), "Template should specify three documentation artifacts"
+        assert "three" in orchestrator_template.lower() or "3" in orchestrator_template, (
+            "Template should specify three documentation artifacts"
+        )
 
     def test_role_definition_not_ceo(self, orchestrator_template):
         """Test that orchestrator role is properly scoped (not CEO)"""
-        assert (
-            "Project Manager" in orchestrator_template or "Team Lead" in orchestrator_template
-        ), "Template should define role as Project Manager/Team Lead"
+        assert "Project Manager" in orchestrator_template or "Team Lead" in orchestrator_template, (
+            "Template should define role as Project Manager/Team Lead"
+        )
         assert (
             "NOT CEO" in orchestrator_template
             or "not CEO" in orchestrator_template
@@ -132,17 +133,17 @@ class TestOrchestratorTemplateContent:
         template_lower = orchestrator_template.lower()
         assert "context" in template_lower, "Template should mention context management"
         # Should differentiate between orchestrator and worker context
-        assert (
-            "worker" in template_lower or "agent" in template_lower
-        ), "Template should distinguish worker agent context"
+        assert "worker" in template_lower or "agent" in template_lower, (
+            "Template should distinguish worker agent context"
+        )
 
     def test_contains_success_criteria_section(self, orchestrator_template):
         """Test that template has success criteria section"""
         assert "SUCCESS CRITERIA" in orchestrator_template, "Template must have success criteria section"
         # Should be a checklist format
-        assert (
-            "[ ]" in orchestrator_template or "- [ ]" in orchestrator_template
-        ), "Success criteria should use checkbox format"
+        assert "[ ]" in orchestrator_template or "- [ ]" in orchestrator_template, (
+            "Success criteria should use checkbox format"
+        )
 
 
 class TestOrchestratorTemplateMetadata:
@@ -203,23 +204,23 @@ class TestOrchestratorTemplateStructure:
         assert "===" in orchestrator_template, "Template should use === for section headers"
         # Count sections - should have several major sections
         section_count = orchestrator_template.count("===")
-        assert (
-            section_count >= 10
-        ), f"Template should have multiple clear sections (found {section_count}, expected >= 10)"
+        assert section_count >= 10, (
+            f"Template should have multiple clear sections (found {section_count}, expected >= 10)"
+        )
 
     def test_workflow_steps_numbered(self, orchestrator_template):
         """Test that workflow steps are clearly numbered"""
         # Should have numbered steps (Step 1, Step 2, etc.)
-        assert (
-            "Step 1:" in orchestrator_template or "1." in orchestrator_template
-        ), "Template should have numbered workflow steps"
+        assert "Step 1:" in orchestrator_template or "1." in orchestrator_template, (
+            "Template should have numbered workflow steps"
+        )
 
     def test_has_examples_section(self, orchestrator_template):
         """Test that template includes examples"""
         # Should have example usage patterns
-        assert (
-            "Example" in orchestrator_template or "example" in orchestrator_template
-        ), "Template should include examples"
+        assert "Example" in orchestrator_template or "example" in orchestrator_template, (
+            "Template should include examples"
+        )
 
     def test_comprehensive_length(self, orchestrator_template):
         """Test that template is comprehensive (not abbreviated)"""
@@ -228,9 +229,9 @@ class TestOrchestratorTemplateStructure:
         assert line_count >= 200, f"Template should be comprehensive (found {line_count} lines, expected >= 200)"
         # Check character count too
         char_count = len(orchestrator_template)
-        assert (
-            char_count >= 10000
-        ), f"Template should have substantial content (found {char_count} chars, expected >= 10000)"
+        assert char_count >= 10000, (
+            f"Template should have substantial content (found {char_count} chars, expected >= 10000)"
+        )
 
 
 class TestOrchestratorTemplateIntegration:
@@ -238,7 +239,7 @@ class TestOrchestratorTemplateIntegration:
 
     def test_template_can_be_processed(self):
         """Test that template can be processed with variables"""
-        from src.giljo_mcp.template_manager import process_template, UnifiedTemplateManager
+        from src.giljo_mcp.template_manager import UnifiedTemplateManager, process_template
 
         manager = UnifiedTemplateManager(db_manager=None)
         template = manager._legacy_templates["orchestrator"]
@@ -260,7 +261,7 @@ class TestOrchestratorTemplateIntegration:
 
     def test_extract_variables_from_template(self):
         """Test that template variables can be extracted"""
-        from src.giljo_mcp.template_manager import extract_variables, UnifiedTemplateManager
+        from src.giljo_mcp.template_manager import UnifiedTemplateManager, extract_variables
 
         manager = UnifiedTemplateManager(db_manager=None)
         template = manager._legacy_templates["orchestrator"]

@@ -25,12 +25,11 @@ from api.dependencies import get_tenant_key
 from api.schemas.vision_document import (
     DeleteResponse,
     RechunkResponse,
-    VisionDocumentCreate,
     VisionDocumentResponse,
-    VisionDocumentUpdate,
 )
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +63,7 @@ def get_vision_repo():
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database not available"
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database not available")
 
     return VisionDocumentRepository(state.db_manager)
 
@@ -84,7 +80,7 @@ async def create_vision_document(
     version: str = Form("1.0.0"),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
     Create a new vision document for a product.
@@ -125,12 +121,7 @@ async def create_vision_document(
         logger.info(f"[VisionDoc Upload] product_id={product_id}, tenant_key={tenant_key}")
 
         # Validate product exists and belongs to tenant (ASYNC query)
-        result = await db.execute(
-            select(Product).filter(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
-        )
+        result = await db.execute(select(Product).filter(Product.id == product_id, Product.tenant_key == tenant_key))
         product = result.scalar_one_or_none()
 
         # DEBUG: Log query result
@@ -140,13 +131,12 @@ async def create_vision_document(
             all_result = await db.execute(select(Product).filter(Product.id == product_id))
             any_product = all_result.scalar_one_or_none()
             if any_product:
-                logger.warning(f"[VisionDoc Upload] Product exists but tenant mismatch! Product tenant: {any_product.tenant_key}, Request tenant: {tenant_key}")
+                logger.warning(
+                    f"[VisionDoc Upload] Product exists but tenant mismatch! Product tenant: {any_product.tenant_key}, Request tenant: {tenant_key}"
+                )
 
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {product_id} not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
 
         # Determine storage type and get content
         document_content = content
@@ -160,28 +150,28 @@ async def create_vision_document(
             storage_path.mkdir(parents=True, exist_ok=True)  # CROSS-PLATFORM: creates subdirs
 
             file_path = storage_path / vision_file.filename
-            async with aiofiles.open(file_path, 'wb') as f:
+            async with aiofiles.open(file_path, "wb") as f:
                 content_bytes = await vision_file.read()
                 await f.write(content_bytes)
 
             # Calculate file size from uploaded file
             file_size = len(content_bytes)
 
-            document_content = content_bytes.decode('utf-8')
+            document_content = content_bytes.decode("utf-8")
             storage_type = "hybrid" if content else "file"
         elif content:
             # Inline content - calculate size from string
-            file_size = len(content.encode('utf-8'))
+            file_size = len(content.encode("utf-8"))
 
         if not document_content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No content provided. Provide either 'content' or 'vision_file'."
+                detail="No content provided. Provide either 'content' or 'vision_file'.",
             )
 
         # Create vision document
         # IMPORTANT: Store path with forward slashes (OS-neutral, prevents escape sequence bugs)
-        normalized_path = str(file_path).replace('\\', '/') if file_path else None
+        normalized_path = str(file_path).replace("\\", "/") if file_path else None
 
         doc = await vision_repo.create(
             session=db,
@@ -194,7 +184,7 @@ async def create_vision_document(
             file_path=normalized_path,
             file_size=file_size,
             display_order=display_order,
-            version=version
+            version=version,
         )
         await db.commit()
 
@@ -211,7 +201,7 @@ async def create_vision_document(
                     await db.rollback()
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Document upload failed during chunking: {result.get('error')}"
+                        detail=f"Document upload failed during chunking: {result.get('error')}",
                     )
 
             except HTTPException:
@@ -221,7 +211,7 @@ async def create_vision_document(
                 await db.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Document upload failed during chunking: {str(chunk_error)}"
+                    detail=f"Document upload failed during chunking: {chunk_error!s}",
                 )
 
         await db.refresh(doc)
@@ -235,8 +225,7 @@ async def create_vision_document(
         await db.rollback()
         logger.error(f"Failed to create vision document: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create vision document: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create vision document: {e!s}"
         )
 
 
@@ -246,7 +235,7 @@ async def list_vision_documents(
     active_only: bool = True,
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
     List all vision documents for a product.
@@ -271,10 +260,7 @@ async def list_vision_documents(
     """
     try:
         docs = await vision_repo.list_by_product(
-            session=db,
-            tenant_key=tenant_key,
-            product_id=product_id,
-            active_only=active_only
+            session=db, tenant_key=tenant_key, product_id=product_id, active_only=active_only
         )
 
         return [VisionDocumentResponse.model_validate(doc) for doc in docs]
@@ -282,8 +268,7 @@ async def list_vision_documents(
     except Exception as e:
         logger.error(f"Failed to list vision documents: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list vision documents: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to list vision documents: {e!s}"
         )
 
 
@@ -294,7 +279,7 @@ async def update_vision_document(
     auto_rechunk: bool = Form(True),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
     Update vision document content.
@@ -325,16 +310,12 @@ async def update_vision_document(
     try:
         # Update content
         doc = await vision_repo.update_content(
-            session=db,
-            tenant_key=tenant_key,
-            document_id=document_id,
-            new_content=content
+            session=db, tenant_key=tenant_key, document_id=document_id, new_content=content
         )
 
         if not doc:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Vision document {document_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found"
             )
 
         await db.commit()
@@ -366,8 +347,7 @@ async def update_vision_document(
         await db.rollback()
         logger.error(f"Failed to update vision document: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update vision document: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update vision document: {e!s}"
         )
 
 
@@ -376,7 +356,7 @@ async def delete_vision_document(
     document_id: str,
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
     Delete vision document and all associated chunks.
@@ -398,17 +378,10 @@ async def delete_vision_document(
         HTTPException 500: If deletion fails
     """
     try:
-        result = await vision_repo.delete(
-            session=db,
-            tenant_key=tenant_key,
-            document_id=document_id
-        )
+        result = await vision_repo.delete(session=db, tenant_key=tenant_key, document_id=document_id)
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=result["message"]
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["message"])
 
         await db.commit()
 
@@ -421,8 +394,7 @@ async def delete_vision_document(
         await db.rollback()
         logger.error(f"Failed to delete vision document: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete vision document: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete vision document: {e!s}"
         )
 
 
@@ -431,7 +403,7 @@ async def rechunk_vision_document(
     document_id: str,
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
-    vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
+    vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
     Trigger re-chunking of a vision document.
@@ -465,8 +437,7 @@ async def rechunk_vision_document(
         doc = await vision_repo.get_by_id(db, tenant_key, document_id)
         if not doc:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Vision document {document_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found"
             )
 
         # Trigger re-chunking
@@ -476,8 +447,7 @@ async def rechunk_vision_document(
         if not result.get("success"):
             await db.rollback()
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Chunking failed: {result.get('error')}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Chunking failed: {result.get('error')}"
             )
 
         await db.commit()
@@ -491,6 +461,5 @@ async def rechunk_vision_document(
         await db.rollback()
         logger.error(f"Failed to rechunk vision document: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to rechunk vision document: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to rechunk vision document: {e!s}"
         )

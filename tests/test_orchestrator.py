@@ -14,7 +14,6 @@ from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestr
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 @pytest_asyncio.fixture
 async def db_manager():
     """Create test database manager."""

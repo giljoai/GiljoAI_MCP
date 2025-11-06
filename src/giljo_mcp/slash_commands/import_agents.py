@@ -6,6 +6,7 @@ that invoke the complex backend export logic (backups, active filtering, etc.)
 
 Handover 0084b: Agent Import Slash Commands
 """
+
 import logging
 from pathlib import Path
 from typing import Any, Optional
@@ -14,6 +15,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from ..models import AgentTemplate, Product, User
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +56,9 @@ async def handle_import_productagents(
     try:
         # Late import to avoid circular dependency
         from api.endpoints.claude_export import (
-            generate_yaml_frontmatter,
-            create_zip_backup,
             create_backup,
+            create_zip_backup,
+            generate_yaml_frontmatter,
         )
 
         # Get user by tenant key
@@ -274,9 +276,9 @@ async def handle_import_personalagents(
     try:
         # Late import to avoid circular dependency
         from api.endpoints.claude_export import (
-            generate_yaml_frontmatter,
-            create_zip_backup,
             create_backup,
+            create_zip_backup,
+            generate_yaml_frontmatter,
         )
 
         # Get user by tenant key
@@ -296,10 +298,7 @@ async def handle_import_personalagents(
 
         # Create directory if it doesn't exist
         export_path.mkdir(parents=True, exist_ok=True)
-        logger.info(
-            f"[handle_import_personalagents] Exporting to personal path: {export_path} "
-            f"(tenant={tenant_key})"
-        )
+        logger.info(f"[handle_import_personalagents] Exporting to personal path: {export_path} (tenant={tenant_key})")
 
         # Create backup before export
         backup_path = create_zip_backup(export_path)

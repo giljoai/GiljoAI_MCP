@@ -10,11 +10,12 @@ Created: 2025-11-02
 Coverage Target: 95%+
 """
 
-import pytest
-import pytest_asyncio
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from datetime import datetime, timezone
+
+import pytest
+import pytest_asyncio
 
 from api.dependencies.websocket import WebSocketDependency
 
@@ -51,8 +52,8 @@ async def authenticated_client_with_user(api_client, db_session):
             "codebase_summary": 6,
             "architecture": 4,
             "serena_enabled": False,
-            "token_budget": 2000
-        }
+            "token_budget": 2000,
+        },
     )
 
     db_session.add(test_user)
@@ -86,16 +87,16 @@ async def test_product(db_session):
                 "languages": ["Python", "JavaScript"],
                 "backend": ["FastAPI"],
                 "frontend": ["Vue.js"],
-                "database": ["PostgreSQL"]
+                "database": ["PostgreSQL"],
             },
             "features": ["Authentication", "User Management", "Analytics"],
             "architecture": {
                 "pattern": "Microservices",
                 "api_style": "REST",
-                "notes": "Event-driven architecture with message queues"
-            }
+                "notes": "Event-driven architecture with message queues",
+            },
         },
-        status="active"
+        status="active",
     )
 
     db_session.add(product)
@@ -117,7 +118,7 @@ async def test_project(db_session, test_product):
         product_id=test_product.id,
         description="Implement authentication and user management system",
         codebase_summary="## Backend\n- FastAPI application\n- PostgreSQL database\n- JWT authentication",
-        status="active"
+        status="active",
     )
 
     db_session.add(project)
@@ -165,22 +166,24 @@ async def test_regenerate_mission_with_field_priority_overrides(
     app.dependency_overrides[get_websocket_dependency] = mock_get_ws_dep
 
     # Mock orchestrator to avoid full mission generation
-    with patch('api.endpoints.orchestration.ProjectOrchestrator') as mock_orchestrator_class:
+    with patch("api.endpoints.orchestration.ProjectOrchestrator") as mock_orchestrator_class:
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_product_vision = AsyncMock(return_value={
-            "mission": "Generated mission with overrides",
-            "token_estimate": 1500,
-            "user_config_applied": True,
-            "serena_enabled": False
-        })
+        mock_orchestrator.process_product_vision = AsyncMock(
+            return_value={
+                "mission": "Generated mission with overrides",
+                "token_estimate": 1500,
+                "user_config_applied": True,
+                "serena_enabled": False,
+            }
+        )
         mock_orchestrator_class.return_value = mock_orchestrator
 
         request_data = {
             "project_id": test_project.id,
             "override_field_priorities": {
                 "codebase_summary": 10,  # Override from 6 to 10
-                "architecture": 2  # Override from 4 to 2
-            }
+                "architecture": 2,  # Override from 4 to 2
+            },
         }
 
         # Act
@@ -228,21 +231,23 @@ async def test_regenerate_mission_overrides_dont_persist(
     app.dependency_overrides[get_websocket_dependency] = mock_get_ws_dep
 
     # Mock orchestrator
-    with patch('api.endpoints.orchestration.ProjectOrchestrator') as mock_orchestrator_class:
+    with patch("api.endpoints.orchestration.ProjectOrchestrator") as mock_orchestrator_class:
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_product_vision = AsyncMock(return_value={
-            "mission": "Temporary overrides",
-            "token_estimate": 1200,
-            "user_config_applied": True,
-            "serena_enabled": False
-        })
+        mock_orchestrator.process_product_vision = AsyncMock(
+            return_value={
+                "mission": "Temporary overrides",
+                "token_estimate": 1200,
+                "user_config_applied": True,
+                "serena_enabled": False,
+            }
+        )
         mock_orchestrator_class.return_value = mock_orchestrator
 
         request_data = {
             "project_id": test_project.id,
             "override_field_priorities": {
                 "product_vision": 5  # Temporary override from 10 to 5
-            }
+            },
         }
 
         # Act
@@ -293,19 +298,21 @@ async def test_regenerate_mission_with_serena_toggle_override(
     app.dependency_overrides[get_websocket_dependency] = mock_get_ws_dep
 
     # Mock orchestrator
-    with patch('api.endpoints.orchestration.ProjectOrchestrator') as mock_orchestrator_class:
+    with patch("api.endpoints.orchestration.ProjectOrchestrator") as mock_orchestrator_class:
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_product_vision = AsyncMock(return_value={
-            "mission": "Mission with Serena context",
-            "token_estimate": 2500,
-            "user_config_applied": True,
-            "serena_enabled": True  # Enabled via override
-        })
+        mock_orchestrator.process_product_vision = AsyncMock(
+            return_value={
+                "mission": "Mission with Serena context",
+                "token_estimate": 2500,
+                "user_config_applied": True,
+                "serena_enabled": True,  # Enabled via override
+            }
+        )
         mock_orchestrator_class.return_value = mock_orchestrator
 
         request_data = {
             "project_id": test_project.id,
-            "override_serena_enabled": True  # Temporary enable
+            "override_serena_enabled": True,  # Temporary enable
         }
 
         # Act
@@ -349,19 +356,19 @@ async def test_regenerate_mission_broadcasts_update(
     app.dependency_overrides[get_websocket_dependency] = mock_get_ws_dep
 
     # Mock orchestrator
-    with patch('api.endpoints.orchestration.ProjectOrchestrator') as mock_orchestrator_class:
+    with patch("api.endpoints.orchestration.ProjectOrchestrator") as mock_orchestrator_class:
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_product_vision = AsyncMock(return_value={
-            "mission": "Regenerated mission",
-            "token_estimate": 1800,
-            "user_config_applied": True,
-            "serena_enabled": False
-        })
+        mock_orchestrator.process_product_vision = AsyncMock(
+            return_value={
+                "mission": "Regenerated mission",
+                "token_estimate": 1800,
+                "user_config_applied": True,
+                "serena_enabled": False,
+            }
+        )
         mock_orchestrator_class.return_value = mock_orchestrator
 
-        request_data = {
-            "project_id": test_project.id
-        }
+        request_data = {"project_id": test_project.id}
 
         # Act
         response = await client.post("/api/orchestration/regenerate-mission", json=request_data)
@@ -395,9 +402,7 @@ async def test_regenerate_mission_broadcasts_update(
 
 
 @pytest.mark.asyncio
-async def test_regenerate_mission_unauthorized_access_denied(
-    authenticated_client_with_user, db_session
-):
+async def test_regenerate_mission_unauthorized_access_denied(authenticated_client_with_user, db_session):
     """
     Test regenerate_mission rejects unauthorized access to other tenants' projects.
 
@@ -414,15 +419,13 @@ async def test_regenerate_mission_unauthorized_access_denied(
         name="Other Tenant Project",
         tenant_key="tenant_xyz",  # DIFFERENT tenant
         description="Should not be accessible",
-        status="active"
+        status="active",
     )
 
     db_session.add(other_tenant_project)
     await db_session.commit()
 
-    request_data = {
-        "project_id": other_tenant_project.id
-    }
+    request_data = {"project_id": other_tenant_project.id}
 
     # Act
     response = await client.post("/api/orchestration/regenerate-mission", json=request_data)
@@ -453,19 +456,19 @@ async def test_regenerate_mission_multi_tenant_isolation_in_broadcast(
     app.dependency_overrides[get_websocket_dependency] = mock_get_ws_dep
 
     # Mock orchestrator
-    with patch('api.endpoints.orchestration.ProjectOrchestrator') as mock_orchestrator_class:
+    with patch("api.endpoints.orchestration.ProjectOrchestrator") as mock_orchestrator_class:
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_product_vision = AsyncMock(return_value={
-            "mission": "Mission content",
-            "token_estimate": 1000,
-            "user_config_applied": True,
-            "serena_enabled": False
-        })
+        mock_orchestrator.process_product_vision = AsyncMock(
+            return_value={
+                "mission": "Mission content",
+                "token_estimate": 1000,
+                "user_config_applied": True,
+                "serena_enabled": False,
+            }
+        )
         mock_orchestrator_class.return_value = mock_orchestrator
 
-        request_data = {
-            "project_id": test_project.id
-        }
+        request_data = {"project_id": test_project.id}
 
         # Act
         response = await client.post("/api/orchestration/regenerate-mission", json=request_data)
@@ -538,19 +541,19 @@ async def test_regenerate_mission_graceful_degradation_websocket_failure(
     app.dependency_overrides[get_websocket_dependency] = mock_get_ws_dep
 
     # Mock orchestrator
-    with patch('api.endpoints.orchestration.ProjectOrchestrator') as mock_orchestrator_class:
+    with patch("api.endpoints.orchestration.ProjectOrchestrator") as mock_orchestrator_class:
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_product_vision = AsyncMock(return_value={
-            "mission": "Mission despite WebSocket error",
-            "token_estimate": 1000,
-            "user_config_applied": True,
-            "serena_enabled": False
-        })
+        mock_orchestrator.process_product_vision = AsyncMock(
+            return_value={
+                "mission": "Mission despite WebSocket error",
+                "token_estimate": 1000,
+                "user_config_applied": True,
+                "serena_enabled": False,
+            }
+        )
         mock_orchestrator_class.return_value = mock_orchestrator
 
-        request_data = {
-            "project_id": test_project.id
-        }
+        request_data = {"project_id": test_project.id}
 
         # Act
         with caplog.at_level("ERROR"):

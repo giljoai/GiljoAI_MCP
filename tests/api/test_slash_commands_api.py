@@ -2,6 +2,7 @@
 API tests for slash command endpoints (Handover 0080a)
 Tests the /api/slash/execute endpoint functionality
 """
+
 import pytest
 from fastapi import status
 from sqlalchemy import select
@@ -46,9 +47,7 @@ def mock_orchestrator(db_session, test_tenant, mock_project):
 class TestSlashCommandExecute:
     """Tests for /api/slash/execute endpoint"""
 
-    def test_execute_gil_handover_success(
-        self, client, auth_headers, mock_orchestrator
-    ):
+    def test_execute_gil_handover_success(self, client, auth_headers, mock_orchestrator):
         """Test successful /gil_handover execution"""
         response = client.post(
             "/api/slash/execute",
@@ -98,9 +97,7 @@ class TestSlashCommandExecute:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_execute_with_invalid_tenant(
-        self, client, auth_headers, mock_orchestrator
-    ):
+    def test_execute_with_invalid_tenant(self, client, auth_headers, mock_orchestrator):
         """Test executing slash command with wrong tenant key"""
         response = client.post(
             "/api/slash/execute",
@@ -121,9 +118,7 @@ class TestSlashCommandExecute:
 class TestTriggerSuccessionEndpoint:
     """Tests for /api/agent-jobs/{job_id}/trigger_succession endpoint"""
 
-    def test_trigger_succession_success(
-        self, client, auth_headers, mock_orchestrator
-    ):
+    def test_trigger_succession_success(self, client, auth_headers, mock_orchestrator):
         """Test successful succession trigger via UI endpoint"""
         response = client.post(
             f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession",
@@ -147,9 +142,7 @@ class TestTriggerSuccessionEndpoint:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_trigger_succession_non_orchestrator(
-        self, client, auth_headers, db_session, test_tenant, mock_project
-    ):
+    def test_trigger_succession_non_orchestrator(self, client, auth_headers, db_session, test_tenant, mock_project):
         """Test triggering succession for non-orchestrator agent"""
         # Create non-orchestrator agent
         frontend_agent = MCPAgentJob(
@@ -170,9 +163,7 @@ class TestTriggerSuccessionEndpoint:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not an orchestrator" in response.json()["detail"]
 
-    def test_trigger_succession_already_handed_over(
-        self, client, auth_headers, db_session, mock_orchestrator
-    ):
+    def test_trigger_succession_already_handed_over(self, client, auth_headers, db_session, mock_orchestrator):
         """Test triggering succession for already handed over orchestrator"""
         # Mark orchestrator as handed over
         mock_orchestrator.status = "complete"
@@ -189,15 +180,11 @@ class TestTriggerSuccessionEndpoint:
 
     def test_trigger_succession_without_auth(self, client, mock_orchestrator):
         """Test triggering succession without authentication"""
-        response = client.post(
-            f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession"
-        )
+        response = client.post(f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_trigger_succession_creates_waiting_successor(
-        self, client, auth_headers, db_session, mock_orchestrator
-    ):
+    def test_trigger_succession_creates_waiting_successor(self, client, auth_headers, db_session, mock_orchestrator):
         """Test that succession creates successor in waiting state"""
         response = client.post(
             f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession",
@@ -218,9 +205,7 @@ class TestTriggerSuccessionEndpoint:
         assert successor.instance_number == 2
         assert successor.spawned_by == mock_orchestrator.job_id
 
-    def test_trigger_succession_marks_original_complete(
-        self, client, auth_headers, db_session, mock_orchestrator
-    ):
+    def test_trigger_succession_marks_original_complete(self, client, auth_headers, db_session, mock_orchestrator):
         """Test that succession marks original orchestrator as complete"""
         original_job_id = mock_orchestrator.job_id
 

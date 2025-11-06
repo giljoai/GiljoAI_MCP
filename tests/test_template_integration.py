@@ -18,8 +18,6 @@ from unittest.mock import MagicMock
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.template import register_template_tools
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
 
 
 class TestTemplateIntegration:

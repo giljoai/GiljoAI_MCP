@@ -5,7 +5,6 @@ Tests ensure the template includes discovery-first workflow,
 """
 
 import pytest
-from pathlib import Path
 
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
@@ -154,7 +153,9 @@ class TestEnhancedOrchestratorTemplate:
         """Test that template discourages orchestrator doing implementation work."""
         assert "NOT CEO" in orchestrator_template or "PROJECT MANAGER" in orchestrator_template
         assert "DELEGATION" in orchestrator_template or "delegation" in orchestrator_template
-        assert "NEVER do implementation" in orchestrator_template or "not by doing implementation" in orchestrator_template
+        assert (
+            "NEVER do implementation" in orchestrator_template or "not by doing implementation" in orchestrator_template
+        )
 
     def test_template_has_agent_coordination_rules(self, orchestrator_template):
         """Test that template includes agent coordination rules."""
@@ -173,19 +174,31 @@ class TestEnhancedOrchestratorTemplate:
 
         # Should include new rules
         assert any("3-tool" in rule.lower() for rule in rules), "Missing 3-tool rule"
-        assert any("specific mission" in rule.lower() or "discoveries" in rule.lower() for rule in rules), "Missing specific missions rule"
-        assert any("documentation" in rule.lower() and "artifact" in rule.lower() for rule in rules), "Missing documentation artifacts rule"
+        assert any("specific mission" in rule.lower() or "discoveries" in rule.lower() for rule in rules), (
+            "Missing specific missions rule"
+        )
+        assert any("documentation" in rule.lower() and "artifact" in rule.lower() for rule in rules), (
+            "Missing documentation artifacts rule"
+        )
 
     def test_success_criteria_updated(self, template_manager):
         """Test that success criteria are updated for orchestrator."""
         criteria = template_manager.get_success_criteria("orchestrator")
 
         # Should include new criteria
-        assert any("vision" in c.lower() and ("all parts" in c.lower() or "fully read" in c.lower()) for c in criteria), "Missing vision reading criterion"
-        assert any("config_data" in c.lower() or "product config" in c.lower() for c in criteria), "Missing config review criterion"
-        assert any("serena" in c.lower() and "discover" in c.lower() for c in criteria), "Missing Serena discoveries criterion"
+        assert any(
+            "vision" in c.lower() and ("all parts" in c.lower() or "fully read" in c.lower()) for c in criteria
+        ), "Missing vision reading criterion"
+        assert any("config_data" in c.lower() or "product config" in c.lower() for c in criteria), (
+            "Missing config review criterion"
+        )
+        assert any("serena" in c.lower() and "discover" in c.lower() for c in criteria), (
+            "Missing Serena discoveries criterion"
+        )
         assert any("specific mission" in c.lower() for c in criteria), "Missing specific missions criterion"
-        assert any("documentation" in c.lower() and ("three" in c.lower() or "3" in c.lower()) for c in criteria), "Missing documentation artifacts criterion"
+        assert any("documentation" in c.lower() and ("three" in c.lower() or "3" in c.lower()) for c in criteria), (
+            "Missing documentation artifacts criterion"
+        )
 
     def test_template_includes_project_variables(self, orchestrator_template):
         """Test that template includes project variable placeholders."""

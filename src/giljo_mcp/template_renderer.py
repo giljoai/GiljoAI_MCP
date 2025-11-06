@@ -53,6 +53,15 @@ def render_claude_agent(template: AgentTemplate) -> str:
         "model": model_value,
     }
 
+    # Include tools only when explicitly specified (inherit all otherwise)
+    tools_field = (template.tools or "").strip() if hasattr(template, "tools") else ""
+    if tools_field:
+        # Normalize spacing (store as comma-separated string)
+        tools_line = ", ".join([part.strip() for part in tools_field.split(",") if part.strip()])
+        if tools_line:
+            # Render as plain YAML string per 0102a
+            frontmatter["tools"] = tools_line
+
     yaml_header = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
 
     parts: list[str] = []

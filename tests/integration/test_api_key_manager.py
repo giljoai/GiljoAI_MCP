@@ -38,7 +38,7 @@ async def test_user(db_session):
         role="developer",
         tenant_key="test_tenant",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -50,10 +50,7 @@ async def test_user(db_session):
 def auth_headers(test_user):
     """Get auth headers for test user."""
     token = JWTManager.create_access_token(
-        user_id=test_user.id,
-        username=test_user.username,
-        role=test_user.role,
-        tenant_key=test_user.tenant_key
+        user_id=test_user.id, username=test_user.username, role=test_user.role, tenant_key=test_user.tenant_key
     )
     return {"Cookie": f"access_token={token}"}
 
@@ -65,19 +62,12 @@ class TestAPIKeyGeneration:
     async def test_generate_api_key_with_name(self, db_manager, db_session, test_user, auth_headers):
         """Test generating API key with descriptive name."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         response = client.post(
-            "/api/auth/api-keys",
-            headers=auth_headers,
-            json={
-                "name": "Production MCP Server",
-                "permissions": ["*"]
-            }
+            "/api/auth/api-keys", headers=auth_headers, json={"name": "Production MCP Server", "permissions": ["*"]}
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -112,17 +102,13 @@ class TestAPIKeyGeneration:
     async def test_api_key_returned_only_once(self, db_manager, db_session, test_user, auth_headers):
         """Test that API key plaintext is only shown at creation time."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         # Create API key
         create_response = client.post(
-            "/api/auth/api-keys",
-            headers=auth_headers,
-            json={"name": "One-Time Display Key", "permissions": ["*"]}
+            "/api/auth/api-keys", headers=auth_headers, json={"name": "One-Time Display Key", "permissions": ["*"]}
         )
 
         assert create_response.status_code == status.HTTP_201_CREATED
@@ -158,7 +144,7 @@ class TestAPIKeyGeneration:
             key_prefix=get_key_prefix(plaintext_key),
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add(api_key)
@@ -177,19 +163,12 @@ class TestAPIKeyGeneration:
     async def test_api_key_with_custom_permissions(self, db_manager, db_session, test_user, auth_headers):
         """Test generating API key with specific permissions."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         response = client.post(
-            "/api/auth/api-keys",
-            headers=auth_headers,
-            json={
-                "name": "Read-Only Key",
-                "permissions": ["read", "list"]
-            }
+            "/api/auth/api-keys", headers=auth_headers, json={"name": "Read-Only Key", "permissions": ["read", "list"]}
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -216,21 +195,19 @@ class TestAPIKeyListing:
                 id=str(uuid4()),
                 user_id=test_user.id,
                 tenant_key=test_user.tenant_key,
-                name=f"Test Key {i+1}",
+                name=f"Test Key {i + 1}",
                 key_hash=hash_api_key(plaintext_key),
                 key_prefix=get_key_prefix(plaintext_key),
                 permissions=["*"],
                 is_active=True,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             db_session.add(api_key)
 
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -258,7 +235,7 @@ class TestAPIKeyListing:
             key_prefix="gk_active",
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         # Create revoked key
@@ -272,16 +249,14 @@ class TestAPIKeyListing:
             permissions=["*"],
             is_active=False,
             created_at=datetime.now(timezone.utc),
-            revoked_at=datetime.now(timezone.utc)
+            revoked_at=datetime.now(timezone.utc),
         )
 
         db_session.add_all([active_key, revoked_key])
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -320,22 +295,17 @@ class TestAPIKeyRevocation:
             key_prefix="gk_revoke",
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(api_key)
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
-        response = client.delete(
-            f"/api/auth/api-keys/{api_key.id}",
-            headers=auth_headers
-        )
+        response = client.delete(f"/api/auth/api-keys/{api_key.id}", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -363,7 +333,7 @@ class TestAPIKeyRevocation:
             role="developer",
             tenant_key="test_tenant",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(other_user)
 
@@ -377,23 +347,18 @@ class TestAPIKeyRevocation:
             key_prefix="gk_other",
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(other_key)
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         # Try to revoke other user's key
-        response = client.delete(
-            f"/api/auth/api-keys/{other_key.id}",
-            headers=auth_headers
-        )
+        response = client.delete(f"/api/auth/api-keys/{other_key.id}", headers=auth_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -423,7 +388,7 @@ class TestAPIKeyUsageTracking:
             permissions=["*"],
             is_active=True,
             created_at=datetime.now(timezone.utc),
-            last_used=None
+            last_used=None,
         )
         db_session.add(api_key)
         await db_session.commit()
@@ -448,16 +413,12 @@ class TestAPIKeyModalFlow:
     async def test_api_key_display_with_server_url(self, db_manager, test_user, auth_headers):
         """Test API key creation response includes server URL for MCP config."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         response = client.post(
-            "/api/auth/api-keys",
-            headers=auth_headers,
-            json={"name": "Modal Test Key", "permissions": ["*"]}
+            "/api/auth/api-keys", headers=auth_headers, json={"name": "Modal Test Key", "permissions": ["*"]}
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -488,8 +449,6 @@ class TestAPIKeyModalFlow:
         # 3. Modal cannot be closed until confirmed
         # 4. After closing, key is masked in list
 
-        pass
-
 
 class TestMultiTenantAPIKeyIsolation:
     """Test multi-tenant isolation for API keys."""
@@ -506,7 +465,7 @@ class TestMultiTenantAPIKeyIsolation:
             role="developer",
             tenant_key="tenant_1",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         user2 = User(
@@ -517,7 +476,7 @@ class TestMultiTenantAPIKeyIsolation:
             role="developer",
             tenant_key="tenant_2",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add_all([user1, user2])
@@ -532,7 +491,7 @@ class TestMultiTenantAPIKeyIsolation:
             key_prefix="gk_t1",
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         key2 = APIKey(
@@ -544,7 +503,7 @@ class TestMultiTenantAPIKeyIsolation:
             key_prefix="gk_t2",
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add_all([key1, key2])
@@ -580,7 +539,7 @@ class TestMultiTenantAPIKeyIsolation:
             role="developer",
             tenant_key="tenant_1",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(tenant1_user)
 
@@ -594,7 +553,7 @@ class TestMultiTenantAPIKeyIsolation:
             key_prefix=get_key_prefix(plaintext_key),
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(api_key)
         await db_session.commit()
@@ -606,7 +565,7 @@ class TestMultiTenantAPIKeyIsolation:
         # Verify API key lookup includes tenant check
         stmt = select(APIKey).where(
             APIKey.key_prefix == get_key_prefix(plaintext_key),
-            APIKey.tenant_key == "tenant_1"  # Tenant filter
+            APIKey.tenant_key == "tenant_1",  # Tenant filter
         )
         result = await db_session.execute(stmt)
         found_key = result.scalar_one_or_none()
@@ -616,7 +575,7 @@ class TestMultiTenantAPIKeyIsolation:
         # Trying to find key with wrong tenant should fail
         stmt = select(APIKey).where(
             APIKey.key_prefix == get_key_prefix(plaintext_key),
-            APIKey.tenant_key == "tenant_2"  # Wrong tenant!
+            APIKey.tenant_key == "tenant_2",  # Wrong tenant!
         )
         result = await db_session.execute(stmt)
         not_found = result.scalar_one_or_none()
@@ -638,7 +597,7 @@ class TestAPIKeySecurityEdgeCases:
             role="developer",
             tenant_key="test_tenant",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(user)
 
@@ -653,7 +612,7 @@ class TestAPIKeySecurityEdgeCases:
             permissions=["*"],
             is_active=False,  # Revoked
             created_at=datetime.now(timezone.utc),
-            revoked_at=datetime.now(timezone.utc)
+            revoked_at=datetime.now(timezone.utc),
         )
         db_session.add(api_key)
         await db_session.commit()
@@ -675,7 +634,7 @@ class TestAPIKeySecurityEdgeCases:
             role="developer",
             tenant_key="test_tenant",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(user)
 
@@ -689,7 +648,7 @@ class TestAPIKeySecurityEdgeCases:
             key_prefix="gk_collision",  # Same prefix
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         key2 = APIKey(
@@ -701,7 +660,7 @@ class TestAPIKeySecurityEdgeCases:
             key_prefix="gk_collision",  # Same prefix
             permissions=["*"],
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add_all([key1, key2])

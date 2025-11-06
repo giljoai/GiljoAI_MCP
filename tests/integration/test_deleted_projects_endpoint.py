@@ -8,20 +8,17 @@ Tests the /api/v1/projects/deleted endpoint to verify:
 - Purge countdown calculation
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Project, Product, User
+from src.giljo_mcp.models import Product, Project, User
 
 
 @pytest.mark.asyncio
-async def test_deleted_endpoint_route_ordering(
-    client: AsyncClient,
-    test_user: User,
-    auth_headers: dict
-):
+async def test_deleted_endpoint_route_ordering(client: AsyncClient, test_user: User, auth_headers: dict):
     """
     Test that /deleted route doesn't conflict with /{project_id} route.
 
@@ -41,11 +38,7 @@ async def test_deleted_endpoint_route_ordering(
 
 
 @pytest.mark.asyncio
-async def test_list_deleted_projects_empty(
-    client: AsyncClient,
-    test_user: User,
-    auth_headers: dict
-):
+async def test_list_deleted_projects_empty(client: AsyncClient, test_user: User, auth_headers: dict):
     """Test listing deleted projects when none exist."""
     response = await client.get("/api/v1/projects/deleted", headers=auth_headers)
 
@@ -57,11 +50,7 @@ async def test_list_deleted_projects_empty(
 
 @pytest.mark.asyncio
 async def test_list_deleted_projects_with_data(
-    client: AsyncClient,
-    async_session: AsyncSession,
-    test_user: User,
-    test_product: Product,
-    auth_headers: dict
+    client: AsyncClient, async_session: AsyncSession, test_user: User, test_product: Product, auth_headers: dict
 ):
     """Test listing deleted projects with soft-deleted data."""
     # Create a project and soft delete it
@@ -72,7 +61,7 @@ async def test_list_deleted_projects_with_data(
         tenant_key=test_user.tenant_key,
         product_id=test_product.id,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc) - timedelta(days=2)  # Deleted 2 days ago
+        deleted_at=datetime.now(timezone.utc) - timedelta(days=2),  # Deleted 2 days ago
     )
     async_session.add(project)
     await async_session.commit()
@@ -103,18 +92,14 @@ async def test_list_deleted_projects_with_data(
 
 @pytest.mark.asyncio
 async def test_deleted_projects_purge_countdown(
-    client: AsyncClient,
-    async_session: AsyncSession,
-    test_user: User,
-    test_product: Product,
-    auth_headers: dict
+    client: AsyncClient, async_session: AsyncSession, test_user: User, test_product: Product, auth_headers: dict
 ):
     """Test purge countdown calculation for various deletion dates."""
     # Create projects deleted at different times
     projects = [
-        ("Recent", 1),    # 1 day ago -> 9 days until purge
-        ("Midway", 5),    # 5 days ago -> 5 days until purge
-        ("Near", 9),      # 9 days ago -> 1 day until purge
+        ("Recent", 1),  # 1 day ago -> 9 days until purge
+        ("Midway", 5),  # 5 days ago -> 5 days until purge
+        ("Near", 9),  # 9 days ago -> 1 day until purge
         ("Overdue", 11),  # 11 days ago -> 0 days (should be purged but test data)
     ]
 
@@ -126,7 +111,7 @@ async def test_deleted_projects_purge_countdown(
             tenant_key=test_user.tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc) - timedelta(days=days_ago)
+            deleted_at=datetime.now(timezone.utc) - timedelta(days=days_ago),
         )
         async_session.add(project)
 
@@ -150,11 +135,7 @@ async def test_deleted_projects_purge_countdown(
 
 @pytest.mark.asyncio
 async def test_deleted_projects_multi_tenant_isolation(
-    client: AsyncClient,
-    async_session: AsyncSession,
-    test_user: User,
-    test_product: Product,
-    auth_headers: dict
+    client: AsyncClient, async_session: AsyncSession, test_user: User, test_product: Product, auth_headers: dict
 ):
     """Test that deleted projects are isolated by tenant."""
     # Create deleted project for test user's tenant
@@ -165,7 +146,7 @@ async def test_deleted_projects_multi_tenant_isolation(
         tenant_key=test_user.tenant_key,
         product_id=test_product.id,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc)
+        deleted_at=datetime.now(timezone.utc),
     )
     async_session.add(project1)
 
@@ -178,7 +159,7 @@ async def test_deleted_projects_multi_tenant_isolation(
         tenant_key=other_tenant_key,
         product_id=test_product.id,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc)
+        deleted_at=datetime.now(timezone.utc),
     )
     async_session.add(project2)
 
@@ -196,11 +177,7 @@ async def test_deleted_projects_multi_tenant_isolation(
 
 @pytest.mark.asyncio
 async def test_deleted_projects_excludes_active(
-    client: AsyncClient,
-    async_session: AsyncSession,
-    test_user: User,
-    test_product: Product,
-    auth_headers: dict
+    client: AsyncClient, async_session: AsyncSession, test_user: User, test_product: Product, auth_headers: dict
 ):
     """Test that active projects are not included in deleted list."""
     # Create active project
@@ -211,7 +188,7 @@ async def test_deleted_projects_excludes_active(
         tenant_key=test_user.tenant_key,
         product_id=test_product.id,
         status="active",
-        deleted_at=None
+        deleted_at=None,
     )
     async_session.add(active_project)
 
@@ -223,7 +200,7 @@ async def test_deleted_projects_excludes_active(
         tenant_key=test_user.tenant_key,
         product_id=test_product.id,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc)
+        deleted_at=datetime.now(timezone.utc),
     )
     async_session.add(deleted_project)
 
@@ -240,10 +217,7 @@ async def test_deleted_projects_excludes_active(
 
 @pytest.mark.asyncio
 async def test_deleted_projects_without_product(
-    client: AsyncClient,
-    async_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, async_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test deleted projects without associated product (product_id=NULL)."""
     # Create deleted project without product
@@ -254,7 +228,7 @@ async def test_deleted_projects_without_product(
         tenant_key=test_user.tenant_key,
         product_id=None,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc)
+        deleted_at=datetime.now(timezone.utc),
     )
     async_session.add(project)
     await async_session.commit()
@@ -272,11 +246,7 @@ async def test_deleted_projects_without_product(
 
 @pytest.mark.asyncio
 async def test_deleted_projects_response_schema(
-    client: AsyncClient,
-    async_session: AsyncSession,
-    test_user: User,
-    test_product: Product,
-    auth_headers: dict
+    client: AsyncClient, async_session: AsyncSession, test_user: User, test_product: Product, auth_headers: dict
 ):
     """Test deleted projects response matches expected schema."""
     # Create deleted project
@@ -287,7 +257,7 @@ async def test_deleted_projects_response_schema(
         tenant_key=test_user.tenant_key,
         product_id=test_product.id,
         status="deleted",
-        deleted_at=datetime.now(timezone.utc) - timedelta(days=3)
+        deleted_at=datetime.now(timezone.utc) - timedelta(days=3),
     )
     async_session.add(project)
     await async_session.commit()
@@ -303,8 +273,14 @@ async def test_deleted_projects_response_schema(
 
     # Verify all required fields exist
     required_fields = [
-        "id", "alias", "name", "product_id", "product_name",
-        "deleted_at", "days_until_purge", "purge_date"
+        "id",
+        "alias",
+        "name",
+        "product_id",
+        "product_name",
+        "deleted_at",
+        "days_until_purge",
+        "purge_date",
     ]
     for field in required_fields:
         assert field in project_data, f"Missing field: {field}"

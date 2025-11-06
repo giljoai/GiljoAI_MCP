@@ -10,9 +10,10 @@ Test Coverage:
 2. Task 1.4: Event schema validation
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
+
+import pytest
 from pydantic import ValidationError
 
 
@@ -134,9 +135,9 @@ class TestEventSchemaStandalone:
         """Test that event schema module can be imported."""
         try:
             # Import using direct file loading to avoid circular imports
+            import importlib.util
             import sys
             from pathlib import Path
-            import importlib.util
 
             schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
             spec = importlib.util.spec_from_file_location("event_schemas", schema_path)
@@ -153,9 +154,8 @@ class TestEventSchemaStandalone:
 
     def test_event_factory_project_mission_updated(self):
         """Test EventFactory creates project:mission_updated event."""
-        import sys
-        from pathlib import Path
         import importlib.util
+        from pathlib import Path
 
         # Direct import
         schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
@@ -195,9 +195,8 @@ class TestEventSchemaStandalone:
 
     def test_event_factory_agent_created(self):
         """Test EventFactory creates agent:created event."""
-        import sys
-        from pathlib import Path
         import importlib.util
+        from pathlib import Path
 
         schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
         spec = importlib.util.spec_from_file_location("event_schemas", schema_path)
@@ -229,9 +228,8 @@ class TestEventSchemaStandalone:
 
     def test_event_factory_agent_status_changed(self):
         """Test EventFactory creates agent:status_changed event."""
-        import sys
-        from pathlib import Path
         import importlib.util
+        from pathlib import Path
 
         schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
         spec = importlib.util.spec_from_file_location("event_schemas", schema_path)
@@ -261,9 +259,8 @@ class TestEventSchemaStandalone:
 
     def test_event_schema_validation_catches_invalid_status(self):
         """Test that invalid agent status is rejected by validation."""
-        import sys
-        from pathlib import Path
         import importlib.util
+        from pathlib import Path
 
         schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
         spec = importlib.util.spec_from_file_location("event_schemas", schema_path)
@@ -283,9 +280,8 @@ class TestEventSchemaStandalone:
 
     def test_event_schema_validation_catches_missing_fields(self):
         """Test that missing required fields are caught."""
-        import sys
-        from pathlib import Path
         import importlib.util
+        from pathlib import Path
 
         schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
         spec = importlib.util.spec_from_file_location("event_schemas", schema_path)
@@ -309,10 +305,9 @@ class TestEventSchemaStandalone:
 
     def test_event_json_serialization(self):
         """Test that events can be JSON serialized."""
-        import sys
-        from pathlib import Path
         import importlib.util
         import json
+        from pathlib import Path
 
         schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
         spec = importlib.util.spec_from_file_location("event_schemas", schema_path)
@@ -350,9 +345,9 @@ class TestWebSocketDependencyMocked:
 
     def test_websocket_dependency_instantiation(self):
         """Test WebSocketDependency can be instantiated."""
+        import importlib.util
         import sys
         from pathlib import Path
-        import importlib.util
         from unittest.mock import MagicMock
 
         ws_path = Path(__file__).parent.parent.parent / "api" / "dependencies" / "websocket.py"

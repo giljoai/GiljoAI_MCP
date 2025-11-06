@@ -8,12 +8,14 @@ Metrics:
 4. JSONB query performance with GIN index
 """
 
-import pytest
-import time
 import json
+import time
+
+import pytest
+
+from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product
-from src.giljo_mcp.context_manager import get_full_config, get_filtered_config
 
 
 @pytest.fixture
@@ -31,8 +33,16 @@ def large_config_product(db_session):
         "architecture": "Microservices with FastAPI + PostgreSQL + Vue.js + Redis + Docker",
         "serena_mcp_enabled": True,
         "tech_stack": [
-            "Python 3.11", "PostgreSQL 18", "Vue 3", "FastAPI", "SQLAlchemy",
-            "Alembic", "Docker", "Redis", "Nginx", "Gunicorn"
+            "Python 3.11",
+            "PostgreSQL 18",
+            "Vue 3",
+            "FastAPI",
+            "SQLAlchemy",
+            "Alembic",
+            "Docker",
+            "Redis",
+            "Nginx",
+            "Gunicorn",
         ],
         "codebase_structure": {
             "api": "REST API endpoints with WebSocket support",
@@ -48,7 +58,7 @@ def large_config_product(db_session):
             "docs": "Comprehensive documentation",
             "scripts": "Automation and deployment scripts",
             "installer": "Cross-platform installer",
-            "docker": "Docker configuration files"
+            "docker": "Docker configuration files",
         },
         "critical_features": [
             "Multi-tenant isolation with tenant_key",
@@ -60,7 +70,7 @@ def large_config_product(db_session):
             "API key authentication",
             "Role-based access control",
             "Configuration discovery system",
-            "Git integration for version control"
+            "Git integration for version control",
         ],
         "test_commands": [
             "pytest tests/",
@@ -69,7 +79,7 @@ def large_config_product(db_session):
             "pytest tests/e2e/",
             "npm run test",
             "npm run test:unit",
-            "npm run test:e2e"
+            "npm run test:e2e",
         ],
         "test_config": {
             "coverage_threshold": 80,
@@ -77,7 +87,7 @@ def large_config_product(db_session):
             "parallel": True,
             "markers": ["slow", "integration", "unit", "e2e"],
             "plugins": ["pytest-asyncio", "pytest-cov", "pytest-mock"],
-            "timeout": 300
+            "timeout": 300,
         },
         "api_docs": "/docs/api_reference.md",
         "documentation_style": "Markdown with mermaid diagrams and code samples",
@@ -96,39 +106,39 @@ def large_config_product(db_session):
             "postgresql": "14+",
             "node": "18+",
             "memory": "2GB+",
-            "disk": "10GB+"
+            "disk": "10GB+",
         },
         "known_issues": [
             "Performance optimization needed for large vision documents",
             "WebSocket reconnection handling needs improvement",
-            "Template caching could be more efficient"
+            "Template caching could be more efficient",
         ],
         "performance_targets": {
             "api_response_time": "< 200ms",
             "websocket_latency": "< 100ms",
             "database_query_time": "< 50ms",
-            "agent_spawn_time": "< 1s"
+            "agent_spawn_time": "< 1s",
         },
         "security_features": [
             "API key authentication",
             "Tenant isolation",
             "SQL injection prevention",
             "XSS protection",
-            "CORS configuration"
+            "CORS configuration",
         ],
         "monitoring": {
             "logging_level": "INFO",
             "log_format": "JSON",
             "metrics_enabled": True,
-            "health_check_endpoint": "/health"
-        }
+            "health_check_endpoint": "/health",
+        },
     }
 
     product = Product(
         id="perf-test-product-large",
         tenant_key="perf-test",
         name="Performance Test Product (Large Config)",
-        config_data=config_data
+        config_data=config_data,
     )
 
     db_session.add(product)
@@ -155,7 +165,7 @@ class TestTokenUsageReduction:
 
         reduction_pct = ((full_tokens - filtered_tokens) / full_tokens) * 100
 
-        print(f"\nImplementer Token Reduction:")
+        print("\nImplementer Token Reduction:")
         print(f"  Full config: {full_tokens} tokens")
         print(f"  Filtered config: {filtered_tokens} tokens")
         print(f"  Reduction: {reduction_pct:.1f}%")
@@ -173,7 +183,7 @@ class TestTokenUsageReduction:
 
         reduction_pct = ((full_tokens - filtered_tokens) / full_tokens) * 100
 
-        print(f"\nTester Token Reduction:")
+        print("\nTester Token Reduction:")
         print(f"  Full config: {full_tokens} tokens")
         print(f"  Filtered config: {filtered_tokens} tokens")
         print(f"  Reduction: {reduction_pct:.1f}%")
@@ -191,7 +201,7 @@ class TestTokenUsageReduction:
 
         reduction_pct = ((full_tokens - filtered_tokens) / full_tokens) * 100
 
-        print(f"\nDocumenter Token Reduction:")
+        print("\nDocumenter Token Reduction:")
         print(f"  Full config: {full_tokens} tokens")
         print(f"  Filtered config: {filtered_tokens} tokens")
         print(f"  Reduction: {reduction_pct:.1f}%")
@@ -211,24 +221,29 @@ class TestTokenUsageReduction:
             filtered_tokens = estimate_tokens(filtered_config)
             reduction_pct = ((full_tokens - filtered_tokens) / full_tokens) * 100
 
-            results.append({
-                "role": role,
-                "full_tokens": full_tokens,
-                "filtered_tokens": filtered_tokens,
-                "reduction_pct": reduction_pct
-            })
+            results.append(
+                {
+                    "role": role,
+                    "full_tokens": full_tokens,
+                    "filtered_tokens": filtered_tokens,
+                    "reduction_pct": reduction_pct,
+                }
+            )
 
         print("\nToken Reduction Summary (All Roles):")
         print(f"{'Role':<15} {'Full':<10} {'Filtered':<10} {'Reduction':<12}")
         print("-" * 50)
 
         for result in results:
-            print(f"{result['role']:<15} {result['full_tokens']:<10} "
-                  f"{result['filtered_tokens']:<10} {result['reduction_pct']:<10.1f}%")
+            print(
+                f"{result['role']:<15} {result['full_tokens']:<10} "
+                f"{result['filtered_tokens']:<10} {result['reduction_pct']:<10.1f}%"
+            )
 
             # All workers should have at least 30% reduction
-            assert result['reduction_pct'] >= 30, \
+            assert result["reduction_pct"] >= 30, (
                 f"{result['role']} only achieved {result['reduction_pct']:.1f}% reduction"
+            )
 
 
 class TestConfigLoadingPerformance:
@@ -245,7 +260,7 @@ class TestConfigLoadingPerformance:
 
         avg_time_ms = ((end_time - start_time) / iterations) * 1000
 
-        print(f"\nget_full_config() Performance:")
+        print("\nget_full_config() Performance:")
         print(f"  Average time: {avg_time_ms:.2f}ms")
         print(f"  Iterations: {iterations}")
 
@@ -263,7 +278,7 @@ class TestConfigLoadingPerformance:
 
         avg_time_ms = ((end_time - start_time) / iterations) * 1000
 
-        print(f"\nget_filtered_config() Performance:")
+        print("\nget_filtered_config() Performance:")
         print(f"  Average time: {avg_time_ms:.2f}ms")
         print(f"  Iterations: {iterations}")
 
@@ -284,7 +299,7 @@ class TestConfigLoadingPerformance:
         total_calls = iterations * len(roles)
         avg_time_ms = ((end_time - start_time) / total_calls) * 1000
 
-        print(f"\nMultiple Role Filtering Performance:")
+        print("\nMultiple Role Filtering Performance:")
         print(f"  Average time per call: {avg_time_ms:.2f}ms")
         print(f"  Total calls: {total_calls}")
         print(f"  Roles tested: {', '.join(roles)}")
@@ -301,15 +316,13 @@ class TestDatabaseQueryPerformance:
 
         start_time = time.time()
         for _ in range(iterations):
-            product = db_session.query(Product).filter(
-                Product.id == large_config_product.id
-            ).first()
+            product = db_session.query(Product).filter(Product.id == large_config_product.id).first()
             config = product.config_data
         end_time = time.time()
 
         avg_time_ms = ((end_time - start_time) / iterations) * 1000
 
-        print(f"\nProduct Query with config_data Performance:")
+        print("\nProduct Query with config_data Performance:")
         print(f"  Average time: {avg_time_ms:.2f}ms")
         print(f"  Iterations: {iterations}")
 
@@ -329,7 +342,7 @@ class TestDatabaseQueryPerformance:
 
         avg_time_us = ((end_time - start_time) / iterations) * 1000000
 
-        print(f"\nJSONB Field Access Performance:")
+        print("\nJSONB Field Access Performance:")
         print(f"  Average time: {avg_time_us:.2f}µs")
         print(f"  Iterations: {iterations}")
 
@@ -343,9 +356,9 @@ class TestScalabilityMetrics:
     def test_config_data_size_impact(self, db_session):
         """Test performance impact of different config_data sizes"""
         sizes = [
-            ("small", 5),    # 5 fields
+            ("small", 5),  # 5 fields
             ("medium", 20),  # 20 fields
-            ("large", 50),   # 50 fields
+            ("large", 50),  # 50 fields
         ]
 
         results = []
@@ -357,7 +370,7 @@ class TestScalabilityMetrics:
                 id=f"perf-test-{size_name}",
                 tenant_key="perf-test-size",
                 name=f"Performance Test ({size_name})",
-                config_data=config_data
+                config_data=config_data,
             )
 
             db_session.add(product)
@@ -372,11 +385,7 @@ class TestScalabilityMetrics:
 
             avg_time_ms = ((end_time - start_time) / 100) * 1000
 
-            results.append({
-                "size": size_name,
-                "fields": field_count,
-                "avg_time_ms": avg_time_ms
-            })
+            results.append({"size": size_name, "fields": field_count, "avg_time_ms": avg_time_ms})
 
             # Cleanup
             db_session.delete(product)
@@ -391,14 +400,15 @@ class TestScalabilityMetrics:
 
         # Performance should scale linearly or better
         # Large should not be more than 3x slower than small
-        small_time = next(r['avg_time_ms'] for r in results if r['size'] == 'small')
-        large_time = next(r['avg_time_ms'] for r in results if r['size'] == 'large')
+        small_time = next(r["avg_time_ms"] for r in results if r["size"] == "small")
+        large_time = next(r["avg_time_ms"] for r in results if r["size"] == "large")
 
         scaling_factor = large_time / small_time
         assert scaling_factor < 3, f"Large config is {scaling_factor:.1f}x slower (should be < 3x)"
 
 
 # Helper functions
+
 
 def estimate_tokens(config_dict: dict) -> int:
     """
@@ -411,10 +421,7 @@ def estimate_tokens(config_dict: dict) -> int:
 
 def generate_config_data(field_count: int) -> dict:
     """Generate config_data with specified number of fields"""
-    config = {
-        "architecture": "Test Architecture",
-        "serena_mcp_enabled": True
-    }
+    config = {"architecture": "Test Architecture", "serena_mcp_enabled": True}
 
     # Add additional fields to reach target count
     for i in range(field_count - 2):

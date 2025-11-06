@@ -5,8 +5,8 @@ Test configuration fixtures for installer tests
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
 @dataclass

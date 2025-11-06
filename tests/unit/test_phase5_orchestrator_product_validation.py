@@ -8,13 +8,14 @@ Tests product is_active validation in:
 Ensures agents can only be spawned for active products.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.orchestrator import ProjectOrchestrator
-from src.giljo_mcp.models import Product, Project, Agent
 from src.giljo_mcp.enums import AgentRole
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
 
 class TestOrchestratorProductValidation:
@@ -23,7 +24,7 @@ class TestOrchestratorProductValidation:
     @pytest.fixture
     def orchestrator(self):
         """Create orchestrator instance with mocked db_manager."""
-        with patch('src.giljo_mcp.orchestrator.get_db_manager') as mock_get_db:
+        with patch("src.giljo_mcp.orchestrator.get_db_manager") as mock_get_db:
             mock_db_manager = MagicMock()
             mock_get_db.return_value = mock_db_manager
             orchestrator = ProjectOrchestrator()
@@ -40,7 +41,7 @@ class TestOrchestratorProductValidation:
             is_active=True,
             vision_type="inline",
             vision_document="Test vision content",
-            chunked=True
+            chunked=True,
         )
 
     @pytest.fixture
@@ -53,7 +54,7 @@ class TestOrchestratorProductValidation:
             is_active=False,
             vision_type="inline",
             vision_document="Test vision content",
-            chunked=True
+            chunked=True,
         )
 
     @pytest.fixture
@@ -65,7 +66,7 @@ class TestOrchestratorProductValidation:
             product_id="prod-active-123",
             name="Test Project",
             mission="Test mission",
-            status="active"
+            status="active",
         )
 
     @pytest.fixture
@@ -77,7 +78,7 @@ class TestOrchestratorProductValidation:
             product_id="prod-inactive-456",
             name="Test Project",
             mission="Test mission",
-            status="active"
+            status="active",
         )
 
     # ========================================================================
@@ -85,9 +86,7 @@ class TestOrchestratorProductValidation:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_process_product_vision_rejects_inactive_product(
-        self, orchestrator, inactive_product
-    ):
+    async def test_process_product_vision_rejects_inactive_product(self, orchestrator, inactive_product):
         """Test that process_product_vision() rejects inactive products."""
         # Mock database session
         mock_session = AsyncMock(spec=AsyncSession)
@@ -99,9 +98,7 @@ class TestOrchestratorProductValidation:
         # Attempt to process inactive product vision
         with pytest.raises(ValueError) as exc_info:
             await orchestrator.process_product_vision(
-                tenant_key="tenant-test",
-                product_id="prod-inactive-456",
-                project_requirements="Test requirements"
+                tenant_key="tenant-test", product_id="prod-inactive-456", project_requirements="Test requirements"
             )
 
         # Verify error message
@@ -111,9 +108,7 @@ class TestOrchestratorProductValidation:
         assert "Activate the product" in error_msg
 
     @pytest.mark.asyncio
-    async def test_process_product_vision_accepts_active_product(
-        self, orchestrator, active_product
-    ):
+    async def test_process_product_vision_accepts_active_product(self, orchestrator, active_product):
         """Test that process_product_vision() accepts active products."""
         # Mock database session
         mock_session = AsyncMock(spec=AsyncSession)
@@ -127,22 +122,22 @@ class TestOrchestratorProductValidation:
         )
 
         # Mock downstream dependencies
-        with patch.object(orchestrator, 'create_project') as mock_create_project:
+        with patch.object(orchestrator, "create_project") as mock_create_project:
             mock_project = MagicMock()
             mock_project.id = "proj-123"
             mock_project.name = "Test Project"
             mock_create_project.return_value = mock_project
 
-            with patch.object(orchestrator, 'generate_mission_plan') as mock_gen_missions:
+            with patch.object(orchestrator, "generate_mission_plan") as mock_gen_missions:
                 mock_gen_missions.return_value = {}
 
-                with patch.object(orchestrator.mission_planner, 'analyze_requirements') as mock_analyze:
+                with patch.object(orchestrator.mission_planner, "analyze_requirements") as mock_analyze:
                     mock_analyze.return_value = MagicMock()
 
-                    with patch.object(orchestrator, 'select_agents_for_mission') as mock_select:
+                    with patch.object(orchestrator, "select_agents_for_mission") as mock_select:
                         mock_select.return_value = []
 
-                        with patch.object(orchestrator, 'coordinate_agent_workflow') as mock_coord:
+                        with patch.object(orchestrator, "coordinate_agent_workflow") as mock_coord:
                             mock_result = MagicMock()
                             mock_result.status = "completed"
                             mock_result.completed = []
@@ -152,7 +147,7 @@ class TestOrchestratorProductValidation:
                             result = await orchestrator.process_product_vision(
                                 tenant_key="tenant-test",
                                 product_id="prod-active-123",
-                                project_requirements="Test requirements"
+                                project_requirements="Test requirements",
                             )
 
                             # Verify result structure
@@ -172,9 +167,7 @@ class TestOrchestratorProductValidation:
         # Attempt to process non-existent product
         with pytest.raises(ValueError) as exc_info:
             await orchestrator.process_product_vision(
-                tenant_key="tenant-test",
-                product_id="prod-nonexistent",
-                project_requirements="Test requirements"
+                tenant_key="tenant-test", product_id="prod-nonexistent", project_requirements="Test requirements"
             )
 
         error_msg = str(exc_info.value)
@@ -192,9 +185,7 @@ class TestOrchestratorProductValidation:
         # Mock database session
         mock_session = AsyncMock(spec=AsyncSession)
         mock_execute_result = MagicMock()
-        mock_execute_result.scalar_one_or_none = MagicMock(
-            return_value=test_project_with_inactive_product
-        )
+        mock_execute_result.scalar_one_or_none = MagicMock(return_value=test_project_with_inactive_product)
         mock_session.execute = AsyncMock(return_value=mock_execute_result)
         mock_session.get = AsyncMock(return_value=inactive_product)
 
@@ -204,10 +195,7 @@ class TestOrchestratorProductValidation:
 
         # Attempt to spawn agent for project with inactive product
         with pytest.raises(ValueError) as exc_info:
-            await orchestrator.spawn_agent(
-                project_id="proj-456",
-                role=AgentRole.IMPLEMENTER
-            )
+            await orchestrator.spawn_agent(project_id="proj-456", role=AgentRole.IMPLEMENTER)
 
         # Verify error message
         error_msg = str(exc_info.value)
@@ -222,9 +210,7 @@ class TestOrchestratorProductValidation:
         # Mock database session
         mock_session = AsyncMock(spec=AsyncSession)
         mock_execute_result = MagicMock()
-        mock_execute_result.scalar_one_or_none = MagicMock(
-            return_value=test_project_with_active_product
-        )
+        mock_execute_result.scalar_one_or_none = MagicMock(return_value=test_project_with_active_product)
         mock_session.execute = AsyncMock(return_value=mock_execute_result)
         mock_session.get = AsyncMock(return_value=active_product)
         mock_session.add = MagicMock()
@@ -236,20 +222,17 @@ class TestOrchestratorProductValidation:
         )
 
         # Mock downstream dependencies
-        with patch.object(orchestrator, '_get_agent_template') as mock_get_template:
+        with patch.object(orchestrator, "_get_agent_template") as mock_get_template:
             mock_get_template.return_value = None  # Force fallback to legacy logic
 
-            with patch.object(orchestrator.template_generator, 'generate_agent_mission') as mock_gen_mission:
+            with patch.object(orchestrator.template_generator, "generate_agent_mission") as mock_gen_mission:
                 mock_gen_mission.return_value = "Test mission"
 
-                with patch.object(orchestrator, '_get_serena_optimizer') as mock_optimizer:
+                with patch.object(orchestrator, "_get_serena_optimizer") as mock_optimizer:
                     mock_optimizer.return_value = MagicMock()
 
                     # Should NOT raise error
-                    agent = await orchestrator.spawn_agent(
-                        project_id="proj-123",
-                        role=AgentRole.IMPLEMENTER
-                    )
+                    agent = await orchestrator.spawn_agent(project_id="proj-123", role=AgentRole.IMPLEMENTER)
 
                     # Verify agent created
                     assert agent is not None
@@ -265,7 +248,7 @@ class TestOrchestratorProductValidation:
             product_id=None,  # No product
             name="Standalone Project",
             mission="Test mission",
-            status="active"
+            status="active",
         )
 
         # Mock database session
@@ -282,20 +265,17 @@ class TestOrchestratorProductValidation:
         )
 
         # Mock downstream dependencies
-        with patch.object(orchestrator, '_get_agent_template') as mock_get_template:
+        with patch.object(orchestrator, "_get_agent_template") as mock_get_template:
             mock_get_template.return_value = None
 
-            with patch.object(orchestrator.template_generator, 'generate_agent_mission') as mock_gen_mission:
+            with patch.object(orchestrator.template_generator, "generate_agent_mission") as mock_gen_mission:
                 mock_gen_mission.return_value = "Test mission"
 
-                with patch.object(orchestrator, '_get_serena_optimizer') as mock_optimizer:
+                with patch.object(orchestrator, "_get_serena_optimizer") as mock_optimizer:
                     mock_optimizer.return_value = MagicMock()
 
                     # Should NOT raise error (no product validation needed)
-                    agent = await orchestrator.spawn_agent(
-                        project_id="proj-no-prod",
-                        role=AgentRole.TESTER
-                    )
+                    agent = await orchestrator.spawn_agent(project_id="proj-no-prod", role=AgentRole.TESTER)
 
                     assert agent is not None
 
@@ -304,9 +284,7 @@ class TestOrchestratorProductValidation:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_process_product_vision_tenant_isolation(
-        self, orchestrator, active_product
-    ):
+    async def test_process_product_vision_tenant_isolation(self, orchestrator, active_product):
         """Test that process_product_vision() enforces tenant isolation."""
         # Mock database session
         mock_session = AsyncMock(spec=AsyncSession)
@@ -318,9 +296,7 @@ class TestOrchestratorProductValidation:
         # Attempt to access product with wrong tenant_key
         with pytest.raises(ValueError) as exc_info:
             await orchestrator.process_product_vision(
-                tenant_key="wrong-tenant",
-                product_id="prod-active-123",
-                project_requirements="Test requirements"
+                tenant_key="wrong-tenant", product_id="prod-active-123", project_requirements="Test requirements"
             )
 
         error_msg = str(exc_info.value)
@@ -338,17 +314,12 @@ class TestOrchestratorProductValidation:
         # Mock database session where product is active first, then inactive
         mock_session = AsyncMock(spec=AsyncSession)
         mock_execute_result = MagicMock()
-        mock_execute_result.scalar_one_or_none = MagicMock(
-            return_value=test_project_with_active_product
-        )
+        mock_execute_result.scalar_one_or_none = MagicMock(return_value=test_project_with_active_product)
         mock_session.execute = AsyncMock(return_value=mock_execute_result)
 
         # Return inactive product on second call
         inactive_prod = Product(
-            id="prod-active-123",
-            tenant_key="tenant-test",
-            name="Previously Active",
-            is_active=False
+            id="prod-active-123", tenant_key="tenant-test", name="Previously Active", is_active=False
         )
         mock_session.get = AsyncMock(return_value=inactive_prod)
 
@@ -358,10 +329,7 @@ class TestOrchestratorProductValidation:
 
         # Should reject due to inactive product
         with pytest.raises(ValueError) as exc_info:
-            await orchestrator.spawn_agent(
-                project_id="proj-123",
-                role=AgentRole.ANALYZER
-            )
+            await orchestrator.spawn_agent(project_id="proj-123", role=AgentRole.ANALYZER)
 
         error_msg = str(exc_info.value)
         assert "not active" in error_msg

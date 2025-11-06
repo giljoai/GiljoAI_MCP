@@ -2,6 +2,7 @@
 Slash command handler for /gil_handover
 Triggers orchestrator succession (Handover 0080a)
 """
+
 import logging
 import os
 from typing import Any, Optional
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..models import MCPAgentJob
 from ..orchestrator_succession import OrchestratorSuccessionManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +45,7 @@ async def handle_gil_handover(
 
     # Get current orchestrator
     if not orchestrator_job_id:
-        orchestrator = await _get_active_orchestrator(
-            db_session, tenant_key, project_id
-        )
+        orchestrator = await _get_active_orchestrator(db_session, tenant_key, project_id)
         if not orchestrator:
             return {
                 "success": False,
@@ -91,7 +91,8 @@ async def handle_gil_handover(
 
         # Create successor
         successor = succession_mgr.create_successor(
-            orchestrator=orchestrator, reason="manual"  # User-triggered via slash command
+            orchestrator=orchestrator,
+            reason="manual",  # User-triggered via slash command
         )
 
         # Mark orchestrator as complete with handover
@@ -147,9 +148,7 @@ async def _get_active_orchestrator(
     return result.scalar_one_or_none()
 
 
-def _generate_launch_prompt(
-    server_url: str, job_id: str, project_id: str, handover_summary: dict[str, Any]
-) -> str:
+def _generate_launch_prompt(server_url: str, job_id: str, project_id: str, handover_summary: dict[str, Any]) -> str:
     """Generate formatted launch prompt for successor"""
     active_agents = handover_summary.get("active_agents", [])
     active_agents_count = len(active_agents)
@@ -160,9 +159,9 @@ export GILJO_AGENT_JOB_ID={job_id}
 export GILJO_PROJECT_ID={project_id}
 
 # Handover Summary:
-# Project: {handover_summary.get('project_name', 'Unknown')} ({handover_summary.get('project_status', 0)}% complete)
-# Active Agents: {active_agents_count} agent{'s' if active_agents_count != 1 else ''}
-# Next Steps: {handover_summary.get('next_steps', 'Continue project work')}
+# Project: {handover_summary.get("project_name", "Unknown")} ({handover_summary.get("project_status", 0)}% complete)
+# Active Agents: {active_agents_count} agent{"s" if active_agents_count != 1 else ""}
+# Next Steps: {handover_summary.get("next_steps", "Continue project work")}
 
 codex mcp add giljo-orchestrator
 """.strip()

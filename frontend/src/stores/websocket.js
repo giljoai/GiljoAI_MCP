@@ -119,6 +119,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   // Set up message handlers for different types
   function setupMessageHandlers() {
+    const { showToast } = useToast()
+
     // Agent updates
     websocketService.onMessage('agent_update', (data) => {
       const agentsStore = useAgentStore()
@@ -163,6 +165,46 @@ export const useWebSocketStore = defineStore('websocket', () => {
           }
         }
       }
+    })
+
+    // Agent health alerts (Handover 0106)
+    websocketService.onMessage('agent:health_alert', (data) => {
+      const agentsStore = useAgentStore()
+      if (agentsStore.handleHealthAlert) {
+        agentsStore.handleHealthAlert(data.data)
+      }
+
+      // Show notification for critical/timeout states
+      const { health_state, agent_type, issue_description } = data.data
+      if (health_state === 'critical' || health_state === 'timeout') {
+        showToast({
+          title: 'Agent Health Alert',
+          message: `${agent_type} - ${issue_description}`,
+          color: health_state === 'timeout' ? 'error' : 'warning',
+          icon: health_state === 'timeout' ? 'mdi-clock-remove' : 'mdi-alert-circle',
+          timeout: 8000, // Longer timeout for critical alerts
+        })
+      }
+    })
+
+    // Agent health recovery (Handover 0106)
+    websocketService.onMessage('agent:health_recovered', (data) => {
+      const agentsStore = useAgentStore()
+      if (agentsStore.handleHealthRecovered) {
+        agentsStore.handleHealthRecovered(data.data)
+      }
+    })
+
+    // Agent auto-failed (Handover 0106)
+    websocketService.onMessage('agent:auto_failed', (data) => {
+      const { agent_type, reason } = data.data
+      showToast({
+        title: 'Agent Auto-Failed',
+        message: `${agent_type} - ${reason}`,
+        color: 'error',
+        icon: 'mdi-robot-dead',
+        timeout: 10000, // Long timeout for failures
+      })
     })
 
     // Progress updates

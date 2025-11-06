@@ -12,12 +12,12 @@ Usage:
     python validate_dependencies.py --fix
 """
 
-import sys
-import subprocess
-import importlib
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 import argparse
+import importlib
+import subprocess
+import sys
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 
 class DependencyValidator:
@@ -30,40 +30,40 @@ class DependencyValidator:
 
         # Critical dependencies that must be available
         self.critical_deps = {
-            'aiohttp': 'WebSocket client for real-time agent communication',
-            'fastapi': 'REST API server and WebSocket endpoints',
-            'websockets': 'WebSocket protocol implementation',
-            'httpx': 'HTTP client for external API calls',
-            'sqlalchemy': 'Database ORM with async support',
-            'pydantic': 'Data validation and settings management',
-            'uvicorn': 'ASGI server for running FastAPI',
+            "aiohttp": "WebSocket client for real-time agent communication",
+            "fastapi": "REST API server and WebSocket endpoints",
+            "websockets": "WebSocket protocol implementation",
+            "httpx": "HTTP client for external API calls",
+            "sqlalchemy": "Database ORM with async support",
+            "pydantic": "Data validation and settings management",
+            "uvicorn": "ASGI server for running FastAPI",
         }
 
         # Important but not critical dependencies
         self.important_deps = {
-            'aiosqlite': 'SQLite async driver (for local development)',
-            'asyncpg': 'PostgreSQL async driver (for production)',
-            'psycopg2': 'PostgreSQL sync driver (backup)',
-            'click': 'CLI interface framework',
-            'rich': 'Rich terminal output',
-            'pyyaml': 'YAML configuration support',
-            'python_dotenv': 'Environment variable loading',
+            "aiosqlite": "SQLite async driver (for local development)",
+            "asyncpg": "PostgreSQL async driver (for production)",
+            "psycopg2": "PostgreSQL sync driver (backup)",
+            "click": "CLI interface framework",
+            "rich": "Rich terminal output",
+            "pyyaml": "YAML configuration support",
+            "python_dotenv": "Environment variable loading",
         }
 
         # AI integration dependencies
         self.ai_deps = {
-            'openai': 'OpenAI API integration',
-            'anthropic': 'Anthropic Claude integration',
-            'tiktoken': 'Token counting for optimization',
+            "openai": "OpenAI API integration",
+            "anthropic": "Anthropic Claude integration",
+            "tiktoken": "Token counting for optimization",
         }
 
         # Development dependencies
         self.dev_deps = {
-            'pytest': 'Testing framework',
-            'pytest_asyncio': 'Async test support',
-            'black': 'Code formatter',
-            'ruff': 'Fast linter',
-            'mypy': 'Type checking',
+            "pytest": "Testing framework",
+            "pytest_asyncio": "Async test support",
+            "black": "Code formatter",
+            "ruff": "Fast linter",
+            "mypy": "Type checking",
         }
 
     def print_status(self, message: str, status: str = "info"):
@@ -85,19 +85,17 @@ class DependencyValidator:
         if current >= min_version:
             self.print_status(f"Python {current[0]}.{current[1]} OK", "success")
             return True
-        else:
-            self.print_status(
-                f"Python {min_version[0]}.{min_version[1]}+ required (found {current[0]}.{current[1]})",
-                "error"
-            )
-            self.errors.append(f"Python version {current[0]}.{current[1]} is too old")
-            return False
+        self.print_status(
+            f"Python {min_version[0]}.{min_version[1]}+ required (found {current[0]}.{current[1]})", "error"
+        )
+        self.errors.append(f"Python version {current[0]}.{current[1]} is too old")
+        return False
 
     def check_dependency(self, dep_name: str, purpose: str) -> Tuple[bool, Optional[str]]:
         """Check if a dependency is available and get its version"""
         try:
             module = importlib.import_module(dep_name)
-            version = getattr(module, '__version__', 'unknown')
+            version = getattr(module, "__version__", "unknown")
             return True, version
         except ImportError as e:
             return False, str(e)
@@ -189,6 +187,7 @@ class DependencyValidator:
         """Test WebSocket client functionality"""
         try:
             from src.giljo_mcp.websocket_client import WebSocketEventClient
+
             client = WebSocketEventClient()
             self.print_status("WebSocket client import successful", "success")
             return True
@@ -202,6 +201,7 @@ class DependencyValidator:
         try:
             from fastapi import FastAPI
             from pydantic import BaseModel
+
             app = FastAPI()
             self.print_status("FastAPI functionality available", "success")
             return True
@@ -215,6 +215,7 @@ class DependencyValidator:
         try:
             from sqlalchemy import create_engine
             from sqlalchemy.ext.asyncio import create_async_engine
+
             self.print_status("Database functionality available", "success")
             return True
         except ImportError as e:
@@ -228,7 +229,7 @@ class DependencyValidator:
         if req_file.exists():
             self.print_status("requirements.txt found", "success")
             try:
-                with open(req_file, 'r') as f:
+                with open(req_file) as f:
                     lines = f.readlines()
                 self.print_status(f"requirements.txt contains {len(lines)} entries", "info")
                 return True
@@ -245,9 +246,9 @@ class DependencyValidator:
         if not self.errors and not self.warnings:
             return
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔧 SUGGESTED FIXES")
-        print("="*60)
+        print("=" * 60)
 
         if self.errors:
             print("\n❌ Critical Issues (must fix):")
@@ -273,7 +274,7 @@ class DependencyValidator:
     def run_validation(self, test_functionality: bool = True) -> bool:
         """Run complete validation"""
         print("🔍 GiljoAI MCP Dependency Validation")
-        print("="*60)
+        print("=" * 60)
 
         # Python version check
         python_ok = self.validate_python_version()
@@ -297,18 +298,22 @@ class DependencyValidator:
             websocket_ok = api_ok = db_ok = True
 
         # Summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📊 VALIDATION SUMMARY")
-        print("="*60)
+        print("=" * 60)
 
         total_checks = 7 if test_functionality else 4
-        passed_checks = sum([
-            python_ok, req_file_ok, critical_ok,
-            important_ok if not self.warnings else False,
-            websocket_ok if test_functionality else True,
-            api_ok if test_functionality else True,
-            db_ok if test_functionality else True
-        ])
+        passed_checks = sum(
+            [
+                python_ok,
+                req_file_ok,
+                critical_ok,
+                important_ok if not self.warnings else False,
+                websocket_ok if test_functionality else True,
+                api_ok if test_functionality else True,
+                db_ok if test_functionality else True,
+            ]
+        )
 
         if not self.errors:
             self.print_status("✅ All critical dependencies validated successfully!", "success")
@@ -331,16 +336,18 @@ class DependencyValidator:
 
         try:
             # Install from requirements.txt
-            result = subprocess.run([
-                sys.executable, "-m", "pip", "install", "-r", "requirements.txt"
-            ], capture_output=True, text=True, check=False)
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
 
             if result.returncode == 0:
                 self.print_status("Dependencies installed successfully", "success")
                 return True
-            else:
-                self.print_status(f"Installation failed: {result.stderr}", "error")
-                return False
+            self.print_status(f"Installation failed: {result.stderr}", "error")
+            return False
 
         except Exception as e:
             self.print_status(f"Fix attempt failed: {e}", "error")
@@ -369,9 +376,8 @@ def main():
     if success:
         print("\n🎉 All validations passed! GiljoAI MCP should work correctly.")
         return 0
-    else:
-        print("\n💥 Validation failed. Please fix the issues above before using GiljoAI MCP.")
-        return 1
+    print("\n💥 Validation failed. Please fix the issues above before using GiljoAI MCP.")
+    return 1
 
 
 if __name__ == "__main__":

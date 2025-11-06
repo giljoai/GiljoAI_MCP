@@ -3,14 +3,15 @@ Unit tests for context_manager module
 """
 
 import pytest
+
 from src.giljo_mcp.context_manager import (
-    is_orchestrator,
-    get_full_config,
-    get_filtered_config,
-    validate_config_data,
-    merge_config_updates,
+    ROLE_CONFIG_FILTERS,
     get_config_summary,
-    ROLE_CONFIG_FILTERS
+    get_filtered_config,
+    get_full_config,
+    is_orchestrator,
+    merge_config_updates,
+    validate_config_data,
 )
 from src.giljo_mcp.models import Product
 
@@ -25,10 +26,7 @@ def sample_product():
         config_data={
             "architecture": "FastAPI + PostgreSQL",
             "tech_stack": ["Python 3.11", "PostgreSQL 18"],
-            "codebase_structure": {
-                "api": "REST endpoints",
-                "core": "Orchestration"
-            },
+            "codebase_structure": {"api": "REST endpoints", "core": "Orchestration"},
             "critical_features": ["Multi-tenant", "Agent coordination"],
             "test_commands": ["pytest tests/"],
             "test_config": {"coverage_threshold": 80},
@@ -37,8 +35,8 @@ def sample_product():
             "serena_mcp_enabled": True,
             "database_type": "postgresql",
             "frontend_framework": "Vue 3",
-            "backend_framework": "FastAPI"
-        }
+            "backend_framework": "FastAPI",
+        },
     )
     return product
 
@@ -50,10 +48,7 @@ def minimal_product():
         id="test-product-minimal",
         tenant_key="test-tenant",
         name="Minimal Product",
-        config_data={
-            "architecture": "Simple App",
-            "serena_mcp_enabled": False
-        }
+        config_data={"architecture": "Simple App", "serena_mcp_enabled": False},
     )
     return product
 
@@ -61,12 +56,7 @@ def minimal_product():
 @pytest.fixture
 def empty_product():
     """Create product with no config_data"""
-    product = Product(
-        id="test-product-empty",
-        tenant_key="test-tenant",
-        name="Empty Product",
-        config_data={}
-    )
+    product = Product(id="test-product-empty", tenant_key="test-tenant", name="Empty Product", config_data={})
     return product
 
 
@@ -288,7 +278,7 @@ class TestValidateConfigData:
             "test_commands": ["pytest tests/"],
             "critical_features": ["Multi-tenant isolation"],
             "codebase_structure": {"api": "REST endpoints"},
-            "test_config": {"coverage_threshold": 80}
+            "test_config": {"coverage_threshold": 80},
         }
 
         is_valid, errors = validate_config_data(config)
@@ -297,10 +287,7 @@ class TestValidateConfigData:
 
     def test_validate_config_data_valid_minimal(self):
         """Test validation with minimal valid config"""
-        config = {
-            "architecture": "Simple App",
-            "serena_mcp_enabled": False
-        }
+        config = {"architecture": "Simple App", "serena_mcp_enabled": False}
 
         is_valid, errors = validate_config_data(config)
         assert is_valid is True
@@ -308,10 +295,7 @@ class TestValidateConfigData:
 
     def test_validate_config_data_missing_architecture(self):
         """Test validation with missing architecture"""
-        config = {
-            "serena_mcp_enabled": True,
-            "tech_stack": ["Python"]
-        }
+        config = {"serena_mcp_enabled": True, "tech_stack": ["Python"]}
 
         is_valid, errors = validate_config_data(config)
         assert is_valid is False
@@ -319,10 +303,7 @@ class TestValidateConfigData:
 
     def test_validate_config_data_missing_serena_flag(self):
         """Test validation with missing serena_mcp_enabled"""
-        config = {
-            "architecture": "FastAPI",
-            "tech_stack": ["Python"]
-        }
+        config = {"architecture": "FastAPI", "tech_stack": ["Python"]}
 
         is_valid, errors = validate_config_data(config)
         assert is_valid is False
@@ -333,7 +314,7 @@ class TestValidateConfigData:
         config = {
             "architecture": "FastAPI",
             "serena_mcp_enabled": True,
-            "tech_stack": "Python"  # Should be array
+            "tech_stack": "Python",  # Should be array
         }
 
         is_valid, errors = validate_config_data(config)
@@ -345,7 +326,7 @@ class TestValidateConfigData:
         config = {
             "architecture": "FastAPI",
             "serena_mcp_enabled": True,
-            "test_commands": {"cmd": "pytest"}  # Should be array
+            "test_commands": {"cmd": "pytest"},  # Should be array
         }
 
         is_valid, errors = validate_config_data(config)
@@ -356,7 +337,7 @@ class TestValidateConfigData:
         """Test validation with wrong type for serena_mcp_enabled"""
         config = {
             "architecture": "FastAPI",
-            "serena_mcp_enabled": "yes"  # Should be boolean
+            "serena_mcp_enabled": "yes",  # Should be boolean
         }
 
         is_valid, errors = validate_config_data(config)
@@ -368,7 +349,7 @@ class TestValidateConfigData:
         config = {
             "architecture": "FastAPI",
             "serena_mcp_enabled": True,
-            "codebase_structure": ["api", "frontend"]  # Should be object
+            "codebase_structure": ["api", "frontend"],  # Should be object
         }
 
         is_valid, errors = validate_config_data(config)
@@ -379,7 +360,7 @@ class TestValidateConfigData:
         """Test validation with multiple errors"""
         config = {
             "tech_stack": "Python",  # Missing architecture, serena_mcp_enabled; wrong type
-            "test_commands": "pytest"  # Wrong type
+            "test_commands": "pytest",  # Wrong type
         }
 
         is_valid, errors = validate_config_data(config)
@@ -392,15 +373,9 @@ class TestMergeConfigUpdates:
 
     def test_merge_config_updates_shallow(self):
         """Test shallow merge of config updates"""
-        existing = {
-            "architecture": "Old Architecture",
-            "tech_stack": ["Python 3.10"]
-        }
+        existing = {"architecture": "Old Architecture", "tech_stack": ["Python 3.10"]}
 
-        updates = {
-            "architecture": "New Architecture",
-            "test_commands": ["pytest"]
-        }
+        updates = {"architecture": "New Architecture", "test_commands": ["pytest"]}
 
         merged = merge_config_updates(existing, updates)
 
@@ -410,12 +385,7 @@ class TestMergeConfigUpdates:
 
     def test_merge_config_updates_deep(self):
         """Test deep merge of nested objects"""
-        existing = {
-            "test_config": {
-                "coverage_threshold": 80,
-                "framework": "pytest"
-            }
-        }
+        existing = {"test_config": {"coverage_threshold": 80, "framework": "pytest"}}
 
         updates = {
             "test_config": {
@@ -431,13 +401,9 @@ class TestMergeConfigUpdates:
 
     def test_merge_config_updates_array_replacement(self):
         """Test that arrays are replaced, not merged"""
-        existing = {
-            "tech_stack": ["Python 3.10", "PostgreSQL 14"]
-        }
+        existing = {"tech_stack": ["Python 3.10", "PostgreSQL 14"]}
 
-        updates = {
-            "tech_stack": ["Python 3.11", "PostgreSQL 18"]
-        }
+        updates = {"tech_stack": ["Python 3.11", "PostgreSQL 18"]}
 
         merged = merge_config_updates(existing, updates)
 
@@ -448,10 +414,7 @@ class TestMergeConfigUpdates:
         """Test merge with empty existing config"""
         existing = {}
 
-        updates = {
-            "architecture": "FastAPI",
-            "serena_mcp_enabled": True
-        }
+        updates = {"architecture": "FastAPI", "serena_mcp_enabled": True}
 
         merged = merge_config_updates(existing, updates)
 
@@ -459,10 +422,7 @@ class TestMergeConfigUpdates:
 
     def test_merge_config_updates_empty_updates(self):
         """Test merge with empty updates"""
-        existing = {
-            "architecture": "FastAPI",
-            "serena_mcp_enabled": True
-        }
+        existing = {"architecture": "FastAPI", "serena_mcp_enabled": True}
 
         updates = {}
 
@@ -472,14 +432,9 @@ class TestMergeConfigUpdates:
 
     def test_merge_config_updates_preserves_existing(self):
         """Test that merge doesn't modify original existing dict"""
-        existing = {
-            "architecture": "Old",
-            "tech_stack": ["Python"]
-        }
+        existing = {"architecture": "Old", "tech_stack": ["Python"]}
 
-        updates = {
-            "architecture": "New"
-        }
+        updates = {"architecture": "New"}
 
         merged = merge_config_updates(existing, updates)
 
@@ -521,12 +476,7 @@ class TestGetConfigSummary:
 
     def test_get_config_summary_no_config_data(self):
         """Test summary with None config_data"""
-        product = Product(
-            id="test-product-none",
-            tenant_key="test-tenant",
-            name="None Product",
-            config_data=None
-        )
+        product = Product(id="test-product-none", tenant_key="test-tenant", name="None Product", config_data=None)
 
         summary = get_config_summary(product)
 
@@ -539,8 +489,14 @@ class TestRoleConfigFilters:
     def test_all_roles_have_filters(self):
         """Test that all expected roles have filter definitions"""
         expected_roles = [
-            "orchestrator", "implementer", "developer",
-            "tester", "qa", "documenter", "analyzer", "reviewer"
+            "orchestrator",
+            "implementer",
+            "developer",
+            "tester",
+            "qa",
+            "documenter",
+            "analyzer",
+            "reviewer",
         ]
 
         for role in expected_roles:

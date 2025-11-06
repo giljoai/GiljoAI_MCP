@@ -13,17 +13,17 @@ Tests verify:
 This is the Backend Integration Tester Agent's verification of Handover 0035 changes.
 """
 
-import pytest
-import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import create_engine, text, inspect, select, func
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from httpx import AsyncClient
 
-from src.giljo_mcp.models import Base, SetupState, User, MCPContextIndex, Product
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import create_engine, func, inspect, select
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
 from api.app import app
+from src.giljo_mcp.models import Base, MCPContextIndex, SetupState, User
 
 
 class TestHandover0035SetupStateModel:
@@ -58,21 +58,21 @@ class TestHandover0035SetupStateModel:
         Location: F:\\GiljoAI_MCP\\src\\giljo_mcp\\models.py:945-959
         """
         inspector = inspect(sync_engine)
-        columns = {col['name']: col for col in inspector.get_columns('setup_state')}
+        columns = {col["name"]: col for col in inspector.get_columns("setup_state")}
 
         # Verify first_admin_created field exists
-        assert 'first_admin_created' in columns, "first_admin_created field missing from SetupState model"
+        assert "first_admin_created" in columns, "first_admin_created field missing from SetupState model"
 
         # Verify first_admin_created_at field exists
-        assert 'first_admin_created_at' in columns, "first_admin_created_at field missing from SetupState model"
+        assert "first_admin_created_at" in columns, "first_admin_created_at field missing from SetupState model"
 
         # Verify first_admin_created is NOT NULL (required field)
-        first_admin_created_col = columns['first_admin_created']
-        assert not first_admin_created_col['nullable'], "first_admin_created should be NOT NULL"
+        first_admin_created_col = columns["first_admin_created"]
+        assert not first_admin_created_col["nullable"], "first_admin_created should be NOT NULL"
 
         # Verify first_admin_created_at is NULLABLE (only set after admin created)
-        first_admin_created_at_col = columns['first_admin_created_at']
-        assert first_admin_created_at_col['nullable'], "first_admin_created_at should be NULLABLE"
+        first_admin_created_at_col = columns["first_admin_created_at"]
+        assert first_admin_created_at_col["nullable"], "first_admin_created_at should be NULLABLE"
 
     def test_setup_state_first_admin_created_default_value(self, session):
         """
@@ -83,9 +83,9 @@ class TestHandover0035SetupStateModel:
         # Create SetupState without specifying first_admin_created
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
-            database_initialized_at=datetime.now(timezone.utc)
+            database_initialized_at=datetime.now(timezone.utc),
         )
         session.add(setup_state)
         session.commit()
@@ -105,11 +105,11 @@ class TestHandover0035SetupStateModel:
         created_at = datetime.now(timezone.utc)
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),
             first_admin_created=True,
-            first_admin_created_at=created_at
+            first_admin_created_at=created_at,
         )
         session.add(setup_state)
         session.commit()
@@ -140,11 +140,11 @@ class TestHandover0035SetupStateModel:
         # first_admin_created=True BUT first_admin_created_at=None (INVALID)
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),
             first_admin_created=True,
-            first_admin_created_at=None  # INVALID: Should trigger constraint violation
+            first_admin_created_at=None,  # INVALID: Should trigger constraint violation
         )
         session.add(setup_state)
 
@@ -167,17 +167,17 @@ class TestHandover0035SetupStateModel:
         SQLite creates index without WHERE clause (still functional)
         """
         inspector = inspect(sync_engine)
-        indexes = inspector.get_indexes('setup_state')
+        indexes = inspector.get_indexes("setup_state")
 
         # Check if index exists
-        index_names = [idx['name'] for idx in indexes]
+        index_names = [idx["name"] for idx in indexes]
 
         # Verify idx_setup_fresh_install exists
         # NOTE: Index name may vary slightly in SQLite vs PostgreSQL
         # Looking for index containing 'fresh_install' or composite index on (tenant_key, first_admin_created)
         has_fresh_install_index = any(
-            'fresh_install' in name.lower() or
-            (set(idx.get('column_names', [])) == {'tenant_key', 'first_admin_created'})
+            "fresh_install" in name.lower()
+            or (set(idx.get("column_names", [])) == {"tenant_key", "first_admin_created"})
             for name, idx in zip(index_names, indexes)
         )
 
@@ -201,15 +201,13 @@ class TestHandover0035PgTrgmExtension:
         Requirement: This column REQUIRES pg_trgm extension for GIN index
         Without pg_trgm: Full-text search will FAIL
         """
-        from sqlalchemy import inspect as sa_inspect
 
         # Get MCPContextIndex table columns
         columns = [col.name for col in MCPContextIndex.__table__.columns]
 
         # Verify searchable_vector exists
-        assert 'searchable_vector' in columns, (
-            "searchable_vector column missing from MCPContextIndex. "
-            "Full-text search will NOT work without this column."
+        assert "searchable_vector" in columns, (
+            "searchable_vector column missing from MCPContextIndex. Full-text search will NOT work without this column."
         )
 
     def test_mcp_context_index_has_gin_index_on_searchable_vector(self):
@@ -225,10 +223,7 @@ class TestHandover0035PgTrgmExtension:
         indexes = MCPContextIndex.__table__.indexes
 
         # Find index on searchable_vector
-        searchable_indexes = [
-            idx for idx in indexes
-            if 'searchable_vector' in [col.name for col in idx.columns]
-        ]
+        searchable_indexes = [idx for idx in indexes if "searchable_vector" in [col.name for col in idx.columns]]
 
         assert len(searchable_indexes) > 0, (
             "GIN index on searchable_vector missing. "
@@ -259,19 +254,17 @@ class TestHandover0035PgTrgmExtension:
         """
         # Read installer/core/database.py
         installer_path = "F:\\GiljoAI_MCP\\installer\\core\\database.py"
-        with open(installer_path, 'r', encoding='utf-8') as f:
+        with open(installer_path, encoding="utf-8") as f:
             installer_code = f.read()
 
         # Verify pg_trgm extension creation exists
-        assert 'CREATE EXTENSION IF NOT EXISTS pg_trgm' in installer_code, (
-            "Installer does NOT create pg_trgm extension. "
-            "Full-text search will FAIL on fresh installations."
+        assert "CREATE EXTENSION IF NOT EXISTS pg_trgm" in installer_code, (
+            "Installer does NOT create pg_trgm extension. Full-text search will FAIL on fresh installations."
         )
 
         # Verify extension creation is logged
-        assert 'Extension pg_trgm created successfully' in installer_code, (
-            "Installer does not log pg_trgm extension creation. "
-            "Hard to debug installation issues without logging."
+        assert "Extension pg_trgm created successfully" in installer_code, (
+            "Installer does not log pg_trgm extension creation. Hard to debug installation issues without logging."
         )
 
 
@@ -316,25 +309,44 @@ class TestHandover0035DatabaseCreationFlow:
 
         # Expected 28 tables
         expected_tables = [
-            'products', 'projects', 'agents', 'messages', 'tasks', 'sessions',
-            'visions', 'configurations', 'discovery_configs', 'context_indexes',
-            'large_document_indexes', 'jobs', 'agent_interactions', 'agent_templates',
-            'template_archives', 'template_augmentations', 'template_usage_stats',
-            'git_configs', 'git_commits', 'setup_state', 'users', 'api_keys',
-            'mcp_sessions', 'optimization_rules', 'optimization_metrics',
-            'mcp_context_index', 'mcp_context_summary', 'mcp_agent_jobs'
+            "products",
+            "projects",
+            "agents",
+            "messages",
+            "tasks",
+            "sessions",
+            "visions",
+            "configurations",
+            "discovery_configs",
+            "context_indexes",
+            "large_document_indexes",
+            "jobs",
+            "agent_interactions",
+            "agent_templates",
+            "template_archives",
+            "template_augmentations",
+            "template_usage_stats",
+            "git_configs",
+            "git_commits",
+            "setup_state",
+            "users",
+            "api_keys",
+            "mcp_sessions",
+            "optimization_rules",
+            "optimization_metrics",
+            "mcp_context_index",
+            "mcp_context_summary",
+            "mcp_agent_jobs",
         ]
 
         # Verify all tables created
         missing_tables = [t for t in expected_tables if t not in tables]
         assert len(missing_tables) == 0, (
-            f"Missing tables after Base.metadata.create_all(): {missing_tables}. "
-            f"Found tables: {tables}"
+            f"Missing tables after Base.metadata.create_all(): {missing_tables}. Found tables: {tables}"
         )
 
         assert len(tables) == 28, (
-            f"Expected 28 tables, found {len(tables)}. "
-            f"Extra tables: {set(tables) - set(expected_tables)}"
+            f"Expected 28 tables, found {len(tables)}. Extra tables: {set(tables) - set(expected_tables)}"
         )
 
     @pytest.mark.asyncio
@@ -349,20 +361,18 @@ class TestHandover0035DatabaseCreationFlow:
         This test verifies Base.metadata.create_all() includes these new fields
         """
         inspector = inspect(async_engine.sync_engine)
-        columns = {col['name']: col for col in inspector.get_columns('setup_state')}
+        columns = {col["name"]: col for col in inspector.get_columns("setup_state")}
 
         # Verify Handover 0035 fields present
-        assert 'first_admin_created' in columns, "first_admin_created field not created"
-        assert 'first_admin_created_at' in columns, "first_admin_created_at field not created"
+        assert "first_admin_created" in columns, "first_admin_created field not created"
+        assert "first_admin_created_at" in columns, "first_admin_created_at field not created"
 
         # Verify legacy fields removed (Handover 0035 cleanup)
-        assert 'default_password_active' not in columns, (
-            "Legacy default_password_active field still exists. "
-            "Should be removed in Handover 0035 cleanup."
+        assert "default_password_active" not in columns, (
+            "Legacy default_password_active field still exists. Should be removed in Handover 0035 cleanup."
         )
-        assert 'password_changed_at' not in columns, (
-            "Legacy password_changed_at field still exists. "
-            "Should be removed in Handover 0035 cleanup."
+        assert "password_changed_at" not in columns, (
+            "Legacy password_changed_at field still exists. Should be removed in Handover 0035 cleanup."
         )
 
     @pytest.mark.asyncio
@@ -380,22 +390,18 @@ class TestHandover0035DatabaseCreationFlow:
         - idx_setup_fresh_install (partial index) - NEW in Handover 0035
         """
         inspector = inspect(async_engine.sync_engine)
-        indexes = inspector.get_indexes('setup_state')
-        index_names = [idx['name'] for idx in indexes]
+        indexes = inspector.get_indexes("setup_state")
+        index_names = [idx["name"] for idx in indexes]
 
         # Verify critical indexes exist
         # NOTE: SQLite may name indexes differently than PostgreSQL
         # Check for index on first_admin_created column (idx_setup_fresh_install)
 
         # Check if there's an index on first_admin_created
-        has_first_admin_index = any(
-            'first_admin_created' in idx.get('column_names', [])
-            for idx in indexes
-        )
+        has_first_admin_index = any("first_admin_created" in idx.get("column_names", []) for idx in indexes)
 
         assert has_first_admin_index, (
-            "Index on first_admin_created missing. "
-            "Security check for /api/auth/create-first-admin will be SLOW."
+            "Index on first_admin_created missing. Security check for /api/auth/create-first-admin will be SLOW."
         )
 
 
@@ -418,9 +424,7 @@ class TestHandover0035AuthenticationFlow:
     @pytest.fixture
     async def async_session(self, async_engine):
         """Create async database session"""
-        AsyncSessionLocal = sessionmaker(
-            async_engine, class_=AsyncSession, expire_on_commit=False
-        )
+        AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
         async with AsyncSessionLocal() as session:
             yield session
 
@@ -445,11 +449,11 @@ class TestHandover0035AuthenticationFlow:
         # Create SetupState with first_admin_created=True
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),
             first_admin_created=True,
-            first_admin_created_at=datetime.now(timezone.utc)
+            first_admin_created_at=datetime.now(timezone.utc),
         )
         async_session.add(setup_state)
         await async_session.commit()
@@ -457,11 +461,7 @@ class TestHandover0035AuthenticationFlow:
         # Attempt to create first admin (should be blocked)
         response = await client.post(
             "/api/auth/create-first-admin",
-            json={
-                "username": "attacker",
-                "password": "AttackerPass123!",
-                "email": "attacker@example.com"
-            }
+            json={"username": "attacker", "password": "AttackerPass123!", "email": "attacker@example.com"},
         )
 
         # Expect 403 Forbidden
@@ -471,8 +471,8 @@ class TestHandover0035AuthenticationFlow:
         )
 
         # Verify error message
-        detail = response.json().get('detail', '')
-        assert 'Administrator account already exists' in detail, (
+        detail = response.json().get("detail", "")
+        assert "Administrator account already exists" in detail, (
             f"Expected 'Administrator account already exists' error, got: {detail}"
         )
 
@@ -492,11 +492,11 @@ class TestHandover0035AuthenticationFlow:
         # Create fresh SetupState (no admin yet)
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),
             first_admin_created=False,  # Fresh install
-            first_admin_created_at=None
+            first_admin_created_at=None,
         )
         async_session.add(setup_state)
         await async_session.commit()
@@ -508,14 +508,13 @@ class TestHandover0035AuthenticationFlow:
                 "username": "admin",
                 "password": "SecurePass123!",
                 "email": "admin@example.com",
-                "full_name": "Administrator"
-            }
+                "full_name": "Administrator",
+            },
         )
 
         # Expect 201 Created
         assert response.status_code == 201, (
-            f"Expected 201 Created, got {response.status_code}. "
-            f"Response: {response.json()}"
+            f"Expected 201 Created, got {response.status_code}. Response: {response.json()}"
         )
 
         # Verify SetupState updated
@@ -543,11 +542,11 @@ class TestHandover0035AuthenticationFlow:
         # Create fresh SetupState
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),
             first_admin_created=False,
-            first_admin_created_at=None
+            first_admin_created_at=None,
         )
         async_session.add(setup_state)
         await async_session.commit()
@@ -555,22 +554,14 @@ class TestHandover0035AuthenticationFlow:
         # First admin creation (should succeed)
         response1 = await client.post(
             "/api/auth/create-first-admin",
-            json={
-                "username": "admin1",
-                "password": "SecurePass123!",
-                "email": "admin1@example.com"
-            }
+            json={"username": "admin1", "password": "SecurePass123!", "email": "admin1@example.com"},
         )
         assert response1.status_code == 201, "First admin creation should succeed"
 
         # Second admin creation attempt (should FAIL)
         response2 = await client.post(
             "/api/auth/create-first-admin",
-            json={
-                "username": "admin2",
-                "password": "AttackerPass123!",
-                "email": "admin2@example.com"
-            }
+            json={"username": "admin2", "password": "AttackerPass123!", "email": "admin2@example.com"},
         )
 
         # Expect 403 Forbidden
@@ -585,8 +576,7 @@ class TestHandover0035AuthenticationFlow:
         admin_count = result.scalar()
 
         assert admin_count == 1, (
-            f"Expected 1 admin user, found {admin_count}. "
-            "Second admin creation should have been BLOCKED."
+            f"Expected 1 admin user, found {admin_count}. Second admin creation should have been BLOCKED."
         )
 
 
@@ -607,8 +597,9 @@ def test_handover_0035_verification_complete():
     # Get all test classes in this module
     current_module = sys.modules[__name__]
     test_classes = [
-        obj for name, obj in inspect.getmembers(current_module)
-        if inspect.isclass(obj) and name.startswith('TestHandover0035')
+        obj
+        for name, obj in inspect.getmembers(current_module)
+        if inspect.isclass(obj) and name.startswith("TestHandover0035")
     ]
 
     # Verify 4 test classes exist
@@ -619,16 +610,13 @@ def test_handover_0035_verification_complete():
 
     # Verify test class names
     expected_classes = [
-        'TestHandover0035SetupStateModel',
-        'TestHandover0035PgTrgmExtension',
-        'TestHandover0035DatabaseCreationFlow',
-        'TestHandover0035AuthenticationFlow'
+        "TestHandover0035SetupStateModel",
+        "TestHandover0035PgTrgmExtension",
+        "TestHandover0035DatabaseCreationFlow",
+        "TestHandover0035AuthenticationFlow",
     ]
 
     actual_classes = [cls.__name__ for cls in test_classes]
 
     for expected in expected_classes:
-        assert expected in actual_classes, (
-            f"Missing test class: {expected}. "
-            f"All verification areas must be covered."
-        )
+        assert expected in actual_classes, f"Missing test class: {expected}. All verification areas must be covered."

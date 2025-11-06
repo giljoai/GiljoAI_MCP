@@ -7,9 +7,9 @@ The standard naming convention will be: .giljo-mcp (with hyphen)
 """
 
 import os
+import re
 import sys
 from pathlib import Path
-import re
 from typing import List, Tuple
 
 
@@ -24,7 +24,7 @@ class FolderNameStandardizer:
         """
         self.project_root = Path(project_root) if project_root else Path.cwd().parent
         self.old_pattern = r"\.giljo_mcp"  # Underscore version
-        self.new_pattern = ".giljo-mcp"    # Hyphen version (standard)
+        self.new_pattern = ".giljo-mcp"  # Hyphen version (standard)
         self.changes_made = []
         self.files_skipped = []
 
@@ -37,11 +37,21 @@ class FolderNameStandardizer:
         files_to_update = []
 
         # File extensions to check
-        extensions = ['.py', '.md', '.yaml', '.yml', '.json', '.txt', '.sh', '.bat', '.ini', '.toml']
+        extensions = [".py", ".md", ".yaml", ".yml", ".json", ".txt", ".sh", ".bat", ".ini", ".toml"]
 
         # Directories to skip
-        skip_dirs = {'.git', '__pycache__', '.mypy_cache', '.ruff_cache', 'venv', 'node_modules',
-                     '.pytest_cache', 'dist', 'build', '*.egg-info'}
+        skip_dirs = {
+            ".git",
+            "__pycache__",
+            ".mypy_cache",
+            ".ruff_cache",
+            "venv",
+            "node_modules",
+            ".pytest_cache",
+            "dist",
+            "build",
+            "*.egg-info",
+        }
 
         for root, dirs, files in os.walk(self.project_root):
             # Skip certain directories
@@ -53,7 +63,7 @@ class FolderNameStandardizer:
                 # Check if file has relevant extension
                 if any(file.endswith(ext) for ext in extensions):
                     try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                        with open(file_path, encoding="utf-8") as f:
                             content = f.read()
                             if self.old_pattern.replace("\\", "") in content:
                                 files_to_update.append(file_path)
@@ -72,7 +82,7 @@ class FolderNameStandardizer:
             Tuple of (success, number of replacements)
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 original_content = f.read()
 
             # Replace the pattern
@@ -83,7 +93,7 @@ class FolderNameStandardizer:
 
             if replacements > 0:
                 # Write updated content
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     f.write(updated_content)
 
                 self.changes_made.append((file_path, replacements))
@@ -103,10 +113,10 @@ class FolderNameStandardizer:
         import_files = []
         for root, dirs, files in os.walk(self.project_root):
             for file in files:
-                if file.endswith('.py'):
+                if file.endswith(".py"):
                     file_path = Path(root) / file
                     try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                        with open(file_path, encoding="utf-8") as f:
                             content = f.read()
                             # Look for path references, not imports
                             if '".giljo_mcp"' in content or "'.giljo_mcp'" in content:
@@ -116,15 +126,15 @@ class FolderNameStandardizer:
 
         for file_path in import_files:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
 
                 # Update string path references only
                 content = content.replace('".giljo_mcp"', '".giljo-mcp"')
                 content = content.replace("'.giljo_mcp'", "'.giljo-mcp'")
-                content = content.replace('/.giljo_mcp', '/.giljo-mcp')
+                content = content.replace("/.giljo_mcp", "/.giljo-mcp")
 
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     f.write(content)
 
                 print(f"  Updated path references in: {file_path.relative_to(self.project_root)}")
@@ -141,13 +151,14 @@ class FolderNameStandardizer:
             print(f"\nMigrating folder: {old_dir} -> {new_dir}")
             try:
                 import shutil
+
                 shutil.move(str(old_dir), str(new_dir))
                 print("  ✓ Folder migrated successfully")
             except Exception as e:
                 print(f"  ✗ Migration failed: {e}")
                 print("  You may need to manually rename the folder")
         elif old_dir.exists() and new_dir.exists():
-            print(f"\n⚠ Both folders exist:")
+            print("\n⚠ Both folders exist:")
             print(f"  - {old_dir}")
             print(f"  - {new_dir}")
             print("  Manual intervention required to merge or remove duplicate")
@@ -253,8 +264,8 @@ def main():
     print("GiljoAI MCP Folder Naming Standardization")
     print("=" * 60)
     print(f"Project root: {standardizer.project_root}")
-    print(f"Old pattern: .giljo_mcp (underscore)")
-    print(f"New pattern: .giljo-mcp (hyphen)")
+    print("Old pattern: .giljo_mcp (underscore)")
+    print("New pattern: .giljo-mcp (hyphen)")
     print()
 
     if args.dry_run:
@@ -264,8 +275,7 @@ def main():
     try:
         if standardizer.run(dry_run=args.dry_run):
             return 0
-        else:
-            return 1
+        return 1
     except KeyboardInterrupt:
         print("\n\nStandardization cancelled by user")
         return 1

@@ -13,20 +13,14 @@ Test Coverage:
 
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import MCPAgentJob, Project
 from tests.fixtures.succession_fixtures import (
     SuccessionTestData,
-    handover_summary_sample,
-    orchestrator_at_90_percent,
-    orchestrator_below_threshold,
-    succession_chain_3_instances,
 )
 
 
@@ -227,15 +221,15 @@ async def test_multiple_successive_handovers(
 
     # Verify spawned_by chain (excluding Instance 1)
     for i in range(1, 4):
-        assert instances[i].spawned_by == instances[i - 1].job_id, f"Instance {i+1} spawned_by broken"
+        assert instances[i].spawned_by == instances[i - 1].job_id, f"Instance {i + 1} spawned_by broken"
 
     # Verify handover_to chain (excluding Instance 4)
     for i in range(3):
-        assert instances[i].handover_to == instances[i + 1].job_id, f"Instance {i+1} handover_to broken"
+        assert instances[i].handover_to == instances[i + 1].job_id, f"Instance {i + 1} handover_to broken"
 
     # Verify all handover summaries preserved
     for i in range(3):  # Instances 1-3 should have handover summaries
-        assert instances[i].handover_summary is not None, f"Instance {i+1} missing handover_summary"
+        assert instances[i].handover_summary is not None, f"Instance {i + 1} missing handover_summary"
         assert isinstance(instances[i].handover_summary, dict)
 
     # Verify status progression

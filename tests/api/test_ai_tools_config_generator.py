@@ -6,7 +6,6 @@ They define the expected behavior of the AI tool config generator API.
 """
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -84,10 +83,9 @@ class TestAIToolConfigGeneratorEndpoint:
     def test_generate_config_includes_tenant_key(self, api_client, mock_user):
         """Test that config includes user's tenant key in environment."""
         # Mock authenticated user
-        with patch('api.endpoints.ai_tools.get_current_active_user', return_value=mock_user):
+        with patch("api.endpoints.ai_tools.get_current_active_user", return_value=mock_user):
             response = api_client.get(
-                "/api/ai-tools/config-generator/claude",
-                headers={"Authorization": "Bearer fake_token"}
+                "/api/ai-tools/config-generator/claude", headers={"Authorization": "Bearer fake_token"}
             )
 
             assert response.status_code == 200
@@ -184,7 +182,7 @@ class TestAIToolConfigGeneratorEndpoint:
     def test_config_handles_network_deployment(self, api_client):
         """Test that config adapts to LAN deployment mode."""
         # Mock LAN configuration
-        with patch('api.endpoints.ai_tools.get_config') as mock_get_config:
+        with patch("api.endpoints.ai_tools.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.services.api.host = "192.168.1.100"
             mock_config.services.api.port = 7272
@@ -203,10 +201,9 @@ class TestAIToolConfigGeneratorEndpoint:
 
     def test_config_includes_authentication_if_required(self, api_client, mock_user):
         """Test that config includes API key or auth token if needed."""
-        with patch('api.endpoints.ai_tools.get_current_active_user', return_value=mock_user):
+        with patch("api.endpoints.ai_tools.get_current_active_user", return_value=mock_user):
             response = api_client.get(
-                "/api/ai-tools/config-generator/claude",
-                headers={"Authorization": "Bearer fake_token"}
+                "/api/ai-tools/config-generator/claude", headers={"Authorization": "Bearer fake_token"}
             )
 
             assert response.status_code == 200
@@ -231,7 +228,14 @@ class TestAIToolConfigGeneratorEndpoint:
         # All successful responses should have same structure
         assert len(responses) > 0
 
-        required_fields = ["tool", "config_format", "config_content", "file_location", "instructions", "download_filename"]
+        required_fields = [
+            "tool",
+            "config_format",
+            "config_content",
+            "file_location",
+            "instructions",
+            "download_filename",
+        ]
 
         for data in responses:
             for field in required_fields:
@@ -278,7 +282,7 @@ class TestAIToolConfigGeneratorEndpoint:
 
     def test_config_handles_custom_ports(self, api_client):
         """Test that config adapts to custom API ports."""
-        with patch('api.endpoints.ai_tools.get_config') as mock_get_config:
+        with patch("api.endpoints.ai_tools.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.services.api.host = "localhost"
             mock_config.services.api.port = 8888
@@ -332,10 +336,10 @@ class TestAIToolsList:
 @pytest.fixture
 def api_client():
     """Create FastAPI test client."""
-    from fastapi.testclient import TestClient
 
     try:
         from api.app import app
+
         return TestClient(app)
     except ImportError:
         pytest.skip("API app not available - implementation pending")

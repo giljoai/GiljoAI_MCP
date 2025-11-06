@@ -10,8 +10,8 @@ from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))

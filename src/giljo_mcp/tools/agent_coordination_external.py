@@ -31,6 +31,7 @@ import aiohttp
 
 from ..config_manager import ConfigManager
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,7 +56,7 @@ class ExternalAgentCoordinationTools:
         session: Optional[aiohttp.ClientSession] = None,
         config: Optional[ConfigManager] = None,
         max_retries: int = 3,
-        timeout: int = 30
+        timeout: int = 30,
     ):
         """
         Initialize external coordination tools.
@@ -68,7 +69,7 @@ class ExternalAgentCoordinationTools:
         """
         self.session = session
         self.config = config or ConfigManager()
-        self.base_url = self.config.get('api.base_url', 'http://localhost:7272')
+        self.base_url = self.config.get("api.base_url", "http://localhost:7272")
         self.authenticated = False
         self.max_retries = max_retries
         self.timeout = aiohttp.ClientTimeout(total=timeout)
@@ -110,18 +111,15 @@ class ExternalAgentCoordinationTools:
             try:
                 session = await self._ensure_session()
 
-                username = self.config.get('auth.username')
-                password = self.config.get('auth.password')
+                username = self.config.get("auth.username")
+                password = self.config.get("auth.password")
 
                 if not username or not password:
                     logger.error("[_authenticate] Missing credentials in config")
                     return False
 
                 auth_url = f"{self.base_url}/api/auth/login"
-                payload = {
-                    'username': username,
-                    'password': password
-                }
+                payload = {"username": username, "password": password}
 
                 logger.debug(f"[_authenticate] Authenticating as {username}")
 
@@ -130,13 +128,9 @@ class ExternalAgentCoordinationTools:
                         self.authenticated = True
                         logger.info(f"[_authenticate] Authentication successful for {username}")
                         return True
-                    else:
-                        error_text = await resp.text()
-                        logger.error(
-                            f"[_authenticate] Authentication failed: status={resp.status}, "
-                            f"error={error_text}"
-                        )
-                        return False
+                    error_text = await resp.text()
+                    logger.error(f"[_authenticate] Authentication failed: status={resp.status}, error={error_text}")
+                    return False
 
             except aiohttp.ClientConnectorError as e:
                 logger.error(f"[_authenticate] Connection error: {e}")
@@ -154,7 +148,7 @@ class ExternalAgentCoordinationTools:
         endpoint: str,
         json_data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
-        retry_count: int = 0
+        retry_count: int = 0,
     ) -> Dict[str, Any]:
         """
         Make HTTP request with authentication and retry logic.
@@ -187,10 +181,7 @@ class ExternalAgentCoordinationTools:
             if not self.authenticated:
                 auth_success = await self._authenticate()
                 if not auth_success:
-                    return {
-                        'status': 'error',
-                        'error': 'Authentication failed - check credentials in config'
-                    }
+                    return {"status": "error", "error": "Authentication failed - check credentials in config"}
 
             session = await self._ensure_session()
             url = f"{self.base_url}{endpoint}"
@@ -202,17 +193,12 @@ class ExternalAgentCoordinationTools:
             )
 
             # Make request
-            async with session.request(
-                method=method,
-                url=url,
-                json=json_data,
-                params=params
-            ) as resp:
+            async with session.request(method=method, url=url, json=json_data, params=params) as resp:
                 # Handle different status codes
                 if resp.status == 200 or resp.status == 201:
                     return await resp.json()
 
-                elif resp.status == 401:
+                if resp.status == 401:
                     # Re-authenticate and retry once
                     logger.warning("[_make_request] 401 Unauthorized - re-authenticating")
                     self.authenticated = False
@@ -223,37 +209,27 @@ class ExternalAgentCoordinationTools:
                             endpoint=endpoint,
                             json_data=json_data,
                             params=params,
-                            retry_count=retry_count + 1
+                            retry_count=retry_count + 1,
                         )
-                    else:
-                        return {
-                            'status': 'error',
-                            'error': 'Re-authentication failed after 401 response'
-                        }
+                    return {"status": "error", "error": "Re-authentication failed after 401 response"}
 
-                elif resp.status == 403:
+                if resp.status == 403:
                     error_detail = await resp.text()
                     logger.warning(f"[_make_request] 403 Forbidden: {error_detail}")
-                    return {
-                        'status': 'error',
-                        'error': f'Unauthorized access (multi-tenant violation): {error_detail}'
-                    }
+                    return {"status": "error", "error": f"Unauthorized access (multi-tenant violation): {error_detail}"}
 
-                elif resp.status == 404:
+                if resp.status == 404:
                     error_detail = await resp.text()
                     logger.warning(f"[_make_request] 404 Not Found: {error_detail}")
-                    return {
-                        'status': 'error',
-                        'error': f'Resource not found: {error_detail}'
-                    }
+                    return {"status": "error", "error": f"Resource not found: {error_detail}"}
 
-                elif resp.status >= 500:
+                if resp.status >= 500:
                     # Server error - retry with exponential backoff
                     error_detail = await resp.text()
                     logger.error(f"[_make_request] {resp.status} Server error: {error_detail}")
 
                     if retry_count < self.max_retries:
-                        backoff_delay = 2 ** retry_count  # Exponential backoff
+                        backoff_delay = 2**retry_count  # Exponential backoff
                         logger.info(
                             f"[_make_request] Retrying in {backoff_delay}s "
                             f"(attempt {retry_count + 1}/{self.max_retries})"
@@ -264,60 +240,41 @@ class ExternalAgentCoordinationTools:
                             endpoint=endpoint,
                             json_data=json_data,
                             params=params,
-                            retry_count=retry_count + 1
+                            retry_count=retry_count + 1,
                         )
-                    else:
-                        return {
-                            'status': 'error',
-                            'error': f'Server error after {self.max_retries} retries: {error_detail}'
-                        }
-
-                else:
-                    # Other errors
-                    error_detail = await resp.text()
-                    logger.error(f"[_make_request] {resp.status} error: {error_detail}")
                     return {
-                        'status': 'error',
-                        'error': f'HTTP {resp.status}: {error_detail}'
+                        "status": "error",
+                        "error": f"Server error after {self.max_retries} retries: {error_detail}",
                     }
+
+                # Other errors
+                error_detail = await resp.text()
+                logger.error(f"[_make_request] {resp.status} error: {error_detail}")
+                return {"status": "error", "error": f"HTTP {resp.status}: {error_detail}"}
 
         except aiohttp.ClientConnectorError as e:
             logger.error(f"[_make_request] Connection error: {e}")
 
             # Retry transient connection errors
             if retry_count < self.max_retries:
-                backoff_delay = 2 ** retry_count
+                backoff_delay = 2**retry_count
                 logger.info(
                     f"[_make_request] Retrying connection in {backoff_delay}s "
                     f"(attempt {retry_count + 1}/{self.max_retries})"
                 )
                 await asyncio.sleep(backoff_delay)
                 return await self._make_request(
-                    method=method,
-                    endpoint=endpoint,
-                    json_data=json_data,
-                    params=params,
-                    retry_count=retry_count + 1
+                    method=method, endpoint=endpoint, json_data=json_data, params=params, retry_count=retry_count + 1
                 )
-            else:
-                return {
-                    'status': 'error',
-                    'error': f'API server unavailable after {self.max_retries} retries: {str(e)}'
-                }
+            return {"status": "error", "error": f"API server unavailable after {self.max_retries} retries: {e!s}"}
 
         except asyncio.TimeoutError:
             logger.error(f"[_make_request] Request timeout after {self.timeout.total}s")
-            return {
-                'status': 'error',
-                'error': f'Request timeout after {self.timeout.total} seconds'
-            }
+            return {"status": "error", "error": f"Request timeout after {self.timeout.total} seconds"}
 
         except Exception as e:
             logger.error(f"[_make_request] Unexpected error: {e}", exc_info=True)
-            return {
-                'status': 'error',
-                'error': f'Unexpected error: {str(e)}'
-            }
+            return {"status": "error", "error": f"Unexpected error: {e!s}"}
 
     # Tool Methods - Public API
 
@@ -326,7 +283,7 @@ class ExternalAgentCoordinationTools:
         agent_type: str,
         mission: str,
         context_chunks: Optional[List[str]] = None,
-        spawned_by: Optional[str] = None
+        spawned_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a new agent job via POST /api/agent-jobs.
@@ -355,50 +312,32 @@ class ExternalAgentCoordinationTools:
         """
         # Input validation
         if not agent_type or not agent_type.strip():
-            return {
-                'status': 'error',
-                'error': 'agent_type cannot be empty'
-            }
+            return {"status": "error", "error": "agent_type cannot be empty"}
 
         if not mission or not mission.strip():
-            return {
-                'status': 'error',
-                'error': 'mission cannot be empty'
-            }
+            return {"status": "error", "error": "mission cannot be empty"}
 
         payload = {
-            'agent_type': agent_type.strip(),
-            'mission': mission.strip(),
-            'context_chunks': context_chunks or [],
-            'spawned_by': spawned_by
+            "agent_type": agent_type.strip(),
+            "mission": mission.strip(),
+            "context_chunks": context_chunks or [],
+            "spawned_by": spawned_by,
         }
 
-        logger.info(
-            f"[create_agent_job] Creating job for agent_type={agent_type}, "
-            f"mission_length={len(mission)}"
-        )
+        logger.info(f"[create_agent_job] Creating job for agent_type={agent_type}, mission_length={len(mission)}")
 
-        response = await self._make_request(
-            method='POST',
-            endpoint='/api/agent-jobs',
-            json_data=payload
-        )
+        response = await self._make_request(method="POST", endpoint="/api/agent-jobs", json_data=payload)
 
-        if 'job_id' in response:
+        if "job_id" in response:
             return {
-                'status': 'success',
-                'job_id': response['job_id'],
-                'message': response.get('message', 'Job created successfully')
+                "status": "success",
+                "job_id": response["job_id"],
+                "message": response.get("message", "Job created successfully"),
             }
-        else:
-            return response
+        return response
 
     async def send_agent_message(
-        self,
-        job_id: str,
-        role: str,
-        message_type: str,
-        content: Dict[str, Any]
+        self, job_id: str, role: str, message_type: str, content: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Send message to agent job via POST /api/agent-jobs/{job_id}/messages.
@@ -423,51 +362,32 @@ class ExternalAgentCoordinationTools:
         """
         # Input validation
         if not job_id or not job_id.strip():
-            return {
-                'status': 'error',
-                'error': 'job_id cannot be empty'
-            }
+            return {"status": "error", "error": "job_id cannot be empty"}
 
         if not role or not role.strip():
-            return {
-                'status': 'error',
-                'error': 'role cannot be empty'
-            }
+            return {"status": "error", "error": "role cannot be empty"}
 
         if not message_type or not message_type.strip():
-            return {
-                'status': 'error',
-                'error': 'message_type cannot be empty'
-            }
+            return {"status": "error", "error": "message_type cannot be empty"}
 
         if not content or not isinstance(content, dict):
-            return {
-                'status': 'error',
-                'error': 'content must be a non-empty dict'
-            }
+            return {"status": "error", "error": "content must be a non-empty dict"}
 
-        payload = {
-            'role': role.strip(),
-            'type': message_type.strip(),
-            'content': content
-        }
+        payload = {"role": role.strip(), "type": message_type.strip(), "content": content}
 
         logger.info(f"[send_agent_message] Sending message to job {job_id}, role={role}, type={message_type}")
 
         response = await self._make_request(
-            method='POST',
-            endpoint=f'/api/agent-jobs/{job_id}/messages',
-            json_data=payload
+            method="POST", endpoint=f"/api/agent-jobs/{job_id}/messages", json_data=payload
         )
 
-        if 'message_id' in response:
+        if "message_id" in response:
             return {
-                'status': 'success',
-                'message_id': response['message_id'],
-                'timestamp': response.get('timestamp', datetime.now(timezone.utc).isoformat())
+                "status": "success",
+                "message_id": response["message_id"],
+                "timestamp": response.get("timestamp", datetime.now(timezone.utc).isoformat()),
             }
-        else:
-            return response
+        return response
 
     async def get_agent_job_status(self, job_id: str) -> Dict[str, Any]:
         """
@@ -499,25 +419,15 @@ class ExternalAgentCoordinationTools:
         """
         # Input validation
         if not job_id or not job_id.strip():
-            return {
-                'status': 'error',
-                'error': 'job_id cannot be empty'
-            }
+            return {"status": "error", "error": "job_id cannot be empty"}
 
         logger.info(f"[get_agent_job_status] Retrieving status for job {job_id}")
 
-        response = await self._make_request(
-            method='GET',
-            endpoint=f'/api/agent-jobs/{job_id}'
-        )
+        response = await self._make_request(method="GET", endpoint=f"/api/agent-jobs/{job_id}")
 
-        if 'job_id' in response:
-            return {
-                'status': 'success',
-                'job': response
-            }
-        else:
-            return response
+        if "job_id" in response:
+            return {"status": "success", "job": response}
+        return response
 
     async def acknowledge_agent_job(self, job_id: str) -> Dict[str, Any]:
         """
@@ -544,36 +454,25 @@ class ExternalAgentCoordinationTools:
         """
         # Input validation
         if not job_id or not job_id.strip():
-            return {
-                'status': 'error',
-                'error': 'job_id cannot be empty'
-            }
+            return {"status": "error", "error": "job_id cannot be empty"}
 
         logger.info(f"[acknowledge_agent_job] Acknowledging job {job_id}")
 
-        response = await self._make_request(
-            method='POST',
-            endpoint=f'/api/agent-jobs/{job_id}/acknowledge'
-        )
+        response = await self._make_request(method="POST", endpoint=f"/api/agent-jobs/{job_id}/acknowledge")
 
-        if 'job_id' in response:
+        if "job_id" in response:
             return {
-                'status': 'success',
-                'job': {
-                    'job_id': response['job_id'],
-                    'status': response['status'],
-                    'started_at': response['started_at']
+                "status": "success",
+                "job": {
+                    "job_id": response["job_id"],
+                    "status": response["status"],
+                    "started_at": response["started_at"],
                 },
-                'message': response.get('message', 'Job acknowledged successfully')
+                "message": response.get("message", "Job acknowledged successfully"),
             }
-        else:
-            return response
+        return response
 
-    async def complete_agent_job(
-        self,
-        job_id: str,
-        result: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def complete_agent_job(self, job_id: str, result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Complete agent job via POST /api/agent-jobs/{job_id}/complete.
 
@@ -602,37 +501,25 @@ class ExternalAgentCoordinationTools:
         """
         # Input validation
         if not job_id or not job_id.strip():
-            return {
-                'status': 'error',
-                'error': 'job_id cannot be empty'
-            }
+            return {"status": "error", "error": "job_id cannot be empty"}
 
-        payload = {
-            'result': result or {}
-        }
+        payload = {"result": result or {}}
 
         logger.info(f"[complete_agent_job] Completing job {job_id}")
 
         response = await self._make_request(
-            method='POST',
-            endpoint=f'/api/agent-jobs/{job_id}/complete',
-            json_data=payload
+            method="POST", endpoint=f"/api/agent-jobs/{job_id}/complete", json_data=payload
         )
 
-        if 'job_id' in response:
+        if "job_id" in response:
             return {
-                'status': 'success',
-                'job_id': response['job_id'],
-                'message': response.get('message', 'Job completed successfully')
+                "status": "success",
+                "job_id": response["job_id"],
+                "message": response.get("message", "Job completed successfully"),
             }
-        else:
-            return response
+        return response
 
-    async def fail_agent_job(
-        self,
-        job_id: str,
-        error: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def fail_agent_job(self, job_id: str, error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Fail agent job via POST /api/agent-jobs/{job_id}/fail.
 
@@ -658,37 +545,24 @@ class ExternalAgentCoordinationTools:
         """
         # Input validation
         if not job_id or not job_id.strip():
-            return {
-                'status': 'error',
-                'error': 'job_id cannot be empty'
-            }
+            return {"status": "error", "error": "job_id cannot be empty"}
 
-        payload = {
-            'error': error or {}
-        }
+        payload = {"error": error or {}}
 
         logger.info(f"[fail_agent_job] Failing job {job_id}")
 
-        response = await self._make_request(
-            method='POST',
-            endpoint=f'/api/agent-jobs/{job_id}/fail',
-            json_data=payload
-        )
+        response = await self._make_request(method="POST", endpoint=f"/api/agent-jobs/{job_id}/fail", json_data=payload)
 
-        if 'job_id' in response:
+        if "job_id" in response:
             return {
-                'status': 'success',
-                'job_id': response['job_id'],
-                'message': response.get('message', 'Job marked as failed')
+                "status": "success",
+                "job_id": response["job_id"],
+                "message": response.get("message", "Job marked as failed"),
             }
-        else:
-            return response
+        return response
 
     async def list_active_agent_jobs(
-        self,
-        status: Optional[str] = None,
-        agent_type: Optional[str] = None,
-        limit: int = 100
+        self, status: Optional[str] = None, agent_type: Optional[str] = None, limit: int = 100
     ) -> Dict[str, Any]:
         """
         List active agent jobs via GET /api/agent-jobs.
@@ -710,36 +584,27 @@ class ExternalAgentCoordinationTools:
             - Tenant isolation enforced via JWT token
             - Only jobs within tenant are returned
         """
-        params = {
-            'limit': limit,
-            'offset': 0
-        }
+        params = {"limit": limit, "offset": 0}
 
         if status:
-            params['status'] = status
+            params["status"] = status
 
         if agent_type:
-            params['agent_type'] = agent_type
+            params["agent_type"] = agent_type
 
         logger.info(
-            f"[list_active_agent_jobs] Listing jobs with "
-            f"status={status}, agent_type={agent_type}, limit={limit}"
+            f"[list_active_agent_jobs] Listing jobs with status={status}, agent_type={agent_type}, limit={limit}"
         )
 
-        response = await self._make_request(
-            method='GET',
-            endpoint='/api/agent-jobs',
-            params=params
-        )
+        response = await self._make_request(method="GET", endpoint="/api/agent-jobs", params=params)
 
-        if 'jobs' in response:
+        if "jobs" in response:
             return {
-                'status': 'success',
-                'jobs': response['jobs'],
-                'total': response.get('total', len(response['jobs']))
+                "status": "success",
+                "jobs": response["jobs"],
+                "total": response.get("total", len(response["jobs"])),
             }
-        else:
-            return response
+        return response
 
     async def close(self):
         """
@@ -779,15 +644,14 @@ def register_external_agent_coordination_tools(tools: dict, config: dict) -> Non
     coordinator = ExternalAgentCoordinationTools(config=config)
 
     # Register tool functions
-    tools['create_agent_job_external'] = coordinator.create_agent_job
-    tools['send_agent_message_external'] = coordinator.send_agent_message
-    tools['get_agent_job_status_external'] = coordinator.get_agent_job_status
-    tools['acknowledge_agent_job_external'] = coordinator.acknowledge_agent_job
-    tools['complete_agent_job_external'] = coordinator.complete_agent_job
-    tools['fail_agent_job_external'] = coordinator.fail_agent_job
-    tools['list_active_agent_jobs_external'] = coordinator.list_active_agent_jobs
+    tools["create_agent_job_external"] = coordinator.create_agent_job
+    tools["send_agent_message_external"] = coordinator.send_agent_message
+    tools["get_agent_job_status_external"] = coordinator.get_agent_job_status
+    tools["acknowledge_agent_job_external"] = coordinator.acknowledge_agent_job
+    tools["complete_agent_job_external"] = coordinator.complete_agent_job
+    tools["fail_agent_job_external"] = coordinator.fail_agent_job
+    tools["list_active_agent_jobs_external"] = coordinator.list_active_agent_jobs
 
     logger.info(
-        "[register_external_agent_coordination_tools] Registered 7 HTTP-based "
-        "coordination tools for external agents"
+        "[register_external_agent_coordination_tools] Registered 7 HTTP-based coordination tools for external agents"
     )

@@ -9,10 +9,10 @@ Created: 2025-11-02
 Coverage Target: 95%+
 """
 
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project, User
@@ -31,9 +31,7 @@ def mock_db_manager():
 
     # Mock async session context manager
     mock_session = AsyncMock()
-    db_manager.get_session_async = MagicMock(
-        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_session))
-    )
+    db_manager.get_session_async = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_session)))
 
     return db_manager
 
@@ -53,17 +51,10 @@ def test_product():
         tenant_key="tenant_abc",
         vision_document="# Product Vision\nBuild an amazing application.",
         config_data={
-            "tech_stack": {
-                "languages": ["Python", "JavaScript"],
-                "backend": ["FastAPI"],
-                "frontend": ["Vue.js"]
-            },
+            "tech_stack": {"languages": ["Python", "JavaScript"], "backend": ["FastAPI"], "frontend": ["Vue.js"]},
             "features": ["Authentication", "User Management"],
-            "architecture": {
-                "pattern": "Microservices",
-                "api_style": "REST"
-            }
-        }
+            "architecture": {"pattern": "Microservices", "api_style": "REST"},
+        },
     )
 
 
@@ -76,7 +67,7 @@ def test_project(test_product):
         tenant_key="tenant_abc",
         product_id=test_product.id,
         description="Implement user authentication system",
-        codebase_summary="## Backend\n- FastAPI application\n- PostgreSQL database"
+        codebase_summary="## Backend\n- FastAPI application\n- PostgreSQL database",
     )
 
 
@@ -92,8 +83,8 @@ def test_user_serena_enabled():
             "serena_enabled": True,
             "token_budget": 2000,
             "product_vision": 10,
-            "codebase_summary": 8
-        }
+            "codebase_summary": 8,
+        },
     )
 
 
@@ -109,8 +100,8 @@ def test_user_serena_disabled():
             "serena_enabled": False,
             "token_budget": 2000,
             "product_vision": 10,
-            "codebase_summary": 8
-        }
+            "codebase_summary": 8,
+        },
     )
 
 
@@ -131,7 +122,7 @@ async def test_get_user_configuration_serena_enabled(mission_planner, test_user_
     user_id = test_user_serena_enabled.id
 
     # Mock database query to return user
-    with patch.object(mission_planner.db_manager, 'get_session_async') as mock_get_session:
+    with patch.object(mission_planner.db_manager, "get_session_async") as mock_get_session:
         mock_session = AsyncMock()
         mock_result = AsyncMock()
         mock_result.scalar_one_or_none = AsyncMock(return_value=test_user_serena_enabled)
@@ -161,7 +152,7 @@ async def test_get_user_configuration_serena_disabled(mission_planner, test_user
     user_id = test_user_serena_disabled.id
 
     # Mock database query
-    with patch.object(mission_planner.db_manager, 'get_session_async') as mock_get_session:
+    with patch.object(mission_planner.db_manager, "get_session_async") as mock_get_session:
         mock_session = AsyncMock()
         mock_result = AsyncMock()
         mock_result.scalar_one_or_none = AsyncMock(return_value=test_user_serena_disabled)
@@ -233,7 +224,7 @@ async def test_fetch_serena_codebase_context_exception_handling(mission_planner,
     tenant_key = "tenant_abc"
 
     # Mock MCP client to raise exception
-    with patch('src.giljo_mcp.mission_planner.MCPClient', side_effect=Exception("MCP connection failed")):
+    with patch("src.giljo_mcp.mission_planner.MCPClient", side_effect=Exception("MCP connection failed")):
         # Act
         context = await mission_planner._fetch_serena_codebase_context(project_id, tenant_key)
 
@@ -298,9 +289,7 @@ def test_count_tokens_with_content(mission_planner):
 
 
 @pytest.mark.asyncio
-async def test_build_context_includes_serena_when_available(
-    mission_planner, test_product, test_project
-):
+async def test_build_context_includes_serena_when_available(mission_planner, test_product, test_project):
     """
     Test that _build_context_with_priorities would include Serena context if available.
 
@@ -311,17 +300,11 @@ async def test_build_context_includes_serena_when_available(
     where Serena context would be integrated.
     """
     # Arrange
-    field_priorities = {
-        "product_vision": 10,
-        "codebase_summary": 8
-    }
+    field_priorities = {"product_vision": 10, "codebase_summary": 8}
 
     # Act
     context = await mission_planner._build_context_with_priorities(
-        product=test_product,
-        project=test_project,
-        field_priorities=field_priorities,
-        user_id=str(uuid4())
+        product=test_product, project=test_project, field_priorities=field_priorities, user_id=str(uuid4())
     )
 
     # Assert
@@ -353,11 +336,11 @@ async def test_get_user_configuration_handles_missing_serena_key(mission_planner
         field_priority_config={
             "token_budget": 2000,
             # Missing serena_enabled key
-        }
+        },
     )
 
     # Mock database query
-    with patch.object(mission_planner.db_manager, 'get_session_async') as mock_get_session:
+    with patch.object(mission_planner.db_manager, "get_session_async") as mock_get_session:
         mock_session = AsyncMock()
         mock_result = AsyncMock()
         mock_result.scalar_one_or_none = AsyncMock(return_value=user_without_serena)

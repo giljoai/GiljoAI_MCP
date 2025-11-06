@@ -9,7 +9,6 @@ from typing import Dict
 
 from ..database import DatabaseManager
 from ..models import Agent, Project
-from sqlalchemy import select
 
 
 # Mapping of MCP agent roles to Claude Code agent types
@@ -125,9 +124,9 @@ def generate_orchestrator_prompt(project_id: str, tenant_key: str) -> str:
     prompt = f"""# GiljoAI MCP Orchestration Request
 
 ## Project Details
-- **Project ID**: {instructions['project_id']}
-- **Project Name**: {instructions['project_name']}
-- **Mission**: {instructions['project_mission']}
+- **Project ID**: {instructions["project_id"]}
+- **Project Name**: {instructions["project_name"]}
+- **Mission**: {instructions["project_mission"]}
 
 ## Instructions for Orchestrator
 
@@ -137,17 +136,17 @@ You are coordinating a multi-agent project from GiljoAI MCP. Follow these steps:
 2. **Spawn Sub-Agents**: For each agent listed below, spawn a Claude Code sub-agent with the specified mission
 3. **Coordinate Work**: Manage handoffs, track progress, and ensure completion
 
-## Agents to Spawn ({instructions['total_agents']} total)
+## Agents to Spawn ({instructions["total_agents"]} total)
 
 """
 
     for i, agent in enumerate(instructions["agents"], 1):
         prompt += f"""
-### {i}. {agent['mcp_agent_name']} ({agent['mcp_role']})
-- **Claude Code Agent Type**: `{agent['claude_code_type']}`
-- **MCP Agent ID**: `{agent['mcp_agent_id']}`
-- **Mission**: {agent['mission']}
-- **Context Budget**: {agent['context_budget']} tokens
+### {i}. {agent["mcp_agent_name"]} ({agent["mcp_role"]})
+- **Claude Code Agent Type**: `{agent["claude_code_type"]}`
+- **MCP Agent ID**: `{agent["mcp_agent_id"]}`
+- **Mission**: {agent["mission"]}
+- **Context Budget**: {agent["context_budget"]} tokens
 
 """
 

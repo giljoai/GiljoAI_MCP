@@ -6,9 +6,8 @@ ensuring WebSocket connections use the right host in LAN mode.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-from pathlib import Path
 import yaml
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -16,14 +15,11 @@ def test_config_localhost(tmp_path):
     """Create a test config.yaml for localhost mode."""
     config = {
         "installation": {"mode": "localhost"},
-        "services": {
-            "api": {"host": "127.0.0.1", "port": 7272},
-            "frontend": {"port": 7274}
-        },
-        "features": {"api_keys_required": False}
+        "services": {"api": {"host": "127.0.0.1", "port": 7272}, "frontend": {"port": 7274}},
+        "features": {"api_keys_required": False},
     }
     config_file = tmp_path / "config.yaml"
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         yaml.dump(config, f)
     return config_file
 
@@ -33,24 +29,13 @@ def test_config_lan(tmp_path):
     """Create a test config.yaml for LAN mode."""
     config = {
         "installation": {"mode": "lan"},
-        "services": {
-            "api": {"host": "10.1.0.164", "port": 7272},
-            "frontend": {"port": 7274}
-        },
+        "services": {"api": {"host": "10.1.0.164", "port": 7272}, "frontend": {"port": 7274}},
         "features": {"api_keys_required": True},
-        "security": {
-            "network": {
-                "selected_adapter": "Ethernet",
-                "initial_ip": "10.1.0.164"
-            }
-        },
-        "server": {
-            "ip": "10.1.0.164",
-            "hostname": "giljo.local"
-        }
+        "security": {"network": {"selected_adapter": "Ethernet", "initial_ip": "10.1.0.164"}},
+        "server": {"ip": "10.1.0.164", "hostname": "giljo.local"},
     }
     config_file = tmp_path / "config.yaml"
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         yaml.dump(config, f)
     return config_file
 

@@ -18,9 +18,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import colored logger and filter utilities
 try:
     from src.giljo_mcp.colored_logger import (
-        setup_colored_logging, ColoredFormatter, LogFilter,
-        get_colored_logger, print_success, print_error, print_info, print_highlight
+        ColoredFormatter,
+        LogFilter,
+        get_colored_logger,
+        print_error,
+        print_highlight,
+        print_info,
+        print_success,
+        setup_colored_logging,
     )
+
     COLORED_LOGGING_AVAILABLE = True
 except ImportError:
     COLORED_LOGGING_AVAILABLE = False
@@ -30,6 +37,7 @@ except ImportError:
 # Import PortManager for centralized port management
 try:
     from src.giljo_mcp.port_manager import get_port_manager
+
     PORT_MANAGER_AVAILABLE = True
 except ImportError:
     PORT_MANAGER_AVAILABLE = False
@@ -54,7 +62,7 @@ def find_available_port(preferred_port: int) -> int:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(1)
-            result = sock.connect_ex(('127.0.0.1', preferred_port))
+            result = sock.connect_ex(("127.0.0.1", preferred_port))
             if result != 0:  # Port is available
                 return preferred_port
     except Exception:
@@ -66,7 +74,7 @@ def find_available_port(preferred_port: int) -> int:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(1)
-                result = sock.connect_ex(('127.0.0.1', port))
+                result = sock.connect_ex(("127.0.0.1", port))
                 if result != 0:  # Port is available
                     logging.warning(f"Port {preferred_port} is occupied, using alternative port {port}")
                     return port
@@ -141,14 +149,15 @@ def get_default_host() -> str:
     try:
         # Import here to avoid circular dependencies
         import yaml
+
         config_path = Path(__file__).parent.parent / "config.yaml"
 
         if config_path.exists():
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
 
                 # Check if user explicitly configured a specific host
-                configured_host = config.get('services', {}).get('api', {}).get('host')
+                configured_host = config.get("services", {}).get("api", {}).get("host")
                 if configured_host:
                     logging.info(f"Using explicitly configured API host: {configured_host}")
                     return configured_host
@@ -239,7 +248,7 @@ def main():
         logging.basicConfig(
             level=getattr(logging, args.log_level.upper()),
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            force=True
+            force=True,
         )
         logging.getLogger("uvicorn").setLevel(getattr(logging, args.log_level.upper()))
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Reduce access log noise

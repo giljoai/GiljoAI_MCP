@@ -13,8 +13,8 @@ Usage:
 
 import asyncio
 import time
+
 import httpx
-from pathlib import Path
 
 
 async def test_config_endpoint():
@@ -40,12 +40,12 @@ async def test_config_endpoint():
             print(f"  ✓ Response time: {response_time:.0f}ms")
 
             if response_time > 2000:
-                print(f"  ⚠ WARNING: Response took longer than 2 seconds!")
+                print("  ⚠ WARNING: Response took longer than 2 seconds!")
             elif response_time < 500:
-                print(f"  ✓ EXCELLENT: Very fast response!")
+                print("  ✓ EXCELLENT: Very fast response!")
 
         except httpx.TimeoutException:
-            print(f"  ✗ FAILED: Request timed out (hanging endpoint)")
+            print("  ✗ FAILED: Request timed out (hanging endpoint)")
             return False
         except Exception as e:
             print(f"  ✗ FAILED: {e}")
@@ -64,7 +64,7 @@ async def test_config_endpoint():
         print("\n[TEST 3] Parsing JSON response...")
         try:
             config = response.json()
-            print(f"  ✓ Valid JSON response")
+            print("  ✓ Valid JSON response")
         except Exception as e:
             print(f"  ✗ FAILED: Invalid JSON: {e}")
             return False
@@ -109,7 +109,7 @@ async def test_config_endpoint():
             if mode not in ["localhost", "local", "lan", "server", "wan"]:
                 print(f"  ⚠ WARNING: Unexpected mode value: {mode}")
         else:
-            print(f"  ✗ FAILED: installation.mode not found")
+            print("  ✗ FAILED: installation.mode not found")
             return False
 
         # Test 6: Check services.api (critical for frontend)
@@ -121,7 +121,7 @@ async def test_config_endpoint():
             print(f"  ✓ services.api.host = '{api_host}'")
             print(f"  ✓ services.api.port = {api_port}")
         else:
-            print(f"  ✗ FAILED: services.api configuration incomplete")
+            print("  ✗ FAILED: services.api configuration incomplete")
             return False
 
         # Test 7: Check CORS origins (critical for frontend)
@@ -135,7 +135,7 @@ async def test_config_endpoint():
             if len(cors_origins) > 3:
                 print(f"    ... and {len(cors_origins) - 3} more")
         else:
-            print(f"  ✗ FAILED: CORS origins not a list")
+            print("  ✗ FAILED: CORS origins not a list")
             return False
 
         # Test 8: Check sensitive data masking
@@ -147,9 +147,9 @@ async def test_config_endpoint():
         if db_password and ("*" in db_password or db_password == ""):
             print(f"  ✓ Database password masked: '{db_password}'")
         elif db_password:
-            print(f"  ⚠ WARNING: Database password may not be properly masked")
+            print("  ⚠ WARNING: Database password may not be properly masked")
         else:
-            print(f"  ✓ Database password not in response")
+            print("  ✓ Database password not in response")
 
         # Test 9: Verify response speed consistency
         print("\n[TEST 9] Testing response consistency (3 requests)...")
@@ -160,13 +160,13 @@ async def test_config_endpoint():
             end = time.time()
             req_time = (end - start) * 1000
             times.append(req_time)
-            print(f"  Request {i+1}: {req_time:.0f}ms")
+            print(f"  Request {i + 1}: {req_time:.0f}ms")
 
         avg_time = sum(times) / len(times)
         print(f"  ✓ Average response time: {avg_time:.0f}ms")
 
         if max(times) > 2000:
-            print(f"  ⚠ WARNING: Some requests took > 2 seconds")
+            print("  ⚠ WARNING: Some requests took > 2 seconds")
 
         # Summary
         print("\n" + "=" * 70)
@@ -194,13 +194,13 @@ async def main():
         if success:
             print("\n✓ Test completed successfully!")
             return 0
-        else:
-            print("\n✗ Test failed!")
-            return 1
+        print("\n✗ Test failed!")
+        return 1
 
     except Exception as e:
         print(f"\n✗ Test error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

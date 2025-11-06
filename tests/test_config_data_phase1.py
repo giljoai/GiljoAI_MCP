@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test script for Phase 1: config_data JSONB implementation
 Verifies column exists, GIN index is present, and helper methods work correctly.
 """
 
-import sys
 import io
+import sys
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
-from src.giljo_mcp.models import Product
+
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product
+
 
 # Set UTF-8 encoding for Windows console
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
 
 def test_config_data_schema():
     """Test that config_data column and GIN index exist"""
@@ -24,11 +27,7 @@ def test_config_data_schema():
 
     # Create database URL
     db_url = DatabaseManager.build_postgresql_url(
-        host="localhost",
-        port=5432,
-        database="giljo_mcp",
-        username="postgres",
-        password="4010"
+        host="localhost", port=5432, database="giljo_mcp", username="postgres", password="4010"
     )
 
     # Create engine
@@ -37,24 +36,24 @@ def test_config_data_schema():
 
     # Check column exists
     print("\n1. Checking config_data column...")
-    columns = {col['name']: col for col in inspector.get_columns('products')}
+    columns = {col["name"]: col for col in inspector.get_columns("products")}
 
-    if 'config_data' not in columns:
+    if "config_data" not in columns:
         print("   ❌ FAILED: config_data column not found!")
         return False
 
-    col_info = columns['config_data']
+    col_info = columns["config_data"]
     print(f"   ✓ Column exists: {col_info['name']}")
     print(f"   ✓ Type: {col_info['type']}")
     print(f"   ✓ Nullable: {col_info['nullable']}")
 
     # Check GIN index exists
     print("\n2. Checking GIN index...")
-    indexes = inspector.get_indexes('products')
+    indexes = inspector.get_indexes("products")
     gin_index = None
 
     for idx in indexes:
-        if idx['name'] == 'idx_product_config_data_gin':
+        if idx["name"] == "idx_product_config_data_gin":
             gin_index = idx
             break
 
@@ -67,19 +66,21 @@ def test_config_data_schema():
 
     # Verify GIN index type using raw SQL
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(
+            text("""
             SELECT indexdef
             FROM pg_indexes
             WHERE tablename = 'products'
             AND indexname = 'idx_product_config_data_gin'
-        """))
+        """)
+        )
         index_def = result.scalar()
 
-        if index_def and 'USING gin' in index_def:
-            print(f"   ✓ Index type: GIN")
+        if index_def and "USING gin" in index_def:
+            print("   ✓ Index type: GIN")
             print(f"   ✓ Definition: {index_def}")
         else:
-            print(f"   ⚠ Warning: Could not verify GIN index type")
+            print("   ⚠ Warning: Could not verify GIN index type")
 
     return True
 
@@ -90,11 +91,7 @@ def test_helper_methods():
 
     # Create database URL
     db_url = DatabaseManager.build_postgresql_url(
-        host="localhost",
-        port=5432,
-        database="giljo_mcp",
-        username="postgres",
-        password="4010"
+        host="localhost", port=5432, database="giljo_mcp", username="postgres", password="4010"
     )
 
     # Create test product
@@ -111,13 +108,10 @@ def test_helper_methods():
             config_data={
                 "architecture": "FastAPI + PostgreSQL + Vue.js",
                 "tech_stack": ["Python 3.11", "PostgreSQL 18", "Vue 3"],
-                "test_config": {
-                    "coverage_threshold": 80,
-                    "test_framework": "pytest"
-                },
+                "test_config": {"coverage_threshold": 80, "test_framework": "pytest"},
                 "serena_mcp_enabled": True,
-                "deployment_modes": ["localhost", "server"]
-            }
+                "deployment_modes": ["localhost", "server"],
+            },
         )
 
         session.add(test_product)
@@ -143,11 +137,7 @@ def test_helper_methods():
         assert missing == "default_value", "Default value not returned"
 
         # Test product with empty config_data
-        empty_product = Product(
-            tenant_key="test_tenant",
-            name="Empty Config Product",
-            config_data={}
-        )
+        empty_product = Product(tenant_key="test_tenant", name="Empty Config Product", config_data={})
         print(f"   ✓ Empty config_data has_config_data: {empty_product.has_config_data}")
         assert empty_product.has_config_data is False, "Empty config should return False"
 
@@ -172,11 +162,7 @@ def test_existing_products_initialized():
 
     # Create database URL
     db_url = DatabaseManager.build_postgresql_url(
-        host="localhost",
-        port=5432,
-        database="giljo_mcp",
-        username="postgres",
-        password="4010"
+        host="localhost", port=5432, database="giljo_mcp", username="postgres", password="4010"
     )
 
     engine = create_engine(db_url)
@@ -247,10 +233,9 @@ def main():
         print("  - Helper methods: has_config_data, get_config_field()")
         print("\nReady for Phase 2: Enhanced Orchestration Intelligence")
         return 0
-    else:
-        print("\n❌ Phase 1 implementation has FAILURES!")
-        print("Please review the errors above.")
-        return 1
+    print("\n❌ Phase 1 implementation has FAILURES!")
+    print("Please review the errors above.")
+    return 1
 
 
 if __name__ == "__main__":

@@ -6,19 +6,11 @@ agent job lifecycle, and multi-tenant isolation.
 """
 
 import pytest
-import asyncio
-from datetime import datetime
-from pathlib import Path
-import tempfile
-import os
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-
-from src.giljo_mcp.models import Base, Product, MCPContextIndex, MCPContextSummary, MCPAgentJob
-from src.giljo_mcp.repositories.context_repository import ContextRepository
-from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product
+from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
+from src.giljo_mcp.repositories.context_repository import ContextRepository
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 
@@ -50,7 +42,7 @@ class TestVisionUploadToChunks:
                 name="Test Product",
                 description="Product for vision chunking tests",
                 vision_type="none",
-                chunked=False
+                chunked=False,
             )
             session.add(product)
             await session.commit()
@@ -103,12 +95,14 @@ class TestVisionUploadToChunks:
             # 2. Store chunks in mcp_context_index
             for chunk in chunks:
                 context_chunk = context_repo.create_chunk(
-                    session, "test-tenant", sample_product.id,
+                    session,
+                    "test-tenant",
+                    sample_product.id,
                     content=chunk["content"],
                     keywords=chunk["keywords"],
                     token_count=chunk["tokens"],
                     chunk_order=chunk["chunk_number"],
-                    summary=None  # Phase 1 - no LLM summary
+                    summary=None,  # Phase 1 - no LLM summary
                 )
                 chunks_created += 1
                 total_tokens += chunk["tokens"]
@@ -122,9 +116,7 @@ class TestVisionUploadToChunks:
             await session.commit()
 
             # 4. Verify chunks were created correctly
-            created_chunks = context_repo.get_chunks_by_product(
-                session, "test-tenant", sample_product.id
-            )
+            created_chunks = context_repo.get_chunks_by_product(session, "test-tenant", sample_product.id)
 
             assert len(created_chunks) == chunks_created
             assert all(chunk.tenant_key == "test-tenant" for chunk in created_chunks)
@@ -141,9 +133,7 @@ class TestVisionUploadToChunks:
             assert updated_product.vision_document == vision_content
 
             # 6. Test search functionality
-            search_results = context_repo.search_chunks(
-                session, "test-tenant", sample_product.id, "orchestration"
-            )
+            search_results = context_repo.search_chunks(session, "test-tenant", sample_product.id, "orchestration")
             assert len(search_results) > 0
 
             # Verify search results contain the keyword
@@ -169,10 +159,9 @@ class TestVisionUploadToChunks:
         assert small_chunks[0]["total_chunks"] == 1
 
         # Test large content (multiple chunks)
-        large_content = "\n\n".join([
-            f"Section {i}: " + "This is a detailed section with lots of content. " * 50
-            for i in range(1, 11)
-        ])
+        large_content = "\n\n".join(
+            [f"Section {i}: " + "This is a detailed section with lots of content. " * 50 for i in range(1, 11)]
+        )
 
         chunker_large = EnhancedChunker(max_tokens=500)  # Small chunks to force splitting
         large_chunks = chunker_large.chunk_content(large_content, "Large Doc")
@@ -188,19 +177,19 @@ class TestVisionUploadToChunks:
         async with async_db_manager.get_session_async() as session:
             for chunk in large_chunks:
                 context_repo.create_chunk(
-                    session, "test-tenant", sample_product.id,
+                    session,
+                    "test-tenant",
+                    sample_product.id,
                     content=chunk["content"],
                     keywords=chunk["keywords"],
                     token_count=chunk["tokens"],
-                    chunk_order=chunk["chunk_number"]
+                    chunk_order=chunk["chunk_number"],
                 )
 
             await session.commit()
 
             # Verify all chunks stored correctly
-            stored_chunks = context_repo.get_chunks_by_product(
-                session, "test-tenant", sample_product.id
-            )
+            stored_chunks = context_repo.get_chunks_by_product(session, "test-tenant", sample_product.id)
             assert len(stored_chunks) == len(large_chunks)
 
 
@@ -224,11 +213,12 @@ class TestAgentJobLifecycle:
         async with async_db_manager.get_session_async() as session:
             # 1. Create job (pending)
             job = job_repo.create_job(
-                session, "test-tenant",
+                session,
+                "test-tenant",
                 agent_type="orchestrator",
                 mission="Coordinate development tasks for new feature",
                 spawned_by="parent-orchestrator",
-                context_chunks=["chunk-1", "chunk-2", "chunk-3"]
+                context_chunks=["chunk-1", "chunk-2", "chunk-3"],
             )
 
             await session.commit()
@@ -244,9 +234,7 @@ class TestAgentJobLifecycle:
             job_id = job.job_id
 
             # 2. Update status to active
-            success = job_repo.update_status(
-                session, "test-tenant", job_id, "active"
-            )
+            success = job_repo.update_status(session, "test-tenant", job_id, "active")
             await session.commit()
 
             assert success is True
@@ -261,7 +249,7 @@ class TestAgentJobLifecycle:
                 {"type": "start", "content": "Job started", "agent": "orchestrator"},
                 {"type": "progress", "content": "Analyzing requirements", "progress": 25},
                 {"type": "progress", "content": "Creating task breakdown", "progress": 50},
-                {"type": "progress", "content": "Assigning sub-agents", "progress": 75}
+                {"type": "progress", "content": "Assigning sub-agents", "progress": 75},
             ]
 
             for message in messages:
@@ -298,9 +286,7 @@ class TestAgentJobLifecycle:
             assert "chunk-5" in final_job.context_chunks
 
             # 6. Complete job
-            completion_success = job_repo.update_status(
-                session, "test-tenant", job_id, "completed"
-            )
+            completion_success = job_repo.update_status(session, "test-tenant", job_id, "completed")
             await session.commit()
 
             assert completion_success is True
@@ -321,10 +307,11 @@ class TestAgentJobLifecycle:
         async with async_db_manager.get_session_async() as session:
             # Create parent orchestrator job
             parent_job = job_repo.create_job(
-                session, "test-tenant",
+                session,
+                "test-tenant",
                 agent_type="orchestrator",
                 mission="Main project coordination",
-                spawned_by=None  # Top-level job
+                spawned_by=None,  # Top-level job
             )
 
             await session.commit()
@@ -336,11 +323,12 @@ class TestAgentJobLifecycle:
 
             for agent_type in agent_types:
                 child_job = job_repo.create_job(
-                    session, "test-tenant",
+                    session,
+                    "test-tenant",
                     agent_type=agent_type,
                     mission=f"Execute {agent_type} tasks",
                     spawned_by=parent_job_id,
-                    context_chunks=[f"{agent_type}-context-1", f"{agent_type}-context-2"]
+                    context_chunks=[f"{agent_type}-context-1", f"{agent_type}-context-2"],
                 )
                 child_jobs.append(child_job)
 
@@ -390,17 +378,11 @@ class TestMultiTenantIsolation:
         async with async_db_manager.get_session_async() as session:
             # Create products for two tenants
             product_a = Product(
-                id="product-a",
-                tenant_key="tenant-a",
-                name="Product A",
-                description="Product for tenant A"
+                id="product-a", tenant_key="tenant-a", name="Product A", description="Product for tenant A"
             )
 
             product_b = Product(
-                id="product-b",
-                tenant_key="tenant-b",
-                name="Product B",
-                description="Product for tenant B"
+                id="product-b", tenant_key="tenant-b", name="Product B", description="Product for tenant B"
             )
 
             session.add_all([product_a, product_b])
@@ -408,50 +390,60 @@ class TestMultiTenantIsolation:
 
             # Create context data for tenant A
             context_a = context_repo.create_chunk(
-                session, "tenant-a", "product-a",
+                session,
+                "tenant-a",
+                "product-a",
                 content="Confidential content for tenant A",
                 keywords=["confidential", "tenant-a"],
                 token_count=100,
-                chunk_order=1
+                chunk_order=1,
             )
 
             summary_a = context_repo.create_summary(
-                session, "tenant-a", "product-a",
+                session,
+                "tenant-a",
+                "product-a",
                 full_content="Full confidential content for tenant A",
                 condensed_mission="Condensed mission for tenant A",
                 full_tokens=500,
-                condensed_tokens=150
+                condensed_tokens=150,
             )
 
             job_a = job_repo.create_job(
-                session, "tenant-a",
+                session,
+                "tenant-a",
                 agent_type="orchestrator",
                 mission="Secret mission for tenant A",
-                context_chunks=["chunk-a-1", "chunk-a-2"]
+                context_chunks=["chunk-a-1", "chunk-a-2"],
             )
 
             # Create context data for tenant B
             context_b = context_repo.create_chunk(
-                session, "tenant-b", "product-b",
+                session,
+                "tenant-b",
+                "product-b",
                 content="Private content for tenant B",
                 keywords=["private", "tenant-b"],
                 token_count=120,
-                chunk_order=1
+                chunk_order=1,
             )
 
             summary_b = context_repo.create_summary(
-                session, "tenant-b", "product-b",
+                session,
+                "tenant-b",
+                "product-b",
                 full_content="Full private content for tenant B",
                 condensed_mission="Condensed mission for tenant B",
                 full_tokens=600,
-                condensed_tokens=180
+                condensed_tokens=180,
             )
 
             job_b = job_repo.create_job(
-                session, "tenant-b",
+                session,
+                "tenant-b",
                 agent_type="implementer",
                 mission="Classified mission for tenant B",
-                context_chunks=["chunk-b-1", "chunk-b-2"]
+                context_chunks=["chunk-b-1", "chunk-b-2"],
             )
 
             await session.commit()

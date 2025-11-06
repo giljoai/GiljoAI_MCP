@@ -18,12 +18,11 @@ from giljo_mcp.agent_job_manager import AgentJobManager
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 
-def register_agent_communication_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register agent-orchestrator communication tools with the MCP server"""
 
     # Initialize managers
@@ -90,8 +89,7 @@ def register_agent_communication_tools(
                     )
 
                 logger.info(
-                    f"Retrieved {len(formatted_messages)} messages for job {job_id} "
-                    f"(unread_only={unread_only})"
+                    f"Retrieved {len(formatted_messages)} messages for job {job_id} (unread_only={unread_only})"
                 )
 
                 return {
@@ -323,4 +321,6 @@ def register_agent_communication_tools(
                 "job_id": job_id,
             }
 
-    logger.info("Agent communication tools registered (check_orchestrator_messages, acknowledge_message, report_status)")
+    logger.info(
+        "Agent communication tools registered (check_orchestrator_messages, acknowledge_message, report_status)"
+    )

@@ -18,18 +18,21 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict
+
 
 # Configure UTF-8 encoding for Windows console
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 # Load environment variables
 from dotenv import load_dotenv
+
+
 load_dotenv()
 
 
@@ -51,11 +54,7 @@ class InstallationVerificationTest:
         """Log failed test."""
         error_detail = f" ({error})" if error else ""
         print(f"❌ FAIL: {test_name} - {message}{error_detail}")
-        self.results[test_name] = {
-            "status": "FAIL",
-            "message": message,
-            "error": str(error) if error else None
-        }
+        self.results[test_name] = {"status": "FAIL", "message": message, "error": str(error) if error else None}
         self.failed += 1
 
     def log_info(self, message: str):
@@ -76,7 +75,6 @@ class InstallationVerificationTest:
 
         try:
             from giljo_mcp.models import Agent
-            from sqlalchemy import inspect
 
             # Get Agent table columns
             columns = {col.name: col for col in Agent.__table__.columns}
@@ -88,10 +86,7 @@ class InstallationVerificationTest:
 
             job_id_col = columns["job_id"]
             if str(job_id_col.type) != "VARCHAR(36)":
-                self.log_failure(
-                    test_name,
-                    f"Agent.job_id has wrong type: {job_id_col.type} (expected VARCHAR(36))"
-                )
+                self.log_failure(test_name, f"Agent.job_id has wrong type: {job_id_col.type} (expected VARCHAR(36))")
                 return False
 
             if not job_id_col.nullable:
@@ -105,26 +100,17 @@ class InstallationVerificationTest:
 
             mode_col = columns["mode"]
             if str(mode_col.type) != "VARCHAR(20)":
-                self.log_failure(
-                    test_name,
-                    f"Agent.mode has wrong type: {mode_col.type} (expected VARCHAR(20))"
-                )
+                self.log_failure(test_name, f"Agent.mode has wrong type: {mode_col.type} (expected VARCHAR(20))")
                 return False
 
             # Check index on job_id
-            has_job_id_index = any(
-                "job_id" in [col.name for col in idx.columns]
-                for idx in Agent.__table__.indexes
-            )
+            has_job_id_index = any("job_id" in [col.name for col in idx.columns] for idx in Agent.__table__.indexes)
 
             if not has_job_id_index:
                 self.log_failure(test_name, "Missing index on Agent.job_id")
                 return False
 
-            self.log_success(
-                test_name,
-                "Agent.job_id and Agent.mode fields present with correct schema"
-            )
+            self.log_success(test_name, "Agent.job_id and Agent.mode fields present with correct schema")
             return True
 
         except Exception as e:
@@ -162,7 +148,7 @@ class InstallationVerificationTest:
                 "mcp__giljo_mcp__report_progress",
                 "mcp__giljo_mcp__complete_job",
                 "mcp__giljo_mcp__get_next_instruction",
-                "mcp__giljo_mcp__report_error"
+                "mcp__giljo_mcp__report_error",
             ]
 
             missing_elements = []
@@ -171,15 +157,11 @@ class InstallationVerificationTest:
                     missing_elements.append(element)
 
             if missing_elements:
-                self.log_failure(
-                    test_name,
-                    f"Missing MCP elements: {', '.join(missing_elements)}"
-                )
+                self.log_failure(test_name, f"Missing MCP elements: {', '.join(missing_elements)}")
                 return False
 
             self.log_success(
-                test_name,
-                f"MCP coordination section contains all {len(required_elements)} required elements"
+                test_name, f"MCP coordination section contains all {len(required_elements)} required elements"
             )
             return True
 
@@ -200,8 +182,8 @@ class InstallationVerificationTest:
         self.log_info(f"Running {test_name}...")
 
         try:
-            from giljo_mcp.tools import register_agent_coordination_tools
             from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.tools import register_agent_coordination_tools
 
             # Create mock tools dict
             tools = {}
@@ -226,7 +208,7 @@ class InstallationVerificationTest:
                 "get_next_instruction",
                 "complete_job",
                 "report_error",
-                "send_message"
+                "send_message",
             ]
 
             missing_tools = []
@@ -235,16 +217,10 @@ class InstallationVerificationTest:
                     missing_tools.append(tool_name)
 
             if missing_tools:
-                self.log_failure(
-                    test_name,
-                    f"Missing MCP tools: {', '.join(missing_tools)}"
-                )
+                self.log_failure(test_name, f"Missing MCP tools: {', '.join(missing_tools)}")
                 return False
 
-            self.log_success(
-                test_name,
-                f"All {len(expected_tools)} MCP coordination tools registered"
-            )
+            self.log_success(test_name, f"All {len(expected_tools)} MCP coordination tools registered")
             return True
 
         except Exception as e:
@@ -264,10 +240,10 @@ class InstallationVerificationTest:
         self.log_info(f"Running {test_name}...")
 
         try:
-            from giljo_mcp.models import Agent
-            from giljo_mcp.database import DatabaseManager
             from uuid import uuid4
-            from datetime import datetime, timezone
+
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models import Agent
 
             # Get database URL
             db_url = os.getenv("DATABASE_URL")
@@ -291,7 +267,7 @@ class InstallationVerificationTest:
                     id=test_project_id,
                     tenant_key=test_tenant_key,
                     name="Test Project",
-                    mission="Test project for backward compatibility"
+                    mission="Test project for backward compatibility",
                 )
                 session.add(project)
                 await session.flush()
@@ -304,17 +280,16 @@ class InstallationVerificationTest:
                     name="Test Agent",
                     role="implementer",
                     status="active",
-                    mission="Test mission"
+                    mission="Test mission",
                 )
                 session.add(agent)
                 await session.commit()
 
             # Retrieve agent from database to check defaults
-            from sqlalchemy import select, delete
+            from sqlalchemy import delete, select
+
             async with db_manager.get_session_async() as session:
-                result = await session.execute(
-                    select(Agent).where(Agent.id == test_agent_id)
-                )
+                result = await session.execute(select(Agent).where(Agent.id == test_agent_id))
                 retrieved_agent = result.scalar_one_or_none()
 
                 if not retrieved_agent:
@@ -323,17 +298,11 @@ class InstallationVerificationTest:
 
                 # Verify Python-level default applied
                 if retrieved_agent.mode != "claude":
-                    self.log_failure(
-                        test_name,
-                        f"Default mode not applied: {retrieved_agent.mode} (expected 'claude')"
-                    )
+                    self.log_failure(test_name, f"Default mode not applied: {retrieved_agent.mode} (expected 'claude')")
                     return False
 
                 if retrieved_agent.job_id is not None:
-                    self.log_failure(
-                        test_name,
-                        f"job_id should default to None, got: {retrieved_agent.job_id}"
-                    )
+                    self.log_failure(test_name, f"job_id should default to None, got: {retrieved_agent.job_id}")
                     return False
 
                 # Clean up test data
@@ -343,10 +312,7 @@ class InstallationVerificationTest:
 
             await db_manager.close_async()
 
-            self.log_success(
-                test_name,
-                "Agent model backward compatible with default values"
-            )
+            self.log_success(test_name, "Agent model backward compatible with default values")
             return True
 
         except Exception as e:
@@ -366,9 +332,10 @@ class InstallationVerificationTest:
         self.log_info(f"Running {test_name}...")
 
         try:
+            from uuid import uuid4
+
             from giljo_mcp.database import DatabaseManager
             from giljo_mcp.template_seeder import seed_tenant_templates
-            from uuid import uuid4
 
             # Get database URL
             db_url = os.getenv("DATABASE_URL")
@@ -395,28 +362,21 @@ class InstallationVerificationTest:
                 count2 = await seed_tenant_templates(session, test_tenant)
 
             if count2 != 0:
-                self.log_failure(
-                    test_name,
-                    f"Second seeding should return 0 (idempotent), got {count2}"
-                )
+                self.log_failure(test_name, f"Second seeding should return 0 (idempotent), got {count2}")
                 return False
 
             # Clean up test tenant templates
-            from giljo_mcp.models import AgentTemplate
             from sqlalchemy import delete
 
+            from giljo_mcp.models import AgentTemplate
+
             async with db_manager.get_session_async() as session:
-                await session.execute(
-                    delete(AgentTemplate).where(AgentTemplate.tenant_key == test_tenant)
-                )
+                await session.execute(delete(AgentTemplate).where(AgentTemplate.tenant_key == test_tenant))
                 await session.commit()
 
             await db_manager.close_async()
 
-            self.log_success(
-                test_name,
-                f"Template seeding is idempotent (first={count1}, second={count2})"
-            )
+            self.log_success(test_name, f"Template seeding is idempotent (first={count1}, second={count2})")
             return True
 
         except Exception as e:
@@ -451,7 +411,7 @@ class InstallationVerificationTest:
             "passed": self.passed,
             "failed": self.failed,
             "success_rate": self.passed / (self.passed + self.failed) if (self.passed + self.failed) > 0 else 0,
-            "results": self.results
+            "results": self.results,
         }
 
 
@@ -471,6 +431,7 @@ async def main():
     except Exception as e:
         print(f"\n\n❌ FATAL ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

@@ -27,6 +27,7 @@ from typing import Optional
 import click
 import yaml
 
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -103,17 +104,17 @@ class MigrationScript:
             config = yaml.safe_load(f)
 
         # Check for mode field (v2.x indicator)
-        server_config = config.get('server', {})
-        installation_config = config.get('installation', {})
+        server_config = config.get("server", {})
+        installation_config = config.get("installation", {})
 
-        has_mode = 'mode' in server_config or 'mode' in installation_config
+        has_mode = "mode" in server_config or "mode" in installation_config
 
         # Check version
-        version = config.get('version', '2.x')
+        version = config.get("version", "2.x")
 
-        if has_mode or not version.startswith('3.'):
+        if has_mode or not version.startswith("3."):
             click.echo(f"   ✓ Detected v2.x installation (version: {version})")
-            self.old_mode = server_config.get('mode') or installation_config.get('mode', 'local')
+            self.old_mode = server_config.get("mode") or installation_config.get("mode", "local")
             click.echo(f"   ✓ Current mode: {self.old_mode}")
             return True
 
@@ -174,44 +175,44 @@ class MigrationScript:
                 config = yaml.safe_load(f)
 
             # Remove mode field from both possible locations
-            server_mode = config.get('server', {}).pop('mode', None)
-            installation_mode = config.get('installation', {}).pop('mode', None)
+            server_mode = config.get("server", {}).pop("mode", None)
+            installation_mode = config.get("installation", {}).pop("mode", None)
 
             # Determine old mode (prefer server, then installation, then default)
-            old_mode = server_mode or installation_mode or 'local'
+            old_mode = server_mode or installation_mode or "local"
 
             # Store old mode if not already set
             if not self.old_mode:
                 self.old_mode = old_mode
 
             # Add v3.0 fields
-            config['version'] = '3.0.0'
-            config['deployment_context'] = old_mode  # Informational
+            config["version"] = "3.0.0"
+            config["deployment_context"] = old_mode  # Informational
 
             # Ensure server binds to 0.0.0.0
-            if 'server' not in config:
-                config['server'] = {}
+            if "server" not in config:
+                config["server"] = {}
 
-            config['server']['api_host'] = '0.0.0.0'
-            config['server']['dashboard_host'] = '0.0.0.0'
-            config['server']['mcp_host'] = '0.0.0.0'
+            config["server"]["api_host"] = "0.0.0.0"
+            config["server"]["dashboard_host"] = "0.0.0.0"
+            config["server"]["mcp_host"] = "0.0.0.0"
 
             # Add features
-            if 'features' not in config:
-                config['features'] = {}
+            if "features" not in config:
+                config["features"] = {}
 
-            config['features']['authentication'] = True
-            config['features']['auto_login_localhost'] = True
-            config['features']['firewall_configured'] = False
+            config["features"]["authentication"] = True
+            config["features"]["auto_login_localhost"] = True
+            config["features"]["firewall_configured"] = False
 
             # Save updated config
-            with open(self.config_path, 'w') as f:
+            with open(self.config_path, "w") as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
             click.echo(f"   ✓ Removed mode: {old_mode}")
-            click.echo(f"   ✓ Added version: 3.0.0")
-            click.echo(f"   ✓ Updated network binding: 0.0.0.0")
-            click.echo(f"   ✓ Enabled features: authentication, auto_login_localhost")
+            click.echo("   ✓ Added version: 3.0.0")
+            click.echo("   ✓ Updated network binding: 0.0.0.0")
+            click.echo("   ✓ Enabled features: authentication, auto_login_localhost")
 
             return True
 
@@ -235,11 +236,7 @@ class MigrationScript:
         try:
             # Run Alembic migrations
             click.echo("   Running migrations...")
-            result = subprocess.run(
-                ["alembic", "upgrade", "head"],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["alembic", "upgrade", "head"], check=False, capture_output=True, text=True)
 
             if result.returncode == 0:
                 click.echo("   ✓ Migrations applied")
@@ -279,17 +276,17 @@ class MigrationScript:
 
         click.echo("\n📋 Summary:")
         click.echo(f"   • v2.x mode '{self.old_mode}' → v3.0 unified architecture")
-        click.echo(f"   • Network binding: 0.0.0.0 (firewall controls access)")
-        click.echo(f"   • Authentication: Always enabled")
-        click.echo(f"   • Localhost auto-login: Enabled")
+        click.echo("   • Network binding: 0.0.0.0 (firewall controls access)")
+        click.echo("   • Authentication: Always enabled")
+        click.echo("   • Localhost auto-login: Enabled")
 
         click.echo("\n📁 Backup location:")
         click.echo(f"   {self.backup_dir}")
 
         click.echo("\n🔄 Rollback instructions:")
         click.echo(f"   cp {self.backup_dir}/config.yaml {self.config_path}")
-        click.echo(f"   git checkout retired_multi_network_architecture")
-        click.echo(f"   alembic downgrade -1")
+        click.echo("   git checkout retired_multi_network_architecture")
+        click.echo("   alembic downgrade -1")
 
         click.echo("\n📚 Documentation:")
         click.echo("   docs/MIGRATION_GUIDE_V3.md")
@@ -304,18 +301,15 @@ class MigrationScript:
 
 
 @click.command()
-@click.option('--config', default='config.yaml', help='Path to config.yaml')
-@click.option('--dry-run', is_flag=True, help='Preview changes without applying')
-@click.option('--yes', is_flag=True, help='Skip confirmation prompt')
+@click.option("--config", default="config.yaml", help="Path to config.yaml")
+@click.option("--dry-run", is_flag=True, help="Preview changes without applying")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt")
 def main(config: str, dry_run: bool, yes: bool) -> None:
     """Migrate GiljoAI MCP from v2.x to v3.0"""
     config_path = Path(config)
 
     if not dry_run and not yes:
-        click.confirm(
-            '\n⚠️  This will modify your installation. Continue?',
-            abort=True
-        )
+        click.confirm("\n⚠️  This will modify your installation. Continue?", abort=True)
 
     migration = MigrationScript(config_path, dry_run=dry_run)
     success = migration.run()
@@ -323,5 +317,5 @@ def main(config: str, dry_run: bool, yes: bool) -> None:
     sys.exit(0 if success else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

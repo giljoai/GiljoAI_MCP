@@ -19,10 +19,7 @@ from src.giljo_mcp.models import MCPAgentJob, Project, User
 
 @pytest.mark.asyncio
 async def test_broadcast_message_success(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test successful message broadcast to multiple agents."""
     # Create test project
@@ -32,7 +29,7 @@ async def test_broadcast_message_success(
         name="Broadcast Project",
         mission="Test broadcast",
         description="Testing broadcast messaging",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -45,7 +42,7 @@ async def test_broadcast_message_success(
             project_id=project.id,
             agent_type=f"developer-{i}",
             mission=f"Develop feature {i}",
-            status="working"
+            status="working",
         )
         db_session.add(agent)
 
@@ -54,14 +51,10 @@ async def test_broadcast_message_success(
     # Broadcast message
     broadcast_data = {
         "project_id": project.id,
-        "content": "All agents: Please commit your changes and prepare status report"
+        "content": "All agents: Please commit your changes and prepare status report",
     }
 
-    response = await client.post(
-        "/api/agent-jobs/broadcast",
-        json=broadcast_data,
-        headers=auth_headers
-    )
+    response = await client.post("/api/agent-jobs/broadcast", json=broadcast_data, headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -95,10 +88,7 @@ async def test_broadcast_message_success(
 
 @pytest.mark.asyncio
 async def test_broadcast_message_empty_content(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test broadcast with empty message content."""
     project = Project(
@@ -107,16 +97,14 @@ async def test_broadcast_message_empty_content(
         name="Test Project",
         mission="Test",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
 
     # Try broadcasting empty message
     response = await client.post(
-        "/api/agent-jobs/broadcast",
-        json={"project_id": project.id, "content": "   "},
-        headers=auth_headers
+        "/api/agent-jobs/broadcast", json={"project_id": project.id, "content": "   "}, headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -125,10 +113,7 @@ async def test_broadcast_message_empty_content(
 
 @pytest.mark.asyncio
 async def test_broadcast_message_max_length_exceeded(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test broadcast with content exceeding max length."""
     project = Project(
@@ -137,7 +122,7 @@ async def test_broadcast_message_max_length_exceeded(
         name="Test Project",
         mission="Test",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -145,9 +130,7 @@ async def test_broadcast_message_max_length_exceeded(
     # Try broadcasting message longer than 10000 chars
     long_content = "A" * 10001
     response = await client.post(
-        "/api/agent-jobs/broadcast",
-        json={"project_id": project.id, "content": long_content},
-        headers=auth_headers
+        "/api/agent-jobs/broadcast", json={"project_id": project.id, "content": long_content}, headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -155,15 +138,12 @@ async def test_broadcast_message_max_length_exceeded(
 
 
 @pytest.mark.asyncio
-async def test_broadcast_message_project_not_found(
-    client: AsyncClient,
-    auth_headers: dict
-):
+async def test_broadcast_message_project_not_found(client: AsyncClient, auth_headers: dict):
     """Test broadcast to non-existent project."""
     response = await client.post(
         "/api/agent-jobs/broadcast",
         json={"project_id": "nonexistent-project", "content": "Test message"},
-        headers=auth_headers
+        headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -172,10 +152,7 @@ async def test_broadcast_message_project_not_found(
 
 @pytest.mark.asyncio
 async def test_broadcast_message_no_agents(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test broadcast to project with no agents."""
     # Create project without agents
@@ -185,16 +162,14 @@ async def test_broadcast_message_no_agents(
         name="Empty Project",
         mission="No agents",
         description="Project without agents",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
 
     # Try broadcasting
     response = await client.post(
-        "/api/agent-jobs/broadcast",
-        json={"project_id": project.id, "content": "Test message"},
-        headers=auth_headers
+        "/api/agent-jobs/broadcast", json={"project_id": project.id, "content": "Test message"}, headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -204,10 +179,7 @@ async def test_broadcast_message_no_agents(
 @pytest.mark.asyncio
 async def test_broadcast_message_unauthorized(client: AsyncClient):
     """Test broadcast without authentication."""
-    response = await client.post(
-        "/api/agent-jobs/broadcast",
-        json={"project_id": "test-proj", "content": "Test"}
-    )
+    response = await client.post("/api/agent-jobs/broadcast", json={"project_id": "test-proj", "content": "Test"})
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -219,7 +191,7 @@ async def test_broadcast_multi_tenant_isolation(
     test_user: User,
     test_user_2: User,
     auth_headers: dict,
-    auth_headers_user_2: dict
+    auth_headers_user_2: dict,
 ):
     """Test multi-tenant isolation in broadcast messaging."""
     # Create project for user 1
@@ -229,7 +201,7 @@ async def test_broadcast_multi_tenant_isolation(
         name="Tenant 1 Project",
         mission="Build feature",
         description="Feature development",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -241,7 +213,7 @@ async def test_broadcast_multi_tenant_isolation(
             project_id=project.id,
             agent_type="developer",
             mission="Develop",
-            status="working"
+            status="working",
         )
         db_session.add(agent)
 
@@ -251,7 +223,7 @@ async def test_broadcast_multi_tenant_isolation(
     response = await client.post(
         "/api/agent-jobs/broadcast",
         json={"project_id": project.id, "content": "Unauthorized broadcast"},
-        headers=auth_headers_user_2
+        headers=auth_headers_user_2,
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -265,10 +237,7 @@ async def test_broadcast_multi_tenant_isolation(
 
 @pytest.mark.asyncio
 async def test_broadcast_preserves_existing_messages(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test that broadcast preserves existing messages in agent queues."""
     # Create project and agent with existing message
@@ -278,7 +247,7 @@ async def test_broadcast_preserves_existing_messages(
         name="Preserve Project",
         mission="Test",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -295,9 +264,9 @@ async def test_broadcast_preserves_existing_messages(
                 "from": "developer",
                 "content": "Existing message",
                 "timestamp": "2025-01-01T00:00:00Z",
-                "status": "acknowledged"
+                "status": "acknowledged",
             }
-        ]
+        ],
     )
     db_session.add(agent)
     await db_session.commit()
@@ -306,7 +275,7 @@ async def test_broadcast_preserves_existing_messages(
     response = await client.post(
         "/api/agent-jobs/broadcast",
         json={"project_id": project.id, "content": "New broadcast message"},
-        headers=auth_headers
+        headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -320,10 +289,7 @@ async def test_broadcast_preserves_existing_messages(
 
 @pytest.mark.asyncio
 async def test_broadcast_multiple_broadcasts_same_project(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test multiple sequential broadcasts to same project."""
     # Create project with agents
@@ -333,7 +299,7 @@ async def test_broadcast_multiple_broadcasts_same_project(
         name="Multi Broadcast",
         mission="Test",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -343,16 +309,14 @@ async def test_broadcast_multiple_broadcasts_same_project(
         project_id=project.id,
         agent_type="developer",
         mission="Develop",
-        status="working"
+        status="working",
     )
     db_session.add(agent)
     await db_session.commit()
 
     # Send first broadcast
     response1 = await client.post(
-        "/api/agent-jobs/broadcast",
-        json={"project_id": project.id, "content": "First broadcast"},
-        headers=auth_headers
+        "/api/agent-jobs/broadcast", json={"project_id": project.id, "content": "First broadcast"}, headers=auth_headers
     )
     assert response1.status_code == status.HTTP_200_OK
     broadcast_id_1 = response1.json()["broadcast_id"]
@@ -361,7 +325,7 @@ async def test_broadcast_multiple_broadcasts_same_project(
     response2 = await client.post(
         "/api/agent-jobs/broadcast",
         json={"project_id": project.id, "content": "Second broadcast"},
-        headers=auth_headers
+        headers=auth_headers,
     )
     assert response2.status_code == status.HTTP_200_OK
     broadcast_id_2 = response2.json()["broadcast_id"]

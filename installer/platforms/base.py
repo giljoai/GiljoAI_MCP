@@ -131,12 +131,7 @@ class PlatformHandler(ABC):
         pass
 
     @abstractmethod
-    def run_npm_command(
-        self,
-        cmd: List[str],
-        cwd: Path,
-        timeout: int = 300
-    ) -> Dict[str, Any]:
+    def run_npm_command(self, cmd: List[str], cwd: Path, timeout: int = 300) -> Dict[str, Any]:
         """
         Run npm command with platform-specific shell handling.
 

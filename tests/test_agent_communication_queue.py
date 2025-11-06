@@ -9,9 +9,8 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, PropertyMock
+from unittest.mock import Mock, PropertyMock
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -740,7 +739,11 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         queue = AgentCommunicationQueue(mock_db)
 
         result = queue.acknowledge_all_messages(
-            session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key, agent_id="analyzer", to_agent="analyzer"
+            session=mock_session,
+            job_id=self.job_id,
+            tenant_key=self.tenant_key,
+            agent_id="analyzer",
+            to_agent="analyzer",
         )
 
         assert result["status"] == "success"

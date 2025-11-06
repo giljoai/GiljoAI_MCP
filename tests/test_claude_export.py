@@ -8,15 +8,12 @@ Following TDD principles - these tests are written BEFORE implementation.
 """
 
 import asyncio
-import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, User

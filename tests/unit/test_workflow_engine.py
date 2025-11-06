@@ -8,10 +8,7 @@ Handover 0020 Phase 1D: WorkflowEngine implementation
 """
 
 import asyncio
-from datetime import datetime, timezone
-from typing import Dict, List
 from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
 
 import pytest
 
@@ -224,9 +221,7 @@ def sample_parallel_stages():
 
 
 @pytest.mark.asyncio
-async def test_execute_workflow_waterfall(
-    workflow_engine, job_manager, job_coordinator, sample_waterfall_stages
-):
+async def test_execute_workflow_waterfall(workflow_engine, job_manager, job_coordinator, sample_waterfall_stages):
     """Test basic waterfall workflow execution - stages run sequentially."""
     # Setup mocks
     job_ids = ["job-1", "job-2", "job-3"]
@@ -274,9 +269,7 @@ async def test_execute_workflow_waterfall(
 
 
 @pytest.mark.asyncio
-async def test_execute_workflow_parallel(
-    workflow_engine, job_manager, job_coordinator, sample_parallel_stages
-):
+async def test_execute_workflow_parallel(workflow_engine, job_manager, job_coordinator, sample_parallel_stages):
     """Test basic parallel workflow execution - stages run simultaneously."""
     # Setup mocks
     job_ids = ["job-1", "job-2", "job-3"]
@@ -322,9 +315,7 @@ async def test_execute_workflow_parallel(
 
 
 @pytest.mark.asyncio
-async def test_waterfall_dependency_handling(
-    workflow_engine, job_manager, job_coordinator, sample_waterfall_stages
-):
+async def test_waterfall_dependency_handling(workflow_engine, job_manager, job_coordinator, sample_waterfall_stages):
     """Test that waterfall stages wait for dependencies before executing."""
     # Track execution order
     execution_order = []
@@ -341,9 +332,7 @@ async def test_waterfall_dependency_handling(
         )
 
     # Patch _execute_stage to track order
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="waterfall",
             stages=sample_waterfall_stages,
@@ -376,9 +365,7 @@ async def test_dependencies_met_logic(workflow_engine):
     assert await workflow_engine._dependencies_met(stage2, completed)
 
     # Stage with dependencies - not all met
-    stage3 = WorkflowStage(
-        name="stage3", agents=[], depends_on=["stage1", "stage2"]
-    )
+    stage3 = WorkflowStage(name="stage3", agents=[], depends_on=["stage1", "stage2"])
     assert not await workflow_engine._dependencies_met(stage3, completed)
 
     # Add stage2 to completed
@@ -398,9 +385,7 @@ async def test_dependencies_met_logic(workflow_engine):
 
 
 @pytest.mark.asyncio
-async def test_waterfall_critical_failure_stops(
-    workflow_engine, job_manager, job_coordinator, sample_waterfall_stages
-):
+async def test_waterfall_critical_failure_stops(workflow_engine, job_manager, job_coordinator, sample_waterfall_stages):
     """Test that critical stage failure stops waterfall workflow."""
     # Disable retries for this test to avoid extra calls
     for stage in sample_waterfall_stages:
@@ -420,16 +405,13 @@ async def test_waterfall_critical_failure_stops(
                 duration=1.0,
                 status="completed",
             )
-        elif stage.name == "code_review":
+        if stage.name == "code_review":
             # Critical failure
             raise Exception("Code review failed")
-        else:
-            # Should not reach testing stage
-            raise AssertionError("Should not execute testing stage")
+        # Should not reach testing stage
+        raise AssertionError("Should not execute testing stage")
 
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="waterfall",
             stages=sample_waterfall_stages,
@@ -447,9 +429,7 @@ async def test_waterfall_critical_failure_stops(
 
 
 @pytest.mark.asyncio
-async def test_waterfall_noncritical_continues(
-    workflow_engine, job_manager, job_coordinator, sample_waterfall_stages
-):
+async def test_waterfall_noncritical_continues(workflow_engine, job_manager, job_coordinator, sample_waterfall_stages):
     """Test that non-critical stage failure allows workflow to continue."""
     # Disable retries for this test to avoid extra calls
     for stage in sample_waterfall_stages:
@@ -471,9 +451,7 @@ async def test_waterfall_noncritical_continues(
             status="completed",
         )
 
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="waterfall",
             stages=sample_waterfall_stages,
@@ -493,9 +471,7 @@ async def test_waterfall_noncritical_continues(
 
 
 @pytest.mark.asyncio
-async def test_parallel_all_success(
-    workflow_engine, job_manager, job_coordinator, sample_parallel_stages
-):
+async def test_parallel_all_success(workflow_engine, job_manager, job_coordinator, sample_parallel_stages):
     """Test parallel execution when all stages succeed."""
     # Mock successful execution for all stages
     job_manager.create_job.side_effect = ["job-1", "job-2", "job-3"]
@@ -527,9 +503,7 @@ async def test_parallel_all_success(
 
 
 @pytest.mark.asyncio
-async def test_parallel_partial_failure(
-    workflow_engine, job_manager, job_coordinator, sample_parallel_stages
-):
+async def test_parallel_partial_failure(workflow_engine, job_manager, job_coordinator, sample_parallel_stages):
     """Test parallel execution when some stages fail."""
     # Disable retries for this test to avoid extra calls
     for stage in sample_parallel_stages:
@@ -550,9 +524,7 @@ async def test_parallel_partial_failure(
             status="completed",
         )
 
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="parallel",
             stages=sample_parallel_stages,
@@ -574,9 +546,7 @@ async def test_parallel_partial_failure(
 
 
 @pytest.mark.asyncio
-async def test_stage_retry_logic(
-    workflow_engine, job_manager, job_coordinator, sample_agent_config
-):
+async def test_stage_retry_logic(workflow_engine, job_manager, job_coordinator, sample_agent_config):
     """Test that stages are retried on failure up to max_retries."""
     stage = WorkflowStage(
         name="test_stage",
@@ -603,9 +573,7 @@ async def test_stage_retry_logic(
             status="completed",
         )
 
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="waterfall",
             stages=[stage],
@@ -620,9 +588,7 @@ async def test_stage_retry_logic(
 
 
 @pytest.mark.asyncio
-async def test_retry_exhaustion(
-    workflow_engine, job_manager, job_coordinator, sample_agent_config
-):
+async def test_retry_exhaustion(workflow_engine, job_manager, job_coordinator, sample_agent_config):
     """Test that stage fails after exhausting retries."""
     stage = WorkflowStage(
         name="test_stage",
@@ -636,9 +602,7 @@ async def test_retry_exhaustion(
     async def mock_execute_stage(stage, tenant_key, project_id):
         raise Exception("Always fails")
 
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="waterfall",
             stages=[stage],
@@ -656,9 +620,7 @@ async def test_retry_exhaustion(
 
 
 @pytest.mark.asyncio
-async def test_stage_timeout(
-    workflow_engine, job_manager, job_coordinator, sample_agent_config
-):
+async def test_stage_timeout(workflow_engine, job_manager, job_coordinator, sample_agent_config):
     """Test that stage execution respects timeout."""
     stage = WorkflowStage(
         name="test_stage",
@@ -710,9 +672,7 @@ async def test_empty_stages_list(workflow_engine):
 
 
 @pytest.mark.asyncio
-async def test_single_stage_workflow(
-    workflow_engine, job_manager, job_coordinator, sample_agent_config
-):
+async def test_single_stage_workflow(workflow_engine, job_manager, job_coordinator, sample_agent_config):
     """Test workflow with single stage."""
     stage = WorkflowStage(name="single_stage", agents=[sample_agent_config])
 
@@ -743,17 +703,13 @@ async def test_single_stage_workflow(
 
 
 @pytest.mark.asyncio
-async def test_all_stages_fail(
-    workflow_engine, job_manager, job_coordinator, sample_waterfall_stages
-):
+async def test_all_stages_fail(workflow_engine, job_manager, job_coordinator, sample_waterfall_stages):
     """Test workflow when all stages fail."""
 
     async def mock_execute_stage(stage, tenant_key, project_id):
         raise Exception(f"{stage.name} failed")
 
-    with patch.object(
-        workflow_engine, "_execute_stage", side_effect=mock_execute_stage
-    ):
+    with patch.object(workflow_engine, "_execute_stage", side_effect=mock_execute_stage):
         result = await workflow_engine.execute_workflow(
             workflow_type="waterfall",
             stages=sample_waterfall_stages,
@@ -801,17 +757,11 @@ async def test_workflow_result_success_rate(workflow_engine):
 
 
 @pytest.mark.asyncio
-async def test_circular_dependencies_detection(
-    workflow_engine, sample_agent_config
-):
+async def test_circular_dependencies_detection(workflow_engine, sample_agent_config):
     """Test that circular dependencies are detected and rejected."""
     # Create stages with circular dependencies
-    stage1 = WorkflowStage(
-        name="stage1", agents=[sample_agent_config], depends_on=["stage2"]
-    )
-    stage2 = WorkflowStage(
-        name="stage2", agents=[sample_agent_config], depends_on=["stage1"]
-    )
+    stage1 = WorkflowStage(name="stage1", agents=[sample_agent_config], depends_on=["stage2"])
+    stage2 = WorkflowStage(name="stage2", agents=[sample_agent_config], depends_on=["stage1"])
 
     # Attempt to execute workflow with circular dependencies
     # This should result in no stages being executable (infinite wait)
@@ -837,9 +787,7 @@ async def test_circular_dependencies_detection(
 
 
 @pytest.mark.asyncio
-async def test_execute_stage_creates_jobs(
-    workflow_engine, job_manager, job_coordinator, sample_agent_config
-):
+async def test_execute_stage_creates_jobs(workflow_engine, job_manager, job_coordinator, sample_agent_config):
     """Test that _execute_stage creates jobs for all agents in stage."""
     stage = WorkflowStage(
         name="multi_agent_stage",

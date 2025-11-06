@@ -3,8 +3,10 @@ Test suite for installer template seeding functionality
 Phase 3: Orchestrator Upgrade - Installer Integration
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+
 from installer.core.config import seed_default_orchestrator_template
 
 
@@ -128,16 +130,16 @@ class TestOrchestratorTemplateSeeding:
         # Verify behavioral rules
         assert len(added_template.behavioral_rules) > 0, "Should have behavioral rules"
         assert any("3-tool" in rule.lower() for rule in added_template.behavioral_rules), "Should mention 3-tool rule"
-        assert any(
-            "delegation" in rule.lower() for rule in added_template.behavioral_rules
-        ), "Should mention delegation"
+        assert any("delegation" in rule.lower() for rule in added_template.behavioral_rules), (
+            "Should mention delegation"
+        )
 
         # Verify success criteria
         assert len(added_template.success_criteria) > 0, "Should have success criteria"
         assert any("vision" in crit.lower() for crit in added_template.success_criteria), "Should mention vision"
-        assert any(
-            "documentation" in crit.lower() for crit in added_template.success_criteria
-        ), "Should mention documentation"
+        assert any("documentation" in crit.lower() for crit in added_template.success_criteria), (
+            "Should mention documentation"
+        )
 
         # Verify template content
         assert (

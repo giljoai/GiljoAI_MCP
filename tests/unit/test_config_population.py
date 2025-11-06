@@ -4,20 +4,21 @@ Unit tests for config_data population functions.
 Tests the automatic population of Product.config_data from project files.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
 import json
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.giljo_mcp.config_manager import (
+    check_serena_mcp_available,
+    detect_backend_framework,
+    detect_codebase_structure,
+    detect_frontend_framework,
     extract_architecture_from_claude_md,
     extract_tech_stack_from_claude_md,
     extract_test_commands_from_claude_md,
-    detect_frontend_framework,
-    detect_backend_framework,
-    detect_codebase_structure,
-    check_serena_mcp_available,
-    populate_config_data
+    populate_config_data,
 )
 
 
@@ -75,13 +76,8 @@ def sample_package_json():
     return {
         "name": "test-frontend",
         "version": "1.0.0",
-        "dependencies": {
-            "vue": "^3.3.4",
-            "vuetify": "^3.3.0"
-        },
-        "devDependencies": {
-            "vite": "^5.0.0"
-        }
+        "dependencies": {"vue": "^3.3.4", "vuetify": "^3.3.0"},
+        "devDependencies": {"vite": "^5.0.0"},
     }
 
 
@@ -102,7 +98,7 @@ class TestExtractArchitectureFromClaudeMd:
     def test_extract_architecture_from_section(self, tmp_path, sample_claude_md_content):
         """Test extracting architecture from Architecture Overview section"""
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(sample_claude_md_content, encoding='utf-8')
+        claude_md.write_text(sample_claude_md_content, encoding="utf-8")
 
         result = extract_architecture_from_claude_md(claude_md)
         assert result == "FastAPI + PostgreSQL + Vue.js multi-tenant architecture"
@@ -117,7 +113,7 @@ class TestExtractArchitectureFromClaudeMd:
         """Test inferring architecture when no explicit section"""
         content = "This project uses FastAPI with PostgreSQL and Vue for the UI"
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(content, encoding='utf-8')
+        claude_md.write_text(content, encoding="utf-8")
 
         result = extract_architecture_from_claude_md(claude_md)
         assert result == "FastAPI + PostgreSQL + Vue.js"
@@ -126,7 +122,7 @@ class TestExtractArchitectureFromClaudeMd:
         """Test inferring React-based architecture"""
         content = "Built with FastAPI backend and PostgreSQL database, React frontend"
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(content, encoding='utf-8')
+        claude_md.write_text(content, encoding="utf-8")
 
         result = extract_architecture_from_claude_md(claude_md)
         assert result == "FastAPI + PostgreSQL + React"
@@ -135,7 +131,7 @@ class TestExtractArchitectureFromClaudeMd:
         """Test inferring architecture without frontend framework"""
         content = "API built with FastAPI and PostgreSQL database"
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(content, encoding='utf-8')
+        claude_md.write_text(content, encoding="utf-8")
 
         result = extract_architecture_from_claude_md(claude_md)
         assert result == "FastAPI + PostgreSQL"
@@ -147,7 +143,7 @@ class TestExtractTechStackFromClaudeMd:
     def test_extract_complete_tech_stack(self, tmp_path, sample_claude_md_content):
         """Test extracting complete tech stack"""
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(sample_claude_md_content, encoding='utf-8')
+        claude_md.write_text(sample_claude_md_content, encoding="utf-8")
 
         result = extract_tech_stack_from_claude_md(claude_md)
 
@@ -168,7 +164,7 @@ class TestExtractTechStackFromClaudeMd:
         """Test extracting partial tech stack"""
         content = "Using Python 3.11 and Flask"
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(content, encoding='utf-8')
+        claude_md.write_text(content, encoding="utf-8")
 
         result = extract_tech_stack_from_claude_md(claude_md)
 
@@ -183,7 +179,7 @@ class TestExtractTestCommandsFromClaudeMd:
     def test_extract_test_commands(self, tmp_path, sample_claude_md_content):
         """Test extracting test commands"""
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(sample_claude_md_content, encoding='utf-8')
+        claude_md.write_text(sample_claude_md_content, encoding="utf-8")
 
         result = extract_test_commands_from_claude_md(claude_md)
 
@@ -200,16 +196,16 @@ class TestExtractTestCommandsFromClaudeMd:
         """Test fallback when no commands but keywords present"""
         content = "We use pytest and npm"
         claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(content, encoding='utf-8')
+        claude_md.write_text(content, encoding="utf-8")
 
         result = extract_test_commands_from_claude_md(claude_md)
 
         # Should extract something when keywords present
         assert len(result) > 0
         # Verify keywords are found in results
-        combined = ' '.join(result)
-        assert 'pytest' in combined.lower()
-        assert 'npm' in combined.lower()
+        combined = " ".join(result)
+        assert "pytest" in combined.lower()
+        assert "npm" in combined.lower()
 
 
 class TestDetectFrontendFramework:
@@ -218,7 +214,7 @@ class TestDetectFrontendFramework:
     def test_detect_vue3(self, tmp_path, sample_package_json):
         """Test detecting Vue 3"""
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps(sample_package_json), encoding='utf-8')
+        package_json.write_text(json.dumps(sample_package_json), encoding="utf-8")
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Vue 3"
@@ -228,33 +224,25 @@ class TestDetectFrontendFramework:
         frontend_dir = tmp_path / "frontend"
         frontend_dir.mkdir()
         package_json = frontend_dir / "package.json"
-        package_json.write_text(json.dumps(sample_package_json), encoding='utf-8')
+        package_json.write_text(json.dumps(sample_package_json), encoding="utf-8")
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Vue 3"
 
     def test_detect_react(self, tmp_path):
         """Test detecting React"""
-        package_json_data = {
-            "dependencies": {
-                "react": "^18.2.0"
-            }
-        }
+        package_json_data = {"dependencies": {"react": "^18.2.0"}}
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps(package_json_data), encoding='utf-8')
+        package_json.write_text(json.dumps(package_json_data), encoding="utf-8")
 
         result = detect_frontend_framework(tmp_path)
         assert result == "React"
 
     def test_detect_angular(self, tmp_path):
         """Test detecting Angular"""
-        package_json_data = {
-            "dependencies": {
-                "@angular/core": "^16.0.0"
-            }
-        }
+        package_json_data = {"dependencies": {"@angular/core": "^16.0.0"}}
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps(package_json_data), encoding='utf-8')
+        package_json.write_text(json.dumps(package_json_data), encoding="utf-8")
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Angular"
@@ -271,7 +259,7 @@ class TestDetectBackendFramework:
     def test_detect_fastapi(self, tmp_path, sample_requirements_txt):
         """Test detecting FastAPI"""
         requirements = tmp_path / "requirements.txt"
-        requirements.write_text(sample_requirements_txt, encoding='utf-8')
+        requirements.write_text(sample_requirements_txt, encoding="utf-8")
 
         result = detect_backend_framework(tmp_path)
         assert result == "FastAPI"
@@ -279,7 +267,7 @@ class TestDetectBackendFramework:
     def test_detect_django(self, tmp_path):
         """Test detecting Django"""
         requirements = tmp_path / "requirements.txt"
-        requirements.write_text("django==4.2.0\n", encoding='utf-8')
+        requirements.write_text("django==4.2.0\n", encoding="utf-8")
 
         result = detect_backend_framework(tmp_path)
         assert result == "Django"
@@ -287,7 +275,7 @@ class TestDetectBackendFramework:
     def test_detect_flask(self, tmp_path):
         """Test detecting Flask"""
         requirements = tmp_path / "requirements.txt"
-        requirements.write_text("flask==2.3.0\n", encoding='utf-8')
+        requirements.write_text("flask==2.3.0\n", encoding="utf-8")
 
         result = detect_backend_framework(tmp_path)
         assert result == "Flask"
@@ -295,7 +283,7 @@ class TestDetectBackendFramework:
     def test_detect_from_pyproject_toml(self, tmp_path):
         """Test detecting from pyproject.toml"""
         pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[tool.poetry.dependencies]\nfastapi = "^0.104.0"\n', encoding='utf-8')
+        pyproject.write_text('[tool.poetry.dependencies]\nfastapi = "^0.104.0"\n', encoding="utf-8")
 
         result = detect_backend_framework(tmp_path)
         assert result == "FastAPI"
@@ -354,7 +342,7 @@ class TestDetectCodebaseStructure:
 class TestCheckSerenaMcpAvailable:
     """Tests for check_serena_mcp_available"""
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_serena_available(self, mock_find_spec):
         """Test when Serena MCP is available"""
         mock_find_spec.return_value = Mock()  # Non-None spec
@@ -362,7 +350,7 @@ class TestCheckSerenaMcpAvailable:
         result = check_serena_mcp_available()
         assert result is True
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_serena_not_available(self, mock_find_spec):
         """Test when Serena MCP is not available"""
         mock_find_spec.return_value = None
@@ -370,7 +358,7 @@ class TestCheckSerenaMcpAvailable:
         result = check_serena_mcp_available()
         assert result is False
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_serena_check_raises_exception(self, mock_find_spec):
         """Test when check raises an exception"""
         mock_find_spec.side_effect = Exception("Import error")
@@ -383,24 +371,20 @@ class TestPopulateConfigData:
     """Tests for populate_config_data (integration)"""
 
     def test_populate_config_data_complete(
-        self,
-        tmp_path,
-        sample_claude_md_content,
-        sample_package_json,
-        sample_requirements_txt
+        self, tmp_path, sample_claude_md_content, sample_package_json, sample_requirements_txt
     ):
         """Test complete config_data population"""
         # Setup project structure
-        (tmp_path / "CLAUDE.md").write_text(sample_claude_md_content, encoding='utf-8')
-        (tmp_path / "package.json").write_text(json.dumps(sample_package_json), encoding='utf-8')
-        (tmp_path / "requirements.txt").write_text(sample_requirements_txt, encoding='utf-8')
+        (tmp_path / "CLAUDE.md").write_text(sample_claude_md_content, encoding="utf-8")
+        (tmp_path / "package.json").write_text(json.dumps(sample_package_json), encoding="utf-8")
+        (tmp_path / "requirements.txt").write_text(sample_requirements_txt, encoding="utf-8")
         (tmp_path / "docs").mkdir()
         (tmp_path / "alembic").mkdir()
         (tmp_path / "api").mkdir()
         (tmp_path / "frontend").mkdir()
         (tmp_path / "tests").mkdir()
 
-        with patch('src.giljo_mcp.config_manager.check_serena_mcp_available', return_value=True):
+        with patch("src.giljo_mcp.config_manager.check_serena_mcp_available", return_value=True):
             result = populate_config_data("test-product-123", tmp_path)
 
         # Verify all fields populated
@@ -418,9 +402,9 @@ class TestPopulateConfigData:
     def test_populate_config_data_minimal(self, tmp_path):
         """Test config_data population with minimal project"""
         # Only CLAUDE.md with minimal content
-        (tmp_path / "CLAUDE.md").write_text("# Project\n\nSimple project", encoding='utf-8')
+        (tmp_path / "CLAUDE.md").write_text("# Project\n\nSimple project", encoding="utf-8")
 
-        with patch('src.giljo_mcp.config_manager.check_serena_mcp_available', return_value=False):
+        with patch("src.giljo_mcp.config_manager.check_serena_mcp_available", return_value=False):
             result = populate_config_data("test-product-123", tmp_path)
 
         # Should have required fields with defaults
@@ -432,7 +416,7 @@ class TestPopulateConfigData:
 
     def test_populate_config_data_no_claude_md(self, tmp_path):
         """Test config_data population without CLAUDE.md"""
-        with patch('src.giljo_mcp.config_manager.check_serena_mcp_available', return_value=False):
+        with patch("src.giljo_mcp.config_manager.check_serena_mcp_available", return_value=False):
             result = populate_config_data("test-product-123", tmp_path)
 
         # Should have fallback architecture
@@ -441,10 +425,10 @@ class TestPopulateConfigData:
 
     def test_populate_config_data_uses_cwd_default(self):
         """Test that populate_config_data uses CWD when root_path not provided"""
-        with patch('src.giljo_mcp.config_manager.Path.cwd') as mock_cwd:
+        with patch("src.giljo_mcp.config_manager.Path.cwd") as mock_cwd:
             mock_cwd.return_value = Path("/fake/path")
-            with patch('src.giljo_mcp.config_manager.extract_architecture_from_claude_md', return_value="Test"):
-                with patch('src.giljo_mcp.config_manager.check_serena_mcp_available', return_value=False):
+            with patch("src.giljo_mcp.config_manager.extract_architecture_from_claude_md", return_value="Test"):
+                with patch("src.giljo_mcp.config_manager.check_serena_mcp_available", return_value=False):
                     populate_config_data("test-123")
 
             # Verify CWD was called

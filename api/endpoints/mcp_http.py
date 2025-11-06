@@ -32,15 +32,17 @@ Example Usage (Claude Code):
 """
 
 import logging
-from typing import Any, Dict, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_db_session
+
 from .mcp_session import MCPSessionManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +51,10 @@ router = APIRouter()
 
 # Pydantic models for JSON-RPC 2.0
 
+
 class JSONRPCRequest(BaseModel):
     """JSON-RPC 2.0 request"""
+
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     method: str = Field(..., description="Method name")
     params: Optional[Dict[str, Any]] = Field(None, description="Method parameters")
@@ -59,6 +63,7 @@ class JSONRPCRequest(BaseModel):
 
 class JSONRPCResponse(BaseModel):
     """JSON-RPC 2.0 success response"""
+
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     result: Any = Field(..., description="Result data")
     id: Optional[str | int] = Field(None, description="Request ID")
@@ -66,6 +71,7 @@ class JSONRPCResponse(BaseModel):
 
 class JSONRPCError(BaseModel):
     """JSON-RPC 2.0 error object"""
+
     code: int = Field(..., description="Error code")
     message: str = Field(..., description="Error message")
     data: Optional[Any] = Field(None, description="Additional error data")
@@ -73,6 +79,7 @@ class JSONRPCError(BaseModel):
 
 class JSONRPCErrorResponse(BaseModel):
     """JSON-RPC 2.0 error response"""
+
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     error: JSONRPCError = Field(..., description="Error details")
     id: Optional[str | int] = Field(None, description="Request ID")
@@ -80,10 +87,9 @@ class JSONRPCErrorResponse(BaseModel):
 
 # MCP Protocol Handlers
 
+
 async def handle_initialize(
-    params: Dict[str, Any],
-    session_manager: MCPSessionManager,
-    session_id: str
+    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
 ) -> Dict[str, Any]:
     """
     Handle MCP initialize request
@@ -101,8 +107,8 @@ async def handle_initialize(
             "initialized": True,
             "client_info": client_info,
             "protocol_version": protocol_version,
-            "client_capabilities": capabilities
-        }
+            "client_capabilities": capabilities,
+        },
     )
 
     logger.info(f"MCP session initialized: {session_id} (client: {client_info.get('name', 'unknown')})")
@@ -110,22 +116,13 @@ async def handle_initialize(
     # Return server capabilities
     return {
         "protocolVersion": "2024-11-05",
-        "serverInfo": {
-            "name": "giljo-mcp",
-            "version": "3.0.0"
-        },
-        "capabilities": {
-            "tools": {
-                "listChanged": False
-            }
-        }
+        "serverInfo": {"name": "giljo-mcp", "version": "3.0.0"},
+        "capabilities": {"tools": {"listChanged": False}},
     }
 
 
 async def handle_tools_list(
-    params: Dict[str, Any],
-    session_manager: MCPSessionManager,
-    session_id: str
+    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
 ) -> Dict[str, Any]:
     """
     Handle tools/list request
@@ -152,11 +149,11 @@ async def handle_tools_list(
                     "agents": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional list of agent names to initialize"
-                    }
+                        "description": "Optional list of agent names to initialize",
+                    },
                 },
-                "required": ["name", "mission"]
-            }
+                "required": ["name", "mission"],
+            },
         },
         {
             "name": "list_projects",
@@ -167,45 +164,38 @@ async def handle_tools_list(
                     "status": {
                         "type": "string",
                         "enum": ["active", "completed", "archived"],
-                        "description": "Optional status filter"
+                        "description": "Optional status filter",
                     }
-                }
-            }
+                },
+            },
         },
         {
             "name": "get_project",
             "description": "Get detailed project information",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID"}
-                },
-                "required": ["project_id"]
-            }
+                "properties": {"project_id": {"type": "string", "description": "Project ID"}},
+                "required": ["project_id"],
+            },
         },
         {
             "name": "switch_project",
             "description": "Switch to a different project context",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID to switch to"}
-                },
-                "required": ["project_id"]
-            }
+                "properties": {"project_id": {"type": "string", "description": "Project ID to switch to"}},
+                "required": ["project_id"],
+            },
         },
         {
             "name": "close_project",
             "description": "Close an active project",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID to close"}
-                },
-                "required": ["project_id"]
-            }
+                "properties": {"project_id": {"type": "string", "description": "Project ID to close"}},
+                "required": ["project_id"],
+            },
         },
-        
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
@@ -214,12 +204,11 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "orchestrator_id": {"type": "string", "description": "Orchestrator job UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["orchestrator_id", "tenant_key"]
-            }
+                "required": ["orchestrator_id", "tenant_key"],
+            },
         },
-        
         # Agent Management Tools
         {
             "name": "spawn_agent",
@@ -229,10 +218,10 @@ async def handle_tools_list(
                 "properties": {
                     "agent_type": {"type": "string", "description": "Type of agent to spawn"},
                     "project_id": {"type": "string", "description": "Project ID"},
-                    "configuration": {"type": "object", "description": "Agent configuration"}
+                    "configuration": {"type": "object", "description": "Agent configuration"},
                 },
-                "required": ["agent_type", "project_id"]
-            }
+                "required": ["agent_type", "project_id"],
+            },
         },
         {
             "name": "list_agents",
@@ -241,20 +230,18 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "Project ID"},
-                    "status": {"type": "string", "description": "Filter by agent status"}
-                }
-            }
+                    "status": {"type": "string", "description": "Filter by agent status"},
+                },
+            },
         },
         {
             "name": "get_agent_status",
             "description": "Get status of a specific agent",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "agent_id": {"type": "string", "description": "Agent ID"}
-                },
-                "required": ["agent_id"]
-            }
+                "properties": {"agent_id": {"type": "string", "description": "Agent ID"}},
+                "required": ["agent_id"],
+            },
         },
         {
             "name": "update_agent",
@@ -264,23 +251,20 @@ async def handle_tools_list(
                 "properties": {
                     "agent_id": {"type": "string", "description": "Agent ID"},
                     "status": {"type": "string", "description": "New status"},
-                    "configuration": {"type": "object", "description": "Configuration updates"}
+                    "configuration": {"type": "object", "description": "Configuration updates"},
                 },
-                "required": ["agent_id"]
-            }
+                "required": ["agent_id"],
+            },
         },
         {
             "name": "retire_agent",
             "description": "Retire an agent from active duty",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "agent_id": {"type": "string", "description": "Agent ID to retire"}
-                },
-                "required": ["agent_id"]
-            }
+                "properties": {"agent_id": {"type": "string", "description": "Agent ID to retire"}},
+                "required": ["agent_id"],
+            },
         },
-        
         # Message Communication Tools
         {
             "name": "send_message",
@@ -293,11 +277,11 @@ async def handle_tools_list(
                     "priority": {
                         "type": "string",
                         "enum": ["low", "medium", "high", "critical"],
-                        "description": "Message priority"
-                    }
+                        "description": "Message priority",
+                    },
                 },
-                "required": ["to_agent", "message"]
-            }
+                "required": ["to_agent", "message"],
+            },
         },
         {
             "name": "receive_messages",
@@ -306,20 +290,18 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "agent_id": {"type": "string", "description": "Receiving agent ID"},
-                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"}
-                }
-            }
+                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"},
+                },
+            },
         },
         {
             "name": "acknowledge_message",
             "description": "Acknowledge receipt of a message",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "message_id": {"type": "string", "description": "Message ID to acknowledge"}
-                },
-                "required": ["message_id"]
-            }
+                "properties": {"message_id": {"type": "string", "description": "Message ID to acknowledge"}},
+                "required": ["message_id"],
+            },
         },
         {
             "name": "list_messages",
@@ -329,11 +311,10 @@ async def handle_tools_list(
                 "properties": {
                     "agent_id": {"type": "string", "description": "Filter by agent"},
                     "status": {"type": "string", "description": "Filter by message status"},
-                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"}
-                }
-            }
+                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"},
+                },
+            },
         },
-        
         # Task Management Tools
         {
             "name": "create_task",
@@ -344,10 +325,10 @@ async def handle_tools_list(
                     "title": {"type": "string", "description": "Task title"},
                     "description": {"type": "string", "description": "Task description"},
                     "assigned_to": {"type": "string", "description": "Agent to assign task to"},
-                    "priority": {"type": "string", "description": "Task priority"}
+                    "priority": {"type": "string", "description": "Task priority"},
                 },
-                "required": ["title"]
-            }
+                "required": ["title"],
+            },
         },
         {
             "name": "list_tasks",
@@ -357,9 +338,9 @@ async def handle_tools_list(
                 "properties": {
                     "status": {"type": "string", "description": "Filter by task status"},
                     "assigned_to": {"type": "string", "description": "Filter by assignee"},
-                    "project_id": {"type": "string", "description": "Filter by project"}
-                }
-            }
+                    "project_id": {"type": "string", "description": "Filter by project"},
+                },
+            },
         },
         {
             "name": "update_task",
@@ -369,10 +350,10 @@ async def handle_tools_list(
                 "properties": {
                     "task_id": {"type": "string", "description": "Task ID"},
                     "status": {"type": "string", "description": "New status"},
-                    "updates": {"type": "object", "description": "Updates to apply"}
+                    "updates": {"type": "object", "description": "Updates to apply"},
                 },
-                "required": ["task_id"]
-            }
+                "required": ["task_id"],
+            },
         },
         {
             "name": "assign_task",
@@ -381,10 +362,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "string", "description": "Task ID"},
-                    "agent_id": {"type": "string", "description": "Agent to assign to"}
+                    "agent_id": {"type": "string", "description": "Agent to assign to"},
                 },
-                "required": ["task_id", "agent_id"]
-            }
+                "required": ["task_id", "agent_id"],
+            },
         },
         {
             "name": "complete_task",
@@ -393,31 +374,25 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "string", "description": "Task ID to complete"},
-                    "result": {"type": "string", "description": "Completion result/notes"}
+                    "result": {"type": "string", "description": "Completion result/notes"},
                 },
-                "required": ["task_id"]
-            }
+                "required": ["task_id"],
+            },
         },
-        
         # Template Management Tools
         {
             "name": "list_templates",
             "description": "List available agent templates",
-            "inputSchema": {
-                "type": "object",
-                "properties": {}
-            }
+            "inputSchema": {"type": "object", "properties": {}},
         },
         {
             "name": "get_template",
             "description": "Get a specific agent template",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "template_name": {"type": "string", "description": "Template name"}
-                },
-                "required": ["template_name"]
-            }
+                "properties": {"template_name": {"type": "string", "description": "Template name"}},
+                "required": ["template_name"],
+            },
         },
         {
             "name": "create_template",
@@ -426,10 +401,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "name": {"type": "string", "description": "Template name"},
-                    "content": {"type": "object", "description": "Template content"}
+                    "content": {"type": "object", "description": "Template content"},
                 },
-                "required": ["name", "content"]
-            }
+                "required": ["name", "content"],
+            },
         },
         {
             "name": "update_template",
@@ -438,33 +413,28 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "template_name": {"type": "string", "description": "Template name"},
-                    "updates": {"type": "object", "description": "Updates to apply"}
+                    "updates": {"type": "object", "description": "Updates to apply"},
                 },
-                "required": ["template_name", "updates"]
-            }
+                "required": ["template_name", "updates"],
+            },
         },
-        
         # Context Discovery Tools
         {
             "name": "discover_context",
             "description": "Discover available context in the project",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID"}
-                }
-            }
+                "properties": {"project_id": {"type": "string", "description": "Project ID"}},
+            },
         },
         {
             "name": "get_file_context",
             "description": "Get context from a specific file",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "file_path": {"type": "string", "description": "Path to file"}
-                },
-                "required": ["file_path"]
-            }
+                "properties": {"file_path": {"type": "string", "description": "Path to file"}},
+                "required": ["file_path"],
+            },
         },
         {
             "name": "search_context",
@@ -474,32 +444,25 @@ async def handle_tools_list(
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
                     "project_id": {"type": "string", "description": "Project ID"},
-                    "limit": {"type": "integer", "description": "Maximum results"}
+                    "limit": {"type": "integer", "description": "Maximum results"},
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         },
         {
             "name": "get_context_summary",
             "description": "Get summary of available context",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID"}
-                }
-            }
+                "properties": {"project_id": {"type": "string", "description": "Project ID"}},
+            },
         },
-        
         # Health & Status Tools
         {
             "name": "health_check",
             "description": "Check MCP server health status",
-            "inputSchema": {
-                "type": "object",
-                "properties": {}
-            }
+            "inputSchema": {"type": "object", "properties": {}},
         },
-
         # Agent Coordination Tools (Handover 0045)
         {
             "name": "get_pending_jobs",
@@ -508,10 +471,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "agent_type": {"type": "string", "description": "Agent type (implementer, tester, etc.)"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["agent_type", "tenant_key"]
-            }
+                "required": ["agent_type", "tenant_key"],
+            },
         },
         {
             "name": "acknowledge_job",
@@ -520,10 +483,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID to acknowledge"},
-                    "agent_id": {"type": "string", "description": "Agent identifier"}
+                    "agent_id": {"type": "string", "description": "Agent identifier"},
                 },
-                "required": ["job_id", "agent_id"]
-            }
+                "required": ["job_id", "agent_id"],
+            },
         },
         {
             "name": "report_progress",
@@ -532,10 +495,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID being worked on"},
-                    "progress": {"type": "object", "description": "Progress details"}
+                    "progress": {"type": "object", "description": "Progress details"},
                 },
-                "required": ["job_id", "progress"]
-            }
+                "required": ["job_id", "progress"],
+            },
         },
         {
             "name": "get_next_instruction",
@@ -545,10 +508,10 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID to check messages for"},
                     "agent_type": {"type": "string", "description": "Agent type"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["job_id", "agent_type", "tenant_key"]
-            }
+                "required": ["job_id", "agent_type", "tenant_key"],
+            },
         },
         {
             "name": "complete_job",
@@ -557,10 +520,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID to complete"},
-                    "result": {"type": "object", "description": "Completion result/notes"}
+                    "result": {"type": "object", "description": "Completion result/notes"},
                 },
-                "required": ["job_id", "result"]
-            }
+                "required": ["job_id", "result"],
+            },
         },
         {
             "name": "report_error",
@@ -569,12 +532,11 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID encountering error"},
-                    "error": {"type": "string", "description": "Error message"}
+                    "error": {"type": "string", "description": "Error message"},
                 },
-                "required": ["job_id", "error"]
-            }
+                "required": ["job_id", "error"],
+            },
         },
-
         # Orchestration Tools (Handover 0088)
         {
             "name": "orchestrate_project",
@@ -583,10 +545,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "Project ID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["project_id", "tenant_key"]
-            }
+                "required": ["project_id", "tenant_key"],
+            },
         },
         {
             "name": "get_agent_mission",
@@ -595,10 +557,10 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "agent_job_id": {"type": "string", "description": "Agent job UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["agent_job_id", "tenant_key"]
-            }
+                "required": ["agent_job_id", "tenant_key"],
+            },
         },
         {
             "name": "spawn_agent_job",
@@ -610,10 +572,10 @@ async def handle_tools_list(
                     "agent_name": {"type": "string", "description": "Agent name"},
                     "mission": {"type": "string", "description": "Agent mission"},
                     "project_id": {"type": "string", "description": "Project ID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["agent_type", "agent_name", "mission", "project_id", "tenant_key"]
-            }
+                "required": ["agent_type", "agent_name", "mission", "project_id", "tenant_key"],
+            },
         },
         {
             "name": "get_workflow_status",
@@ -622,12 +584,11 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "Project ID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["project_id", "tenant_key"]
-            }
+                "required": ["project_id", "tenant_key"],
+            },
         },
-
         # Orchestrator Succession Tools (Handover 0080)
         {
             "name": "create_successor_orchestrator",
@@ -640,11 +601,11 @@ async def handle_tools_list(
                     "reason": {
                         "type": "string",
                         "enum": ["context_limit", "manual", "phase_transition"],
-                        "description": "Succession reason"
-                    }
+                        "description": "Succession reason",
+                    },
                 },
-                "required": ["current_job_id", "tenant_key"]
-            }
+                "required": ["current_job_id", "tenant_key"],
+            },
         },
         {
             "name": "check_succession_status",
@@ -653,42 +614,33 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Orchestrator job UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["job_id", "tenant_key"]
-            }
+                "required": ["job_id", "tenant_key"],
+            },
         },
-
         # Slash Command Setup Tool (Handover 0093)
         {
             "name": "setup_slash_commands",
             "description": "Install GiljoAI slash commands to local CLI. Creates .md files in ~/.claude/commands/ for /gil_import_productagents, /gil_import_personalagents, and /gil_handover.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {}
-            }
+            "inputSchema": {"type": "object", "properties": {}},
         },
-
         # Slash Command Handlers (Handover 0084b)
         {
             "name": "gil_import_productagents",
             "description": "Import GiljoAI agent templates to current product's .claude/agents folder. Requires active product with project_path configured.",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Optional project ID"}
-                }
-            }
+                "properties": {"project_id": {"type": "string", "description": "Optional project ID"}},
+            },
         },
         {
             "name": "gil_import_personalagents",
             "description": "Import GiljoAI agent templates to personal ~/.claude/agents folder (available across all projects).",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Optional project ID"}
-                }
-            }
+                "properties": {"project_id": {"type": "string", "description": "Optional project ID"}},
+            },
         },
         {
             "name": "gil_handover",
@@ -700,11 +652,11 @@ async def handle_tools_list(
                     "reason": {
                         "type": "string",
                         "enum": ["context_limit", "manual", "phase_transition"],
-                        "description": "Succession reason"
-                    }
-                }
-            }
-        }
+                        "description": "Succession reason",
+                    },
+                },
+            },
+        },
     ]
 
     logger.debug(f"Listed {len(tools)} tools for session {session_id}")
@@ -713,10 +665,7 @@ async def handle_tools_list(
 
 
 async def handle_tools_call(
-    params: Dict[str, Any],
-    session_manager: MCPSessionManager,
-    session_id: str,
-    request: Request
+    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
 ) -> Dict[str, Any]:
     """
     Handle tools/call request
@@ -751,43 +700,36 @@ async def handle_tools_call(
         "get_project": state.tool_accessor.get_project,
         "switch_project": state.tool_accessor.switch_project,
         "close_project": state.tool_accessor.close_project,
-
         # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
         "health_check": state.tool_accessor.health_check,
-
         # Agent Management
         "spawn_agent": state.tool_accessor.spawn_agent,
         "list_agents": state.tool_accessor.list_agents,
         "get_agent_status": state.tool_accessor.get_agent_status,
         "update_agent": state.tool_accessor.update_agent,
         "retire_agent": state.tool_accessor.retire_agent,
-
         # Message Communication
         "send_message": state.tool_accessor.send_message,
         "receive_messages": state.tool_accessor.receive_messages,
         "acknowledge_message": state.tool_accessor.acknowledge_message,
         "list_messages": state.tool_accessor.list_messages,
-
         # Task Management
         "create_task": state.tool_accessor.create_task,
         "list_tasks": state.tool_accessor.list_tasks,
         "update_task": state.tool_accessor.update_task,
         "assign_task": state.tool_accessor.assign_task,
         "complete_task": state.tool_accessor.complete_task,
-
         # Template Management
         "list_templates": state.tool_accessor.list_templates,
         "get_template": state.tool_accessor.get_template,
         "create_template": state.tool_accessor.create_template,
         "update_template": state.tool_accessor.update_template,
-
         # Context Discovery
         "discover_context": state.tool_accessor.discover_context,
         "get_file_context": state.tool_accessor.get_file_context,
         "search_context": state.tool_accessor.search_context,
         "get_context_summary": state.tool_accessor.get_context_summary,
-
         # Agent Coordination (Handover 0045)
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
         "acknowledge_job": state.tool_accessor.acknowledge_job,
@@ -795,20 +737,16 @@ async def handle_tools_call(
         "get_next_instruction": state.tool_accessor.get_next_instruction,
         "complete_job": state.tool_accessor.complete_job,
         "report_error": state.tool_accessor.report_error,
-
         # Orchestration Tools (Handover 0088)
         "orchestrate_project": state.tool_accessor.orchestrate_project,
         "get_agent_mission": state.tool_accessor.get_agent_mission,
         "spawn_agent_job": state.tool_accessor.spawn_agent_job,
         "get_workflow_status": state.tool_accessor.get_workflow_status,
-
         # Succession Tools (Handover 0080)
         "create_successor_orchestrator": state.tool_accessor.create_successor_orchestrator,
         "check_succession_status": state.tool_accessor.check_succession_status,
-
         # Slash Command Setup Tool (Handover 0093)
         "setup_slash_commands": state.tool_accessor.setup_slash_commands,
-
         # Slash Command Handlers (Handover 0084b)
         "gil_import_productagents": state.tool_accessor.gil_import_productagents,
         "gil_import_personalagents": state.tool_accessor.gil_import_personalagents,
@@ -824,7 +762,9 @@ async def handle_tools_call(
         download_tools = {"setup_slash_commands", "gil_import_productagents", "gil_import_personalagents"}
         if tool_name in download_tools:
             # Get API key from request headers
-            api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace("Bearer ", "")
+            api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace(
+                "Bearer ", ""
+            )
             arguments["_api_key"] = api_key_value
 
             # Inject server URL from request (fix for 0.0.0.0 bind address issue)
@@ -847,9 +787,9 @@ async def handle_tools_call(
                 "last_tool_call": {
                     "tool": tool_name,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "success": True
+                    "success": True,
                 }
-            }
+            },
         )
 
         logger.info(f"Tool executed successfully: {tool_name} (session: {session_id})")
@@ -857,31 +797,16 @@ async def handle_tools_call(
         # Return result in MCP format
         # Convert result to JSON string for proper formatting
         import json
+
         result_text = json.dumps(result, indent=2, ensure_ascii=False)
 
-        return {
-            "content": [
-                {
-                    "type": "text",
-                    "text": result_text
-                }
-            ],
-            "isError": False
-        }
+        return {"content": [{"type": "text", "text": result_text}], "isError": False}
 
     except Exception as e:
         logger.error(f"Tool execution error: {tool_name} - {e}", exc_info=True)
 
         # Return error in MCP format
-        return {
-            "content": [
-                {
-                    "type": "text",
-                    "text": f"Error executing {tool_name}: {str(e)}"
-                }
-            ],
-            "isError": True
-        }
+        return {"content": [{"type": "text", "text": f"Error executing {tool_name}: {e!s}"}], "isError": True}
 
 
 @router.post("/mcp", tags=["MCP"])
@@ -890,7 +815,7 @@ async def mcp_endpoint(
     request: Request,
     x_api_key: Optional[str] = Header(None),
     authorization: Optional[str] = Header(None),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Pure MCP JSON-RPC 2.0 over HTTP endpoint
@@ -929,9 +854,9 @@ async def mcp_endpoint(
             error=JSONRPCError(
                 code=-32600,
                 message="Authentication required (X-API-Key or Authorization: Bearer)",
-                data={"headers": ["X-API-Key", "Authorization: Bearer <token>"]}
+                data={"headers": ["X-API-Key", "Authorization: Bearer <token>"]},
             ),
-            id=rpc_request.id
+            id=rpc_request.id,
         )
 
     # Initialize session manager
@@ -941,12 +866,7 @@ async def mcp_endpoint(
     session = await session_manager.get_or_create_session(api_key_value)
     if not session:
         return JSONRPCErrorResponse(
-            error=JSONRPCError(
-                code=-32600,
-                message="Invalid API key",
-                data={"authenticated": False}
-            ),
-            id=rpc_request.id
+            error=JSONRPCError(code=-32600, message="Invalid API key", data={"authenticated": False}), id=rpc_request.id
         )
 
     # Route to method handler
@@ -962,34 +882,18 @@ async def mcp_endpoint(
             result = await handle_tools_call(params, session_manager, session.session_id, request)
         else:
             return JSONRPCErrorResponse(
-                error=JSONRPCError(
-                    code=-32601,
-                    message=f"Method not found: {method}",
-                    data={"method": method}
-                ),
-                id=rpc_request.id
+                error=JSONRPCError(code=-32601, message=f"Method not found: {method}", data={"method": method}),
+                id=rpc_request.id,
             )
 
-        return JSONRPCResponse(
-            result=result,
-            id=rpc_request.id
-        )
+        return JSONRPCResponse(result=result, id=rpc_request.id)
 
     except HTTPException as e:
         return JSONRPCErrorResponse(
-            error=JSONRPCError(
-                code=-32603,
-                message=e.detail,
-                data={"status_code": e.status_code}
-            ),
-            id=rpc_request.id
+            error=JSONRPCError(code=-32603, message=e.detail, data={"status_code": e.status_code}), id=rpc_request.id
         )
     except Exception as e:
         logger.error(f"MCP endpoint error: {e}", exc_info=True)
         return JSONRPCErrorResponse(
-            error=JSONRPCError(
-                code=-32603,
-                message=f"Internal error: {str(e)}"
-            ),
-            id=rpc_request.id
+            error=JSONRPCError(code=-32603, message=f"Internal error: {e!s}"), id=rpc_request.id
         )

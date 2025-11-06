@@ -7,15 +7,17 @@ from product vision documents with 70% token reduction target.
 Following TDD principles: Tests written BEFORE implementation.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.orchestration_types import (
-    RequirementAnalysis,
-    Mission,
-    AgentConfig,
-)
 from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.orchestration_types import (
+    AgentConfig,
+    Mission,
+    RequirementAnalysis,
+)
 
 
 class TestMissionPlanner:
@@ -72,7 +74,7 @@ class TestMissionPlanner:
         product.config_data = {
             "tech_stack": ["Python", "FastAPI", "PostgreSQL", "Vue3"],
             "features": ["authentication", "api", "notifications", "dashboard"],
-            "guidelines": ["microservices", "event-driven", "TDD", "CI/CD"]
+            "guidelines": ["microservices", "event-driven", "TDD", "CI/CD"],
         }
         return product
 
@@ -96,21 +98,21 @@ class TestMissionPlanner:
                 template_id="template_orch",
                 template_content="You are an orchestrator...",
                 priority="required",
-                mission_scope="Coordinate all agents"
+                mission_scope="Coordinate all agents",
             ),
             AgentConfig(
                 role="implementer",
                 template_id="template_impl",
                 template_content="You are an implementer...",
                 priority="high",
-                mission_scope="Implement backend features"
+                mission_scope="Implement backend features",
             ),
             AgentConfig(
                 role="tester",
                 template_id="template_test",
                 template_content="You are a tester...",
                 priority="high",
-                mission_scope="Create comprehensive tests"
+                mission_scope="Create comprehensive tests",
             ),
         ]
 
@@ -230,31 +232,19 @@ class TestMissionPlanner:
 
     def test_assess_complexity_simple(self, mission_planner):
         """Test complexity assessment for simple projects."""
-        complexity = mission_planner._assess_complexity(
-            description_length=100,
-            feature_count=2,
-            tech_stack_size=2
-        )
+        complexity = mission_planner._assess_complexity(description_length=100, feature_count=2, tech_stack_size=2)
 
         assert complexity == "simple"
 
     def test_assess_complexity_moderate(self, mission_planner):
         """Test complexity assessment for moderate projects."""
-        complexity = mission_planner._assess_complexity(
-            description_length=600,
-            feature_count=4,
-            tech_stack_size=4
-        )
+        complexity = mission_planner._assess_complexity(description_length=600, feature_count=4, tech_stack_size=4)
 
         assert complexity == "moderate"
 
     def test_assess_complexity_complex(self, mission_planner):
         """Test complexity assessment for complex projects."""
-        complexity = mission_planner._assess_complexity(
-            description_length=1500,
-            feature_count=8,
-            tech_stack_size=6
-        )
+        complexity = mission_planner._assess_complexity(description_length=1500, feature_count=8, tech_stack_size=6)
 
         assert complexity == "complex"
 
@@ -270,12 +260,7 @@ class TestMissionPlanner:
 
     def test_estimate_agent_count_moderate(self, mission_planner):
         """Test agent count estimation for moderate projects."""
-        work_types = {
-            "orchestrator": "required",
-            "implementer": "high",
-            "tester": "high",
-            "code-reviewer": "medium"
-        }
+        work_types = {"orchestrator": "required", "implementer": "high", "tester": "high", "code-reviewer": "medium"}
         complexity = "moderate"
 
         count = mission_planner._estimate_agent_count(work_types, complexity)
@@ -291,7 +276,7 @@ class TestMissionPlanner:
             "tester": "high",
             "frontend-implementer": "high",
             "code-reviewer": "medium",
-            "documenter": "low"
+            "documenter": "low",
         }
         complexity = "complex"
 
@@ -330,13 +315,16 @@ class TestMissionPlanner:
             "Implementation: Backend API built with FastAPI and PostgreSQL database.",
             "Testing: Comprehensive test suite with pytest and 90% coverage.",
             "UI Design: Modern dashboard with Vue3 components.",
-            "Code quality: All code must follow PEP 8 standards."
+            "Code quality: All code must follow PEP 8 standards.",
         ]
 
         filtered = mission_planner._filter_vision_for_role(vision_chunks, "implementer")
 
         assert len(filtered) <= 3
-        assert any("implementation" in chunk.lower() or "architecture" in chunk.lower() or "api" in chunk.lower() for chunk in filtered)
+        assert any(
+            "implementation" in chunk.lower() or "architecture" in chunk.lower() or "api" in chunk.lower()
+            for chunk in filtered
+        )
 
     def test_filter_vision_for_role_tester(self, mission_planner):
         """Test vision filtering for tester role."""
@@ -345,13 +333,15 @@ class TestMissionPlanner:
             "Testing: Unit tests with pytest, integration tests required.",
             "Quality: 90% test coverage required for all modules.",
             "Validation: Input validation on all endpoints.",
-            "UI: Modern dashboard interface."
+            "UI: Modern dashboard interface.",
         ]
 
         filtered = mission_planner._filter_vision_for_role(vision_chunks, "tester")
 
         assert len(filtered) <= 3
-        assert any("test" in chunk.lower() or "quality" in chunk.lower() or "validation" in chunk.lower() for chunk in filtered)
+        assert any(
+            "test" in chunk.lower() or "quality" in chunk.lower() or "validation" in chunk.lower() for chunk in filtered
+        )
 
     def test_filter_vision_for_role_frontend_implementer(self, mission_planner):
         """Test vision filtering for frontend-implementer role."""
@@ -360,13 +350,15 @@ class TestMissionPlanner:
             "UI: Vue3 components with Vuetify design system.",
             "Design: Modern, responsive user interface.",
             "Components: Reusable UI components library.",
-            "Testing: E2E tests with Cypress."
+            "Testing: E2E tests with Cypress.",
         ]
 
         filtered = mission_planner._filter_vision_for_role(vision_chunks, "frontend-implementer")
 
         assert len(filtered) <= 3
-        assert any("ui" in chunk.lower() or "design" in chunk.lower() or "components" in chunk.lower() for chunk in filtered)
+        assert any(
+            "ui" in chunk.lower() or "design" in chunk.lower() or "components" in chunk.lower() for chunk in filtered
+        )
 
     def test_filter_vision_for_role_returns_top_3(self, mission_planner):
         """Test that vision filtering returns maximum 3 chunks."""
@@ -415,7 +407,7 @@ class TestMissionPlanner:
             tech_stack=["Python", "FastAPI"],
             keywords=["api", "database"],
             estimated_agents_needed=3,
-            feature_categories=["authentication", "api"]
+            feature_categories=["authentication", "api"],
         )
 
         criteria = mission_planner._get_success_criteria("implementer", analysis)
@@ -432,7 +424,7 @@ class TestMissionPlanner:
             tech_stack=["pytest"],
             keywords=["test"],
             estimated_agents_needed=2,
-            feature_categories=["testing"]
+            feature_categories=["testing"],
         )
 
         criteria = mission_planner._get_success_criteria("tester", analysis)
@@ -447,10 +439,7 @@ class TestMissionPlanner:
         """Test basic requirement analysis."""
         project_description = "Build a REST API with authentication and database"
 
-        analysis = await mission_planner.analyze_requirements(
-            sample_product,
-            project_description
-        )
+        analysis = await mission_planner.analyze_requirements(sample_product, project_description)
 
         assert isinstance(analysis, RequirementAnalysis)
         assert "orchestrator" in analysis.work_types
@@ -466,10 +455,7 @@ class TestMissionPlanner:
         """Test that requirement analysis extracts tech stack from product."""
         project_description = "Build a web application"
 
-        analysis = await mission_planner.analyze_requirements(
-            sample_product,
-            project_description
-        )
+        analysis = await mission_planner.analyze_requirements(sample_product, project_description)
 
         assert len(analysis.tech_stack) > 0
         assert "Python" in analysis.tech_stack or "FastAPI" in analysis.tech_stack
@@ -479,10 +465,7 @@ class TestMissionPlanner:
         """Test that requirement analysis extracts features from product."""
         project_description = "Build with authentication and API"
 
-        analysis = await mission_planner.analyze_requirements(
-            sample_product,
-            project_description
-        )
+        analysis = await mission_planner.analyze_requirements(sample_product, project_description)
 
         assert analysis.feature_categories is not None
         assert len(analysis.feature_categories) > 0
@@ -495,7 +478,7 @@ class TestMissionPlanner:
             template_id="template_impl",
             template_content="You are an implementer...",
             priority="high",
-            mission_scope="Implement backend API"
+            mission_scope="Implement backend API",
         )
 
         analysis = RequirementAnalysis(
@@ -504,22 +487,18 @@ class TestMissionPlanner:
             tech_stack=["Python", "FastAPI"],
             keywords=["api", "backend"],
             estimated_agents_needed=3,
-            feature_categories=["api"]
+            feature_categories=["api"],
         )
 
         vision_chunks = [
             "Backend implementation with FastAPI",
             "Database layer with PostgreSQL",
-            "RESTful API design patterns"
+            "RESTful API design patterns",
         ]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks[:3]):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks[:3]):
             mission = await mission_planner._generate_agent_mission(
-                agent_config,
-                analysis,
-                sample_product,
-                sample_project,
-                vision_chunks
+                agent_config, analysis, sample_product, sample_project, vision_chunks
             )
 
         assert isinstance(mission, Mission)
@@ -532,14 +511,16 @@ class TestMissionPlanner:
         assert isinstance(mission.context_chunk_ids, list)
 
     @pytest.mark.asyncio
-    async def test_generate_agent_mission_includes_project_context(self, mission_planner, sample_product, sample_project):
+    async def test_generate_agent_mission_includes_project_context(
+        self, mission_planner, sample_product, sample_project
+    ):
         """Test that generated mission includes project context."""
         agent_config = AgentConfig(
             role="tester",
             template_id="template_test",
             template_content="You are a tester...",
             priority="high",
-            mission_scope="Create test suite"
+            mission_scope="Create test suite",
         )
 
         analysis = RequirementAnalysis(
@@ -547,48 +528,39 @@ class TestMissionPlanner:
             complexity="simple",
             tech_stack=["pytest"],
             keywords=["test"],
-            estimated_agents_needed=2
+            estimated_agents_needed=2,
         )
 
         vision_chunks = ["Testing with pytest framework"]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             mission = await mission_planner._generate_agent_mission(
-                agent_config,
-                analysis,
-                sample_product,
-                sample_project,
-                vision_chunks
+                agent_config, analysis, sample_product, sample_project, vision_chunks
             )
 
         assert sample_project.name in mission.content or sample_product.name in mission.content
 
     @pytest.mark.asyncio
-    async def test_generate_missions_all_agents(self, mission_planner, sample_product, sample_project, sample_agent_configs, mock_context_chunks):
+    async def test_generate_missions_all_agents(
+        self, mission_planner, sample_product, sample_project, sample_agent_configs, mock_context_chunks
+    ):
         """Test generating missions for all agents."""
         analysis = RequirementAnalysis(
-            work_types={
-                "orchestrator": "required",
-                "implementer": "high",
-                "tester": "high"
-            },
+            work_types={"orchestrator": "required", "implementer": "high", "tester": "high"},
             complexity="moderate",
             tech_stack=["Python", "FastAPI", "PostgreSQL"],
             keywords=["api", "test", "database"],
             estimated_agents_needed=3,
-            feature_categories=["api", "testing"]
+            feature_categories=["api", "testing"],
         )
 
         # Mock ContextRepository search
-        with patch('src.giljo_mcp.mission_planner.ContextRepository') as MockContextRepo:
+        with patch("src.giljo_mcp.mission_planner.ContextRepository") as MockContextRepo:
             mock_repo = MockContextRepo.return_value
             mock_repo.search_chunks = Mock(return_value=mock_context_chunks)
 
             missions = await mission_planner.generate_missions(
-                analysis,
-                sample_product,
-                sample_project,
-                sample_agent_configs
+                analysis, sample_product, sample_project, sample_agent_configs
             )
 
         assert isinstance(missions, dict)
@@ -603,29 +575,24 @@ class TestMissionPlanner:
             assert mission.token_count > 0
 
     @pytest.mark.asyncio
-    async def test_generate_missions_token_reduction(self, mission_planner, sample_product, sample_project, sample_agent_configs, mock_context_chunks):
+    async def test_generate_missions_token_reduction(
+        self, mission_planner, sample_product, sample_project, sample_agent_configs, mock_context_chunks
+    ):
         """Test that mission generation produces structured, targeted missions."""
         analysis = RequirementAnalysis(
-            work_types={
-                "orchestrator": "required",
-                "implementer": "high",
-                "tester": "high"
-            },
+            work_types={"orchestrator": "required", "implementer": "high", "tester": "high"},
             complexity="moderate",
             tech_stack=["Python", "FastAPI"],
             keywords=["api", "test"],
-            estimated_agents_needed=3
+            estimated_agents_needed=3,
         )
 
-        with patch('src.giljo_mcp.mission_planner.ContextRepository') as MockContextRepo:
+        with patch("src.giljo_mcp.mission_planner.ContextRepository") as MockContextRepo:
             mock_repo = MockContextRepo.return_value
             mock_repo.search_chunks = Mock(return_value=mock_context_chunks)
 
             missions = await mission_planner.generate_missions(
-                analysis,
-                sample_product,
-                sample_project,
-                sample_agent_configs
+                analysis, sample_product, sample_project, sample_agent_configs
             )
 
         # Verify missions were generated
@@ -645,27 +612,24 @@ class TestMissionPlanner:
         # because it provides structure and clarity.
 
     @pytest.mark.asyncio
-    async def test_generate_missions_stores_metrics(self, mission_planner, sample_product, sample_project, sample_agent_configs, mock_context_chunks):
+    async def test_generate_missions_stores_metrics(
+        self, mission_planner, sample_product, sample_project, sample_agent_configs, mock_context_chunks
+    ):
         """Test that mission generation stores token metrics."""
         analysis = RequirementAnalysis(
             work_types={"orchestrator": "required", "implementer": "high"},
             complexity="simple",
             tech_stack=["Python"],
             keywords=["api"],
-            estimated_agents_needed=2
+            estimated_agents_needed=2,
         )
 
-        with patch('src.giljo_mcp.mission_planner.ContextRepository') as MockContextRepo:
+        with patch("src.giljo_mcp.mission_planner.ContextRepository") as MockContextRepo:
             mock_repo = MockContextRepo.return_value
             mock_repo.search_chunks = Mock(return_value=mock_context_chunks)
 
-            with patch.object(mission_planner, '_store_token_metrics') as mock_store:
-                await mission_planner.generate_missions(
-                    analysis,
-                    sample_product,
-                    sample_project,
-                    sample_agent_configs
-                )
+            with patch.object(mission_planner, "_store_token_metrics") as mock_store:
+                await mission_planner.generate_missions(analysis, sample_product, sample_project, sample_agent_configs)
 
                 # Verify metrics were stored
                 mock_store.assert_called_once()
@@ -688,18 +652,15 @@ class TestMissionPlanner:
         mission_tokens = 2500
         reduction_percent = 75.0
 
-        await mission_planner._store_token_metrics(
-            project_id,
-            original_tokens,
-            mission_tokens,
-            reduction_percent
-        )
+        await mission_planner._store_token_metrics(project_id, original_tokens, mission_tokens, reduction_percent)
 
         # Should have attempted to update project
         assert mock_db_manager.get_session_async.called
 
     @pytest.mark.asyncio
-    async def test_generate_missions_respects_priority(self, mission_planner, sample_product, sample_project, mock_context_chunks):
+    async def test_generate_missions_respects_priority(
+        self, mission_planner, sample_product, sample_project, mock_context_chunks
+    ):
         """Test that generated missions respect agent priorities."""
         agent_configs = [
             AgentConfig(
@@ -707,71 +668,61 @@ class TestMissionPlanner:
                 template_id="t1",
                 template_content="Template 1",
                 priority="required",
-                mission_scope="Scope 1"
+                mission_scope="Scope 1",
             ),
             AgentConfig(
                 role="implementer",
                 template_id="t2",
                 template_content="Template 2",
                 priority="high",
-                mission_scope="Scope 2"
+                mission_scope="Scope 2",
             ),
             AgentConfig(
                 role="documenter",
                 template_id="t3",
                 template_content="Template 3",
                 priority="low",
-                mission_scope="Scope 3"
+                mission_scope="Scope 3",
             ),
         ]
 
         analysis = RequirementAnalysis(
-            work_types={
-                "orchestrator": "required",
-                "implementer": "high",
-                "documenter": "low"
-            },
+            work_types={"orchestrator": "required", "implementer": "high", "documenter": "low"},
             complexity="simple",
             tech_stack=["Python"],
             keywords=["api"],
-            estimated_agents_needed=3
+            estimated_agents_needed=3,
         )
 
-        with patch('src.giljo_mcp.mission_planner.ContextRepository') as MockContextRepo:
+        with patch("src.giljo_mcp.mission_planner.ContextRepository") as MockContextRepo:
             mock_repo = MockContextRepo.return_value
             mock_repo.search_chunks = Mock(return_value=mock_context_chunks)
 
-            missions = await mission_planner.generate_missions(
-                analysis,
-                sample_product,
-                sample_project,
-                agent_configs
-            )
+            missions = await mission_planner.generate_missions(analysis, sample_product, sample_project, agent_configs)
 
         assert missions["orchestrator"].priority == "required"
         assert missions["implementer"].priority == "high"
         assert missions["documenter"].priority == "low"
 
     @pytest.mark.asyncio
-    async def test_generate_missions_with_no_vision_chunks(self, mission_planner, sample_product, sample_project, sample_agent_configs):
+    async def test_generate_missions_with_no_vision_chunks(
+        self, mission_planner, sample_product, sample_project, sample_agent_configs
+    ):
         """Test mission generation when no vision chunks are found."""
         analysis = RequirementAnalysis(
             work_types={"orchestrator": "required"},
             complexity="simple",
             tech_stack=["Python"],
             keywords=["api"],
-            estimated_agents_needed=1
+            estimated_agents_needed=1,
         )
 
-        with patch('src.giljo_mcp.mission_planner.ContextRepository') as MockContextRepo:
+        with patch("src.giljo_mcp.mission_planner.ContextRepository") as MockContextRepo:
             mock_repo = MockContextRepo.return_value
             mock_repo.search_chunks = Mock(return_value=[])
 
             missions = await mission_planner.generate_missions(
-                analysis,
-                sample_product,
-                sample_project,
-                sample_agent_configs
+                analysis, sample_product, sample_project, sample_agent_configs
             )
 
         # Should still generate missions even without chunks
@@ -785,6 +736,6 @@ class TestMissionPlanner:
         planner = MissionPlanner(mock_db_manager)
 
         assert planner.db_manager == mock_db_manager
-        assert hasattr(planner, '_count_tokens')
-        assert hasattr(planner, 'analyze_requirements')
-        assert hasattr(planner, 'generate_missions')
+        assert hasattr(planner, "_count_tokens")
+        assert hasattr(planner, "analyze_requirements")
+        assert hasattr(planner, "generate_missions")

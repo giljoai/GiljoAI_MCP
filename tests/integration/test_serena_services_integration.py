@@ -13,11 +13,9 @@ and proper service coordination.
 
 import json
 import subprocess
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 import yaml
 
 
@@ -63,7 +61,7 @@ class TestSerenaDetectorService:
         def mock_run(cmd, *args, **kwargs):
             if "uvx" in cmd and "--version" in cmd:
                 return MagicMock(returncode=0, stdout="uvx 0.1.0")
-            elif "serena" in cmd:
+            if "serena" in cmd:
                 return MagicMock(returncode=0, stdout="Serena MCP v1.2.3")
             return MagicMock(returncode=1)
 
@@ -167,7 +165,7 @@ class TestClaudeConfigManagerService:
         original_atomic_write = manager._atomic_write
 
         def mock_atomic_write(*args, **kwargs):
-            raise IOError("Write failed")
+            raise OSError("Write failed")
 
         monkeypatch.setattr(manager, "_atomic_write", mock_atomic_write)
 
@@ -187,9 +185,7 @@ class TestClaudeConfigManagerService:
         from src.giljo_mcp.services.claude_config_manager import ClaudeConfigManager
 
         claude_config_path = tmp_path / ".claude.json"
-        initial_config = {
-            "mcpServers": {"serena": {"command": "uvx"}, "other": {"command": "test"}}
-        }
+        initial_config = {"mcpServers": {"serena": {"command": "uvx"}, "other": {"command": "test"}}}
         claude_config_path.write_text(json.dumps(initial_config))
 
         manager = ClaudeConfigManager()
@@ -245,11 +241,7 @@ class TestConfigService:
         from src.giljo_mcp.services.config_service import ConfigService
 
         config_path = tmp_path / "config.yaml"
-        config_data = {
-            "features": {
-                "serena_mcp": {"enabled": True, "installed": True, "registered": True}
-            }
-        }
+        config_data = {"features": {"serena_mcp": {"enabled": True, "installed": True, "registered": True}}}
         config_path.write_text(yaml.dump(config_data))
 
         service = ConfigService(config_path)
@@ -381,11 +373,7 @@ class TestTemplateManagerIntegration:
 
         # Create config with serena enabled
         config_path = tmp_path / "config.yaml"
-        config_data = {
-            "features": {
-                "serena_mcp": {"enabled": True, "installed": True, "registered": True}
-            }
-        }
+        config_data = {"features": {"serena_mcp": {"enabled": True, "installed": True, "registered": True}}}
         config_path.write_text(yaml.dump(config_data))
 
         # Initialize services
@@ -406,11 +394,7 @@ class TestTemplateManagerIntegration:
 
         # Create config with serena disabled
         config_path = tmp_path / "config.yaml"
-        config_data = {
-            "features": {
-                "serena_mcp": {"enabled": False, "installed": False, "registered": False}
-            }
-        }
+        config_data = {"features": {"serena_mcp": {"enabled": False, "installed": False, "registered": False}}}
         config_path.write_text(yaml.dump(config_data))
 
         config_service = ConfigService(config_path)
@@ -427,11 +411,7 @@ class TestTemplateManagerIntegration:
         from src.giljo_mcp.template_manager import TemplateManager
 
         config_path = tmp_path / "config.yaml"
-        config_data = {
-            "features": {
-                "serena_mcp": {"enabled": True, "installed": True, "registered": True}
-            }
-        }
+        config_data = {"features": {"serena_mcp": {"enabled": True, "installed": True, "registered": True}}}
         config_path.write_text(yaml.dump(config_data))
 
         config_service = ConfigService(config_path)

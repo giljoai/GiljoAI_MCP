@@ -10,9 +10,9 @@ Tests validate that installer templates:
 - Merge JSON configurations safely
 """
 
-import pytest
 from pathlib import Path
-import re
+
+import pytest
 
 
 class TestMCPTemplateStructure:
@@ -36,7 +36,7 @@ class TestWindowsTemplatePlaceholders:
     def windows_template(self):
         """Load Windows template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.bat.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_server_url_placeholder(self, windows_template):
         """Test template contains {server_url} placeholder"""
@@ -66,7 +66,7 @@ class TestUnixTemplatePlaceholders:
     def unix_template(self):
         """Load Unix template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.sh.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_server_url_placeholder(self, unix_template):
         """Test template contains {server_url} placeholder"""
@@ -96,7 +96,7 @@ class TestWindowsTemplateSyntax:
     def windows_template(self):
         """Load Windows template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.bat.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_batch_file_header(self, windows_template):
         """Test template starts with proper batch file header"""
@@ -127,14 +127,16 @@ class TestWindowsTemplateSyntax:
 
     def test_error_handling(self, windows_template):
         """Test template includes error handling"""
-        assert "errorlevel" in windows_template.lower() or "if %errorlevel%" in windows_template.lower(), \
+        assert "errorlevel" in windows_template.lower() or "if %errorlevel%" in windows_template.lower(), (
             "Must check for errors with errorlevel"
+        )
 
     def test_user_instructions(self, windows_template):
         """Test template provides user instructions"""
         assert "restart" in windows_template.lower(), "Must instruct user to restart tools"
-        assert "pause" in windows_template.lower() or "press any key" in windows_template.lower(), \
+        assert "pause" in windows_template.lower() or "press any key" in windows_template.lower(), (
             "Must pause for user to read output"
+        )
 
 
 class TestUnixTemplateSyntax:
@@ -144,23 +146,26 @@ class TestUnixTemplateSyntax:
     def unix_template(self):
         """Load Unix template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.sh.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_shebang(self, unix_template):
         """Test template starts with proper shebang"""
-        assert unix_template.startswith("#!/bin/bash") or unix_template.startswith("#!/usr/bin/env bash"), \
+        assert unix_template.startswith("#!/bin/bash") or unix_template.startswith("#!/usr/bin/env bash"), (
             "Shell script must start with proper shebang"
+        )
 
     def test_claude_code_detection(self, unix_template):
         """Test template detects Claude Code config"""
-        assert "~/.claude.json" in unix_template or "$HOME/.claude.json" in unix_template, \
+        assert "~/.claude.json" in unix_template or "$HOME/.claude.json" in unix_template, (
             "Must detect Claude Code at ~/.claude.json"
+        )
 
     def test_cursor_detection_linux(self, unix_template):
         """Test template detects Cursor on Linux"""
         assert "Cursor" in unix_template, "Must detect Cursor"
-        assert ".config/Cursor" in unix_template or "Library/Application Support/Cursor" in unix_template, \
+        assert ".config/Cursor" in unix_template or "Library/Application Support/Cursor" in unix_template, (
             "Must check Linux or macOS Cursor paths"
+        )
 
     def test_windsurf_detection(self, unix_template):
         """Test template detects Windsurf config"""
@@ -170,8 +175,9 @@ class TestUnixTemplateSyntax:
         """Test template creates timestamped backups"""
         assert "backup" in unix_template.lower(), "Must create backup before modifying config"
         # Should use date command for timestamp
-        assert "date" in unix_template.lower() or "$(date" in unix_template, \
+        assert "date" in unix_template.lower() or "$(date" in unix_template, (
             "Should use date command for backup timestamp"
+        )
 
     def test_jq_json_merging(self, unix_template):
         """Test template uses jq for JSON manipulation"""
@@ -180,22 +186,24 @@ class TestUnixTemplateSyntax:
     def test_dependency_checking(self, unix_template):
         """Test template checks for required dependencies"""
         # Should check if jq is installed
-        assert "command -v jq" in unix_template or "which jq" in unix_template or \
-               "type jq" in unix_template, "Must check if jq is available"
+        assert "command -v jq" in unix_template or "which jq" in unix_template or "type jq" in unix_template, (
+            "Must check if jq is available"
+        )
 
     def test_error_handling(self, unix_template):
         """Test template includes error handling"""
-        assert "$?" in unix_template or "set -e" in unix_template, \
-            "Must check command exit codes for error handling"
+        assert "$?" in unix_template or "set -e" in unix_template, "Must check command exit codes for error handling"
 
     def test_color_output(self, unix_template):
         """Test template uses color output for better UX"""
         # Common color codes or tput usage
-        has_colors = any([
-            "\\033[" in unix_template,  # ANSI color codes
-            "\\e[" in unix_template,    # Alternative ANSI codes
-            "tput" in unix_template     # tput color commands
-        ])
+        has_colors = any(
+            [
+                "\\033[" in unix_template,  # ANSI color codes
+                "\\e[" in unix_template,  # Alternative ANSI codes
+                "tput" in unix_template,  # tput color commands
+            ]
+        )
         assert has_colors, "Should use color output for better user experience"
 
 
@@ -206,13 +214,13 @@ class TestMCPServerConfiguration:
     def windows_template(self):
         """Load Windows template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.bat.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     @pytest.fixture
     def unix_template(self):
         """Load Unix template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.sh.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_windows_mcp_server_name(self, windows_template):
         """Test Windows template uses correct MCP server name"""
@@ -252,19 +260,20 @@ class TestTemplateSafetyFeatures:
     def windows_template(self):
         """Load Windows template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.bat.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     @pytest.fixture
     def unix_template(self):
         """Load Unix template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.sh.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_windows_backup_before_modify(self, windows_template):
         """Test Windows template creates backup before modifying"""
         # Should use 'copy' before any PowerShell ConvertFrom-Json
-        assert "copy" in windows_template.lower() or "xcopy" in windows_template.lower(), \
+        assert "copy" in windows_template.lower() or "xcopy" in windows_template.lower(), (
             "Must create backup with copy command"
+        )
 
     def test_unix_backup_before_modify(self, unix_template):
         """Test Unix template creates backup before modifying"""
@@ -276,8 +285,9 @@ class TestTemplateSafetyFeatures:
         # Should load existing config, then merge
         assert "ConvertFrom-Json" in windows_template, "Must load existing config"
         # Should use safe write methods (Set-Content or WriteAllText)
-        assert "Set-Content" in windows_template or "WriteAllText" in windows_template, \
+        assert "Set-Content" in windows_template or "WriteAllText" in windows_template, (
             "Must use Set-Content or WriteAllText for controlled writes"
+        )
 
     def test_unix_preserves_existing_config(self, unix_template):
         """Test Unix template merges rather than replaces config"""
@@ -292,47 +302,43 @@ class TestTemplateUserExperience:
     def windows_template(self):
         """Load Windows template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.bat.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     @pytest.fixture
     def unix_template(self):
         """Load Unix template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.sh.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_windows_summary_output(self, windows_template):
         """Test Windows template shows configuration summary"""
-        assert "Configuration Complete" in windows_template or "summary" in windows_template.lower(), \
+        assert "Configuration Complete" in windows_template or "summary" in windows_template.lower(), (
             "Must show configuration summary"
+        )
 
     def test_unix_summary_output(self, unix_template):
         """Test Unix template shows configuration summary"""
-        assert "Configuration Complete" in unix_template or "summary" in unix_template.lower(), \
+        assert "Configuration Complete" in unix_template or "summary" in unix_template.lower(), (
             "Must show configuration summary"
+        )
 
     def test_windows_clear_status_messages(self, windows_template):
         """Test Windows template shows clear status messages"""
-        assert "[FOUND]" in windows_template or "[OK]" in windows_template, \
-            "Must show clear status indicators"
-        assert "[SKIP]" in windows_template or "[ERROR]" in windows_template, \
-            "Must show skip/error indicators"
+        assert "[FOUND]" in windows_template or "[OK]" in windows_template, "Must show clear status indicators"
+        assert "[SKIP]" in windows_template or "[ERROR]" in windows_template, "Must show skip/error indicators"
 
     def test_unix_clear_status_messages(self, unix_template):
         """Test Unix template shows clear status messages"""
-        assert "[FOUND]" in unix_template or "[OK]" in unix_template, \
-            "Must show clear status indicators"
-        assert "[SKIP]" in unix_template or "[ERROR]" in unix_template, \
-            "Must show skip/error indicators"
+        assert "[FOUND]" in unix_template or "[OK]" in unix_template, "Must show clear status indicators"
+        assert "[SKIP]" in unix_template or "[ERROR]" in unix_template, "Must show skip/error indicators"
 
     def test_windows_restart_instructions(self, windows_template):
         """Test Windows template instructs user to restart tools"""
-        assert "restart" in windows_template.lower(), \
-            "Must instruct user to restart development tools"
+        assert "restart" in windows_template.lower(), "Must instruct user to restart development tools"
 
     def test_unix_restart_instructions(self, unix_template):
         """Test Unix template instructs user to restart tools"""
-        assert "restart" in unix_template.lower(), \
-            "Must instruct user to restart development tools"
+        assert "restart" in unix_template.lower(), "Must instruct user to restart development tools"
 
 
 class TestTemplateCrossPlatformSupport:
@@ -342,19 +348,19 @@ class TestTemplateCrossPlatformSupport:
     def unix_template(self):
         """Load Unix template content"""
         template_path = Path("installer/templates/giljo-mcp-setup.sh.template")
-        return template_path.read_text(encoding='utf-8')
+        return template_path.read_text(encoding="utf-8")
 
     def test_unix_handles_macos_paths(self, unix_template):
         """Test Unix template handles macOS-specific paths"""
         # macOS uses ~/Library/Application Support
-        assert "Library/Application Support" in unix_template or "uname" in unix_template, \
+        assert "Library/Application Support" in unix_template or "uname" in unix_template, (
             "Must handle macOS-specific paths or detect OS"
+        )
 
     def test_unix_handles_linux_paths(self, unix_template):
         """Test Unix template handles Linux-specific paths"""
         # Linux uses ~/.config
-        assert ".config" in unix_template or "uname" in unix_template, \
-            "Must handle Linux-specific paths or detect OS"
+        assert ".config" in unix_template or "uname" in unix_template, "Must handle Linux-specific paths or detect OS"
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ Revises: add_agent_interactions_table
 Create Date: 2025-01-14 23:00:00.000000
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -56,9 +57,7 @@ def upgrade():
 
     # Create unique constraint
     op.create_unique_constraint(
-        "uq_template_product_name_version",
-        "agent_templates",
-        ["product_id", "name", "version"]
+        "uq_template_product_name_version", "agent_templates", ["product_id", "name", "version"]
     )
 
     # Create template_archives table

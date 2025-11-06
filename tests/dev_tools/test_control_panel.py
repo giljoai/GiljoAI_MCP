@@ -11,13 +11,13 @@ Tests all control panel functionality including:
 - Cross-platform path handling
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
+import platform
 import subprocess
 import sys
-import os
-import platform
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 # Import the control panel module (will be implemented after tests)
@@ -50,14 +50,13 @@ def control_panel(mock_project_root):
     """Create a control panel instance for testing."""
     # This will be implemented after the class is created
     # For now, tests define expected behavior
-    pass
 
 
 class TestAdminPrivilegeDetection:
     """Test admin privilege checking."""
 
-    @patch('sys.platform', 'win32')
-    @patch('ctypes.windll.shell32.IsUserAnAdmin')
+    @patch("sys.platform", "win32")
+    @patch("ctypes.windll.shell32.IsUserAnAdmin")
     def test_check_admin_windows_admin(self, mock_is_admin):
         """Test admin check on Windows when user is admin."""
         mock_is_admin.return_value = 1
@@ -66,8 +65,8 @@ class TestAdminPrivilegeDetection:
         # Implementation will check ctypes.windll.shell32.IsUserAnAdmin()
         assert mock_is_admin() == 1
 
-    @patch('sys.platform', 'win32')
-    @patch('ctypes.windll.shell32.IsUserAnAdmin')
+    @patch("sys.platform", "win32")
+    @patch("ctypes.windll.shell32.IsUserAnAdmin")
     def test_check_admin_windows_not_admin(self, mock_is_admin):
         """Test admin check on Windows when user is not admin."""
         mock_is_admin.return_value = 0
@@ -75,8 +74,8 @@ class TestAdminPrivilegeDetection:
         # Expected behavior: should return False
         assert mock_is_admin() == 0
 
-    @patch('sys.platform', 'linux')
-    @patch('os.geteuid')
+    @patch("sys.platform", "linux")
+    @patch("os.geteuid")
     def test_check_admin_linux_root(self, mock_geteuid):
         """Test admin check on Linux when user is root."""
         mock_geteuid.return_value = 0
@@ -84,8 +83,8 @@ class TestAdminPrivilegeDetection:
         # Expected behavior: should return True for root (uid 0)
         assert mock_geteuid() == 0
 
-    @patch('sys.platform', 'linux')
-    @patch('os.geteuid')
+    @patch("sys.platform", "linux")
+    @patch("os.geteuid")
     def test_check_admin_linux_not_root(self, mock_geteuid):
         """Test admin check on Linux when user is not root."""
         mock_geteuid.return_value = 1000
@@ -97,7 +96,7 @@ class TestAdminPrivilegeDetection:
 class TestServiceManagement:
     """Test service start/stop/restart functionality."""
 
-    @patch('subprocess.Popen')
+    @patch("subprocess.Popen")
     def test_start_backend_service(self, mock_popen):
         """Test starting backend API service."""
         mock_process = Mock()
@@ -116,7 +115,7 @@ class TestServiceManagement:
         proc = mock_popen(expected_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert proc.poll() is None  # Process should be running
 
-    @patch('subprocess.Popen')
+    @patch("subprocess.Popen")
     def test_start_frontend_service(self, mock_popen):
         """Test starting frontend dev server."""
         mock_process = Mock()
@@ -130,7 +129,7 @@ class TestServiceManagement:
         proc = mock_popen(expected_cmd, cwd="frontend", stdout=subprocess.PIPE)
         assert proc.poll() is None
 
-    @patch('subprocess.Popen')
+    @patch("subprocess.Popen")
     def test_stop_services(self, mock_popen):
         """Test stopping all running services."""
         mock_process = Mock()
@@ -149,7 +148,7 @@ class TestServiceManagement:
         proc.kill()
         mock_process.kill.assert_called_once()
 
-    @patch('psutil.Process')
+    @patch("psutil.Process")
     def test_check_service_status(self, mock_psutil_process):
         """Test checking if services are running."""
         mock_proc = Mock()
@@ -161,7 +160,7 @@ class TestServiceManagement:
         proc = mock_psutil_process(1234)
         assert proc.is_running() is True
 
-    @patch('subprocess.Popen')
+    @patch("subprocess.Popen")
     def test_restart_service(self, mock_popen):
         """Test restarting a service (stop then start)."""
         mock_process = Mock()
@@ -184,7 +183,7 @@ class TestServiceManagement:
 class TestDatabaseManagement:
     """Test database connection and management features."""
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_check_database_connection(self, mock_connect):
         """Test checking PostgreSQL connection."""
         mock_conn = Mock()
@@ -196,7 +195,7 @@ class TestDatabaseManagement:
         mock_connect.assert_called_once()
         assert conn is not None
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_check_database_connection_failure(self, mock_connect):
         """Test handling connection failure."""
         mock_connect.side_effect = Exception("Connection refused")
@@ -205,7 +204,7 @@ class TestDatabaseManagement:
         with pytest.raises(Exception):
             mock_connect(host="localhost", port=5432)
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_check_database_exists(self, mock_connect):
         """Test checking if giljo_mcp database exists."""
         mock_conn = Mock()
@@ -222,7 +221,7 @@ class TestDatabaseManagement:
 
         assert result == ("giljo_mcp",)
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_delete_database(self, mock_connect):
         """Test deleting giljo_mcp database."""
         mock_conn = Mock()
@@ -237,14 +236,13 @@ class TestDatabaseManagement:
 
         mock_cursor.execute.assert_called_once_with("DROP DATABASE IF EXISTS giljo_mcp")
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_delete_database_requires_confirmation(self, mock_connect):
         """Test that database deletion requires confirmation."""
         # Expected: should show confirmation dialog before deletion
         # Dialog should list what will be deleted
         # Should only proceed if user confirms
         # This will be tested with GUI mock
-        pass
 
 
 class TestDevelopmentReset:
@@ -270,6 +268,7 @@ class TestDevelopmentReset:
 
         # Expected: should remove entire venv directory
         import shutil
+
         shutil.rmtree(venv_path)
 
         assert not venv_path.exists()
@@ -294,7 +293,6 @@ class TestDevelopmentReset:
         # Expected: should show confirmation dialog
         # Dialog should list what will be deleted
         # Should only proceed if user confirms
-        pass
 
     def test_reset_handles_missing_files(self, mock_project_root):
         """Test that reset handles missing files gracefully."""
@@ -389,7 +387,7 @@ class TestCacheManagement:
 class TestFrontendHardReload:
     """Test frontend hard reload functionality."""
 
-    @patch('subprocess.Popen')
+    @patch("subprocess.Popen")
     def test_stop_frontend_dev_server(self, mock_popen):
         """Test stopping frontend dev server."""
         mock_process = Mock()
@@ -413,8 +411,8 @@ class TestFrontendHardReload:
         shutil.rmtree(vite_cache)
         assert not vite_cache.exists()
 
-    @patch('subprocess.Popen')
-    @patch('webbrowser.open')
+    @patch("subprocess.Popen")
+    @patch("webbrowser.open")
     def test_restart_frontend_and_open_browser(self, mock_browser, mock_popen):
         """Test restarting frontend and opening browser."""
         mock_process = Mock()
@@ -425,6 +423,7 @@ class TestFrontendHardReload:
 
         # Open browser with cache-busting parameter
         import time
+
         cache_bust = int(time.time())
         url = f"http://localhost:7274?_={cache_bust}"
         mock_browser(url)
@@ -472,17 +471,14 @@ class TestErrorHandling:
         """Test handling permission errors gracefully."""
         # Expected: should catch PermissionError and show user-friendly message
         # Should not crash the application
-        pass
 
     def test_handle_process_not_found(self):
         """Test handling when process doesn't exist."""
         # Expected: should handle psutil.NoSuchProcess gracefully
-        pass
 
     def test_handle_database_connection_timeout(self):
         """Test handling database connection timeout."""
         # Expected: should have timeout and show error message
-        pass
 
     def test_handle_missing_config_file(self, tmp_path):
         """Test handling missing config.yaml."""
@@ -496,8 +492,8 @@ class TestErrorHandling:
 class TestTerminalWindowLaunching:
     """Test launching services in terminal windows."""
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_launch_in_terminal_windows(self, mock_popen, mock_system):
         """Test launching command in terminal window on Windows."""
         mock_system.return_value = "Windows"
@@ -510,20 +506,16 @@ class TestTerminalWindowLaunching:
         project_root = Path.cwd()
 
         # Simulate the _launch_in_terminal call
-        proc = mock_popen(
-            command,
-            cwd=str(project_root),
-            creationflags=subprocess.CREATE_NEW_CONSOLE
-        )
+        proc = mock_popen(command, cwd=str(project_root), creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         # Verify CREATE_NEW_CONSOLE flag was used
         assert mock_popen.called
         call_kwargs = mock_popen.call_args[1]
-        assert 'creationflags' in call_kwargs
-        assert call_kwargs['creationflags'] == subprocess.CREATE_NEW_CONSOLE
+        assert "creationflags" in call_kwargs
+        assert call_kwargs["creationflags"] == subprocess.CREATE_NEW_CONSOLE
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_launch_in_terminal_linux_gnome(self, mock_popen, mock_system):
         """Test launching command in terminal window on Linux with gnome-terminal."""
         mock_system.return_value = "Linux"
@@ -546,8 +538,8 @@ class TestTerminalWindowLaunching:
         assert "--title" in call_args
         assert "--" in call_args
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_launch_in_terminal_linux_xterm_fallback(self, mock_popen, mock_system):
         """Test falling back to xterm when gnome-terminal not available."""
         mock_system.return_value = "Linux"
@@ -572,8 +564,8 @@ class TestTerminalWindowLaunching:
 
         assert mock_popen.call_count == 2
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_launch_in_terminal_macos(self, mock_popen, mock_system):
         """Test launching command in Terminal.app on macOS."""
         mock_system.return_value = "Darwin"
@@ -595,8 +587,8 @@ class TestTerminalWindowLaunching:
         assert call_args[1] == "-e"
         assert "Terminal" in call_args[2]
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_start_backend_launches_terminal_window(self, mock_popen, mock_system):
         """Test that start_backend launches in new terminal window."""
         mock_system.return_value = "Windows"
@@ -608,17 +600,13 @@ class TestTerminalWindowLaunching:
         # Command should be visible with verbose output
         command = [sys.executable, "api/run_api.py", "--port", "7272"]
 
-        proc = mock_popen(
-            command,
-            cwd=str(Path.cwd()),
-            creationflags=subprocess.CREATE_NEW_CONSOLE
-        )
+        proc = mock_popen(command, cwd=str(Path.cwd()), creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         assert mock_popen.called
         assert proc.poll() is None  # Running
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_start_frontend_launches_terminal_window(self, mock_popen, mock_system):
         """Test that start_frontend launches in new terminal window."""
         mock_system.return_value = "Windows"
@@ -631,17 +619,13 @@ class TestTerminalWindowLaunching:
         command = [npm_cmd, "run", "dev"]
         frontend_dir = Path.cwd() / "frontend"
 
-        proc = mock_popen(
-            command,
-            cwd=str(frontend_dir),
-            creationflags=subprocess.CREATE_NEW_CONSOLE
-        )
+        proc = mock_popen(command, cwd=str(frontend_dir), creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         assert mock_popen.called
         assert proc.poll() is None
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_terminal_windows_show_verbose_output(self, mock_popen, mock_system):
         """Test that terminal windows display verbose output."""
         mock_system.return_value = "Windows"
@@ -653,25 +637,18 @@ class TestTerminalWindowLaunching:
         command = [sys.executable, "api/run_api.py"]
 
         # Incorrect approach (background mode)
-        proc_background = mock_popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        proc_background = mock_popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # Correct approach (terminal window mode)
-        proc_terminal = mock_popen(
-            command,
-            creationflags=subprocess.CREATE_NEW_CONSOLE
-        )
+        proc_terminal = mock_popen(command, creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         # Terminal mode should NOT pipe output
         terminal_call = mock_popen.call_args_list[-1]
         terminal_kwargs = terminal_call[1]
-        assert 'stdout' not in terminal_kwargs or terminal_kwargs['stdout'] is None
+        assert "stdout" not in terminal_kwargs or terminal_kwargs["stdout"] is None
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_track_terminal_process_pids(self, mock_popen, mock_system):
         """Test that PIDs of terminal processes are tracked."""
         mock_system.return_value = "Windows"
@@ -681,17 +658,14 @@ class TestTerminalWindowLaunching:
         mock_popen.return_value = mock_process
 
         command = [sys.executable, "api/run_api.py"]
-        proc = mock_popen(
-            command,
-            creationflags=subprocess.CREATE_NEW_CONSOLE
-        )
+        proc = mock_popen(command, creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         # Expected: should track process for cleanup
         assert proc.pid == 12345
         assert proc.poll() is None
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_windows_batch_file_direct_execution(self, mock_popen, mock_system):
         """Test executing Windows batch files directly in new console."""
         mock_system.return_value = "Windows"
@@ -700,17 +674,14 @@ class TestTerminalWindowLaunching:
 
         # Expected: can also launch batch files directly
         proc = mock_popen(
-            ["start_backend.bat"],
-            cwd=str(Path.cwd()),
-            shell=True,
-            creationflags=subprocess.CREATE_NEW_CONSOLE
+            ["start_backend.bat"], cwd=str(Path.cwd()), shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE
         )
 
         assert mock_popen.called
         call_args = mock_popen.call_args[0][0]
         assert "start_backend.bat" in call_args
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_detect_available_terminal_emulator_linux(self, mock_system):
         """Test detecting available terminal emulator on Linux."""
         mock_system.return_value = "Linux"
@@ -721,6 +692,7 @@ class TestTerminalWindowLaunching:
 
         # Simulate checking for available terminals
         import shutil
+
         preferred_terminal = None
         for term in terminal_preferences:
             if shutil.which(term):
@@ -732,8 +704,8 @@ class TestTerminalWindowLaunching:
         if preferred_terminal:
             assert preferred_terminal in terminal_preferences
 
-    @patch('platform.system')
-    @patch('subprocess.Popen')
+    @patch("platform.system")
+    @patch("subprocess.Popen")
     def test_terminal_window_title_set(self, mock_popen, mock_system):
         """Test that terminal windows have descriptive titles."""
         mock_system.return_value = "Linux"
@@ -761,7 +733,6 @@ class TestUIBehavior:
         # - Green indicator when service running
         # - Red indicator when service stopped
         # - Yellow indicator during transitions
-        pass
 
     def test_confirmation_dialogs(self):
         """Test that destructive actions show confirmation."""
@@ -769,7 +740,6 @@ class TestUIBehavior:
         # - Delete database
         # - Reset to fresh state
         # Should show list of what will be affected
-        pass
 
     def test_progress_indicators(self):
         """Test progress indicators for long operations."""
@@ -777,13 +747,11 @@ class TestUIBehavior:
         # - Starting services
         # - Clearing caches
         # - Database operations
-        pass
 
     def test_disable_buttons_during_operation(self):
         """Test that buttons are disabled during operations."""
         # Expected: buttons should be disabled while operation in progress
         # Prevents double-clicking or conflicting operations
-        pass
 
 
 class TestConfigurationLoading:
@@ -803,12 +771,10 @@ class TestConfigurationLoading:
     def test_load_service_ports(self, mock_project_root):
         """Test loading service ports from config."""
         # Expected: should read API port, frontend port from config.yaml
-        pass
 
     def test_handle_missing_env_file(self, tmp_path):
         """Test handling missing .env file."""
         # Expected: should handle gracefully, use defaults or prompt
-        pass
 
 
 # Integration tests (to be run separately)
@@ -820,10 +786,8 @@ class TestIntegration:
         """Test full start -> stop -> restart lifecycle."""
         # This would test the full workflow with real processes
         # Marked as integration test, slower to run
-        pass
 
     @pytest.mark.integration
     def test_full_reset_and_reinstall(self):
         """Test resetting to fresh state and reinstalling."""
         # Would test full reset workflow
-        pass

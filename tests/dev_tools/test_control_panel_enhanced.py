@@ -15,27 +15,28 @@ Test Approach:
 - Test error handling for count query failures
 """
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-import pytest
-import psycopg2
-from psycopg2 import sql
-
 # Import control panel (will need to handle tkinter mocking)
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import psycopg2
+import pytest
+from psycopg2 import sql
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "dev_tools"))
 
 
 @pytest.fixture
 def mock_tk_components():
     """Mock tkinter components needed by ControlPanel."""
-    with patch('control_panel.Tk'), \
-         patch('control_panel.BooleanVar'), \
-         patch('control_panel.messagebox') as mock_messagebox, \
-         patch('control_panel.ttk'):
+    with (
+        patch("control_panel.Tk"),
+        patch("control_panel.BooleanVar"),
+        patch("control_panel.messagebox") as mock_messagebox,
+        patch("control_panel.ttk"),
+    ):
         yield mock_messagebox
 
 
@@ -47,13 +48,7 @@ def test_db_connection():
     Yields a psycopg2 connection with autocommit enabled.
     Ensures test database is cleaned up after tests.
     """
-    conn = psycopg2.connect(
-        host="localhost",
-        port=5432,
-        user="postgres",
-        password="4010",
-        database="postgres"
-    )
+    conn = psycopg2.connect(host="localhost", port=5432, user="postgres", password="4010", database="postgres")
     conn.autocommit = True
     yield conn
 
@@ -79,8 +74,9 @@ def control_panel_instance(mock_tk_components, test_db_connection):
 
     Returns a GiljoDevControlPanel instance ready for testing database operations.
     """
-    from control_panel import GiljoDevControlPanel
     import logging
+
+    from control_panel import GiljoDevControlPanel
 
     # Create instance (tkinter components are mocked)
     panel = GiljoDevControlPanel()
@@ -98,12 +94,14 @@ def control_panel_instance(mock_tk_components, test_db_connection):
     panel.logger.error = MagicMock()
 
     # Override get_db_credentials to use test credentials
-    panel.get_db_credentials = MagicMock(return_value={
-        "host": "localhost",
-        "port": 5432,
-        "user": "postgres",
-        "password": "4010",
-    })
+    panel.get_db_credentials = MagicMock(
+        return_value={
+            "host": "localhost",
+            "port": 5432,
+            "user": "postgres",
+            "password": "4010",
+        }
+    )
 
     return panel
 
@@ -120,25 +118,21 @@ def create_test_database_with_users(conn, db_name: str, user_count: int, apikey_
     """
     with conn.cursor() as cur:
         # Terminate existing connections
-        cur.execute(sql.SQL("""
+        cur.execute(
+            sql.SQL("""
             SELECT pg_terminate_backend(pg_stat_activity.pid)
             FROM pg_stat_activity
             WHERE pg_stat_activity.datname = {}
               AND pid <> pg_backend_pid()
-        """).format(sql.Literal(db_name)))
+        """).format(sql.Literal(db_name))
+        )
 
         # Drop and recreate database
         cur.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))
         cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db_name)))
 
     # Connect to test database and create tables
-    test_conn = psycopg2.connect(
-        host="localhost",
-        port=5432,
-        user="postgres",
-        password="4010",
-        database=db_name
-    )
+    test_conn = psycopg2.connect(host="localhost", port=5432, user="postgres", password="4010", database=db_name)
     test_conn.autocommit = True
 
     try:
@@ -177,37 +171,37 @@ def create_test_database_with_users(conn, db_name: str, user_count: int, apikey_
 
             # Insert users
             import uuid
+
             user_ids = []
             for i in range(user_count):
                 user_id = str(uuid.uuid4())
                 user_ids.append(user_id)
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO users (id, tenant_key, username, email, password_hash, full_name)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (
-                    user_id,
-                    "test-tenant",
-                    f"testuser{i}",
-                    f"testuser{i}@example.com",
-                    "hashed_password",
-                    f"Test User {i}"
-                ))
+                """,
+                    (
+                        user_id,
+                        "test-tenant",
+                        f"testuser{i}",
+                        f"testuser{i}@example.com",
+                        "hashed_password",
+                        f"Test User {i}",
+                    ),
+                )
 
             # Insert API keys (distribute across users)
             for i in range(apikey_count):
                 user_id = user_ids[i % len(user_ids)] if user_ids else None
                 if user_id:
-                    cur.execute("""
+                    cur.execute(
+                        """
                         INSERT INTO api_keys (id, tenant_key, user_id, key_hash, key_prefix, name)
                         VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (
-                        str(uuid.uuid4()),
-                        "test-tenant",
-                        user_id,
-                        "hashed_api_key",
-                        f"gak_{i:08d}",
-                        f"Test Key {i}"
-                    ))
+                    """,
+                        (str(uuid.uuid4()), "test-tenant", user_id, "hashed_api_key", f"gak_{i:08d}", f"Test Key {i}"),
+                    )
     finally:
         test_conn.close()
 
@@ -295,9 +289,7 @@ class TestEnhancedDatabaseDeletion:
         assert "0 users" in success_message
         assert "0 API keys" in success_message
 
-    def test_delete_database_foreign_key_cascade(
-        self, control_panel_instance, test_db_connection, mock_tk_components
-    ):
+    def test_delete_database_foreign_key_cascade(self, control_panel_instance, test_db_connection, mock_tk_components):
         """
         Test: Verify foreign key cascade deletes ApiKeys when Users are deleted.
 
@@ -344,9 +336,7 @@ class TestEnhancedDatabaseDeletion:
         result = control_panel_instance._delete_database_with_psycopg2()
         assert result is True, "Deletion should succeed even if counting fails"
 
-    def test_delete_database_with_users_psql_cli(
-        self, control_panel_instance, test_db_connection, mock_tk_components
-    ):
+    def test_delete_database_with_users_psql_cli(self, control_panel_instance, test_db_connection, mock_tk_components):
         """
         Test: Delete database using psql CLI fallback method.
 
@@ -374,9 +364,7 @@ class TestEnhancedDatabaseDeletion:
         except FileNotFoundError:
             pytest.skip("psql not in PATH - expected on systems without PostgreSQL CLI tools")
 
-    def test_delete_database_large_user_count(
-        self, control_panel_instance, test_db_connection, mock_tk_components
-    ):
+    def test_delete_database_large_user_count(self, control_panel_instance, test_db_connection, mock_tk_components):
         """
         Test: Delete database with large number of users (50) and API keys (150).
 
@@ -443,6 +431,7 @@ class TestCrossPlatformPathHandling:
         # Read the source code and verify pathlib usage
         # (This is a code inspection test)
         import inspect
+
         source = inspect.getsource(control_panel_instance._delete_database_with_psql_cli)
 
         # Should use tempfile.NamedTemporaryFile

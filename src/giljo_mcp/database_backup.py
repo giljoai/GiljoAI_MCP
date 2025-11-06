@@ -15,16 +15,19 @@ Features:
 
 import logging
 import os
-import subprocess
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Any, Dict, Optional
+
 import yaml
+
 
 try:
     import psycopg2
     from psycopg2 import sql
+
     PSYCOPG2_AVAILABLE = True
 except ImportError:
     PSYCOPG2_AVAILABLE = False
@@ -37,27 +40,22 @@ logger = logging.getLogger(__name__)
 
 class DatabaseBackupError(Exception):
     """Base exception for database backup errors."""
-    pass
 
 
 class PgDumpNotFoundError(DatabaseBackupError):
     """Raised when pg_dump binary cannot be found."""
-    pass
 
 
 class DatabaseConnectionError(DatabaseBackupError):
     """Raised when database connection fails."""
-    pass
 
 
 class BackupExecutionError(DatabaseBackupError):
     """Raised when backup execution fails."""
-    pass
 
 
 class InsufficientDiskSpaceError(DatabaseBackupError):
     """Raised when insufficient disk space for backup."""
-    pass
 
 
 class DatabaseBackupUtility:
@@ -76,11 +74,7 @@ class DatabaseBackupUtility:
     # Minimum free disk space required (500 MB)
     MIN_FREE_SPACE_MB = 500
 
-    def __init__(
-        self,
-        db_config: Optional[Dict[str, str]] = None,
-        backup_base_dir: Optional[Path] = None
-    ):
+    def __init__(self, db_config: Optional[Dict[str, str]] = None, backup_base_dir: Optional[Path] = None):
         """
         Initialize database backup utility.
 
@@ -121,34 +115,34 @@ class DatabaseBackupUtility:
         config = {}
 
         # Try .env first
-        env_file = Path.cwd() / '.env'
+        env_file = Path.cwd() / ".env"
         if env_file.exists():
             logger.debug(f"Loading database config from {env_file}")
             try:
-                with open(env_file, 'r', encoding='utf-8') as f:
+                with open(env_file, encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
-                        if not line or line.startswith('#'):
+                        if not line or line.startswith("#"):
                             continue
-                        if '=' in line:
-                            key, value = line.split('=', 1)
+                        if "=" in line:
+                            key, value = line.split("=", 1)
                             key = key.strip()
                             value = value.strip()
 
                             # Map environment variables to config keys
-                            if key == 'POSTGRES_HOST':
-                                config['host'] = value
-                            elif key == 'POSTGRES_PORT':
-                                config['port'] = value
-                            elif key == 'POSTGRES_DB':
-                                config['database'] = value
-                            elif key == 'POSTGRES_USER':
-                                config['user'] = value
-                            elif key == 'POSTGRES_PASSWORD':
-                                config['password'] = value
+                            if key == "POSTGRES_HOST":
+                                config["host"] = value
+                            elif key == "POSTGRES_PORT":
+                                config["port"] = value
+                            elif key == "POSTGRES_DB":
+                                config["database"] = value
+                            elif key == "POSTGRES_USER":
+                                config["user"] = value
+                            elif key == "POSTGRES_PASSWORD":
+                                config["password"] = value
 
                 # Validate we have minimum required config
-                if all(k in config for k in ['host', 'port', 'database']):
+                if all(k in config for k in ["host", "port", "database"]):
                     logger.info("Database config loaded from .env")
                     return config
 
@@ -156,19 +150,19 @@ class DatabaseBackupUtility:
                 logger.warning(f"Failed to parse .env file: {e}")
 
         # Try config.yaml as fallback
-        config_file = Path.cwd() / 'config.yaml'
+        config_file = Path.cwd() / "config.yaml"
         if config_file.exists():
             logger.debug(f"Loading database config from {config_file}")
             try:
-                with open(config_file, 'r', encoding='utf-8') as f:
+                with open(config_file, encoding="utf-8") as f:
                     yaml_config = yaml.safe_load(f)
 
-                db_section = yaml_config.get('database', {})
-                config['host'] = db_section.get('host', 'localhost')
-                config['port'] = str(db_section.get('port', 5432))
-                config['database'] = db_section.get('name', 'giljo_mcp')
-                config['user'] = db_section.get('user', 'postgres')
-                config['password'] = db_section.get('password', '')
+                db_section = yaml_config.get("database", {})
+                config["host"] = db_section.get("host", "localhost")
+                config["port"] = str(db_section.get("port", 5432))
+                config["database"] = db_section.get("name", "giljo_mcp")
+                config["user"] = db_section.get("user", "postgres")
+                config["password"] = db_section.get("password", "")
 
                 logger.info("Database config loaded from config.yaml")
                 return config
@@ -176,9 +170,7 @@ class DatabaseBackupUtility:
             except Exception as e:
                 logger.warning(f"Failed to parse config.yaml: {e}")
 
-        raise DatabaseBackupError(
-            "Could not load database configuration from .env or config.yaml"
-        )
+        raise DatabaseBackupError("Could not load database configuration from .env or config.yaml")
 
     def _get_default_backup_dir(self) -> Path:
         """
@@ -187,7 +179,7 @@ class DatabaseBackupUtility:
         Returns:
             Path to docs/archive/database_backups/
         """
-        return Path.cwd() / 'docs' / 'archive' / 'database_backups'
+        return Path.cwd() / "docs" / "archive" / "database_backups"
 
     def _find_pg_dump(self) -> Path:
         """
@@ -205,20 +197,19 @@ class DatabaseBackupUtility:
         discovery = PostgreSQLDiscovery()
         result = discovery.discover()
 
-        if not result['found']:
+        if not result["found"]:
             raise PgDumpNotFoundError(
                 "PostgreSQL installation not found. Cannot locate pg_dump. "
                 "Please ensure PostgreSQL is installed and in system PATH."
             )
 
         # psql_path points to psql binary, we need pg_dump in same directory
-        psql_path = result['psql_path']
-        pg_dump_path = psql_path.parent / ('pg_dump.exe' if os.name == 'nt' else 'pg_dump')
+        psql_path = result["psql_path"]
+        pg_dump_path = psql_path.parent / ("pg_dump.exe" if os.name == "nt" else "pg_dump")
 
         if not pg_dump_path.exists():
             raise PgDumpNotFoundError(
-                f"pg_dump not found at {pg_dump_path}. "
-                f"Found PostgreSQL at {psql_path.parent} but pg_dump is missing."
+                f"pg_dump not found at {pg_dump_path}. Found PostgreSQL at {psql_path.parent} but pg_dump is missing."
             )
 
         logger.info(f"Found pg_dump at: {pg_dump_path}")
@@ -240,8 +231,7 @@ class DatabaseBackupUtility:
 
             if free_mb < self.MIN_FREE_SPACE_MB:
                 raise InsufficientDiskSpaceError(
-                    f"Insufficient disk space: {free_mb:.1f} MB available, "
-                    f"{self.MIN_FREE_SPACE_MB} MB required"
+                    f"Insufficient disk space: {free_mb:.1f} MB available, {self.MIN_FREE_SPACE_MB} MB required"
                 )
 
             logger.debug(f"Disk space check passed: {free_mb:.1f} MB available")
@@ -268,40 +258,32 @@ class DatabaseBackupUtility:
         if not PSYCOPG2_AVAILABLE:
             logger.warning("psycopg2 not available, skipping metadata collection")
             return {
-                'tables': [],
-                'total_tables': 0,
-                'total_rows': 0,
-                'database_size': 'Unknown',
-                'error': 'psycopg2 not installed'
+                "tables": [],
+                "total_tables": 0,
+                "total_rows": 0,
+                "database_size": "Unknown",
+                "error": "psycopg2 not installed",
             }
 
-        metadata = {
-            'tables': [],
-            'total_tables': 0,
-            'total_rows': 0,
-            'database_size': 'Unknown'
-        }
+        metadata = {"tables": [], "total_tables": 0, "total_rows": 0, "database_size": "Unknown"}
 
         try:
             # Connect to database
             conn = psycopg2.connect(
-                host=self.db_config['host'],
-                port=self.db_config['port'],
-                database=self.db_config['database'],
-                user=self.db_config.get('user', 'postgres'),
-                password=self.db_config.get('password', ''),
-                connect_timeout=10
+                host=self.db_config["host"],
+                port=self.db_config["port"],
+                database=self.db_config["database"],
+                user=self.db_config.get("user", "postgres"),
+                password=self.db_config.get("password", ""),
+                connect_timeout=10,
             )
 
             with conn.cursor() as cursor:
                 # Get database size
-                cursor.execute(
-                    sql.SQL("SELECT pg_size_pretty(pg_database_size(%s))"),
-                    [self.db_config['database']]
-                )
+                cursor.execute(sql.SQL("SELECT pg_size_pretty(pg_database_size(%s))"), [self.db_config["database"]])
                 result = cursor.fetchone()
                 if result:
-                    metadata['database_size'] = result[0]
+                    metadata["database_size"] = result[0]
 
                 # Get table information with row counts and sizes
                 cursor.execute("""
@@ -322,50 +304,40 @@ class DatabaseBackupUtility:
                     # Get row count
                     try:
                         cursor.execute(
-                            sql.SQL("SELECT COUNT(*) FROM {}.{}").format(
-                                sql.Identifier(schema),
-                                sql.Identifier(table)
-                            )
+                            sql.SQL("SELECT COUNT(*) FROM {}.{}").format(sql.Identifier(schema), sql.Identifier(table))
                         )
                         row_count = cursor.fetchone()[0]
                     except Exception as e:
                         logger.warning(f"Could not get row count for {full_table_name}: {e}")
                         row_count = 0
 
-                    metadata['tables'].append({
-                        'schema': schema,
-                        'name': table,
-                        'full_name': full_table_name,
-                        'row_count': row_count,
-                        'size': size
-                    })
+                    metadata["tables"].append(
+                        {
+                            "schema": schema,
+                            "name": table,
+                            "full_name": full_table_name,
+                            "row_count": row_count,
+                            "size": size,
+                        }
+                    )
 
-                    metadata['total_rows'] += row_count
+                    metadata["total_rows"] += row_count
 
-                metadata['total_tables'] = len(metadata['tables'])
+                metadata["total_tables"] = len(metadata["tables"])
 
             conn.close()
-            logger.info(
-                f"Collected metadata: {metadata['total_tables']} tables, "
-                f"{metadata['total_rows']} total rows"
-            )
+            logger.info(f"Collected metadata: {metadata['total_tables']} tables, {metadata['total_rows']} total rows")
 
         except psycopg2.OperationalError as e:
-            raise DatabaseConnectionError(
-                f"Failed to connect to database: {e}"
-            )
+            raise DatabaseConnectionError(f"Failed to connect to database: {e}")
         except Exception as e:
             logger.error(f"Error collecting database metadata: {e}")
-            metadata['error'] = str(e)
+            metadata["error"] = str(e)
 
         return metadata
 
     def _generate_metadata_file(
-        self,
-        backup_dir: Path,
-        backup_file: Path,
-        metadata: Dict[str, Any],
-        execution_time: float
+        self, backup_dir: Path, backup_file: Path, metadata: Dict[str, Any], execution_time: float
     ) -> Path:
         """
         Generate markdown metadata file for backup.
@@ -379,10 +351,10 @@ class DatabaseBackupUtility:
         Returns:
             Path to generated metadata file
         """
-        metadata_file = backup_dir / 'backup_metadata.md'
+        metadata_file = backup_dir / "backup_metadata.md"
 
         # Format timestamp
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Build markdown content
         content = f"""# Database Backup Metadata
@@ -396,36 +368,31 @@ class DatabaseBackupUtility:
 
 ## Database Configuration
 
-- **Host**: {self.db_config['host']}
-- **Port**: {self.db_config['port']}
-- **Database**: {self.db_config['database']}
-- **User**: {self.db_config.get('user', 'postgres')}
-- **Database Size**: {metadata.get('database_size', 'Unknown')}
+- **Host**: {self.db_config["host"]}
+- **Port**: {self.db_config["port"]}
+- **Database**: {self.db_config["database"]}
+- **User**: {self.db_config.get("user", "postgres")}
+- **Database Size**: {metadata.get("database_size", "Unknown")}
 
 ## Schema Overview
 
-- **Total Tables**: {metadata.get('total_tables', 0)}
-- **Total Rows**: {metadata.get('total_rows', 0):,}
+- **Total Tables**: {metadata.get("total_tables", 0)}
+- **Total Rows**: {metadata.get("total_rows", 0):,}
 
 """
 
         # Add table details
-        if metadata.get('tables'):
+        if metadata.get("tables"):
             content += "## Table Details\n\n"
             content += "| Schema | Table Name | Row Count | Size |\n"
             content += "|--------|------------|-----------|------|\n"
 
-            for table in metadata['tables']:
-                content += (
-                    f"| {table['schema']} | "
-                    f"{table['name']} | "
-                    f"{table['row_count']:,} | "
-                    f"{table['size']} |\n"
-                )
+            for table in metadata["tables"]:
+                content += f"| {table['schema']} | {table['name']} | {table['row_count']:,} | {table['size']} |\n"
 
         # Add error information if present
-        if metadata.get('error'):
-            content += f"\n## Metadata Collection Errors\n\n"
+        if metadata.get("error"):
+            content += "\n## Metadata Collection Errors\n\n"
             content += f"```\n{metadata['error']}\n```\n"
 
         content += f"""
@@ -444,12 +411,12 @@ To restore this backup:
 
 ```bash
 # Method 1: Using psql
-psql -h {self.db_config['host']} -p {self.db_config['port']} -U postgres -d {self.db_config['database']} -f {backup_file.name}
+psql -h {self.db_config["host"]} -p {self.db_config["port"]} -U postgres -d {self.db_config["database"]} -f {backup_file.name}
 
 # Method 2: Drop and recreate database (full restore)
-dropdb -h {self.db_config['host']} -p {self.db_config['port']} -U postgres {self.db_config['database']}
-createdb -h {self.db_config['host']} -p {self.db_config['port']} -U postgres {self.db_config['database']}
-psql -h {self.db_config['host']} -p {self.db_config['port']} -U postgres -d {self.db_config['database']} -f {backup_file.name}
+dropdb -h {self.db_config["host"]} -p {self.db_config["port"]} -U postgres {self.db_config["database"]}
+createdb -h {self.db_config["host"]} -p {self.db_config["port"]} -U postgres {self.db_config["database"]}
+psql -h {self.db_config["host"]} -p {self.db_config["port"]} -U postgres -d {self.db_config["database"]} -f {backup_file.name}
 ```
 
 **Note**: Restore requires PostgreSQL superuser privileges (default password: 4010)
@@ -460,16 +427,13 @@ Generated by GiljoAI MCP Database Backup Utility
 """
 
         # Write metadata file
-        with open(metadata_file, 'w', encoding='utf-8') as f:
+        with open(metadata_file, "w", encoding="utf-8") as f:
             f.write(content)
 
         logger.info(f"Generated metadata file: {metadata_file}")
         return metadata_file
 
-    def create_backup(
-        self,
-        include_metadata: bool = True
-    ) -> Dict[str, Any]:
+    def create_backup(self, include_metadata: bool = True) -> Dict[str, Any]:
         """
         Create full database backup with optional metadata.
 
@@ -492,7 +456,7 @@ Generated by GiljoAI MCP Database Backup Utility
         logger.info("Starting database backup...")
 
         # Create timestamped backup directory
-        timestamp_str = start_time.strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp_str = start_time.strftime("%Y-%m-%d_%H-%M-%S")
         backup_dir = self.backup_base_dir / timestamp_str
 
         try:
@@ -509,19 +473,25 @@ Generated by GiljoAI MCP Database Backup Utility
             # Prepare pg_dump command
             pg_dump_cmd = [
                 str(self.pg_dump_path),
-                '-h', self.db_config['host'],
-                '-p', self.db_config['port'],
-                '-U', self.db_config.get('user', 'postgres'),
-                '-d', self.db_config['database'],
-                '-F', 'p',  # Plain text format
-                '-f', str(backup_file),
-                '--verbose'
+                "-h",
+                self.db_config["host"],
+                "-p",
+                self.db_config["port"],
+                "-U",
+                self.db_config.get("user", "postgres"),
+                "-d",
+                self.db_config["database"],
+                "-F",
+                "p",  # Plain text format
+                "-f",
+                str(backup_file),
+                "--verbose",
             ]
 
             # Prepare environment with password (secure)
             env = os.environ.copy()
-            if self.db_config.get('password'):
-                env['PGPASSWORD'] = self.db_config['password']
+            if self.db_config.get("password"):
+                env["PGPASSWORD"] = self.db_config["password"]
 
             logger.info(f"Executing pg_dump to {backup_file}")
             logger.debug(f"Command: {' '.join(pg_dump_cmd[:-1])} [password hidden]")
@@ -529,10 +499,11 @@ Generated by GiljoAI MCP Database Backup Utility
             # Execute pg_dump
             result = subprocess.run(
                 pg_dump_cmd,
+                check=False,
                 env=env,
                 capture_output=True,
                 text=True,
-                timeout=600  # 10 minute timeout
+                timeout=600,  # 10 minute timeout
             )
 
             if result.returncode != 0:
@@ -544,20 +515,13 @@ Generated by GiljoAI MCP Database Backup Utility
 
             # Verify backup file was created and has content
             if not backup_file.exists():
-                raise BackupExecutionError(
-                    f"Backup file not created at {backup_file}"
-                )
+                raise BackupExecutionError(f"Backup file not created at {backup_file}")
 
             backup_size = backup_file.stat().st_size
             if backup_size == 0:
-                raise BackupExecutionError(
-                    f"Backup file is empty: {backup_file}"
-                )
+                raise BackupExecutionError(f"Backup file is empty: {backup_file}")
 
-            logger.info(
-                f"Backup created successfully: {backup_file} "
-                f"({backup_size / 1024:.1f} KB)"
-            )
+            logger.info(f"Backup created successfully: {backup_file} ({backup_size / 1024:.1f} KB)")
 
             # Collect metadata
             execution_time = (datetime.now() - start_time).total_seconds()
@@ -567,55 +531,41 @@ Generated by GiljoAI MCP Database Backup Utility
             if include_metadata:
                 try:
                     metadata = self._get_database_metadata()
-                    metadata_file = self._generate_metadata_file(
-                        backup_dir,
-                        backup_file,
-                        metadata,
-                        execution_time
-                    )
+                    metadata_file = self._generate_metadata_file(backup_dir, backup_file, metadata, execution_time)
                 except Exception as e:
                     logger.error(f"Failed to generate metadata: {e}")
                     # Continue without metadata - backup is more important
 
             result_info = {
-                'success': True,
-                'backup_dir': backup_dir,
-                'backup_file': backup_file,
-                'metadata_file': metadata_file,
-                'timestamp': start_time.isoformat(),
-                'execution_time': execution_time,
-                'backup_size': backup_size,
-                'database': self.db_config['database'],
-                'tables': metadata.get('tables', []),
-                'total_tables': metadata.get('total_tables', 0),
-                'total_rows': metadata.get('total_rows', 0)
+                "success": True,
+                "backup_dir": backup_dir,
+                "backup_file": backup_file,
+                "metadata_file": metadata_file,
+                "timestamp": start_time.isoformat(),
+                "execution_time": execution_time,
+                "backup_size": backup_size,
+                "database": self.db_config["database"],
+                "tables": metadata.get("tables", []),
+                "total_tables": metadata.get("total_tables", 0),
+                "total_rows": metadata.get("total_rows", 0),
             }
 
-            logger.info(
-                f"Database backup completed successfully in {execution_time:.2f}s: "
-                f"{backup_dir}"
-            )
+            logger.info(f"Database backup completed successfully in {execution_time:.2f}s: {backup_dir}")
 
             return result_info
 
         except subprocess.TimeoutExpired:
             raise BackupExecutionError(
-                "pg_dump timed out after 10 minutes. "
-                "Database may be too large or server is unresponsive."
+                "pg_dump timed out after 10 minutes. Database may be too large or server is unresponsive."
             )
-        except (PgDumpNotFoundError, DatabaseConnectionError,
-                BackupExecutionError, InsufficientDiskSpaceError):
+        except (PgDumpNotFoundError, DatabaseConnectionError, BackupExecutionError, InsufficientDiskSpaceError):
             raise
         except Exception as e:
-            raise DatabaseBackupError(
-                f"Unexpected error during backup: {str(e)}"
-            ) from e
+            raise DatabaseBackupError(f"Unexpected error during backup: {e!s}") from e
 
 
 def create_database_backup(
-    db_config: Optional[Dict[str, str]] = None,
-    backup_dir: Optional[Path] = None,
-    include_metadata: bool = True
+    db_config: Optional[Dict[str, str]] = None, backup_dir: Optional[Path] = None, include_metadata: bool = True
 ) -> Dict[str, Any]:
     """
     Convenience function to create a database backup.
@@ -638,10 +588,7 @@ def create_database_backup(
 # Example usage
 if __name__ == "__main__":
     # Configure logging for standalone execution
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     try:
         # Create backup using configuration from .env or config.yaml

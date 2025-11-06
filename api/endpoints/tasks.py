@@ -16,19 +16,19 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas.task import (
-    TaskUpdate,
-    TaskConversionRequest,
     ProjectConversionResponse,
-    TaskResponse,
-    TaskCreate,
     StatusUpdate,
+    TaskConversionRequest,
+    TaskCreate,
+    TaskResponse,
+    TaskUpdate,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Task, Project, User, Product
+from src.giljo_mcp.models import Product, Project, Task, User
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ router = APIRouter()
 
 
 # Helper Functions
+
 
 def can_modify_task(task: Task, user: User) -> bool:
     """
@@ -55,10 +56,7 @@ def can_modify_task(task: Task, user: User) -> bool:
     if user.role == "admin":
         return task.tenant_key == user.tenant_key
 
-    return (
-        task.tenant_key == user.tenant_key and
-        task.created_by_user_id == user.id
-    )
+    return task.tenant_key == user.tenant_key and task.created_by_user_id == user.id
 
 
 def can_delete_task(task: Task, user: User) -> bool:
@@ -110,11 +108,12 @@ def task_to_response(task: Task) -> TaskResponse:
         completed_at=task.completed_at,
         due_date=task.due_date,
         estimated_effort=task.estimated_effort,
-        actual_effort=task.actual_effort
+        actual_effort=task.actual_effort,
     )
 
 
 # API Endpoints
+
 
 @router.get("/", response_model=list[TaskResponse])
 async def list_tasks(
@@ -125,7 +124,7 @@ async def list_tasks(
     project_id: Optional[str] = Query(None, description="Filter by project"),
     product_id: Optional[str] = Query(None, description="Filter by product"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> list[TaskResponse]:
     """
     List tasks with product-scoped filtering (Handover 0076).
@@ -160,8 +159,7 @@ async def list_tasks(
         else:
             # Get active product for current tenant
             product_query = select(Product).where(
-                Product.tenant_key == current_user.tenant_key,
-                Product.is_active == True
+                Product.tenant_key == current_user.tenant_key, Product.is_active == True
             )
             product_result = await db.execute(product_query)
             active_product = product_result.scalar_one_or_none()
@@ -264,7 +262,7 @@ async def update_task(
     task_id: str,
     task_update: TaskUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> TaskResponse:
     """
     Update a task.
@@ -302,10 +300,7 @@ async def update_task(
     # Permission check
     if not can_modify_task(task, current_user):
         logger.warning(f"User {current_user.username} not authorized to update task {task_id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update this task"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
 
     # Update fields (only update non-None values)
     update_data = task_update.dict(exclude_unset=True)
@@ -328,9 +323,7 @@ async def update_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 @router.delete("/{task_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
-    task_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    task_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Delete a task.
@@ -360,16 +353,12 @@ async def delete_task(
     # Permission check
     if not can_delete_task(task, current_user):
         logger.warning(f"User {current_user.username} not authorized to delete task {task_id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only task creator or admin can delete"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only task creator or admin can delete")
 
     await db.delete(task)
     await db.commit()
 
     logger.info(f"Deleted task {task_id} by user {current_user.username}")
-    return None
 
 
 @router.post("/{task_id}/convert", response_model=ProjectConversionResponse)
@@ -378,7 +367,7 @@ async def convert_task_to_project(
     task_id: str,
     conversion_request: TaskConversionRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> ProjectConversionResponse:
     """
     Convert a task to a project.
@@ -416,22 +405,16 @@ async def convert_task_to_project(
         logger.warning(f"Task {task_id} already converted to project {task.converted_to_project_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Task already converted to project {task.converted_to_project_id}"
+            detail=f"Task already converted to project {task.converted_to_project_id}",
         )
 
     # Permission check (only creator or admin can convert)
     if current_user.role != "admin" and task.created_by_user_id != current_user.id:
         logger.warning(f"User {current_user.username} not authorized to convert task {task_id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only task creator or admin can convert"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only task creator or admin can convert")
 
     # Handover 0076: Get active product (required for project creation per Handover 0050)
-    product_query = select(Product).where(
-        Product.tenant_key == current_user.tenant_key,
-        Product.is_active == True
-    )
+    product_query = select(Product).where(Product.tenant_key == current_user.tenant_key, Product.is_active == True)
     product_result = await db.execute(product_query)
     active_product = product_result.scalar_one_or_none()
 
@@ -439,7 +422,7 @@ async def convert_task_to_project(
         logger.warning(f"No active product for tenant {current_user.tenant_key}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active product. Please activate a product before converting tasks to projects."
+            detail="No active product. Please activate a product before converting tasks to projects.",
         )
 
     # Create project
@@ -449,7 +432,7 @@ async def convert_task_to_project(
         mission=task.description or f"Project created from task: {task.title}",
         product_id=active_product.id,
         tenant_key=current_user.tenant_key,
-        status="active"
+        status="active",
     )
 
     db.add(project)
@@ -478,7 +461,7 @@ async def convert_task_to_project(
         project_name=project.name,
         original_task_id=task.id,
         conversion_strategy=conversion_request.strategy,
-        created_at=project.created_at
+        created_at=project.created_at,
     )
 
 

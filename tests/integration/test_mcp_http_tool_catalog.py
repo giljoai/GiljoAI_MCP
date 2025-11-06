@@ -14,14 +14,16 @@ Date: 2025-11-03
 Related: api/endpoints/mcp_http.py (Tool catalog fix)
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
 import json
 import time
-from typing import Dict, Any, List
-from httpx import AsyncClient, AsyncClient as HTTPXAsyncClient
+
+import pytest
+import pytest_asyncio
+from httpx import AsyncClient
+from httpx import AsyncClient as HTTPXAsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 # Test configuration
 MCP_ENDPOINT = "/mcp"
@@ -32,12 +34,7 @@ class TestMCPToolDiscovery:
     """Test MCP tools/list endpoint - Tool Discovery"""
 
     @pytest.mark.asyncio
-    async def test_tools_list_returns_all_tools(
-        self,
-        client: AsyncClient,
-        test_api_key: str,
-        initialized_session: str
-    ):
+    async def test_tools_list_returns_all_tools(self, client: AsyncClient, test_api_key: str, initialized_session: str):
         """
         Test that tools/list returns all 44 tools.
 
@@ -46,13 +43,8 @@ class TestMCPToolDiscovery:
         """
         response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-1"
-            },
-            headers={"X-API-Key": test_api_key}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-1"},
+            headers={"X-API-Key": test_api_key},
         )
 
         assert response.status_code == 200
@@ -68,16 +60,11 @@ class TestMCPToolDiscovery:
 
         # CRITICAL: Verify all 44 tools are returned
         assert len(tools) == EXPECTED_TOOL_COUNT, (
-            f"Expected {EXPECTED_TOOL_COUNT} tools, got {len(tools)}. "
-            f"Tool catalog mismatch detected!"
+            f"Expected {EXPECTED_TOOL_COUNT} tools, got {len(tools)}. Tool catalog mismatch detected!"
         )
 
     @pytest.mark.asyncio
-    async def test_all_tool_categories_present(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_all_tool_categories_present(self, client: AsyncClient, test_api_key: str):
         """
         Verify all tool categories are present in the catalog.
 
@@ -97,13 +84,8 @@ class TestMCPToolDiscovery:
         """
         response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-2"
-            },
-            headers={"X-API-Key": test_api_key}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-2"},
+            headers={"X-API-Key": test_api_key},
         )
 
         tools = response.json()["result"]["tools"]
@@ -183,11 +165,7 @@ class TestToolSchemaValidation:
     """Test JSON-Schema compliance for all tool inputSchema definitions"""
 
     @pytest.mark.asyncio
-    async def test_all_tools_have_valid_schema(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_all_tools_have_valid_schema(self, client: AsyncClient, test_api_key: str):
         """
         Validate that every tool has a valid JSON-Schema compliant inputSchema.
 
@@ -199,13 +177,8 @@ class TestToolSchemaValidation:
         """
         response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-schema"
-            },
-            headers={"X-API-Key": test_api_key}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-schema"},
+            headers={"X-API-Key": test_api_key},
         )
 
         tools = response.json()["result"]["tools"]
@@ -223,9 +196,7 @@ class TestToolSchemaValidation:
                 f"Tool {tool['name']} inputSchema must be type 'object', got {schema.get('type')}"
             )
 
-            assert "properties" in schema, (
-                f"Tool {tool['name']} inputSchema missing 'properties'"
-            )
+            assert "properties" in schema, f"Tool {tool['name']} inputSchema missing 'properties'"
 
             # Validate properties structure
             for prop_name, prop_def in schema["properties"].items():
@@ -248,11 +219,7 @@ class TestToolSchemaValidation:
                     )
 
     @pytest.mark.asyncio
-    async def test_enum_properties_have_valid_values(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_enum_properties_have_valid_values(self, client: AsyncClient, test_api_key: str):
         """
         Validate that enum properties have valid enum arrays.
 
@@ -262,13 +229,8 @@ class TestToolSchemaValidation:
         """
         response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-enums"
-            },
-            headers={"X-API-Key": test_api_key}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-enums"},
+            headers={"X-API-Key": test_api_key},
         )
 
         tools = response.json()["result"]["tools"]
@@ -293,24 +255,17 @@ class TestToolExecution:
     """Test tool execution for each category"""
 
     @pytest.mark.asyncio
-    async def test_health_check_tool(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_health_check_tool(self, client: AsyncClient, test_api_key: str):
         """Test health_check tool execution (simplest tool, no params)"""
         response = await client.post(
             MCP_ENDPOINT,
             json={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": "health_check",
-                    "arguments": {}
-                },
-                "id": "test-health"
+                "params": {"name": "health_check", "arguments": {}},
+                "id": "test-health",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert response.status_code == 200
@@ -324,12 +279,7 @@ class TestToolExecution:
         assert data["result"]["content"][0]["type"] == "text"
 
     @pytest.mark.asyncio
-    async def test_project_management_tools(
-        self,
-        client: AsyncClient,
-        test_api_key: str,
-        tenant_key: str
-    ):
+    async def test_project_management_tools(self, client: AsyncClient, test_api_key: str, tenant_key: str):
         """Test project management category: create_project, list_projects"""
 
         # Test create_project
@@ -343,12 +293,12 @@ class TestToolExecution:
                     "arguments": {
                         "name": "MCP Test Project",
                         "mission": "Integration test for MCP HTTP tools",
-                        "agents": ["implementer", "tester"]
-                    }
+                        "agents": ["implementer", "tester"],
+                    },
                 },
-                "id": "test-create-project"
+                "id": "test-create-project",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert create_response.status_code == 200
@@ -366,13 +316,10 @@ class TestToolExecution:
             json={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": "list_projects",
-                    "arguments": {}
-                },
-                "id": "test-list-projects"
+                "params": {"name": "list_projects", "arguments": {}},
+                "id": "test-list-projects",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert list_response.status_code == 200
@@ -380,11 +327,7 @@ class TestToolExecution:
         assert list_data["result"]["isError"] is False
 
     @pytest.mark.asyncio
-    async def test_template_management_tools(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_template_management_tools(self, client: AsyncClient, test_api_key: str):
         """Test template management category: list_templates, get_template"""
 
         # Test list_templates
@@ -393,13 +336,10 @@ class TestToolExecution:
             json={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": "list_templates",
-                    "arguments": {}
-                },
-                "id": "test-list-templates"
+                "params": {"name": "list_templates", "arguments": {}},
+                "id": "test-list-templates",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert list_response.status_code == 200
@@ -419,13 +359,10 @@ class TestToolExecution:
                 json={
                     "jsonrpc": "2.0",
                     "method": "tools/call",
-                    "params": {
-                        "name": "get_template",
-                        "arguments": {"template_name": template_name}
-                    },
-                    "id": "test-get-template"
+                    "params": {"name": "get_template", "arguments": {"template_name": template_name}},
+                    "id": "test-get-template",
                 },
-                headers={"X-API-Key": test_api_key}
+                headers={"X-API-Key": test_api_key},
             )
 
             assert get_response.status_code == 200
@@ -433,11 +370,7 @@ class TestToolExecution:
             assert get_data["result"]["isError"] is False
 
     @pytest.mark.asyncio
-    async def test_task_management_tools(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_task_management_tools(self, client: AsyncClient, test_api_key: str):
         """Test task management category: create_task, list_tasks"""
 
         # Test create_task
@@ -451,12 +384,12 @@ class TestToolExecution:
                     "arguments": {
                         "title": "MCP Integration Test Task",
                         "description": "Verify task management tools work via MCP",
-                        "priority": "medium"
-                    }
+                        "priority": "medium",
+                    },
                 },
-                "id": "test-create-task"
+                "id": "test-create-task",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert create_response.status_code == 200
@@ -469,13 +402,10 @@ class TestToolExecution:
             json={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": "list_tasks",
-                    "arguments": {}
-                },
-                "id": "test-list-tasks"
+                "params": {"name": "list_tasks", "arguments": {}},
+                "id": "test-list-tasks",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert list_response.status_code == 200
@@ -487,11 +417,7 @@ class TestErrorHandling:
     """Test error handling for invalid parameters and edge cases"""
 
     @pytest.mark.asyncio
-    async def test_missing_required_parameter(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_missing_required_parameter(self, client: AsyncClient, test_api_key: str):
         """Test tool call fails gracefully when required parameter is missing"""
 
         # create_project requires 'name' and 'mission'
@@ -505,11 +431,11 @@ class TestErrorHandling:
                     "arguments": {
                         "name": "Test Project"
                         # Missing required 'mission' parameter
-                    }
+                    },
                 },
-                "id": "test-error-missing-param"
+                "id": "test-error-missing-param",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert response.status_code == 200
@@ -523,11 +449,7 @@ class TestErrorHandling:
         assert "error" in error_text.lower() or "missing" in error_text.lower()
 
     @pytest.mark.asyncio
-    async def test_invalid_tool_name(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_invalid_tool_name(self, client: AsyncClient, test_api_key: str):
         """Test calling non-existent tool returns 404 error"""
 
         response = await client.post(
@@ -535,13 +457,10 @@ class TestErrorHandling:
             json={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": "nonexistent_tool",
-                    "arguments": {}
-                },
-                "id": "test-error-invalid-tool"
+                "params": {"name": "nonexistent_tool", "arguments": {}},
+                "id": "test-error-invalid-tool",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert response.status_code == 200
@@ -553,11 +472,7 @@ class TestErrorHandling:
         assert "not found" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_invalid_enum_value(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_invalid_enum_value(self, client: AsyncClient, test_api_key: str):
         """Test tool call with invalid enum value fails gracefully"""
 
         response = await client.post(
@@ -570,12 +485,12 @@ class TestErrorHandling:
                     "arguments": {
                         "to_agent": "test-agent-123",
                         "message": "Test message",
-                        "priority": "ultra_mega_critical"  # Invalid enum value
-                    }
+                        "priority": "ultra_mega_critical",  # Invalid enum value
+                    },
                 },
-                "id": "test-error-invalid-enum"
+                "id": "test-error-invalid-enum",
             },
-            headers={"X-API-Key": test_api_key}
+            headers={"X-API-Key": test_api_key},
         )
 
         assert response.status_code == 200
@@ -585,20 +500,12 @@ class TestErrorHandling:
         assert data["result"]["isError"] is True
 
     @pytest.mark.asyncio
-    async def test_missing_authentication(
-        self,
-        client: AsyncClient
-    ):
+    async def test_missing_authentication(self, client: AsyncClient):
         """Test request without API key returns authentication error"""
 
         response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-no-auth"
-            }
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-no-auth"},
             # No X-API-Key header
         )
 
@@ -615,11 +522,7 @@ class TestBackwardCompatibility:
     """Test that existing tool calls still work after catalog expansion"""
 
     @pytest.mark.asyncio
-    async def test_legacy_tool_calls_still_work(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_legacy_tool_calls_still_work(self, client: AsyncClient, test_api_key: str):
         """
         Verify that tools that were already exposed still work.
 
@@ -639,13 +542,10 @@ class TestBackwardCompatibility:
                 json={
                     "jsonrpc": "2.0",
                     "method": "tools/call",
-                    "params": {
-                        "name": tool_name,
-                        "arguments": arguments
-                    },
-                    "id": f"test-legacy-{tool_name}"
+                    "params": {"name": tool_name, "arguments": arguments},
+                    "id": f"test-legacy-{tool_name}",
                 },
-                headers={"X-API-Key": test_api_key}
+                headers={"X-API-Key": test_api_key},
             )
 
             assert response.status_code == 200
@@ -655,11 +555,7 @@ class TestBackwardCompatibility:
             assert "content" in data["result"]
 
     @pytest.mark.asyncio
-    async def test_tool_map_matches_advertised_tools(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_tool_map_matches_advertised_tools(self, client: AsyncClient, test_api_key: str):
         """
         CRITICAL: Verify that every tool in tools/list is actually callable.
 
@@ -668,13 +564,8 @@ class TestBackwardCompatibility:
         # Get advertised tools
         list_response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-advertised-tools"
-            },
-            headers={"X-API-Key": test_api_key}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-advertised-tools"},
+            headers={"X-API-Key": test_api_key},
         )
 
         tools = list_response.json()["result"]["tools"]
@@ -687,13 +578,10 @@ class TestBackwardCompatibility:
                 json={
                     "jsonrpc": "2.0",
                     "method": "tools/call",
-                    "params": {
-                        "name": tool_name,
-                        "arguments": {}
-                    },
-                    "id": f"test-callable-{tool_name}"
+                    "params": {"name": tool_name, "arguments": {}},
+                    "id": f"test-callable-{tool_name}",
                 },
-                headers={"X-API-Key": test_api_key}
+                headers={"X-API-Key": test_api_key},
             )
 
             assert response.status_code == 200
@@ -710,11 +598,7 @@ class TestPerformance:
     """Test performance characteristics of tool listing and execution"""
 
     @pytest.mark.asyncio
-    async def test_tools_list_latency(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_tools_list_latency(self, client: AsyncClient, test_api_key: str):
         """
         Test that tools/list has acceptable latency (<500ms).
 
@@ -724,13 +608,8 @@ class TestPerformance:
 
         response = await client.post(
             MCP_ENDPOINT,
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": "test-perf-list"
-            },
-            headers={"X-API-Key": test_api_key}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": "test-perf-list"},
+            headers={"X-API-Key": test_api_key},
         )
 
         end_time = time.time()
@@ -740,29 +619,23 @@ class TestPerformance:
         assert latency_ms < 500, f"tools/list took {latency_ms:.2f}ms (expected <500ms)"
 
     @pytest.mark.asyncio
-    async def test_concurrent_tool_calls(
-        self,
-        client: AsyncClient,
-        test_api_key: str
-    ):
+    async def test_concurrent_tool_calls(self, client: AsyncClient, test_api_key: str):
         """
         Test that multiple concurrent tool calls are handled correctly.
 
         Verifies session isolation and concurrent request handling.
         """
+
         async def call_health_check(call_id: int):
             return await client.post(
                 MCP_ENDPOINT,
                 json={
                     "jsonrpc": "2.0",
                     "method": "tools/call",
-                    "params": {
-                        "name": "health_check",
-                        "arguments": {}
-                    },
-                    "id": f"test-concurrent-{call_id}"
+                    "params": {"name": "health_check", "arguments": {}},
+                    "id": f"test-concurrent-{call_id}",
                 },
-                headers={"X-API-Key": test_api_key}
+                headers={"X-API-Key": test_api_key},
             )
 
         # Execute 10 concurrent health checks
@@ -778,6 +651,7 @@ class TestPerformance:
 
 # Pytest Fixtures
 
+
 @pytest_asyncio.fixture
 async def test_api_key(db_session: AsyncSession) -> str:
     """
@@ -785,10 +659,12 @@ async def test_api_key(db_session: AsyncSession) -> str:
 
     Returns the API key string for use in X-API-Key headers.
     """
-    import bcrypt
-    from src.giljo_mcp.models import APIKey, User
     from datetime import datetime, timezone
     from uuid import uuid4
+
+    import bcrypt
+
+    from src.giljo_mcp.models import APIKey, User
 
     # Create test user first (API keys require a user_id)
     user = User(
@@ -799,14 +675,14 @@ async def test_api_key(db_session: AsyncSession) -> str:
         password_hash="test_hash",
         is_active=True,
         role="developer",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.flush()
 
     # Create test API key with proper hashing
     test_key = "gk_test_mcp_http_integration_key_12345"
-    key_hash = bcrypt.hashpw(test_key.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    key_hash = bcrypt.hashpw(test_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     api_key = APIKey(
         id=str(uuid4()),
@@ -817,7 +693,7 @@ async def test_api_key(db_session: AsyncSession) -> str:
         key_prefix=test_key[:12],  # gk_test_mcp_
         permissions=[],
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db_session.add(api_key)
@@ -836,7 +712,9 @@ async def client(db_manager):
     Uses the api_client fixture from tests/api/conftest.py but with
     specific configuration for MCP testing.
     """
-    from httpx import AsyncClient as HTTPXAsyncClient, ASGITransport
+    from httpx import ASGITransport
+    from httpx import AsyncClient as HTTPXAsyncClient
+
     from api.app import app
     from src.giljo_mcp.auth.dependencies import get_db_session
 
@@ -858,10 +736,7 @@ async def client(db_manager):
 
 
 @pytest_asyncio.fixture
-async def initialized_session(
-    client: HTTPXAsyncClient,
-    test_api_key: str
-) -> str:
+async def initialized_session(client: HTTPXAsyncClient, test_api_key: str) -> str:
     """
     Initialize an MCP session for testing.
 
@@ -873,16 +748,13 @@ async def initialized_session(
             "jsonrpc": "2.0",
             "method": "initialize",
             "params": {
-                "client_info": {
-                    "name": "mcp-test-client",
-                    "version": "1.0.0"
-                },
+                "client_info": {"name": "mcp-test-client", "version": "1.0.0"},
                 "protocolVersion": "2024-11-05",
-                "capabilities": {}
+                "capabilities": {},
             },
-            "id": "init-session"
+            "id": "init-session",
         },
-        headers={"X-API-Key": test_api_key}
+        headers={"X-API-Key": test_api_key},
     )
 
     assert response.status_code == 200

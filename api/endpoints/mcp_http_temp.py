@@ -24,14 +24,10 @@ Authentication:
 
 import logging
 from typing import Any, Dict, Optional
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Request
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_db_session
-from .mcp_session import MCPSessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +35,7 @@ router = APIRouter()
 
 
 # Pydantic models for JSON-RPC 2.0
+
 
 class JSONRPCRequest(BaseModel):
     jsonrpc: str = Field("2.0", description="JSON-RPC version")

@@ -980,43 +980,43 @@ def register_task_tools(mcp):
     async def task(context: str = "") -> str:
         """
         Quick task capture from conversation context (Handover 0072)
-        
+
         Usage: /task <description>
-        
+
         Creates a task from the command input. The first line becomes the title,
         remaining lines become the description. Priority and category are auto-detected
         from keywords.
-        
+
         Args:
             context: Task description (user input after /task command)
-        
+
         Returns:
             Confirmation message with task ID
         """
         try:
             from giljo_mcp.tenant import tenant_manager
-            
+
             if not context or not context.strip():
                 return """Usage: /task <description>
 
 Example: /task Fix authentication bug in login flow"""
-            
+
             # Split context into lines
             lines = context.strip().split("\n")
-            
+
             # First line is the title (max 255 chars)
             title = lines[0].strip()[:255] if lines else "Task from CLI"
-            
+
             # Remove markdown formatting from title
             title = title.replace("**", "").replace("*", "").replace("#", "").strip()
-            
+
             # Rest is description
             description = "\n".join(lines[1:]).strip() if len(lines) > 1 else None
-            
+
             # Truncate description if too long
             if description and len(description) > 2000:
                 description = description[:1997] + "..."
-            
+
             # Determine priority based on keywords
             priority = "medium"
             context_lower = context.lower()
@@ -1024,7 +1024,7 @@ Example: /task Fix authentication bug in login flow"""
                 priority = "high"
             elif any(word in context_lower for word in ["low", "minor", "nice to have", "optional", "someday"]):
                 priority = "low"
-            
+
             # Determine category based on content
             category = "general"
             if any(word in context_lower for word in ["bug", "fix", "error", "issue", "broken"]):
@@ -1037,29 +1037,26 @@ Example: /task Fix authentication bug in login flow"""
                 category = "testing"
             elif any(word in context_lower for word in ["refactor", "cleanup", "optimize", "improve"]):
                 category = "refactoring"
-            
+
             # Get current tenant (may be None for unassigned tasks)
             tenant_key = tenant_manager.get_current_tenant()
-            
+
             # Get active product if available
             product_id = None
             if tenant_key:
                 from giljo_mcp.models import Product
-                
+
                 db_manager = DatabaseManager(is_async=True)
                 async with db_manager.get_session_async() as session:
                     product_query = select(Product).where(
-                        and_(
-                            Product.tenant_key == tenant_key,
-                            Product.status == "active"
-                        )
+                        and_(Product.tenant_key == tenant_key, Product.status == "active")
                     )
                     product_result = await session.execute(product_query)
                     active_product = product_result.scalar_one_or_none()
-                    
+
                     if active_product:
                         product_id = str(active_product.id)
-            
+
             # Create task using the create_task tool (project_id will be None for unassigned)
             result = await create_task(
                 title=title,
@@ -1068,17 +1065,17 @@ Example: /task Fix authentication bug in login flow"""
                 priority=priority,
                 tenant_key=tenant_key,
                 product_id=product_id,
-                project_id=None  # Handover 0072: Allow unassigned tasks
+                project_id=None,  # Handover 0072: Allow unassigned tasks
             )
-            
+
             if result.get("success"):
                 task_id = result.get("task_id")
                 scope_info = ""
                 if product_id:
-                    scope_info = f"\nProduct: Active product"
+                    scope_info = "\nProduct: Active product"
                 else:
                     scope_info = "\nScope: Unassigned (visible in all products)"
-                
+
                 return (
                     f"✅ Task created: '{title}\n"
                     f"Priority: {priority}\n"
@@ -1087,14 +1084,13 @@ Example: /task Fix authentication bug in login flow"""
                     f"{scope_info}\n\n"
                     f"Use 'assign_task_to_agent' to auto-spawn an agent job for this task."
                 )
-            else:
-                error = result.get("error", "Unknown error")
-                return f"❌ Failed to create task: {error}"
-                
+            error = result.get("error", "Unknown error")
+            return f"❌ Failed to create task: {error}"
+
         except Exception as e:
             logger.exception(f"Failed to create task from slash command: {e}")
-            return f"❌ Error creating task: {str(e)}"
-    
+            return f"❌ Error creating task: {e!s}"
+
     # Handover 0072: Assign task to agent with auto-spawn
     @mcp.tool()
     async def assign_task_to_agent(
@@ -1106,25 +1102,25 @@ Example: /task Fix authentication bug in login flow"""
     ) -> dict[str, Any]:
         """
         Assign task to agent and optionally auto-spawn Job (Handover 0072)
-        
+
         This tool links a task to an agent and creates an agent job for execution.
         Enables task-driven agent orchestration with automatic status synchronization.
-        
+
         Args:
             task_id: Task ID to assign
             agent_type: Agent type (analyzer, implementer, tester, etc.)
             mission: Optional custom mission (defaults to task title + description)
             auto_spawn_job: Whether to auto-spawn Job (default: True)
             tenant_key: Tenant key for multi-tenancy
-        
+
         Returns:
             Assignment result with agent job details if spawned
         """
         try:
             from giljo_mcp.agent_job_manager import AgentJobManager
-            from giljo_mcp.models import Agent, Job
+            from giljo_mcp.models import Agent
             from giljo_mcp.tenant import tenant_manager
-            
+
             # Use current tenant if not provided
             if not tenant_key:
                 tenant_key = tenant_manager.get_current_tenant()
@@ -1133,22 +1129,20 @@ Example: /task Fix authentication bug in login flow"""
                         "success": False,
                         "error": "No active project. Use switch_project first.",
                     }
-            
+
             db_manager = DatabaseManager(is_async=True)
             async with db_manager.get_session_async() as session:
                 # Get task
-                task_query = select(Task).where(
-                    and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                )
+                task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                 task_result = await session.execute(task_query)
                 task = task_result.scalar_one_or_none()
-                
+
                 if not task:
                     return {
                         "success": False,
                         "error": f"Task {task_id} not found in tenant {tenant_key}",
                     }
-                
+
                 # Check if task already has an agent job
                 if task.agent_job_id:
                     return {
@@ -1156,40 +1150,32 @@ Example: /task Fix authentication bug in login flow"""
                         "error": f"Task already assigned to agent job {task.agent_job_id}",
                         "existing_job_id": task.agent_job_id,
                     }
-                
+
                 # Check if task is converted
                 if task.status == "converted":
                     return {
                         "success": False,
                         "error": "Cannot assign converted task to agent (task is now a project)",
                     }
-                
+
                 # Get or create agent
-                agent_query = select(Agent).where(
-                    and_(
-                        Agent.tenant_key == tenant_key,
-                        Agent.name == agent_type
-                    )
-                )
+                agent_query = select(Agent).where(and_(Agent.tenant_key == tenant_key, Agent.name == agent_type))
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
-                
+
                 if not agent:
                     # Create agent if it doesn't exist
                     agent = Agent(
-                        tenant_key=tenant_key,
-                        name=agent_type,
-                        capabilities={"type": agent_type},
-                        status="available"
+                        tenant_key=tenant_key, name=agent_type, capabilities={"type": agent_type}, status="available"
                     )
                     session.add(agent)
                     await session.flush()
-                
+
                 # Update task with assigned agent
                 task.assigned_agent_id = str(agent.id)
                 task.status = "in_progress"
                 task.started_at = datetime.now(timezone.utc)
-                
+
                 # Auto-spawn agent job if requested
                 job_id = None
                 if auto_spawn_job:
@@ -1200,10 +1186,10 @@ Example: /task Fix authentication bug in login flow"""
                             mission += f"Description:\n{task.description}\n\n"
                         mission += f"Priority: {task.priority}\n"
                         mission += f"Category: {task.category}\n"
-                    
+
                     # Create agent job using AgentJobManager
                     job_manager = AgentJobManager(tenant_key=tenant_key)
-                    
+
                     # Spawn agent job
                     job = await job_manager.create_job(
                         agent_type=agent_type,
@@ -1212,19 +1198,18 @@ Example: /task Fix authentication bug in login flow"""
                         spawned_by=None,  # Human-initiated
                         context_chunks=[],
                     )
-                    
+
                     job_id = job.job_id
-                    
+
                     # Link task to agent job
                     task.agent_job_id = job_id
-                    
+
                     logger.info(
-                        f"Created agent job {job_id} for task {task_id} "
-                        f"(agent_type={agent_type}, tenant={tenant_key})"
+                        f"Created agent job {job_id} for task {task_id} (agent_type={agent_type}, tenant={tenant_key})"
                     )
-                
+
                 await session.commit()
-                
+
                 return {
                     "success": True,
                     "task_id": str(task.id),
@@ -1235,11 +1220,11 @@ Example: /task Fix authentication bug in login flow"""
                     "job_spawned": auto_spawn_job,
                     "task_status": task.status,
                 }
-                
+
         except Exception as e:
             logger.exception(f"Failed to assign task to agent: {e}")
             return {"success": False, "error": str(e)}
-    
+
     # Register template integration tools
     register_task_template_tools(mcp)
 

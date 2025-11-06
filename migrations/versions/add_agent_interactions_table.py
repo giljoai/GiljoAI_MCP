@@ -5,6 +5,7 @@ Revises: 45abb2fcc00d
 Create Date: 2025-09-14 17:40:00.000000
 
 """
+
 from collections.abc import Sequence
 from typing import Union
 
@@ -21,7 +22,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create agent_interactions table for hybrid orchestration."""
-    op.create_table("agent_interactions",
+    op.create_table(
+        "agent_interactions",
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("tenant_key", sa.String(length=36), nullable=False),
         sa.Column("project_id", sa.String(length=36), nullable=False),
@@ -29,18 +31,22 @@ def upgrade() -> None:
         sa.Column("sub_agent_name", sa.String(length=100), nullable=False),
         sa.Column("interaction_type", sa.String(length=20), nullable=False),
         sa.Column("mission", sa.Text(), nullable=False),
-        sa.Column("start_time", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=True),
+        sa.Column(
+            "start_time", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=True
+        ),
         sa.Column("end_time", sa.DateTime(timezone=True), nullable=True),
         sa.Column("duration_seconds", sa.Integer(), nullable=True),
         sa.Column("tokens_used", sa.Integer(), nullable=True),
         sa.Column("result", sa.Text(), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=True),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=True
+        ),
         sa.Column("meta_data", sa.JSON(), nullable=True),
-        sa.ForeignKeyConstraint(["parent_agent_id"], ["agents.id"] ),
-        sa.ForeignKeyConstraint(["project_id"], ["projects.id"] ),
+        sa.ForeignKeyConstraint(["parent_agent_id"], ["agents.id"]),
+        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.CheckConstraint("interaction_type IN ('SPAWN', 'COMPLETE', 'ERROR')", name="ck_interaction_type")
+        sa.CheckConstraint("interaction_type IN ('SPAWN', 'COMPLETE', 'ERROR')", name="ck_interaction_type"),
     )
 
     # Create indexes for performance

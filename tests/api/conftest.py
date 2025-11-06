@@ -8,13 +8,13 @@ Provides fixtures specific to API integration testing including:
 - Authentication headers for protected endpoints
 """
 
-import pytest
-import pytest_asyncio
-from httpx import AsyncClient as HTTPXAsyncClient, ASGITransport
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from unittest.mock import MagicMock
+
+import pytest_asyncio
+from httpx import ASGITransport
+from httpx import AsyncClient as HTTPXAsyncClient
 from passlib.hash import bcrypt
+from sqlalchemy import select
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -34,9 +34,9 @@ async def api_client(db_manager):
             response = await api_client.get("/api/v1/endpoint")
             assert response.status_code == 200
     """
-    from api.app import app
-    from src.giljo_mcp.auth.dependencies import get_db_session
+    from api.app import app, state
     from src.giljo_mcp.auth import AuthManager
+    from src.giljo_mcp.auth.dependencies import get_db_session
 
     async def mock_get_db_session():
         """Provide test database session."""
@@ -52,8 +52,9 @@ async def api_client(db_manager):
     mock_config.jwt.algorithm = "HS256"
     mock_config.jwt.expiration_minutes = 30
 
-    # Set up auth manager in app state
+    # Set up auth manager in both app.state and module-level state used by middleware
     app.state.auth = AuthManager(mock_config, db=None)
+    state.auth = app.state.auth
 
     # Create async client with ASGI transport
     transport = ASGITransport(app=app)
@@ -88,8 +89,10 @@ async def auth_headers(db_manager, api_client) -> dict:
     Returns:
         dict: {"Authorization": "Bearer <token>"}
     """
-    from src.giljo_mcp.models import User
+    import os
+
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+    from src.giljo_mcp.models import User
 
     # Create a test user if it doesn't exist
     async with db_manager.get_session_async() as session:
@@ -99,18 +102,21 @@ async def auth_headers(db_manager, api_client) -> dict:
         user = result.scalars().first()
 
         if not user:
-            # Create test user with hashed password
-            hashed_password = bcrypt.hash("test_password")
+            # Create test user with password hash (models.User uses password_hash + role)
+            password_hash = bcrypt.hash("test_password")
 
             user = User(
                 username="test_user",
                 email="test@example.com",
-                hashed_password=hashed_password,
+                password_hash=password_hash,
                 tenant_key="test_tenant_key",
-                is_admin=False,
+                role="developer",
             )
             session.add(user)
             await session.commit()
+
+        # Ensure JWT secret available for test token creation
+        os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
         # Generate token for the user
         token = JWTManager.create_access_token(
@@ -120,4 +126,5 @@ async def auth_headers(db_manager, api_client) -> dict:
             tenant_key=user.tenant_key,
         )
 
-        return {"Authorization": f"Bearer {token}"}
+        # Use Cookie header because dependencies expect JWT in cookie 'access_token'
+        return {"Cookie": f"access_token={token}"}

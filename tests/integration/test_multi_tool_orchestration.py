@@ -4,7 +4,7 @@ Comprehensive Integration Tests for Multi-Tool Orchestration System (Handover 00
 Phase 8: Integration Testing - Tests the entire multi-tool orchestration system
 end-to-end with focus on:
 - Pure mode scenarios (Claude, Codex, Gemini)
-- Mixed mode orchestration  
+- Mixed mode orchestration
 - Agent-Job synchronization
 - MCP tool coordination
 - Multi-tenant isolation (CRITICAL)
@@ -19,11 +19,11 @@ and AgentCommunicationQueue rather than async orchestrator methods.
 import shutil
 import sys
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
 from src.giljo_mcp.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, AgentTemplate, Project
+from src.giljo_mcp.models import AgentTemplate, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -407,9 +407,7 @@ class TestMixedModeOperations:
 class TestMCPToolCoordination:
     """Test message passing and coordination."""
 
-    def test_send_message_orchestrator_to_agent(
-        self, db_manager, job_manager, comm_queue, tenant_key
-    ):
+    def test_send_message_orchestrator_to_agent(self, db_manager, job_manager, comm_queue, tenant_key):
         """Test sending message from orchestrator to agent."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -500,9 +498,7 @@ class TestMCPToolCoordination:
             # Assertions
             assert result["status"] == "success"
 
-    def test_error_message_high_priority(
-        self, db_manager, job_manager, comm_queue, tenant_key
-    ):
+    def test_error_message_high_priority(self, db_manager, job_manager, comm_queue, tenant_key):
         """Test error message gets high priority."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -543,9 +539,7 @@ class TestMCPToolCoordination:
 class TestMultiTenantIsolation:
     """CRITICAL: Zero cross-tenant leakage tests."""
 
-    def test_jobs_isolated_by_tenant(
-        self, db_manager, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_jobs_isolated_by_tenant(self, db_manager, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Jobs from different tenants don't interfere."""
         # Create jobs for two tenants
         job_t1 = job_manager.create_job(
@@ -578,9 +572,7 @@ class TestMultiTenantIsolation:
         assert pending_t2[0].job_id == job_t2.job_id
         assert pending_t1[0].job_id != pending_t2[0].job_id
 
-    def test_cross_tenant_job_access_denied(
-        self, db_manager, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_cross_tenant_job_access_denied(self, db_manager, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Cannot acknowledge job from another tenant."""
         # Create job for tenant 1
         job = job_manager.create_job(
@@ -596,9 +588,7 @@ class TestMultiTenantIsolation:
                 job_id=job.job_id,
             )
 
-    def test_message_queue_tenant_isolation(
-        self, db_manager, job_manager, comm_queue, tenant_key, other_tenant_key
-    ):
+    def test_message_queue_tenant_isolation(self, db_manager, job_manager, comm_queue, tenant_key, other_tenant_key):
         """CRITICAL: Messages isolated by tenant."""
         # Create jobs for both tenants
         job_t1 = job_manager.create_job(
@@ -635,9 +625,7 @@ class TestMultiTenantIsolation:
             # Should find no messages (empty list)
             assert len(messages_t2.get("messages", [])) == 0
 
-    def test_tenant_job_get_isolation(
-        self, db_manager, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_tenant_job_get_isolation(self, db_manager, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Jobs properly isolated by tenant."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -668,9 +656,7 @@ class TestMultiTenantIsolation:
 class TestErrorRecoveryFlow:
     """Test error reporting and handling."""
 
-    def test_report_error_updates_job_status(
-        self, db_manager, job_manager, tenant_key
-    ):
+    def test_report_error_updates_job_status(self, db_manager, job_manager, tenant_key):
         """Test error report updates job status."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -883,9 +869,7 @@ class TestEdgeCases:
         # Should still create job
         assert job is not None
 
-    def test_special_characters_in_mission(
-        self, db_manager, job_manager, tenant_key
-    ):
+    def test_special_characters_in_mission(self, db_manager, job_manager, tenant_key):
         """Test job with special characters."""
         special_mission = "Implement: foo@bar.com, price=$100, emoji: 🚀"
 
@@ -921,9 +905,7 @@ class TestEdgeCases:
 
             assert result["status"] == "success"
 
-    def test_acknowledge_already_active_job(
-        self, db_manager, job_manager, tenant_key
-    ):
+    def test_acknowledge_already_active_job(self, db_manager, job_manager, tenant_key):
         """Test acknowledging already-active job (idempotent)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,

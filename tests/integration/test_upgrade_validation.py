@@ -9,13 +9,14 @@ Tests validate:
 5. All validation checks pass
 """
 
-import pytest
 import subprocess
 import sys
 from pathlib import Path
-from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import Product, Project, Agent, AgentTemplate
+
+import pytest
+
 from src.giljo_mcp.context_manager import validate_config_data
+from src.giljo_mcp.models import Agent, AgentTemplate, Product, Project
 
 
 # Use db_session fixture from conftest.py
@@ -28,10 +29,7 @@ def test_product(db_session):
         id="test-validation-product",
         tenant_key="test-validation",
         name="Validation Test Product",
-        config_data={
-            "architecture": "Test architecture",
-            "serena_mcp_enabled": True
-        }
+        config_data={"architecture": "Test architecture", "serena_mcp_enabled": True},
     )
     db_session.add(product)
     db_session.commit()
@@ -57,10 +55,7 @@ class TestValidateOrchestratorUpgradeScript:
 
         # Try to run with --help to verify it's executable
         result = subprocess.run(
-            [sys.executable, str(script_path), "--help"],
-            capture_output=True,
-            text=True,
-            timeout=30
+            [sys.executable, str(script_path), "--help"], check=False, capture_output=True, text=True, timeout=30
         )
 
         # Should either succeed or show usage
@@ -73,13 +68,14 @@ class TestValidateOrchestratorUpgradeScript:
         # Run validation
         result = subprocess.run(
             [sys.executable, str(script_path)],
+            check=False,
             capture_output=True,
             text=True,
             cwd="F:/GiljoAI_MCP",
-            timeout=60
+            timeout=60,
         )
 
-        print(f"\n=== Validation Script Output ===")
+        print("\n=== Validation Script Output ===")
         print(result.stdout)
         if result.stderr:
             print(f"Stderr: {result.stderr}")
@@ -91,10 +87,11 @@ class TestValidateOrchestratorUpgradeScript:
     def test_script_checks_template_exists(self, db_session):
         """Test script verifies orchestrator template exists"""
         # Ensure template exists
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         if not template:
             pytest.skip("Orchestrator template not found - create it first")
@@ -103,10 +100,11 @@ class TestValidateOrchestratorUpgradeScript:
 
         result = subprocess.run(
             [sys.executable, str(script_path)],
+            check=False,
             capture_output=True,
             text=True,
             cwd="F:/GiljoAI_MCP",
-            timeout=60
+            timeout=60,
         )
 
         # Should mention template validation
@@ -128,10 +126,7 @@ class TestPopulateConfigDataScript:
 
         # Try to run with --help
         result = subprocess.run(
-            [sys.executable, str(script_path), "--help"],
-            capture_output=True,
-            text=True,
-            timeout=30
+            [sys.executable, str(script_path), "--help"], check=False, capture_output=True, text=True, timeout=30
         )
 
         # Should show usage or succeed
@@ -145,7 +140,7 @@ class TestPopulateConfigDataScript:
             pytest.skip("CLAUDE.md not found")
 
         # Read CLAUDE.md
-        content = claude_md.read_text(encoding='utf-8')
+        content = claude_md.read_text(encoding="utf-8")
 
         # Should contain config-relevant information
         assert "architecture" in content.lower() or "postgresql" in content.lower()
@@ -158,13 +153,14 @@ class TestPopulateConfigDataScript:
         # Run population script
         result = subprocess.run(
             [sys.executable, str(script_path)],
+            check=False,
             capture_output=True,
             text=True,
             cwd="F:/GiljoAI_MCP",
-            timeout=60
+            timeout=60,
         )
 
-        print(f"\n=== Population Script Output ===")
+        print("\n=== Population Script Output ===")
         print(result.stdout)
         if result.stderr:
             print(f"Stderr: {result.stderr}")
@@ -190,7 +186,7 @@ class TestConfigDataValidation:
 
         validation_results = []
 
-        print(f"\n=== Product Config Validation ===")
+        print("\n=== Product Config Validation ===")
 
         for product in products:
             if product.config_data:
@@ -223,47 +219,43 @@ class TestConfigDataValidation:
 
     def test_optional_fields_have_correct_types(self, db_session):
         """Test optional fields have correct types when present"""
-        products = db_session.query(Product).filter(
-            Product.config_data.isnot(None)
-        ).all()
+        products = db_session.query(Product).filter(Product.config_data.isnot(None)).all()
 
         if not products:
             pytest.skip("No products with config_data")
 
-        print(f"\n=== Config Field Type Validation ===")
+        print("\n=== Config Field Type Validation ===")
 
         for product in products:
             config = product.config_data
 
             # Check tech_stack is list if present
             if "tech_stack" in config:
-                assert isinstance(config["tech_stack"], list), \
-                    f"{product.name}: tech_stack must be list"
+                assert isinstance(config["tech_stack"], list), f"{product.name}: tech_stack must be list"
 
             # Check test_commands is list if present
             if "test_commands" in config:
-                assert isinstance(config["test_commands"], list), \
-                    f"{product.name}: test_commands must be list"
+                assert isinstance(config["test_commands"], list), f"{product.name}: test_commands must be list"
 
             # Check critical_features is list if present
             if "critical_features" in config:
-                assert isinstance(config["critical_features"], list), \
-                    f"{product.name}: critical_features must be list"
+                assert isinstance(config["critical_features"], list), f"{product.name}: critical_features must be list"
 
             # Check codebase_structure is dict if present
             if "codebase_structure" in config:
-                assert isinstance(config["codebase_structure"], dict), \
+                assert isinstance(config["codebase_structure"], dict), (
                     f"{product.name}: codebase_structure must be dict"
+                )
 
             # Check test_config is dict if present
             if "test_config" in config:
-                assert isinstance(config["test_config"], dict), \
-                    f"{product.name}: test_config must be dict"
+                assert isinstance(config["test_config"], dict), f"{product.name}: test_config must be dict"
 
             # Check serena_mcp_enabled is bool if present
             if "serena_mcp_enabled" in config:
-                assert isinstance(config["serena_mcp_enabled"], bool), \
+                assert isinstance(config["serena_mcp_enabled"], bool), (
                     f"{product.name}: serena_mcp_enabled must be bool"
+                )
 
             print(f"  ✓ {product.name}: All fields have correct types")
 
@@ -273,15 +265,17 @@ class TestOrchestratorTemplateValidation:
 
     def test_default_orchestrator_template_exists(self, db_session):
         """Test default orchestrator template exists"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True,
-            AgentTemplate.is_active == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(
+                AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True, AgentTemplate.is_active == True
+            )
+            .first()
+        )
 
         assert template is not None, "Default orchestrator template not found"
 
-        print(f"\n=== Orchestrator Template ===")
+        print("\n=== Orchestrator Template ===")
         print(f"ID: {template.id}")
         print(f"Name: {template.name}")
         print(f"Role: {template.role}")
@@ -292,10 +286,11 @@ class TestOrchestratorTemplateValidation:
 
     def test_orchestrator_template_content_complete(self, db_session):
         """Test orchestrator template has all required content"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         if not template:
             pytest.skip("Orchestrator template not found")
@@ -313,7 +308,7 @@ class TestOrchestratorTemplateValidation:
             ("3-tool" or "3 tool", "3-tool rule"),
         ]
 
-        print(f"\n=== Template Content Validation ===")
+        print("\n=== Template Content Validation ===")
 
         missing = []
         for keyword, description in required_content:
@@ -327,10 +322,11 @@ class TestOrchestratorTemplateValidation:
 
     def test_orchestrator_template_variables(self, db_session):
         """Test orchestrator template has required variables"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         if not template:
             pytest.skip("Orchestrator template not found")
@@ -338,7 +334,7 @@ class TestOrchestratorTemplateValidation:
         # Get template variables
         variables = template.variable_list
 
-        print(f"\n=== Template Variables ===")
+        print("\n=== Template Variables ===")
         print(f"Variables found: {variables}")
 
         # Should have some template variables
@@ -351,31 +347,30 @@ class TestEndToEndUpgradeValidation:
 
     def test_complete_upgrade_validation(self, db_session):
         """Test complete upgrade meets all success criteria"""
-        print(f"\n{'='*60}")
-        print(f"ORCHESTRATOR UPGRADE VALIDATION REPORT")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print("ORCHESTRATOR UPGRADE VALIDATION REPORT")
+        print(f"{'=' * 60}")
 
         # 1. Check orchestrator template
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
-        print(f"\n1. ORCHESTRATOR TEMPLATE:")
+        print("\n1. ORCHESTRATOR TEMPLATE:")
         if template:
-            print(f"   ✓ Default template exists")
+            print("   ✓ Default template exists")
             print(f"   ✓ Content length: {len(template.template_content)} chars")
         else:
-            print(f"   ✗ Default template NOT FOUND")
+            print("   ✗ Default template NOT FOUND")
 
         # 2. Check products with config_data
-        products_with_config = db_session.query(Product).filter(
-            Product.config_data.isnot(None)
-        ).count()
+        products_with_config = db_session.query(Product).filter(Product.config_data.isnot(None)).count()
 
         total_products = db_session.query(Product).count()
 
-        print(f"\n2. PRODUCT CONFIG_DATA:")
+        print("\n2. PRODUCT CONFIG_DATA:")
         print(f"   Products with config: {products_with_config}/{total_products}")
 
         if total_products > 0:
@@ -383,9 +378,7 @@ class TestEndToEndUpgradeValidation:
             print(f"   Coverage: {coverage:.1f}%")
 
         # 3. Validate config_data schemas
-        products = db_session.query(Product).filter(
-            Product.config_data.isnot(None)
-        ).all()
+        products = db_session.query(Product).filter(Product.config_data.isnot(None)).all()
 
         valid_configs = 0
         for product in products:
@@ -393,24 +386,24 @@ class TestEndToEndUpgradeValidation:
             if is_valid:
                 valid_configs += 1
 
-        print(f"\n3. CONFIG_DATA VALIDATION:")
+        print("\n3. CONFIG_DATA VALIDATION:")
         if products:
             print(f"   Valid configs: {valid_configs}/{len(products)}")
             validity_rate = (valid_configs / len(products)) * 100 if products else 0
             print(f"   Validity rate: {validity_rate:.1f}%")
         else:
-            print(f"   No products with config_data")
+            print("   No products with config_data")
 
         # 4. Check for agents and projects
         projects = db_session.query(Project).count()
         agents = db_session.query(Agent).count()
 
-        print(f"\n4. SYSTEM STATE:")
+        print("\n4. SYSTEM STATE:")
         print(f"   Projects: {projects}")
         print(f"   Agents: {agents}")
 
         # 5. Success criteria
-        print(f"\n5. SUCCESS CRITERIA:")
+        print("\n5. SUCCESS CRITERIA:")
 
         criteria = [
             (template is not None, "Default orchestrator template exists"),
@@ -425,9 +418,9 @@ class TestEndToEndUpgradeValidation:
             if not passed:
                 all_pass = False
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"OVERALL STATUS: {'✓ PASS' if all_pass else '✗ FAIL'}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         assert all_pass, "Not all success criteria met"
 
@@ -445,10 +438,11 @@ class TestScriptErrorHandling:
 
         result = subprocess.run(
             [sys.executable, str(script_path)],
+            check=False,
             capture_output=True,
             text=True,
             cwd="F:/GiljoAI_MCP",
-            timeout=60
+            timeout=60,
         )
 
         # Should not crash (may report errors but shouldn't exception)
@@ -464,7 +458,7 @@ class TestScriptErrorHandling:
 
         invalid_config = {
             "architecture": "Test",
-            "serena_mcp_enabled": "not a boolean"  # Invalid type
+            "serena_mcp_enabled": "not a boolean",  # Invalid type
         }
 
         is_valid, errors = validate_config_data(invalid_config)
@@ -480,11 +474,7 @@ class TestConfigDataMigration:
     def test_existing_products_can_add_config(self, db_session):
         """Test existing products can have config_data added"""
         # Create product without config
-        product = Product(
-            id="test-migration-product",
-            tenant_key="test-migration",
-            name="Migration Test Product"
-        )
+        product = Product(id="test-migration-product", tenant_key="test-migration", name="Migration Test Product")
         db_session.add(product)
         db_session.commit()
         db_session.refresh(product)
@@ -496,7 +486,7 @@ class TestConfigDataMigration:
         product.config_data = {
             "architecture": "Migrated architecture",
             "tech_stack": ["Python", "PostgreSQL"],
-            "serena_mcp_enabled": True
+            "serena_mcp_enabled": True,
         }
         db_session.commit()
         db_session.refresh(product)
@@ -518,7 +508,7 @@ class TestConfigDataMigration:
         test_product.config_data = {
             **original_config,
             "tech_stack": ["Python 3.11", "PostgreSQL 18"],
-            "new_field": "New value"
+            "new_field": "New value",
         }
         db_session.commit()
         db_session.refresh(test_product)

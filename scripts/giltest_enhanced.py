@@ -21,15 +21,16 @@ FEATURES:
     - Integrated with devuninstall.py and uninstall.py
 """
 
+import json
 import os
-import sys
 import shutil
 import subprocess
-import json
+import sys
 import time
-from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from pathlib import Path
+from typing import Dict
+
 
 # Configuration
 SOURCE_DIR = Path(__file__).parent
@@ -52,12 +53,7 @@ class TestWorkflowOrchestrator:
         self.backup_dir = BACKUP_DIR
         self.log_dir = LOG_DIR
         self.log_file = None
-        self.workflow_state = {
-            "copied": False,
-            "installed": False,
-            "launched": False,
-            "cleanup_done": False
-        }
+        self.workflow_state = {"copied": False, "installed": False, "launched": False, "cleanup_done": False}
 
     def setup_logging(self):
         """Initialize logging for the workflow"""
@@ -72,15 +68,15 @@ class TestWorkflowOrchestrator:
 
         print(log_entry)
         if self.log_file:
-            with open(self.log_file, 'a') as f:
+            with open(self.log_file, "a") as f:
                 f.write(log_entry + "\n")
 
     def print_header(self):
         """Display the workflow header"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("   GiljoAI MCP - Complete Testing Workflow")
         print("   Simulates: Git Clone → Install → Launch → Cleanup")
-        print("="*70)
+        print("=" * 70)
         print()
         print(f"Source: {self.source_dir}")
         print(f"Target: {self.test_dir}")
@@ -95,7 +91,7 @@ class TestWorkflowOrchestrator:
             "python": self.check_python(),
             "postgresql": self.check_postgresql(),
             "ports": self.check_ports(),
-            "disk_space": self.check_disk_space()
+            "disk_space": self.check_disk_space(),
         }
 
         return checks
@@ -107,9 +103,8 @@ class TestWorkflowOrchestrator:
             if version.major == 3 and version.minor >= 9:
                 self.log(f"Python {version.major}.{version.minor}.{version.micro} OK")
                 return True
-            else:
-                self.log(f"Python version {version.major}.{version.minor} (need 3.9+)", "WARNING")
-                return False
+            self.log(f"Python version {version.major}.{version.minor} (need 3.9+)", "WARNING")
+            return False
         except Exception as e:
             self.log(f"Failed to check Python: {e}", "ERROR")
             return False
@@ -122,7 +117,7 @@ class TestWorkflowOrchestrator:
                 r"C:\Program Files\PostgreSQL\18\bin\psql.exe",
                 r"C:\Program Files\PostgreSQL\17\bin\psql.exe",
                 r"C:\Program Files\PostgreSQL\16\bin\psql.exe",
-                "psql"
+                "psql",
             ]
 
             for path in psql_paths:
@@ -141,17 +136,12 @@ class TestWorkflowOrchestrator:
         """Check if required ports are available"""
         import socket
 
-        ports_to_check = [
-            (8000, "API"),
-            (8001, "WebSocket"),
-            (3000, "Dashboard"),
-            (5432, "PostgreSQL")
-        ]
+        ports_to_check = [(8000, "API"), (8001, "WebSocket"), (3000, "Dashboard"), (5432, "PostgreSQL")]
 
         all_clear = True
         for port, service in ports_to_check:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex(('127.0.0.1', port))
+            result = sock.connect_ex(("127.0.0.1", port))
             sock.close()
 
             if result == 0:
@@ -166,24 +156,24 @@ class TestWorkflowOrchestrator:
         """Check available disk space"""
         try:
             import shutil
+
             stat = shutil.disk_usage(self.test_dir.parent if self.test_dir.exists() else "C:/")
             free_gb = stat.free / (1024**3)
 
             if free_gb >= 1:
                 self.log(f"Disk space: {free_gb:.1f} GB available")
                 return True
-            else:
-                self.log(f"Low disk space: {free_gb:.1f} GB", "WARNING")
-                return False
+            self.log(f"Low disk space: {free_gb:.1f} GB", "WARNING")
+            return False
         except Exception as e:
             self.log(f"Failed to check disk space: {e}", "ERROR")
             return True  # Assume OK if can't check
 
     def copy_project(self, clean: bool = True) -> bool:
         """Copy project to test directory (simulating git clone)"""
-        self.log("\n" + "="*60)
+        self.log("\n" + "=" * 60)
         self.log("STEP 1: Copy Project (Simulate Git Clone)")
-        self.log("="*60)
+        self.log("=" * 60)
 
         try:
             # Handle existing installation
@@ -200,11 +190,20 @@ class TestWorkflowOrchestrator:
 
             # Define exclusions (similar to .gitignore)
             exclude_patterns = [
-                "__pycache__", "*.pyc", "*.pyo",
-                ".git", ".venv", "venv",
-                "*.log", "*.db", "data/",
-                ".env", "config.yaml",
-                "node_modules", "dist", "build"
+                "__pycache__",
+                "*.pyc",
+                "*.pyo",
+                ".git",
+                ".venv",
+                "venv",
+                "*.log",
+                "*.db",
+                "data/",
+                ".env",
+                "config.yaml",
+                "node_modules",
+                "dist",
+                "build",
             ]
 
             # Copy with exclusions
@@ -217,11 +216,12 @@ class TestWorkflowOrchestrator:
 
                     # Check patterns
                     for pattern in exclude_patterns:
-                        if pattern.endswith('/'):
+                        if pattern.endswith("/"):
                             if full_path.is_dir() and file == pattern[:-1]:
                                 ignored.append(file)
-                        elif '*' in pattern:
+                        elif "*" in pattern:
                             import fnmatch
+
                             if fnmatch.fnmatch(file, pattern):
                                 ignored.append(file)
                         elif file == pattern:
@@ -229,12 +229,7 @@ class TestWorkflowOrchestrator:
 
                 return ignored
 
-            shutil.copytree(
-                self.source_dir,
-                self.test_dir,
-                ignore=ignore_patterns,
-                dirs_exist_ok=True
-            )
+            shutil.copytree(self.source_dir, self.test_dir, ignore=ignore_patterns, dirs_exist_ok=True)
 
             # Count copied files
             file_count = sum(1 for _ in self.test_dir.rglob("*") if _.is_file())
@@ -292,9 +287,9 @@ class TestWorkflowOrchestrator:
 
     def run_installer(self, mode: str = "localhost") -> bool:
         """Run the installer from the test directory"""
-        self.log("\n" + "="*60)
+        self.log("\n" + "=" * 60)
         self.log("STEP 2: Run Installer")
-        self.log("="*60)
+        self.log("=" * 60)
 
         if not self.workflow_state["copied"]:
             self.log("Project not copied yet. Run copy step first.", "ERROR")
@@ -316,30 +311,40 @@ class TestWorkflowOrchestrator:
             cmd = [
                 sys.executable,
                 str(installer_path),
-                "--mode", mode,
-                "--pg-host", DEFAULT_PG_HOST,
-                "--pg-port", DEFAULT_PG_PORT,
-                "--pg-password", DEFAULT_PG_PASSWORD,
-                "--batch"  # Run in batch mode for testing
+                "--mode",
+                mode,
+                "--pg-host",
+                DEFAULT_PG_HOST,
+                "--pg-port",
+                DEFAULT_PG_PORT,
+                "--pg-password",
+                DEFAULT_PG_PASSWORD,
+                "--batch",  # Run in batch mode for testing
             ]
 
             # Add server mode options if needed
             if mode == "server":
-                cmd.extend([
-                    "--bind", "0.0.0.0",
-                    "--admin-username", "admin",
-                    "--admin-password", "admin123",
-                    "--generate-api-key"
-                ])
+                cmd.extend(
+                    [
+                        "--bind",
+                        "0.0.0.0",
+                        "--admin-username",
+                        "admin",
+                        "--admin-password",
+                        "admin123",
+                        "--generate-api-key",
+                    ]
+                )
 
             self.log(f"Command: {' '.join(cmd)}")
 
             # Run installer
             result = subprocess.run(
                 cmd,
+                check=False,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             if result.returncode == 0:
@@ -349,11 +354,10 @@ class TestWorkflowOrchestrator:
                 # Save installation info
                 self.save_installation_info(mode)
                 return True
-            else:
-                self.log(f"Installation failed with code {result.returncode}", "ERROR")
-                self.log(f"STDOUT: {result.stdout}", "ERROR")
-                self.log(f"STDERR: {result.stderr}", "ERROR")
-                return False
+            self.log(f"Installation failed with code {result.returncode}", "ERROR")
+            self.log(f"STDOUT: {result.stdout}", "ERROR")
+            self.log(f"STDERR: {result.stderr}", "ERROR")
+            return False
 
         except subprocess.TimeoutExpired:
             self.log("Installation timed out after 5 minutes", "ERROR")
@@ -375,20 +379,20 @@ class TestWorkflowOrchestrator:
             "pg_port": DEFAULT_PG_PORT,
             "api_port": 8000,
             "ws_port": 8001,
-            "dashboard_port": 3000
+            "dashboard_port": 3000,
         }
 
         info_file = self.test_dir / ".giltest_info.json"
-        with open(info_file, 'w') as f:
+        with open(info_file, "w") as f:
             json.dump(info, f, indent=2)
 
         self.log(f"Installation info saved to: {info_file}")
 
     def launch_application(self) -> bool:
         """Launch the application using start_giljo.py"""
-        self.log("\n" + "="*60)
+        self.log("\n" + "=" * 60)
         self.log("STEP 3: Launch Application")
-        self.log("="*60)
+        self.log("=" * 60)
 
         if not self.workflow_state["installed"]:
             self.log("Application not installed yet. Run installer first.", "ERROR")
@@ -408,10 +412,7 @@ class TestWorkflowOrchestrator:
 
             # Start in background
             process = subprocess.Popen(
-                [sys.executable, str(launcher_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+                [sys.executable, str(launcher_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
 
             # Wait for services to start
@@ -423,23 +424,22 @@ class TestWorkflowOrchestrator:
                 self.log("Services started successfully!")
                 self.workflow_state["launched"] = True
 
-                self.log("\n" + "="*60)
+                self.log("\n" + "=" * 60)
                 self.log("Application is now running!")
-                self.log("="*60)
-                self.log(f"API: http://localhost:7272")
-                self.log(f"WebSocket: ws://localhost:7272")
-                self.log(f"Dashboard: http://localhost:7274")
+                self.log("=" * 60)
+                self.log("API: http://localhost:7272")
+                self.log("WebSocket: ws://localhost:7272")
+                self.log("Dashboard: http://localhost:7274")
 
                 return True
-            else:
-                self.log("Services failed to start", "ERROR")
-                # Show process output
-                stdout, stderr = process.communicate(timeout=5)
-                if stdout:
-                    self.log(f"STDOUT: {stdout}", "ERROR")
-                if stderr:
-                    self.log(f"STDERR: {stderr}", "ERROR")
-                return False
+            self.log("Services failed to start", "ERROR")
+            # Show process output
+            stdout, stderr = process.communicate(timeout=5)
+            if stdout:
+                self.log(f"STDOUT: {stdout}", "ERROR")
+            if stderr:
+                self.log(f"STDERR: {stderr}", "ERROR")
+            return False
 
         except Exception as e:
             self.log(f"Failed to launch application: {e}", "ERROR")
@@ -500,10 +500,7 @@ if __name__ == "__main__":
         """Verify that services are actually running"""
         import socket
 
-        services = [
-            ("127.0.0.1", 8000, "API"),
-            ("127.0.0.1", 8001, "WebSocket")
-        ]
+        services = [("127.0.0.1", 8000, "API"), ("127.0.0.1", 8001, "WebSocket")]
 
         all_running = True
         for host, port, name in services:
@@ -521,9 +518,9 @@ if __name__ == "__main__":
 
     def run_cleanup(self, cleanup_type: str = "dev") -> bool:
         """Run cleanup using devuninstall or uninstall"""
-        self.log("\n" + "="*60)
+        self.log("\n" + "=" * 60)
         self.log("STEP 4: Cleanup")
-        self.log("="*60)
+        self.log("=" * 60)
 
         try:
             os.chdir(self.test_dir)
@@ -544,19 +541,19 @@ if __name__ == "__main__":
             # Run uninstaller
             result = subprocess.run(
                 [sys.executable, str(uninstall_path)],
+                check=False,
                 input="1\nRESET\n",  # Auto-confirm for testing
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
 
             if result.returncode == 0:
                 self.log("Cleanup completed successfully!")
                 self.workflow_state["cleanup_done"] = True
                 return True
-            else:
-                self.log(f"Cleanup failed: {result.stderr}", "ERROR")
-                return False
+            self.log(f"Cleanup failed: {result.stderr}", "ERROR")
+            return False
 
         except Exception as e:
             self.log(f"Failed to run cleanup: {e}", "ERROR")
@@ -566,15 +563,15 @@ if __name__ == "__main__":
 
     def show_workflow_summary(self):
         """Display workflow summary"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("   Workflow Summary")
-        print("="*70)
+        print("=" * 70)
 
         steps = [
             ("Project Copied", self.workflow_state["copied"]),
             ("Installer Run", self.workflow_state["installed"]),
             ("Application Launched", self.workflow_state["launched"]),
-            ("Cleanup Done", self.workflow_state["cleanup_done"])
+            ("Cleanup Done", self.workflow_state["cleanup_done"]),
         ]
 
         for step, completed in steps:
@@ -592,9 +589,9 @@ if __name__ == "__main__":
         self.print_header()
 
         # Check prerequisites
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Checking Prerequisites")
-        print("="*60)
+        print("=" * 60)
 
         checks = self.check_prerequisites()
         all_ok = all(checks.values())
@@ -607,9 +604,9 @@ if __name__ == "__main__":
 
         # Main workflow menu
         while True:
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("Testing Workflow Menu")
-            print("="*60)
+            print("=" * 60)
             print()
             print("1. Full Workflow (Copy → Install → Launch → Cleanup)")
             print("2. Copy Project Only")
@@ -659,9 +656,9 @@ if __name__ == "__main__":
 
     def run_full_workflow(self):
         """Run the complete workflow"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("Running Full Testing Workflow")
-        print("="*70)
+        print("=" * 70)
 
         # Step 1: Copy
         clean = self.confirm("Clean copy (remove existing data)?")
@@ -681,9 +678,9 @@ if __name__ == "__main__":
             return
 
         # Step 4: Interact
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Application is running. Test it now!")
-        print("="*60)
+        print("=" * 60)
         input("Press Enter when ready to continue with cleanup...")
 
         # Step 5: Cleanup
@@ -696,12 +693,11 @@ if __name__ == "__main__":
         """Get yes/no confirmation"""
         while True:
             response = input(f"{prompt} (y/n): ").strip().lower()
-            if response in ['y', 'yes']:
+            if response in ["y", "yes"]:
                 return True
-            elif response in ['n', 'no']:
+            if response in ["n", "no"]:
                 return False
-            else:
-                print("Please enter 'y' or 'n'")
+            print("Please enter 'y' or 'n'")
 
     def select_mode(self) -> str:
         """Select installation mode"""
@@ -713,10 +709,9 @@ if __name__ == "__main__":
             choice = input("Choice [1-2]: ").strip()
             if choice == "1":
                 return "localhost"
-            elif choice == "2":
+            if choice == "2":
                 return "server"
-            else:
-                print("Invalid choice.")
+            print("Invalid choice.")
 
 
 def main():

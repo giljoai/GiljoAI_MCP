@@ -3,8 +3,9 @@ FastAPI dependencies for request handling
 """
 
 import os
+
 from fastapi import Request
-from sqlalchemy.orm import Session
+
 from giljo_mcp.tenant import TenantManager
 
 
@@ -18,9 +19,11 @@ async def get_tenant_key(request: Request) -> str:
     In server mode (LAN/WAN), missing tenant key returns 401.
     In localhost mode, defaults to predefined tenant key.
     """
-    import yaml
     from pathlib import Path
+
+    import yaml
     from fastapi import HTTPException
+
     from api.app import state
 
     # Check if we're in setup mode first
@@ -56,15 +59,14 @@ async def get_tenant_key(request: Request) -> str:
     try:
         config_path = Path(__file__).parent.parent / "config.yaml"
         if config_path.exists():
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
-                mode = config.get('installation', {}).get('mode', 'localhost')
+                mode = config.get("installation", {}).get("mode", "localhost")
 
             # In server mode (LAN/WAN), missing tenant key is a security error
-            if mode in ('server', 'lan', 'wan'):
+            if mode in ("server", "lan", "wan"):
                 raise HTTPException(
-                    status_code=401,
-                    detail=f"Tenant key required for {mode} mode. Include X-Tenant-Key header."
+                    status_code=401, detail=f"Tenant key required for {mode} mode. Include X-Tenant-Key header."
                 )
     except HTTPException:
         raise

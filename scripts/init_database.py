@@ -37,7 +37,11 @@ def init_database(database_url: Optional[str] = None, drop_existing: bool = Fals
     if not database_url:
         # Require PostgreSQL by default; build local PostgreSQL URL if none provided
         database_url = DatabaseManager.build_postgresql_url(
-            host="localhost", port=5432, database="giljo_mcp", username="postgres", password=os.getenv("DB_PASSWORD", "")
+            host="localhost",
+            port=5432,
+            database="giljo_mcp",
+            username="postgres",
+            password=os.getenv("DB_PASSWORD", ""),
         )
 
     try:

@@ -9,14 +9,12 @@ Tests the full workflow:
 - Full end-to-end template resolution
 """
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_cache import TemplateCache
-from src.giljo_mcp.template_manager import UnifiedTemplateManager, process_template
+from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
 
 # Integration test fixtures
@@ -57,9 +55,7 @@ def orchestrator_template():
 
 
 @pytest.mark.asyncio
-async def test_full_template_workflow_with_cache(
-    template_manager, orchestrator_template, mock_db_manager
-):
+async def test_full_template_workflow_with_cache(template_manager, orchestrator_template, mock_db_manager):
     """Test full workflow: fetch → cache → retrieve from cache"""
     # Mock database session
     mock_session = AsyncMock()
@@ -113,9 +109,7 @@ async def test_full_template_workflow_with_cache(
 
 
 @pytest.mark.asyncio
-async def test_template_edit_invalidates_cache(
-    template_manager, orchestrator_template, mock_db_manager
-):
+async def test_template_edit_invalidates_cache(template_manager, orchestrator_template, mock_db_manager):
     """Test editing template invalidates cache and next request fetches updated version"""
     # Mock database session for initial fetch
     mock_session = AsyncMock()
@@ -135,9 +129,7 @@ async def test_template_edit_invalidates_cache(
     assert "You are the orchestrator for Test" in result1
 
     # Verify template is cached
-    cache_key = template_manager.cache._build_cache_key(
-        "orchestrator", "tenant-123", None
-    )
+    cache_key = template_manager.cache._build_cache_key("orchestrator", "tenant-123", None)
     assert cache_key in template_manager.cache._memory_cache
 
     # Simulate template edit (invalidate cache)

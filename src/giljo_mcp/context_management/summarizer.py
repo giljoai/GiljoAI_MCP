@@ -49,11 +49,7 @@ class ContextSummarizer:
         return len(self.encoding.encode(text))
 
     def create_summary(
-        self,
-        tenant_key: str,
-        product_id: str,
-        full_content: str,
-        condensed_mission: str
+        self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
     ) -> Dict[str, any]:
         """
         Create summary and track token reduction.
@@ -78,7 +74,7 @@ class ContextSummarizer:
                 full_content=full_content,
                 condensed_mission=condensed_mission,
                 full_tokens=full_tokens,
-                condensed_tokens=condensed_tokens
+                condensed_tokens=condensed_tokens,
             )
 
             session.commit()
@@ -87,8 +83,7 @@ class ContextSummarizer:
         tokens_saved = full_tokens - condensed_tokens
 
         logger.info(
-            f"Created summary for product {product_id}: "
-            f"{reduction_percent:.1f}% reduction, {tokens_saved} tokens saved"
+            f"Created summary for product {product_id}: {reduction_percent:.1f}% reduction, {tokens_saved} tokens saved"
         )
 
         return {
@@ -96,12 +91,10 @@ class ContextSummarizer:
             "full_tokens": full_tokens,
             "condensed_tokens": condensed_tokens,
             "reduction_percent": reduction_percent,
-            "tokens_saved": tokens_saved
+            "tokens_saved": tokens_saved,
         }
 
-    def get_reduction_stats(
-        self, tenant_key: str, product_id: Optional[str] = None
-    ) -> Dict[str, any]:
+    def get_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> Dict[str, any]:
         """
         Get token reduction statistics.
 
@@ -114,9 +107,7 @@ class ContextSummarizer:
         """
         with self.db_manager.get_session() as session:
             stats = self.context_repo.get_token_reduction_stats(
-                session=session,
-                tenant_key=tenant_key,
-                product_id=product_id
+                session=session, tenant_key=tenant_key, product_id=product_id
             )
 
         return stats

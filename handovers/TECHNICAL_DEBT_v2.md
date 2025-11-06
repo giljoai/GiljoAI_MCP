@@ -1741,13 +1741,32 @@ Use:
 - `docs/DEVELOPER_WORKFLOW_GUIDE.md` - TO BE CREATED
 - `docs/guides/QUICK_START_TUTORIAL.md` - TO BE CREATED
 
+## add model query to agent template manager
+need to be able to update models for agent tempalte manager for all coding tools
+
+## serena advanced settings
+  Advanced Serena Parameters (From SerenaAdvancedSettingsDialog.vue)
+
+  1. use_in_prompts (bool) - Include Serena usage guidance in agent prompts
+  2. tailor_by_mission (bool) - Adjust guidance to mission type (bugfix, feature, tests)
+  3. dynamic_catalog (bool) - Recommend only Serena tools detected as available
+  4. prefer_ranges (bool) - Prefer reading only relevant line ranges before full-file
+  5. max_range_lines (int) - Largest recommended range before full-file (default 180)
+  6. context_halo (int) - Extra lines around target ranges for context (default 12)
+
+  Note: These advanced parameters are stored in config.yaml but not yet implemented in _fetch_serena_codebase_context(). That
+  method currently returns placeholder/empty string (line 442).
+
 ---
 
-**Last Updated**: 2025-10-27
+**Last Updated**: 2025-11-05
 **Next Review**: After v3.0 Beta release
 **Owner**: Development Team
 **Priority**: CRITICAL - Blocks v3.0 release until Packages A & B complete
 
 ---
+
+
+
 
 **End of Technical Debt v2.0**

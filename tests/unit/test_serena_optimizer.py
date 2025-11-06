@@ -6,7 +6,7 @@ Tests optimization rules, token tracking, and template augmentation generation.
 import sys
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -423,7 +423,6 @@ class TestSerenaOptimizer(BaseAsyncTest):
     @pytest.mark.asyncio
     async def test_record_operation_calculates_savings(self):
         """Test operation recording calculates token savings"""
-        from src.giljo_mcp.models import OptimizationMetric
 
         agent_id = str(uuid.uuid4())
 

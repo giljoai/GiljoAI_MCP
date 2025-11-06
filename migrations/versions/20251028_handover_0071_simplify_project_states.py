@@ -22,16 +22,17 @@ Estimated downtime: Minimal (single UPDATE for entire projects table)
 Rollback strategy: Database backup restore required
 
 """
-from typing import Sequence, Union
+
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
-import sqlalchemy as sa
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic
-revision: str = '20251028_simplify_states'
-down_revision: Union[str, Sequence[str], None] = '20251028_completed_at'
+revision: str = "20251028_simplify_states"
+down_revision: Union[str, Sequence[str], None] = "20251028_completed_at"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -65,9 +66,7 @@ def upgrade() -> None:
     # ================================================
     print("[Handover 0071] Step 1: Analyzing current state...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) as count FROM projects WHERE status = 'paused'"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) as count FROM projects WHERE status = 'paused'"))
     paused_count = result.scalar()
 
     print(f"[Handover 0071]   - Found {paused_count} paused project(s)")
@@ -77,11 +76,13 @@ def upgrade() -> None:
         # ==================================
         print(f"[Handover 0071] Step 2: Converting {paused_count} paused project(s) to inactive...")
 
-        op.execute(text("""
+        op.execute(
+            text("""
             UPDATE projects
             SET status = 'inactive'
             WHERE status = 'paused'
-        """))
+        """)
+        )
 
         print(f"[Handover 0071]   - Successfully converted {paused_count} project(s)")
     else:
@@ -91,9 +92,7 @@ def upgrade() -> None:
     # ========================================
     print("[Handover 0071] Step 3: Verifying conversion...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) as count FROM projects WHERE status = 'paused'"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) as count FROM projects WHERE status = 'paused'"))
     remaining_paused = result.scalar()
 
     if remaining_paused > 0:
@@ -111,12 +110,14 @@ def upgrade() -> None:
     # =======================
     print("[Handover 0071] Step 4: Final state summary...")
 
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT status, COUNT(*) as count
         FROM projects
         GROUP BY status
         ORDER BY status
-    """))
+    """)
+    )
 
     rows = result.fetchall()
     for row in rows:

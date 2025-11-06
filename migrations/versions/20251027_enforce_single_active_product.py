@@ -12,16 +12,17 @@ Revises: 20251026_224146
 Create Date: 2025-10-27 16:00:00.000000
 
 """
-from typing import Sequence, Union
+
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
-import sqlalchemy as sa
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
-revision: str = '20251027_single_active'
-down_revision: Union[str, Sequence[str], None] = '20251026_224146'
+revision: str = "20251027_single_active"
+down_revision: Union[str, Sequence[str], None] = "20251026_224146"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -41,13 +42,15 @@ def upgrade() -> None:
     connection = op.get_bind()
 
     # Find tenants with multiple active products
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT tenant_key, COUNT(*) as active_count
         FROM products
         WHERE is_active = true
         GROUP BY tenant_key
         HAVING COUNT(*) > 1
-    """))
+    """)
+    )
 
     conflicts = result.fetchall()
 
@@ -58,12 +61,15 @@ def upgrade() -> None:
     # Resolve each conflict
     for tenant_key, active_count in conflicts:
         # Get all active products for this tenant, ordered by updated_at DESC
-        products_result = connection.execute(text("""
+        products_result = connection.execute(
+            text("""
             SELECT id, name, updated_at
             FROM products
             WHERE tenant_key = :tenant_key AND is_active = true
             ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
-        """), {'tenant_key': tenant_key})
+        """),
+            {"tenant_key": tenant_key},
+        )
 
         products = products_result.fetchall()
 
@@ -73,11 +79,14 @@ def upgrade() -> None:
                 print(f"  ✓ Tenant {tenant_key}: Keeping '{product_name}' active (updated: {updated_at})")
             else:
                 print(f"  → Tenant {tenant_key}: Deactivating '{product_name}'")
-                connection.execute(text("""
+                connection.execute(
+                    text("""
                     UPDATE products
                     SET is_active = false, updated_at = NOW()
                     WHERE id = :product_id
-                """), {'product_id': product_id})
+                """),
+                    {"product_id": product_id},
+                )
                 connection.commit()
 
     if conflicts:
@@ -94,11 +103,11 @@ def upgrade() -> None:
     # Only indexes rows where is_active = true
     # Uniqueness enforced on (tenant_key) for active products
     op.create_index(
-        'idx_product_single_active_per_tenant',
-        'products',
-        ['tenant_key'],
+        "idx_product_single_active_per_tenant",
+        "products",
+        ["tenant_key"],
         unique=True,
-        postgresql_where=text('is_active = true')
+        postgresql_where=text("is_active = true"),
     )
 
     print("[Handover 0050 Migration] Migration complete - single active product enforcement enabled\n")
@@ -115,7 +124,7 @@ def downgrade() -> None:
     print("\n[Handover 0050 Migration Rollback] Removing single active product constraint...")
 
     # Drop partial unique index
-    op.drop_index('idx_product_single_active_per_tenant', table_name='products')
+    op.drop_index("idx_product_single_active_per_tenant", table_name="products")
 
     print("[Handover 0050 Migration Rollback] ✓ Constraint removed - multiple active products now allowed\n")
     print("WARNING: System will now allow multiple active products per tenant.")

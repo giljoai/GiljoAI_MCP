@@ -19,7 +19,6 @@ from src.giljo_mcp.discovery import SerenaHooks
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestSerenaHooks:
     """Test suite for SerenaHooks class"""
 

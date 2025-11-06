@@ -33,15 +33,13 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import click
 from colorama import Fore, Style, init
 
 # Import unified platform handlers and core modules
 from installer.platforms import get_platform_handler
-from installer.core.config import ConfigManager
-from installer.core.database import DatabaseInstaller
 
 
 # Initialize colorama for cross-platform colored output
@@ -82,20 +80,20 @@ class UnifiedInstaller:
         self.settings = settings or {}
 
         # Apply defaults
-        self.settings.setdefault('install_dir', str(Path.cwd()))
-        self.settings.setdefault('pg_host', 'localhost')
-        self.settings.setdefault('pg_port', 5432)
-        self.settings.setdefault('api_port', DEFAULT_API_PORT)
-        self.settings.setdefault('dashboard_port', DEFAULT_FRONTEND_PORT)
-        self.settings.setdefault('bind', '0.0.0.0')  # v3.0: Always bind all interfaces
+        self.settings.setdefault("install_dir", str(Path.cwd()))
+        self.settings.setdefault("pg_host", "localhost")
+        self.settings.setdefault("pg_port", 5432)
+        self.settings.setdefault("api_port", DEFAULT_API_PORT)
+        self.settings.setdefault("dashboard_port", DEFAULT_FRONTEND_PORT)
+        self.settings.setdefault("bind", "0.0.0.0")  # v3.0: Always bind all interfaces
 
         # Initialize platform handler (auto-detects Windows/Linux/macOS)
         self.platform = get_platform_handler()
 
         # Paths
-        self.install_dir = Path(self.settings['install_dir'])
-        self.venv_dir = self.install_dir / 'venv'
-        self.requirements_file = self.install_dir / 'requirements.txt'
+        self.install_dir = Path(self.settings["install_dir"])
+        self.venv_dir = self.install_dir / "venv"
+        self.requirements_file = self.install_dir / "requirements.txt"
 
         # State
         self.postgresql_found = False
@@ -127,96 +125,115 @@ class UnifiedInstaller:
         Returns:
             Result dictionary with success status and details
         """
-        result = {'success': False, 'steps': []}
+        result = {"success": False, "steps": []}
 
         try:
             # Step 1: Welcome screen
             self.welcome_screen()
-            result['steps'].append('welcome_shown')
+            result["steps"].append("welcome_shown")
 
             # Step 1.5: Ask installation questions (NEW)
-            if not self.settings.get('headless'):
+            if not self.settings.get("headless"):
                 self._print_header("Installation Configuration")
                 self.ask_installation_questions()
-                result['steps'].append('configuration_gathered')
+                result["steps"].append("configuration_gathered")
 
             # Step 2: Check Python version
             self._print_header("Checking Python Version")
             if not self.check_python_version():
                 self._print_error("Python version check failed")
-                result['error'] = "Python 3.10+ required"
+                result["error"] = "Python 3.10+ required"
                 return result
-            result['steps'].append('python_verified')
+            result["steps"].append("python_verified")
 
             # Step 3: Discover PostgreSQL
             self._print_header("Discovering PostgreSQL")
             pg_result = self.discover_postgresql()
-            if not pg_result['found']:
+            if not pg_result["found"]:
                 self._print_error("PostgreSQL not found")
                 self._print_postgresql_install_guide()
-                result['error'] = "PostgreSQL 18 required"
+                result["error"] = "PostgreSQL 18 required"
                 return result
-            result['steps'].append('postgresql_found')
+            result["steps"].append("postgresql_found")
 
             # Step 4: Install dependencies
             self._print_header("Installing Dependencies")
             dep_result = self.install_dependencies()
-            if not dep_result['success']:
+            if not dep_result["success"]:
                 self._print_error("Dependency installation failed")
-                result['error'] = dep_result.get('error', 'Unknown error')
+                result["error"] = dep_result.get("error", "Unknown error")
                 return result
-            result['steps'].append('dependencies_installed')
+            result["steps"].append("dependencies_installed")
 
             # Step 5: Generate configs (MUST happen before database setup!)
             # Table creation in step 6 needs .env file with DATABASE_URL
             self._print_header("Generating Configuration Files")
             config_result = self.generate_configs()
-            if not config_result['success']:
+            if not config_result["success"]:
                 self._print_error("Configuration generation failed")
-                result['error'] = '; '.join(config_result.get('errors', ['Unknown error']))
+                result["error"] = "; ".join(config_result.get("errors", ["Unknown error"]))
                 return result
-            result['steps'].append('configs_generated')
+            result["steps"].append("configs_generated")
 
             # Step 6: Setup database (create DB, roles, tables, admin user, setup_state)
             self._print_header("Setting Up Database")
             db_result = self.setup_database()
-            if not db_result['success']:
+            if not db_result["success"]:
                 self._print_error("Database setup failed")
-                result['error'] = '; '.join(db_result.get('errors', ['Unknown error']))
+                result["error"] = "; ".join(db_result.get("errors", ["Unknown error"]))
                 return result
-            self.database_credentials = db_result.get('credentials', {})
-            result['steps'].append('database_created')
-            result['steps'].append('tables_created')  # Added by inline table creation
+            self.database_credentials = db_result.get("credentials", {})
+            result["steps"].append("database_created")
+            result["steps"].append("tables_created")  # Added by inline table creation
+
+            # Step 6.5: Run Alembic migrations (CRITICAL - applies constraints & backfills)
+            self._print_header("Applying Database Migrations")
+            migration_result = self.run_database_migrations()
+            if not migration_result["success"]:
+                # Check if this is a fresh install or upgrade
+                is_fresh_install = not (self.install_dir / ".env").exists()
+
+                # For fresh installs, migration failure is CRITICAL
+                if is_fresh_install and migration_result.get("migrations_applied", []):
+                    self._print_error("Migration failed on fresh install - this is a critical error")
+                    result["error"] = migration_result.get("error", "Unknown migration error")
+                    return result
+
+                # For upgrades, log warning but continue (may be expected)
+                self._print_warning("Database migration encountered issues")
+                self._print_warning(f"Error: {migration_result.get('error', 'Unknown error')}")
+                self._print_info("Continuing installation - manual migration may be required")
+            result["steps"].append("migrations_applied")
 
             # Step 7: Install frontend dependencies (NEW - using production-grade npm system)
             self._print_header("Installing Frontend Dependencies")
             frontend_result = self.install_frontend_dependencies()
-            if not frontend_result['success'] and not frontend_result.get('skipped', False):
+            if not frontend_result["success"] and not frontend_result.get("skipped", False):
                 self._print_error("Frontend dependency installation failed")
-                result['error'] = frontend_result.get('error', 'Frontend dependencies failed')
+                result["error"] = frontend_result.get("error", "Frontend dependencies failed")
                 return result
-            result['steps'].append('frontend_dependencies_installed')
+            result["steps"].append("frontend_dependencies_installed")
 
             # Step 8: Create desktop shortcuts (if requested - Windows only)
-            if self.settings.get('create_shortcuts', False):
+            if self.settings.get("create_shortcuts", False):
                 self._print_header("Creating Desktop Shortcuts")
                 self.create_desktop_shortcuts()
-                result['steps'].append('shortcuts_created')
+                result["steps"].append("shortcuts_created")
 
             # Success
-            result['success'] = True
+            result["success"] = True
             self._print_success_summary()
 
             return result
 
         except KeyboardInterrupt:
             self._print_warning("\nInstallation cancelled by user")
-            result['error'] = 'User cancelled'
+            result["error"] = "User cancelled"
             return result
 
         except Exception as e:
             self._print_error(f"Installation failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
     def welcome_screen(self) -> None:
@@ -231,14 +248,16 @@ class UnifiedInstaller:
         print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
-        print(f"  • PostgreSQL database (giljo_mcp)")
-        print(f"  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
-        print(f"  • Configuration files (.env, config.yaml)")
-        print(f"  • API server + Frontend dashboard")
-        print(f"  • MCP server integration\n")
+        print("  • PostgreSQL database (giljo_mcp)")
+        print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
+        print("  • Configuration files (.env, config.yaml)")
+        print("  • API server + Frontend dashboard")
+        print("  • MCP server integration\n")
 
         print(f"{Fore.YELLOW}Platform: {platform.system()} {platform.release()}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+        print(
+            f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n"
+        )
 
     def ask_installation_questions(self) -> None:
         """Gather user preferences for installation"""
@@ -246,13 +265,13 @@ class UnifiedInstaller:
 
         # Network Configuration (NEW)
         print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
-        print(f"Configuring external access for frontend connections...")
+        print("Configuring external access for frontend connections...")
 
         # Detect network interfaces
         network_ips = self._get_all_network_ips()
 
-        print(f"\nDetected network interfaces:")
-        print(f"  1. localhost (local access only)")
+        print("\nDetected network interfaces:")
+        print("  1. localhost (local access only)")
 
         # Add detected IPs
         for i, ip in enumerate(network_ips, 2):
@@ -268,29 +287,28 @@ class UnifiedInstaller:
 
             if not choice:
                 # Default to localhost
-                self.settings['external_host'] = 'localhost'
+                self.settings["external_host"] = "localhost"
                 self._print_info("Using localhost for frontend connections")
                 break
 
             try:
                 choice_num = int(choice)
                 if choice_num == 1:
-                    self.settings['external_host'] = 'localhost'
+                    self.settings["external_host"] = "localhost"
                     self._print_info("Using localhost for frontend connections")
                     break
-                elif 2 <= choice_num < custom_option:
+                if 2 <= choice_num < custom_option:
                     selected_ip = network_ips[choice_num - 2]
-                    self.settings['external_host'] = selected_ip
+                    self.settings["external_host"] = selected_ip
                     self._print_success(f"Using {selected_ip} for frontend connections")
                     break
-                elif choice_num == custom_option:
+                if choice_num == custom_option:
                     custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
                     if custom_addr:
-                        self.settings['external_host'] = custom_addr
+                        self.settings["external_host"] = custom_addr
                         self._print_success(f"Using {custom_addr} for frontend connections")
                         break
-                    else:
-                        self._print_warning("Empty address provided")
+                    self._print_warning("Empty address provided")
                 else:
                     self._print_warning(f"Invalid choice. Please select 1-{custom_option}")
             except ValueError:
@@ -299,8 +317,8 @@ class UnifiedInstaller:
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"\n{Fore.WHITE}PostgreSQL Admin Password Required{Style.RESET_ALL}")
-        print(f"This is the password for the 'postgres' superuser account")
-        print(f"(The password you set when you first installed PostgreSQL)")
+        print("This is the password for the 'postgres' superuser account")
+        print("(The password you set when you first installed PostgreSQL)")
         print(f"{Fore.RED}Required - no defaults allowed{Style.RESET_ALL}")
 
         # Ask twice to confirm
@@ -318,33 +336,34 @@ class UnifiedInstaller:
 
             # Check if they match
             if pg_pass == pg_pass_confirm:
-                self.settings['pg_password'] = pg_pass
+                self.settings["pg_password"] = pg_pass
                 self._print_success("Password confirmed")
                 break
+            remaining = max_attempts - attempt - 1
+            if remaining > 0:
+                self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
             else:
-                remaining = max_attempts - attempt - 1
-                if remaining > 0:
-                    self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
-                else:
-                    self._print_error("Too many failed attempts. Installation cannot continue without valid PostgreSQL password.")
-                    raise ValueError("PostgreSQL password required for installation")
+                self._print_error(
+                    "Too many failed attempts. Installation cannot continue without valid PostgreSQL password."
+                )
+                raise ValueError("PostgreSQL password required for installation")
 
         # REMOVED: Start services prompt - services will not auto-start
 
         # REMOVED: Database table creation prompt - table creation is now MANDATORY
 
         # Set defaults for MCP and Serena (will be configured in setup wizard)
-        self.settings['register_mcp_tools'] = False
-        self.settings['enable_serena'] = False
+        self.settings["register_mcp_tools"] = False
+        self.settings["enable_serena"] = False
 
         # Create desktop shortcuts
         if platform.system() == "Windows":
             print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
-            print(f"Would you like to create desktop shortcuts?")
+            print("Would you like to create desktop shortcuts?")
             shortcuts_response = input(f"{Fore.YELLOW}Create shortcuts? (Y/n): {Style.RESET_ALL}").strip().lower()
-            self.settings['create_shortcuts'] = shortcuts_response != 'n'
+            self.settings["create_shortcuts"] = shortcuts_response != "n"
         else:
-            self.settings['create_shortcuts'] = False
+            self.settings["create_shortcuts"] = False
 
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
@@ -364,7 +383,7 @@ class UnifiedInstaller:
         is_compatible = current_version >= MIN_PYTHON_VERSION
 
         # Handle both sys.version_info (named tuple) and regular tuple
-        if hasattr(current_version, 'major'):
+        if hasattr(current_version, "major"):
             version_str = f"{current_version.major}.{current_version.minor}.{current_version.micro}"
         else:
             version_str = f"{current_version[0]}.{current_version[1]}.{current_version[2]}"
@@ -389,31 +408,29 @@ class UnifiedInstaller:
         Returns:
             Discovery result with found status and paths
         """
-        result = {
-            'found': False,
-            'psql_path': None,
-            'scanned_paths': []
-        }
+        result = {"found": False, "psql_path": None, "scanned_paths": []}
 
         # Method 1: Check PATH
         self._print_info("Checking PATH for psql...")
-        psql_path = shutil.which('psql')
+        psql_path = shutil.which("psql")
 
         if psql_path:
             self._print_success(f"PostgreSQL detected in PATH: {psql_path}")
-            result['found'] = True
-            result['psql_path'] = psql_path
+            result["found"] = True
+            result["psql_path"] = psql_path
             self.psql_path = Path(psql_path)
             self.postgresql_found = True
 
             # Store PostgreSQL paths in settings for config.yaml persistence
             psql_path_obj = Path(psql_path)
-            self.settings['postgresql_psql_path'] = str(psql_path_obj)
-            self.settings['postgresql_bin_path'] = str(psql_path_obj.parent)
-            self.settings['postgresql_installation_path'] = str(psql_path_obj.parent.parent) if psql_path_obj.parent.name == 'bin' else str(psql_path_obj.parent)
-            self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
-            self.settings['postgresql_custom_path'] = False
-            self.settings['postgresql_discovery_method'] = 'PATH'
+            self.settings["postgresql_psql_path"] = str(psql_path_obj)
+            self.settings["postgresql_bin_path"] = str(psql_path_obj.parent)
+            self.settings["postgresql_installation_path"] = (
+                str(psql_path_obj.parent.parent) if psql_path_obj.parent.name == "bin" else str(psql_path_obj.parent)
+            )
+            self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+            self.settings["postgresql_custom_path"] = False
+            self.settings["postgresql_discovery_method"] = "PATH"
 
             return result
 
@@ -422,27 +439,29 @@ class UnifiedInstaller:
         scan_paths = self._get_postgresql_scan_paths()
 
         for path in scan_paths:
-            result['scanned_paths'].append(str(path))
+            result["scanned_paths"].append(str(path))
             print(f"{Fore.WHITE}  Checking: {path}{Style.RESET_ALL}")
 
             if path.exists():
                 self._print_success(f"PostgreSQL detected: {path}")
-                result['found'] = True
-                result['psql_path'] = str(path)
+                result["found"] = True
+                result["psql_path"] = str(path)
                 self.psql_path = path
                 self.postgresql_found = True
 
                 # Store PostgreSQL paths in settings for config.yaml persistence
                 bin_dir = path.parent
-                self.settings['postgresql_psql_path'] = str(path)
-                self.settings['postgresql_bin_path'] = str(bin_dir)
-                self.settings['postgresql_installation_path'] = str(bin_dir.parent) if bin_dir.name == 'bin' else str(bin_dir)
-                self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
-                self.settings['postgresql_custom_path'] = False
-                self.settings['postgresql_discovery_method'] = 'COMMON_LOCATION'
+                self.settings["postgresql_psql_path"] = str(path)
+                self.settings["postgresql_bin_path"] = str(bin_dir)
+                self.settings["postgresql_installation_path"] = (
+                    str(bin_dir.parent) if bin_dir.name == "bin" else str(bin_dir)
+                )
+                self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+                self.settings["postgresql_custom_path"] = False
+                self.settings["postgresql_discovery_method"] = "COMMON_LOCATION"
 
                 # Add to PATH for session
-                os.environ['PATH'] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
+                os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
 
                 return result
 
@@ -450,13 +469,13 @@ class UnifiedInstaller:
         self._print_warning("PostgreSQL not found in common locations")
 
         # Skip prompt in headless mode
-        if self.settings.get('headless'):
+        if self.settings.get("headless"):
             return result
 
-        print(f"\n{Fore.YELLOW}Do you have PostgreSQL installed at a custom location? (y/n): {Style.RESET_ALL}", end='')
+        print(f"\n{Fore.YELLOW}Do you have PostgreSQL installed at a custom location? (y/n): {Style.RESET_ALL}", end="")
         response = input().strip().lower()
 
-        if response not in ['y', 'yes']:
+        if response not in ["y", "yes"]:
             return result
 
         # Prompt for custom path (max 3 attempts)
@@ -464,7 +483,7 @@ class UnifiedInstaller:
         for attempt in range(max_attempts):
             print(f"\n{Fore.YELLOW}Enter the full path to your PostgreSQL bin directory{Style.RESET_ALL}")
             print(f"{Fore.WHITE}Example: C:\\custom\\postgres\\bin or /opt/custom/postgres/bin{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}Path: {Style.RESET_ALL}", end='')
+            print(f"{Fore.YELLOW}Path: {Style.RESET_ALL}", end="")
 
             custom_path = input().strip()
 
@@ -475,27 +494,29 @@ class UnifiedInstaller:
             # Validate custom path
             if self.check_custom_postgresql_path(custom_path):
                 # Custom path is valid
-                if self.platform.platform_name == 'Windows':
+                if self.platform.platform_name == "Windows":
                     psql_path = Path(custom_path) / "psql.exe"
                 else:
                     psql_path = Path(custom_path) / "psql"
 
-                result['found'] = True
-                result['psql_path'] = str(psql_path)
+                result["found"] = True
+                result["psql_path"] = str(psql_path)
                 self.psql_path = psql_path
                 self.postgresql_found = True
 
                 # Store PostgreSQL paths in settings for config.yaml persistence
                 custom_path_obj = Path(custom_path)
-                self.settings['postgresql_psql_path'] = str(psql_path)
-                self.settings['postgresql_bin_path'] = str(custom_path_obj)
-                self.settings['postgresql_installation_path'] = str(custom_path_obj.parent) if custom_path_obj.name == 'bin' else str(custom_path_obj)
-                self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
-                self.settings['postgresql_custom_path'] = True
-                self.settings['postgresql_discovery_method'] = 'CUSTOM'
+                self.settings["postgresql_psql_path"] = str(psql_path)
+                self.settings["postgresql_bin_path"] = str(custom_path_obj)
+                self.settings["postgresql_installation_path"] = (
+                    str(custom_path_obj.parent) if custom_path_obj.name == "bin" else str(custom_path_obj)
+                )
+                self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+                self.settings["postgresql_custom_path"] = True
+                self.settings["postgresql_discovery_method"] = "CUSTOM"
 
                 # Add to PATH for session
-                os.environ['PATH'] = f"{custom_path}{os.pathsep}{os.environ['PATH']}"
+                os.environ["PATH"] = f"{custom_path}{os.pathsep}{os.environ['PATH']}"
 
                 return result
 
@@ -545,7 +566,7 @@ class UnifiedInstaller:
 
             # Check for psql executable (platform-specific)
             # Windows uses .exe extension, Linux/macOS don't
-            if self.platform.platform_name == 'Windows':
+            if self.platform.platform_name == "Windows":
                 psql_path = path / "psql.exe"
             else:
                 psql_path = path / "psql"
@@ -554,7 +575,7 @@ class UnifiedInstaller:
                 self._print_error(f"psql executable not found in: {path}")
                 # Try to be helpful - check if psql exists without extension
                 psql_no_ext = path / "psql"
-                if psql_no_ext.exists() and self.platform.platform_name == 'Windows':
+                if psql_no_ext.exists() and self.platform.platform_name == "Windows":
                     self._print_info("Found 'psql' without .exe extension - this may not work on Windows")
                 # Check if user provided the full path to psql.exe instead of bin directory
                 if path.name == "psql.exe" and path.exists():
@@ -591,22 +612,18 @@ class UnifiedInstaller:
         Returns:
             Installation result with success status
         """
-        result = {'success': False}
+        result = {"success": False}
 
         try:
             # Step 1: Create venv if needed
             if self.venv_dir.exists():
                 self._print_info(f"Virtual environment already exists: {self.venv_dir}")
-                result['venv_existed'] = True
+                result["venv_existed"] = True
             else:
                 self._print_info(f"Creating virtual environment: {self.venv_dir}")
-                subprocess.run(
-                    [sys.executable, '-m', 'venv', str(self.venv_dir)],
-                    check=True,
-                    capture_output=True
-                )
+                subprocess.run([sys.executable, "-m", "venv", str(self.venv_dir)], check=True, capture_output=True)
                 self._print_success("Virtual environment created")
-                result['venv_created'] = True
+                result["venv_created"] = True
                 self.venv_created = True
 
             # Determine pip executable (platform-specific)
@@ -615,36 +632,36 @@ class UnifiedInstaller:
             # Step 2: Install requirements
             if not self.requirements_file.exists():
                 self._print_error(f"requirements.txt not found: {self.requirements_file}")
-                result['error'] = "requirements.txt missing"
+                result["error"] = "requirements.txt missing"
                 return result
 
             self._print_info("Installing Python packages (this may take 2-3 minutes)...")
             print(f"{Fore.WHITE}You will see pip's progress output below...{Style.RESET_ALL}\n")
 
             subprocess.run(
-                [str(pip_executable), 'install', '-r', str(self.requirements_file)],
+                [str(pip_executable), "install", "-r", str(self.requirements_file)],
                 check=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             self._print_success("Dependencies installed successfully")
-            result['success'] = True
+            result["success"] = True
             return result
 
         except subprocess.TimeoutExpired:
             self._print_error("Installation timed out (exceeded 5 minutes)")
-            result['error'] = "Timeout"
+            result["error"] = "Timeout"
             return result
 
         except subprocess.CalledProcessError as e:
             self._print_error(f"pip install failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
         except Exception as e:
             self._print_error(f"Dependency installation failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
     def setup_database(self) -> Dict[str, Any]:
@@ -668,10 +685,10 @@ class UnifiedInstaller:
 
             # Prepare settings for DatabaseInstaller
             db_settings = {
-                'pg_host': self.settings.get('pg_host', 'localhost'),
-                'pg_port': self.settings.get('pg_port', 5432),
-                'pg_password': self.settings.get('pg_password'),
-                'pg_user': self.settings.get('pg_user', 'postgres')
+                "pg_host": self.settings.get("pg_host", "localhost"),
+                "pg_port": self.settings.get("pg_port", 5432),
+                "pg_password": self.settings.get("pg_password"),
+                "pg_user": self.settings.get("pg_user", "postgres"),
             }
 
             db_installer = DatabaseInstaller(settings=db_settings)
@@ -680,44 +697,46 @@ class UnifiedInstaller:
             self._print_info("Creating database and roles...")
             result = db_installer.setup()
 
-            if not result['success']:
+            if not result["success"]:
                 self._print_error("Database creation failed")
-                for error in result.get('errors', []):
+                for error in result.get("errors", []):
                     self._print_error(f"  • {error}")
                 return result
 
             self._print_success("Database and roles created successfully")
 
             # STEP 2: Store real credentials
-            self.database_credentials = result.get('credentials', {})
+            self.database_credentials = result.get("credentials", {})
 
             if not self.database_credentials:
-                result['errors'] = ["Database credentials not returned by DatabaseInstaller"]
-                result['success'] = False
+                result["errors"] = ["Database credentials not returned by DatabaseInstaller"]
+                result["success"] = False
                 return result
 
             # STEP 3: Update .env with REAL database credentials
             self._print_info("Generating .env with real database credentials...")
             env_result = self.update_env_with_real_credentials()
 
-            if not env_result['success']:
+            if not env_result["success"]:
                 self._print_error("Failed to generate .env file")
-                for error in env_result.get('errors', []):
+                for error in env_result.get("errors", []):
                     self._print_error(f"  • {error}")
-                result['success'] = False
+                result["success"] = False
                 return result
 
             self._print_success(".env file generated with database credentials")
 
             # STEP 4: Reload environment variables
             import os
+
             from dotenv import load_dotenv
+
             load_dotenv(override=True)  # Force reload to pick up new DATABASE_URL
 
             db_url = os.getenv("DATABASE_URL")
             if not db_url:
-                result['errors'] = ["DATABASE_URL not found in .env after regeneration"]
-                result['success'] = False
+                result["errors"] = ["DATABASE_URL not found in .env after regeneration"]
+                result["success"] = False
                 return result
 
             self._print_info(f"Loaded DATABASE_URL from .env: {db_url.split('@')[0]}@...")
@@ -731,11 +750,12 @@ class UnifiedInstaller:
             # Add src to path
             sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+            from datetime import datetime, timezone
+            from uuid import uuid4
+
             from giljo_mcp.database import DatabaseManager
             from giljo_mcp.models import SetupState
             from giljo_mcp.tenant import TenantManager
-            from datetime import datetime, timezone
-            from uuid import uuid4
 
             # Generate proper tenant key for default installation
             default_tenant_key = TenantManager.generate_tenant_key("default_installation")
@@ -776,9 +796,9 @@ class UnifiedInstaller:
                             # REMOVED (Handover 0034):
                             # default_password_active=True,
                             # password_changed_at=None,
-                            setup_version='3.0.0',
+                            setup_version="3.0.0",
                             created_at=datetime.now(timezone.utc),
-                            updated_at=datetime.now(timezone.utc)
+                            updated_at=datetime.now(timezone.utc),
                         )
                         session.add(setup_state)
                         await session.commit()
@@ -798,24 +818,22 @@ class UnifiedInstaller:
                 self._print_success("Setup state initialized")
                 # REMOVED (Handover 0041 Phase 2): Template seeding moved to create_first_admin endpoint
                 # REMOVED (Handover 0034): Admin user creation messaging
-                result['tables_created'] = True
-                result['setup_state_created'] = True
-                result['admin_created'] = False  # Explicitly mark as not created
+                result["tables_created"] = True
+                result["setup_state_created"] = True
+                result["admin_created"] = False  # Explicitly mark as not created
             else:
                 self._print_error("Table creation failed")
-                result['success'] = False
+                result["success"] = False
                 return result
 
             return result
 
         except Exception as e:
             import traceback
+
             self._print_error(f"Database setup failed: {e}")
             traceback.print_exc()
-            return {
-                'success': False,
-                'errors': [str(e)]
-            }
+            return {"success": False, "errors": [str(e)]}
 
     def generate_configs(self) -> Dict[str, Any]:
         """
@@ -833,13 +851,13 @@ class UnifiedInstaller:
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
             config_settings = {
-                'pg_host': self.settings.get('pg_host', 'localhost'),
-                'pg_port': self.settings.get('pg_port', 5432),
-                'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
-                'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
-                'install_dir': str(self.install_dir),
-                'bind': '0.0.0.0',
-                'external_host': self.settings.get('external_host', 'localhost'),
+                "pg_host": self.settings.get("pg_host", "localhost"),
+                "pg_port": self.settings.get("pg_port", 5432),
+                "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
+                "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
+                "install_dir": str(self.install_dir),
+                "bind": "0.0.0.0",
+                "external_host": self.settings.get("external_host", "localhost"),
             }
 
             config_manager = ConfigManager(settings=config_settings)
@@ -848,21 +866,18 @@ class UnifiedInstaller:
             self._print_info("Generating config.yaml...")
             yaml_result = config_manager.generate_config_yaml()
 
-            if yaml_result['success']:
+            if yaml_result["success"]:
                 self._print_success("Configuration file generated (config.yaml)")
             else:
                 self._print_error("Configuration generation failed")
-                for error in yaml_result.get('errors', []):
+                for error in yaml_result.get("errors", []):
                     self._print_error(f"  • {error}")
 
             return yaml_result
 
         except Exception as e:
             self._print_error(f"Config generation failed: {e}")
-            return {
-                'success': False,
-                'errors': [str(e)]
-            }
+            return {"success": False, "errors": [str(e)]}
 
     def update_env_with_real_credentials(self) -> Dict[str, Any]:
         """
@@ -882,15 +897,17 @@ class UnifiedInstaller:
 
             # Prepare settings with REAL database credentials
             config_settings = {
-                'pg_host': self.settings.get('pg_host', 'localhost'),
-                'pg_port': self.settings.get('pg_port', 5432),
-                'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
-                'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
-                'install_dir': str(self.install_dir),
-                'owner_password': self.database_credentials.get('owner_password'),
-                'user_password': self.database_credentials.get('user_password'),
-                'default_tenant_key': getattr(self, 'default_tenant_key', 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'),  # Pass generated tenant key
-                'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
+                "pg_host": self.settings.get("pg_host", "localhost"),
+                "pg_port": self.settings.get("pg_port", 5432),
+                "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
+                "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
+                "install_dir": str(self.install_dir),
+                "owner_password": self.database_credentials.get("owner_password"),
+                "user_password": self.database_credentials.get("user_password"),
+                "default_tenant_key": getattr(
+                    self, "default_tenant_key", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"
+                ),  # Pass generated tenant key
+                "bind": "0.0.0.0",  # v3.0: Always bind all interfaces
             }
 
             # Create config manager
@@ -900,21 +917,18 @@ class UnifiedInstaller:
             self._print_info("Regenerating .env with real database passwords...")
             env_result = config_manager.generate_env_file()
 
-            if env_result['success']:
+            if env_result["success"]:
                 self._print_success("Configuration updated with database credentials")
             else:
                 self._print_error("Failed to update configuration")
-                for error in env_result.get('errors', []):
+                for error in env_result.get("errors", []):
                     self._print_error(f"  • {error}")
 
             return env_result
 
         except Exception as e:
             self._print_error(f"Credential update failed: {e}")
-            return {
-                'success': False,
-                'errors': [str(e)]
-            }
+            return {"success": False, "errors": [str(e)]}
 
     def _ensure_logs_dir(self) -> Path:
         """
@@ -923,7 +937,7 @@ class UnifiedInstaller:
         Returns:
             Path object pointing to logs directory
         """
-        logs_dir = self.install_dir / 'logs'
+        logs_dir = self.install_dir / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
         return logs_dir
 
@@ -942,31 +956,21 @@ class UnifiedInstaller:
         Returns:
             Dict with 'healthy' (bool), 'issues' (list), 'warnings' (list)
         """
-        result = {
-            'healthy': True,
-            'issues': [],
-            'warnings': []
-        }
+        result = {"healthy": True, "issues": [], "warnings": []}
 
         # Check 1: npm registry accessibility
         try:
-            npm_ping = self.platform.run_npm_command(
-                cmd=['npm', 'ping'],
-                cwd=frontend_dir,
-                timeout=30
-            )
+            npm_ping = self.platform.run_npm_command(cmd=["npm", "ping"], cwd=frontend_dir, timeout=30)
 
-            if not npm_ping['success']:
-                result['healthy'] = False
-                result['issues'].append(
-                    f"npm registry unreachable: {npm_ping.get('stderr', 'Unknown error')}"
-                )
+            if not npm_ping["success"]:
+                result["healthy"] = False
+                result["issues"].append(f"npm registry unreachable: {npm_ping.get('stderr', 'Unknown error')}")
         except FileNotFoundError:
-            result['healthy'] = False
-            result['issues'].append("npm is not installed or not in PATH")
+            result["healthy"] = False
+            result["issues"].append("npm is not installed or not in PATH")
         except Exception as e:
-            result['healthy'] = False
-            result['issues'].append(f"npm registry check failed: {str(e)}")
+            result["healthy"] = False
+            result["issues"].append(f"npm registry check failed: {e!s}")
 
         # Check 2: Disk space
         try:
@@ -974,20 +978,17 @@ class UnifiedInstaller:
             free_mb = disk_usage.free / (1024 * 1024)
 
             if free_mb < MIN_DISK_SPACE_MB:
-                result['healthy'] = False
-                result['issues'].append(
-                    f"Insufficient disk space: {free_mb:.0f}MB available, "
-                    f"{MIN_DISK_SPACE_MB}MB required"
+                result["healthy"] = False
+                result["issues"].append(
+                    f"Insufficient disk space: {free_mb:.0f}MB available, {MIN_DISK_SPACE_MB}MB required"
                 )
         except Exception as e:
-            result['warnings'].append(f"Could not check disk space: {str(e)}")
+            result["warnings"].append(f"Could not check disk space: {e!s}")
 
         # Check 3: package-lock.json existence
-        lockfile = frontend_dir / 'package-lock.json'
+        lockfile = frontend_dir / "package-lock.json"
         if not lockfile.exists():
-            result['warnings'].append(
-                "package-lock.json not found - will use 'npm install' instead of 'npm ci'"
-            )
+            result["warnings"].append("package-lock.json not found - will use 'npm install' instead of 'npm ci'")
 
         return result
 
@@ -1004,21 +1005,21 @@ class UnifiedInstaller:
         Returns:
             True if all critical dependencies are present, False otherwise
         """
-        node_modules = frontend_dir / 'node_modules'
+        node_modules = frontend_dir / "node_modules"
 
         if not node_modules.exists():
             return False
 
         # Critical dependencies that must be present
         critical_deps = [
-            'vue',
-            'vuetify',
-            'vue-router',
-            'pinia',
-            'axios',
-            'lodash-es',  # Imported by useAutoSave.js
-            'vuedraggable',  # Imported by UserSettings.vue
-            'socket.io-client',
+            "vue",
+            "vuetify",
+            "vue-router",
+            "pinia",
+            "axios",
+            "lodash-es",  # Imported by useAutoSave.js
+            "vuedraggable",  # Imported by UserSettings.vue
+            "socket.io-client",
         ]
 
         for dep in critical_deps:
@@ -1050,29 +1051,29 @@ class UnifiedInstaller:
         """
         # Ensure logs directory exists
         logs_dir = self._ensure_logs_dir()
-        log_file = logs_dir / 'install_npm.log'
+        log_file = logs_dir / "install_npm.log"
 
         # Run pre-flight checks
         self._print_info("Running npm pre-flight checks...")
         preflight = self._npm_preflight_checks(frontend_dir)
 
-        if not preflight['healthy']:
+        if not preflight["healthy"]:
             self._print_error("Pre-flight checks failed:")
-            for issue in preflight['issues']:
+            for issue in preflight["issues"]:
                 self._print_error(f"  • {issue}")
             # Store pre-flight results for error reporting
             self._npm_preflight_results = preflight
             return False
 
-        if preflight['warnings']:
-            for warning in preflight['warnings']:
+        if preflight["warnings"]:
+            for warning in preflight["warnings"]:
                 self._print_warning(f"  • {warning}")
 
         # Store pre-flight results for error reporting
         self._npm_preflight_results = preflight
 
         # Determine strategy: npm ci vs npm install
-        lockfile = frontend_dir / 'package-lock.json'
+        lockfile = frontend_dir / "package-lock.json"
         use_npm_ci = lockfile.exists()
 
         for attempt in range(max_retries):
@@ -1085,44 +1086,38 @@ class UnifiedInstaller:
             if attempt == max_retries - 1 and attempt > 0:
                 self._print_info("Clearing npm cache before final attempt...")
                 cache_result = self.platform.run_npm_command(
-                    cmd=['npm', 'cache', 'clean', '--force'],
-                    cwd=frontend_dir,
-                    timeout=60
+                    cmd=["npm", "cache", "clean", "--force"], cwd=frontend_dir, timeout=60
                 )
-                if cache_result['success']:
+                if cache_result["success"]:
                     self._print_success("npm cache cleared")
 
             # Choose npm command
             if use_npm_ci and attempt == 0:
-                npm_cmd = ['npm', 'ci']
-                cmd_name = 'npm ci'
+                npm_cmd = ["npm", "ci"]
+                cmd_name = "npm ci"
             else:
-                npm_cmd = ['npm', 'install']
-                cmd_name = 'npm install'
+                npm_cmd = ["npm", "install"]
+                cmd_name = "npm install"
                 use_npm_ci = False  # Switch to npm install after first failure
 
             # Log attempt
-            with open(log_file, 'a', encoding='utf-8') as f:
-                f.write(f"\n{'='*70}\n")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"\n{'=' * 70}\n")
                 f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now().isoformat()}\n")
                 f.write(f"Command: {' '.join(npm_cmd)}\n")
-                f.write(f"{'='*70}\n\n")
+                f.write(f"{'=' * 70}\n\n")
 
             # Run npm command
-            npm_result = self.platform.run_npm_command(
-                cmd=npm_cmd,
-                cwd=frontend_dir,
-                timeout=NPM_INSTALL_TIMEOUT
-            )
+            npm_result = self.platform.run_npm_command(cmd=npm_cmd, cwd=frontend_dir, timeout=NPM_INSTALL_TIMEOUT)
 
             # Log output
-            with open(log_file, 'a', encoding='utf-8') as f:
+            with open(log_file, "a", encoding="utf-8") as f:
                 f.write("STDOUT:\n")
-                f.write(npm_result.get('stdout', '') + '\n\n')
+                f.write(npm_result.get("stdout", "") + "\n\n")
                 f.write("STDERR:\n")
-                f.write(npm_result.get('stderr', '') + '\n\n')
+                f.write(npm_result.get("stderr", "") + "\n\n")
 
-            if npm_result['success']:
+            if npm_result["success"]:
                 # First tier verification: folder check
                 if not self._verify_npm_dependencies(frontend_dir):
                     self._print_warning(f"{cmd_name} succeeded but folder verification failed")
@@ -1131,34 +1126,31 @@ class UnifiedInstaller:
                 # Second tier verification: npm list
                 self._print_info("Verifying installation integrity...")
                 list_result = self.platform.run_npm_command(
-                    cmd=['npm', 'list', '--depth=0'],
-                    cwd=frontend_dir,
-                    timeout=30
+                    cmd=["npm", "list", "--depth=0"], cwd=frontend_dir, timeout=30
                 )
 
                 # npm list can return non-zero even for valid installs (peer deps warnings)
                 # So we just check that it doesn't completely fail
-                if 'ENOENT' in list_result.get('stderr', '') or 'ERR!' in list_result.get('stderr', ''):
+                if "ENOENT" in list_result.get("stderr", "") or "ERR!" in list_result.get("stderr", ""):
                     self._print_warning(f"{cmd_name} succeeded but npm list verification failed")
-                    with open(log_file, 'a', encoding='utf-8') as f:
+                    with open(log_file, "a", encoding="utf-8") as f:
                         f.write("NPM LIST VERIFICATION FAILED:\n")
-                        f.write(list_result.get('stderr', '') + '\n\n')
+                        f.write(list_result.get("stderr", "") + "\n\n")
                     continue
 
                 # Both tiers passed
                 self._print_success("Frontend dependencies installed and verified successfully")
-                with open(log_file, 'a', encoding='utf-8') as f:
+                with open(log_file, "a", encoding="utf-8") as f:
                     f.write("SUCCESS: Installation verified\n")
                 return True
-            else:
-                # npm command failed
-                error_msg = npm_result.get('stderr', npm_result.get('error', 'Unknown error'))
-                self._print_warning(f"Attempt {attempt + 1} failed: {error_msg[:100]}...")
+            # npm command failed
+            error_msg = npm_result.get("stderr", npm_result.get("error", "Unknown error"))
+            self._print_warning(f"Attempt {attempt + 1} failed: {error_msg[:100]}...")
 
-                # If npm ci failed, try npm install next
-                if 'ci' in npm_cmd and attempt == 0:
-                    self._print_info("npm ci failed, will try npm install next")
-                    use_npm_ci = False
+            # If npm ci failed, try npm install next
+            if "ci" in npm_cmd and attempt == 0:
+                self._print_info("npm ci failed, will try npm install next")
+                use_npm_ci = False
 
             # Wait before retry (exponential backoff: 2s, 4s, 8s)
             if attempt < max_retries - 1:
@@ -1167,7 +1159,7 @@ class UnifiedInstaller:
                 time.sleep(wait_time)
 
         # All retries exhausted
-        with open(log_file, 'a', encoding='utf-8') as f:
+        with open(log_file, "a", encoding="utf-8") as f:
             f.write(f"\nFAILURE: All {max_retries} attempts exhausted\n")
         return False
 
@@ -1181,25 +1173,25 @@ class UnifiedInstaller:
         Returns:
             Result dictionary with success status and details
         """
-        result = {'success': False}
+        result = {"success": False}
 
         try:
             # Check if npm is available
-            if not shutil.which('npm'):
+            if not shutil.which("npm"):
                 self._print_warning("npm not found - skipping frontend dependencies")
                 self._print_info("Install Node.js from: https://nodejs.org/")
-                result['success'] = True  # Not a failure - just skipped
-                result['skipped'] = True
-                result['reason'] = 'npm not available'
+                result["success"] = True  # Not a failure - just skipped
+                result["skipped"] = True
+                result["reason"] = "npm not available"
                 return result
 
             # Check if frontend directory exists
-            frontend_dir = self.install_dir / 'frontend'
+            frontend_dir = self.install_dir / "frontend"
             if not frontend_dir.exists():
                 self._print_warning("Frontend directory not found - skipping frontend dependencies")
-                result['success'] = True  # Not a failure - just skipped
-                result['skipped'] = True
-                result['reason'] = 'frontend directory not found'
+                result["success"] = True  # Not a failure - just skipped
+                result["skipped"] = True
+                result["reason"] = "frontend directory not found"
                 return result
 
             self._print_info("Installing frontend dependencies...")
@@ -1207,72 +1199,71 @@ class UnifiedInstaller:
             # Check if dependencies are already installed and verified
             if self._verify_npm_dependencies(frontend_dir):
                 self._print_success("Frontend dependencies already installed and verified")
-                result['success'] = True
-                result['already_installed'] = True
+                result["success"] = True
+                result["already_installed"] = True
                 return result
 
             # Install dependencies with retry logic
             if self._install_npm_dependencies_with_retry(frontend_dir):
                 self._print_success("Frontend dependencies installed successfully")
-                result['success'] = True
+                result["success"] = True
                 return result
-            else:
-                # CRITICAL: Frontend dependencies failed after retries - FAIL HARD
-                self._print_error("=" * 70)
-                self._print_error("INSTALLATION FAILED: Frontend dependencies could not be installed")
-                self._print_error("=" * 70)
-                self._print_error("")
+            # CRITICAL: Frontend dependencies failed after retries - FAIL HARD
+            self._print_error("=" * 70)
+            self._print_error("INSTALLATION FAILED: Frontend dependencies could not be installed")
+            self._print_error("=" * 70)
+            self._print_error("")
 
-                # Show pre-flight check results if available
-                if hasattr(self, '_npm_preflight_results'):
-                    preflight = self._npm_preflight_results
-                    if preflight.get('issues'):
-                        self._print_error("Pre-flight check issues detected:")
-                        for issue in preflight['issues']:
-                            self._print_error(f"  • {issue}")
-                        self._print_error("")
-
-                # Show log file location
-                log_file = self.install_dir / 'logs' / 'install_npm.log'
-                if log_file.exists():
-                    self._print_error(f"Detailed logs: {log_file}")
+            # Show pre-flight check results if available
+            if hasattr(self, "_npm_preflight_results"):
+                preflight = self._npm_preflight_results
+                if preflight.get("issues"):
+                    self._print_error("Pre-flight check issues detected:")
+                    for issue in preflight["issues"]:
+                        self._print_error(f"  • {issue}")
                     self._print_error("")
 
-                self._print_error("Troubleshooting steps:")
-                self._print_error("  1. Check network connectivity to npm registry:")
-                self._print_error("     npm ping")
-                self._print_error("     curl https://registry.npmjs.org/")
+            # Show log file location
+            log_file = self.install_dir / "logs" / "install_npm.log"
+            if log_file.exists():
+                self._print_error(f"Detailed logs: {log_file}")
                 self._print_error("")
-                self._print_error(f"  2. Verify disk space (need ~{MIN_DISK_SPACE_MB}MB):")
-                if self.platform.platform_name == 'Windows':
-                    self._print_error("     dir")
-                else:
-                    self._print_error("     df -h")
-                self._print_error("")
-                self._print_error("  3. Clear npm cache and retry manually:")
-                self._print_error(f"     cd {frontend_dir}")
-                self._print_error("     npm cache clean --force")
-                self._print_error("     npm cache verify")
-                self._print_error("     npm install --verbose")
-                self._print_error("")
-                self._print_error("  4. Check for proxy/firewall blocking npm registry:")
-                self._print_error("     npm config get proxy")
-                self._print_error("     npm config get https-proxy")
-                self._print_error("")
-                self._print_error("  5. If behind corporate proxy, configure npm:")
-                self._print_error("     npm config set proxy http://proxy.company.com:8080")
-                self._print_error("     npm config set https-proxy http://proxy.company.com:8080")
-                self._print_error("")
-                self._print_error("=" * 70)
 
-                result['error'] = f'npm install failed after {NPM_MAX_RETRIES} retry attempts'
-                result['success'] = False
-                return result
+            self._print_error("Troubleshooting steps:")
+            self._print_error("  1. Check network connectivity to npm registry:")
+            self._print_error("     npm ping")
+            self._print_error("     curl https://registry.npmjs.org/")
+            self._print_error("")
+            self._print_error(f"  2. Verify disk space (need ~{MIN_DISK_SPACE_MB}MB):")
+            if self.platform.platform_name == "Windows":
+                self._print_error("     dir")
+            else:
+                self._print_error("     df -h")
+            self._print_error("")
+            self._print_error("  3. Clear npm cache and retry manually:")
+            self._print_error(f"     cd {frontend_dir}")
+            self._print_error("     npm cache clean --force")
+            self._print_error("     npm cache verify")
+            self._print_error("     npm install --verbose")
+            self._print_error("")
+            self._print_error("  4. Check for proxy/firewall blocking npm registry:")
+            self._print_error("     npm config get proxy")
+            self._print_error("     npm config get https-proxy")
+            self._print_error("")
+            self._print_error("  5. If behind corporate proxy, configure npm:")
+            self._print_error("     npm config set proxy http://proxy.company.com:8080")
+            self._print_error("     npm config set https-proxy http://proxy.company.com:8080")
+            self._print_error("")
+            self._print_error("=" * 70)
+
+            result["error"] = f"npm install failed after {NPM_MAX_RETRIES} retry attempts"
+            result["success"] = False
+            return result
 
         except Exception as e:
             self._print_error(f"Frontend dependency installation failed: {e}")
-            result['error'] = str(e)
-            result['success'] = False
+            result["error"] = str(e)
+            result["success"] = False
             return result
 
     def launch_services(self) -> Dict[str, Any]:
@@ -1282,18 +1273,18 @@ class UnifiedInstaller:
         Returns:
             Launch result with process IDs
         """
-        result = {'success': False}
+        result = {"success": False}
 
         try:
             # Check port availability
-            api_port = self.settings.get('api_port', DEFAULT_API_PORT)
-            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+            api_port = self.settings.get("api_port", DEFAULT_API_PORT)
+            frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
 
             if not self._is_port_available(api_port):
                 self._print_warning(f"Port {api_port} is in use - finding alternative...")
                 api_port = self._find_available_port(api_port)
                 if not api_port:
-                    result['error'] = "No available port for API"
+                    result["error"] = "No available port for API"
                     return result
                 self._print_info(f"Using alternative API port: {api_port}")
 
@@ -1308,15 +1299,15 @@ class UnifiedInstaller:
             python_executable = self.platform.get_venv_python(self.venv_dir)
 
             # Get ports from settings
-            api_port = self.settings.get('api_port', DEFAULT_API_PORT)
-            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+            api_port = self.settings.get("api_port", DEFAULT_API_PORT)
+            frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
 
             # Launch API server
-            api_script = self.install_dir / 'api' / 'run_api.py'
+            api_script = self.install_dir / "api" / "run_api.py"
 
             if not api_script.exists():
                 self._print_error(f"API script not found: {api_script}")
-                result['error'] = "API script missing"
+                result["error"] = "API script missing"
                 return result
 
             self._print_info("Starting API server...")
@@ -1325,16 +1316,16 @@ class UnifiedInstaller:
                 [str(python_executable), str(api_script), "--port", str(api_port)],
                 cwd=str(self.install_dir),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
             self._print_success(f"API server started (PID: {api_process.pid})")
 
-            result['api_pid'] = api_process.pid
+            result["api_pid"] = api_process.pid
 
             # Launch frontend (if npm available)
             frontend_process = None
-            if shutil.which('npm'):
-                frontend_dir = self.install_dir / 'frontend'
+            if shutil.which("npm"):
+                frontend_dir = self.install_dir / "frontend"
 
                 if frontend_dir.exists():
                     # Verify dependencies were installed during installation phase
@@ -1343,8 +1334,8 @@ class UnifiedInstaller:
                         self._print_error("Dependencies should have been installed during 'python install.py'")
                         self._print_error("Please run installation again:")
                         self._print_error("  python install.py")
-                        result['error'] = 'Frontend dependencies missing - run python install.py first'
-                        result['success'] = False
+                        result["error"] = "Frontend dependencies missing - run python install.py first"
+                        result["success"] = False
                         return result
 
                     self._print_info("Starting frontend server...")
@@ -1352,7 +1343,7 @@ class UnifiedInstaller:
                     # Delegate to platform handler for npm command execution
                     # Note: For background processes, we still use subprocess.Popen directly
                     # but use platform handler to determine shell setting
-                    npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
+                    npm_cmd = ["npm", "run", "dev", "--", "--port", str(frontend_port), "--strictPort"]
 
                     # No shell needed - using array of predefined args (secure)
 
@@ -1361,11 +1352,11 @@ class UnifiedInstaller:
                         cwd=str(frontend_dir),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        shell=False  # nosec B602 - Safe: using array of predefined args
+                        shell=False,  # nosec B602 - Safe: using array of predefined args
                     )
                     self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
 
-                    result['frontend_pid'] = frontend_process.pid
+                    result["frontend_pid"] = frontend_process.pid
                 else:
                     self._print_warning("Frontend directory not found")
             else:
@@ -1375,15 +1366,13 @@ class UnifiedInstaller:
             self._print_info("Waiting for services to initialize...")
             time.sleep(3)
 
-            result['success'] = True
+            result["success"] = True
             return result
 
         except Exception as e:
             self._print_error(f"Service launch failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
-
-
 
     def create_desktop_shortcuts(self) -> None:
         """Create desktop shortcuts (delegates to platform handler)"""
@@ -1393,13 +1382,10 @@ class UnifiedInstaller:
             return
 
         # Delegate to platform handler
-        result = self.platform.create_desktop_shortcuts(
-            install_dir=self.install_dir,
-            venv_dir=self.venv_dir
-        )
+        result = self.platform.create_desktop_shortcuts(install_dir=self.install_dir, venv_dir=self.venv_dir)
 
-        if result['success']:
-            for shortcut in result.get('shortcuts_created', []):
+        if result["success"]:
+            for shortcut in result.get("shortcuts_created", []):
                 self._print_success(f"Created shortcut: {shortcut}")
         else:
             self._print_warning(f"Shortcut creation: {result.get('message', 'Unknown result')}")
@@ -1408,8 +1394,6 @@ class UnifiedInstaller:
         """Get all non-loopback IPv4 addresses"""
         # Delegate to platform handler for network interface detection
         return self.platform.get_network_ips()
-
-
 
     def _print_success_summary(self) -> None:
         """Print installation success summary with manual start instructions"""
@@ -1422,11 +1406,11 @@ class UnifiedInstaller:
         # Database credentials
         if self.database_credentials:
             print(f"{Fore.YELLOW}Database Credentials (SAVE THESE):{Style.RESET_ALL}")
-            print(f"  • Database: giljo_mcp")
-            print(f"  • Owner: giljo_owner")
-            print(f"  • User: giljo_user")
-            print(f"  • Host: localhost")
-            print(f"  • Port: 5432")
+            print("  • Database: giljo_mcp")
+            print("  • Owner: giljo_owner")
+            print("  • User: giljo_user")
+            print("  • Host: localhost")
+            print("  • Port: 5432")
             print()
 
         # REMOVED (Handover 0034): Default admin account messaging
@@ -1461,8 +1445,8 @@ class UnifiedInstaller:
 
         # Detect network IPs
         network_ips = self._get_all_network_ips()
-        frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
-        api_port = self.settings.get('api_port', DEFAULT_API_PORT)
+        frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
+        api_port = self.settings.get("api_port", DEFAULT_API_PORT)
 
         # Show localhost first (most common)
         print(f"   {Fore.CYAN}http://localhost:{frontend_port}{Style.RESET_ALL}")
@@ -1482,20 +1466,20 @@ class UnifiedInstaller:
 
         # Next steps (updated for Handover 0034)
         print(f"{Fore.WHITE}{Style.BRIGHT}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Start the services with python startup.py (or the manual commands above)")
-        print(f"  2. Open your browser to the frontend URL")
+        print("  1. Start the services with python startup.py (or the manual commands above)")
+        print("  2. Open your browser to the frontend URL")
         print(f"  3. {Fore.YELLOW}Create your administrator account{Style.RESET_ALL} (first-run only)")
-        print(f"  4. Configure optional features:")
-        print(f"     • MCP integration")
-        print(f"     • Serena integration")
-        print(f"  5. Create your first product and start orchestrating!")
+        print("  4. Configure optional features:")
+        print("     • MCP integration")
+        print("     • Serena integration")
+        print("  5. Create your first product and start orchestrating!")
         print()
 
         # Firewall configuration note
         print(f"{Fore.YELLOW}Network Access (Optional):{Style.RESET_ALL}")
-        print(f"  To allow access from other devices on your network:")
-        print(f"  1. Configure your OS firewall (see docs/guides/FIREWALL_CONFIGURATION.md)")
-        print(f"  2. Update config.yaml: firewall_configured: true")
+        print("  To allow access from other devices on your network:")
+        print("  1. Configure your OS firewall (see docs/guides/FIREWALL_CONFIGURATION.md)")
+        print("  2. Update config.yaml: firewall_configured: true")
         print()
 
         print(f"{Fore.GREEN}Installation successful! Start the services to continue.{Style.RESET_ALL}\n")
@@ -1505,9 +1489,7 @@ class UnifiedInstaller:
         print(f"\n{Fore.YELLOW}PostgreSQL Installation Required{Style.RESET_ALL}\n")
 
         # Delegate to platform handler for OS-specific instructions
-        guide = self.platform.get_postgresql_install_guide(
-            recommended_version=RECOMMENDED_POSTGRESQL_VERSION
-        )
+        guide = self.platform.get_postgresql_install_guide(recommended_version=RECOMMENDED_POSTGRESQL_VERSION)
         print(guide)
         print()
 
@@ -1554,37 +1536,31 @@ class UnifiedInstaller:
                         ALTER TABLE mcp_agent_jobs
                         ADD COLUMN IF NOT EXISTS instance_number INTEGER DEFAULT 1 NOT NULL
                     """),
-
                     # Add handover_to column
                     text("""
                         ALTER TABLE mcp_agent_jobs
                         ADD COLUMN IF NOT EXISTS handover_to VARCHAR(36) NULL
                     """),
-
                     # Add handover_summary column
                     text("""
                         ALTER TABLE mcp_agent_jobs
                         ADD COLUMN IF NOT EXISTS handover_summary JSONB NULL
                     """),
-
                     # Add handover_context_refs column
                     text("""
                         ALTER TABLE mcp_agent_jobs
                         ADD COLUMN IF NOT EXISTS handover_context_refs TEXT[] NULL
                     """),
-
                     # Add succession_reason column
                     text("""
                         ALTER TABLE mcp_agent_jobs
                         ADD COLUMN IF NOT EXISTS succession_reason VARCHAR(100) NULL
                     """),
-
                     # Add context_used column
                     text("""
                         ALTER TABLE mcp_agent_jobs
                         ADD COLUMN IF NOT EXISTS context_used INTEGER DEFAULT 0 NOT NULL
                     """),
-
                     # Add context_budget column
                     text("""
                         ALTER TABLE mcp_agent_jobs
@@ -1603,7 +1579,6 @@ class UnifiedInstaller:
                         CREATE INDEX IF NOT EXISTS idx_agent_jobs_instance
                         ON mcp_agent_jobs(project_id, agent_type, instance_number)
                     """),
-
                     # Index for handover lookups
                     text("""
                         CREATE INDEX IF NOT EXISTS idx_agent_jobs_handover
@@ -1622,7 +1597,6 @@ class UnifiedInstaller:
                         ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_instance_positive
                         CHECK (instance_number >= 1)
                     """),
-
                     # Succession reason constraint
                     text("""
                         ALTER TABLE mcp_agent_jobs
@@ -1630,7 +1604,6 @@ class UnifiedInstaller:
                         CHECK (succession_reason IS NULL OR
                                succession_reason IN ('context_limit', 'manual', 'phase_transition'))
                     """),
-
                     # Context usage constraint
                     text("""
                         ALTER TABLE mcp_agent_jobs
@@ -1653,6 +1626,7 @@ class UnifiedInstaller:
             self._print_error(f"Handover 0080 migration failed: {e}")
             # Don't fail installation - just log error
             import traceback
+
             traceback.print_exc()
 
     async def _run_handover_0088_migration_async(self, db_manager) -> None:
@@ -1749,9 +1723,93 @@ class UnifiedInstaller:
             self._print_error(f"Handover 0088 migration failed: {e}")
             # Don't fail installation - just log error
             import traceback
+
             traceback.print_exc()
 
-    def _is_port_available(self, port: int, host: str = '127.0.0.1') -> bool:
+    def run_database_migrations(self) -> Dict[str, Any]:
+        """
+        Run Alembic database migrations (alembic upgrade head)
+
+        Executes all pending Alembic migrations after table creation.
+        This ensures CHECK constraints, defaults, and backfill logic are applied.
+
+        CRITICAL: Must run AFTER create_tables_async() to ensure tables exist.
+
+        Handles both:
+        - Fresh installs (no existing alembic_version table)
+        - Upgrades (existing alembic_version table)
+
+        Returns:
+            Result dictionary with success status and details
+        """
+        result = {"success": False, "migrations_applied": []}
+
+        try:
+            # Ensure we're in the install directory
+            cwd = Path.cwd()
+
+            # Check if alembic.ini exists
+            alembic_ini = cwd / "alembic.ini"
+            if not alembic_ini.exists():
+                self._print_error(f"alembic.ini not found at {alembic_ini}")
+                result["error"] = "Alembic configuration file missing"
+                return result
+
+            # Check if migrations directory exists
+            migrations_dir = cwd / "migrations"
+            if not migrations_dir.exists():
+                self._print_error(f"Migrations directory not found at {migrations_dir}")
+                result["error"] = "Migrations directory missing"
+                return result
+
+            self._print_info("Running database migrations (alembic upgrade head)...")
+
+            # Run alembic upgrade head
+            # NOTE: Uses sys.executable to ensure correct Python interpreter (venv)
+            proc = subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                capture_output=True,
+                text=True,
+                timeout=120,  # 2 minute timeout
+                cwd=str(cwd)  # Ensure correct working directory
+            )
+
+            if proc.returncode == 0:
+                self._print_success("Database migrations completed successfully")
+                result["success"] = True
+                result["output"] = proc.stdout
+
+                # Parse output to see which migrations ran
+                for line in proc.stdout.split('\n'):
+                    if 'Running upgrade' in line:
+                        result["migrations_applied"].append(line.strip())
+
+                if result["migrations_applied"]:
+                    self._print_info(f"Applied {len(result['migrations_applied'])} migration(s)")
+                    for migration in result["migrations_applied"]:
+                        self._print_info(f"  {migration}")
+                else:
+                    self._print_info("No new migrations to apply (database already up to date)")
+            else:
+                self._print_error("Database migration failed")
+                self._print_error(f"STDOUT: {proc.stdout}")
+                self._print_error(f"STDERR: {proc.stderr}")
+                result["error"] = f"Migration failed: {proc.stderr}"
+                result["output"] = proc.stdout
+                result["stderr"] = proc.stderr
+
+        except subprocess.TimeoutExpired:
+            self._print_error("Database migration timed out after 120 seconds")
+            result["error"] = "Migration timeout"
+        except Exception as e:
+            self._print_error(f"Database migration error: {e}")
+            import traceback
+            traceback.print_exc()
+            result["error"] = str(e)
+
+        return result
+
+    def _is_port_available(self, port: int, host: str = "127.0.0.1") -> bool:
         """Check if port is available"""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -1795,10 +1853,10 @@ class UnifiedInstaller:
 
 
 @click.command()
-@click.option('--headless', is_flag=True, help='Non-interactive mode (use defaults)')
-@click.option('--pg-password', default=None, help='PostgreSQL admin password (REQUIRED)')
-@click.option('--api-port', default=DEFAULT_API_PORT, type=int, help='API server port')
-@click.option('--frontend-port', default=DEFAULT_FRONTEND_PORT, type=int, help='Frontend port')
+@click.option("--headless", is_flag=True, help="Non-interactive mode (use defaults)")
+@click.option("--pg-password", default=None, help="PostgreSQL admin password (REQUIRED)")
+@click.option("--api-port", default=DEFAULT_API_PORT, type=int, help="API server port")
+@click.option("--frontend-port", default=DEFAULT_FRONTEND_PORT, type=int, help="Frontend port")
 def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
     """
     GiljoAI MCP v3.0 - Unified Installer
@@ -1808,11 +1866,11 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
     try:
         # Prepare settings
         settings = {
-            'install_dir': str(Path.cwd()),
-            'pg_password': pg_password,
-            'api_port': api_port,
-            'dashboard_port': frontend_port,
-            'headless': headless
+            "install_dir": str(Path.cwd()),
+            "pg_password": pg_password,
+            "api_port": api_port,
+            "dashboard_port": frontend_port,
+            "headless": headless,
         }
 
         # Create installer
@@ -1822,7 +1880,7 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
         result = installer.run()
 
         # Exit with appropriate code
-        sys.exit(0 if result['success'] else 1)
+        sys.exit(0 if result["success"] else 1)
 
     except KeyboardInterrupt:
         print(f"\n{Fore.YELLOW}Installation cancelled{Style.RESET_ALL}")
@@ -1833,5 +1891,5 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

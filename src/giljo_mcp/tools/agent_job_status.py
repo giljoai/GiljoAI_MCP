@@ -23,12 +23,11 @@ from giljo_mcp.agent_job_manager import AgentJobManager
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 
-def register_agent_job_status_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_agent_job_status_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register agent job status update tools with the MCP server"""
 
     # Initialize job manager
@@ -137,10 +136,7 @@ def register_agent_job_status_tools(
                 )
 
                 if not job:
-                    logger.error(
-                        f"Job {job_id} not found for tenant {tenant_key} "
-                        "in update_job_status"
-                    )
+                    logger.error(f"Job {job_id} not found for tenant {tenant_key} in update_job_status")
                     return {
                         "success": False,
                         "error": f"Job {job_id} not found for tenant {tenant_key}",
@@ -173,13 +169,11 @@ def register_agent_job_status_tools(
                     # Handover 0066: 'blocked' is a terminal state like 'completed'
                     def update_to_blocked(sync_session):
                         from sqlalchemy import select
+
                         from giljo_mcp.models import Job
 
                         # Get job
-                        stmt = select(Job).where(
-                            Job.tenant_key == tenant_key,
-                            Job.job_id == job_id
-                        )
+                        stmt = select(Job).where(Job.tenant_key == tenant_key, Job.job_id == job_id)
                         db_job = sync_session.execute(stmt).scalar_one_or_none()
 
                         if not db_job:
@@ -254,8 +248,7 @@ def register_agent_job_status_tools(
 
                 logger.info(
                     f"Job {job_id} status updated: {old_status} -> {updated_job.status} "
-                    f"for tenant {tenant_key}"
-                    + (f" (reason: {reason})" if reason else "")
+                    f"for tenant {tenant_key}" + (f" (reason: {reason})" if reason else "")
                 )
 
                 # TODO: Trigger WebSocket event for Kanban board real-time updates

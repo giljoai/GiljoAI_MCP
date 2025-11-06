@@ -13,7 +13,6 @@ with the agent_management API endpoints.
 """
 
 import asyncio
-import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +21,7 @@ from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -88,6 +87,7 @@ async def test_app():
 async def async_client(test_app):
     """Create async HTTP client."""
     from httpx import ASGITransport
+
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
         yield client
 
@@ -120,7 +120,7 @@ async def test_product(test_db, test_tenant_key):
             id=str(uuid4()),
             tenant_key=test_tenant_key,
             name="Test Product",
-            description="Test product for WebSocket event testing"
+            description="Test product for WebSocket event testing",
         )
         session.add(product)
         await session.commit()
@@ -133,11 +133,7 @@ async def test_user(test_db, test_tenant_key):
     """Create test user."""
     async with test_db.get_session_async() as session:
         user = User(
-            id=str(uuid4()),
-            tenant_key=test_tenant_key,
-            username="test_user",
-            email="test@example.com",
-            is_active=True
+            id=str(uuid4()), tenant_key=test_tenant_key, username="test_user", email="test@example.com", is_active=True
         )
         session.add(user)
         await session.commit()
@@ -149,10 +145,7 @@ async def test_user(test_db, test_tenant_key):
 async def auth_headers(test_user, test_tenant_key):
     """Create authentication headers."""
     # Mock JWT token for testing
-    return {
-        "Authorization": f"Bearer test-token-{test_user.id}",
-        "X-Tenant-Key": test_tenant_key
-    }
+    return {"Authorization": f"Bearer test-token-{test_user.id}", "X-Tenant-Key": test_tenant_key}
 
 
 class TestAgentJobWebSocketEvents:
@@ -164,7 +157,7 @@ class TestAgentJobWebSocketEvents:
         collector = WebSocketEventCollector()
 
         # Mock WebSocket connection
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
 
         async def mock_send(msg):
             collector.add_event_sync(msg)
@@ -187,8 +180,8 @@ class TestAgentJobWebSocketEvents:
                     "agent_type": "orchestrator",
                     "mission": "Coordinate implementation of feature X with comprehensive testing",
                     "spawned_by": None,
-                    "context_chunks": []
-                }
+                    "context_chunks": [],
+                },
             )
 
             assert response.status_code == 201
@@ -202,7 +195,10 @@ class TestAgentJobWebSocketEvents:
             assert event["type"] == "agent_job:created"
             assert event["data"]["job_id"] == job_id
             assert event["data"]["agent_type"] == "orchestrator"
-            assert event["data"]["mission_preview"] == "Coordinate implementation of feature X with comprehensive testing"[:100]
+            assert (
+                event["data"]["mission_preview"]
+                == "Coordinate implementation of feature X with comprehensive testing"[:100]
+            )
             assert "timestamp" in event
             assert "created_at" in event["data"]
 
@@ -223,7 +219,7 @@ class TestAgentJobWebSocketEvents:
                 job_id=str(uuid4()),
                 agent_type="analyzer",
                 mission="Analyze codebase structure",
-                status="pending"
+                status="pending",
             )
             session.add(job)
             await session.commit()
@@ -245,10 +241,7 @@ class TestAgentJobWebSocketEvents:
 
         try:
             # Acknowledge job via API
-            response = await async_client.post(
-                f"/api/agent/agent-jobs/{job_id}/acknowledge",
-                headers=auth_headers
-            )
+            response = await async_client.post(f"/api/agent/agent-jobs/{job_id}/acknowledge", headers=auth_headers)
 
             assert response.status_code == 200
 
@@ -279,7 +272,7 @@ class TestAgentJobWebSocketEvents:
                 agent_type="implementer",
                 mission="Implement authentication module",
                 status="active",
-                started_at=datetime.utcnow()
+                started_at=datetime.utcnow(),
             )
             session.add(job)
             await session.commit()
@@ -302,9 +295,7 @@ class TestAgentJobWebSocketEvents:
         try:
             # Complete job via API
             response = await async_client.put(
-                f"/api/agent/agent-jobs/{job_id}/status",
-                headers=auth_headers,
-                json={"status": "completed"}
+                f"/api/agent/agent-jobs/{job_id}/status", headers=auth_headers, json={"status": "completed"}
             )
 
             assert response.status_code == 200
@@ -338,7 +329,7 @@ class TestAgentJobWebSocketEvents:
                 agent_type="tester",
                 mission="Run integration tests",
                 status="active",
-                started_at=datetime.utcnow()
+                started_at=datetime.utcnow(),
             )
             session.add(job)
             await session.commit()
@@ -361,9 +352,7 @@ class TestAgentJobWebSocketEvents:
         try:
             # Fail job via API
             response = await async_client.put(
-                f"/api/agent/agent-jobs/{job_id}/status",
-                headers=auth_headers,
-                json={"status": "failed"}
+                f"/api/agent/agent-jobs/{job_id}/status", headers=auth_headers, json={"status": "failed"}
             )
 
             assert response.status_code == 200
@@ -393,7 +382,7 @@ class TestAgentJobWebSocketEvents:
                 job_id=str(uuid4()),
                 agent_type="orchestrator",
                 mission="Coordinate implementation",
-                status="active"
+                status="active",
             )
             session.add(job)
             await session.commit()
@@ -419,13 +408,7 @@ class TestAgentJobWebSocketEvents:
             response = await async_client.post(
                 f"/api/agent/agent-jobs/{job_id}/messages",
                 headers=auth_headers,
-                json={
-                    "message": {
-                        "type": "status",
-                        "content": message_content,
-                        "from_agent": "orchestrator"
-                    }
-                }
+                json={"message": {"type": "status", "content": message_content, "from_agent": "orchestrator"}},
             )
 
             assert response.status_code == 200
@@ -489,7 +472,7 @@ class TestMultiTenantIsolation:
                     job_id=str(uuid4()),
                     agent_type="orchestrator",
                     mission="Tenant A mission",
-                    status="pending"
+                    status="pending",
                 )
                 session.add(job_a)
                 await session.commit()
@@ -500,7 +483,7 @@ class TestMultiTenantIsolation:
                     job_id=job_a.job_id,
                     agent_type=job_a.agent_type,
                     tenant_key=tenant_a,
-                    mission_preview=job_a.mission[:100]
+                    mission_preview=job_a.mission[:100],
                 )
 
             # Wait a bit for async operations
@@ -559,7 +542,7 @@ class TestMultiTenantIsolation:
                     agent_type="analyzer",
                     tenant_key=tenant_a,
                     old_status="pending",
-                    new_status="active"
+                    new_status="active",
                 )
 
             await asyncio.sleep(0.5)
@@ -600,6 +583,7 @@ class TestWebSocketPerformance:
                 def make_mock_send(c):
                     async def mock_send(msg):
                         c.add_event_sync(msg)
+
                     return mock_send
 
                 mock_ws = AsyncMock()
@@ -610,6 +594,7 @@ class TestWebSocketPerformance:
 
         try:
             import time
+
             start_time = time.time()
 
             # Broadcast 10 events
@@ -619,7 +604,7 @@ class TestWebSocketPerformance:
                         job_id=str(uuid4()),
                         agent_type="orchestrator",
                         tenant_key=tenant_key,
-                        mission_preview=f"Mission {i}"
+                        mission_preview=f"Mission {i}",
                     )
 
             end_time = time.time()
@@ -677,7 +662,7 @@ class TestErrorHandling:
                     job_id=str(uuid4()),
                     agent_type="orchestrator",
                     tenant_key=tenant_key,
-                    mission_preview="Test mission"
+                    mission_preview="Test mission",
                 )
 
             await asyncio.sleep(0.5)

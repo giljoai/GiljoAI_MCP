@@ -9,9 +9,9 @@ Tests the complete orchestrator workflow including:
 - Team planning capabilities
 """
 
-import pytest
-from datetime import datetime
 from uuid import uuid4
+
+import pytest
 
 
 class TestProjectProductAssociation:
@@ -26,11 +26,7 @@ class TestProjectProductAssociation:
         product_id = str(uuid4())
 
         # Create project with product_id
-        result = await tool_accessor.create_project(
-            name="Test Project",
-            mission="Test mission",
-            product_id=product_id
-        )
+        result = await tool_accessor.create_project(name="Test Project", mission="Test mission", product_id=product_id)
 
         assert result["success"] is True
         assert result["product_id"] == product_id
@@ -50,9 +46,7 @@ class TestProjectProductAssociation:
 
         # Create project
         create_result = await tool_accessor.create_project(
-            name="List Test Project",
-            mission="Test mission",
-            product_id=product_id
+            name="List Test Project", mission="Test mission", product_id=product_id
         )
         assert create_result["success"] is True
 
@@ -61,10 +55,7 @@ class TestProjectProductAssociation:
         assert list_result["success"] is True
 
         # Find our project
-        project = next(
-            (p for p in list_result["projects"] if p["id"] == create_result["project_id"]),
-            None
-        )
+        project = next((p for p in list_result["projects"] if p["id"] == create_result["project_id"]), None)
         assert project is not None
         assert project["product_id"] == product_id
 
@@ -78,9 +69,7 @@ class TestProjectProductAssociation:
 
         # Create project
         create_result = await tool_accessor.create_project(
-            name="Status Test Project",
-            mission="Test mission",
-            product_id=product_id
+            name="Status Test Project", mission="Test mission", product_id=product_id
         )
         assert create_result["success"] is True
 
@@ -96,24 +85,21 @@ class TestAPISchemaValidation:
     @pytest.mark.asyncio
     async def test_agent_create_schema(self, test_client, db_manager):
         """Test agent creation with correct schema (agent_name field)."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Create test project first
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
-        project_result = await tool_accessor.create_project(
-            name="Agent Test Project",
-            mission="Test mission"
-        )
+        project_result = await tool_accessor.create_project(name="Agent Test Project", mission="Test mission")
         assert project_result["success"] is True
 
         # Test agent creation with correct schema
         agent_data = {
             "agent_name": "Test Agent",
             "project_id": project_result["project_id"],
-            "mission": "Test agent mission"
+            "mission": "Test agent mission",
         }
 
         response = test_client.post("/api/v1/agents", json=agent_data)
@@ -126,23 +112,20 @@ class TestAPISchemaValidation:
     @pytest.mark.asyncio
     async def test_agent_create_rejects_wrong_field(self, test_client, db_manager):
         """Test that agent creation rejects 'name' field (should be 'agent_name')."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Create test project first
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
-        project_result = await tool_accessor.create_project(
-            name="Agent Schema Test",
-            mission="Test mission"
-        )
+        project_result = await tool_accessor.create_project(name="Agent Schema Test", mission="Test mission")
         assert project_result["success"] is True
 
         # Test with wrong field name
         agent_data = {
             "name": "Wrong Field",  # Should be agent_name
-            "project_id": project_result["project_id"]
+            "project_id": project_result["project_id"],
         }
 
         response = test_client.post("/api/v1/agents", json=agent_data)
@@ -155,7 +138,7 @@ class TestAPISchemaValidation:
             "title": "Test Task",
             "description": "Test description",
             "priority": "high",  # String, not integer
-            "category": "test"
+            "category": "test",
         }
 
         response = test_client.post("/api/v1/tasks", json=task_data)
@@ -171,7 +154,7 @@ class TestAPISchemaValidation:
         # Test wrong field name
         task_data = {
             "name": "Wrong Field",  # Should be title
-            "priority": "high"
+            "priority": "high",
         }
 
         response = test_client.post("/api/v1/tasks", json=task_data)
@@ -180,7 +163,7 @@ class TestAPISchemaValidation:
         # Test wrong priority type
         task_data = {
             "title": "Test Task",
-            "priority": 1  # Should be string
+            "priority": 1,  # Should be string
         }
 
         response = test_client.post("/api/v1/tasks", json=task_data)
@@ -200,9 +183,7 @@ class TestOrchestratorWorkflow:
 
         # Step 1: Create project with product
         project_result = await tool_accessor.create_project(
-            name="Workflow Test Project",
-            mission="Build a REST API",
-            product_id=product_id
+            name="Workflow Test Project", mission="Build a REST API", product_id=product_id
         )
         assert project_result["success"] is True
         assert project_result["product_id"] == product_id
@@ -216,15 +197,13 @@ class TestOrchestratorWorkflow:
             project_id=project_result["project_id"],
             name="Orchestrator",
             role="orchestrator",
-            mission="Coordinate project execution"
+            mission="Coordinate project execution",
         )
         assert agent_result["success"] is True
 
         # Step 4: Create task/mission
         task_result = await tool_accessor.create_task(
-            name="Build API",
-            description="Create REST API with authentication",
-            priority="high"
+            name="Build API", description="Create REST API with authentication", priority="high"
         )
         assert task_result["success"] is True
 
@@ -243,10 +222,7 @@ class TestOrchestratorWorkflow:
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         # Create project
-        project_result = await tool_accessor.create_project(
-            name="Context Test",
-            mission="Test context tracking"
-        )
+        project_result = await tool_accessor.create_project(name="Context Test", mission="Test context tracking")
         assert project_result["success"] is True
 
         # Verify initial context
@@ -259,8 +235,8 @@ class TestOrchestratorWorkflow:
 @pytest.fixture
 async def db_manager():
     """Database manager fixture."""
-    from giljo_mcp.database import DatabaseManager
     from giljo_mcp.config_manager import get_config
+    from giljo_mcp.database import DatabaseManager
 
     config = get_config()
     manager = DatabaseManager(database_url=config.database.url)
@@ -272,6 +248,7 @@ async def db_manager():
 def tenant_manager():
     """Tenant manager fixture."""
     from giljo_mcp.tenant import TenantManager
+
     return TenantManager()
 
 
@@ -279,6 +256,7 @@ def tenant_manager():
 def test_client():
     """FastAPI test client fixture."""
     from fastapi.testclient import TestClient
+
     from api.app import app
 
     return TestClient(app)

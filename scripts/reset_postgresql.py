@@ -3,12 +3,14 @@
 
 import sys
 
+
 try:
     import psycopg2
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 except ImportError:
     print("Installing psycopg2-binary...")
     import subprocess
+
     subprocess.run([sys.executable, "-m", "pip", "install", "psycopg2-binary"], check=True)
     import psycopg2
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -26,13 +28,7 @@ print()
 
 try:
     # Connect to postgres database (default)
-    conn = psycopg2.connect(
-        host=HOST,
-        port=PORT,
-        database="postgres",
-        user=USER,
-        password=PASSWORD
-    )
+    conn = psycopg2.connect(host=HOST, port=PORT, database="postgres", user=USER, password=PASSWORD)
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
     cursor = conn.cursor()
 
@@ -56,17 +52,20 @@ try:
         print()
         response = input("Delete all these databases? [y/N]: ").strip().lower()
 
-        if response == 'y':
+        if response == "y":
             print()
             for db in databases:
                 print(f"Dropping database: {db}...")
                 try:
                     # Terminate existing connections
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT pg_terminate_backend(pid)
                         FROM pg_stat_activity
                         WHERE datname = %s AND pid <> pg_backend_pid();
-                    """, (db,))
+                    """,
+                        (db,),
+                    )
 
                     # Drop the database
                     cursor.execute('DROP DATABASE "%s"' % db)

@@ -5,7 +5,6 @@ Works on Windows, Mac, and Linux
 """
 
 import os
-import sys
 import platform
 from pathlib import Path
 
@@ -59,7 +58,7 @@ Type=Application
 Name={name}
 Comment={comment}
 Exec={exec_cmd}
-Terminal={'true' if terminal else 'false'}
+Terminal={"true" if terminal else "false"}
 """
 
     if icon_path and Path(icon_path).exists():
@@ -68,7 +67,7 @@ Terminal={'true' if terminal else 'false'}
     content += "Categories=Development;Network;\n"
 
     try:
-        with open(desktop_file, 'w') as f:
+        with open(desktop_file, "w") as f:
             f.write(content)
 
         # Make it executable (owner only, readable by all)
@@ -97,7 +96,7 @@ def create_mac_app(name, script_path, icon_path=None):
 
         # Create launcher script
         launcher = macos_dir / "launcher"
-        with open(launcher, 'w') as f:
+        with open(launcher, "w") as f:
             f.write(f"""#!/bin/bash
 cd {Path.cwd()}
 {script_path}
@@ -106,7 +105,7 @@ cd {Path.cwd()}
 
         # Create Info.plist
         info_plist = contents_dir / "Info.plist"
-        with open(info_plist, 'w') as f:
+        with open(info_plist, "w") as f:
             f.write(f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -116,7 +115,7 @@ cd {Path.cwd()}
     <key>CFBundleName</key>
     <string>{name}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.giljo.mcp.{name.lower().replace(' ', '')}</string>
+    <string>com.giljo.mcp.{name.lower().replace(" ", "")}</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundlePackageType</key>
@@ -127,6 +126,7 @@ cd {Path.cwd()}
         # Copy icon if available
         if icon_path and Path(icon_path).exists():
             import shutil
+
             shutil.copy(icon_path, resources_dir / "icon.icns")
 
         return app_path
@@ -147,6 +147,7 @@ def create_shortcuts():
         frontend_icon = install_dir / "frontend" / "public" / "icons" / "favicon.ico"
         if frontend_icon.exists():
             import shutil
+
             shutil.copy(frontend_icon, icon_path)
 
     system = platform.system()
@@ -161,7 +162,7 @@ def create_shortcuts():
                 target=str(start_script),
                 icon_path=icon_path,
                 description="Start GiljoAI MCP Orchestration Server",
-                working_dir=install_dir
+                working_dir=install_dir,
             )
             if shortcut:
                 shortcuts_created.append(shortcut)
@@ -171,7 +172,7 @@ def create_shortcuts():
         stop_script = install_dir / "stop_giljo.bat"
         if not stop_script.exists():
             # Create stop script if it doesn't exist
-            with open(stop_script, 'w') as f:
+            with open(stop_script, "w") as f:
                 f.write("""@echo off
 echo Stopping GiljoAI MCP Server...
 taskkill /F /IM python.exe /T 2>nul
@@ -184,7 +185,7 @@ pause
             target=str(stop_script),
             icon_path=icon_path,
             description="Stop GiljoAI MCP Orchestration Server",
-            working_dir=install_dir
+            working_dir=install_dir,
         )
         if shortcut:
             shortcuts_created.append(shortcut)
@@ -199,7 +200,7 @@ pause
                 args=f'/k "{connect_script}"',
                 icon_path=icon_path,
                 description="Connect a project to GiljoAI MCP Server",
-                working_dir=install_dir
+                working_dir=install_dir,
             )
             if shortcut:
                 shortcuts_created.append(shortcut)
@@ -208,7 +209,7 @@ pause
         # Server Status shortcut
         status_script = install_dir / "check_status.bat"
         if not status_script.exists():
-            with open(status_script, 'w') as f:
+            with open(status_script, "w") as f:
                 f.write(f"""@echo off
 echo ============================================================
 echo   GiljoAI MCP Server Status
@@ -239,7 +240,7 @@ pause
             target=str(status_script),
             icon_path=icon_path,
             description="Check GiljoAI MCP Server Status",
-            working_dir=install_dir
+            working_dir=install_dir,
         )
         if shortcut:
             shortcuts_created.append(shortcut)
@@ -255,10 +256,7 @@ pause
 
         for name, exec_path, comment in shortcuts:
             desktop_file = create_linux_desktop_file(
-                name=f"GiljoAI MCP {name}",
-                exec_cmd=exec_path,
-                icon_path=icon_path,
-                comment=comment
+                name=f"GiljoAI MCP {name}", exec_cmd=exec_path, icon_path=icon_path, comment=comment
             )
             if desktop_file:
                 shortcuts_created.append(desktop_file)
@@ -273,11 +271,7 @@ pause
         ]
 
         for name, script in shortcuts:
-            app = create_mac_app(
-                name=name,
-                script_path=script,
-                icon_path=icon_path
-            )
+            app = create_mac_app(name=name, script_path=script, icon_path=icon_path)
             if app:
                 shortcuts_created.append(app)
                 print(f"✓ Created: {app}")
@@ -291,10 +285,7 @@ def add_to_startup_windows():
         import winreg
 
         key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            r"Software\Microsoft\Windows\CurrentVersion\Run",
-            0,
-            winreg.KEY_SET_VALUE
+            winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE
         )
 
         install_dir = Path.cwd()
@@ -302,19 +293,13 @@ def add_to_startup_windows():
 
         # Create silent start script
         if not start_script.exists():
-            with open(start_script, 'w') as f:
+            with open(start_script, "w") as f:
                 f.write(f"""@echo off
 cd /d "{install_dir}"
 start /min "" python -m giljo_mcp
 """)
 
-        winreg.SetValueEx(
-            key,
-            "GiljoAI_MCP_Server",
-            0,
-            winreg.REG_SZ,
-            str(start_script)
-        )
+        winreg.SetValueEx(key, "GiljoAI_MCP_Server", 0, winreg.REG_SZ, str(start_script))
         winreg.CloseKey(key)
 
         print("✓ Added GiljoAI MCP to Windows startup")
@@ -326,9 +311,9 @@ start /min "" python -m giljo_mcp
 
 def main():
     """Main entry point"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Creating Desktop Shortcuts for GiljoAI MCP")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     shortcuts = create_shortcuts()
 
@@ -339,7 +324,7 @@ def main():
         if platform.system() == "Windows":
             print("\nWould you like GiljoAI MCP Server to start automatically with Windows?")
             response = input("(This can be changed later in Task Manager > Startup) [y/N]: ")
-            if response.lower() == 'y':
+            if response.lower() == "y":
                 add_to_startup_windows()
     else:
         print("\n⚠ No shortcuts were created")

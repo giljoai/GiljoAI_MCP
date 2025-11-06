@@ -13,19 +13,17 @@ Quality Target: 100% coverage of Phase 1 implementation
 Test Philosophy: Integration-focused, multi-tenant aware, production-grade
 """
 
-import asyncio
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 from fastapi import Request
 from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
+
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -36,10 +34,10 @@ if str(project_root) not in sys.path:
 # These imports are done carefully to avoid triggering api/__init__.py
 import importlib.util
 
+
 # Direct import of websocket module
 websocket_spec = importlib.util.spec_from_file_location(
-    "api.dependencies.websocket",
-    project_root / "api" / "dependencies" / "websocket.py"
+    "api.dependencies.websocket", project_root / "api" / "dependencies" / "websocket.py"
 )
 websocket_module = importlib.util.module_from_spec(websocket_spec)
 sys.modules["api.dependencies.websocket"] = websocket_module
@@ -51,8 +49,7 @@ get_websocket_manager = websocket_module.get_websocket_manager
 
 # Direct import of event schemas
 schemas_spec = importlib.util.spec_from_file_location(
-    "api.events.schemas",
-    project_root / "api" / "events" / "schemas.py"
+    "api.events.schemas", project_root / "api" / "events" / "schemas.py"
 )
 schemas_module = importlib.util.module_from_spec(schemas_spec)
 sys.modules["api.events.schemas"] = schemas_module
@@ -65,7 +62,8 @@ ProjectMissionUpdatedEvent = schemas_module.ProjectMissionUpdatedEvent
 WebSocketEvent = schemas_module.WebSocketEvent
 
 # Import models normally
-from src.giljo_mcp.models import Base, Project
+from src.giljo_mcp.models import Project
+
 
 logger = logging.getLogger(__name__)
 
@@ -249,9 +247,7 @@ class TestWebSocketDependencyInjection:
         request = MagicMock(spec=Request)
         request.app.state = MagicMock()
         # No websocket_manager attribute
-        delattr(request.app.state, "websocket_manager") if hasattr(
-            request.app.state, "websocket_manager"
-        ) else None
+        delattr(request.app.state, "websocket_manager") if hasattr(request.app.state, "websocket_manager") else None
 
         manager = await get_websocket_manager(request)
 
@@ -637,9 +633,7 @@ class TestPhase1Integration:
     """
 
     @pytest.mark.asyncio
-    async def test_end_to_end_project_mission_broadcast(
-        self, mock_websocket_manager, project_id, tenant_key
-    ):
+    async def test_end_to_end_project_mission_broadcast(self, mock_websocket_manager, project_id, tenant_key):
         """
         Integration test: Project mission updated → Event created → WebSocket broadcast.
 
@@ -938,7 +932,6 @@ class TestPhase1ErrorHandling:
 
     def test_event_factory_handles_uuid_objects(self):
         """Test that EventFactory accepts both UUID and string."""
-        from uuid import UUID
 
         project_uuid = uuid4()
         project_str = str(project_uuid)

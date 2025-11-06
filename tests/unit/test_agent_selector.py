@@ -472,9 +472,9 @@ class TestAgentSelector:
         for i in range(len(agents) - 1):
             current_priority = priority_order[agents[i].priority]
             next_priority = priority_order[agents[i + 1].priority]
-            assert (
-                current_priority <= next_priority
-            ), f"Agents not sorted by priority: {agents[i].priority} before {agents[i + 1].priority}"
+            assert current_priority <= next_priority, (
+                f"Agents not sorted by priority: {agents[i].priority} before {agents[i + 1].priority}"
+            )
 
     # Test 11: Empty work_types dict
     @pytest.mark.asyncio

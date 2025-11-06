@@ -24,6 +24,7 @@ from uuid import uuid4
 import aiohttp
 import pytest
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -54,9 +55,9 @@ def mock_config():
     """Mock ConfigManager for testing."""
     config = MagicMock()
     config.get.side_effect = lambda key, default=None: {
-        'api.base_url': 'http://localhost:7272',
-        'auth.username': 'test_user',
-        'auth.password': 'test_pass',
+        "api.base_url": "http://localhost:7272",
+        "auth.username": "test_user",
+        "auth.password": "test_pass",
     }.get(key, default)
     return config
 
@@ -96,275 +97,279 @@ class TestExternalAgentCoordinationTools:
         """Test successful job creation via HTTP API."""
         # Mock responses
         auth_response = create_mock_response(200)
-        create_response = create_mock_response(201, {
-            'job_id': job_id,
-            'message': 'Job created successfully'
-        })
+        create_response = create_mock_response(201, {"job_id": job_id, "message": "Job created successfully"})
 
         # Mock session.post() for authentication and session.request() for API calls
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = create_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.create_agent_job(
-                agent_type='implementer',
-                mission='Implement feature X',
-                context_chunks=['chunk1', 'chunk2']
+                agent_type="implementer", mission="Implement feature X", context_chunks=["chunk1", "chunk2"]
             )
 
-        assert result['status'] == 'success'
-        assert result['job_id'] == job_id
-        assert 'created successfully' in result['message'].lower()
+        assert result["status"] == "success"
+        assert result["job_id"] == job_id
+        assert "created successfully" in result["message"].lower()
 
     @pytest.mark.asyncio
     async def test_send_agent_message_success(self, mock_session, mock_config, job_id):
         """Test successful message sending via HTTP API."""
         auth_response = create_mock_response(200)
-        message_response = create_mock_response(200, {
-            'message_id': str(uuid4()),
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        })
+        message_response = create_mock_response(
+            200, {"message_id": str(uuid4()), "timestamp": datetime.now(timezone.utc).isoformat()}
+        )
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = message_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.send_agent_message(
-                job_id=job_id,
-                role='agent',
-                message_type='progress',
-                content={'summary': 'Completed task X'}
+                job_id=job_id, role="agent", message_type="progress", content={"summary": "Completed task X"}
             )
 
-        assert result['status'] == 'success'
-        assert 'message_id' in result
+        assert result["status"] == "success"
+        assert "message_id" in result
 
     @pytest.mark.asyncio
     async def test_get_agent_job_status_success(self, mock_session, mock_config, job_id, tenant_key):
         """Test successful job status retrieval via HTTP API."""
         auth_response = create_mock_response(200)
-        status_response = create_mock_response(200, {
-            'id': 1,
-            'job_id': job_id,
-            'tenant_key': tenant_key,
-            'agent_type': 'implementer',
-            'mission': 'Test mission',
-            'status': 'active',
-            'spawned_by': None,
-            'context_chunks': ['chunk1'],
-            'messages': [],
-            'acknowledged': True,
-            'started_at': datetime.now(timezone.utc).isoformat(),
-            'completed_at': None,
-            'created_at': datetime.now(timezone.utc).isoformat()
-        })
+        status_response = create_mock_response(
+            200,
+            {
+                "id": 1,
+                "job_id": job_id,
+                "tenant_key": tenant_key,
+                "agent_type": "implementer",
+                "mission": "Test mission",
+                "status": "active",
+                "spawned_by": None,
+                "context_chunks": ["chunk1"],
+                "messages": [],
+                "acknowledged": True,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = status_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.get_agent_job_status(job_id=job_id)
 
-        assert result['status'] == 'success'
-        assert result['job']['job_id'] == job_id
-        assert result['job']['status'] == 'active'
+        assert result["status"] == "success"
+        assert result["job"]["job_id"] == job_id
+        assert result["job"]["status"] == "active"
 
     @pytest.mark.asyncio
     async def test_acknowledge_agent_job_success(self, mock_session, mock_config, job_id):
         """Test successful job acknowledgment via HTTP API."""
         auth_response = create_mock_response(200)
-        ack_response = create_mock_response(200, {
-            'job_id': job_id,
-            'status': 'active',
-            'started_at': datetime.now(timezone.utc).isoformat(),
-            'message': 'Job acknowledged successfully'
-        })
+        ack_response = create_mock_response(
+            200,
+            {
+                "job_id": job_id,
+                "status": "active",
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "message": "Job acknowledged successfully",
+            },
+        )
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = ack_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.acknowledge_agent_job(job_id=job_id)
 
-        assert result['status'] == 'success'
-        assert result['job']['job_id'] == job_id
-        assert result['job']['status'] == 'active'
+        assert result["status"] == "success"
+        assert result["job"]["job_id"] == job_id
+        assert result["job"]["status"] == "active"
 
     @pytest.mark.asyncio
     async def test_complete_agent_job_success(self, mock_session, mock_config, job_id):
         """Test successful job completion via HTTP API."""
         auth_response = create_mock_response(200)
-        complete_response = create_mock_response(200, {
-            'job_id': job_id,
-            'status': 'completed',
-            'completed_at': datetime.now(timezone.utc).isoformat(),
-            'message': 'Job completed successfully'
-        })
+        complete_response = create_mock_response(
+            200,
+            {
+                "job_id": job_id,
+                "status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "message": "Job completed successfully",
+            },
+        )
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = complete_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.complete_agent_job(
-                job_id=job_id,
-                result={'summary': 'Completed successfully', 'files_modified': ['file1.py']}
+                job_id=job_id, result={"summary": "Completed successfully", "files_modified": ["file1.py"]}
             )
 
-        assert result['status'] == 'success'
-        assert result['job_id'] == job_id
-        assert 'completed' in result['message'].lower()
+        assert result["status"] == "success"
+        assert result["job_id"] == job_id
+        assert "completed" in result["message"].lower()
 
     @pytest.mark.asyncio
     async def test_fail_agent_job_success(self, mock_session, mock_config, job_id):
         """Test successful job failure via HTTP API."""
         auth_response = create_mock_response(200)
-        fail_response = create_mock_response(200, {
-            'job_id': job_id,
-            'status': 'failed',
-            'completed_at': datetime.now(timezone.utc).isoformat(),
-            'message': 'Job failed successfully'
-        })
+        fail_response = create_mock_response(
+            200,
+            {
+                "job_id": job_id,
+                "status": "failed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "message": "Job failed successfully",
+            },
+        )
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = fail_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.fail_agent_job(
-                job_id=job_id,
-                error={'type': 'test_failure', 'message': 'Tests failed'}
+                job_id=job_id, error={"type": "test_failure", "message": "Tests failed"}
             )
 
-        assert result['status'] == 'success'
-        assert result['job_id'] == job_id
-        assert 'failed' in result['message'].lower()
+        assert result["status"] == "success"
+        assert result["job_id"] == job_id
+        assert "failed" in result["message"].lower()
 
     @pytest.mark.asyncio
     async def test_list_active_agent_jobs_success(self, mock_session, mock_config, job_id, tenant_key):
         """Test successful listing of active jobs via HTTP API."""
         auth_response = create_mock_response(200)
-        list_response = create_mock_response(200, {
-            'jobs': [
-                {
-                    'id': 1,
-                    'job_id': job_id,
-                    'tenant_key': tenant_key,
-                    'agent_type': 'implementer',
-                    'mission': 'Test mission',
-                    'status': 'active',
-                    'spawned_by': None,
-                    'context_chunks': [],
-                    'messages': [],
-                    'acknowledged': True,
-                    'started_at': datetime.now(timezone.utc).isoformat(),
-                    'completed_at': None,
-                    'created_at': datetime.now(timezone.utc).isoformat()
-                }
-            ],
-            'total': 1
-        })
+        list_response = create_mock_response(
+            200,
+            {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "job_id": job_id,
+                        "tenant_key": tenant_key,
+                        "agent_type": "implementer",
+                        "mission": "Test mission",
+                        "status": "active",
+                        "spawned_by": None,
+                        "context_chunks": [],
+                        "messages": [],
+                        "acknowledged": True,
+                        "started_at": datetime.now(timezone.utc).isoformat(),
+                        "completed_at": None,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                ],
+                "total": 1,
+            },
+        )
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = list_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
-            result = await tools.list_active_agent_jobs(status='active')
+            result = await tools.list_active_agent_jobs(status="active")
 
-        assert result['status'] == 'success'
-        assert len(result['jobs']) == 1
-        assert result['total'] == 1
-        assert result['jobs'][0]['job_id'] == job_id
+        assert result["status"] == "success"
+        assert len(result["jobs"]) == 1
+        assert result["total"] == 1
+        assert result["jobs"][0]["job_id"] == job_id
 
     @pytest.mark.asyncio
     async def test_job_not_found_error(self, mock_session, mock_config):
         """Test 404 job not found error handling."""
         auth_response = create_mock_response(200)
-        not_found_response = create_mock_response(404, text_data='Job not found')
+        not_found_response = create_mock_response(404, text_data="Job not found")
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = not_found_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
-            result = await tools.get_agent_job_status(job_id='nonexistent-job-id')
+            result = await tools.get_agent_job_status(job_id="nonexistent-job-id")
 
-        assert result['status'] == 'error'
-        assert 'not found' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "not found" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_multi_tenant_isolation_403_error(self, mock_session, mock_config, job_id):
         """Test 403 multi-tenant isolation error handling."""
         auth_response = create_mock_response(200)
-        forbidden_response = create_mock_response(403, text_data='Unauthorized access')
+        forbidden_response = create_mock_response(403, text_data="Unauthorized access")
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = forbidden_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.get_agent_job_status(job_id=job_id)
 
-        assert result['status'] == 'error'
-        assert 'unauthorized' in result['error'].lower() or 'forbidden' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "unauthorized" in result["error"].lower() or "forbidden" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_connection_error_handling(self, mock_session, mock_config, job_id):
         """Test connection error handling."""
         # Mock connection error during authentication (session.post)
         # Note: Using a simple OSError as ClientConnectorError requires complex connection_key setup
-        mock_session.post.side_effect = OSError('Connection refused')
+        mock_session.post.side_effect = OSError("Connection refused")
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.get_agent_job_status(job_id=job_id)
 
-        assert result['status'] == 'error'
+        assert result["status"] == "error"
         # The error gets caught and wrapped, so just check it's an error status
-        assert 'error' in result
+        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_server_error_500_handling(self, mock_session, mock_config, job_id):
         """Test 500 internal server error handling."""
         auth_response = create_mock_response(200)
-        error_response = create_mock_response(500, text_data='Internal server error')
+        error_response = create_mock_response(500, text_data="Internal server error")
 
         mock_session.post.return_value = auth_response
         mock_session.request.return_value = error_response
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.get_agent_job_status(job_id=job_id)
 
-        assert result['status'] == 'error'
-        assert 'server error' in result['error'].lower() or 'retries' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "server error" in result["error"].lower() or "retries" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_request_timeout_handling(self, mock_session, mock_config, job_id):
@@ -372,40 +377,40 @@ class TestExternalAgentCoordinationTools:
         auth_response = create_mock_response(200)
         # Mock authentication success, then timeout on actual request
         mock_session.post.return_value = auth_response
-        mock_session.request.side_effect = asyncio.TimeoutError('Request timeout')
+        mock_session.request.side_effect = asyncio.TimeoutError("Request timeout")
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.get_agent_job_status(job_id=job_id)
 
-        assert result['status'] == 'error'
-        assert 'timeout' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "timeout" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_input_validation_empty_job_id(self, mock_session, mock_config):
         """Test input validation for empty job_id."""
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
-            result = await tools.get_agent_job_status(job_id='')
+            result = await tools.get_agent_job_status(job_id="")
 
-        assert result['status'] == 'error'
-        assert 'empty' in result['error'].lower() or 'invalid' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "empty" in result["error"].lower() or "invalid" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_input_validation_missing_required_fields(self, mock_session, mock_config):
         """Test input validation for missing required fields."""
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
-            result = await tools.create_agent_job(agent_type='', mission='Test mission')
+            result = await tools.create_agent_job(agent_type="", mission="Test mission")
 
-        assert result['status'] == 'error'
-        assert 'empty' in result['error'].lower() or 'required' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "empty" in result["error"].lower() or "required" in result["error"].lower()
 
 
 class TestExternalToolsRegistration:
@@ -415,20 +420,20 @@ class TestExternalToolsRegistration:
         """Test tool registration function."""
         tools = {}
 
-        with patch('src.giljo_mcp.tools.agent_coordination_external.ConfigManager', return_value=mock_config):
+        with patch("src.giljo_mcp.tools.agent_coordination_external.ConfigManager", return_value=mock_config):
             from src.giljo_mcp.tools.agent_coordination_external import register_external_agent_coordination_tools
 
             register_external_agent_coordination_tools(tools, mock_config)
 
         # Verify all 7 tools are registered
         expected_tools = [
-            'create_agent_job_external',
-            'send_agent_message_external',
-            'get_agent_job_status_external',
-            'acknowledge_agent_job_external',
-            'complete_agent_job_external',
-            'fail_agent_job_external',
-            'list_active_agent_jobs_external'
+            "create_agent_job_external",
+            "send_agent_message_external",
+            "get_agent_job_status_external",
+            "acknowledge_agent_job_external",
+            "complete_agent_job_external",
+            "fail_agent_job_external",
+            "list_active_agent_jobs_external",
         ]
 
         for tool_name in expected_tools:

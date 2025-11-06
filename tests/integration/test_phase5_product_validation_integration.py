@@ -12,10 +12,9 @@ These tests use real database connections and test the entire stack.
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 
-from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.database import get_db_manager
+from src.giljo_mcp.models import Product, Project, User
 
 
 class TestPhase5ProductValidationIntegration:
@@ -37,11 +36,7 @@ class TestPhase5ProductValidationIntegration:
     async def test_user(self, db_session, test_tenant):
         """Create test user for API authentication."""
         user = User(
-            username="phase5_test_user",
-            email="phase5@test.com",
-            tenant_key=test_tenant,
-            role="admin",
-            is_active=True
+            username="phase5_test_user", email="phase5@test.com", tenant_key=test_tenant, role="admin", is_active=True
         )
         user.set_password("TestPassword123")
 
@@ -65,7 +60,7 @@ class TestPhase5ProductValidationIntegration:
             is_active=True,
             vision_type="inline",
             vision_document="# Test Vision\n\nThis is a test vision document.",
-            chunked=False
+            chunked=False,
         )
 
         db_session.add(product)
@@ -88,7 +83,7 @@ class TestPhase5ProductValidationIntegration:
             is_active=False,
             vision_type="inline",
             vision_document="# Test Vision\n\nThis is an inactive test vision.",
-            chunked=False
+            chunked=False,
         )
 
         db_session.add(product)
@@ -109,7 +104,7 @@ class TestPhase5ProductValidationIntegration:
             product_id=inactive_product.id,
             name="Test Project",
             mission="Test mission for inactive product",
-            status="active"
+            status="active",
         )
 
         db_session.add(project)
@@ -127,9 +122,7 @@ class TestPhase5ProductValidationIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_api_process_vision_rejects_inactive_product(
-        self, inactive_product, test_tenant
-    ):
+    async def test_api_process_vision_rejects_inactive_product(self, inactive_product, test_tenant):
         """Test that API returns 409 Conflict for inactive product."""
         from api.app import app
 
@@ -140,8 +133,8 @@ class TestPhase5ProductValidationIntegration:
                     "tenant_key": test_tenant,
                     "product_id": inactive_product.id,
                     "project_requirements": "Build a test feature",
-                    "workflow_type": "waterfall"
-                }
+                    "workflow_type": "waterfall",
+                },
             )
 
             # Verify 409 Conflict response
@@ -161,9 +154,7 @@ class TestPhase5ProductValidationIntegration:
                 assert "not active" in str(detail)
 
     @pytest.mark.asyncio
-    async def test_api_process_vision_accepts_active_product(
-        self, active_product, test_tenant
-    ):
+    async def test_api_process_vision_accepts_active_product(self, active_product, test_tenant):
         """Test that API accepts active product (may fail on execution but not validation)."""
         from api.app import app
 
@@ -174,8 +165,8 @@ class TestPhase5ProductValidationIntegration:
                     "tenant_key": test_tenant,
                     "product_id": active_product.id,
                     "project_requirements": "Build a test feature",
-                    "workflow_type": "waterfall"
-                }
+                    "workflow_type": "waterfall",
+                },
             )
 
             # Should NOT be 409 Conflict
@@ -194,21 +185,16 @@ class TestPhase5ProductValidationIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_orchestrator_spawn_agent_rejects_inactive_product(
-        self, project_with_inactive_product
-    ):
+    async def test_orchestrator_spawn_agent_rejects_inactive_product(self, project_with_inactive_product):
         """Test orchestrator.spawn_agent() rejects projects with inactive products."""
-        from src.giljo_mcp.orchestrator import ProjectOrchestrator
         from src.giljo_mcp.enums import AgentRole
+        from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
         orchestrator = ProjectOrchestrator()
 
         # Attempt to spawn agent for project with inactive product
         with pytest.raises(ValueError) as exc_info:
-            await orchestrator.spawn_agent(
-                project_id=project_with_inactive_product.id,
-                role=AgentRole.IMPLEMENTER
-            )
+            await orchestrator.spawn_agent(project_id=project_with_inactive_product.id, role=AgentRole.IMPLEMENTER)
 
         # Verify error message
         error_msg = str(exc_info.value)
@@ -216,9 +202,7 @@ class TestPhase5ProductValidationIntegration:
         assert "Inactive Test Product" in error_msg
 
     @pytest.mark.asyncio
-    async def test_orchestrator_process_vision_rejects_inactive_product(
-        self, inactive_product, test_tenant
-    ):
+    async def test_orchestrator_process_vision_rejects_inactive_product(self, inactive_product, test_tenant):
         """Test orchestrator.process_product_vision() rejects inactive products."""
         from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
@@ -227,9 +211,7 @@ class TestPhase5ProductValidationIntegration:
         # Attempt to process inactive product vision
         with pytest.raises(ValueError) as exc_info:
             await orchestrator.process_product_vision(
-                tenant_key=test_tenant,
-                product_id=inactive_product.id,
-                project_requirements="Test requirements"
+                tenant_key=test_tenant, product_id=inactive_product.id, project_requirements="Test requirements"
             )
 
         # Verify error message
@@ -243,9 +225,7 @@ class TestPhase5ProductValidationIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_tenant_isolation_prevents_cross_tenant_access(
-        self, active_product, db_session
-    ):
+    async def test_tenant_isolation_prevents_cross_tenant_access(self, active_product, db_session):
         """Test that tenant isolation prevents accessing other tenant's products."""
         from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
@@ -254,9 +234,7 @@ class TestPhase5ProductValidationIntegration:
         # Attempt to access product with wrong tenant
         with pytest.raises(ValueError) as exc_info:
             await orchestrator.process_product_vision(
-                tenant_key="wrong-tenant-key",
-                product_id=active_product.id,
-                project_requirements="Test requirements"
+                tenant_key="wrong-tenant-key", product_id=active_product.id, project_requirements="Test requirements"
             )
 
         error_msg = str(exc_info.value)
@@ -267,9 +245,7 @@ class TestPhase5ProductValidationIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_database_enforces_single_active_product(
-        self, db_session, test_tenant
-    ):
+    async def test_database_enforces_single_active_product(self, db_session, test_tenant):
         """Test database constraint prevents multiple active products per tenant."""
         from sqlalchemy.exc import IntegrityError
 
@@ -279,7 +255,7 @@ class TestPhase5ProductValidationIntegration:
             name="First Active Product",
             is_active=True,
             vision_type="inline",
-            vision_document="Test"
+            vision_document="Test",
         )
         db_session.add(product1)
         await db_session.commit()
@@ -290,7 +266,7 @@ class TestPhase5ProductValidationIntegration:
             name="Second Active Product",
             is_active=True,
             vision_type="inline",
-            vision_document="Test"
+            vision_document="Test",
         )
         db_session.add(product2)
 
@@ -307,9 +283,7 @@ class TestPhase5ProductValidationIntegration:
         await db_session.commit()
 
     @pytest.mark.asyncio
-    async def test_can_have_multiple_inactive_products(
-        self, db_session, test_tenant
-    ):
+    async def test_can_have_multiple_inactive_products(self, db_session, test_tenant):
         """Test that multiple inactive products per tenant are allowed."""
         # Create multiple inactive products
         product1 = Product(
@@ -317,14 +291,14 @@ class TestPhase5ProductValidationIntegration:
             name="Inactive Product 1",
             is_active=False,
             vision_type="inline",
-            vision_document="Test"
+            vision_document="Test",
         )
         product2 = Product(
             tenant_key=test_tenant,
             name="Inactive Product 2",
             is_active=False,
             vision_type="inline",
-            vision_document="Test"
+            vision_document="Test",
         )
 
         db_session.add(product1)
@@ -351,9 +325,7 @@ class TestPhase5ProductValidationIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_product_activation_deactivation_flow(
-        self, db_session, test_tenant
-    ):
+    async def test_product_activation_deactivation_flow(self, db_session, test_tenant):
         """Test complete product activation/deactivation workflow."""
         # Create inactive product
         product = Product(
@@ -361,7 +333,7 @@ class TestPhase5ProductValidationIntegration:
             name="Flow Test Product",
             is_active=False,
             vision_type="inline",
-            vision_document="Test vision"
+            vision_document="Test vision",
         )
         db_session.add(product)
         await db_session.commit()
@@ -380,14 +352,13 @@ class TestPhase5ProductValidationIntegration:
 
         # Verify can process vision now
         from src.giljo_mcp.orchestrator import ProjectOrchestrator
+
         orchestrator = ProjectOrchestrator()
 
         # Should not raise error now (though may fail for other reasons)
         try:
             await orchestrator.process_product_vision(
-                tenant_key=test_tenant,
-                product_id=product.id,
-                project_requirements="Test"
+                tenant_key=test_tenant, product_id=product.id, project_requirements="Test"
             )
         except ValueError as e:
             # Should not be "not active" error
@@ -404,9 +375,7 @@ class TestPhase5ProductValidationIntegration:
         # Verify cannot process vision when inactive
         with pytest.raises(ValueError) as exc_info:
             await orchestrator.process_product_vision(
-                tenant_key=test_tenant,
-                product_id=product.id,
-                project_requirements="Test"
+                tenant_key=test_tenant, product_id=product.id, project_requirements="Test"
             )
 
         assert "not active" in str(exc_info.value)
@@ -420,11 +389,10 @@ class TestPhase5ProductValidationIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_validation_performance_overhead(
-        self, active_product, test_tenant
-    ):
+    async def test_validation_performance_overhead(self, active_product, test_tenant):
         """Test that validation doesn't add significant overhead."""
         import time
+
         from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
         orchestrator = ProjectOrchestrator()
@@ -434,9 +402,7 @@ class TestPhase5ProductValidationIntegration:
 
         try:
             await orchestrator.process_product_vision(
-                tenant_key=test_tenant,
-                product_id=active_product.id,
-                project_requirements="Test"
+                tenant_key=test_tenant, product_id=active_product.id, project_requirements="Test"
             )
         except Exception:
             # We're testing validation speed, not full execution

@@ -53,44 +53,37 @@ class JWTManager:
     def _get_secret_key(cls) -> str:
         """
         Get JWT secret key from environment variables.
-        
+
         Loads dynamically to ensure .env file has been processed.
-        
+
         Returns:
             Secret key string
-            
+
         Raises:
             RuntimeError: If no secret key is found
         """
         # Try multiple environment variable names
-        secret_key = (
-            os.getenv("JWT_SECRET") or 
-            os.getenv("GILJO_MCP_SECRET_KEY") or
-            os.getenv("SECRET_KEY")
-        )
-        
+        secret_key = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
+
         if not secret_key:
             # Try to load .env file if not already loaded
             try:
                 from dotenv import load_dotenv
+
                 load_dotenv(override=False)  # Don't override existing values
-                
+
                 # Try again after loading .env
-                secret_key = (
-                    os.getenv("JWT_SECRET") or 
-                    os.getenv("GILJO_MCP_SECRET_KEY") or
-                    os.getenv("SECRET_KEY")
-                )
+                secret_key = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
             except ImportError:
                 pass  # dotenv not available
-        
+
         if not secret_key:
             raise RuntimeError(
                 "JWT secret key not found in environment variables. "
                 "Please ensure JWT_SECRET, GILJO_MCP_SECRET_KEY, or SECRET_KEY is set in .env file. "
                 "Run 'python install.py' to regenerate configuration if needed."
             )
-        
+
         return secret_key
 
     @classmethod
@@ -161,8 +154,7 @@ class JWTManager:
             secret_key = cls._get_secret_key()
         except RuntimeError as e:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail=f"JWT configuration error: {e}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"JWT configuration error: {e}"
             )
 
         try:

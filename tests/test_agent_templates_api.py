@@ -11,17 +11,14 @@ Tests cover:
 - Performance (response time targets)
 """
 
-import json
 import time
 from datetime import datetime, timezone
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from fastapi import status
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, User
@@ -58,9 +55,7 @@ def auth_headers(test_user: User) -> dict:
 
 
 @pytest.fixture
-async def orchestrator_template(
-    db_session: AsyncSession, test_user: User
-) -> AgentTemplate:
+async def orchestrator_template(db_session: AsyncSession, test_user: User) -> AgentTemplate:
     """Create orchestrator template for testing"""
     template = AgentTemplate(
         id=str(uuid4()),
@@ -131,9 +126,7 @@ class TestTemplatesCRUD:
         orchestrator_template: AgentTemplate,
     ):
         """Test listing templates returns tenant's templates"""
-        response = await async_client.get(
-            "/api/v1/templates/", headers=auth_headers
-        )
+        response = await async_client.get("/api/v1/templates/", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         templates = response.json()
@@ -148,9 +141,7 @@ class TestTemplatesCRUD:
         orchestrator_template: AgentTemplate,
     ):
         """Test listing templates with category filter"""
-        response = await async_client.get(
-            "/api/v1/templates/?category=role", headers=auth_headers
-        )
+        response = await async_client.get("/api/v1/templates/?category=role", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         templates = response.json()
@@ -163,18 +154,14 @@ class TestTemplatesCRUD:
         orchestrator_template: AgentTemplate,
     ):
         """Test listing templates with role filter"""
-        response = await async_client.get(
-            "/api/v1/templates/?role=orchestrator", headers=auth_headers
-        )
+        response = await async_client.get("/api/v1/templates/?role=orchestrator", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         templates = response.json()
         assert all(t["role"] == "orchestrator" for t in templates)
         assert len(templates) >= 1
 
-    async def test_create_template_success(
-        self, async_client: AsyncClient, auth_headers: dict, test_user: User
-    ):
+    async def test_create_template_success(self, async_client: AsyncClient, auth_headers: dict, test_user: User):
         """Test creating a new template"""
         template_data = {
             "name": "Custom Analyzer",
@@ -189,9 +176,7 @@ class TestTemplatesCRUD:
             "preferred_tool": "claude",
         }
 
-        response = await async_client.post(
-            "/api/v1/templates/", json=template_data, headers=auth_headers
-        )
+        response = await async_client.post("/api/v1/templates/", json=template_data, headers=auth_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
         created = response.json()
@@ -200,9 +185,7 @@ class TestTemplatesCRUD:
         assert created["tenant_key"] == test_user.tenant_key
         assert "project_name" in created["variables"]
 
-    async def test_create_template_validates_size_limit(
-        self, async_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_create_template_validates_size_limit(self, async_client: AsyncClient, auth_headers: dict):
         """Test template creation fails when content exceeds 100KB"""
         large_content = "x" * (101 * 1024)  # 101KB
         template_data = {
@@ -212,9 +195,7 @@ class TestTemplatesCRUD:
             "template_content": large_content,
         }
 
-        response = await async_client.post(
-            "/api/v1/templates/", json=template_data, headers=auth_headers
-        )
+        response = await async_client.post("/api/v1/templates/", json=template_data, headers=auth_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert "exceeds maximum size" in response.text.lower()
@@ -252,9 +233,7 @@ class TestTemplatesCRUD:
         db_session: AsyncSession,
     ):
         """Test deleting template (soft delete)"""
-        response = await async_client.delete(
-            f"/api/v1/templates/{orchestrator_template.id}", headers=auth_headers
-        )
+        response = await async_client.delete(f"/api/v1/templates/{orchestrator_template.id}", headers=auth_headers)
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -325,9 +304,7 @@ class TestTemplatePhase3Endpoints:
     ):
         """Test GET /templates/{id}/diff - Compare with system template"""
         # Modify tenant template to create difference
-        orchestrator_template.template_content = (
-            "MODIFIED: Custom orchestrator for {project_name}"
-        )
+        orchestrator_template.template_content = "MODIFIED: Custom orchestrator for {project_name}"
 
         response = await async_client.get(
             f"/api/v1/templates/{orchestrator_template.id}/diff",
@@ -446,9 +423,7 @@ class TestTemplatesSecurity:
         await db_session.commit()
 
         # Request templates with test user's token
-        response = await async_client.get(
-            "/api/v1/templates/", headers=auth_headers
-        )
+        response = await async_client.get("/api/v1/templates/", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         templates = response.json()
@@ -532,24 +507,18 @@ class TestTemplatesSecurity:
 class TestTemplatesValidation:
     """Tests for input validation and error handling"""
 
-    async def test_create_template_missing_required_fields(
-        self, async_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_create_template_missing_required_fields(self, async_client: AsyncClient, auth_headers: dict):
         """Test creating template without required fields fails"""
         invalid_data = {"name": "Test"}  # Missing category, template_content, etc.
 
-        response = await async_client.post(
-            "/api/v1/templates/", json=invalid_data, headers=auth_headers
-        )
+        response = await async_client.post("/api/v1/templates/", json=invalid_data, headers=auth_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         errors = response.json()["detail"]
         assert any("category" in str(e).lower() for e in errors)
         assert any("template_content" in str(e).lower() for e in errors)
 
-    async def test_update_template_not_found(
-        self, async_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_update_template_not_found(self, async_client: AsyncClient, auth_headers: dict):
         """Test updating non-existent template returns 404"""
         fake_id = str(uuid4())
         response = await async_client.put(
@@ -592,9 +561,7 @@ class TestTemplatesPerformance:
     ):
         """Test list templates responds within 100ms"""
         start = time.perf_counter()
-        response = await async_client.get(
-            "/api/v1/templates/", headers=auth_headers
-        )
+        response = await async_client.get("/api/v1/templates/", headers=auth_headers)
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         assert response.status_code == status.HTTP_200_OK
@@ -607,9 +574,7 @@ class TestTemplatesPerformance:
         orchestrator_template: AgentTemplate,
     ):
         """Test preview endpoint responds quickly"""
-        preview_data = {
-            "variables": {"project_name": "Test", "project_mission": "Test"}
-        }
+        preview_data = {"variables": {"project_name": "Test", "project_mission": "Test"}}
 
         start = time.perf_counter()
         response = await async_client.post(
@@ -620,9 +585,7 @@ class TestTemplatesPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         assert response.status_code == status.HTTP_200_OK
-        assert (
-            elapsed_ms < 50
-        ), f"Preview took {elapsed_ms:.2f}ms, expected < 50ms"
+        assert elapsed_ms < 50, f"Preview took {elapsed_ms:.2f}ms, expected < 50ms"
 
 
 # WebSocket Tests
@@ -633,13 +596,10 @@ class TestTemplatesWebSocket:
     """Tests for WebSocket real-time updates"""
 
     @pytest.mark.skip(reason="WebSocket testing requires additional setup")
-    async def test_websocket_broadcast_on_create(
-        self, async_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_websocket_broadcast_on_create(self, async_client: AsyncClient, auth_headers: dict):
         """Test WebSocket broadcasts template creation"""
         # This would require WebSocket client setup
         # Placeholder for future implementation
-        pass
 
     @pytest.mark.skip(reason="WebSocket testing requires additional setup")
     async def test_websocket_broadcast_on_update(
@@ -649,14 +609,10 @@ class TestTemplatesWebSocket:
         orchestrator_template: AgentTemplate,
     ):
         """Test WebSocket broadcasts template updates"""
-        pass
 
     @pytest.mark.skip(reason="WebSocket testing requires additional setup")
-    async def test_websocket_tenant_scoped_broadcasts(
-        self, async_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_websocket_tenant_scoped_broadcasts(self, async_client: AsyncClient, auth_headers: dict):
         """Test WebSocket broadcasts are tenant-scoped"""
-        pass
 
 
 # Database Query Tests
@@ -666,23 +622,17 @@ class TestTemplatesWebSocket:
 class TestTemplatesDatabaseQueries:
     """Tests for database query correctness and performance"""
 
-    async def test_database_query_filters_by_tenant(
-        self, db_session: AsyncSession, test_user: User
-    ):
+    async def test_database_query_filters_by_tenant(self, db_session: AsyncSession, test_user: User):
         """Test all database queries filter by tenant_key"""
         # This test directly queries database to verify filtering
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == test_user.tenant_key
-        )
+        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == test_user.tenant_key)
         result = await db_session.execute(stmt)
         templates = result.scalars().all()
 
         # All templates should match user's tenant
         assert all(t.tenant_key == test_user.tenant_key for t in templates)
 
-    async def test_database_query_performance(
-        self, db_session: AsyncSession, test_user: User
-    ):
+    async def test_database_query_performance(self, db_session: AsyncSession, test_user: User):
         """Test database queries complete within 10ms"""
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == test_user.tenant_key,
@@ -694,9 +644,7 @@ class TestTemplatesDatabaseQueries:
         templates = result.scalars().all()
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        assert (
-            elapsed_ms < 10
-        ), f"Query took {elapsed_ms:.2f}ms, expected < 10ms"
+        assert elapsed_ms < 10, f"Query took {elapsed_ms:.2f}ms, expected < 10ms"
 
 
 # Integration Tests
@@ -706,9 +654,7 @@ class TestTemplatesDatabaseQueries:
 class TestTemplatesIntegration:
     """End-to-end integration tests"""
 
-    async def test_full_crud_workflow(
-        self, async_client: AsyncClient, auth_headers: dict, test_user: User
-    ):
+    async def test_full_crud_workflow(self, async_client: AsyncClient, auth_headers: dict, test_user: User):
         """Test complete CRUD workflow: Create → Read → Update → Delete"""
         # Create
         create_data = {
@@ -723,16 +669,12 @@ class TestTemplatesIntegration:
             "is_default": False,
             "preferred_tool": "claude",
         }
-        create_response = await async_client.post(
-            "/api/v1/templates/", json=create_data, headers=auth_headers
-        )
+        create_response = await async_client.post("/api/v1/templates/", json=create_data, headers=auth_headers)
         assert create_response.status_code == status.HTTP_201_CREATED
         template_id = create_response.json()["id"]
 
         # Read (list)
-        list_response = await async_client.get(
-            "/api/v1/templates/?role=tester", headers=auth_headers
-        )
+        list_response = await async_client.get("/api/v1/templates/?role=tester", headers=auth_headers)
         assert list_response.status_code == status.HTTP_200_OK
         templates = list_response.json()
         assert any(t["id"] == template_id for t in templates)
@@ -748,9 +690,7 @@ class TestTemplatesIntegration:
         assert update_response.json()["name"] == update_data["name"]
 
         # Delete
-        delete_response = await async_client.delete(
-            f"/api/v1/templates/{template_id}", headers=auth_headers
-        )
+        delete_response = await async_client.delete(f"/api/v1/templates/{template_id}", headers=auth_headers)
         assert delete_response.status_code == status.HTTP_204_NO_CONTENT
 
     async def test_seeding_to_api_workflow(
@@ -768,9 +708,7 @@ class TestTemplatesIntegration:
         assert count == 6  # Should seed 6 templates
 
         # Fetch via API
-        response = await async_client.get(
-            "/api/v1/templates/", headers=auth_headers
-        )
+        response = await async_client.get("/api/v1/templates/", headers=auth_headers)
         assert response.status_code == status.HTTP_200_OK
         templates = response.json()
         assert len(templates) >= 6  # At least the 6 seeded templates

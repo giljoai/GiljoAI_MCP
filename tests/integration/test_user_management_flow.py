@@ -35,7 +35,7 @@ async def admin_user(db_session):
         role="admin",
         tenant_key="test_tenant",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(admin)
     await db_session.commit()
@@ -54,7 +54,7 @@ async def regular_user(db_session):
         role="developer",
         tenant_key="test_tenant",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -73,7 +73,7 @@ async def other_tenant_user(db_session):
         role="developer",
         tenant_key="other_tenant",  # Different tenant!
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -85,10 +85,7 @@ async def other_tenant_user(db_session):
 def auth_headers_admin(admin_user):
     """Get auth headers for admin user."""
     token = JWTManager.create_access_token(
-        user_id=admin_user.id,
-        username=admin_user.username,
-        role=admin_user.role,
-        tenant_key=admin_user.tenant_key
+        user_id=admin_user.id, username=admin_user.username, role=admin_user.role, tenant_key=admin_user.tenant_key
     )
     return {"Cookie": f"access_token={token}"}
 
@@ -100,7 +97,7 @@ def auth_headers_user(regular_user):
         user_id=regular_user.id,
         username=regular_user.username,
         role=regular_user.role,
-        tenant_key=regular_user.tenant_key
+        tenant_key=regular_user.tenant_key,
     )
     return {"Cookie": f"access_token={token}"}
 
@@ -112,9 +109,7 @@ class TestAdminUserManagement:
     async def test_admin_creates_new_user(self, db_manager, db_session, admin_user, auth_headers_admin):
         """Test admin can create new user."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -128,8 +123,8 @@ class TestAdminUserManagement:
                 "email": "newdev@example.com",
                 "full_name": "New Developer",
                 "role": "developer",
-                "tenant_key": "test_tenant"
-            }
+                "tenant_key": "test_tenant",
+            },
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -151,7 +146,9 @@ class TestAdminUserManagement:
         assert bcrypt.verify("NewDevPass123!", new_user.password_hash)
 
     @pytest.mark.asyncio
-    async def test_admin_lists_all_users_in_tenant(self, db_manager, db_session, admin_user, regular_user, other_tenant_user, auth_headers_admin):
+    async def test_admin_lists_all_users_in_tenant(
+        self, db_manager, db_session, admin_user, regular_user, other_tenant_user, auth_headers_admin
+    ):
         """Test admin can list all users in their tenant."""
         # This endpoint doesn't exist yet but should be added
         # For now, we test the database query logic
@@ -199,7 +196,7 @@ class TestAdminUserManagement:
             role="developer",
             tenant_key="test_tenant",
             is_active=False,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(inactive_user)
         await db_session.commit()
@@ -233,9 +230,7 @@ class TestAdminUserManagement:
     async def test_admin_cannot_demote_self(self, db_manager, db_session, admin_user, auth_headers_admin):
         """Test admin cannot demote themselves (prevents lockout)."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -256,9 +251,7 @@ class TestRegularUserWorkflows:
     async def test_user_views_own_profile(self, db_manager, regular_user, auth_headers_user):
         """Test user can view their own profile."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -315,9 +308,7 @@ class TestRegularUserWorkflows:
     async def test_user_cannot_change_own_role(self, db_manager, db_session, regular_user, auth_headers_user):
         """Test user cannot change their own role."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -348,9 +339,7 @@ class TestPermissionEnforcement:
     async def test_non_admin_blocked_from_creating_users(self, db_manager, regular_user, auth_headers_user):
         """Test non-admin gets 403 when trying to create users."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -361,8 +350,8 @@ class TestPermissionEnforcement:
                 "username": "unauthorized_user",
                 "password": "Pass123!",
                 "role": "developer",
-                "tenant_key": "test_tenant"
-            }
+                "tenant_key": "test_tenant",
+            },
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -379,24 +368,19 @@ class TestPermissionEnforcement:
             role="developer",
             tenant_key="test_tenant",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(target_user)
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         # Attempt to delete user (should fail)
         # This would be: DELETE /api/auth/users/{user_id}
-        response = client.delete(
-            f"/api/auth/users/{target_user.id}",
-            headers=auth_headers_user
-        )
+        response = client.delete(f"/api/auth/users/{target_user.id}", headers=auth_headers_user)
 
         # Should get 403 Forbidden or 404 Not Found (if endpoint doesn't exist yet)
         assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
@@ -410,8 +394,6 @@ class TestPermissionEnforcement:
         # with {"role": "admin"} in body
         # Should return 403 Forbidden for non-admins
 
-        pass
-
     @pytest.mark.asyncio
     async def test_user_can_only_edit_own_profile(self, db_manager, db_session, regular_user, auth_headers_user):
         """Test user can only edit their own profile, not others."""
@@ -424,23 +406,19 @@ class TestPermissionEnforcement:
             role="developer",
             tenant_key="test_tenant",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(other_user)
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
         # Attempt to edit other user's profile (should fail)
         response = client.patch(
-            f"/api/auth/users/{other_user.id}",
-            headers=auth_headers_user,
-            json={"email": "hacked@example.com"}
+            f"/api/auth/users/{other_user.id}", headers=auth_headers_user, json={"email": "hacked@example.com"}
         )
 
         # Should get 403 Forbidden
@@ -454,9 +432,7 @@ class TestMultiTenantIsolation:
     async def test_users_from_different_tenants_isolated(self, db_session, admin_user, other_tenant_user):
         """Test users from different tenants cannot access each other."""
         # Admin in test_tenant should NOT see users in other_tenant
-        stmt = select(User).where(
-            User.tenant_key == admin_user.tenant_key
-        )
+        stmt = select(User).where(User.tenant_key == admin_user.tenant_key)
         result = await db_session.execute(stmt)
         tenant_users = result.scalars().all()
 
@@ -472,7 +448,7 @@ class TestMultiTenantIsolation:
         # Query for other_tenant_user using admin's tenant_key filter
         stmt = select(User).where(
             User.id == other_tenant_user.id,
-            User.tenant_key == admin_user.tenant_key  # Admin's tenant filter
+            User.tenant_key == admin_user.tenant_key,  # Admin's tenant filter
         )
         result = await db_session.execute(stmt)
         found_user = result.scalar_one_or_none()
@@ -492,8 +468,6 @@ class TestMultiTenantIsolation:
         # 2. User.tenant_key filtering in all queries
         # 3. Dependency injection of tenant_key from authenticated user
 
-        pass
-
 
 class TestUserLoginFlow:
     """Test user login and authentication flow."""
@@ -502,19 +476,11 @@ class TestUserLoginFlow:
     async def test_user_login_success(self, db_manager, regular_user):
         """Test successful user login."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
-        response = client.post(
-            "/api/auth/login",
-            json={
-                "username": "developer",
-                "password": "DevPassword123!"
-            }
-        )
+        response = client.post("/api/auth/login", json={"username": "developer", "password": "DevPassword123!"})
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -530,19 +496,11 @@ class TestUserLoginFlow:
     async def test_user_login_invalid_credentials(self, db_manager, regular_user):
         """Test login fails with invalid credentials."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
-        response = client.post(
-            "/api/auth/login",
-            json={
-                "username": "developer",
-                "password": "WrongPassword123!"
-            }
-        )
+        response = client.post("/api/auth/login", json={"username": "developer", "password": "WrongPassword123!"})
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -558,25 +516,17 @@ class TestUserLoginFlow:
             role="developer",
             tenant_key="test_tenant",
             is_active=False,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(inactive_user)
         await db_session.commit()
 
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
-        response = client.post(
-            "/api/auth/login",
-            json={
-                "username": "inactive",
-                "password": "InactivePass123!"
-            }
-        )
+        response = client.post("/api/auth/login", json={"username": "inactive", "password": "InactivePass123!"})
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -584,9 +534,7 @@ class TestUserLoginFlow:
     async def test_user_logout(self, db_manager, regular_user, auth_headers_user):
         """Test user logout clears session."""
         app = create_app()
-        app.state.api_state = type('obj', (object,), {
-            'db_manager': db_manager
-        })()
+        app.state.api_state = type("obj", (object,), {"db_manager": db_manager})()
 
         client = TestClient(app)
 
@@ -614,7 +562,7 @@ class TestPasswordSecurity:
             role="developer",
             tenant_key="test_tenant",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         db_session.add(user)
         await db_session.commit()
@@ -633,7 +581,6 @@ class TestPasswordSecurity:
         # LoginRequest has: password: str = Field(..., min_length=8)
 
         # Attempting to create user with short password should fail validation
-        pass
 
     @pytest.mark.asyncio
     async def test_password_change_requires_old_password(self):
@@ -641,5 +588,3 @@ class TestPasswordSecurity:
         # This would be enforced in a PATCH /api/auth/me/password endpoint
         # Request body would be: {"old_password": "...", "new_password": "..."}
         # Endpoint would verify old_password before allowing change
-
-        pass

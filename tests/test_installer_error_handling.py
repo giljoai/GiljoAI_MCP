@@ -5,15 +5,15 @@ Tests the failure tracking and recovery window functionality
 """
 
 import sys
-import os
 from pathlib import Path
+
 
 def test_phase_tracking():
     """Test that phase tracking is properly initialized"""
     print("Testing phase tracking initialization...")
 
     # Check that the installer properly tracks all 5 phases
-    required_phases = ['venv', 'dependencies', 'config', 'database', 'registration']
+    required_phases = ["venv", "dependencies", "config", "database", "registration"]
 
     # Import and check the ProgressPage class
     try:
@@ -26,13 +26,13 @@ def test_phase_tracking():
 
         # The phase_status should be initialized in run_setup_internal
         # We can't fully test without running, but we can check the method exists
-        if hasattr(ProgressPage, 'run_setup_internal'):
+        if hasattr(ProgressPage, "run_setup_internal"):
             print("[OK] run_setup_internal method exists")
         else:
             print("[FAIL] run_setup_internal method not found")
             return False
 
-        if hasattr(ProgressPage, 'finalize_installation'):
+        if hasattr(ProgressPage, "finalize_installation"):
             print("[OK] finalize_installation method exists")
         else:
             print("[FAIL] finalize_installation method not found")
@@ -48,6 +48,7 @@ def test_phase_tracking():
         print(f"[ERROR] Unexpected error: {e}")
         return False
 
+
 def test_failure_window():
     """Test that failure window method exists"""
     print("\nTesting failure window implementation...")
@@ -56,7 +57,7 @@ def test_failure_window():
         from setup_gui import GiljoSetupGUI
 
         # Check for show_failure_window method
-        if hasattr(GiljoSetupGUI, 'show_failure_window'):
+        if hasattr(GiljoSetupGUI, "show_failure_window"):
             print("[OK] show_failure_window method exists")
         else:
             print("[FAIL] show_failure_window method not found")
@@ -72,6 +73,7 @@ def test_failure_window():
         print(f"[ERROR] Unexpected error: {e}")
         return False
 
+
 def test_uninstaller_improvements():
     """Test uninstaller script improvements"""
     print("\nTesting uninstaller improvements...")
@@ -83,18 +85,21 @@ def test_uninstaller_improvements():
         return False
 
     # Check that the uninstaller has proper PostgreSQL handling
-    with open(uninstall_script, 'r') as f:
+    with open(uninstall_script) as f:
         content = f.read()
 
     # Check for key improvements
     checks = [
-        ("Drop PostgreSQL databases (main and test), keep server intact" in content,
-         "Database drop preserves server"),
-        ("Cleanup utility for failed installations" in content or
-         "Cleanup Utility for Failed Installations" in content,
-         "Updated description for production use"),
-        ("PostgreSQL server installation (never uninstalls PostgreSQL itself)" in content,
-         "Clear documentation about PostgreSQL preservation"),
+        ("Drop PostgreSQL databases (main and test), keep server intact" in content, "Database drop preserves server"),
+        (
+            "Cleanup utility for failed installations" in content
+            or "Cleanup Utility for Failed Installations" in content,
+            "Updated description for production use",
+        ),
+        (
+            "PostgreSQL server installation (never uninstalls PostgreSQL itself)" in content,
+            "Clear documentation about PostgreSQL preservation",
+        ),
     ]
 
     all_passed = True
@@ -107,11 +112,12 @@ def test_uninstaller_improvements():
 
     return all_passed
 
+
 def main():
     """Run all tests"""
-    print("="*70)
+    print("=" * 70)
     print("GiljoAI MCP Installer Error Handling Tests")
-    print("="*70)
+    print("=" * 70)
 
     results = []
 
@@ -121,9 +127,9 @@ def main():
     results.append(("Uninstaller", test_uninstaller_improvements()))
 
     # Summary
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     passed = 0
     failed = 0
@@ -136,7 +142,7 @@ def main():
         else:
             failed += 1
 
-    print("\n" + "-"*70)
+    print("\n" + "-" * 70)
     print(f"Total: {passed} passed, {failed} failed")
 
     if failed == 0:
@@ -145,6 +151,7 @@ def main():
         print(f"\n[WARNING] {failed} test(s) failed. Review the implementation.")
 
     return 0 if failed == 0 else 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

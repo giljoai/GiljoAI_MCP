@@ -17,8 +17,8 @@ Test Coverage:
 """
 
 import sys
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -26,14 +26,16 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.app import create_app
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import MCPAgentJob, User, Project, Product
+from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
 
 
 # Test Fixtures
+
 
 @pytest_asyncio.fixture
 async def api_client() -> AsyncGenerator[AsyncClient, None]:
@@ -56,7 +58,7 @@ async def admin_user(db_session: AsyncSession) -> User:
         password_hash=bcrypt.hash("test_password"),
         role="admin",
         tenant_key="kanban_tenant",
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(user)
@@ -77,7 +79,7 @@ async def regular_user(db_session: AsyncSession) -> User:
         password_hash=bcrypt.hash("test_password"),
         role="user",
         tenant_key="kanban_tenant",
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(user)
@@ -98,7 +100,7 @@ async def other_tenant_user(db_session: AsyncSession) -> User:
         password_hash=bcrypt.hash("test_password"),
         role="admin",
         tenant_key="other_tenant",
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(user)
@@ -112,10 +114,7 @@ async def other_tenant_user(db_session: AsyncSession) -> User:
 async def test_product(db_session: AsyncSession, admin_user: User) -> Product:
     """Create test product."""
     product = Product(
-        tenant_key=admin_user.tenant_key,
-        name="Test Product",
-        description="Test product for Kanban",
-        is_active=True
+        tenant_key=admin_user.tenant_key, name="Test Product", description="Test product for Kanban", is_active=True
     )
 
     db_session.add(product)
@@ -134,7 +133,7 @@ async def test_project(db_session: AsyncSession, admin_user: User, test_product:
         name="Test Project",
         description="Test project for Kanban",
         mission="Test mission for Kanban project",
-        status="active"
+        status="active",
     )
 
     db_session.add(project)
@@ -149,12 +148,7 @@ async def kanban_jobs(db_session: AsyncSession, admin_user: User, test_project: 
     """Create sample jobs across all Kanban columns."""
     from datetime import datetime, timezone
 
-    jobs = {
-        "pending": [],
-        "active": [],
-        "completed": [],
-        "blocked": []
-    }
+    jobs = {"pending": [], "active": [], "completed": [], "blocked": []}
 
     # Pending jobs (2)
     for i in range(2):
@@ -162,16 +156,16 @@ async def kanban_jobs(db_session: AsyncSession, admin_user: User, test_project: 
             tenant_key=admin_user.tenant_key,
             project_id=test_project.id,
             agent_type="implementer",
-            mission=f"Pending task {i+1}",
+            mission=f"Pending task {i + 1}",
             status="pending",
             messages=[
                 {
                     "from": "user",
-                    "content": f"Initial message {i+1}",
+                    "content": f"Initial message {i + 1}",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "status": "pending"
+                    "status": "pending",
                 }
-            ]
+            ],
         )
         db_session.add(job)
         await db_session.flush()
@@ -183,24 +177,24 @@ async def kanban_jobs(db_session: AsyncSession, admin_user: User, test_project: 
             tenant_key=admin_user.tenant_key,
             project_id=test_project.id,
             agent_type="implementer",
-            mission=f"Active task {i+1}",
+            mission=f"Active task {i + 1}",
             status="active",
             acknowledged=True,
             started_at=datetime.now(timezone.utc),
             messages=[
                 {
                     "from": "developer",
-                    "content": f"Developer message {i+1}",
+                    "content": f"Developer message {i + 1}",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "status": "pending"
+                    "status": "pending",
                 },
                 {
                     "from": "agent",
-                    "content": f"Agent response {i+1}",
+                    "content": f"Agent response {i + 1}",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "status": "acknowledged"
-                }
-            ]
+                    "status": "acknowledged",
+                },
+            ],
         )
         db_session.add(job)
         await db_session.flush()
@@ -221,9 +215,9 @@ async def kanban_jobs(db_session: AsyncSession, admin_user: User, test_project: 
                 "from": "developer",
                 "content": "Start testing",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "status": "acknowledged"
+                "status": "acknowledged",
             }
-        ]
+        ],
     )
     db_session.add(job)
     await db_session.flush()
@@ -243,9 +237,9 @@ async def kanban_jobs(db_session: AsyncSession, admin_user: User, test_project: 
                 "from": "agent",
                 "content": "Blocked on external dependency",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "status": "pending"
+                "status": "pending",
             }
-        ]
+        ],
     )
     db_session.add(job)
     await db_session.flush()
@@ -263,20 +257,19 @@ async def kanban_jobs(db_session: AsyncSession, admin_user: User, test_project: 
 
 def override_get_current_user(user: User):
     """Override dependency to return test user."""
+
     async def _override():
         return user
+
     return _override
 
 
 # Test Cases: GET /api/agent-jobs/kanban/{project_id}
 
+
 @pytest.mark.asyncio
 async def test_get_kanban_board_success(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User,
-    test_project: Project,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, admin_user: User, test_project: Project, kanban_jobs: dict
 ):
     """Test successful retrieval of Kanban board data."""
     app = create_app()
@@ -316,11 +309,7 @@ async def test_get_kanban_board_success(
 
 @pytest.mark.asyncio
 async def test_get_kanban_board_message_counts(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User,
-    test_project: Project,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, admin_user: User, test_project: Project, kanban_jobs: dict
 ):
     """Test message count calculations in Kanban board."""
     app = create_app()
@@ -346,11 +335,7 @@ async def test_get_kanban_board_message_counts(
 
 
 @pytest.mark.asyncio
-async def test_get_kanban_board_project_not_found(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User
-):
+async def test_get_kanban_board_project_not_found(api_client: AsyncClient, db_session: AsyncSession, admin_user: User):
     """Test Kanban board retrieval with non-existent project."""
     app = create_app()
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
@@ -371,7 +356,7 @@ async def test_get_kanban_board_multi_tenant_isolation(
     admin_user: User,
     other_tenant_user: User,
     test_project: Project,
-    kanban_jobs: dict
+    kanban_jobs: dict,
 ):
     """Test multi-tenant isolation for Kanban board."""
     app = create_app()
@@ -387,12 +372,10 @@ async def test_get_kanban_board_multi_tenant_isolation(
 
 # Test Cases: GET /api/agent-jobs/{job_id}/message-thread
 
+
 @pytest.mark.asyncio
 async def test_get_message_thread_success(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, admin_user: User, kanban_jobs: dict
 ):
     """Test successful retrieval of message thread."""
     app = create_app()
@@ -422,10 +405,7 @@ async def test_get_message_thread_success(
 
 @pytest.mark.asyncio
 async def test_get_message_thread_chronological_order(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, admin_user: User, kanban_jobs: dict
 ):
     """Test message thread returns messages in chronological order."""
     app = create_app()
@@ -450,11 +430,7 @@ async def test_get_message_thread_chronological_order(
 
 
 @pytest.mark.asyncio
-async def test_get_message_thread_job_not_found(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User
-):
+async def test_get_message_thread_job_not_found(api_client: AsyncClient, db_session: AsyncSession, admin_user: User):
     """Test message thread retrieval with non-existent job."""
     app = create_app()
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
@@ -470,10 +446,7 @@ async def test_get_message_thread_job_not_found(
 
 @pytest.mark.asyncio
 async def test_get_message_thread_multi_tenant_isolation(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    other_tenant_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, other_tenant_user: User, kanban_jobs: dict
 ):
     """Test multi-tenant isolation for message thread."""
     app = create_app()
@@ -491,12 +464,10 @@ async def test_get_message_thread_multi_tenant_isolation(
 
 # Test Cases: POST /api/agent-jobs/{job_id}/send-message
 
+
 @pytest.mark.asyncio
 async def test_send_message_success(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, admin_user: User, kanban_jobs: dict
 ):
     """Test successful sending of developer message."""
     app = create_app()
@@ -508,8 +479,7 @@ async def test_send_message_success(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            f"/api/agent-jobs/{job.job_id}/send-message",
-            json={"content": "Test developer message"}
+            f"/api/agent-jobs/{job.job_id}/send-message", json={"content": "Test developer message"}
         )
 
     assert response.status_code == 201
@@ -531,10 +501,7 @@ async def test_send_message_success(
 
 @pytest.mark.asyncio
 async def test_send_message_empty_content(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, admin_user: User, kanban_jobs: dict
 ):
     """Test sending message with empty content."""
     app = create_app()
@@ -545,20 +512,13 @@ async def test_send_message_empty_content(
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            f"/api/agent-jobs/{job.job_id}/send-message",
-            json={"content": ""}
-        )
+        response = await client.post(f"/api/agent-jobs/{job.job_id}/send-message", json={"content": ""})
 
     assert response.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_send_message_job_not_found(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    admin_user: User
-):
+async def test_send_message_job_not_found(api_client: AsyncClient, db_session: AsyncSession, admin_user: User):
     """Test sending message to non-existent job."""
     app = create_app()
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
@@ -567,8 +527,7 @@ async def test_send_message_job_not_found(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            "/api/agent-jobs/nonexistent-job-id/send-message",
-            json={"content": "Test message"}
+            "/api/agent-jobs/nonexistent-job-id/send-message", json={"content": "Test message"}
         )
 
     assert response.status_code == 404
@@ -576,10 +535,7 @@ async def test_send_message_job_not_found(
 
 @pytest.mark.asyncio
 async def test_send_message_multi_tenant_isolation(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    other_tenant_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, other_tenant_user: User, kanban_jobs: dict
 ):
     """Test multi-tenant isolation for sending messages."""
     app = create_app()
@@ -590,20 +546,14 @@ async def test_send_message_multi_tenant_isolation(
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            f"/api/agent-jobs/{job.job_id}/send-message",
-            json={"content": "Test message"}
-        )
+        response = await client.post(f"/api/agent-jobs/{job.job_id}/send-message", json={"content": "Test message"})
 
     assert response.status_code == 404  # Different tenant cannot access
 
 
 @pytest.mark.asyncio
 async def test_send_message_regular_user_access(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    regular_user: User,
-    kanban_jobs: dict
+    api_client: AsyncClient, db_session: AsyncSession, regular_user: User, kanban_jobs: dict
 ):
     """Test regular users can send messages (not admin-only)."""
     app = create_app()
@@ -612,10 +562,7 @@ async def test_send_message_regular_user_access(
 
     # Create job for regular user's tenant
     job = MCPAgentJob(
-        tenant_key=regular_user.tenant_key,
-        agent_type="implementer",
-        mission="Test mission",
-        status="active"
+        tenant_key=regular_user.tenant_key, agent_type="implementer", mission="Test mission", status="active"
     )
     db_session.add(job)
     await db_session.commit()
@@ -624,8 +571,7 @@ async def test_send_message_regular_user_access(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
-            f"/api/agent-jobs/{job.job_id}/send-message",
-            json={"content": "Regular user message"}
+            f"/api/agent-jobs/{job.job_id}/send-message", json={"content": "Regular user message"}
         )
 
     assert response.status_code == 201  # Regular users can send messages

@@ -5,8 +5,8 @@ This fixes the authentication error by syncing .env with the actual database pas
 """
 
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
 def read_latest_credentials():
@@ -31,13 +31,13 @@ def read_latest_credentials():
 
         # Parse the credentials file
         credentials = {}
-        with open(latest_file, 'r') as f:
+        with open(latest_file) as f:
             for line in f:
                 line = line.strip()
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     credentials[key.strip()] = value.strip()
 
         return credentials
@@ -57,7 +57,7 @@ def update_env_file(credentials):
             return False
 
         # Read current .env
-        with open(env_file, 'r') as f:
+        with open(env_file) as f:
             lines = f.readlines()
 
         # Get passwords from credentials
@@ -68,13 +68,13 @@ def update_env_file(credentials):
             print("ERROR: Could not find passwords in credentials file")
             return False
 
-        print(f"\nUpdating .env with:")
+        print("\nUpdating .env with:")
         print(f"  OWNER_PASSWORD: {owner_password}")
         print(f"  USER_PASSWORD: {user_password}")
 
         # Create backup
         backup_file = Path(f".env.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        with open(backup_file, 'w') as f:
+        with open(backup_file, "w") as f:
             f.writelines(lines)
         print(f"\nBackup created: {backup_file}")
 
@@ -106,10 +106,10 @@ def update_env_file(credentials):
             updated_lines.append(line)
 
         # Write updated .env
-        with open(env_file, 'w') as f:
+        with open(env_file, "w") as f:
             f.writelines(updated_lines)
 
-        print(f"\n[OK] Updated .env successfully!")
+        print("\n[OK] Updated .env successfully!")
         print(f"  Changed: {', '.join(set(updates_made))}")
 
         return True
@@ -117,6 +117,7 @@ def update_env_file(credentials):
     except Exception as e:
         print(f"ERROR: Failed to update .env: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -146,9 +147,8 @@ def main():
         print("Try running: python start_backend.bat")
         print()
         return 0
-    else:
-        print("\nFailed to update .env file.")
-        return 1
+    print("\nFailed to update .env file.")
+    return 1
 
 
 if __name__ == "__main__":

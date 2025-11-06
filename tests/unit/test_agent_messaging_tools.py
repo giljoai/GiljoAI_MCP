@@ -12,8 +12,7 @@ Tests send_mcp_message and read_mcp_messages tools:
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -34,9 +33,7 @@ class TestAgentMessagingTools:
 
         # Create test project
         async with self.db_manager.get_session_async() as session:
-            self.project = await ToolsTestHelper.create_test_project(
-                session, "Agent Messaging Test Project"
-            )
+            self.project = await ToolsTestHelper.create_test_project(session, "Agent Messaging Test Project")
             self.tenant_key = self.project.tenant_key
 
     async def _create_test_job(self, session, agent_name="test-agent", status="working"):
@@ -50,7 +47,7 @@ class TestAgentMessagingTools:
             status=status,
             agent_name=agent_name,
             tool_type="claude-code",
-            messages=[]
+            messages=[],
         )
         session.add(job)
         await session.commit()
@@ -68,14 +65,14 @@ class TestAgentMessagingTools:
             job = await self._create_test_job(session)
             job_id = job.job_id
 
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             result = await send_mcp_message(
                 job_id=job_id,
                 tenant_key=self.tenant_key,
                 content="Need guidance on architecture decision",
-                target="orchestrator"
+                target="orchestrator",
             )
 
         assert result["success"] is True
@@ -109,14 +106,14 @@ class TestAgentMessagingTools:
             job3 = await self._create_test_job(session, agent_name="agent3")
             sender_job_id = job1.job_id
 
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             result = await send_mcp_message(
                 job_id=sender_job_id,
                 tenant_key=self.tenant_key,
                 content="Important update for all agents",
-                target="broadcast"
+                target="broadcast",
             )
 
         assert result["success"] is True
@@ -144,7 +141,7 @@ class TestAgentMessagingTools:
             sender_job_id = sender.job_id
             target_job_id = target.job_id
 
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             result = await send_mcp_message(
@@ -152,7 +149,7 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Please review my implementation",
                 target="agent",
-                agent_id=target_job_id
+                agent_id=target_job_id,
             )
 
         assert result["success"] is True
@@ -180,7 +177,7 @@ class TestAgentMessagingTools:
                 job_id=job_id,
                 tenant_key=self.tenant_key,
                 content="Test message",
-                target="agent"
+                target="agent",
                 # Missing agent_id
             )
 
@@ -198,10 +195,7 @@ class TestAgentMessagingTools:
 
         with pytest.raises(ValueError, match="content.*cannot exceed.*10000"):
             await send_mcp_message(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                content=long_content,
-                target="orchestrator"
+                job_id=job_id, tenant_key=self.tenant_key, content=long_content, target="orchestrator"
             )
 
     @pytest.mark.asyncio
@@ -221,7 +215,7 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Test message",
                 target="agent",
-                agent_id=fake_agent_id
+                agent_id=fake_agent_id,
             )
 
     @pytest.mark.asyncio
@@ -238,9 +232,7 @@ class TestAgentMessagingTools:
             sender_id = job_a.job_id
 
             # Job in tenant B (different project/tenant)
-            project_b = await ToolsTestHelper.create_test_project(
-                session, "Project B"
-            )
+            project_b = await ToolsTestHelper.create_test_project(session, "Project B")
             tenant_b = project_b.tenant_key
 
             job_b = MCPAgentJob(
@@ -251,7 +243,7 @@ class TestAgentMessagingTools:
                 mission="Test",
                 status="working",
                 agent_name="agent-b",
-                messages=[]
+                messages=[],
             )
             session.add(job_b)
             await session.commit()
@@ -260,11 +252,7 @@ class TestAgentMessagingTools:
         # Try to send from tenant A to tenant B
         with pytest.raises(ValueError, match="Target agent.*not found|different tenant"):
             await send_mcp_message(
-                job_id=sender_id,
-                tenant_key=tenant_a,
-                content="Test message",
-                target="agent",
-                agent_id=target_id
+                job_id=sender_id, tenant_key=tenant_a, content="Test message", target="agent", agent_id=target_id
             )
 
     @pytest.mark.asyncio
@@ -278,10 +266,7 @@ class TestAgentMessagingTools:
 
         with pytest.raises(ValueError, match="target.*must be.*orchestrator.*broadcast.*agent"):
             await send_mcp_message(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                content="Test message",
-                target="invalid_target"
+                job_id=job_id, tenant_key=self.tenant_key, content="Test message", target="invalid_target"
             )
 
     # read_mcp_messages tests
@@ -297,7 +282,7 @@ class TestAgentMessagingTools:
             reader_job_id = reader.job_id
 
         # Send messages to reader
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             await send_mcp_message(
@@ -305,14 +290,14 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Message 1",
                 target="agent",
-                agent_id=reader_job_id
+                agent_id=reader_job_id,
             )
             await send_mcp_message(
                 job_id=sender.job_id,
                 tenant_key=self.tenant_key,
                 content="Message 2",
                 target="agent",
-                agent_id=reader_job_id
+                agent_id=reader_job_id,
             )
 
         # Read unread messages
@@ -320,7 +305,7 @@ class TestAgentMessagingTools:
             job_id=reader_job_id,
             tenant_key=self.tenant_key,
             unread_only=True,
-            mark_as_read=False  # Don't mark as read yet
+            mark_as_read=False,  # Don't mark as read yet
         )
 
         assert result["success"] is True
@@ -339,7 +324,7 @@ class TestAgentMessagingTools:
             reader_job_id = reader.job_id
 
         # Send message
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             await send_mcp_message(
@@ -347,15 +332,12 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Test message",
                 target="agent",
-                agent_id=reader_job_id
+                agent_id=reader_job_id,
             )
 
         # Read and mark as read
         result = await read_mcp_messages(
-            job_id=reader_job_id,
-            tenant_key=self.tenant_key,
-            unread_only=True,
-            mark_as_read=True
+            job_id=reader_job_id, tenant_key=self.tenant_key, unread_only=True, mark_as_read=True
         )
 
         assert result["unread_count"] == 1
@@ -363,10 +345,7 @@ class TestAgentMessagingTools:
 
         # Read again - should be 0 unread
         result2 = await read_mcp_messages(
-            job_id=reader_job_id,
-            tenant_key=self.tenant_key,
-            unread_only=True,
-            mark_as_read=False
+            job_id=reader_job_id, tenant_key=self.tenant_key, unread_only=True, mark_as_read=False
         )
 
         assert result2["unread_count"] == 0
@@ -383,7 +362,7 @@ class TestAgentMessagingTools:
             reader_job_id = reader.job_id
 
         # Send 5 messages
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             for i in range(5):
@@ -392,16 +371,12 @@ class TestAgentMessagingTools:
                     tenant_key=self.tenant_key,
                     content=f"Message {i}",
                     target="agent",
-                    agent_id=reader_job_id
+                    agent_id=reader_job_id,
                 )
 
         # Read with limit=3
         result = await read_mcp_messages(
-            job_id=reader_job_id,
-            tenant_key=self.tenant_key,
-            unread_only=True,
-            limit=3,
-            mark_as_read=False
+            job_id=reader_job_id, tenant_key=self.tenant_key, unread_only=True, limit=3, mark_as_read=False
         )
 
         assert result["success"] is True
@@ -420,19 +395,11 @@ class TestAgentMessagingTools:
 
         # Test limit > 100
         with pytest.raises(ValueError, match="limit.*must be.*1.*100"):
-            await read_mcp_messages(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                limit=150
-            )
+            await read_mcp_messages(job_id=job_id, tenant_key=self.tenant_key, limit=150)
 
         # Test limit < 1
         with pytest.raises(ValueError, match="limit.*must be.*1.*100"):
-            await read_mcp_messages(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                limit=0
-            )
+            await read_mcp_messages(job_id=job_id, tenant_key=self.tenant_key, limit=0)
 
     @pytest.mark.asyncio
     async def test_read_mcp_messages_all_messages(self):
@@ -445,7 +412,7 @@ class TestAgentMessagingTools:
             reader_job_id = reader.job_id
 
         # Send messages and mark some as read
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             await send_mcp_message(
@@ -453,26 +420,21 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Message 1",
                 target="agent",
-                agent_id=reader_job_id
+                agent_id=reader_job_id,
             )
             await send_mcp_message(
                 job_id=sender.job_id,
                 tenant_key=self.tenant_key,
                 content="Message 2",
                 target="agent",
-                agent_id=reader_job_id
+                agent_id=reader_job_id,
             )
 
         # Mark first batch as read
-        await read_mcp_messages(
-            job_id=reader_job_id,
-            tenant_key=self.tenant_key,
-            unread_only=True,
-            mark_as_read=True
-        )
+        await read_mcp_messages(job_id=reader_job_id, tenant_key=self.tenant_key, unread_only=True, mark_as_read=True)
 
         # Send more messages
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             await send_mcp_message(
@@ -480,15 +442,12 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Message 3",
                 target="agent",
-                agent_id=reader_job_id
+                agent_id=reader_job_id,
             )
 
         # Read all messages
         result = await read_mcp_messages(
-            job_id=reader_job_id,
-            tenant_key=self.tenant_key,
-            unread_only=False,
-            mark_as_read=False
+            job_id=reader_job_id, tenant_key=self.tenant_key, unread_only=False, mark_as_read=False
         )
 
         assert result["total_count"] == 3
@@ -503,10 +462,7 @@ class TestAgentMessagingTools:
         fake_job_id = str(uuid.uuid4())
 
         with pytest.raises(ValueError, match="Job.*not found"):
-            await read_mcp_messages(
-                job_id=fake_job_id,
-                tenant_key=self.tenant_key
-            )
+            await read_mcp_messages(job_id=fake_job_id, tenant_key=self.tenant_key)
 
     @pytest.mark.asyncio
     async def test_read_mcp_messages_multi_tenant_isolation(self):
@@ -520,10 +476,7 @@ class TestAgentMessagingTools:
         other_tenant = "other-tenant-" + str(uuid.uuid4())
 
         with pytest.raises(ValueError, match="Job.*not found"):
-            await read_mcp_messages(
-                job_id=job_id,
-                tenant_key=other_tenant
-            )
+            await read_mcp_messages(job_id=job_id, tenant_key=other_tenant)
 
     @pytest.mark.asyncio
     async def test_read_mcp_messages_empty_queue(self):
@@ -534,10 +487,7 @@ class TestAgentMessagingTools:
             job = await self._create_test_job(session)
             job_id = job.job_id
 
-        result = await read_mcp_messages(
-            job_id=job_id,
-            tenant_key=self.tenant_key
-        )
+        result = await read_mcp_messages(job_id=job_id, tenant_key=self.tenant_key)
 
         assert result["success"] is True
         assert result["messages"] == []
@@ -555,7 +505,7 @@ class TestAgentMessagingTools:
             sender_job_id = sender.job_id
             target_job_id = target.job_id
 
-        with patch('src.giljo_mcp.tools.agent_messaging.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_messaging.websocket_manager") as mock_ws:
             mock_ws.broadcast_job_message = AsyncMock()
 
             await send_mcp_message(
@@ -563,7 +513,7 @@ class TestAgentMessagingTools:
                 tenant_key=self.tenant_key,
                 content="Test message for WebSocket",
                 target="agent",
-                agent_id=target_job_id
+                agent_id=target_job_id,
             )
 
             # Verify WebSocket was called with correct parameters
@@ -586,12 +536,7 @@ class TestAgentMessagingTools:
             job_id = job.job_id
 
         with pytest.raises(ValueError, match="content.*cannot be empty"):
-            await send_mcp_message(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                content="",
-                target="orchestrator"
-            )
+            await send_mcp_message(job_id=job_id, tenant_key=self.tenant_key, content="", target="orchestrator")
 
     @pytest.mark.asyncio
     async def test_send_mcp_message_empty_job_id(self):
@@ -599,12 +544,7 @@ class TestAgentMessagingTools:
         from src.giljo_mcp.tools.agent_messaging import send_mcp_message
 
         with pytest.raises(ValueError, match="job_id.*cannot be empty"):
-            await send_mcp_message(
-                job_id="",
-                tenant_key=self.tenant_key,
-                content="Test",
-                target="orchestrator"
-            )
+            await send_mcp_message(job_id="", tenant_key=self.tenant_key, content="Test", target="orchestrator")
 
     @pytest.mark.asyncio
     async def test_send_mcp_message_empty_tenant_key(self):
@@ -612,12 +552,7 @@ class TestAgentMessagingTools:
         from src.giljo_mcp.tools.agent_messaging import send_mcp_message
 
         with pytest.raises(ValueError, match="tenant_key.*cannot be empty"):
-            await send_mcp_message(
-                job_id="some-job-id",
-                tenant_key="",
-                content="Test",
-                target="orchestrator"
-            )
+            await send_mcp_message(job_id="some-job-id", tenant_key="", content="Test", target="orchestrator")
 
     @pytest.mark.asyncio
     async def test_read_mcp_messages_empty_job_id(self):
@@ -625,10 +560,7 @@ class TestAgentMessagingTools:
         from src.giljo_mcp.tools.agent_messaging import read_mcp_messages
 
         with pytest.raises(ValueError, match="job_id.*cannot be empty"):
-            await read_mcp_messages(
-                job_id="",
-                tenant_key=self.tenant_key
-            )
+            await read_mcp_messages(job_id="", tenant_key=self.tenant_key)
 
     @pytest.mark.asyncio
     async def test_read_mcp_messages_empty_tenant_key(self):
@@ -636,7 +568,4 @@ class TestAgentMessagingTools:
         from src.giljo_mcp.tools.agent_messaging import read_mcp_messages
 
         with pytest.raises(ValueError, match="tenant_key.*cannot be empty"):
-            await read_mcp_messages(
-                job_id="some-job-id",
-                tenant_key=""
-            )
+            await read_mcp_messages(job_id="some-job-id", tenant_key="")

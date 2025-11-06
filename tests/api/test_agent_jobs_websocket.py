@@ -9,14 +9,14 @@ Created: 2025-11-02
 Coverage Target: 95%+
 """
 
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-from datetime import datetime, timezone
 
 from api.dependencies.websocket import WebSocketDependency
-from api.events.schemas import EventFactory
 
 
 # ============================================================================
@@ -44,7 +44,7 @@ async def authenticated_client(api_client, db_manager):
         is_active=True,
         is_admin=False,
         created_at=datetime.now(timezone.utc),
-        hashed_password="hashed"
+        hashed_password="hashed",
     )
 
     async def mock_get_current_user():
@@ -97,7 +97,7 @@ async def test_project(db_session):
         name="Test Project",
         tenant_key="tenant_abc",
         description="Integration test project",
-        status="active"
+        status="active",
     )
 
     db_session.add(project)
@@ -145,7 +145,7 @@ async def test_create_agent_broadcasts_via_dependency_injection(
         "agent_type": "orchestrator",
         "mode": "claude",
         "mission": "Coordinate project implementation",
-        "tenant_key": "tenant_abc"
+        "tenant_key": "tenant_abc",
     }
 
     # Act
@@ -174,9 +174,7 @@ async def test_create_agent_broadcasts_via_dependency_injection(
 
 
 @pytest.mark.asyncio
-async def test_create_agent_uses_event_factory(
-    authenticated_client, test_project, mock_websocket_dependency
-):
+async def test_create_agent_uses_event_factory(authenticated_client, test_project, mock_websocket_dependency):
     """
     Test create_job endpoint uses EventFactory for standardized events.
 
@@ -200,7 +198,7 @@ async def test_create_agent_uses_event_factory(
         "agent_type": "implementer",
         "mode": "claude",
         "mission": "Implement authentication",
-        "tenant_key": "tenant_abc"
+        "tenant_key": "tenant_abc",
     }
 
     # Act
@@ -260,7 +258,7 @@ async def test_create_agent_tenant_isolation_in_broadcast(
         "agent_type": "tester",
         "mode": "claude",
         "mission": "Write comprehensive tests",
-        "tenant_key": "tenant_abc"  # User's tenant
+        "tenant_key": "tenant_abc",  # User's tenant
     }
 
     # Act
@@ -300,7 +298,7 @@ async def test_create_agent_unauthorized_tenant_rejected(authenticated_client, d
         name="Other Tenant Project",
         tenant_key="tenant_xyz",  # DIFFERENT tenant
         description="Should not be accessible",
-        status="active"
+        status="active",
     )
 
     db_session.add(other_tenant_project)
@@ -311,7 +309,7 @@ async def test_create_agent_unauthorized_tenant_rejected(authenticated_client, d
         "agent_type": "orchestrator",
         "mode": "claude",
         "mission": "Malicious access attempt",
-        "tenant_key": "tenant_xyz"  # Different tenant
+        "tenant_key": "tenant_xyz",  # Different tenant
     }
 
     # Act
@@ -354,7 +352,7 @@ async def test_create_agent_graceful_degradation_websocket_unavailable(
         "agent_type": "orchestrator",
         "mode": "claude",
         "mission": "Test graceful degradation",
-        "tenant_key": "tenant_abc"
+        "tenant_key": "tenant_abc",
     }
 
     # Act
@@ -381,9 +379,7 @@ async def test_create_agent_graceful_degradation_websocket_unavailable(
 
 
 @pytest.mark.asyncio
-async def test_create_agent_structured_logging(
-    authenticated_client, test_project, mock_websocket_dependency, caplog
-):
+async def test_create_agent_structured_logging(authenticated_client, test_project, mock_websocket_dependency, caplog):
     """
     Test agent creation includes structured logging for debugging.
 
@@ -407,7 +403,7 @@ async def test_create_agent_structured_logging(
         "agent_type": "code-reviewer",
         "mode": "claude",
         "mission": "Review code for quality",
-        "tenant_key": "tenant_abc"
+        "tenant_key": "tenant_abc",
     }
 
     # Act
@@ -431,9 +427,7 @@ async def test_create_agent_structured_logging(
 
 
 @pytest.mark.asyncio
-async def test_create_agent_handles_broadcast_exception_gracefully(
-    authenticated_client, test_project, caplog
-):
+async def test_create_agent_handles_broadcast_exception_gracefully(authenticated_client, test_project, caplog):
     """
     Test agent creation handles WebSocket broadcast exceptions gracefully.
 
@@ -462,7 +456,7 @@ async def test_create_agent_handles_broadcast_exception_gracefully(
         "agent_type": "orchestrator",
         "mode": "claude",
         "mission": "Test error handling",
-        "tenant_key": "tenant_abc"
+        "tenant_key": "tenant_abc",
     }
 
     # Act
@@ -511,7 +505,7 @@ async def test_create_agent_response_includes_broadcast_metadata(
         "agent_type": "frontend-implementer",
         "mode": "claude",
         "mission": "Build Vue.js components",
-        "tenant_key": "tenant_abc"
+        "tenant_key": "tenant_abc",
     }
 
     # Act

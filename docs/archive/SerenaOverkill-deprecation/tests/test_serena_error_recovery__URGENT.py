@@ -10,10 +10,7 @@ Verifies:
 
 import json
 import shutil
-from pathlib import Path
-from unittest.mock import MagicMock
 
-import pytest
 import yaml
 
 
@@ -27,11 +24,7 @@ class TestTransactionalOperations:
 
         # Setup initial state
         config_path = tmp_path / "config.yaml"
-        initial_config = {
-            "features": {
-                "serena_mcp": {"enabled": False, "installed": False, "registered": False}
-            }
-        }
+        initial_config = {"features": {"serena_mcp": {"enabled": False, "installed": False, "registered": False}}}
         config_path.write_text(yaml.dump(initial_config))
 
         claude_config_path = tmp_path / ".claude.json"
@@ -157,7 +150,6 @@ class TestPartialFailureHandling:
     def test_config_updated_but_claude_json_failed(self, tmp_path, monkeypatch):
         """Test state when config succeeds but claude.json fails."""
         from src.giljo_mcp.services.claude_config_manager import ClaudeConfigManager
-        from src.giljo_mcp.services.config_service import ConfigService
 
         config_path = tmp_path / "config.yaml"
         config_data = {"features": {"serena_mcp": {"enabled": False}}}
@@ -174,7 +166,7 @@ class TestPartialFailureHandling:
         original_atomic_write = manager._atomic_write
 
         def mock_atomic_write(*args, **kwargs):
-            raise IOError("Disk full")
+            raise OSError("Disk full")
 
         monkeypatch.setattr(manager, "_atomic_write", mock_atomic_write)
 
@@ -332,7 +324,7 @@ class TestErrorMessages:
 
         # Mock atomic write to raise specific error
         def mock_atomic_write(*args, **kwargs):
-            raise IOError("Permission denied: /path/to/file")
+            raise OSError("Permission denied: /path/to/file")
 
         monkeypatch.setattr(manager, "_atomic_write", mock_atomic_write)
 

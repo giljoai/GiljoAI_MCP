@@ -5,8 +5,9 @@ Tests the fix for using client-accessible server URLs instead of bind addresses 
 Validates that download URLs are generated using the actual server URL from HTTP request headers.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi import Request
 
 
@@ -115,9 +116,7 @@ class TestToolAccessorUsesServerURL:
     @patch("giljo_mcp.config_manager.get_config")
     @patch("giljo_mcp.download_tokens.TokenManager")
     @patch("giljo_mcp.file_staging.FileStaging")
-    async def test_setup_slash_commands_uses_server_url(
-        self, mock_file_staging, mock_token_manager, mock_get_config
-    ):
+    async def test_setup_slash_commands_uses_server_url(self, mock_file_staging, mock_token_manager, mock_get_config):
         """Test setup_slash_commands uses _server_url instead of config"""
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -148,16 +147,10 @@ class TestToolAccessorUsesServerURL:
         mock_get_config.return_value = mock_config
 
         # Create tool accessor
-        tool_accessor = ToolAccessor(
-            db_manager=mock_db_manager,
-            tenant_manager=mock_tenant_manager
-        )
+        tool_accessor = ToolAccessor(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager)
 
         # Call with _server_url (simulating HTTP mode)
-        result = await tool_accessor.setup_slash_commands(
-            _api_key="test-key",
-            _server_url="http://10.1.0.164:7272"
-        )
+        result = await tool_accessor.setup_slash_commands(_api_key="test-key", _server_url="http://10.1.0.164:7272")
 
         # Verify result
         assert result["success"] is True
@@ -201,15 +194,11 @@ class TestToolAccessorUsesServerURL:
         mock_config.server.api_port = 7272
         mock_get_config.return_value = mock_config
 
-        tool_accessor = ToolAccessor(
-            db_manager=mock_db_manager,
-            tenant_manager=mock_tenant_manager
-        )
+        tool_accessor = ToolAccessor(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager)
 
         # Call with _server_url
         result = await tool_accessor.gil_import_productagents(
-            _api_key="test-key",
-            _server_url="http://192.168.1.50:7272"
+            _api_key="test-key", _server_url="http://192.168.1.50:7272"
         )
 
         # Verify
@@ -250,10 +239,7 @@ class TestToolAccessorUsesServerURL:
         mock_config.server.api_port = 7272
         mock_get_config.return_value = mock_config
 
-        tool_accessor = ToolAccessor(
-            db_manager=mock_db_manager,
-            tenant_manager=mock_tenant_manager
-        )
+        tool_accessor = ToolAccessor(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager)
 
         # Call WITHOUT _server_url (edge case - should use config fallback)
         result = await tool_accessor.setup_slash_commands(_api_key="test-key")

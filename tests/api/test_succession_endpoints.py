@@ -10,10 +10,10 @@ Test Coverage:
 - Error handling and validation
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 

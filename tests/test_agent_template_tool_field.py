@@ -12,10 +12,11 @@ Tests cover:
 
 Database Expert Agent - Phase 1 Testing
 """
-import pytest
-from datetime import datetime, timezone
+
 from uuid import uuid4
-from sqlalchemy import select, func, text
+
+import pytest
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
@@ -45,7 +46,7 @@ class TestToolFieldBasics:
             name="test_agent",
             role="tester",
             category="role",
-            template_content="Test template content"
+            template_content="Test template content",
         )
 
         # Act
@@ -68,7 +69,7 @@ class TestToolFieldBasics:
                 role="tester",
                 category="role",
                 template_content=f"Test template for {tool}",
-                tool=tool
+                tool=tool,
             )
 
             # Act
@@ -88,7 +89,7 @@ class TestToolFieldBasics:
             role="tester",
             category="role",
             template_content="Test content",
-            tool="claude"  # Explicitly set to avoid default
+            tool="claude",  # Explicitly set to avoid default
         )
 
         db_session.add(template)
@@ -111,7 +112,7 @@ class TestToolFieldQuerying:
             ("claude_agent_1", "claude"),
             ("claude_agent_2", "claude"),
             ("codex_agent_1", "codex"),
-            ("gemini_agent_1", "gemini")
+            ("gemini_agent_1", "gemini"),
         ]
 
         for name, tool in tools_data:
@@ -121,7 +122,7 @@ class TestToolFieldQuerying:
                 role="tester",
                 category="role",
                 template_content=f"Test template for {tool}",
-                tool=tool
+                tool=tool,
             )
             db_session.add(template)
 
@@ -129,10 +130,7 @@ class TestToolFieldQuerying:
 
         # Act - filter by tool='claude'
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.tool == "claude"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.tool == "claude")
         )
         claude_templates = result.scalars().all()
 
@@ -149,7 +147,7 @@ class TestToolFieldQuerying:
             ("claude_3", "claude"),
             ("codex_1", "codex"),
             ("codex_2", "codex"),
-            ("gemini_1", "gemini")
+            ("gemini_1", "gemini"),
         ]
 
         for name, tool in tools_data:
@@ -159,7 +157,7 @@ class TestToolFieldQuerying:
                 role="tester",
                 category="role",
                 template_content=f"Test template for {tool}",
-                tool=tool
+                tool=tool,
             )
             db_session.add(template)
 
@@ -167,12 +165,9 @@ class TestToolFieldQuerying:
 
         # Act - count by tool
         result = await db_session.execute(
-            select(
-                AgentTemplate.tool,
-                func.count(AgentTemplate.id).label("count")
-            ).where(
-                AgentTemplate.tenant_key == tenant_key
-            ).group_by(AgentTemplate.tool)
+            select(AgentTemplate.tool, func.count(AgentTemplate.id).label("count"))
+            .where(AgentTemplate.tenant_key == tenant_key)
+            .group_by(AgentTemplate.tool)
         )
         counts = {row[0]: row[1] for row in result.all()}
 
@@ -181,14 +176,16 @@ class TestToolFieldQuerying:
         assert counts["codex"] == 2, "Should have 2 Codex templates"
         assert counts["gemini"] == 1, "Should have 1 Gemini template"
 
-    async def test_combined_filters_tenant_and_tool(self, db_session: AsyncSession, tenant_key: str, other_tenant_key: str):
+    async def test_combined_filters_tenant_and_tool(
+        self, db_session: AsyncSession, tenant_key: str, other_tenant_key: str
+    ):
         """Test filtering by both tenant_key AND tool (critical for isolation)"""
         # Arrange - create templates for both tenants
         templates_data = [
             (tenant_key, "agent_1", "claude"),
             (tenant_key, "agent_2", "codex"),
             (other_tenant_key, "agent_3", "claude"),
-            (other_tenant_key, "agent_4", "codex")
+            (other_tenant_key, "agent_4", "codex"),
         ]
 
         for tk, name, tool in templates_data:
@@ -198,7 +195,7 @@ class TestToolFieldQuerying:
                 role="tester",
                 category="role",
                 template_content=f"Test template for {tool}",
-                tool=tool
+                tool=tool,
             )
             db_session.add(template)
 
@@ -206,10 +203,7 @@ class TestToolFieldQuerying:
 
         # Act - filter by tenant_key AND tool='claude'
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.tool == "claude"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.tool == "claude")
         )
         filtered_templates = result.scalars().all()
 
@@ -223,7 +217,9 @@ class TestToolFieldQuerying:
 class TestMultiTenantIsolation:
     """Tests for multi-tenant isolation with tool field"""
 
-    async def test_tool_field_isolated_per_tenant(self, db_session: AsyncSession, tenant_key: str, other_tenant_key: str):
+    async def test_tool_field_isolated_per_tenant(
+        self, db_session: AsyncSession, tenant_key: str, other_tenant_key: str
+    ):
         """Test that tool filtering maintains tenant isolation"""
         # Arrange - both tenants have templates with same tool
         template1 = AgentTemplate(
@@ -232,7 +228,7 @@ class TestMultiTenantIsolation:
             role="tester",
             category="role",
             template_content="Tenant 1 template",
-            tool="claude"
+            tool="claude",
         )
 
         template2 = AgentTemplate(
@@ -241,7 +237,7 @@ class TestMultiTenantIsolation:
             role="tester",
             category="role",
             template_content="Tenant 2 template",
-            tool="claude"
+            tool="claude",
         )
 
         db_session.add(template1)
@@ -250,10 +246,7 @@ class TestMultiTenantIsolation:
 
         # Act - query for tenant1's claude templates
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.tool == "claude"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.tool == "claude")
         )
         tenant1_templates = result.scalars().all()
 
@@ -275,7 +268,7 @@ class TestMultiTenantIsolation:
                 role="tester",
                 category="role",
                 template_content=f"Tenant 1 template {i}",
-                tool=tool
+                tool=tool,
             )
             db_session.add(template1)
 
@@ -286,7 +279,7 @@ class TestMultiTenantIsolation:
                 role="tester",
                 category="role",
                 template_content=f"Tenant 2 template {i}",
-                tool=tool
+                tool=tool,
             )
             db_session.add(template2)
 
@@ -294,18 +287,12 @@ class TestMultiTenantIsolation:
 
         # Act - query each tenant's templates with tool filter
         result1 = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.tool == "claude"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.tool == "claude")
         )
         tenant1_claude = result1.scalars().all()
 
         result2 = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == other_tenant_key,
-                AgentTemplate.tool == "claude"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == other_tenant_key, AgentTemplate.tool == "claude")
         )
         tenant2_claude = result2.scalars().all()
 
@@ -354,7 +341,7 @@ class TestToolIndexPerformance:
                 role="tester",
                 category="role",
                 template_content=f"Template {i}",
-                tool="claude"
+                tool="claude",
             )
             db_session.add(template)
 
@@ -389,11 +376,7 @@ class TestMigrationIdempotency:
     async def test_existing_templates_have_tool_field(self, db_session: AsyncSession, tenant_key: str):
         """Verify existing templates migrated with default tool='claude'"""
         # Query all existing templates (from seeding or previous tests)
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # All should have tool field populated
@@ -401,7 +384,9 @@ class TestMigrationIdempotency:
             for template in templates:
                 assert hasattr(template, "tool"), "Template should have 'tool' attribute"
                 assert template.tool is not None, "Tool field should not be None"
-                assert template.tool in ["claude", "codex", "gemini"], f"Tool should be valid value, got: {template.tool}"
+                assert template.tool in ["claude", "codex", "gemini"], (
+                    f"Tool should be valid value, got: {template.tool}"
+                )
 
     async def test_tool_field_database_constraint(self, db_session: AsyncSession):
         """Verify database-level NOT NULL constraint on tool field"""
@@ -435,7 +420,7 @@ class TestToolFieldUpdateScenarios:
             role="implementer",
             category="role",
             template_content="Test template",
-            tool="claude"
+            tool="claude",
         )
         db_session.add(template)
         await db_session.commit()
@@ -464,7 +449,7 @@ class TestToolFieldUpdateScenarios:
                 role="tester",
                 category="role",
                 template_content=f"Template {i}",
-                tool="claude"
+                tool="claude",
             )
             db_session.add(template)
 
@@ -478,7 +463,7 @@ class TestToolFieldUpdateScenarios:
                 WHERE tenant_key = :tenant_key
                 AND tool = 'claude'
             """),
-            {"tenant_key": tenant_key}
+            {"tenant_key": tenant_key},
         )
         await db_session.commit()
 
@@ -486,15 +471,13 @@ class TestToolFieldUpdateScenarios:
         db_session.expire_all()
 
         # Assert - verify all updated (fresh query)
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         assert len(templates) == 5, "Should have 5 templates"
-        assert all(t.tool == "gemini" for t in templates), f"All should be updated to gemini, got: {[t.tool for t in templates]}"
+        assert all(t.tool == "gemini" for t in templates), (
+            f"All should be updated to gemini, got: {[t.tool for t in templates]}"
+        )
 
 
 @pytest.mark.asyncio
@@ -510,7 +493,7 @@ class TestToolFieldEdgeCases:
             role="tester",
             category="role",
             template_content="Test",
-            tool="claude"  # Explicitly set due to NOT NULL constraint
+            tool="claude",  # Explicitly set due to NOT NULL constraint
         )
 
         db_session.add(template)
@@ -522,11 +505,7 @@ class TestToolFieldEdgeCases:
     async def test_tool_field_in_composite_queries(self, db_session: AsyncSession, tenant_key: str):
         """Test tool field in complex queries with JOINs and filters"""
         # Arrange
-        tools_data = [
-            ("analyzer", "role", "claude"),
-            ("implementer", "role", "codex"),
-            ("tester", "role", "gemini")
-        ]
+        tools_data = [("analyzer", "role", "claude"), ("implementer", "role", "codex"), ("tester", "role", "gemini")]
 
         for role, category, tool in tools_data:
             template = AgentTemplate(
@@ -536,7 +515,7 @@ class TestToolFieldEdgeCases:
                 category=category,
                 template_content=f"{role} template content",
                 tool=tool,
-                is_active=True
+                is_active=True,
             )
             db_session.add(template)
 
@@ -548,7 +527,7 @@ class TestToolFieldEdgeCases:
                 AgentTemplate.tenant_key == tenant_key,
                 AgentTemplate.tool == "codex",
                 AgentTemplate.is_active == True,
-                AgentTemplate.category == "role"
+                AgentTemplate.category == "role",
             )
         )
         templates = result.scalars().all()
