@@ -4,16 +4,16 @@ Provides direct access to MCP tool functions for API endpoints
 """
 
 import logging
-import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import select, update
+import yaml
+from sqlalchemy import and_, select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, Message, Project, Task
+from giljo_mcp.models import Agent, Message, Product, Project, Task
 from giljo_mcp.tenant import TenantManager
 
 
@@ -306,11 +306,7 @@ class ToolAccessor:
                 if summary:
                     update_values["meta_data"] = {"summary": summary}
 
-                result = await session.execute(
-                    update(Project)
-                    .where(Project.id == project_id)
-                    .values(**update_values)
-                )
+                result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
 
                 if result.rowcount == 0:
                     return {"success": False, "error": "Project not found"}
@@ -343,11 +339,7 @@ class ToolAccessor:
                 if reason:
                     update_values["meta_data"] = {"cancellation_reason": reason}
 
-                result = await session.execute(
-                    update(Project)
-                    .where(Project.id == project_id)
-                    .values(**update_values)
-                )
+                result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
 
                 if result.rowcount == 0:
                     return {"success": False, "error": "Project not found"}
@@ -576,10 +568,23 @@ class ToolAccessor:
                 return {"success": False, "error": "No active project. Switch project first."}
 
             async with self.db_manager.get_session_async() as session:
-                # Find project
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                # Find project - prefer active project if multiple exist
+                project_query = select(Project).where(
+                    and_(
+                        Project.tenant_key == tenant_key,
+                        Project.status == 'active'
+                    )
+                )
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
+
+                # Fallback to most recent project if no active project
+                if not project:
+                    project_query = select(Project).where(
+                        Project.tenant_key == tenant_key
+                    ).order_by(Project.created_at.desc()).limit(1)
+                    project_result = await session.execute(project_query)
+                    project = project_result.scalar_one_or_none()
 
                 if not project:
                     return {"success": False, "error": "Project not found"}
@@ -858,10 +863,24 @@ class ToolAccessor:
                 if project_id:
                     query = select(Message).where(Message.project_id == project_id)
                 else:
-                    # Find project by tenant key
-                    project_query = select(Project).where(Project.tenant_key == tenant_key)
+                    # Find project by tenant key - prefer active project if multiple exist
+                    project_query = select(Project).where(
+                        and_(
+                            Project.tenant_key == tenant_key,
+                            Project.status == 'active'
+                        )
+                    )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
+
+                    # Fallback to most recent project if no active project
+                    if not project:
+                        project_query = select(Project).where(
+                            Project.tenant_key == tenant_key
+                        ).order_by(Project.created_at.desc()).limit(1)
+                        project_result = await session.execute(project_query)
+                        project = project_result.scalar_one_or_none()
+
                     if not project:
                         return {"success": False, "error": "Project not found"}
                     query = select(Message).where(Message.project_id == project.id)
@@ -955,10 +974,23 @@ class ToolAccessor:
                 return {"success": False, "error": "No active project"}
 
             async with self.db_manager.get_session_async() as session:
-                # Find project
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                # Find project - prefer active project if multiple exist
+                project_query = select(Project).where(
+                    and_(
+                        Project.tenant_key == tenant_key,
+                        Project.status == 'active'
+                    )
+                )
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
+
+                # Fallback to most recent project if no active project
+                if not project:
+                    project_query = select(Project).where(
+                        Project.tenant_key == tenant_key
+                    ).order_by(Project.created_at.desc()).limit(1)
+                    project_result = await session.execute(project_query)
+                    project = project_result.scalar_one_or_none()
 
                 if not project:
                     return {"success": False, "error": "Project not found"}
@@ -1048,27 +1080,232 @@ class ToolAccessor:
             "settings": {"product_id": product_id or "default", "config": {}},
         }
 
-    async def discover_context(self, path: Optional[str] = None) -> dict[str, Any]:
-        """Discover project context"""
-        return {"success": True, "context": {"files": [], "structure": {}}}
+    async def discover_context(self, project_id: Optional[str] = None, path: Optional[str] = None, agent_role: str = "default", force_refresh: bool = False) -> dict[str, Any]:
+        """
+        Discover project context dynamically.
+
+        Args:
+            project_id: Project UUID (optional - uses current project if not provided)
+            path: File path to discover (optional)
+            agent_role: Role of the agent (orchestrator, analyzer, implementer, tester)
+            force_refresh: Force fresh discovery ignoring cache
+
+        Returns:
+            Discovered context organized by priority
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+
+            async with self.db_manager.get_session_async() as session:
+                # Get project
+                if project_id:
+                    project = await session.get(Project, project_id)
+                else:
+                    result = await session.execute(
+                        select(Project).where(
+                            and_(
+                                Project.tenant_key == tenant_key,
+                                Project.status == 'active'
+                            )
+                        )
+                    )
+                    project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "No active project"}
+
+                # Get product
+                product = None
+                if project.product_id:
+                    product = await session.get(Product, project.product_id)
+
+                context = {
+                    "project": {
+                        "id": str(project.id),
+                        "name": project.name,
+                        "description": project.description,
+                        "mission": project.mission,
+                        "status": project.status
+                    }
+                }
+
+                if product:
+                    context["product"] = {
+                        "id": str(product.id),
+                        "name": product.name,
+                        "context": product.config_data or {},
+                        "tech_stack": product.config_data.get('tech_stack') if product.config_data else None
+                    }
+
+                return {"success": True, "context": context}
+
+        except Exception as e:
+            logger.error(f"Error discovering context: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
 
     async def get_file_context(self, file_path: str) -> dict[str, Any]:
-        """Get context for a specific file"""
-        return {"success": True, "file_path": file_path, "context": {}}
+        """
+        Get context for a specific file.
+
+        This method provides context discovery for the specified file path.
+        Currently returns a placeholder message directing users to use the
+        Serena file context discovery system for detailed file analysis.
+
+        Args:
+            file_path: Path to the file (relative or absolute)
+
+        Returns:
+            Context information with file path and placeholder message
+        """
+        try:
+            return {
+                "success": True,
+                "file_path": file_path,
+                "context": {
+                    "message": "File context discovery via Serena MCP tools",
+                    "note": "Use Serena file tools (read_file, get_symbols_overview) for detailed context"
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting file context for {file_path}: {e}", exc_info=True)
+            return {"success": False, "file_path": file_path, "error": str(e)}
 
     async def search_context(self, query: str, file_types: Optional[list[str]] = None) -> dict[str, Any]:
-        """Search project context"""
-        return {"success": True, "results": [], "query": query}
+        """
+        Search project context.
 
-    async def get_context_summary(self) -> dict[str, Any]:
-        """Get a summary of project context"""
-        return {"success": True, "summary": "Context summary placeholder"}
+        This method searches for patterns/content in project context.
+        Currently returns a placeholder message directing users to use the
+        Serena grep/search MCP tools for detailed context searching.
+
+        Args:
+            query: Search query string
+            file_types: Optional list of file type filters (e.g., ['*.py', '*.ts'])
+
+        Returns:
+            Search results with query metadata and placeholder message
+        """
+        try:
+            return {
+                "success": True,
+                "results": [],
+                "query": query,
+                "file_types": file_types or [],
+                "message": "Context search via Serena MCP tools",
+                "note": "Use Serena search tools (Grep) for detailed pattern matching and content search"
+            }
+        except Exception as e:
+            logger.error(f"Error searching context for query '{query}': {e}", exc_info=True)
+            return {"success": False, "query": query, "error": str(e)}
+
+    async def get_context_summary(self, project_id: Optional[str] = None) -> dict[str, Any]:
+        """
+        Get a summary of project context.
+
+        Args:
+            project_id: Project UUID (optional - uses current project if not provided)
+
+        Returns:
+            Context summary with key information
+        """
+        try:
+            # Get current tenant and project
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models import Project, Product
+            from giljo_mcp.tenant_manager import tenant_manager
+            from sqlalchemy import select, and_
+
+            tenant_key = tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
+
+            db_manager = DatabaseManager()
+            async with db_manager.get_session_async() as session:
+                # Get project
+                if project_id:
+                    query = select(Project).where(
+                        and_(Project.id == project_id, Project.tenant_key == tenant_key)
+                    )
+                else:
+                    # Get active project
+                    query = select(Project).where(
+                        and_(Project.tenant_key == tenant_key, Project.status == "active")
+                    )
+
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Get product if exists
+                product = None
+                if project.product_id:
+                    result = await session.execute(
+                        select(Product).where(
+                            and_(Product.id == project.product_id, Product.tenant_key == tenant_key)
+                        )
+                    )
+                    product = result.scalar_one_or_none()
+
+                # Build summary
+                summary_parts = [f"Project: {project.name}"]
+                if project.description:
+                    summary_parts.append(f"Description: {project.description[:200]}")
+                if product:
+                    summary_parts.append(f"Product: {product.name}")
+                    if product.vision_document:
+                        vision_preview = product.vision_document[:300]
+                        summary_parts.append(f"Vision: {vision_preview}")
+
+                return {
+                    "success": True,
+                    "summary": "\n".join(summary_parts),
+                    "project_id": str(project.id),
+                    "project_name": project.name,
+                    "product_id": str(product.id) if product else None,
+                    "product_name": product.name if product else None
+                }
+
+        except Exception as e:
+            logger.error(f"Error getting context summary: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
 
     # Template Tools
 
     async def list_templates(self) -> dict[str, Any]:
         """List available templates"""
-        return {"success": True, "templates": []}
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            async with self.db_manager.get_session_async() as session:
+                from giljo_mcp.models import AgentTemplate
+
+                result = await session.execute(
+                    select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
+                )
+                templates = result.scalars().all()
+
+                return {
+                    "success": True,
+                    "templates": [
+                        {
+                            "id": str(t.id),
+                            "name": t.name,
+                            "role": t.role,
+                            "content": t.template_content,
+                            "cli_tool": t.cli_tool,
+                            "background_color": t.background_color,
+                        }
+                        for t in templates
+                    ],
+                }
+
+        except Exception as e:
+            logger.error(f"Error listing templates: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
 
     async def get_template(self, template_name: str) -> dict[str, Any]:
         """Get a specific template"""
@@ -1110,15 +1347,13 @@ class ToolAccessor:
 
             # If product_path not provided and not personal, try to get from product
             if not product_path and not personal:
-                product = await get_product_for_tenant(
-                    self.db_manager, tenant_key, product_id
-                )
+                product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
                 if product and product.project_path:
                     product_path = str(Path(product.project_path) / ".claude" / "agents")
                 else:
                     return {
                         "success": False,
-                        "error": "No product path configured. Set product project_path or use --personal"
+                        "error": "No product path configured. Set product project_path or use --personal",
                     }
 
             # Call export command
@@ -1158,9 +1393,7 @@ class ToolAccessor:
             from .claude_export import get_product_for_tenant, validate_product_path
 
             # Get product
-            product = await get_product_for_tenant(
-                self.db_manager, tenant_key, product_id
-            )
+            product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
             if not product:
                 return {"success": False, "error": "Product not found"}
 
@@ -1199,9 +1432,7 @@ class ToolAccessor:
             from .claude_export import get_product_for_tenant
 
             # Get product
-            product = await get_product_for_tenant(
-                self.db_manager, tenant_key, product_id
-            )
+            product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
             if not product:
                 return {"success": False, "error": "Product not found"}
 
@@ -1222,6 +1453,7 @@ class ToolAccessor:
     async def health_check(self) -> dict[str, Any]:
         """MCP server health check"""
         from giljo_mcp.tools.orchestration import health_check
+
         return await health_check()
 
     async def get_orchestrator_instructions(self, orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
@@ -1236,16 +1468,10 @@ class ToolAccessor:
 
                 # Validate inputs
                 if not orchestrator_id or not orchestrator_id.strip():
-                    return {
-                        "error": "VALIDATION_ERROR",
-                        "message": "Orchestrator ID is required"
-                    }
+                    return {"error": "VALIDATION_ERROR", "message": "Orchestrator ID is required"}
 
                 if not tenant_key or not tenant_key.strip():
-                    return {
-                        "error": "VALIDATION_ERROR",
-                        "message": "Tenant key is required"
-                    }
+                    return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
 
                 # Get orchestrator job with tenant isolation
                 result = await session.execute(
@@ -1253,26 +1479,18 @@ class ToolAccessor:
                         and_(
                             MCPAgentJob.job_id == orchestrator_id,
                             MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.agent_type == "orchestrator"
+                            MCPAgentJob.agent_type == "orchestrator",
                         )
                     )
                 )
                 orchestrator = result.scalar_one_or_none()
 
                 if not orchestrator:
-                    return {
-                        "error": "NOT_FOUND",
-                        "message": f"Orchestrator {orchestrator_id} not found"
-                    }
+                    return {"error": "NOT_FOUND", "message": f"Orchestrator {orchestrator_id} not found"}
 
                 # Get project and product
                 result = await session.execute(
-                    select(Project).where(
-                        and_(
-                            Project.id == orchestrator.project_id,
-                            Project.tenant_key == tenant_key
-                        )
-                    )
+                    select(Project).where(and_(Project.id == orchestrator.project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
@@ -1282,12 +1500,7 @@ class ToolAccessor:
                 product = None
                 if project.product_id:
                     result = await session.execute(
-                        select(Product).where(
-                            and_(
-                                Product.id == project.product_id,
-                                Product.tenant_key == tenant_key
-                            )
-                        )
+                        select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
                     )
                     product = result.scalar_one_or_none()
 
@@ -1298,29 +1511,44 @@ class ToolAccessor:
                 user_id = metadata.get("user_id")
 
                 condensed_mission = await planner._build_context_with_priorities(
-                    product=product,
-                    project=project,
-                    field_priorities=field_priorities,
-                    user_id=user_id
+                    product=product, project=project, field_priorities=field_priorities, user_id=user_id
                 )
+
+                # FIX: Add fallback mission generation if mission is empty
+                if not condensed_mission or condensed_mission.strip() == "":
+                    mission_parts = []
+
+                    # Include product vision if available
+                    if product and product.vision_summary:
+                        mission_parts.append(f"Vision: {product.vision_summary}")
+
+                    # Include project description if available
+                    if project.description:
+                        mission_parts.append(f"Project Goal: {project.description}")
+
+                    # Include tech stack from product context if available
+                    if product and product.product_context:
+                        context = product.product_context or {}
+                        if context.get("tech_stack"):
+                            mission_parts.append(f"Tech Stack: {context['tech_stack']}")
+
+                    # Build fallback mission from collected parts
+                    if mission_parts:
+                        condensed_mission = "\n\n".join(mission_parts)
+                    else:
+                        # Final fallback: use project description or a minimal message
+                        condensed_mission = project.description or "No mission defined"
 
                 # Get agent templates
                 result = await session.execute(
-                    select(AgentTemplate).where(
-                        and_(
-                            AgentTemplate.tenant_key == tenant_key,
-                            AgentTemplate.is_active == True
-                        )
-                    ).limit(8)
+                    select(AgentTemplate)
+                    .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
+                    .limit(8)
                 )
                 templates = result.scalars().all()
 
                 template_list = [
-                    {
-                        "name": t.name,
-                        "role": t.role,
-                        "description": t.description[:200] if t.description else ""
-                    }
+                    {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
                     for t in templates
                 ]
 
@@ -1339,15 +1567,12 @@ class ToolAccessor:
                     "token_reduction_applied": bool(field_priorities),
                     "estimated_tokens": estimated_tokens,
                     "instance_number": orchestrator.instance_number or 1,
-                    "thin_client": True
+                    "thin_client": True,
                 }
 
         except Exception as e:
             logger.exception(f"Failed to get orchestrator instructions: {e}")
-            return {
-                "error": "INTERNAL_ERROR",
-                "message": f"Unexpected error: {e!s}"
-            }
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
     async def spawn_agent_job(
         self,
@@ -1356,7 +1581,7 @@ class ToolAccessor:
         mission: str,
         project_id: str,
         tenant_key: str,
-        parent_job_id: Optional[str] = None
+        parent_job_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """Create an agent job with thin client architecture"""
         try:
@@ -1369,12 +1594,7 @@ class ToolAccessor:
 
                 # Get project for context
                 result = await session.execute(
-                    select(Project).where(
-                        and_(
-                            Project.id == project_id,
-                            Project.tenant_key == tenant_key
-                        )
-                    )
+                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
@@ -1394,8 +1614,8 @@ class ToolAccessor:
                     metadata={
                         "created_via": "thin_client_spawn",
                         "created_at": datetime.now(timezone.utc).isoformat(),
-                        "thin_client": True
-                    }
+                        "thin_client": True,
+                    },
                 )
 
                 session.add(agent_job)
@@ -1409,7 +1629,7 @@ IDENTITY:
 - Agent ID: {agent_job_id}
 - Agent Type: {agent_type}
 - Project ID: {project_id}
-- Parent Orchestrator: {parent_job_id or 'None'}
+- Parent Orchestrator: {parent_job_id or "None"}
 
 INSTRUCTIONS:
 1. Fetch mission: get_agent_mission(agent_job_id='{agent_job_id}', tenant_key='{tenant_key}')
@@ -1432,16 +1652,12 @@ Begin by fetching your mission.
                     "mission_stored": True,
                     "mission_tokens": mission_tokens,  # ~2000
                     "total_tokens": prompt_tokens + mission_tokens,
-                    "thin_client": True
+                    "thin_client": True,
                 }
 
         except Exception as e:
             logger.exception(f"Failed to spawn agent job: {e}")
-            return {
-                "error": "INTERNAL_ERROR",
-                "message": f"Failed to spawn agent: {e!s}",
-                "severity": "ERROR"
-            }
+            return {"error": "INTERNAL_ERROR", "message": f"Failed to spawn agent: {e!s}", "severity": "ERROR"}
 
     async def get_agent_mission(self, agent_job_id: str, tenant_key: str) -> dict[str, Any]:
         """Get agent-specific mission"""
@@ -1453,19 +1669,13 @@ Begin by fetching your mission.
 
                 result = await session.execute(
                     select(MCPAgentJob).where(
-                        and_(
-                            MCPAgentJob.job_id == agent_job_id,
-                            MCPAgentJob.tenant_key == tenant_key
-                        )
+                        and_(MCPAgentJob.job_id == agent_job_id, MCPAgentJob.tenant_key == tenant_key)
                     )
                 )
                 agent_job = result.scalar_one_or_none()
 
                 if not agent_job:
-                    return {
-                        "error": "NOT_FOUND",
-                        "message": f"Agent job {agent_job_id} not found"
-                    }
+                    return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
 
                 estimated_tokens = len(agent_job.mission or "") // 4
 
@@ -1479,15 +1689,12 @@ Begin by fetching your mission.
                     "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
                     "estimated_tokens": estimated_tokens,
                     "status": agent_job.status,
-                    "thin_client": True
+                    "thin_client": True,
                 }
 
         except Exception as e:
             logger.exception(f"Failed to get agent mission: {e}")
-            return {
-                "error": "INTERNAL_ERROR",
-                "message": f"Unexpected error: {e!s}"
-            }
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
     async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Full project orchestration workflow"""
@@ -1499,10 +1706,7 @@ Begin by fetching your mission.
 
                 # Get project with tenant isolation
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
@@ -1515,9 +1719,7 @@ Begin by fetching your mission.
                 # Initialize orchestrator and run workflow
                 orchestrator = ProjectOrchestrator()
                 result_dict = await orchestrator.process_product_vision(
-                    tenant_key=tenant_key,
-                    product_id=project.product_id,
-                    project_requirements=project.mission
+                    tenant_key=tenant_key, product_id=project.product_id, project_requirements=project.mission
                 )
 
                 return result_dict
@@ -1534,10 +1736,7 @@ Begin by fetching your mission.
 
                 # Verify project exists
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
@@ -1545,9 +1744,7 @@ Begin by fetching your mission.
                     return {"error": f"Project '{project_id}' not found"}
 
                 # Get all Jobs for this tenant
-                jobs_result = await session.execute(
-                    select(Job).where(Job.tenant_key == tenant_key)
-                )
+                jobs_result = await session.execute(select(Job).where(Job.tenant_key == tenant_key))
                 jobs = jobs_result.scalars().all()
 
                 # Count by status
@@ -1581,7 +1778,7 @@ Begin by fetching your mission.
                     "pending_agents": pending_count,
                     "current_stage": current_stage,
                     "progress_percent": round(progress_percent, 2),
-                    "total_agents": total_count
+                    "total_agents": total_count,
                 }
 
         except Exception as e:
@@ -1595,60 +1792,45 @@ Begin by fetching your mission.
         try:
             # Validate inputs
             if not agent_type or not agent_type.strip():
-                return {
-                    "status": "error",
-                    "error": "agent_type cannot be empty",
-                    "jobs": [],
-                    "count": 0
-                }
+                return {"status": "error", "error": "agent_type cannot be empty", "jobs": [], "count": 0}
 
             if not tenant_key or not tenant_key.strip():
-                return {
-                    "status": "error",
-                    "error": "tenant_key cannot be empty",
-                    "jobs": [],
-                    "count": 0
-                }
+                return {"status": "error", "error": "tenant_key cannot be empty", "jobs": [], "count": 0}
 
             # Get pending jobs with tenant isolation (async)
             async with self.db_manager.get_session_async() as session:
                 from giljo_mcp.models import MCPAgentJob
 
                 result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(MCPAgentJob)
+                    .where(
                         MCPAgentJob.tenant_key == tenant_key,
                         MCPAgentJob.agent_type == agent_type,
-                        MCPAgentJob.status == "pending"
-                    ).limit(10)
+                        MCPAgentJob.status == "pending",
+                    )
+                    .limit(10)
                 )
                 jobs = result.scalars().all()
 
                 # Format jobs for response
                 formatted_jobs = []
                 for job in jobs:
-                    formatted_jobs.append({
-                        "job_id": job.job_id,
-                        "agent_type": job.agent_type,
-                        "mission": job.mission,
-                        "context_chunks": job.context_chunks or [],
-                        "priority": "normal",
-                        "created_at": job.created_at.isoformat() if job.created_at else None
-                    })
+                    formatted_jobs.append(
+                        {
+                            "job_id": job.job_id,
+                            "agent_type": job.agent_type,
+                            "mission": job.mission,
+                            "context_chunks": job.context_chunks or [],
+                            "priority": "normal",
+                            "created_at": job.created_at.isoformat() if job.created_at else None,
+                        }
+                    )
 
-                return {
-                    "status": "success",
-                    "jobs": formatted_jobs,
-                    "count": len(formatted_jobs)
-                }
+                return {"status": "success", "jobs": formatted_jobs, "count": len(formatted_jobs)}
 
         except Exception as e:
             logger.exception(f"Failed to get pending jobs: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "jobs": [],
-                "count": 0
-            }
+            return {"status": "error", "error": str(e), "jobs": [], "count": 0}
 
     async def acknowledge_job(self, job_id: str, agent_id: str) -> dict[str, Any]:
         """Acknowledge job assignment"""
@@ -1675,10 +1857,7 @@ Begin by fetching your mission.
                     from giljo_mcp.models import Agent
 
                     result = await session.execute(
-                        select(Agent).where(
-                            Agent.job_id == job_id,
-                            Agent.tenant_key == tenant_key
-                        )
+                        select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
                     )
                     agent = result.scalar_one_or_none()
 
@@ -1695,9 +1874,9 @@ Begin by fetching your mission.
                     "agent_type": job.agent_type,
                     "mission": job.mission,
                     "status": job.status,
-                    "started_at": job.started_at.isoformat() if job.started_at else None
+                    "started_at": job.started_at.isoformat() if job.started_at else None,
                 },
-                "next_instructions": "Begin executing your mission"
+                "next_instructions": "Begin executing your mission",
             }
 
         except Exception as e:
@@ -1728,13 +1907,10 @@ Begin by fetching your mission.
                 from_job_id=job_id,
                 to_job_id="orchestrator",
                 message_type="progress",
-                content=progress
+                content=progress,
             )
 
-            return {
-                "status": "success",
-                "message": "Progress reported successfully"
-            }
+            return {"status": "success", "message": "Progress reported successfully"}
 
         except Exception as e:
             logger.exception(f"Failed to report progress: {e}")
@@ -1757,11 +1933,7 @@ Begin by fetching your mission.
                 return {"status": "error", "error": "result must be a non-empty dict"}
 
             job_manager = AgentJobManager(self.db_manager)
-            job = job_manager.complete_job(
-                tenant_key=tenant_key,
-                job_id=job_id,
-                result=result
-            )
+            job = job_manager.complete_job(tenant_key=tenant_key, job_id=job_id, result=result)
 
             # Sync linked Agent record
             try:
@@ -1769,10 +1941,7 @@ Begin by fetching your mission.
                     from giljo_mcp.models import Agent
 
                     result_obj = await session.execute(
-                        select(Agent).where(
-                            Agent.job_id == job_id,
-                            Agent.tenant_key == tenant_key
-                        )
+                        select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
                     )
                     agent = result_obj.scalar_one_or_none()
 
@@ -1782,11 +1951,7 @@ Begin by fetching your mission.
             except Exception as sync_error:
                 logger.warning(f"Failed to sync Agent status: {sync_error}")
 
-            return {
-                "status": "success",
-                "job_id": job.job_id,
-                "message": "Job completed successfully"
-            }
+            return {"status": "success", "job_id": job.job_id, "message": "Job completed successfully"}
 
         except Exception as e:
             logger.exception(f"Failed to complete job: {e}")
@@ -1809,11 +1974,7 @@ Begin by fetching your mission.
                 return {"status": "error", "error": "error message cannot be empty"}
 
             job_manager = AgentJobManager(self.db_manager)
-            job = job_manager.fail_job(
-                tenant_key=tenant_key,
-                job_id=job_id,
-                error_message=error
-            )
+            job = job_manager.fail_job(tenant_key=tenant_key, job_id=job_id, error_message=error)
 
             # Sync linked Agent record
             try:
@@ -1821,10 +1982,7 @@ Begin by fetching your mission.
                     from giljo_mcp.models import Agent
 
                     result = await session.execute(
-                        select(Agent).where(
-                            Agent.job_id == job_id,
-                            Agent.tenant_key == tenant_key
-                        )
+                        select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
                     )
                     agent = result.scalar_one_or_none()
 
@@ -1834,11 +1992,7 @@ Begin by fetching your mission.
             except Exception as sync_error:
                 logger.warning(f"Failed to sync Agent status: {sync_error}")
 
-            return {
-                "status": "success",
-                "job_id": job.job_id,
-                "message": "Error reported successfully"
-            }
+            return {"status": "success", "job_id": job.job_id, "message": "Error reported successfully"}
 
         except Exception as e:
             logger.exception(f"Failed to report error: {e}")
@@ -1864,11 +2018,7 @@ Begin by fetching your mission.
             # Get unread messages for this job
             async with self.db_manager.get_session_async() as session:
                 result = comm_queue.get_messages(
-                    session=session,
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    to_agent=agent_type,
-                    unread_only=True
+                    session=session, job_id=job_id, tenant_key=tenant_key, to_agent=agent_type, unread_only=True
                 )
 
                 if result.get("status") != "success":
@@ -1905,7 +2055,7 @@ Begin by fetching your mission.
                     "instructions": instructions,
                     "handoff_requested": handoff_requested,
                     "context_warning": context_warning,
-                    "message_count": len(messages)
+                    "message_count": len(messages),
                 }
 
         except Exception as e:
@@ -1915,10 +2065,7 @@ Begin by fetching your mission.
     # Succession Tools (Handover 0080)
 
     async def create_successor_orchestrator(
-        self,
-        current_job_id: str,
-        tenant_key: str,
-        reason: str = "context_limit"
+        self, current_job_id: str, tenant_key: str, reason: str = "context_limit"
     ) -> dict[str, Any]:
         """Create successor orchestrator for context handover (Handover 0080)"""
         try:
@@ -1929,8 +2076,7 @@ Begin by fetching your mission.
                 # Retrieve current orchestrator job
                 result = await session.execute(
                     select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == current_job_id,
-                        MCPAgentJob.tenant_key == tenant_key
+                        MCPAgentJob.job_id == current_job_id, MCPAgentJob.tenant_key == tenant_key
                     )
                 )
                 orchestrator = result.scalar_one_or_none()
@@ -1938,22 +2084,19 @@ Begin by fetching your mission.
                 if not orchestrator:
                     return {
                         "success": False,
-                        "error": f"Orchestrator job {current_job_id} not found for tenant {tenant_key}"
+                        "error": f"Orchestrator job {current_job_id} not found for tenant {tenant_key}",
                     }
 
                 # Verify agent type is orchestrator
                 if orchestrator.agent_type != "orchestrator":
                     return {
                         "success": False,
-                        "error": f"Job {current_job_id} is not an orchestrator (type: {orchestrator.agent_type})"
+                        "error": f"Job {current_job_id} is not an orchestrator (type: {orchestrator.agent_type})",
                     }
 
                 # Verify orchestrator is not already complete
                 if orchestrator.status == "complete":
-                    return {
-                        "success": False,
-                        "error": f"Orchestrator {current_job_id} is already complete"
-                    }
+                    return {"success": False, "error": f"Orchestrator {current_job_id} is already complete"}
 
                 # Initialize succession manager
                 manager = OrchestratorSuccessionManager(session, tenant_key)
@@ -1990,18 +2133,14 @@ Begin by fetching your mission.
                         f"Successor orchestrator created (instance {successor.instance_number}). "
                         f"Original orchestrator marked complete. "
                         f"Launch successor manually from dashboard."
-                    )
+                    ),
                 }
 
         except Exception as e:
             logger.exception(f"Failed to create successor orchestrator: {e}")
             return {"success": False, "error": str(e)}
 
-    async def check_succession_status(
-        self,
-        job_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Check if orchestrator should trigger succession (Handover 0080)"""
         try:
             from giljo_mcp.models import MCPAgentJob
@@ -2009,18 +2148,12 @@ Begin by fetching your mission.
             async with self.db_manager.get_session_async() as session:
                 # Retrieve orchestrator job
                 result = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == job_id,
-                        MCPAgentJob.tenant_key == tenant_key
-                    )
+                    select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == tenant_key)
                 )
                 orchestrator = result.scalar_one_or_none()
 
                 if not orchestrator:
-                    return {
-                        "should_trigger": False,
-                        "error": f"Job {job_id} not found"
-                    }
+                    return {"should_trigger": False, "error": f"Job {job_id} not found"}
 
                 # Calculate context usage percentage
                 context_used = orchestrator.context_used or 0
@@ -2046,7 +2179,7 @@ Begin by fetching your mission.
                     "context_budget": context_budget,
                     "usage_percentage": round(usage_percentage, 2),
                     "threshold_reached": should_trigger,
-                    "recommendation": recommendation
+                    "recommendation": recommendation,
                 }
 
         except Exception as e:
@@ -2055,7 +2188,9 @@ Begin by fetching your mission.
 
     # Slash Command Setup Tool (Handover 0093)
 
-    async def setup_slash_commands(self, platform: str = None, _api_key: str = None, _server_url: str = None) -> dict[str, Any]:
+    async def setup_slash_commands(
+        self, platform: str = None, _api_key: str = None, _server_url: str = None
+    ) -> dict[str, Any]:
         """
         Generate one-time download link for slash commands installation.
 
@@ -2082,8 +2217,8 @@ Begin by fetching your mission.
                     "error": "API key not provided",
                     "instructions": [
                         "This tool is called via MCP HTTP and requires authentication",
-                        "Ensure you are connected to GiljoAI MCP server with valid API key"
-                    ]
+                        "Ensure you are connected to GiljoAI MCP server with valid API key",
+                    ],
                 }
 
             # 2. Get tenant context
@@ -2116,7 +2251,7 @@ Begin by fetching your mission.
 
                 # Read external_host from config.yaml for public IP
                 config_path = Path.cwd() / "config.yaml"
-                with open(config_path, 'r') as f:
+                with open(config_path) as f:
                     config_data = yaml.safe_load(f)
 
                 host = config_data.get("services", {}).get("external_host", "localhost")
@@ -2135,8 +2270,8 @@ Begin by fetching your mission.
                 "technical_details": {
                     "filename": "slash_commands.zip",
                     "install_location": "~/.claude/commands/",
-                    "windows_location": "%USERPROFILE%\\.claude\\commands\\"
-                }
+                    "windows_location": "%USERPROFILE%\\.claude\\commands\\",
+                },
             }
 
         except Exception as e:
@@ -2145,7 +2280,9 @@ Begin by fetching your mission.
 
     # Slash Command Handler Wrappers (Handover 0084b)
 
-    async def gil_import_productagents(self, project_id: str = None, _api_key: str = None, _server_url: str = None) -> dict[str, Any]:
+    async def gil_import_productagents(
+        self, project_id: str = None, _api_key: str = None, _server_url: str = None
+    ) -> dict[str, Any]:
         """
         Generate one-time download link for product agent templates.
 
@@ -2172,8 +2309,8 @@ Begin by fetching your mission.
                     "error": "API key not provided",
                     "instructions": [
                         "This tool is called via MCP HTTP and requires authentication",
-                        "Ensure you are connected to GiljoAI MCP server with valid API key"
-                    ]
+                        "Ensure you are connected to GiljoAI MCP server with valid API key",
+                    ],
                 }
 
             # 2. Get tenant context
@@ -2195,7 +2332,9 @@ Begin by fetching your mission.
             async with self.db_manager.get_session_async() as session:
                 file_staging.db_session = session
                 staging_path = await file_staging.create_staging_directory(tenant_key, token)
-                zip_path, message = await file_staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+                zip_path, message = await file_staging.stage_agent_templates(
+                    staging_path, tenant_key, db_session=session
+                )
 
                 if not zip_path:
                     await token_manager.mark_failed(token, message)
@@ -2212,7 +2351,7 @@ Begin by fetching your mission.
 
                 # Read external_host from config.yaml for public IP
                 config_path = Path.cwd() / "config.yaml"
-                with open(config_path, 'r') as f:
+                with open(config_path) as f:
                     config_data = yaml.safe_load(f)
 
                 host = config_data.get("services", {}).get("external_host", "localhost")
@@ -2230,15 +2369,17 @@ Begin by fetching your mission.
                 "instructions": [
                     f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" "{download_url}" -o templates.zip',
                     '2. Extract: unzip -o templates.zip -d .claude/agents/ (Linux/macOS) or 7z x templates.zip -o".\\claude\\agents\\" (Windows)',
-                    "Templates will be available in your project's .claude/agents directory"
-                ]
+                    "Templates will be available in your project's .claude/agents directory",
+                ],
             }
 
         except Exception as e:
             logger.exception(f"Failed to generate product agent templates download: {e}")
             return {"success": False, "error": str(e)}
 
-    async def gil_import_personalagents(self, project_id: str = None, _api_key: str = None, _server_url: str = None) -> dict[str, Any]:
+    async def gil_import_personalagents(
+        self, project_id: str = None, _api_key: str = None, _server_url: str = None
+    ) -> dict[str, Any]:
         """
         Generate one-time download link for personal agent templates.
 
@@ -2265,8 +2406,8 @@ Begin by fetching your mission.
                     "error": "API key not provided",
                     "instructions": [
                         "This tool is called via MCP HTTP and requires authentication",
-                        "Ensure you are connected to GiljoAI MCP server with valid API key"
-                    ]
+                        "Ensure you are connected to GiljoAI MCP server with valid API key",
+                    ],
                 }
 
             # 2. Get tenant context
@@ -2288,7 +2429,9 @@ Begin by fetching your mission.
             async with self.db_manager.get_session_async() as session:
                 file_staging.db_session = session
                 staging_path = await file_staging.create_staging_directory(tenant_key, token)
-                zip_path, message = await file_staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+                zip_path, message = await file_staging.stage_agent_templates(
+                    staging_path, tenant_key, db_session=session
+                )
 
                 if not zip_path:
                     await token_manager.mark_failed(token, message)
@@ -2305,7 +2448,7 @@ Begin by fetching your mission.
 
                 # Read external_host from config.yaml for public IP
                 config_path = Path.cwd() / "config.yaml"
-                with open(config_path, 'r') as f:
+                with open(config_path) as f:
                     config_data = yaml.safe_load(f)
 
                 host = config_data.get("services", {}).get("external_host", "localhost")
@@ -2323,8 +2466,8 @@ Begin by fetching your mission.
                 "instructions": [
                     f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" "{download_url}" -o templates.zip',
                     '2. Extract: unzip -o templates.zip -d ~/.claude/agents/ (Linux/macOS) or 7z x templates.zip -o"%USERPROFILE%\\.claude\\agents\\" (Windows)',
-                    "Templates will be available across all your projects"
-                ]
+                    "Templates will be available across all your projects",
+                ],
             }
 
         except Exception as e:
@@ -2349,11 +2492,7 @@ Begin by fetching your mission.
 
             handler = get_slash_command("gil_handover")
             if not handler:
-                return {
-                    "success": False,
-                    "message": "Slash command handler not found",
-                    "error": "HANDLER_NOT_FOUND"
-                }
+                return {"success": False, "message": "Slash command handler not found", "error": "HANDLER_NOT_FOUND"}
 
             # Get database session (synchronous context manager)
             with self.db_manager.get_session() as session:
@@ -2362,15 +2501,11 @@ Begin by fetching your mission.
                     tenant_key=self.tenant_manager.get_current_tenant(),
                     project_id=None,  # Not used by handover
                     job_id=current_job_id,
-                    reason=reason
+                    reason=reason,
                 )
 
             return result
 
         except Exception as e:
             logger.exception(f"Failed to trigger handover: {e}")
-            return {
-                "success": False,
-                "message": f"Failed to trigger handover: {e!s}",
-                "error": "UNEXPECTED_ERROR"
-            }
+            return {"success": False, "message": f"Failed to trigger handover: {e!s}", "error": "UNEXPECTED_ERROR"}

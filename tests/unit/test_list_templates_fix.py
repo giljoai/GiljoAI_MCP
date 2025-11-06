@@ -15,6 +15,7 @@ Tests:
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
+from uuid import uuid4
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -54,10 +55,11 @@ class TestListTemplates:
     @pytest.mark.asyncio
     async def test_list_templates_single_template(self):
         """Test list_templates returns single template with correct structure"""
-        # Create a test template
+        # Create a test template with unique ID
+        template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
             template = AgentTemplate(
-                id="test-template-1",
+                id=template_id,
                 tenant_key=self.tenant_key,
                 name="test_orchestrator",
                 category="role",
@@ -78,7 +80,7 @@ class TestListTemplates:
         template_dict = result["templates"][0]
 
         # Verify template structure
-        assert template_dict["id"] == "test-template-1"
+        assert template_dict["id"] == template_id
         assert template_dict["name"] == "test_orchestrator"
         assert template_dict["role"] == "orchestrator"
         assert template_dict["content"] == "Test mission for orchestrator"
@@ -88,11 +90,12 @@ class TestListTemplates:
     @pytest.mark.asyncio
     async def test_list_templates_multiple_templates(self):
         """Test list_templates returns multiple templates in correct order"""
-        # Create multiple test templates
+        # Create multiple test templates with unique IDs
+        template_ids = [str(uuid4()), str(uuid4()), str(uuid4())]
         async with self.db_manager.get_session_async() as session:
             templates = [
                 AgentTemplate(
-                    id="test-template-1",
+                    id=template_ids[0],
                     tenant_key=self.tenant_key,
                     name="orchestrator",
                     category="role",
@@ -103,7 +106,7 @@ class TestListTemplates:
                     tool="claude",
                 ),
                 AgentTemplate(
-                    id="test-template-2",
+                    id=template_ids[1],
                     tenant_key=self.tenant_key,
                     name="analyzer",
                     category="role",
@@ -114,7 +117,7 @@ class TestListTemplates:
                     tool="claude",
                 ),
                 AgentTemplate(
-                    id="test-template-3",
+                    id=template_ids[2],
                     tenant_key=self.tenant_key,
                     name="developer",
                     category="role",
@@ -136,24 +139,25 @@ class TestListTemplates:
         assert len(result["templates"]) == 3
 
         # Verify all templates are present with correct data
-        template_ids = [t["id"] for t in result["templates"]]
-        assert "test-template-1" in template_ids
-        assert "test-template-2" in template_ids
-        assert "test-template-3" in template_ids
+        returned_ids = [t["id"] for t in result["templates"]]
+        assert template_ids[0] in returned_ids
+        assert template_ids[1] in returned_ids
+        assert template_ids[2] in returned_ids
 
         # Verify correct roles
         roles = {t["id"]: t["role"] for t in result["templates"]}
-        assert roles["test-template-1"] == "orchestrator"
-        assert roles["test-template-2"] == "analyzer"
-        assert roles["test-template-3"] == "developer"
+        assert roles[template_ids[0]] == "orchestrator"
+        assert roles[template_ids[1]] == "analyzer"
+        assert roles[template_ids[2]] == "developer"
 
     @pytest.mark.asyncio
     async def test_list_templates_multi_tenant_isolation(self):
         """Test list_templates returns only current tenant's templates"""
         # Create templates for current tenant
+        tenant1_template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
             template1 = AgentTemplate(
-                id="tenant1-template-1",
+                id=tenant1_template_id,
                 tenant_key=self.tenant_key,
                 name="orchestrator",
                 category="role",
@@ -167,6 +171,7 @@ class TestListTemplates:
             await session.commit()
 
         # Create second tenant and its templates
+        tenant2_template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
             tenant2_project = await ToolsTestHelper.create_test_project(
                 session, "Tenant 2 Project"
@@ -174,7 +179,7 @@ class TestListTemplates:
             tenant2_key = tenant2_project.tenant_key
 
             template2 = AgentTemplate(
-                id="tenant2-template-1",
+                id=tenant2_template_id,
                 tenant_key=tenant2_key,
                 name="analyzer",
                 category="role",
@@ -195,33 +200,36 @@ class TestListTemplates:
         assert len(result["templates"]) == 1
 
         template_dict = result["templates"][0]
-        assert template_dict["id"] == "tenant1-template-1"
+        assert template_dict["id"] == tenant1_template_id
         assert template_dict["name"] == "orchestrator"
 
     @pytest.mark.asyncio
     async def test_list_templates_no_tenant_context(self):
         """Test list_templates handles missing tenant context gracefully"""
-        # Clear tenant context
-        self.tenant_manager.set_current_tenant(None)
+        # Mock getting current tenant to return None (simulating no tenant context)
+        original_get_tenant = self.tenant_manager.get_current_tenant
+        self.tenant_manager.get_current_tenant = lambda: None
 
-        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
-        result = await accessor.list_templates()
+        try:
+            accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+            result = await accessor.list_templates()
 
-        # Should handle gracefully - either return empty list or error
-        assert "success" in result
-        if not result["success"]:
+            # Should return error when no tenant context
+            assert result["success"] is False
             assert "error" in result
-        else:
-            # If successful, should be empty list (no tenant context = no templates)
-            assert isinstance(result["templates"], list)
+            assert "tenant" in result["error"].lower()
+        finally:
+            # Restore original method
+            self.tenant_manager.get_current_tenant = original_get_tenant
 
     @pytest.mark.asyncio
     async def test_list_templates_structure_validation(self):
         """Test list_templates returns properly structured template objects"""
         # Create a template with all optional fields
+        full_template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
             template = AgentTemplate(
-                id="full-template",
+                id=full_template_id,
                 tenant_key=self.tenant_key,
                 name="complete_template",
                 category="role",
@@ -275,9 +283,10 @@ class TestListTemplates:
     async def test_list_templates_null_fields_handled(self):
         """Test list_templates handles null/optional fields correctly"""
         # Create a template with minimal fields
+        minimal_template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
             template = AgentTemplate(
-                id="minimal-template",
+                id=minimal_template_id,
                 tenant_key=self.tenant_key,
                 name="minimal",
                 category="role",
