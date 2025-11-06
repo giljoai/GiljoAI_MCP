@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 PYTHON_BOOT="${PYTHON:-}"
 if [[ -z "$PYTHON_BOOT" ]]; then
@@ -18,6 +18,7 @@ fi
 
 VENV_DIR="$REPO_ROOT/dev_tools/devpanel/.venv"
 VENV_PY="$VENV_DIR/bin/python"
+SETUP_SENTINEL="$VENV_DIR/devpanel_setup_done.txt"
 
 if [[ ! -x "$VENV_PY" ]]; then
   echo "[DevPanel] Creating isolated virtual environment..."
@@ -25,9 +26,16 @@ if [[ ! -x "$VENV_PY" ]]; then
     echo "[DevPanel] Failed to create virtual environment." >&2
     exit 1
   }
+fi
+
+if [[ ! -f "$SETUP_SENTINEL" ]]; then
   echo "[DevPanel] Installing project dependencies into isolated venv..."
   "$VENV_PY" -m pip install --upgrade pip
-  "$VENV_PY" -m pip install -e .[dev]
+  "$VENV_PY" -m pip install -e .[dev] || {
+    echo "[DevPanel] Dependency installation failed." >&2
+    exit 1
+  }
+  echo "setup" > "$SETUP_SENTINEL"
 fi
 
 cd "$REPO_ROOT"
