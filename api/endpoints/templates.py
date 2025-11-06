@@ -66,31 +66,53 @@ class TemplateCreate(BaseModel):
 
 
 class TemplateUpdate(BaseModel):
+    """
+    Template update request (v3.1+ with dual fields).
+
+    IMPORTANT: system_instructions is read-only and cannot be modified.
+    Only user_instructions and other editable fields can be updated.
+    """
+
+    # EDITABLE fields
+    user_instructions: Optional[str] = Field(None, description="User-customizable instructions (max 50KB)")
     name: Optional[str] = None
     role: Optional[str] = None
     cli_tool: Optional[str] = None
     background_color: Optional[str] = None
     description: Optional[str] = None
-    template_content: Optional[str] = None
     model: Optional[str] = None
     behavioral_rules: Optional[list[str]] = None
     success_criteria: Optional[list[str]] = None
     tags: Optional[list[str]] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
-    # Legacy fields
+
+    # DEPRECATED: Legacy support (still maps to user_instructions)
+    template_content: Optional[str] = Field(None, deprecated=True, description="Legacy field - use user_instructions instead")
     preferred_tool: Optional[str] = None
+
+    # READONLY: system_instructions NOT exposed (protected from modification)
+
+    @field_validator("user_instructions")
+    @classmethod
+    def validate_user_instructions_size(cls, v: Optional[str]) -> Optional[str]:
+        """Validate user instructions size (max 50KB)"""
+        if v and len(v.encode("utf-8")) > 50 * 1024:
+            raise ValueError("User instructions exceed 50KB limit")
+        return v
 
     @field_validator("template_content")
     @classmethod
-    def validate_template_size(cls, v: Optional[str]) -> Optional[str]:
-        """Validate template content size (max 100KB)"""
+    def validate_template_content_size(cls, v: Optional[str]) -> Optional[str]:
+        """Validate template content size (max 100KB) - legacy support"""
         if v and len(v.encode("utf-8")) > MAX_TEMPLATE_SIZE:
             raise ValueError(f"Template content exceeds maximum size of {MAX_TEMPLATE_SIZE / 1024}KB")
         return v
 
 
 class TemplateResponse(BaseModel):
+    """Template response with dual fields (v3.1+)."""
+
     id: str
     tenant_key: str
     product_id: Optional[str]
@@ -99,7 +121,14 @@ class TemplateResponse(BaseModel):
     cli_tool: str
     background_color: Optional[str]
     description: Optional[str]
-    template_content: str
+
+    # NEW: Expose both fields separately (v3.1+)
+    system_instructions: str = Field(..., description="Read-only MCP coordination instructions")
+    user_instructions: Optional[str] = Field(None, description="User-customizable instructions")
+
+    # DEPRECATED: Merged view for backward compatibility
+    template_content: str = Field(..., description="Merged view (system + user)")
+
     model: Optional[str]
     tools: Optional[str]
     behavioral_rules: list[str]
@@ -109,6 +138,7 @@ class TemplateResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime]
+
     # Legacy fields (for compatibility)
     category: Optional[str] = None
     project_type: Optional[str] = None
@@ -118,6 +148,45 @@ class TemplateResponse(BaseModel):
     avg_generation_ms: Optional[float] = None
     created_by: Optional[str] = None
     preferred_tool: str = "claude"
+
+    @classmethod
+    def from_orm(cls, template):
+        """Convert ORM model to response schema with dual fields."""
+        # Merge system and user instructions for backward compatibility
+        merged_content = template.system_instructions
+        if template.user_instructions:
+            merged_content = f"{template.system_instructions}\n\n{template.user_instructions}"
+
+        return cls(
+            id=template.id,
+            tenant_key=template.tenant_key,
+            product_id=template.product_id,
+            name=template.name,
+            role=template.role,
+            cli_tool=template.cli_tool,
+            background_color=template.background_color,
+            description=template.description,
+            system_instructions=template.system_instructions,
+            user_instructions=template.user_instructions,
+            template_content=merged_content,
+            model=template.model,
+            tools=template.tools,
+            behavioral_rules=template.behavioral_rules or [],
+            success_criteria=template.success_criteria or [],
+            tags=template.tags or [],
+            is_default=template.is_default,
+            is_active=template.is_active,
+            created_at=template.created_at,
+            updated_at=template.updated_at,
+            category=template.category,
+            project_type=template.project_type,
+            variables=template.variables or [],
+            version=template.version,
+            usage_count=template.usage_count,
+            avg_generation_ms=template.avg_generation_ms,
+            created_by=template.created_by,
+            preferred_tool=template.preferred_tool or "claude"
+        )
 
 
 class TemplateHistoryResponse(BaseModel):
@@ -245,6 +314,46 @@ async def validate_active_agent_limit(
     return True, ""
 
 
+@router.get("/{template_id}", response_model=TemplateResponse)
+async def get_template(
+    template_id: str = Path(..., description="Template ID"),
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get a single template by ID (v3.1+ with dual fields).
+
+    Returns both system_instructions and user_instructions separately,
+    plus merged template_content for backward compatibility.
+
+    Security:
+    - Tenant ownership validation (403 if wrong tenant)
+    - Authentication required via JWT
+    """
+    try:
+        from src.giljo_mcp.models import AgentTemplate
+
+        context = get_tenant_and_product_from_user(current_user)
+
+        # Get template with tenant isolation
+        stmt = select(AgentTemplate).where(
+            and_(AgentTemplate.id == template_id, AgentTemplate.tenant_key == context["tenant_key"])
+        )
+        result = await session.execute(stmt)
+        template = result.scalar_one_or_none()
+
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found or access denied")  # noqa: TRY301
+
+        # Use from_orm helper for consistent dual-field response
+        return TemplateResponse.from_orm(template)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/", response_model=list[TemplateResponse])
 async def get_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
@@ -298,39 +407,8 @@ async def get_templates(
 
         response_time = (time.time() - start_time) * 1000
 
-        # Convert to response models
-        responses = []
-        for template in templates:
-            responses.append(
-                TemplateResponse(
-                    id=template.id,
-                    tenant_key=template.tenant_key,
-                    product_id=template.product_id,
-                    name=template.name,
-                    category=template.category,
-                    role=template.role,
-                    cli_tool=template.cli_tool,
-                    background_color=template.background_color,
-                    model=template.model,
-                    tools=template.tools,
-                    project_type=template.project_type,
-                    template_content=template.template_content,
-                    variables=template.variables or [],
-                    behavioral_rules=template.behavioral_rules or [],
-                    success_criteria=template.success_criteria or [],
-                    description=template.description,
-                    version=template.version,
-                    is_active=template.is_active,
-                    is_default=template.is_default,
-                    tags=template.tags or [],
-                    usage_count=template.usage_count,
-                    avg_generation_ms=template.avg_generation_ms,
-                    created_at=template.created_at,
-                    updated_at=template.updated_at,
-                    created_by=template.created_by,
-                    preferred_tool=template.tool or "claude",
-                )
-            )
+        # Convert to response models using from_orm helper (includes dual fields)
+        responses = [TemplateResponse.from_orm(template) for template in templates]
 
         # Log performance
         if response_time > 100:
@@ -533,8 +611,12 @@ async def create_template(
             name=new_template.name,
             category=new_template.category,
             role=new_template.role,
+            cli_tool=new_template.cli_tool or "claude",
+            background_color=new_template.background_color,
             project_type=new_template.project_type,
             template_content=new_template.template_content,
+            model=new_template.model,
+            tools=new_template.tools,
             variables=new_template.variables,
             behavioral_rules=new_template.behavioral_rules,
             success_criteria=new_template.success_criteria,
@@ -565,12 +647,17 @@ async def update_template(
     session: AsyncSession = Depends(get_db_session),
 ):
     """
-    Update an existing template.
+    Update an existing template (v3.1+ with system_instructions protection).
+
+    IMPORTANT: system_instructions cannot be modified via this endpoint.
+    Only user_instructions and other editable fields can be updated.
+    Use POST /templates/{id}/reset-system to restore system defaults.
 
     Security:
     - Tenant ownership validation (403 if wrong tenant)
     - System template protection (403 if tenant_key="system")
-    - Size validation (max 100KB)
+    - system_instructions protection (403 if attempted)
+    - Size validation (user_instructions max 50KB)
     - Automatically creates archive of previous version
     """
     try:
@@ -594,6 +681,15 @@ async def update_template(
         if template.tenant_key == "system":
             raise HTTPException(status_code=403, detail="System templates are read-only")  # noqa: TRY301
 
+        # CRITICAL: Prevent system_instructions modification (Handover 0106)
+        # Check if request contains system_instructions field (even if None)
+        if hasattr(update, "system_instructions") and "system_instructions" in update.model_dump(exclude_unset=True):
+            raise HTTPException(
+                status_code=403,
+                detail="system_instructions is read-only and cannot be modified. "
+                       "Use /templates/{id}/reset-system to restore system defaults."
+            )  # noqa: TRY301
+
         # Validate 8-role active limit if toggling active status (Handover 0103)
         if update.is_active is not None and update.is_active != template.is_active:
             valid, error_msg = await validate_active_agent_limit(
@@ -607,7 +703,7 @@ async def update_template(
             if not valid:
                 raise HTTPException(status_code=409, detail=error_msg)  # noqa: TRY301
 
-        # Archive current version before updating
+        # Archive current version before updating (include both fields)
         archive = TemplateArchive(
             tenant_key=template.tenant_key,
             template_id=template.id,
@@ -615,7 +711,9 @@ async def update_template(
             name=template.name,
             category=template.category,
             role=template.role,
-            template_content=template.template_content,
+            system_instructions=template.system_instructions,  # NEW: Archive system instructions
+            user_instructions=template.user_instructions,  # NEW: Archive user instructions
+            template_content=template.template_content,  # Legacy
             variables=template.variables,
             behavioral_rules=template.behavioral_rules,
             success_criteria=template.success_criteria,
@@ -628,40 +726,61 @@ async def update_template(
         )
         session.add(archive)
 
-        # Update template fields
+        # Update ONLY editable fields
+        if update.user_instructions is not None:
+            template.user_instructions = update.user_instructions
+
         if update.name is not None:
             template.name = update.name
+
         if update.role is not None:
             template.role = update.role
             # Auto-update background_color when role changes
             template.background_color = get_role_color(update.role)
+
         if update.cli_tool is not None:
             template.cli_tool = update.cli_tool
             template.tool = update.cli_tool  # Update legacy field
+
         if update.background_color is not None:
             template.background_color = update.background_color
+
         if update.description is not None:
             template.description = update.description
+
+        # Legacy support: template_content maps to user_instructions
         if update.template_content is not None:
             is_valid, error_msg = validate_system_prompt(update.template_content)
             if not is_valid:
                 raise HTTPException(status_code=400, detail=error_msg)
-            template.template_content = update.template_content
+            template.user_instructions = update.template_content  # Map to user_instructions
             # Re-extract variables
             template.variables = re.findall(r"\{(\w+)\}", update.template_content)
+
         if update.model is not None:
             template.model = update.model
+
         if update.behavioral_rules is not None:
             template.behavioral_rules = update.behavioral_rules
+
         if update.success_criteria is not None:
             template.success_criteria = update.success_criteria
+
         if update.tags is not None:
             template.tags = update.tags
+
         if update.is_active is not None:
             template.is_active = update.is_active
+
         if update.preferred_tool is not None:
             template.tool = update.preferred_tool
             template.cli_tool = update.preferred_tool  # Update new field
+
+        # Update merged template_content for backward compatibility
+        merged_content = template.system_instructions
+        if template.user_instructions:
+            merged_content = f"{template.system_instructions}\n\n{template.user_instructions}"
+        template.template_content = merged_content
 
         # Handle default flag
         if update.is_default is not None and update.is_default and template.role:
@@ -723,30 +842,8 @@ async def update_template(
                 version=template.version,
             )
 
-        return TemplateResponse(
-            id=template.id,
-            tenant_key=template.tenant_key,
-            product_id=template.product_id,
-            name=template.name,
-            category=template.category,
-            role=template.role,
-            project_type=template.project_type,
-            template_content=template.template_content,
-            variables=template.variables,
-            behavioral_rules=template.behavioral_rules,
-            success_criteria=template.success_criteria,
-            description=template.description,
-            version=template.version,
-            is_active=template.is_active,
-            is_default=template.is_default,
-            tags=template.tags,
-            usage_count=template.usage_count,
-            avg_generation_ms=template.avg_generation_ms,
-            created_at=template.created_at,
-            updated_at=template.updated_at,
-            created_by=template.created_by,
-            preferred_tool=template.tool or "claude",
-        )
+        # Use from_orm helper for consistent response
+        return TemplateResponse.from_orm(template)
 
     except HTTPException:
         raise
@@ -843,6 +940,115 @@ async def delete_template(
             "template_id": template_id,
             "operation": operation,
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{template_id}/reset-system", response_model=TemplateResponse)
+async def reset_system_instructions(
+    template_id: str = Path(..., description="Template ID"),
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Reset system_instructions to system defaults (v3.1+ Handover 0106).
+
+    This is the ONLY way to modify system_instructions:
+    - Restores default MCP coordination instructions
+    - Preserves user_instructions unchanged
+    - Creates archive of previous version
+    - Admin operation (protects critical MCP tool integration)
+
+    Security:
+    - Tenant ownership validation (403 if wrong tenant)
+    - System template protection (403 if tenant_key="system")
+    - Automatically creates archive of previous version
+    """
+    try:
+        from src.giljo_mcp.models import AgentTemplate, TemplateArchive
+
+        context = get_tenant_and_product_from_user(current_user)
+
+        # Get template
+        stmt = select(AgentTemplate).where(
+            and_(AgentTemplate.id == template_id, AgentTemplate.tenant_key == context["tenant_key"])
+        )
+        result = await session.execute(stmt)
+        template = result.scalar_one_or_none()
+
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found or access denied")  # noqa: TRY301
+
+        # Verify tenant isolation
+        if template.tenant_key == "system":
+            raise HTTPException(status_code=403, detail="Cannot reset system templates")  # noqa: TRY301
+
+        # Archive current version before reset
+        archive = TemplateArchive(
+            tenant_key=template.tenant_key,
+            template_id=template.id,
+            product_id=template.product_id,
+            name=template.name,
+            category=template.category,
+            role=template.role,
+            system_instructions=template.system_instructions,
+            user_instructions=template.user_instructions,
+            template_content=template.template_content,
+            variables=template.variables,
+            behavioral_rules=template.behavioral_rules,
+            success_criteria=template.success_criteria,
+            version=template.version,
+            archive_reason="Pre-reset backup (system instructions reset)",
+            archive_type="auto",
+            archived_by=current_user.username,
+            usage_count_at_archive=template.usage_count,
+            avg_generation_ms_at_archive=template.avg_generation_ms,
+        )
+        session.add(archive)
+
+        # Get system default instructions from template seeder
+        from src.giljo_mcp.template_seeder import _get_mcp_coordination_section
+
+        default_system = _get_mcp_coordination_section()
+
+        # Reset system_instructions ONLY (preserve user_instructions)
+        template.system_instructions = default_system
+
+        # Update merged content for backward compatibility
+        merged_content = template.system_instructions
+        if template.user_instructions:
+            merged_content = f"{template.system_instructions}\n\n{template.user_instructions}"
+        template.template_content = merged_content
+
+        # Update metadata
+        major, minor, _patch = template.version.split(".")
+        template.version = f"{major}.{int(minor) + 1}.0"
+        template.updated_at = datetime.now(timezone.utc)
+
+        await session.commit()
+        await session.refresh(template)
+
+        # Broadcast update via WebSocket
+        from api.app import state
+
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_template_update(
+                template_id=template.id,
+                template_name=template.name,
+                operation="reset-system",
+                tenant_key=context["tenant_key"],
+                product_id=context.get("product_id"),
+                user_id=current_user.username,
+                change_summary=f"System instructions reset to defaults (version {template.version})",
+                version=template.version,
+            )
+
+        # Use from_orm helper for consistent response
+        return TemplateResponse.from_orm(template)
 
     except HTTPException:
         raise
