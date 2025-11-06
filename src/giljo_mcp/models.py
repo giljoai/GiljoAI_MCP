@@ -2106,6 +2106,25 @@ class MCPAgentJob(Base):
         comment="JSONB metadata for thin client architecture (Handover 0088). Stores field_priorities, user_id, tool, etc.",
     )
 
+    # Handover 0106: Health monitoring fields
+    last_health_check = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of last health check scan"
+    )
+    health_status = Column(
+        String(20),
+        default="unknown",
+        nullable=False,
+        comment="Health state: unknown, healthy, warning, critical, timeout"
+    )
+    health_failure_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Consecutive health check failures"
+    )
+
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
 
@@ -2134,6 +2153,12 @@ class MCPAgentJob(Base):
             name="ck_mcp_agent_job_succession_reason",
         ),
         CheckConstraint("context_used >= 0 AND context_used <= context_budget", name="ck_mcp_agent_job_context_usage"),
+        # Handover 0106: Health monitoring constraints
+        CheckConstraint(
+            "health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')",
+            name="ck_mcp_agent_job_health_status"
+        ),
+        CheckConstraint("health_failure_count >= 0", name="ck_mcp_agent_job_health_failure_count"),
     )
 
     def __repr__(self):
