@@ -12,14 +12,12 @@ CRITICAL: This tool is the foundation of Handover 0088 (70% token reduction).
 If this test fails, thin client prompts will not work.
 """
 
-import pytest
-from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+import pytest
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Project, Product, AgentTemplate
+from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
 
 
 @pytest.mark.asyncio
@@ -45,7 +43,7 @@ class TestGetOrchestratorInstructionsMCP:
                 name="Test Product",
                 description="Test product for MCP tool tests",
                 vision_content="Product vision for testing",
-                status="active"
+                status="active",
             )
             session.add(product)
             await session.flush()
@@ -59,7 +57,7 @@ class TestGetOrchestratorInstructionsMCP:
                 mission="Test mission for orchestrator",
                 status="active",
                 context_budget=150000,
-                context_used=0
+                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -77,13 +75,9 @@ class TestGetOrchestratorInstructionsMCP:
                 context_used=0,
                 instance_number=1,
                 job_metadata={
-                    "field_priorities": {
-                        "core_features": 10,
-                        "tech_stack": 8,
-                        "architecture": 7
-                    },
-                    "user_id": "test_user_123"
-                }
+                    "field_priorities": {"core_features": 10, "tech_stack": 8, "architecture": 7},
+                    "user_id": "test_user_123",
+                },
             )
             session.add(orchestrator)
 
@@ -93,7 +87,7 @@ class TestGetOrchestratorInstructionsMCP:
                 name="Backend Developer",
                 role="backend",
                 description="Backend development specialist",
-                is_active=True
+                is_active=True,
             )
             session.add(template)
 
@@ -103,7 +97,7 @@ class TestGetOrchestratorInstructionsMCP:
                 "tenant_key": tenant_key,
                 "orchestrator_id": orchestrator_id,
                 "project_id": str(project.id),
-                "product_id": str(product.id)
+                "product_id": str(product.id),
             }
 
             # Cleanup
@@ -111,8 +105,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_tool_accessor_has_method(self, db_manager):
         """Test 1: ToolAccessor has get_orchestrator_instructions method"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -122,6 +116,7 @@ class TestGetOrchestratorInstructionsMCP:
 
         # Should be a coroutine function
         import inspect
+
         assert inspect.iscoroutinefunction(tool_accessor.get_orchestrator_instructions)
 
     async def test_http_endpoint_tool_map_includes_tool(self):
@@ -131,7 +126,6 @@ class TestGetOrchestratorInstructionsMCP:
         # we verify the code structure instead
 
         # Read the mcp_tools.py file and verify the tool is mapped
-        import re
         from pathlib import Path
 
         mcp_tools_path = Path("F:/GiljoAI_MCP/api/endpoints/mcp_tools.py")
@@ -139,7 +133,7 @@ class TestGetOrchestratorInstructionsMCP:
 
         # Check tool is in tool_map
         assert '"get_orchestrator_instructions"' in content
-        assert 'state.tool_accessor.get_orchestrator_instructions' in content
+        assert "state.tool_accessor.get_orchestrator_instructions" in content
 
     async def test_orchestration_module_registers_tool(self):
         """Test 3: Orchestration module has get_orchestrator_instructions as MCP tool"""
@@ -157,16 +151,15 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_success(self, db_manager, tenant_context):
         """Test 4: get_orchestrator_instructions returns correct structure"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         # Call the tool
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"],
-            tenant_key=tenant_context["tenant_key"]
+            orchestrator_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
         )
 
         # Should return success structure
@@ -181,11 +174,7 @@ class TestGetOrchestratorInstructionsMCP:
 
         # Should have field priorities
         assert "field_priorities" in result
-        assert result["field_priorities"] == {
-            "core_features": 10,
-            "tech_stack": 8,
-            "architecture": 7
-        }
+        assert result["field_priorities"] == {"core_features": 10, "tech_stack": 8, "architecture": 7}
 
         # Should have token estimates
         assert "estimated_tokens" in result
@@ -194,16 +183,15 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_not_found(self, db_manager, tenant_context):
         """Test 5: get_orchestrator_instructions handles missing orchestrator"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         # Call with non-existent orchestrator ID
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id="nonexistent-orchestrator-id",
-            tenant_key=tenant_context["tenant_key"]
+            orchestrator_id="nonexistent-orchestrator-id", tenant_key=tenant_context["tenant_key"]
         )
 
         # Should return error structure
@@ -214,16 +202,15 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_tenant_isolation(self, db_manager, tenant_context):
         """Test 6: get_orchestrator_instructions enforces tenant isolation"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         # Try to access orchestrator with wrong tenant key
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"],
-            tenant_key="wrong_tenant_key"
+            orchestrator_id=tenant_context["orchestrator_id"], tenant_key="wrong_tenant_key"
         )
 
         # Should return NOT_FOUND (not expose existence to other tenants)
@@ -232,25 +219,19 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_validation(self, db_manager):
         """Test 7: get_orchestrator_instructions validates inputs"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         # Test empty orchestrator_id
-        result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id="",
-            tenant_key="some_tenant"
-        )
+        result = await tool_accessor.get_orchestrator_instructions(orchestrator_id="", tenant_key="some_tenant")
         assert "error" in result
         assert result["error"] == "VALIDATION_ERROR"
 
         # Test empty tenant_key
-        result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id="some_id",
-            tenant_key=""
-        )
+        result = await tool_accessor.get_orchestrator_instructions(orchestrator_id="some_id", tenant_key="")
         assert "error" in result
         assert result["error"] == "VALIDATION_ERROR"
 
@@ -270,20 +251,20 @@ class TestGetOrchestratorInstructionsMCP:
             assert "get_orchestrator_instructions" in content
 
             # Should use mcp__giljo-mcp__ prefix
-            assert "mcp__giljo-mcp__get_orchestrator_instructions" in content or \
-                   "get_orchestrator_instructions" in content
+            assert (
+                "mcp__giljo-mcp__get_orchestrator_instructions" in content or "get_orchestrator_instructions" in content
+            )
 
     async def test_mission_planner_integration(self, db_manager, tenant_context):
         """Test 9: get_orchestrator_instructions integrates with MissionPlanner"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"],
-            tenant_key=tenant_context["tenant_key"]
+            orchestrator_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
         )
 
         # Mission should be condensed (not full vision)
@@ -303,15 +284,14 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_agent_templates_included(self, db_manager, tenant_context):
         """Test 10: get_orchestrator_instructions includes agent templates"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"],
-            tenant_key=tenant_context["tenant_key"]
+            orchestrator_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
         )
 
         # Should include agent templates
@@ -329,6 +309,173 @@ class TestGetOrchestratorInstructionsMCP:
             assert "name" in template
             assert "role" in template
             assert "description" in template
+
+    async def test_empty_mission_fallback(self, db_manager):
+        """Test 11: get_orchestrator_instructions handles empty mission with fallback"""
+        from unittest.mock import AsyncMock, patch
+
+        from giljo_mcp.mission_planner import MissionPlanner
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_key = f"test_tenant_{uuid4().hex[:8]}"
+        tenant_manager = TenantManager()
+
+        async with db_manager.get_session_async() as session:
+            # Create product with minimal data
+            product = Product(
+                tenant_key=tenant_key,
+                name="Test Product",
+                description="Test product description",
+                status="active",
+            )
+            session.add(product)
+            await session.flush()
+
+            # Create project with description
+            project = Project(
+                tenant_key=tenant_key,
+                product_id=product.id,
+                name="Test Project",
+                description="Project goal: Build amazing features",
+                status="active",
+                context_budget=150000,
+                context_used=0,
+            )
+            session.add(project)
+            await session.flush()
+
+            # Create orchestrator job
+            orchestrator_id = str(uuid4())
+            orchestrator = MCPAgentJob(
+                job_id=orchestrator_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                agent_type="orchestrator",
+                status="pending",
+                context_budget=150000,
+                context_used=0,
+                job_metadata={},
+            )
+            session.add(orchestrator)
+
+            # Create sample template
+            template = AgentTemplate(
+                tenant_key=tenant_key,
+                name="Test Agent",
+                role="test",
+                description="Test agent",
+                is_active=True,
+            )
+            session.add(template)
+
+            await session.commit()
+
+            # Mock MissionPlanner to return empty string
+            tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+            with patch.object(MissionPlanner, "_build_context_with_priorities", new_callable=AsyncMock) as mock_planner:
+                # Return empty string to trigger fallback
+                mock_planner.return_value = ""
+
+                # Call the tool
+                result = await tool_accessor.get_orchestrator_instructions(
+                    orchestrator_id=orchestrator_id, tenant_key=tenant_key
+                )
+
+                # Should not have error
+                assert "error" not in result
+
+                # Mission should not be empty (fallback should kick in)
+                assert "mission" in result
+                assert result["mission"]  # Should be truthy (non-empty string)
+                assert len(result["mission"]) > 0
+
+                # Mission should include project description from fallback
+                assert "goal" in result["mission"].lower() or "project" in result["mission"].lower()
+
+    async def test_empty_mission_with_product_vision_fallback(self, db_manager):
+        """Test 12: get_orchestrator_instructions uses product vision in fallback"""
+        from unittest.mock import AsyncMock, patch
+
+        from giljo_mcp.mission_planner import MissionPlanner
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_key = f"test_tenant_{uuid4().hex[:8]}"
+        tenant_manager = TenantManager()
+
+        async with db_manager.get_session_async() as session:
+            # Create product with vision summary
+            product = Product(
+                tenant_key=tenant_key,
+                name="Advanced Product",
+                description="Advanced product description",
+                vision_summary="Build a comprehensive solution for data processing",
+                status="active",
+            )
+            session.add(product)
+            await session.flush()
+
+            # Create project
+            project = Project(
+                tenant_key=tenant_key,
+                product_id=product.id,
+                name="Data Processing Project",
+                description="Implement data pipeline",
+                status="active",
+                context_budget=150000,
+                context_used=0,
+            )
+            session.add(project)
+            await session.flush()
+
+            # Create orchestrator
+            orchestrator_id = str(uuid4())
+            orchestrator = MCPAgentJob(
+                job_id=orchestrator_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                agent_type="orchestrator",
+                status="pending",
+                context_budget=150000,
+                context_used=0,
+                job_metadata={},
+            )
+            session.add(orchestrator)
+
+            # Create template
+            template = AgentTemplate(
+                tenant_key=tenant_key,
+                name="Test Agent",
+                role="test",
+                description="Test",
+                is_active=True,
+            )
+            session.add(template)
+
+            await session.commit()
+
+            tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+            with patch.object(MissionPlanner, "_build_context_with_priorities", new_callable=AsyncMock) as mock_planner:
+                # Return empty string with only whitespace
+                mock_planner.return_value = "   "
+
+                result = await tool_accessor.get_orchestrator_instructions(
+                    orchestrator_id=orchestrator_id, tenant_key=tenant_key
+                )
+
+                # Should not have error
+                assert "error" not in result
+
+                # Mission should have fallback content
+                assert "mission" in result
+                mission = result["mission"]
+                assert mission and mission.strip()  # Non-empty and trimmed
+
+                # Should include vision summary
+                assert "data processing" in mission.lower()
 
 
 @pytest.mark.asyncio
@@ -373,8 +520,8 @@ class TestErrorHandling:
 
     async def test_handles_missing_project(self, db_manager):
         """Test 13: Gracefully handles missing project"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -390,14 +537,13 @@ class TestErrorHandling:
                 project_id=uuid4(),  # Non-existent project
                 agent_type="orchestrator",
                 mission="Test",
-                status="pending"
+                status="pending",
             )
             session.add(orchestrator)
             await session.commit()
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=orchestrator_id,
-            tenant_key=tenant_key
+            orchestrator_id=orchestrator_id, tenant_key=tenant_key
         )
 
         # Should return error
@@ -406,8 +552,8 @@ class TestErrorHandling:
 
     async def test_handles_database_errors(self, db_manager):
         """Test 14: Handles database connection errors gracefully"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
         from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -415,10 +561,7 @@ class TestErrorHandling:
         # Close database connection to simulate error
         await db_manager.close()
 
-        result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id="test_id",
-            tenant_key="test_key"
-        )
+        result = await tool_accessor.get_orchestrator_instructions(orchestrator_id="test_id", tenant_key="test_key")
 
         # Should return INTERNAL_ERROR
         assert "error" in result
@@ -431,7 +574,6 @@ async def test_client():
     """Create test client for HTTP endpoint testing"""
     # This would be implemented with httpx.AsyncClient
     # For now, we rely on structural validation
-    pass
 
 
 if __name__ == "__main__":
