@@ -25,7 +25,7 @@ ROLE_PATTERNS = {
     "implementer": ["implementation", "code", "function", "class"],
     "tester": ["testing", "test", "quality", "validation"],
     "analyzer": ["analysis", "requirements", "specification"],
-    "orchestrator": ["mission", "vision", "goal", "objective"]
+    "orchestrator": ["mission", "vision", "goal", "objective"],
 }
 
 
@@ -49,9 +49,7 @@ class DynamicContextLoader:
 
         logger.info("DynamicContextLoader initialized")
 
-    def calculate_relevance_score(
-        self, chunk, query: str, role: Optional[str] = None
-    ) -> float:
+    def calculate_relevance_score(self, chunk, query: str, role: Optional[str] = None) -> float:
         """
         Calculate relevance score for a chunk.
 
@@ -90,7 +88,7 @@ class DynamicContextLoader:
         query: str,
         role: Optional[str] = None,
         max_tokens: int = 10000,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Dict[str, any]]:
         """
         Load relevant chunks with role-based filtering.
@@ -107,26 +105,23 @@ class DynamicContextLoader:
             List of chunk dicts with relevance scores
         """
         # Search for chunks
-        raw_chunks = self.indexer.search_chunks(
-            tenant_key=tenant_key,
-            product_id=product_id,
-            query=query,
-            limit=limit
-        )
+        raw_chunks = self.indexer.search_chunks(tenant_key=tenant_key, product_id=product_id, query=query, limit=limit)
 
         # Score and sort chunks
         scored_chunks = []
         for chunk in raw_chunks:
             score = self.calculate_relevance_score(chunk, query, role)
-            scored_chunks.append({
-                "chunk_id": chunk.chunk_id,
-                "content": chunk.content,
-                "tokens": chunk.token_count or 0,
-                "keywords": chunk.keywords,
-                "summary": chunk.summary,
-                "relevance_score": score,
-                "chunk_order": chunk.chunk_order
-            })
+            scored_chunks.append(
+                {
+                    "chunk_id": chunk.chunk_id,
+                    "content": chunk.content,
+                    "tokens": chunk.token_count or 0,
+                    "keywords": chunk.keywords,
+                    "summary": chunk.summary,
+                    "relevance_score": score,
+                    "chunk_order": chunk.chunk_order,
+                }
+            )
 
         # Sort by relevance score (descending)
         scored_chunks.sort(key=lambda c: c["relevance_score"], reverse=True)
@@ -144,8 +139,7 @@ class DynamicContextLoader:
                 break
 
         logger.info(
-            f"Loaded {len(selected_chunks)} chunks ({total_tokens} tokens) "
-            f"for query '{query}' with role '{role}'"
+            f"Loaded {len(selected_chunks)} chunks ({total_tokens} tokens) for query '{query}' with role '{role}'"
         )
 
         return selected_chunks

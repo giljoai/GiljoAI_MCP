@@ -4,9 +4,11 @@ Simple database migration script - rename completed to database_initialized
 No fancy unicode characters for Windows compatibility
 """
 
-import psycopg2
 import os
+
+import psycopg2
 from dotenv import load_dotenv
+
 
 # Load environment
 load_dotenv()
@@ -28,7 +30,7 @@ conn_params = {
     "password": user_pass[1],
     "host": host_port[0],
     "port": host_port[1],
-    "database": host_port_db[1]
+    "database": host_port_db[1],
 }
 
 print("=" * 80)

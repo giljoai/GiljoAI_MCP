@@ -19,17 +19,18 @@ from pathlib import Path
 
 import pytest
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.context_management import (
-    ContextManagementSystem,
-    VisionDocumentChunker,
     ContextIndexer,
+    ContextManagementSystem,
+    ContextSummarizer,
     DynamicContextLoader,
-    ContextSummarizer
+    VisionDocumentChunker,
 )
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product, MCPContextIndex
+from src.giljo_mcp.models import MCPContextIndex
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -247,6 +248,7 @@ class TestVisionDocumentChunker:
 
         for chunk in chunks:
             import tiktoken
+
             encoding = tiktoken.encoding_for_model("gpt-4")
             actual_tokens = len(encoding.encode(chunk["content"]))
 
@@ -299,9 +301,9 @@ class TestContextIndexer:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(MCPContextIndex).where(
-                MCPContextIndex.tenant_key == tenant_key,
-                MCPContextIndex.product_id == "test-product"
+                MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == "test-product"
             )
             result = await session.execute(stmt)
             stored_chunks = result.scalars().all()
@@ -309,9 +311,9 @@ class TestContextIndexer:
             assert len(stored_chunks) == len(chunks)
 
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-product"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-product"}
             )
             await session.commit()
 
@@ -335,9 +337,9 @@ class TestContextIndexer:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-search"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-search"}
             )
             await session.commit()
 
@@ -356,9 +358,9 @@ class TestContextIndexer:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-get-chunks"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-get-chunks"}
             )
             await session.commit()
 
@@ -390,10 +392,7 @@ class TestDynamicContextLoader:
 
         loader = DynamicContextLoader(db_manager)
         chunks = loader.load_relevant_chunks(
-            tenant_key=tenant_key,
-            product_id="test-loader",
-            query="authentication security JWT",
-            max_tokens=3000
+            tenant_key=tenant_key, product_id="test-loader", query="authentication security JWT", max_tokens=3000
         )
 
         assert len(chunks) > 0
@@ -407,9 +406,9 @@ class TestDynamicContextLoader:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-loader"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-loader"}
             )
             await session.commit()
 
@@ -426,15 +425,11 @@ class TestDynamicContextLoader:
             product_id="test-role",
             query="API endpoints database",
             role="backend",
-            max_tokens=5000
+            max_tokens=5000,
         )
 
         frontend_chunks = loader.load_relevant_chunks(
-            tenant_key=tenant_key,
-            product_id="test-role",
-            query="React components UI",
-            role="frontend",
-            max_tokens=5000
+            tenant_key=tenant_key, product_id="test-role", query="React components UI", role="frontend", max_tokens=5000
         )
 
         assert len(backend_chunks) > 0
@@ -442,9 +437,9 @@ class TestDynamicContextLoader:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-role"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-role"}
             )
             await session.commit()
 
@@ -463,7 +458,7 @@ class TestContextSummarizer:
             tenant_key=tenant_key,
             product_id="test-summary",
             full_content=full_content,
-            condensed_mission=condensed_mission
+            condensed_mission=condensed_mission,
         )
 
         assert "original_tokens" in stats
@@ -499,9 +494,7 @@ class TestContextManagementSystem:
         cms = ContextManagementSystem(db_manager, target_chunk_size=1000)
 
         result = cms.process_vision_document(
-            tenant_key=tenant_key,
-            product_id="test-cms",
-            content=sample_vision_document
+            tenant_key=tenant_key, product_id="test-cms", content=sample_vision_document
         )
 
         assert result["success"] is True
@@ -510,9 +503,9 @@ class TestContextManagementSystem:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-cms"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-cms"}
             )
             await session.commit()
 
@@ -527,7 +520,7 @@ class TestContextManagementSystem:
             product_id="test-agent-context",
             query="authentication API security",
             role="backend",
-            max_tokens=4000
+            max_tokens=4000,
         )
 
         assert "chunks" in result
@@ -541,9 +534,10 @@ class TestContextManagementSystem:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
                 text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-agent-context"}
+                {"product_id": "test-agent-context"},
             )
             await session.commit()
 
@@ -559,9 +553,9 @@ class TestContextManagementSystem:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-all-chunks"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-all-chunks"}
             )
             await session.commit()
 
@@ -607,9 +601,10 @@ class TestMultiTenantIsolation:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
                 text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "shared-product-id"}
+                {"product_id": "shared-product-id"},
             )
             await session.commit()
 
@@ -629,14 +624,13 @@ class TestMultiTenantIsolation:
         tenant1_results = indexer.search_chunks(tenant1, "authentication", limit=10)
         tenant2_results = indexer.search_chunks(tenant2, "authentication", limit=10)
 
-        assert all(chunk.get("tenant_key") == tenant1 or "tenant_key" not in chunk
-                   for chunk in tenant1_results)
+        assert all(chunk.get("tenant_key") == tenant1 or "tenant_key" not in chunk for chunk in tenant1_results)
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "search-product"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "search-product"}
             )
             await session.commit()
 
@@ -662,10 +656,10 @@ class TestConcurrentOperations:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             for product_id in product_ids:
                 await session.execute(
-                    text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                    {"product_id": product_id}
+                    text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": product_id}
                 )
             await session.commit()
 
@@ -688,9 +682,10 @@ class TestConcurrentOperations:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
                 text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "concurrent-search"}
+                {"product_id": "concurrent-search"},
             )
             await session.commit()
 
@@ -719,9 +714,9 @@ class TestErrorRecovery:
 
         async with db_manager.get_session_async() as session:
             from sqlalchemy import text
+
             await session.execute(
-                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                {"product_id": "test-product"}
+                text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": "test-product"}
             )
             await session.commit()
 

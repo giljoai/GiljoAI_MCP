@@ -20,17 +20,17 @@ Integration:
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import List
 
 from .agent_job_manager import AgentJobManager
 from .job_coordinator import JobCoordinator
 from .orchestration_types import (
-    AgentConfig,
     StageResult,
     WorkflowResult,
     WorkflowStage,
 )
 from .repositories.agent_job_repository import AgentJobRepository
+
 
 logger = logging.getLogger(__name__)
 
@@ -89,17 +89,13 @@ class WorkflowEngine:
             ValueError: If workflow_type is invalid
         """
         logger.info(
-            f"Starting {workflow_type} workflow with {len(stages)} stages "
-            f"for tenant {tenant_key}, project {project_id}"
+            f"Starting {workflow_type} workflow with {len(stages)} stages for tenant {tenant_key}, project {project_id}"
         )
 
         # Validate workflow type
         valid_types = ["waterfall", "parallel"]
         if workflow_type not in valid_types:
-            raise ValueError(
-                f"Invalid workflow type: {workflow_type}. "
-                f"Must be one of {valid_types}"
-            )
+            raise ValueError(f"Invalid workflow type: {workflow_type}. Must be one of {valid_types}")
 
         # Track start time
         start_time = time.time()
@@ -161,17 +157,13 @@ class WorkflowEngine:
         for stage in stages:
             # Check dependencies
             if not await self._dependencies_met(stage, completed_stages):
-                logger.warning(
-                    f"Stage {stage.name} dependencies not met, skipping"
-                )
+                logger.warning(f"Stage {stage.name} dependencies not met, skipping")
                 failed_stages.append(stage.name)
                 continue
 
             # Execute stage with retry logic
             try:
-                stage_result = await self._execute_stage_with_retry(
-                    stage, tenant_key, project_id
-                )
+                stage_result = await self._execute_stage_with_retry(stage, tenant_key, project_id)
                 completed_stages.append(stage_result)
                 logger.info(f"Stage {stage.name} completed successfully")
 
@@ -184,14 +176,9 @@ class WorkflowEngine:
 
                 # Stop on critical failure
                 if stage.critical:
-                    logger.error(
-                        f"Critical stage {stage.name} failed, stopping workflow"
-                    )
+                    logger.error(f"Critical stage {stage.name} failed, stopping workflow")
                     break
-                else:
-                    logger.warning(
-                        f"Non-critical stage {stage.name} failed, continuing workflow"
-                    )
+                logger.warning(f"Non-critical stage {stage.name} failed, continuing workflow")
 
         # Determine overall status
         if not failed_stages:
@@ -307,10 +294,7 @@ class WorkflowEngine:
         for attempt in range(max_attempts):
             try:
                 if attempt > 0:
-                    logger.info(
-                        f"Retrying stage {stage.name} "
-                        f"(attempt {attempt + 1}/{max_attempts})"
-                    )
+                    logger.info(f"Retrying stage {stage.name} (attempt {attempt + 1}/{max_attempts})")
                     stage.retry_count = attempt
 
                 return await self._execute_stage(stage, tenant_key, project_id)
@@ -319,16 +303,11 @@ class WorkflowEngine:
                 last_error = e
                 if attempt < stage.max_retries:
                     # Exponential backoff
-                    delay = 2 ** attempt
-                    logger.warning(
-                        f"Stage {stage.name} attempt {attempt + 1} failed, "
-                        f"retrying in {delay}s: {e}"
-                    )
+                    delay = 2**attempt
+                    logger.warning(f"Stage {stage.name} attempt {attempt + 1} failed, retrying in {delay}s: {e}")
                     await asyncio.sleep(delay)
                 else:
-                    logger.error(
-                        f"Stage {stage.name} failed after {max_attempts} attempts"
-                    )
+                    logger.error(f"Stage {stage.name} failed after {max_attempts} attempts")
 
         # All retries exhausted
         raise last_error
@@ -371,9 +350,7 @@ class WorkflowEngine:
                 agent_type=agent_config.role,
                 mission=agent_config.mission.content if agent_config.mission else "",
                 spawned_by="workflow_engine",
-                context_chunks=(
-                    agent_config.context_chunks if agent_config.context_chunks else []
-                ),
+                context_chunks=(agent_config.context_chunks if agent_config.context_chunks else []),
                 initial_messages=[],
             )
             job_ids.append(job_id)
@@ -389,15 +366,11 @@ class WorkflowEngine:
 
         # Check for timeout
         if wait_result["timed_out"]:
-            raise TimeoutError(
-                f"Stage {stage.name} timed out after {stage.timeout_seconds}s"
-            )
+            raise TimeoutError(f"Stage {stage.name} timed out after {stage.timeout_seconds}s")
 
         # Check for failures
         if wait_result["failed"] > 0:
-            raise Exception(
-                f"Stage {stage.name} had {wait_result['failed']} failed jobs"
-            )
+            raise Exception(f"Stage {stage.name} had {wait_result['failed']} failed jobs")
 
         # Aggregate results from all jobs
         aggregated = await self.job_coordinator.aggregate_child_results(
@@ -441,9 +414,7 @@ class WorkflowEngine:
 
         for dependency in stage.depends_on:
             if dependency not in completed_names:
-                logger.debug(
-                    f"Stage {stage.name} waiting for dependency: {dependency}"
-                )
+                logger.debug(f"Stage {stage.name} waiting for dependency: {dependency}")
                 return False
 
         return True
@@ -483,13 +454,9 @@ class WorkflowEngine:
 
         # Log strategy
         if not stage.critical:
-            logger.warning(
-                f"Non-critical stage {stage.name} failed, workflow will continue"
-            )
+            logger.warning(f"Non-critical stage {stage.name} failed, workflow will continue")
         else:
-            logger.error(
-                f"Critical stage {stage.name} failed, workflow will stop"
-            )
+            logger.error(f"Critical stage {stage.name} failed, workflow will stop")
 
         # Future: Send notifications to orchestrator (Phase 3)
         # For now, just log the failure

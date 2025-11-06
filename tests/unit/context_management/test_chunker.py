@@ -8,6 +8,7 @@ TDD Approach: Tests written first, then implementation.
 """
 
 import pytest
+
 from giljo_mcp.context_management.chunker import VisionDocumentChunker
 
 
@@ -72,8 +73,9 @@ We'll use FastAPI for the API layer.
         assert len(keywords) <= 5
         # Should extract technical terms
         keywords_lower = [k.lower() for k in keywords]
-        assert any('phase' in k or 'database' in k or 'postgresql' in k
-                   or 'fastapi' in k or 'api' in k for k in keywords_lower)
+        assert any(
+            "phase" in k or "database" in k or "postgresql" in k or "fastapi" in k or "api" in k for k in keywords_lower
+        )
 
     def test_extract_keywords_empty_text(self, chunker):
         """Test keyword extraction from empty text."""
@@ -270,10 +272,7 @@ Third paragraph with additional content for proper chunking behavior.
         text = "Test document with some content for metadata validation."
         chunks = chunker.chunk_document(text, product_id="prod-vwx")
 
-        required_fields = [
-            "chunk_number", "total_chunks", "content", "tokens",
-            "keywords", "summary", "product_id"
-        ]
+        required_fields = ["chunk_number", "total_chunks", "content", "tokens", "keywords", "summary", "product_id"]
 
         for chunk in chunks:
             for field in required_fields:
@@ -292,7 +291,7 @@ Third paragraph with additional content for proper chunking behavior.
         from giljo_mcp.tools.chunking import EnhancedChunker
 
         # Verify EnhancedChunker is available
-        assert hasattr(chunker, 'enhanced_chunker')
+        assert hasattr(chunker, "enhanced_chunker")
         assert isinstance(chunker.enhanced_chunker, EnhancedChunker)
 
 

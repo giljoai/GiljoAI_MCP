@@ -5,22 +5,17 @@ Tests the new copy-command interface for agent template export that solves
 path resolution issues with the previous web-based approach.
 """
 
-import asyncio
-import os
 import tempfile
-import shutil
-from datetime import datetime
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentTemplate, User, Product
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, Product, User
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.claude_export import (
     export_agents_command,
@@ -558,24 +553,23 @@ class TestCrossPatformCompatibility:
         # Test with Windows-style path
         windows_path = r"C:\Users\TestUser\Projects\MyProject\.claude\agents"
 
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.is_dir", return_value=True):
-                with patch("pathlib.Path.mkdir"):
-                    with patch("api.endpoints.claude_export.export_templates_to_claude_code") as mock_export:
-                        mock_export.return_value = {
-                            "success": True,
-                            "exported_count": 1,
-                            "files": [],
-                            "message": "Export successful",
-                        }
+        with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.mkdir"):
+                with patch("api.endpoints.claude_export.export_templates_to_claude_code") as mock_export:
+                    mock_export.return_value = {
+                        "success": True,
+                        "exported_count": 1,
+                        "files": [],
+                        "message": "Export successful",
+                    }
 
-                        result = await export_agents_command(
-                            db_manager=mock_db_manager,
-                            tenant_key=test_user.tenant_key,
-                            product_path=windows_path,
-                        )
+                    result = await export_agents_command(
+                        db_manager=mock_db_manager,
+                        tenant_key=test_user.tenant_key,
+                        product_path=windows_path,
+                    )
 
-                        assert result["success"] is True
+                    assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_unix_path_handling(
@@ -589,24 +583,23 @@ class TestCrossPatformCompatibility:
         # Test with Unix-style path
         unix_path = "/home/user/projects/my-project/.claude/agents"
 
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.is_dir", return_value=True):
-                with patch("pathlib.Path.mkdir"):
-                    with patch("api.endpoints.claude_export.export_templates_to_claude_code") as mock_export:
-                        mock_export.return_value = {
-                            "success": True,
-                            "exported_count": 1,
-                            "files": [],
-                            "message": "Export successful",
-                        }
+        with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.mkdir"):
+                with patch("api.endpoints.claude_export.export_templates_to_claude_code") as mock_export:
+                    mock_export.return_value = {
+                        "success": True,
+                        "exported_count": 1,
+                        "files": [],
+                        "message": "Export successful",
+                    }
 
-                        result = await export_agents_command(
-                            db_manager=mock_db_manager,
-                            tenant_key=test_user.tenant_key,
-                            product_path=unix_path,
-                        )
+                    result = await export_agents_command(
+                        db_manager=mock_db_manager,
+                        tenant_key=test_user.tenant_key,
+                        product_path=unix_path,
+                    )
 
-                        assert result["success"] is True
+                    assert result["success"] is True
 
 
 if __name__ == "__main__":

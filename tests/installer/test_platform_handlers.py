@@ -8,11 +8,8 @@ concrete platform-specific implementations.
 TDD Approach: Tests written FIRST to define expected behavior.
 """
 
-import platform
-import subprocess
 from pathlib import Path
-from typing import List
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -38,6 +35,7 @@ def mock_venv_dir(tmp_path: Path) -> Path:
 # BASE CLASS TESTS
 # ============================================================================
 
+
 class TestPlatformHandlerAbstract:
     """Test abstract base class interface"""
 
@@ -54,23 +52,22 @@ class TestPlatformHandlerAbstract:
 
         # Expected abstract methods
         expected_methods = [
-            'platform_name',
-            'get_venv_python',
-            'get_venv_pip',
-            'get_postgresql_scan_paths',
-            'get_postgresql_install_guide',
-            'supports_desktop_shortcuts',
-            'create_desktop_shortcuts',
-            'run_npm_command',
-            'get_network_ips',
-            'welcome_screen',
-            'get_platform_specific_warnings'
+            "platform_name",
+            "get_venv_python",
+            "get_venv_pip",
+            "get_postgresql_scan_paths",
+            "get_postgresql_install_guide",
+            "supports_desktop_shortcuts",
+            "create_desktop_shortcuts",
+            "run_npm_command",
+            "get_network_ips",
+            "welcome_screen",
+            "get_platform_specific_warnings",
         ]
 
         # Check abstract method count
         abstract_methods = [
-            name for name in dir(PlatformHandler)
-            if hasattr(getattr(PlatformHandler, name), '__isabstractmethod__')
+            name for name in dir(PlatformHandler) if hasattr(getattr(PlatformHandler, name), "__isabstractmethod__")
         ]
 
         # Verify all expected methods are abstract
@@ -82,6 +79,7 @@ class TestPlatformHandlerAbstract:
 # WINDOWS HANDLER TESTS
 # ============================================================================
 
+
 class TestWindowsPlatformHandler:
     """Test Windows-specific platform handler"""
 
@@ -89,6 +87,7 @@ class TestWindowsPlatformHandler:
     def windows_handler(self):
         """Create Windows handler instance"""
         from installer.platforms.windows import WindowsPlatformHandler
+
         return WindowsPlatformHandler()
 
     def test_windows_platform_name(self, windows_handler):
@@ -135,7 +134,7 @@ class TestWindowsPlatformHandler:
         """Windows should support desktop shortcuts"""
         assert windows_handler.supports_desktop_shortcuts() is True
 
-    @patch('installer.platforms.windows.win32com')
+    @patch("installer.platforms.windows.win32com")
     def test_windows_create_desktop_shortcuts_with_win32com(
         self, mock_win32com, windows_handler, mock_install_dir, mock_venv_dir
     ):
@@ -147,11 +146,11 @@ class TestWindowsPlatformHandler:
 
         result = windows_handler.create_desktop_shortcuts(mock_install_dir, mock_venv_dir)
 
-        assert result['success'] is True
-        assert 'shortcuts_created' in result
+        assert result["success"] is True
+        assert "shortcuts_created" in result
         mock_win32com.client.Dispatch.assert_called_once_with("WScript.Shell")
 
-    @patch('installer.platforms.windows.win32com', None)
+    @patch("installer.platforms.windows.win32com", None)
     def test_windows_create_desktop_shortcuts_fallback_to_bat(
         self, windows_handler, mock_install_dir, mock_venv_dir, tmp_path
     ):
@@ -160,29 +159,25 @@ class TestWindowsPlatformHandler:
         desktop_path = tmp_path / "Desktop"
         desktop_path.mkdir()
 
-        with patch('pathlib.Path.home', return_value=tmp_path):
+        with patch("pathlib.Path.home", return_value=tmp_path):
             result = windows_handler.create_desktop_shortcuts(mock_install_dir, mock_venv_dir)
 
-        assert result['success'] is True
-        assert result.get('method') == 'batch'
+        assert result["success"] is True
+        assert result.get("method") == "batch"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_windows_npm_command_uses_shell_true(self, mock_run, windows_handler, tmp_path):
         """Windows npm commands MUST use shell=True"""
         mock_run.return_value = Mock(returncode=0, stdout="Success", stderr="")
 
-        result = windows_handler.run_npm_command(
-            ['npm', 'install'],
-            cwd=tmp_path,
-            timeout=300
-        )
+        result = windows_handler.run_npm_command(["npm", "install"], cwd=tmp_path, timeout=300)
 
-        assert result['success'] is True
+        assert result["success"] is True
 
         # CRITICAL: Verify shell=True for Windows
         mock_run.assert_called_once()
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs['shell'] is True, "Windows npm MUST use shell=True"
+        assert call_kwargs["shell"] is True, "Windows npm MUST use shell=True"
 
     def test_windows_get_network_ips(self, windows_handler):
         """Windows should return non-localhost IPv4 addresses"""
@@ -215,6 +210,7 @@ class TestWindowsPlatformHandler:
 # LINUX HANDLER TESTS
 # ============================================================================
 
+
 class TestLinuxPlatformHandler:
     """Test Linux-specific platform handler"""
 
@@ -222,6 +218,7 @@ class TestLinuxPlatformHandler:
     def linux_handler(self):
         """Create Linux handler instance"""
         from installer.platforms.linux import LinuxPlatformHandler
+
         return LinuxPlatformHandler()
 
     def test_linux_platform_name(self, linux_handler):
@@ -257,26 +254,26 @@ class TestLinuxPlatformHandler:
         # Should check version-specific paths
         assert any("/postgresql" in p for p in path_strs)
 
-    @patch('platform.freedesktop_os_release')
+    @patch("platform.freedesktop_os_release")
     def test_linux_postgresql_install_guide_ubuntu(self, mock_os_release, linux_handler):
         """Ubuntu should get Ubuntu-specific guide"""
-        mock_os_release.return_value = {'ID': 'ubuntu', 'VERSION_ID': '22.04'}
+        mock_os_release.return_value = {"ID": "ubuntu", "VERSION_ID": "22.04"}
 
         guide = linux_handler.get_postgresql_install_guide()
 
         assert "Ubuntu" in guide or "apt" in guide
         assert "sudo" in guide
 
-    @patch('platform.freedesktop_os_release')
+    @patch("platform.freedesktop_os_release")
     def test_linux_postgresql_install_guide_fedora(self, mock_os_release, linux_handler):
         """Fedora should get Fedora-specific guide"""
-        mock_os_release.return_value = {'ID': 'fedora', 'VERSION_ID': '38'}
+        mock_os_release.return_value = {"ID": "fedora", "VERSION_ID": "38"}
 
         guide = linux_handler.get_postgresql_install_guide()
 
         assert "Fedora" in guide or "dnf" in guide or "yum" in guide
 
-    @patch('platform.freedesktop_os_release')
+    @patch("platform.freedesktop_os_release")
     def test_linux_postgresql_install_guide_generic(self, mock_os_release, linux_handler):
         """Unknown distros should get generic guide"""
         mock_os_release.side_effect = Exception("Unknown distro")
@@ -290,8 +287,8 @@ class TestLinuxPlatformHandler:
         """Linux should support .desktop files"""
         assert linux_handler.supports_desktop_shortcuts() is True
 
-    @patch('subprocess.run')
-    @patch('pathlib.Path.home')
+    @patch("subprocess.run")
+    @patch("pathlib.Path.home")
     def test_linux_create_desktop_shortcuts(
         self, mock_home, mock_run, linux_handler, mock_install_dir, mock_venv_dir, tmp_path
     ):
@@ -306,34 +303,30 @@ class TestLinuxPlatformHandler:
 
         result = linux_handler.create_desktop_shortcuts(mock_install_dir, mock_venv_dir)
 
-        assert result['success'] is True
+        assert result["success"] is True
 
         # Verify .desktop file created
         desktop_files = list(desktop_dir.glob("*.desktop"))
         assert len(desktop_files) > 0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_linux_npm_command_uses_shell_false(self, mock_run, linux_handler, tmp_path):
         """Linux npm commands should use shell=False (direct execution)"""
         mock_run.return_value = Mock(returncode=0, stdout="Success", stderr="")
 
-        result = linux_handler.run_npm_command(
-            ['npm', 'install'],
-            cwd=tmp_path,
-            timeout=300
-        )
+        result = linux_handler.run_npm_command(["npm", "install"], cwd=tmp_path, timeout=300)
 
-        assert result['success'] is True
+        assert result["success"] is True
 
         # CRITICAL: Verify shell=False for Linux
         mock_run.assert_called_once()
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs['shell'] is False, "Linux npm should use shell=False"
+        assert call_kwargs["shell"] is False, "Linux npm should use shell=False"
 
-    @patch('platform.freedesktop_os_release')
+    @patch("platform.freedesktop_os_release")
     def test_linux_platform_specific_warnings_ubuntu(self, mock_os_release, linux_handler):
         """Ubuntu should warn about UFW firewall"""
-        mock_os_release.return_value = {'ID': 'ubuntu', 'VERSION_ID': '22.04'}
+        mock_os_release.return_value = {"ID": "ubuntu", "VERSION_ID": "22.04"}
 
         warnings = linux_handler.get_platform_specific_warnings()
 
@@ -349,6 +342,7 @@ class TestLinuxPlatformHandler:
 # MACOS HANDLER TESTS
 # ============================================================================
 
+
 class TestMacOSPlatformHandler:
     """Test macOS-specific platform handler"""
 
@@ -356,6 +350,7 @@ class TestMacOSPlatformHandler:
     def macos_handler(self):
         """Create macOS handler instance"""
         from installer.platforms.macos import MacOSPlatformHandler
+
         return MacOSPlatformHandler()
 
     def test_macos_platform_name(self, macos_handler):
@@ -413,32 +408,26 @@ class TestMacOSPlatformHandler:
         """macOS should NOT support shortcuts (future: .app bundles)"""
         assert macos_handler.supports_desktop_shortcuts() is False
 
-    def test_macos_create_desktop_shortcuts_returns_not_supported(
-        self, macos_handler, mock_install_dir, mock_venv_dir
-    ):
+    def test_macos_create_desktop_shortcuts_returns_not_supported(self, macos_handler, mock_install_dir, mock_venv_dir):
         """macOS should return 'not supported' for shortcuts"""
         result = macos_handler.create_desktop_shortcuts(mock_install_dir, mock_venv_dir)
 
-        assert result['success'] is False
-        assert 'not supported' in result.get('message', '').lower()
+        assert result["success"] is False
+        assert "not supported" in result.get("message", "").lower()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_macos_npm_command_uses_shell_false(self, mock_run, macos_handler, tmp_path):
         """macOS npm commands should use shell=False (POSIX)"""
         mock_run.return_value = Mock(returncode=0, stdout="Success", stderr="")
 
-        result = macos_handler.run_npm_command(
-            ['npm', 'install'],
-            cwd=tmp_path,
-            timeout=300
-        )
+        result = macos_handler.run_npm_command(["npm", "install"], cwd=tmp_path, timeout=300)
 
-        assert result['success'] is True
+        assert result["success"] is True
 
         # Verify shell=False for macOS
         mock_run.assert_called_once()
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs['shell'] is False, "macOS npm should use shell=False"
+        assert call_kwargs["shell"] is False, "macOS npm should use shell=False"
 
     def test_macos_platform_specific_warnings(self, macos_handler):
         """macOS should return empty warnings list"""
@@ -452,46 +441,53 @@ class TestMacOSPlatformHandler:
 # AUTO-DETECTION FACTORY TESTS
 # ============================================================================
 
+
 class TestPlatformDetection:
     """Test automatic platform detection factory"""
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_detect_windows_platform(self, mock_system):
         """Factory should return WindowsPlatformHandler on Windows"""
         mock_system.return_value = "Windows"
 
         from installer.platforms import get_platform_handler
+
         handler = get_platform_handler()
 
         from installer.platforms.windows import WindowsPlatformHandler
+
         assert isinstance(handler, WindowsPlatformHandler)
         assert handler.platform_name == "Windows"
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_detect_linux_platform(self, mock_system):
         """Factory should return LinuxPlatformHandler on Linux"""
         mock_system.return_value = "Linux"
 
         from installer.platforms import get_platform_handler
+
         handler = get_platform_handler()
 
         from installer.platforms.linux import LinuxPlatformHandler
+
         assert isinstance(handler, LinuxPlatformHandler)
         assert handler.platform_name == "Linux"
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_detect_macos_platform(self, mock_system):
         """Factory should return MacOSPlatformHandler on Darwin"""
         mock_system.return_value = "Darwin"
 
         from installer.platforms import get_platform_handler
+
         handler = get_platform_handler()
 
         from installer.platforms.macos import MacOSPlatformHandler
+
         assert isinstance(handler, MacOSPlatformHandler)
         assert handler.platform_name == "macOS"
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_unsupported_platform_raises_error(self, mock_system):
         """Unsupported platforms should raise clear error"""
         mock_system.return_value = "FreeBSD"
@@ -506,21 +502,18 @@ class TestPlatformDetection:
 # CROSS-PLATFORM CONSISTENCY TESTS
 # ============================================================================
 
+
 class TestCrossPlatformConsistency:
     """Verify consistent interface across all platforms"""
 
     @pytest.fixture
     def all_handlers(self):
         """Get instances of all platform handlers"""
-        from installer.platforms.windows import WindowsPlatformHandler
         from installer.platforms.linux import LinuxPlatformHandler
         from installer.platforms.macos import MacOSPlatformHandler
+        from installer.platforms.windows import WindowsPlatformHandler
 
-        return [
-            WindowsPlatformHandler(),
-            LinuxPlatformHandler(),
-            MacOSPlatformHandler()
-        ]
+        return [WindowsPlatformHandler(), LinuxPlatformHandler(), MacOSPlatformHandler()]
 
     def test_all_platforms_return_path_objects(self, all_handlers, mock_venv_dir):
         """All venv path methods should return Path objects"""
@@ -566,18 +559,21 @@ class TestCrossPlatformConsistency:
 # TYPE HINTS VALIDATION TESTS
 # ============================================================================
 
+
 class TestTypeHintsCoverage:
     """Verify 100% type hint coverage"""
 
     def test_base_class_has_type_hints(self):
         """Base class should have complete type hints"""
-        from installer.platforms.base import PlatformHandler
         import inspect
+
+        from installer.platforms.base import PlatformHandler
 
         # Get all abstract methods
         abstract_methods = [
-            name for name in dir(PlatformHandler)
-            if not name.startswith('_') and callable(getattr(PlatformHandler, name))
+            name
+            for name in dir(PlatformHandler)
+            if not name.startswith("_") and callable(getattr(PlatformHandler, name))
         ]
 
         for method_name in abstract_methods:
@@ -589,5 +585,4 @@ class TestTypeHintsCoverage:
                 continue
 
             # Verify return annotation exists
-            assert signature.return_annotation != inspect.Signature.empty, \
-                f"Missing return type hint on {method_name}"
+            assert signature.return_annotation != inspect.Signature.empty, f"Missing return type hint on {method_name}"

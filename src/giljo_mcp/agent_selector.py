@@ -134,7 +134,7 @@ class AgentSelector:
         # Sort by priority
         agents.sort(key=lambda a: self.PRIORITY_ORDER.get(a.priority, 999))
 
-        logger.info(f"Selected {len(agents)} agents for tenant_key='{tenant_key}', " f"product_id='{product_id}'")
+        logger.info(f"Selected {len(agents)} agents for tenant_key='{tenant_key}', product_id='{product_id}'")
 
         return agents
 
@@ -204,10 +204,10 @@ class AgentSelector:
                 is_default=True,
             )
             if template is not None:
-                logger.debug(f"Found system default template: {template.id} " f"for agent_type='{agent_type}'")
+                logger.debug(f"Found system default template: {template.id} for agent_type='{agent_type}'")
                 return template
 
-        logger.warning(f"No template found for agent_type='{agent_type}' " f"after checking all priority levels")
+        logger.warning(f"No template found for agent_type='{agent_type}' after checking all priority levels")
         return None
 
     async def _query_template(

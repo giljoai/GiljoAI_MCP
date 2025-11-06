@@ -32,12 +32,12 @@ TECHNICAL NOTES:
 """
 
 import os
-import sys
 import shutil
 import subprocess
-from pathlib import Path
-from datetime import datetime, timedelta
+import sys
 import time
+from pathlib import Path
+
 
 # Configuration
 SOURCE_DIR = Path(__file__).parent
@@ -77,158 +77,224 @@ EXCLUDE_DIRS = [
     # Version control
     ".git",
     ".github",  # Keep workflows out of test copy
-
     # Development environments
-    "venv", ".venv", "env", "ENV",
-
+    "venv",
+    ".venv",
+    "env",
+    "ENV",
     # Python caches and build
-    "__pycache__", ".eggs", "*.egg-info",
-    "build", "dist",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    "htmlcov", "coverage",
-
+    "__pycache__",
+    ".eggs",
+    "*.egg-info",
+    "build",
+    "dist",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "htmlcov",
+    "coverage",
     # Node/frontend build
     "node_modules",
-
     # IDE and editor
-    ".vscode", ".idea", ".claude",
-
+    ".vscode",
+    ".idea",
+    ".claude",
     # Development directories
     ".serena",  # Serena MCP cache
-    "tests", "Tests", "test", "Test",  # All test directories
-    "benchmark*", "performance*",
-    "scratch", "drafts",
-
+    "tests",
+    "Tests",
+    "test",
+    "Test",  # All test directories
+    "benchmark*",
+    "performance*",
+    "scratch",
+    "drafts",
     # Documentation directories not for release (from .gitattributes)
-    "docs/Sessions", "docs/sessions",  # Development session logs
-    "docs/devlog",                     # Development logs
-    "docs/Vision", "docs/vision",      # Internal vision docs
-    "docs/Development", "docs/development",  # Development docs
-    "docs/adr",                        # Architecture Decision Records (internal)
-    "docs/planning",                   # Planning docs
-    "docs/templates",                  # Templates (internal)
-    "docs/tests",                      # Test documentation
-    "docs/techdebt",                   # Technical debt documentation
-    "docs/backup_pre_subagent",        # Backup documentation (internal)
-    "docs/design",                     # Design docs (internal)
-    "docs/component_specs",            # Component specs (internal)
-    "docs/dependencies",               # Dependency analysis (internal)
-    "agent_comms",                     # Agent communication files
-    "sessions",                        # Session memory files (root level)
-    "devlog",                          # DevLog files (root level)
-
+    "docs/Sessions",
+    "docs/sessions",  # Development session logs
+    "docs/devlog",  # Development logs
+    "docs/Vision",
+    "docs/vision",  # Internal vision docs
+    "docs/Development",
+    "docs/development",  # Development docs
+    "docs/adr",  # Architecture Decision Records (internal)
+    "docs/planning",  # Planning docs
+    "docs/templates",  # Templates (internal)
+    "docs/tests",  # Test documentation
+    "docs/techdebt",  # Technical debt documentation
+    "docs/backup_pre_subagent",  # Backup documentation (internal)
+    "docs/design",  # Design docs (internal)
+    "docs/component_specs",  # Component specs (internal)
+    "docs/dependencies",  # Dependency analysis (internal)
+    "agent_comms",  # Agent communication files
+    "sessions",  # Session memory files (root level)
+    "devlog",  # DevLog files (root level)
     # Temp directories
-    "tmp", "temp", "backups",
-
+    "tmp",
+    "temp",
+    "backups",
     # Data directories (user will create their own)
-    "data", "logs", "secrets", "credentials"
+    "data",
+    "logs",
+    "secrets",
+    "credentials",
 ]
 
 EXCLUDE_FILES = [
     # Python files
-    "*.pyc", "*.pyo", "*.pyd", "*.so",
-
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    "*.so",
     # Test files (from .gitattributes)
-    "test_*.py", "*_test.py", "*.test.py",
-    "conftest.py", "pytest.ini",
-    "*test_results*.json", "*test_report*.json",
-    "*validation_results*.json", "*validation_report*.json",
-    "test_*.db", "test_*.db-shm", "test_*.db-wal",
-
+    "test_*.py",
+    "*_test.py",
+    "*.test.py",
+    "conftest.py",
+    "pytest.ini",
+    "*test_results*.json",
+    "*test_report*.json",
+    "*validation_results*.json",
+    "*validation_report*.json",
+    "test_*.db",
+    "test_*.db-shm",
+    "test_*.db-wal",
     # Coverage files (from .gitattributes)
-    "coverage*.*", "*coverage*.py", "*coverage*.md",
-    "*coverage*.json", "*coverage*.xml", "*coverage*.html",
+    "coverage*.*",
+    "*coverage*.py",
+    "*coverage*.md",
+    "*coverage*.json",
+    "*coverage*.xml",
+    "*coverage*.html",
     ".coverage",
-
     # Benchmark and performance files (from .gitattributes)
-    "benchmark*.py", "*benchmark*.py",
-    "performance*.py", "*performance*.py",
-
+    "benchmark*.py",
+    "*benchmark*.py",
+    "performance*.py",
+    "*performance*.py",
     # Debug and monitoring tools (from .gitattributes)
-    "debug*.py", "*debug*.py",
-    "monitor*.py", "*monitor*.py", "*_monitor.py",
+    "debug*.py",
+    "*debug*.py",
+    "monitor*.py",
+    "*monitor*.py",
+    "*_monitor.py",
     "visual_*.py",
-
     # Development scripts (from .gitattributes)
-    "fix_*.py", "final_*.py", "run_*.py",
+    "fix_*.py",
+    "final_*.py",
+    "run_*.py",
     "create_distribution.*",
-
     # Development configs
-    ".gitignore", ".gitignore.release", ".gitattributes",
-    ".dockerignore", ".coveragerc",
+    ".gitignore",
+    ".gitignore.release",
+    ".gitattributes",
+    ".dockerignore",
+    ".coveragerc",
     ".pre-commit-config.yaml",
     ".claude*",  # Claude AI config files
-    ".eslintrc*", ".prettierrc*",
-    "tsconfig.json", "jest.config.*",
-    "ruff.toml", ".ruff.toml",  # Python linter/formatter configs
+    ".eslintrc*",
+    ".prettierrc*",
+    "tsconfig.json",
+    "jest.config.*",
+    "ruff.toml",
+    ".ruff.toml",  # Python linter/formatter configs
     # NOTE: pyproject.toml is NEEDED for package installation - DO NOT EXCLUDE
-
     # Environment and config files
-    ".env", ".env.*", "*.key", "*.pem", "*.p12",
-    ".env.local", ".env.development", ".env.dev", ".env.test",
-    "config.yaml", "config.yml",  # User configs trigger reinstall
-
+    ".env",
+    ".env.*",
+    "*.key",
+    "*.pem",
+    "*.p12",
+    ".env.local",
+    ".env.development",
+    ".env.dev",
+    ".env.test",
+    "config.yaml",
+    "config.yml",  # User configs trigger reinstall
     # Logs and databases (from .gitattributes)
-    "*.log", "*.sqlite", "*.sqlite3", "*.db",
-
+    "*.log",
+    "*.sqlite",
+    "*.sqlite3",
+    "*.db",
     # Temp and backup files (from .gitattributes)
-    "*.tmp", "*.temp", "*.TMP", "*.TEMP",
-    "*.bak", "*.BAK", "*.backup",
-    "*.old", "*.OLD",
-    "*.orig", "*~", ".~*",
-    "*.swp", "*.swo",
-    ".DS_Store", "Thumbs.db", "Desktop.ini",
-    ".AppleDouble", ".LSOverride", "ehthumbs.db",
+    "*.tmp",
+    "*.temp",
+    "*.TMP",
+    "*.TEMP",
+    "*.bak",
+    "*.BAK",
+    "*.backup",
+    "*.old",
+    "*.OLD",
+    "*.orig",
+    "*~",
+    ".~*",
+    "*.swp",
+    "*.swo",
+    ".DS_Store",
+    "Thumbs.db",
+    "Desktop.ini",
+    ".AppleDouble",
+    ".LSOverride",
+    "ehthumbs.db",
     ".directory",
-
     # Work in progress files (from .gitattributes)
-    "*WIP*", "*wip*", "*draft*", "*DRAFT*",
-
+    "*WIP*",
+    "*wip*",
+    "*draft*",
+    "*DRAFT*",
     # Development docs (from .gitattributes)
-    "TODO.md", "NOTES.md", "ROADMAP.md",
-    "PLANNING.md", "BACKLOG.md",
-    "*_INTERNAL.md", "*.md.bak",
+    "TODO.md",
+    "NOTES.md",
+    "ROADMAP.md",
+    "PLANNING.md",
+    "BACKLOG.md",
+    "*_INTERNAL.md",
+    "*.md.bak",
     # Note: robocopy doesn't support **/ patterns, using simple wildcards
-    "VISION*.md", "vision*.md",
-    "project_*.md", "PROJECT_*.md",
-    "workflow*.md", "WORKFLOW*.md",
-    "management*.md", "MANAGEMENT*.md",
-    "TEST_*.md", "WEBSOCKET_*.md",
-    "session_*.md", "devlog*.md",
+    "VISION*.md",
+    "vision*.md",
+    "project_*.md",
+    "PROJECT_*.md",
+    "workflow*.md",
+    "WORKFLOW*.md",
+    "management*.md",
+    "MANAGEMENT*.md",
+    "TEST_*.md",
+    "WEBSOCKET_*.md",
+    "session_*.md",
+    "devlog*.md",
     "NEXT_AGENT_MISSION.md",  # Agent task files
     "NEXT_AGENT_HANDOFF.md",  # Agent handoff files
     "context recovery.md",  # Development context
-
     # Internal docs in docs/ folder (keep ARCHITECTURE_V2.md, TECHNICAL_ARCHITECTURE.md, AI_TOOL_INTEGRATION.md, color_themes.md)
     "AGENT_INSTRUCTIONS.md",  # Internal agent guide
-    "audit_report*.md",       # Internal audits
-    "forensic_*.md",          # Internal analysis
-    "integration_report*.md", # Internal reports
-    "linting_*.md",           # Internal linting docs
-    "performance_analysis*.md", # Internal performance
-    "phase_*.md",             # Internal phase docs
-    "unification_*.md",       # Internal reports
-    "backend_enhancements*.md", # Internal planning
-    "gui_*.md",               # Internal GUI docs
-    "installer_developer_guide.md", # Internal (developer)
-    "installer_implementation_checklist.md", # Internal
-    "installer_ux_redesign_plan.md", # Internal planning
-    "CONFIGURATION_AND_REFERENCE_INDEX.md", # Internal
-    "DEPENDENCIES.md",        # Internal dependency list
-    "MESSAGE_QUEUE_GUIDE.md", # Internal (could be kept if user-facing?)
-    "PRODUCT_*.md",           # Internal product docs
-    "PROJECT_*.md",           # Internal project docs
-    "PROVEN_FEATURES*.md",    # Internal
-    "README_FIRST.md",        # Internal
-    "SUB_AGENT_*.md",         # Internal
-    "Techdebt*.md",           # Internal tech debt
-    "PRODUCTION_READINESS*.md" # Internal certification
-
+    "audit_report*.md",  # Internal audits
+    "forensic_*.md",  # Internal analysis
+    "integration_report*.md",  # Internal reports
+    "linting_*.md",  # Internal linting docs
+    "performance_analysis*.md",  # Internal performance
+    "phase_*.md",  # Internal phase docs
+    "unification_*.md",  # Internal reports
+    "backend_enhancements*.md",  # Internal planning
+    "gui_*.md",  # Internal GUI docs
+    "installer_developer_guide.md",  # Internal (developer)
+    "installer_implementation_checklist.md",  # Internal
+    "installer_ux_redesign_plan.md",  # Internal planning
+    "CONFIGURATION_AND_REFERENCE_INDEX.md",  # Internal
+    "DEPENDENCIES.md",  # Internal dependency list
+    "MESSAGE_QUEUE_GUIDE.md",  # Internal (could be kept if user-facing?)
+    "PRODUCT_*.md",  # Internal product docs
+    "PROJECT_*.md",  # Internal project docs
+    "PROVEN_FEATURES*.md",  # Internal
+    "README_FIRST.md",  # Internal
+    "SUB_AGENT_*.md",  # Internal
+    "Techdebt*.md",  # Internal tech debt
+    "PRODUCTION_READINESS*.md"  # Internal certification
     # Deprecated files (v2.0 architecture)
     "*.deprecated",  # All deprecated files
     "__main__.py.deprecated",
     "server.py.deprecated",
-
     # Reports (from .gitattributes)
     "PRODUCTION_READINESS_REPORT.md",
     "FINAL_CLEAN_COVERAGE_REPORT.md",
@@ -237,10 +303,9 @@ EXCLUDE_FILES = [
     "coverage_gap_analysis_report.md",
     "dependency_report.json",
     "MANIFEST.txt",
-
     # Agent files (from .gitattributes)
-    "*_agent_*.json", "orchestrator_*.json",
-
+    "*_agent_*.json",
+    "orchestrator_*.json",
     # Specific exclusions
     "test_installation.py",  # Our test script
     "test_mcp_registration.py",  # MCP test script
@@ -251,18 +316,15 @@ EXCLUDE_FILES = [
     "giltest.bat",  # The batch wrapper
     ".mcp.json",  # MCP config
     "commit.bat",  # Git helper
-
     # Session and personal files
-    "PHASE*.md", "PHASE*.jsonl",
-
+    "PHASE*.md",
+    "PHASE*.jsonl",
     # Migration and update docs (internal)
     "POSTGRESQL_MIGRATION.md",
-
     # Build and distribution
     "create_shortcuts.py",
-
     # Testing documentation (internal)
-    "GILTEST_README.md"
+    "GILTEST_README.md",
 ]
 
 
@@ -292,11 +354,11 @@ def print_header(quick_sync=False):
 
     # Verify source directory
     if not SOURCE_DIR.exists():
-        print(f"\nERROR: Source directory does not exist!")
+        print("\nERROR: Source directory does not exist!")
         sys.exit(1)
 
     # Show what's in source
-    print(f"\nSource directory contains:")
+    print("\nSource directory contains:")
     items = list(SOURCE_DIR.iterdir())[:10]  # Show first 10 items
     for item in items:
         if item.is_dir():
@@ -356,9 +418,8 @@ def get_user_choice(has_existing):
             confirm = input("\nWARNING: Delete everything? (Y/N): ").strip().upper()
             if confirm == "Y":
                 return "clean"
-            else:
-                print("Cancelled.\n")
-                continue
+            print("Cancelled.\n")
+            continue
 
         if choice == "3":
             if not has_existing:
@@ -417,9 +478,8 @@ def clean_directory(preserve_mode=False):
             if item.is_dir():
                 if item.name not in PRESERVE_DIRS:
                     shutil.rmtree(item)
-            else:
-                if item.name not in PRESERVE_FILES:
-                    item.unlink()
+            elif item.name not in PRESERVE_FILES:
+                item.unlink()
     else:
         print("[1/3] Cleaning test directory...")
         if TEST_DIR.exists():
@@ -453,8 +513,9 @@ def copy_files_quick_sync():
 
         for file in files:
             # Skip excluded files
-            if any(file == pattern or (pattern.startswith('*') and file.endswith(pattern[1:]))
-                   for pattern in EXCLUDE_FILES):
+            if any(
+                file == pattern or (pattern.startswith("*") and file.endswith(pattern[1:])) for pattern in EXCLUDE_FILES
+            ):
                 continue
 
             src_path = Path(root) / file
@@ -538,7 +599,7 @@ def copy_files(preserve_mode=False):
     # Run robocopy with visible output
     print("      Copy progress:")
     print("-" * 50)
-    result = subprocess.run(cmd, text=True)
+    result = subprocess.run(cmd, check=False, text=True)
     print("-" * 50)
 
     # Robocopy exit codes 0-7 are success
@@ -550,7 +611,7 @@ def copy_files(preserve_mode=False):
             dir_count += len(dirs)
             file_count += len(files)
 
-        print(f"\n      Copy complete!")
+        print("\n      Copy complete!")
         print(f"      Copied {file_count} files in {dir_count} directories")
 
         # Show sample of what was copied
@@ -568,10 +629,9 @@ def copy_files(preserve_mode=False):
             items_shown += 1
 
         return True
-    else:
-        print(f"\nERROR: Robocopy failed with exit code {result.returncode}")
-        print("      Exit codes: 0-7=success, 8=some files failed, 16=serious error")
-        return False
+    print(f"\nERROR: Robocopy failed with exit code {result.returncode}")
+    print("      Exit codes: 0-7=success, 8=some files failed, 16=serious error")
+    return False
 
 
 def restore_data():
@@ -645,7 +705,7 @@ def setup_symlinks():
             cmd = [
                 "powershell",
                 "-Command",
-                f"New-Item -ItemType SymbolicLink -Path '{link_path}' -Target '{target_path}'"
+                f"New-Item -ItemType SymbolicLink -Path '{link_path}' -Target '{target_path}'",
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             created.append(folder_name)
@@ -701,7 +761,7 @@ def verify_deployment(preserved_items=None):
     print("=" * 70)
     print()
     print(f"Release Test Directory: {TEST_DIR}")
-    print(f"File Statistics:")
+    print("File Statistics:")
     print(f"   • Development (source): {source_file_count:,} files")
     print(f"   • Release (copied):     {file_count:,} files")
     print(f"   • Excluded (dev only):  {source_file_count - file_count:,} files")
@@ -719,7 +779,7 @@ def verify_deployment(preserved_items=None):
         "requirements.txt",
         "README.md",
         "devuninstall.py",
-        "uninstall.py"
+        "uninstall.py",
     ]
 
     for file_name in key_files:
@@ -826,7 +886,7 @@ def main():
             print()
             return 0
 
-        preserve_mode = (choice == "preserve")
+        preserve_mode = choice == "preserve"
 
         # Execute based on choice
         if preserve_mode:
@@ -882,6 +942,7 @@ def main():
     except Exception as e:
         print(f"\nERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

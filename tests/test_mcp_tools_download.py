@@ -7,8 +7,7 @@ Handover 0094: Token-Efficient MCP Downloads
 
 import io
 import zipfile
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -28,10 +27,7 @@ class TestDownloadUtilities:
         mock_response.content = b"test content"
         mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
 
-        result = await download_file(
-            url="http://localhost:7272/api/download/test.zip",
-            api_key="test-api-key"
-        )
+        result = await download_file(url="http://localhost:7272/api/download/test.zip", api_key="test-api-key")
 
         assert result == b"test content"
 
@@ -48,10 +44,7 @@ class TestDownloadUtilities:
         mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
 
         with pytest.raises(Exception, match="Unauthorized"):
-            await download_file(
-                url="http://localhost:7272/api/download/test.zip",
-                api_key="invalid-key"
-            )
+            await download_file(url="http://localhost:7272/api/download/test.zip", api_key="invalid-key")
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
@@ -60,15 +53,10 @@ class TestDownloadUtilities:
         from src.giljo_mcp.tools.download_utils import download_file
 
         # Mock network error
-        mock_client.return_value.__aenter__.return_value.get.side_effect = Exception(
-            "Connection refused"
-        )
+        mock_client.return_value.__aenter__.return_value.get.side_effect = Exception("Connection refused")
 
         with pytest.raises(Exception, match="Connection refused"):
-            await download_file(
-                url="http://localhost:7272/api/download/test.zip",
-                api_key="test-key"
-            )
+            await download_file(url="http://localhost:7272/api/download/test.zip", api_key="test-key")
 
 
 class TestZipExtraction:
@@ -120,9 +108,7 @@ class TestGilImportProductAgents:
     @patch("src.giljo_mcp.tools.tool_accessor.download_file")
     @patch("src.giljo_mcp.tools.tool_accessor.extract_zip_to_directory")
     @patch("os.environ.get")
-    async def test_import_product_agents_success(
-        self, mock_env_get, mock_extract, mock_download
-    ):
+    async def test_import_product_agents_success(self, mock_env_get, mock_extract, mock_download):
         """Test successful product agent import via download"""
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -137,10 +123,7 @@ class TestGilImportProductAgents:
         mock_download.return_value = zip_buffer.getvalue()
 
         # Create tool accessor
-        tool_accessor = ToolAccessor(
-            db_manager=MagicMock(),
-            tenant_manager=MagicMock()
-        )
+        tool_accessor = ToolAccessor(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         # Execute
         result = await tool_accessor.gil_import_productagents(project_id="test-project")
@@ -161,10 +144,7 @@ class TestGilImportProductAgents:
         # No API key set
         mock_env_get.return_value = None
 
-        tool_accessor = ToolAccessor(
-            db_manager=MagicMock(),
-            tenant_manager=MagicMock()
-        )
+        tool_accessor = ToolAccessor(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         result = await tool_accessor.gil_import_productagents()
 
@@ -175,19 +155,14 @@ class TestGilImportProductAgents:
     @pytest.mark.asyncio
     @patch("src.giljo_mcp.tools.tool_accessor.download_file")
     @patch("os.environ.get")
-    async def test_import_product_agents_download_fails(
-        self, mock_env_get, mock_download
-    ):
+    async def test_import_product_agents_download_fails(self, mock_env_get, mock_download):
         """Test product agent import with download failure"""
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         mock_env_get.return_value = "test-api-key"
         mock_download.side_effect = Exception("Network error")
 
-        tool_accessor = ToolAccessor(
-            db_manager=MagicMock(),
-            tenant_manager=MagicMock()
-        )
+        tool_accessor = ToolAccessor(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         result = await tool_accessor.gil_import_productagents()
 
@@ -205,9 +180,7 @@ class TestGilImportPersonalAgents:
     @patch("src.giljo_mcp.tools.tool_accessor.download_file")
     @patch("src.giljo_mcp.tools.tool_accessor.extract_zip_to_directory")
     @patch("os.environ.get")
-    async def test_import_personal_agents_success(
-        self, mock_env_get, mock_extract, mock_download
-    ):
+    async def test_import_personal_agents_success(self, mock_env_get, mock_extract, mock_download):
         """Test successful personal agent import via download"""
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -220,10 +193,7 @@ class TestGilImportPersonalAgents:
             zipf.writestr("orchestrator.md", "# Orchestrator")
         mock_download.return_value = zip_buffer.getvalue()
 
-        tool_accessor = ToolAccessor(
-            db_manager=MagicMock(),
-            tenant_manager=MagicMock()
-        )
+        tool_accessor = ToolAccessor(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         result = await tool_accessor.gil_import_personalagents()
 
@@ -240,10 +210,7 @@ class TestGilImportPersonalAgents:
 
         mock_env_get.return_value = None
 
-        tool_accessor = ToolAccessor(
-            db_manager=MagicMock(),
-            tenant_manager=MagicMock()
-        )
+        tool_accessor = ToolAccessor(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         result = await tool_accessor.gil_import_personalagents()
 
@@ -253,19 +220,14 @@ class TestGilImportPersonalAgents:
     @pytest.mark.asyncio
     @patch("src.giljo_mcp.tools.tool_accessor.download_file")
     @patch("os.environ.get")
-    async def test_import_personal_agents_with_fallback(
-        self, mock_env_get, mock_download
-    ):
+    async def test_import_personal_agents_with_fallback(self, mock_env_get, mock_download):
         """Test personal agent import provides fallback instructions on error"""
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         mock_env_get.return_value = "test-api-key"
         mock_download.side_effect = Exception("Download failed")
 
-        tool_accessor = ToolAccessor(
-            db_manager=MagicMock(),
-            tenant_manager=MagicMock()
-        )
+        tool_accessor = ToolAccessor(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         result = await tool_accessor.gil_import_personalagents()
 

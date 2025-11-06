@@ -16,20 +16,18 @@ Following TDD methodology - these tests define expected behavior.
 """
 
 import asyncio
-import json
 import time
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Project, Agent
+from src.giljo_mcp.models import Agent, Project, User
 
 
 # ============================================================================
@@ -149,7 +147,6 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 
 def get_db_session():
     """Placeholder for dependency injection - will be overridden"""
-    pass
 
 
 # ============================================================================
@@ -227,6 +224,7 @@ class TestBackupDatabaseMCPTool:
 
         # Execute backup for test_user's tenant
         from src.giljo_mcp.tools.backup import backup_database
+
         result = await backup_database(tenant_key=test_user.tenant_key)
 
         # Verify success
@@ -247,6 +245,7 @@ class TestBackupDatabaseMCPTool:
         empty_tenant = f"tenant_empty_{uuid4().hex[:8]}"
 
         from src.giljo_mcp.tools.backup import backup_database
+
         result = await backup_database(tenant_key=empty_tenant)
 
         # Should succeed even with no data
@@ -541,10 +540,7 @@ class TestBackupDatabaseAPIEndpoint:
     ):
         """Test backup endpoint handles concurrent requests gracefully"""
         # Create 3 concurrent backup requests
-        tasks = [
-            async_client.post("/api/backup/database", headers=auth_headers)
-            for _ in range(3)
-        ]
+        tasks = [async_client.post("/api/backup/database", headers=auth_headers) for _ in range(3)]
 
         responses = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -597,6 +593,7 @@ class TestBackupEdgeCases:
         special_tenant = "tenant_特殊文字_émojis_😀"
 
         from src.giljo_mcp.tools.backup import backup_database
+
         result = await backup_database(tenant_key=special_tenant)
 
         # Should handle gracefully (success or proper error)
@@ -615,6 +612,7 @@ class TestBackupEdgeCases:
         long_tenant = "tenant_" + "x" * 500
 
         from src.giljo_mcp.tools.backup import backup_database
+
         result = await backup_database(tenant_key=long_tenant)
 
         # Should handle gracefully
@@ -715,9 +713,7 @@ class TestBackupPerformance:
         from src.giljo_mcp.tools.backup import backup_database
 
         # Start backup in background
-        backup_task = asyncio.create_task(
-            backup_database(tenant_key=test_user.tenant_key)
-        )
+        backup_task = asyncio.create_task(backup_database(tenant_key=test_user.tenant_key))
 
         # Attempt concurrent database operation
         await asyncio.sleep(0.1)  # Let backup start

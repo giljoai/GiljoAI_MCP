@@ -12,13 +12,9 @@ Tests focus on:
 - Response headers
 """
 
-from datetime import datetime
-from typing import Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -45,8 +41,7 @@ class TestBackupEndpointRegistration:
 
         # Find backup endpoint
         backup_routes = [
-            route for route in app.routes
-            if hasattr(route, "path") and route.path == "/api/backup/database"
+            route for route in app.routes if hasattr(route, "path") and route.path == "/api/backup/database"
         ]
 
         assert len(backup_routes) > 0, "Backup endpoint not found"
@@ -62,18 +57,14 @@ class TestBackupEndpointRegistration:
         from api.app import app
 
         backup_routes = [
-            route for route in app.routes
-            if hasattr(route, "path") and route.path == "/api/backup/database"
+            route for route in app.routes if hasattr(route, "path") and route.path == "/api/backup/database"
         ]
 
         if backup_routes and hasattr(backup_routes[0], "tags"):
             tags = backup_routes[0].tags
             assert tags is not None
             # Should have backup or admin tag
-            assert any(
-                tag.lower() in ["backup", "admin", "database"]
-                for tag in tags
-            )
+            assert any(tag.lower() in ["backup", "admin", "database"] for tag in tags)
 
 
 # ============================================================================
@@ -101,10 +92,7 @@ class TestBackupEndpointAuthentication:
 
         client = TestClient(app)
 
-        response = client.post(
-            "/api/backup/database",
-            headers={"Authorization": "Bearer invalid_token_12345"}
-        )
+        response = client.post("/api/backup/database", headers={"Authorization": "Bearer invalid_token_12345"})
 
         assert response.status_code in [401, 403]
 
@@ -128,10 +116,7 @@ class TestBackupEndpointAuthentication:
                     "metadata": {},
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 # Should not be auth error
                 assert response.status_code != 401
@@ -165,10 +150,7 @@ class TestBackupEndpointRequestValidation:
                     "metadata": {},
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 # Should accept (no body required)
                 assert response.status_code in [200, 201]
@@ -195,7 +177,7 @@ class TestBackupEndpointRequestValidation:
                 response = client.post(
                     "/api/backup/database",
                     headers={"Authorization": "Bearer valid_token"},
-                    json={"unexpected_field": "should_be_ignored"}
+                    json={"unexpected_field": "should_be_ignored"},
                 )
 
                 # Should still succeed
@@ -229,10 +211,7 @@ class TestBackupEndpointResponseStructure:
                     "metadata": {},
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 assert response.headers["content-type"].startswith("application/json")
 
@@ -262,10 +241,7 @@ class TestBackupEndpointResponseStructure:
                     "metadata": expected_metadata,
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 assert response.status_code == 200
                 data = response.json()
@@ -296,10 +272,7 @@ class TestBackupEndpointResponseStructure:
             with patch("api.endpoints.backup.backup_database_utility") as mock_backup:
                 mock_backup.side_effect = Exception("Database connection failed")
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 assert response.status_code in [500, 502, 503]
                 data = response.json()
@@ -335,10 +308,7 @@ class TestBackupEndpointStatusCodes:
                     "metadata": {},
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 assert response.status_code == 200
 
@@ -367,10 +337,7 @@ class TestBackupEndpointStatusCodes:
             with patch("api.endpoints.backup.backup_database_utility") as mock_backup:
                 mock_backup.side_effect = ConnectionError("Database unavailable")
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 assert response.status_code in [500, 502, 503]
 
@@ -389,10 +356,7 @@ class TestBackupEndpointStatusCodes:
             with patch("api.endpoints.backup.backup_database_utility") as mock_backup:
                 mock_backup.side_effect = PermissionError("Cannot write backup")
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 assert response.status_code in [500, 502, 503]
 
@@ -426,10 +390,7 @@ class TestBackupEndpointTenantContext:
                     "metadata": {"tenant_key": test_tenant},
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 # Verify backup utility was called with correct tenant
                 mock_backup.assert_called_once()
@@ -448,10 +409,7 @@ class TestBackupEndpointTenantContext:
             mock_user.is_active = False  # Inactive user
             mock_auth.return_value = mock_user
 
-            response = client.post(
-                "/api/backup/database",
-                headers={"Authorization": "Bearer valid_token"}
-            )
+            response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
             # Should be denied
             assert response.status_code in [401, 403]
@@ -480,10 +438,7 @@ class TestBackupEndpointErrorMessages:
             with patch("api.endpoints.backup.backup_database_utility") as mock_backup:
                 mock_backup.side_effect = ConnectionError("Cannot connect to PostgreSQL")
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 data = response.json()
                 error_message = data.get("detail", "").lower()
@@ -506,10 +461,7 @@ class TestBackupEndpointErrorMessages:
             with patch("api.endpoints.backup.backup_database_utility") as mock_backup:
                 mock_backup.side_effect = PermissionError("Cannot write to backup directory")
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 data = response.json()
                 error_message = data.get("detail", "").lower()
@@ -602,10 +554,7 @@ class TestBackupEndpointEdgeCases:
                 # Make 3 concurrent requests
                 responses = []
                 for _ in range(3):
-                    response = client.post(
-                        "/api/backup/database",
-                        headers={"Authorization": "Bearer valid_token"}
-                    )
+                    response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
                     responses.append(response)
 
                 # All should complete (may have rate limiting)
@@ -632,10 +581,7 @@ class TestBackupEndpointEdgeCases:
                     "metadata": {"tenant_key": special_tenant},
                 }
 
-                response = client.post(
-                    "/api/backup/database",
-                    headers={"Authorization": "Bearer valid_token"}
-                )
+                response = client.post("/api/backup/database", headers={"Authorization": "Bearer valid_token"})
 
                 # Should handle gracefully
                 assert response.status_code in [200, 400, 500]

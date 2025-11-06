@@ -13,7 +13,6 @@ from src.giljo_mcp.models import Agent, AgentInteraction, Base, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestAgentInteractionsModel:
     """Test the agent_interactions database model and schema."""
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,7 +21,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
 from src.giljo_mcp.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

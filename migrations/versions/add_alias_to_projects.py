@@ -13,18 +13,20 @@ Migration Steps:
 3. Create unique index on alias column
 4. Make alias NOT NULL after backfilling
 """
-from typing import Sequence, Union
-import string
-import random
 
-from alembic import op
+import random
+import string
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'add_alias_to_projects'
-down_revision: Union[str, Sequence[str], None] = 'f7f0422fda1e'
+revision: str = "add_alias_to_projects"
+down_revision: Union[str, Sequence[str], None] = "f7f0422fda1e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -45,7 +47,7 @@ def generate_unique_alias(existing_aliases: set) -> str:
     max_attempts = 100  # Prevent infinite loop
 
     for _ in range(max_attempts):
-        alias = ''.join(random.choices(chars, k=6))
+        alias = "".join(random.choices(chars, k=6))
         if alias not in existing_aliases:
             existing_aliases.add(alias)
             return alias
@@ -60,13 +62,13 @@ def upgrade() -> None:
 
     # Step 1: Add alias column as nullable String(6)
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'alias',
+            "alias",
             sa.String(length=6),
             nullable=True,
-            comment='6-character alphanumeric project identifier (e.g., A1B2C3)'
-        )
+            comment="6-character alphanumeric project identifier (e.g., A1B2C3)",
+        ),
     )
 
     # Step 2: Backfill aliases for existing projects
@@ -86,33 +88,28 @@ def upgrade() -> None:
             # CRITICAL: Filter by BOTH id AND tenant_key for data isolation
             connection.execute(
                 text("UPDATE projects SET alias = :alias WHERE id = :project_id AND tenant_key = :tenant_key"),
-                {"alias": alias, "project_id": project_id, "tenant_key": tenant_key}
+                {"alias": alias, "project_id": project_id, "tenant_key": tenant_key},
             )
 
     # Step 3: Create unique index on alias column
     # This ensures alias uniqueness at the database level
-    op.create_index(
-        'idx_project_alias_unique',
-        'projects',
-        ['alias'],
-        unique=True
-    )
+    op.create_index("idx_project_alias_unique", "projects", ["alias"], unique=True)
 
     # Step 4: Make alias NOT NULL after backfilling
     # All existing projects now have aliases, so we can enforce NOT NULL
     op.alter_column(
-        'projects',
-        'alias',
+        "projects",
+        "alias",
         existing_type=sa.String(length=6),
         nullable=False,
-        existing_comment='6-character alphanumeric project identifier (e.g., A1B2C3)'
+        existing_comment="6-character alphanumeric project identifier (e.g., A1B2C3)",
     )
 
 
 def downgrade() -> None:
     """Downgrade schema - Remove alias column from projects table."""
     # Drop the unique index first
-    op.drop_index('idx_project_alias_unique', table_name='projects')
+    op.drop_index("idx_project_alias_unique", table_name="projects")
 
     # Drop the alias column
-    op.drop_column('projects', 'alias')
+    op.drop_column("projects", "alias")

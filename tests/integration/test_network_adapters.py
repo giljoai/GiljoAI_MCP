@@ -9,9 +9,8 @@ Phase: TDD Red Phase (Tests should FAIL initially)
 """
 
 import json
+
 import pytest
-import socket
-from pathlib import Path
 from fastapi.testclient import TestClient
 
 
@@ -121,9 +120,7 @@ class TestNetworkAdaptersEndpoint:
             virtual_patterns = ["docker", "veth", "vbox", "vmnet", "hyper-v", "wsl"]
 
             if any(pattern in interface_name for pattern in virtual_patterns):
-                assert (
-                    adapter["is_virtual"] == True
-                ), f"Adapter '{adapter['interface_id']}' should be marked as virtual"
+                assert adapter["is_virtual"] == True, f"Adapter '{adapter['interface_id']}' should be marked as virtual"
 
     def test_adapters_valid_ip_addresses(self, client):
         """Test that all adapters have valid IPv4 addresses"""
@@ -165,22 +162,19 @@ class TestNetworkAdaptersEndpoint:
                     recommended_found = True
                     break
 
-            assert (
-                recommended_found
-            ), "Recommended adapter should exist in adapters list"
+            assert recommended_found, "Recommended adapter should exist in adapters list"
 
             # Recommended adapter should NOT be virtual (if non-virtual exist)
             non_virtual_exists = any(not a["is_virtual"] for a in adapters)
             if non_virtual_exists:
-                assert (
-                    not recommended["is_virtual"]
-                ), "Should recommend physical adapter when available"
+                assert not recommended["is_virtual"], "Should recommend physical adapter when available"
 
             # Recommended adapter should be active
             assert recommended["is_active"], "Recommended adapter should be active"
 
     def test_recommended_adapter_null_if_no_adapters(self, client, monkeypatch):
         """Test that recommended is null if no suitable adapters exist"""
+
         # This is a theoretical edge case - mock psutil to return no adapters
         def mock_net_if_addrs():
             return {}
@@ -209,9 +203,7 @@ class TestNetworkAdaptersEndpoint:
 
             # is_active should correlate with having an IP address
             if adapter["is_active"]:
-                assert (
-                    adapter["ip_address"]
-                ), "Active adapter should have IP address"
+                assert adapter["ip_address"], "Active adapter should have IP address"
 
     def test_adapters_cross_platform_compatibility(self, client):
         """Test that endpoint works on current platform"""
@@ -240,6 +232,7 @@ class TestNetworkAdaptersEdgeCases:
 
     def test_adapters_handles_no_psutil(self, client, monkeypatch):
         """Test graceful degradation if psutil is not available"""
+
         # Mock psutil.net_if_addrs to raise ImportError
         def mock_import_error(*args, **kwargs):
             raise ImportError("psutil not available")
@@ -293,9 +286,7 @@ class TestNetworkAdaptersEdgeCases:
 
         # Recommended adapter should be consistent
         if data1["recommended"]:
-            assert data1["recommended"]["interface_id"] == data2["recommended"][
-                "interface_id"
-            ]
+            assert data1["recommended"]["interface_id"] == data2["recommended"]["interface_id"]
 
 
 class TestNetworkAdaptersRecommendationLogic:
@@ -316,9 +307,7 @@ class TestNetworkAdaptersRecommendationLogic:
 
         if has_physical and has_virtual and recommended:
             # Recommended should be physical
-            assert (
-                not recommended["is_virtual"]
-            ), "Should prefer physical over virtual adapters"
+            assert not recommended["is_virtual"], "Should prefer physical over virtual adapters"
 
     def test_recommendation_prefers_active_adapters(self, client):
         """Test that active adapters are preferred"""
@@ -340,9 +329,7 @@ class TestNetworkAdaptersRecommendationLogic:
         recommended = data.get("recommended")
 
         if recommended:
-            assert (
-                not recommended["is_loopback"]
-            ), "Loopback adapter should never be recommended"
+            assert not recommended["is_loopback"], "Loopback adapter should never be recommended"
 
 
 class TestNetworkAdaptersSecurity:
@@ -404,9 +391,7 @@ class TestNetworkAdaptersIntegration:
             assert len(adapter["name"]) > 0, "Adapter should have display name"
 
             # Each adapter should have unique interface_id
-            assert (
-                len(adapter["interface_id"]) > 0
-            ), "Adapter should have interface identifier"
+            assert len(adapter["interface_id"]) > 0, "Adapter should have interface identifier"
 
             # Each adapter should have IP for CORS configuration
             assert len(adapter["ip_address"]) > 0, "Adapter should have IP address"

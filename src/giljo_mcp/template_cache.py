@@ -7,7 +7,6 @@ Handover 0041 - Phase 2: Template Resolution with Caching
 
 import logging
 import pickle
-from functools import lru_cache
 from typing import Optional
 
 from sqlalchemy import select
@@ -51,13 +50,9 @@ class TemplateCache:
         self._cache_hits = 0
         self._cache_misses = 0
 
-        logger.info(
-            f"TemplateCache initialized (redis={'enabled' if redis_client else 'disabled'})"
-        )
+        logger.info(f"TemplateCache initialized (redis={'enabled' if redis_client else 'disabled'})")
 
-    def _build_cache_key(
-        self, role: str, tenant_key: str, product_id: Optional[str] = None
-    ) -> str:
+    def _build_cache_key(self, role: str, tenant_key: str, product_id: Optional[str] = None) -> str:
         """
         Build cache key for template lookup.
 
@@ -141,9 +136,7 @@ class TemplateCache:
 
         return template
 
-    async def _query_cascade(
-        self, role: str, tenant_key: str, product_id: Optional[str]
-    ) -> Optional[AgentTemplate]:
+    async def _query_cascade(self, role: str, tenant_key: str, product_id: Optional[str]) -> Optional[AgentTemplate]:
         """
         Database cascade query with priority resolution.
 
@@ -164,22 +157,17 @@ class TemplateCache:
         async with self.db.get_session_async() as session:
             # Priority 1: Product-specific template
             if product_id:
-                template = await self._query_product_template(
-                    session, role, tenant_key, product_id
-                )
+                template = await self._query_product_template(session, role, tenant_key, product_id)
                 if template:
                     logger.info(
-                        f"Template resolved (product-specific): {role} "
-                        f"(tenant={tenant_key}, product={product_id})"
+                        f"Template resolved (product-specific): {role} (tenant={tenant_key}, product={product_id})"
                     )
                     return template
 
             # Priority 2: Tenant-specific template
             template = await self._query_tenant_template(session, role, tenant_key)
             if template:
-                logger.info(
-                    f"Template resolved (tenant-specific): {role} (tenant={tenant_key})"
-                )
+                logger.info(f"Template resolved (tenant-specific): {role} (tenant={tenant_key})")
                 return template
 
             # Priority 3: System default template
@@ -189,10 +177,7 @@ class TemplateCache:
                 return template
 
             # Priority 4: Return None (caller uses legacy fallback)
-            logger.debug(
-                f"No database template found for role='{role}', "
-                f"tenant='{tenant_key}', product='{product_id}'"
-            )
+            logger.debug(f"No database template found for role='{role}', tenant='{tenant_key}', product='{product_id}'")
             return None
 
     async def _query_product_template(
@@ -221,9 +206,7 @@ class TemplateCache:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def _query_system_template(
-        self, session: AsyncSession, role: str
-    ) -> Optional[AgentTemplate]:
+    async def _query_system_template(self, session: AsyncSession, role: str) -> Optional[AgentTemplate]:
         """Query system default template"""
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == "system",
@@ -233,9 +216,7 @@ class TemplateCache:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def invalidate(
-        self, role: str, tenant_key: str, product_id: Optional[str] = None
-    ) -> None:
+    async def invalidate(self, role: str, tenant_key: str, product_id: Optional[str] = None) -> None:
         """
         Invalidate template cache across all layers.
 
@@ -270,9 +251,7 @@ class TemplateCache:
         """
         if tenant_key:
             # Invalidate only templates for specific tenant
-            keys_to_remove = [
-                k for k in self._memory_cache.keys() if f":{tenant_key}:" in k
-            ]
+            keys_to_remove = [k for k in self._memory_cache.keys() if f":{tenant_key}:" in k]
             for key in keys_to_remove:
                 del self._memory_cache[key]
             logger.info(f"Memory cache cleared for tenant: {tenant_key}")
@@ -298,9 +277,7 @@ class TemplateCache:
             Dict with hit rate, miss rate, and cache sizes
         """
         total_requests = self._cache_hits + self._cache_misses
-        hit_rate = (
-            (self._cache_hits / total_requests * 100) if total_requests > 0 else 0.0
-        )
+        hit_rate = (self._cache_hits / total_requests * 100) if total_requests > 0 else 0.0
 
         return {
             "hits": self._cache_hits,
@@ -325,9 +302,7 @@ class TemplateCache:
             return None
         return await self.redis.get(key)
 
-    async def _set_in_redis(
-        self, key: str, template: AgentTemplate, ttl: int = 3600
-    ) -> None:
+    async def _set_in_redis(self, key: str, template: AgentTemplate, ttl: int = 3600) -> None:
         """Set value in Redis with TTL"""
         if not self.redis:
             return

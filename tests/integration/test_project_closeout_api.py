@@ -11,7 +11,6 @@ Tests:
 """
 
 import pytest
-from datetime import datetime, timezone
 from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +20,7 @@ from src.giljo_mcp.models import MCPAgentJob, Project, User
 
 @pytest.mark.asyncio
 async def test_can_close_all_agents_complete(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test can-close when all agents are complete."""
     # Create project
@@ -34,7 +30,7 @@ async def test_can_close_all_agents_complete(
         name="Closeout Project",
         mission="Build feature",
         description="Feature development",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -46,17 +42,14 @@ async def test_can_close_all_agents_complete(
             project_id=project.id,
             agent_type="developer",
             mission=f"Implement feature {i}",
-            status="complete"
+            status="complete",
         )
         db_session.add(agent)
 
     await db_session.commit()
 
     # Check can-close
-    response = await client.get(
-        f"/api/v1/projects/{project.id}/can-close",
-        headers=auth_headers
-    )
+    response = await client.get(f"/api/v1/projects/{project.id}/can-close", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -76,10 +69,7 @@ async def test_can_close_all_agents_complete(
 
 @pytest.mark.asyncio
 async def test_can_close_some_agents_failed(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test can-close with mix of complete and failed agents."""
     project = Project(
@@ -88,7 +78,7 @@ async def test_can_close_some_agents_failed(
         name="Mixed Project",
         mission="Build app",
         description="App development",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -100,7 +90,7 @@ async def test_can_close_some_agents_failed(
             project_id=project.id,
             agent_type="developer",
             mission=f"Implement feature {i}",
-            status="complete"
+            status="complete",
         )
         db_session.add(agent)
 
@@ -112,17 +102,14 @@ async def test_can_close_some_agents_failed(
             agent_type="tester",
             mission=f"Test feature {i}",
             status="failed",
-            block_reason="Dependencies missing"
+            block_reason="Dependencies missing",
         )
         db_session.add(agent)
 
     await db_session.commit()
 
     # Check can-close
-    response = await client.get(
-        f"/api/v1/projects/{project.id}/can-close",
-        headers=auth_headers
-    )
+    response = await client.get(f"/api/v1/projects/{project.id}/can-close", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -136,10 +123,7 @@ async def test_can_close_some_agents_failed(
 
 @pytest.mark.asyncio
 async def test_can_close_agents_still_working(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test can-close when agents are still active."""
     project = Project(
@@ -148,7 +132,7 @@ async def test_can_close_agents_still_working(
         name="Active Project",
         mission="Build feature",
         description="Feature dev",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -160,17 +144,14 @@ async def test_can_close_agents_still_working(
             project_id=project.id,
             agent_type="developer",
             mission="Implement",
-            status="working"
+            status="working",
         )
         db_session.add(agent)
 
     await db_session.commit()
 
     # Check can-close
-    response = await client.get(
-        f"/api/v1/projects/{project.id}/can-close",
-        headers=auth_headers
-    )
+    response = await client.get(f"/api/v1/projects/{project.id}/can-close", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -182,25 +163,16 @@ async def test_can_close_agents_still_working(
 
 
 @pytest.mark.asyncio
-async def test_can_close_project_not_found(
-    client: AsyncClient,
-    auth_headers: dict
-):
+async def test_can_close_project_not_found(client: AsyncClient, auth_headers: dict):
     """Test can-close with non-existent project."""
-    response = await client.get(
-        "/api/v1/projects/nonexistent-proj/can-close",
-        headers=auth_headers
-    )
+    response = await client.get("/api/v1/projects/nonexistent-proj/can-close", headers=auth_headers)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_generate_closeout_prompt(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test closeout prompt generation."""
     # Create project with metadata
@@ -211,10 +183,7 @@ async def test_generate_closeout_prompt(
         mission="Build REST API",
         description="API development",
         status="active",
-        meta_data={
-            "path": "/home/user/projects/api-project",
-            "git_branch": "feature/api-endpoints"
-        }
+        meta_data={"path": "/home/user/projects/api-project", "git_branch": "feature/api-endpoints"},
     )
     db_session.add(project)
 
@@ -226,17 +195,14 @@ async def test_generate_closeout_prompt(
             project_id=project.id,
             agent_type="backend-dev",
             mission="Implement endpoints",
-            status="complete"
+            status="complete",
         )
         db_session.add(agent)
 
     await db_session.commit()
 
     # Generate closeout prompt
-    response = await client.post(
-        f"/api/v1/projects/{project.id}/generate-closeout",
-        headers=auth_headers
-    )
+    response = await client.post(f"/api/v1/projects/{project.id}/generate-closeout", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -271,10 +237,7 @@ async def test_generate_closeout_prompt(
 
 @pytest.mark.asyncio
 async def test_complete_project_closeout(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test project completion with closeout."""
     # Create project
@@ -284,7 +247,7 @@ async def test_complete_project_closeout(
         name="Complete Project",
         mission="Build feature",
         description="Feature dev",
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -297,7 +260,7 @@ async def test_complete_project_closeout(
             project_id=project.id,
             agent_type="developer",
             mission="Develop",
-            status="complete"
+            status="complete",
         )
         db_session.add(agent)
 
@@ -305,9 +268,7 @@ async def test_complete_project_closeout(
 
     # Complete project
     response = await client.post(
-        f"/api/v1/projects/{project.id}/complete",
-        json={"confirm_closeout": True},
-        headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": True}, headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -327,10 +288,7 @@ async def test_complete_project_closeout(
 
 @pytest.mark.asyncio
 async def test_complete_project_without_confirmation(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test project completion fails without confirmation."""
     project = Project(
@@ -339,16 +297,14 @@ async def test_complete_project_without_confirmation(
         name="Unconfirmed",
         mission="Test",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
 
     # Try completing without confirmation
     response = await client.post(
-        f"/api/v1/projects/{project.id}/complete",
-        json={"confirm_closeout": False},
-        headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": False}, headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -357,10 +313,7 @@ async def test_complete_project_without_confirmation(
 
 @pytest.mark.asyncio
 async def test_closeout_workflow_end_to_end(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    auth_headers: dict
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test complete closeout workflow: can-close → generate → complete."""
     # Setup project with completed agents
@@ -371,7 +324,7 @@ async def test_closeout_workflow_end_to_end(
         mission="Full stack app",
         description="Complete workflow test",
         status="active",
-        meta_data={"path": "/workspace/app"}
+        meta_data={"path": "/workspace/app"},
     )
     db_session.add(project)
 
@@ -382,33 +335,25 @@ async def test_closeout_workflow_end_to_end(
             project_id=project.id,
             agent_type="developer",
             mission=f"Implement module {i}",
-            status="complete"
+            status="complete",
         )
         db_session.add(agent)
 
     await db_session.commit()
 
     # Step 1: Check can-close
-    response1 = await client.get(
-        f"/api/v1/projects/{project.id}/can-close",
-        headers=auth_headers
-    )
+    response1 = await client.get(f"/api/v1/projects/{project.id}/can-close", headers=auth_headers)
     assert response1.status_code == status.HTTP_200_OK
     assert response1.json()["can_close"] is True
 
     # Step 2: Generate closeout prompt
-    response2 = await client.post(
-        f"/api/v1/projects/{project.id}/generate-closeout",
-        headers=auth_headers
-    )
+    response2 = await client.post(f"/api/v1/projects/{project.id}/generate-closeout", headers=auth_headers)
     assert response2.status_code == status.HTTP_200_OK
     assert "prompt" in response2.json()
 
     # Step 3: Complete project
     response3 = await client.post(
-        f"/api/v1/projects/{project.id}/complete",
-        json={"confirm_closeout": True},
-        headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": True}, headers=auth_headers
     )
     assert response3.status_code == status.HTTP_200_OK
     assert response3.json()["success"] is True
@@ -428,7 +373,7 @@ async def test_closeout_multi_tenant_isolation_can_close(
     test_user: User,
     test_user_2: User,
     auth_headers: dict,
-    auth_headers_user_2: dict
+    auth_headers_user_2: dict,
 ):
     """Test multi-tenant isolation in can-close endpoint."""
     project = Project(
@@ -437,16 +382,13 @@ async def test_closeout_multi_tenant_isolation_can_close(
         name="Tenant 1 Project",
         mission="Build",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
 
     # User 2 tries to check user 1's project
-    response = await client.get(
-        f"/api/v1/projects/{project.id}/can-close",
-        headers=auth_headers_user_2
-    )
+    response = await client.get(f"/api/v1/projects/{project.id}/can-close", headers=auth_headers_user_2)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -458,7 +400,7 @@ async def test_closeout_multi_tenant_isolation_generate(
     test_user: User,
     test_user_2: User,
     auth_headers: dict,
-    auth_headers_user_2: dict
+    auth_headers_user_2: dict,
 ):
     """Test multi-tenant isolation in generate-closeout endpoint."""
     project = Project(
@@ -467,16 +409,13 @@ async def test_closeout_multi_tenant_isolation_generate(
         name="Tenant 1 Project",
         mission="Build",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
 
     # User 2 tries to generate closeout for user 1's project
-    response = await client.post(
-        f"/api/v1/projects/{project.id}/generate-closeout",
-        headers=auth_headers_user_2
-    )
+    response = await client.post(f"/api/v1/projects/{project.id}/generate-closeout", headers=auth_headers_user_2)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -488,7 +427,7 @@ async def test_closeout_multi_tenant_isolation_complete(
     test_user: User,
     test_user_2: User,
     auth_headers: dict,
-    auth_headers_user_2: dict
+    auth_headers_user_2: dict,
 ):
     """Test multi-tenant isolation in complete endpoint."""
     project = Project(
@@ -497,16 +436,14 @@ async def test_closeout_multi_tenant_isolation_complete(
         name="Tenant 1 Project",
         mission="Build",
         description="Test",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
 
     # User 2 tries to complete user 1's project
     response = await client.post(
-        f"/api/v1/projects/{project.id}/complete",
-        json={"confirm_closeout": True},
-        headers=auth_headers_user_2
+        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": True}, headers=auth_headers_user_2
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND

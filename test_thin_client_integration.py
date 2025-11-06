@@ -10,6 +10,7 @@ Tests:
 import sys
 from pathlib import Path
 
+
 # Add project to path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -22,7 +23,7 @@ def test_config_external_host():
 
     # Read config
     config_path = Path("config.yaml")
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
 
     external_host = config_data.get("services", {}).get("external_host")
@@ -37,7 +38,7 @@ def test_config_external_host():
     assert external_host != "0.0.0.0", "external_host should not be 0.0.0.0"
     assert bind_host == "0.0.0.0", "Bind host should be 0.0.0.0 for network access"
 
-    print(f"\n[PASS] TEST 1 PASSED")
+    print("\n[PASS] TEST 1 PASSED")
     print(f"   - External host: {external_host}")
     print(f"   - Server binds to: {bind_host} (correct for network)")
     print(f"   - User-facing URL: http://{external_host}:{api_port}")
@@ -49,8 +50,9 @@ def test_health_check_tool():
     """Test that health_check MCP tool exists and works."""
     print("\n=== TEST 2: Health Check Tool ===")
 
-    from src.giljo_mcp.tools.orchestration import health_check
     import asyncio
+
+    from src.giljo_mcp.tools.orchestration import health_check
 
     # Verify health_check exists
     assert health_check is not None, "health_check tool should exist"
@@ -59,9 +61,9 @@ def test_health_check_tool():
     result = asyncio.run(health_check())
 
     print(f"Health check result: {result}")
-    assert result['status'] == 'healthy', "Health check should return healthy status"
-    assert 'version' in result, "Health check should include version"
-    assert 'timestamp' in result, "Health check should include timestamp"
+    assert result["status"] == "healthy", "Health check should return healthy status"
+    assert "version" in result, "Health check should include version"
+    assert "timestamp" in result, "Health check should include timestamp"
 
     print("[PASS] TEST 2 PASSED: health_check() tool works")
 
@@ -105,9 +107,9 @@ Logs: ~/.giljo_mcp/logs/mcp_adapter.log
 Begin by verifying MCP connection, then fetch your mission.
 """
 
-    print(f"\n--- Generated Prompt ---")
+    print("\n--- Generated Prompt ---")
     print(prompt)
-    print(f"--- End Prompt ---\n")
+    print("--- End Prompt ---\n")
 
     # Verify external_host is used
     assert external_host in prompt, f"Prompt should contain external_host: {external_host}"
@@ -118,15 +120,15 @@ Begin by verifying MCP connection, then fetch your mission.
     assert "get_orchestrator_instructions(" in prompt, "Prompt should mention get_orchestrator_instructions()"
 
     # Verify prompt is thin
-    line_count = len(prompt.strip().split('\n'))
+    line_count = len(prompt.strip().split("\n"))
     print(f"Prompt line count: {line_count}")
     assert line_count < 30, f"Prompt too long: {line_count} lines (should be < 30)"
 
-    print(f"[PASS] TEST 3 PASSED")
+    print("[PASS] TEST 3 PASSED")
     print(f"   - External host used: {external_host}")
     print(f"   - MCP URL correct: {mcp_url}")
     print(f"   - Prompt is thin: {line_count} lines")
-    print(f"   - Both MCP tools mentioned")
+    print("   - Both MCP tools mentioned")
 
 
 def main():
@@ -161,6 +163,7 @@ def main():
     except Exception as e:
         print(f"\n[ERROR] ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

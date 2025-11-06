@@ -17,7 +17,6 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestResults:
     def __init__(self):
         self.results = []

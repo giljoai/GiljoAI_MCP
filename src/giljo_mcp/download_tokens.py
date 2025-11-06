@@ -63,12 +63,7 @@ class TokenManager:
         """
         self.db_session = db_session
 
-    async def generate_token(
-        self,
-        tenant_key: str,
-        download_type: str,
-        metadata: dict
-    ) -> str:
+    async def generate_token(self, tenant_key: str, download_type: str, metadata: dict) -> str:
         """
         Generate a new download token.
 
@@ -91,7 +86,7 @@ class TokenManager:
             HTTPException: If database operation fails
         """
         # Validate download_type
-        if download_type not in ('slash_commands', 'agent_templates'):
+        if download_type not in ("slash_commands", "agent_templates"):
             raise ValueError(f"Invalid download_type: {download_type}")
 
         # If no database session, just return a UUID (for testing)
@@ -103,10 +98,7 @@ class TokenManager:
 
         # Create token record
         token_record = DownloadToken(
-            tenant_key=tenant_key,
-            download_type=download_type,
-            meta_data=metadata,
-            expires_at=expires_at
+            tenant_key=tenant_key, download_type=download_type, meta_data=metadata, expires_at=expires_at
         )
 
         try:
@@ -115,8 +107,7 @@ class TokenManager:
             await self.db_session.refresh(token_record)
 
             logger.info(
-                f"Generated download token for tenant {tenant_key}, "
-                f"type: {download_type}, expires: {expires_at}"
+                f"Generated download token for tenant {tenant_key}, type: {download_type}, expires: {expires_at}"
             )
 
             return token_record.token
@@ -125,16 +116,12 @@ class TokenManager:
             await self.db_session.rollback()
             logger.error(f"Failed to generate download token: {e}")
             from fastapi import HTTPException, status
+
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to generate download token"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate download token"
             )
 
-    async def validate_token(
-        self,
-        token: str,
-        tenant_key: str
-    ) -> bool:
+    async def validate_token(self, token: str, tenant_key: str) -> bool:
         """
         Validate a download token.
 
@@ -150,10 +137,7 @@ class TokenManager:
         """
         try:
             # Query token with tenant isolation
-            stmt = select(DownloadToken).where(
-                DownloadToken.token == token,
-                DownloadToken.tenant_key == tenant_key
-            )
+            stmt = select(DownloadToken).where(DownloadToken.token == token, DownloadToken.tenant_key == tenant_key)
             result = await self.db_session.execute(stmt)
             token_record = result.scalar_one_or_none()
 
@@ -229,9 +213,7 @@ class TokenManager:
             now = datetime.now(timezone.utc)
 
             # Delete expired tokens
-            stmt = delete(DownloadToken).where(
-                DownloadToken.expires_at < now
-            )
+            stmt = delete(DownloadToken).where(DownloadToken.expires_at < now)
             result = await self.db_session.execute(stmt)
             await self.db_session.commit()
 
@@ -247,11 +229,7 @@ class TokenManager:
             logger.error(f"Error cleaning up expired tokens: {e}")
             return 0
 
-    async def get_token_info(
-        self,
-        token: str,
-        tenant_key: str
-    ) -> Optional[dict]:
+    async def get_token_info(self, token: str, tenant_key: str) -> Optional[dict]:
         """
         Retrieve token information (for debugging/monitoring).
 
@@ -263,10 +241,7 @@ class TokenManager:
             Optional[dict]: Token metadata or None if not found
         """
         try:
-            stmt = select(DownloadToken).where(
-                DownloadToken.token == token,
-                DownloadToken.tenant_key == tenant_key
-            )
+            stmt = select(DownloadToken).where(DownloadToken.token == token, DownloadToken.tenant_key == tenant_key)
             result = await self.db_session.execute(stmt)
             token_record = result.scalar_one_or_none()
 
@@ -282,7 +257,7 @@ class TokenManager:
                 "is_expired": token_record.is_expired,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None
+                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
             }
 
         except Exception as e:

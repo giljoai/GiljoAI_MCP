@@ -5,18 +5,20 @@ Manual verification script for cookie_domains config generation
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import yaml
+
 from installer.core.config import ConfigManager
 
 
 def test_scenario(name: str, settings: dict):
     """Test a specific scenario and print results"""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Scenario: {name}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     # Create temp paths
     tmp_path = Path("temp_config_test")
@@ -31,11 +33,11 @@ def test_scenario(name: str, settings: dict):
 
         if result["success"]:
             # Load and display cookie_domains
-            with open(manager.config_file, "r") as f:
+            with open(manager.config_file) as f:
                 config = yaml.safe_load(f)
 
             cookie_domains = config["security"]["cookie_domains"]
-            print(f"Settings:")
+            print("Settings:")
             print(f"  external_host: {settings.get('external_host', 'N/A')}")
             print(f"  custom_domain: {settings.get('custom_domain', 'N/A')}")
             print(f"\nGenerated cookie_domains: {cookie_domains}")
@@ -44,7 +46,7 @@ def test_scenario(name: str, settings: dict):
             print(f"  Empty: {len(cookie_domains) == 0}")
 
             # Display full security config
-            print(f"\nFull security config:")
+            print("\nFull security config:")
             print(yaml.dump(config["security"], default_flow_style=False, indent=2))
 
         else:
@@ -149,6 +151,6 @@ if __name__ == "__main__":
         },
     )
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("All scenarios completed successfully")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")

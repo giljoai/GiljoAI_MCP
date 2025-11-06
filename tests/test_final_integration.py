@@ -16,7 +16,6 @@ from src.giljo_mcp.models import AgentInteraction, Base, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestFinalIntegration:
     """Complete integration testing for production readiness"""
 

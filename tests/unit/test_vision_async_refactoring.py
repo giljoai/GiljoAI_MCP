@@ -7,17 +7,16 @@ Tests async conversion of:
 - VisionDocumentChunker.chunk_vision_document()
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+from src.giljo_mcp.models import VisionDocument
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
-from src.giljo_mcp.models import MCPContextIndex, VisionDocument
 
 
 class TestContextRepositoryAsync:
@@ -40,16 +39,11 @@ class TestContextRepositoryAsync:
 
         # Mock query execution
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [
-            MagicMock(id="chunk1"),
-            MagicMock(id="chunk2")
-        ]
+        mock_result.scalars.return_value.all.return_value = [MagicMock(id="chunk1"), MagicMock(id="chunk2")]
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         # Call method
-        result = await context_repo.delete_chunks_by_vision_document(
-            mock_session, "test-tenant", "test-doc-id"
-        )
+        result = await context_repo.delete_chunks_by_vision_document(mock_session, "test-tenant", "test-doc-id")
 
         # Should return count
         assert isinstance(result, int)
@@ -85,9 +79,7 @@ class TestVisionDocumentRepositoryAsync:
 
         before_time = datetime.now(timezone.utc)
 
-        await vision_repo.mark_chunked(
-            mock_session, "test-doc-id", chunk_count=10, total_tokens=2500
-        )
+        await vision_repo.mark_chunked(mock_session, "test-doc-id", chunk_count=10, total_tokens=2500)
 
         after_time = datetime.now(timezone.utc)
 
@@ -133,9 +125,10 @@ class TestVisionDocumentChunkerAsync:
 
         # Patch repository classes where chunker imports them from
         # chunker.py uses: from ..repositories.vision_document_repository import VisionDocumentRepository
-        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockVisionRepo, \
-             patch('src.giljo_mcp.repositories.context_repository.ContextRepository') as MockContextRepo:
-
+        with (
+            patch("src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository") as MockVisionRepo,
+            patch("src.giljo_mcp.repositories.context_repository.ContextRepository") as MockContextRepo,
+        ):
             mock_vision_repo_instance = MockVisionRepo.return_value
             mock_vision_repo_instance.get_by_id = AsyncMock(return_value=mock_doc)
             mock_vision_repo_instance.mark_chunked = AsyncMock()
@@ -144,15 +137,15 @@ class TestVisionDocumentChunkerAsync:
             mock_context_repo_instance.delete_chunks_by_vision_document = AsyncMock(return_value=0)
 
             # Mock chunk_document method
-            chunker.chunk_document = MagicMock(return_value=[
-                {"content": "chunk1", "keywords": ["test"], "tokens": 50},
-                {"content": "chunk2", "keywords": ["content"], "tokens": 50}
-            ])
+            chunker.chunk_document = MagicMock(
+                return_value=[
+                    {"content": "chunk1", "keywords": ["test"], "tokens": 50},
+                    {"content": "chunk2", "keywords": ["content"], "tokens": 50},
+                ]
+            )
 
             # Call async method
-            result = await chunker.chunk_vision_document(
-                mock_session, "test-tenant", "test-doc-id"
-            )
+            result = await chunker.chunk_vision_document(mock_session, "test-tenant", "test-doc-id")
 
             # Verify result
             assert result["success"] is True
@@ -161,16 +154,12 @@ class TestVisionDocumentChunkerAsync:
             assert result["total_tokens"] == 100
 
             # Verify async methods were awaited
-            mock_vision_repo_instance.get_by_id.assert_awaited_once_with(
-                mock_session, "test-tenant", "test-doc-id"
-            )
+            mock_vision_repo_instance.get_by_id.assert_awaited_once_with(mock_session, "test-tenant", "test-doc-id")
             mock_context_repo_instance.delete_chunks_by_vision_document.assert_awaited_once_with(
                 mock_session, "test-tenant", "test-doc-id"
             )
             mock_session.flush.assert_awaited_once()
-            mock_vision_repo_instance.mark_chunked.assert_awaited_once_with(
-                mock_session, "test-doc-id", 2, 100
-            )
+            mock_vision_repo_instance.mark_chunked.assert_awaited_once_with(mock_session, "test-doc-id", 2, 100)
 
     @pytest.mark.asyncio
     async def test_chunk_vision_document_handles_missing_document(self, chunker):
@@ -178,14 +167,12 @@ class TestVisionDocumentChunkerAsync:
         mock_session = AsyncMock(spec=AsyncSession)
 
         # Patch repository to return None (document not found)
-        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockVisionRepo:
+        with patch("src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository") as MockVisionRepo:
             mock_vision_repo_instance = MockVisionRepo.return_value
             mock_vision_repo_instance.get_by_id = AsyncMock(return_value=None)
 
             # Call async method
-            result = await chunker.chunk_vision_document(
-                mock_session, "test-tenant", "nonexistent-doc-id"
-            )
+            result = await chunker.chunk_vision_document(mock_session, "test-tenant", "nonexistent-doc-id")
 
             # Verify error response
             assert result["success"] is False

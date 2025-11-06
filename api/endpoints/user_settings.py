@@ -30,40 +30,27 @@ router = APIRouter()
 
 # Pydantic Models
 
+
 class CookieDomainsResponse(BaseModel):
     """Response model for cookie domain whitelist."""
 
     model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "domains": ["localhost", "example.com", "subdomain.example.com"]
-            }
-        }
+        json_schema_extra={"example": {"domains": ["localhost", "example.com", "subdomain.example.com"]}}
     )
 
-    domains: List[str] = Field(
-        description="List of whitelisted cookie domains"
-    )
+    domains: List[str] = Field(description="List of whitelisted cookie domains")
 
 
 class AddCookieDomainRequest(BaseModel):
     """Request model for adding a domain to cookie whitelist."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "domain": "example.com"
-            }
-        }
-    )
+    model_config = ConfigDict(json_schema_extra={"example": {"domain": "example.com"}})
 
     domain: str = Field(
-        min_length=3,
-        max_length=255,
-        description="Domain name to whitelist (e.g., 'localhost', 'example.com')"
+        min_length=3, max_length=255, description="Domain name to whitelist (e.g., 'localhost', 'example.com')"
     )
 
-    @field_validator('domain')
+    @field_validator("domain")
     @classmethod
     def validate_domain(cls, v: str) -> str:
         """
@@ -94,12 +81,14 @@ class AddCookieDomainRequest(BaseModel):
 
         # Reject IP addresses (they're auto-allowed)
         # Simple check: if it looks like an IP (digits and dots only)
-        if re.match(r'^[\d.]+$', domain):
+        if re.match(r"^[\d.]+$", domain):
             raise ValueError("IP addresses are automatically allowed - only add domain names")
 
         # Validate domain format
         # RFC 1123 compliant hostname regex
-        domain_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+        domain_pattern = (
+            r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+        )
 
         if not re.match(domain_pattern, domain):
             raise ValueError(
@@ -113,22 +102,13 @@ class AddCookieDomainRequest(BaseModel):
 class RemoveCookieDomainRequest(BaseModel):
     """Request model for removing a domain from cookie whitelist."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "domain": "example.com"
-            }
-        }
-    )
+    model_config = ConfigDict(json_schema_extra={"example": {"domain": "example.com"}})
 
-    domain: str = Field(
-        min_length=3,
-        max_length=255,
-        description="Domain name to remove from whitelist"
-    )
+    domain: str = Field(min_length=3, max_length=255, description="Domain name to remove from whitelist")
 
 
 # Helper Functions
+
 
 def _get_config_path() -> Path:
     """Get path to config.yaml in project root."""
@@ -154,10 +134,10 @@ def _read_config() -> dict:
             logger.error(f"config.yaml not found at {config_path}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Configuration file not found. System may not be properly installed."
+                detail="Configuration file not found. System may not be properly installed.",
             )
 
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
 
         return config
@@ -165,14 +145,12 @@ def _read_config() -> dict:
     except yaml.YAMLError as e:
         logger.error(f"Failed to parse config.yaml: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Configuration file is malformed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration file is malformed: {e!s}"
         )
     except Exception as e:
         logger.error(f"Failed to read config.yaml: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to read configuration file: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to read configuration file: {e!s}"
         )
 
 
@@ -192,9 +170,9 @@ def _write_config(config: dict) -> None:
 
     try:
         # Write to temporary file first (atomic write)
-        temp_path = config_path.with_suffix('.yaml.tmp')
+        temp_path = config_path.with_suffix(".yaml.tmp")
 
-        with open(temp_path, 'w', encoding='utf-8') as f:
+        with open(temp_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
 
         # Atomic rename
@@ -205,8 +183,7 @@ def _write_config(config: dict) -> None:
     except Exception as e:
         logger.error(f"Failed to write config.yaml: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration file: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update configuration file: {e!s}"
         )
 
 
@@ -220,7 +197,7 @@ def _get_cookie_domains(config: dict) -> List[str]:
     Returns:
         List of whitelisted domains (empty list if not configured)
     """
-    return config.get('security', {}).get('cookie_domain_whitelist', [])
+    return config.get("security", {}).get("cookie_domain_whitelist", [])
 
 
 def _set_cookie_domains(config: dict, domains: List[str]) -> None:
@@ -234,19 +211,19 @@ def _set_cookie_domains(config: dict, domains: List[str]) -> None:
         domains: List of domains to set
     """
     # Ensure security section exists
-    if 'security' not in config:
-        config['security'] = {}
+    if "security" not in config:
+        config["security"] = {}
 
     # Update whitelist
-    config['security']['cookie_domain_whitelist'] = domains
+    config["security"]["cookie_domain_whitelist"] = domains
 
 
 # API Endpoints
 
+
 @router.get("/settings/cookie-domains", response_model=CookieDomainsResponse)
 async def get_cookie_domains(
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db_session)
 ) -> CookieDomainsResponse:
     """
     Get cookie domain whitelist.
@@ -281,7 +258,7 @@ async def get_cookie_domains(
 async def add_cookie_domain(
     request: AddCookieDomainRequest,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> CookieDomainsResponse:
     """
     Add domain to cookie whitelist.
@@ -331,7 +308,7 @@ async def add_cookie_domain(
 async def remove_cookie_domain(
     request: RemoveCookieDomainRequest,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> CookieDomainsResponse:
     """
     Remove domain from cookie whitelist.
@@ -364,10 +341,7 @@ async def remove_cookie_domain(
     # Remove domain
     if domain not in domains:
         logger.warning(f"Domain not found in whitelist: {domain}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Domain '{domain}' not found in whitelist"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' not found in whitelist")
 
     domains.remove(domain)
     logger.info(f"Removed domain from whitelist: {domain}")

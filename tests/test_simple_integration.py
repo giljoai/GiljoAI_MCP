@@ -4,9 +4,7 @@ Simple integration test to verify Tool-API bridge works
 """
 
 import asyncio
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 
@@ -16,8 +14,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
 
 
 async def simple_test():

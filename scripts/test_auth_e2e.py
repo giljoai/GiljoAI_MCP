@@ -15,33 +15,41 @@ Usage:
     python scripts/test_auth_e2e.py
 """
 
-import requests
 import sys
 from typing import Optional
+
+import requests
+
 
 # Configuration
 API_BASE_URL = "http://localhost:7273/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
 
+
 class Colors:
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    RESET = '\033[0m'
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    RESET = "\033[0m"
+
 
 def log_step(step: str):
     print(f"\n{Colors.BLUE}[STEP] {step}{Colors.RESET}")
 
+
 def log_success(message: str):
     print(f"{Colors.GREEN}[OK] {message}{Colors.RESET}")
+
 
 def log_error(message: str):
     print(f"{Colors.RED}[FAIL] {message}{Colors.RESET}")
 
+
 def log_info(message: str):
     print(f"{Colors.YELLOW}[INFO] {message}{Colors.RESET}")
+
 
 def test_login(session: requests.Session) -> bool:
     """Test login with username/password"""
@@ -49,30 +57,25 @@ def test_login(session: requests.Session) -> bool:
 
     try:
         response = session.post(
-            f"{API_BASE_URL}/auth/login",
-            json={
-                "username": ADMIN_USERNAME,
-                "password": ADMIN_PASSWORD
-            }
+            f"{API_BASE_URL}/auth/login", json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
         )
 
         if response.status_code == 200:
             log_success(f"Login successful: {response.json()}")
 
             # Check if JWT cookie was set
-            if 'access_token' in session.cookies:
+            if "access_token" in session.cookies:
                 log_success("JWT cookie set successfully")
                 return True
-            else:
-                log_error("JWT cookie not found in response")
-                return False
-        else:
-            log_error(f"Login failed: {response.status_code} - {response.text}")
+            log_error("JWT cookie not found in response")
             return False
+        log_error(f"Login failed: {response.status_code} - {response.text}")
+        return False
 
     except Exception as e:
         log_error(f"Login error: {e}")
         return False
+
 
 def test_protected_endpoint(session: requests.Session) -> bool:
     """Test accessing protected endpoint with JWT"""
@@ -85,41 +88,37 @@ def test_protected_endpoint(session: requests.Session) -> bool:
             user_data = response.json()
             log_success(f"Authenticated as: {user_data.get('username')} ({user_data.get('role')})")
             return True
-        else:
-            log_error(f"Failed to access protected endpoint: {response.status_code} - {response.text}")
-            return False
+        log_error(f"Failed to access protected endpoint: {response.status_code} - {response.text}")
+        return False
 
     except Exception as e:
         log_error(f"Protected endpoint error: {e}")
         return False
+
 
 def test_generate_api_key(session: requests.Session) -> Optional[str]:
     """Test API key generation"""
     log_step("Testing API Key Generation")
 
     try:
-        response = session.post(
-            f"{API_BASE_URL}/auth/api-keys",
-            json={"name": "E2E Test Key"}
-        )
+        response = session.post(f"{API_BASE_URL}/auth/api-keys", json={"name": "E2E Test Key"})
 
         if response.status_code == 200:
             data = response.json()
-            api_key = data.get('api_key')
+            api_key = data.get("api_key")
 
-            if api_key and api_key.startswith('gk_'):
+            if api_key and api_key.startswith("gk_"):
                 log_success(f"API key generated: {api_key[:15]}...")
                 return api_key
-            else:
-                log_error(f"Invalid API key format: {api_key}")
-                return None
-        else:
-            log_error(f"API key generation failed: {response.status_code} - {response.text}")
+            log_error(f"Invalid API key format: {api_key}")
             return None
+        log_error(f"API key generation failed: {response.status_code} - {response.text}")
+        return None
 
     except Exception as e:
         log_error(f"API key generation error: {e}")
         return None
+
 
 def test_api_key_authentication(api_key: str) -> bool:
     """Test authentication using API key"""
@@ -129,22 +128,19 @@ def test_api_key_authentication(api_key: str) -> bool:
     api_session = requests.Session()
 
     try:
-        response = api_session.get(
-            f"{API_BASE_URL}/auth/me",
-            headers={"X-API-Key": api_key}
-        )
+        response = api_session.get(f"{API_BASE_URL}/auth/me", headers={"X-API-Key": api_key})
 
         if response.status_code == 200:
             user_data = response.json()
             log_success(f"API key authentication successful: {user_data.get('username')}")
             return True
-        else:
-            log_error(f"API key authentication failed: {response.status_code} - {response.text}")
-            return False
+        log_error(f"API key authentication failed: {response.status_code} - {response.text}")
+        return False
 
     except Exception as e:
         log_error(f"API key authentication error: {e}")
         return False
+
 
 def test_list_api_keys(session: requests.Session) -> bool:
     """Test listing API keys"""
@@ -159,13 +155,13 @@ def test_list_api_keys(session: requests.Session) -> bool:
             for key in keys:
                 log_info(f"  - {key.get('name')}: {key.get('key_prefix')}...")
             return True
-        else:
-            log_error(f"API key listing failed: {response.status_code} - {response.text}")
-            return False
+        log_error(f"API key listing failed: {response.status_code} - {response.text}")
+        return False
 
     except Exception as e:
         log_error(f"API key listing error: {e}")
         return False
+
 
 def test_revoke_api_key(session: requests.Session, api_key_id: str) -> bool:
     """Test revoking an API key"""
@@ -177,13 +173,13 @@ def test_revoke_api_key(session: requests.Session, api_key_id: str) -> bool:
         if response.status_code == 200:
             log_success("API key revoked successfully")
             return True
-        else:
-            log_error(f"API key revocation failed: {response.status_code} - {response.text}")
-            return False
+        log_error(f"API key revocation failed: {response.status_code} - {response.text}")
+        return False
 
     except Exception as e:
         log_error(f"API key revocation error: {e}")
         return False
+
 
 def test_logout(session: requests.Session) -> bool:
     """Test logout (clear JWT cookie)"""
@@ -196,19 +192,18 @@ def test_logout(session: requests.Session) -> bool:
             log_success("Logout successful")
 
             # Verify cookie was cleared
-            if 'access_token' not in session.cookies:
+            if "access_token" not in session.cookies:
                 log_success("JWT cookie cleared")
                 return True
-            else:
-                log_error("JWT cookie still present after logout")
-                return False
-        else:
-            log_error(f"Logout failed: {response.status_code} - {response.text}")
+            log_error("JWT cookie still present after logout")
             return False
+        log_error(f"Logout failed: {response.status_code} - {response.text}")
+        return False
 
     except Exception as e:
         log_error(f"Logout error: {e}")
         return False
+
 
 def test_unauthorized_access(session: requests.Session) -> bool:
     """Test that protected endpoints return 401 after logout"""
@@ -220,18 +215,18 @@ def test_unauthorized_access(session: requests.Session) -> bool:
         if response.status_code == 401:
             log_success("Properly rejected unauthorized access")
             return True
-        else:
-            log_error(f"Expected 401, got {response.status_code}")
-            return False
+        log_error(f"Expected 401, got {response.status_code}")
+        return False
 
     except Exception as e:
         log_error(f"Unauthorized access test error: {e}")
         return False
 
+
 def main():
-    print(f"\n{Colors.BLUE}{'='*60}")
+    print(f"\n{Colors.BLUE}{'=' * 60}")
     print("LAN Authentication End-to-End Test")
-    print(f"{'='*60}{Colors.RESET}\n")
+    print(f"{'=' * 60}{Colors.RESET}\n")
 
     log_info(f"API Base URL: {API_BASE_URL}")
     log_info(f"Test User: {ADMIN_USERNAME}")
@@ -262,7 +257,7 @@ def main():
         if keys_response.status_code == 200:
             keys = keys_response.json()
             if keys:
-                key_id = keys[0].get('id')
+                key_id = keys[0].get("id")
                 results.append(("Revoke API Key", test_revoke_api_key(session, key_id)))
     except:
         pass
@@ -272,9 +267,9 @@ def main():
     results.append(("Unauthorized Access", test_unauthorized_access(session)))
 
     # Print summary
-    print(f"\n{Colors.BLUE}{'='*60}")
+    print(f"\n{Colors.BLUE}{'=' * 60}")
     print("Test Summary")
-    print(f"{'='*60}{Colors.RESET}\n")
+    print(f"{'=' * 60}{Colors.RESET}\n")
 
     passed = sum(1 for _, result in results if result)
     total = len(results)
@@ -288,9 +283,9 @@ def main():
     if passed == total:
         print(f"\n{Colors.GREEN}SUCCESS: All tests passed!{Colors.RESET}\n")
         return 0
-    else:
-        print(f"\n{Colors.RED}WARNING: Some tests failed{Colors.RESET}\n")
-        return 1
+    print(f"\n{Colors.RED}WARNING: Some tests failed{Colors.RESET}\n")
+    return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

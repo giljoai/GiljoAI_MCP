@@ -100,7 +100,7 @@ class UIAnalyzerMCPMonitor:
                     {
                         "id": f"msg_{int(time.time())}_{random.randint(1000, 9999)}",
                         "from_agent": random.choice(["orchestrator", "implementer", "tester"]),
-                        "content": f'UI task: {random.choice(["Update dashboard", "Fix navbar", "Add dark mode", "Optimize layout"])}',
+                        "content": f"UI task: {random.choice(['Update dashboard', 'Fix navbar', 'Add dark mode', 'Optimize layout'])}",
                         "priority": random.choice(["normal", "high", "urgent"]),
                         "timestamp": datetime.now().isoformat(),
                         "message_type": "direct",

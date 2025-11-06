@@ -13,9 +13,7 @@ Tests focus on:
 
 import asyncio
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -55,8 +53,9 @@ class TestBackupToolRegistration:
 
     def test_backup_tool_has_correct_signature(self):
         """Test backup_database tool has expected function signature"""
-        from src.giljo_mcp.tools.backup import backup_database
         import inspect
+
+        from src.giljo_mcp.tools.backup import backup_database
 
         # Get function signature
         sig = inspect.signature(backup_database)
@@ -72,8 +71,9 @@ class TestBackupToolRegistration:
 
     def test_backup_tool_is_async(self):
         """Test backup_database tool is an async function"""
-        from src.giljo_mcp.tools.backup import backup_database
         import inspect
+
+        from src.giljo_mcp.tools.backup import backup_database
 
         assert inspect.iscoroutinefunction(backup_database), "backup_database should be async"
 
@@ -174,10 +174,7 @@ class TestBackupToolFunction:
             call_args = mock_backup.call_args
 
             # tenant_key should be in args or kwargs
-            assert (
-                tenant_key in call_args.args
-                or call_args.kwargs.get("tenant_key") == tenant_key
-            )
+            assert tenant_key in call_args.args or call_args.kwargs.get("tenant_key") == tenant_key
 
 
 # ============================================================================
@@ -373,7 +370,7 @@ class TestBackupToolIntegration:
 
     def test_backup_tool_can_be_invoked_via_tool_system(self):
         """Test backup_database can be invoked through tool system"""
-        from src.giljo_mcp.tools import get_tool_by_name, call_tool
+        from src.giljo_mcp.tools import get_tool_by_name
 
         tool = get_tool_by_name("backup_database")
         assert tool is not None
@@ -459,10 +456,7 @@ class TestBackupToolEdgeCases:
         with patch("src.giljo_mcp.tools.backup.create_backup", new=slow_backup):
             # Should either complete or timeout gracefully
             try:
-                result = await asyncio.wait_for(
-                    backup_database(tenant_key=tenant_key),
-                    timeout=2.0
-                )
+                result = await asyncio.wait_for(backup_database(tenant_key=tenant_key), timeout=2.0)
                 # If it completes, should have success field
                 assert "success" in result
             except asyncio.TimeoutError:

@@ -5,12 +5,12 @@ Allows MCP clients to access tools via HTTP instead of stdio
 """
 
 import logging
-from typing import Any, Dict, Optional
 from datetime import datetime, timezone
-from uuid import uuid4
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ router = APIRouter()
 
 class MCPToolRequest(BaseModel):
     """Generic MCP tool request format"""
+
     tool: str = Field(..., description="Tool name to execute")
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
     tenant_key: Optional[str] = Field(None, description="Tenant key for multi-tenant isolation")
@@ -27,6 +28,7 @@ class MCPToolRequest(BaseModel):
 
 class MCPToolResponse(BaseModel):
     """Generic MCP tool response format"""
+
     success: bool
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
@@ -63,39 +65,33 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "get_project": state.tool_accessor.get_project,
             "switch_project": state.tool_accessor.switch_project,
             "close_project": state.tool_accessor.close_project,
-
             # Agent tools
             "spawn_agent": state.tool_accessor.spawn_agent,
             "list_agents": state.tool_accessor.list_agents,
             "get_agent_status": state.tool_accessor.get_agent_status,
             "update_agent": state.tool_accessor.update_agent,
             "retire_agent": state.tool_accessor.retire_agent,
-
             # Message tools
             "send_message": state.tool_accessor.send_message,
             "receive_messages": state.tool_accessor.receive_messages,
             "acknowledge_message": state.tool_accessor.acknowledge_message,
             "list_messages": state.tool_accessor.list_messages,
-
             # Task tools
             "create_task": state.tool_accessor.create_task,
             "list_tasks": state.tool_accessor.list_tasks,
             "update_task": state.tool_accessor.update_task,
             "assign_task": state.tool_accessor.assign_task,
             "complete_task": state.tool_accessor.complete_task,
-
             # Template tools
             "list_templates": state.tool_accessor.list_templates,
             "get_template": state.tool_accessor.get_template,
             "create_template": state.tool_accessor.create_template,
             "update_template": state.tool_accessor.update_template,
-
             # Context tools
             "discover_context": state.tool_accessor.discover_context,
             "get_file_context": state.tool_accessor.get_file_context,
             "search_context": state.tool_accessor.search_context,
             "get_context_summary": state.tool_accessor.get_context_summary,
-
             # Orchestration tools
             "health_check": state.tool_accessor.health_check,
             "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
@@ -103,7 +99,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "get_agent_mission": state.tool_accessor.get_agent_mission,
             "orchestrate_project": state.tool_accessor.orchestrate_project,
             "get_workflow_status": state.tool_accessor.get_workflow_status,
-
             # Agent coordination tools
             "get_pending_jobs": state.tool_accessor.get_pending_jobs,
             "acknowledge_job": state.tool_accessor.acknowledge_job,
@@ -119,21 +114,13 @@ async def execute_mcp_tool(request: MCPToolRequest):
         tool_func = tool_map[tool_name]
         result = await tool_func(**args)
 
-        return MCPToolResponse(
-            success=True,
-            result=result,
-            timestamp=datetime.now(timezone.utc)
-        )
+        return MCPToolResponse(success=True, result=result, timestamp=datetime.now(timezone.utc))
 
     except HTTPException:
         raise
     except Exception as e:
         logger.exception(f"Error executing MCP tool '{request.tool}': {e}")
-        return MCPToolResponse(
-            success=False,
-            error=str(e),
-            timestamp=datetime.now(timezone.utc)
-        )
+        return MCPToolResponse(success=False, error=str(e), timestamp=datetime.now(timezone.utc))
 
 
 @router.get("/list", response_model=Dict[str, Any])
@@ -147,30 +134,24 @@ async def list_mcp_tools():
                 "arguments": {
                     "name": "Project name",
                     "mission": "Project mission statement",
-                    "agents": "Optional list of agent names to initialize"
-                }
+                    "agents": "Optional list of agent names to initialize",
+                },
             },
             {
                 "name": "list_projects",
                 "description": "List all projects with optional status filter",
-                "arguments": {
-                    "status": "Optional status filter (active, completed, archived)"
-                }
+                "arguments": {"status": "Optional status filter (active, completed, archived)"},
             },
             {
                 "name": "switch_project",
                 "description": "Switch to a different project context",
-                "arguments": {
-                    "project_id": "Project ID to switch to"
-                }
+                "arguments": {"project_id": "Project ID to switch to"},
             },
             {
                 "name": "close_project",
                 "description": "Close/archive a project",
-                "arguments": {
-                    "project_id": "Project ID to close"
-                }
-            }
+                "arguments": {"project_id": "Project ID to close"},
+            },
         ],
         "agent_orchestration": [
             {
@@ -179,23 +160,19 @@ async def list_mcp_tools():
                 "arguments": {
                     "name": "Agent name",
                     "role": "Agent role/specialty",
-                    "mission": "Agent-specific mission"
-                }
+                    "mission": "Agent-specific mission",
+                },
             },
             {
                 "name": "list_agents",
                 "description": "List all agents in the current project",
-                "arguments": {
-                    "status": "Optional status filter"
-                }
+                "arguments": {"status": "Optional status filter"},
             },
             {
                 "name": "retire_agent",
                 "description": "Retire an agent from the project",
-                "arguments": {
-                    "agent_id": "Agent ID to retire"
-                }
-            }
+                "arguments": {"agent_id": "Agent ID to retire"},
+            },
         ],
         "message_queue": [
             {
@@ -205,17 +182,17 @@ async def list_mcp_tools():
                     "from_agent": "Sender agent ID",
                     "to_agent": "Recipient agent ID (optional)",
                     "content": "Message content",
-                    "message_type": "Type of message"
-                }
+                    "message_type": "Type of message",
+                },
             },
             {
                 "name": "receive_messages",
                 "description": "Receive pending messages for an agent",
                 "arguments": {
                     "agent_id": "Agent ID to receive messages for",
-                    "limit": "Maximum number of messages to receive"
-                }
-            }
+                    "limit": "Maximum number of messages to receive",
+                },
+            },
         ],
         "task_management": [
             {
@@ -225,62 +202,41 @@ async def list_mcp_tools():
                     "title": "Task title",
                     "description": "Task description",
                     "priority": "Task priority (low, medium, high)",
-                    "assigned_to": "Optional agent ID to assign to"
-                }
+                    "assigned_to": "Optional agent ID to assign to",
+                },
             },
             {
                 "name": "list_tasks",
                 "description": "List tasks with filters",
-                "arguments": {
-                    "status": "Optional status filter",
-                    "assigned_to": "Optional agent ID filter"
-                }
-            }
+                "arguments": {"status": "Optional status filter", "assigned_to": "Optional agent ID filter"},
+            },
         ],
         "context_discovery": [
             {
                 "name": "discover_context",
                 "description": "Discover project context and structure",
-                "arguments": {
-                    "path": "Optional path to analyze"
-                }
+                "arguments": {"path": "Optional path to analyze"},
             },
             {
                 "name": "search_context",
                 "description": "Search project context",
-                "arguments": {
-                    "query": "Search query",
-                    "file_types": "Optional list of file extensions to search"
-                }
-            }
+                "arguments": {"query": "Search query", "file_types": "Optional list of file extensions to search"},
+            },
         ],
         "template_management": [
-            {
-                "name": "list_templates",
-                "description": "List available templates",
-                "arguments": {}
-            },
+            {"name": "list_templates", "description": "List available templates", "arguments": {}},
             {
                 "name": "get_template",
                 "description": "Get a specific template",
-                "arguments": {
-                    "template_name": "Name of the template"
-                }
-            }
+                "arguments": {"template_name": "Name of the template"},
+            },
         ],
         "orchestration": [
-            {
-                "name": "health_check",
-                "description": "Check MCP server health status",
-                "arguments": {}
-            },
+            {"name": "health_check", "description": "Check MCP server health status", "arguments": {}},
             {
                 "name": "get_orchestrator_instructions",
                 "description": "Fetch orchestrator mission with 70% token reduction (thin client)",
-                "arguments": {
-                    "orchestrator_id": "Orchestrator job UUID",
-                    "tenant_key": "Tenant isolation key"
-                }
+                "arguments": {"orchestrator_id": "Orchestrator job UUID", "tenant_key": "Tenant isolation key"},
             },
             {
                 "name": "spawn_agent_job",
@@ -289,82 +245,58 @@ async def list_mcp_tools():
                     "agent_type": "Type of agent to spawn",
                     "mission": "Agent's mission",
                     "context": "Additional context",
-                    "tenant_key": "Tenant isolation key"
-                }
+                    "tenant_key": "Tenant isolation key",
+                },
             },
             {
                 "name": "get_agent_mission",
                 "description": "Get agent-specific mission from storage",
-                "arguments": {
-                    "agent_id": "Agent UUID",
-                    "tenant_key": "Tenant isolation key"
-                }
+                "arguments": {"agent_id": "Agent UUID", "tenant_key": "Tenant isolation key"},
             },
             {
                 "name": "orchestrate_project",
                 "description": "Full project orchestration workflow",
-                "arguments": {
-                    "project_id": "Project UUID",
-                    "tenant_key": "Tenant isolation key"
-                }
+                "arguments": {"project_id": "Project UUID", "tenant_key": "Tenant isolation key"},
             },
             {
                 "name": "get_workflow_status",
                 "description": "Get project workflow status",
-                "arguments": {
-                    "workflow_id": "Workflow UUID",
-                    "tenant_key": "Tenant isolation key"
-                }
-            }
+                "arguments": {"workflow_id": "Workflow UUID", "tenant_key": "Tenant isolation key"},
+            },
         ],
         "agent_coordination": [
             {
                 "name": "get_pending_jobs",
                 "description": "Get pending jobs for agent type",
-                "arguments": {
-                    "agent_type": "Type of agent",
-                    "tenant_key": "Tenant isolation key"
-                }
+                "arguments": {"agent_type": "Type of agent", "tenant_key": "Tenant isolation key"},
             },
             {
                 "name": "acknowledge_job",
                 "description": "Acknowledge job assignment",
-                "arguments": {
-                    "job_id": "Job UUID",
-                    "agent_id": "Agent UUID"
-                }
+                "arguments": {"job_id": "Job UUID", "agent_id": "Agent UUID"},
             },
             {
                 "name": "report_progress",
                 "description": "Report job progress",
-                "arguments": {
-                    "job_id": "Job UUID",
-                    "progress": "Progress details (dict)"
-                }
+                "arguments": {"job_id": "Job UUID", "progress": "Progress details (dict)"},
             },
             {
                 "name": "complete_job",
                 "description": "Mark job as complete",
-                "arguments": {
-                    "job_id": "Job UUID",
-                    "result": "Job result (dict)"
-                }
+                "arguments": {"job_id": "Job UUID", "result": "Job result (dict)"},
             },
             {
                 "name": "report_error",
                 "description": "Report job error",
-                "arguments": {
-                    "job_id": "Job UUID",
-                    "error": "Error message"
-                }
-            }
-        ]
+                "arguments": {"job_id": "Job UUID", "error": "Error message"},
+            },
+        ],
     }
 
     return {
         "tools": tools,
         "total_count": sum(len(category) for category in tools.values()),
-        "categories": list(tools.keys())
+        "categories": list(tools.keys()),
     }
 
 
@@ -379,5 +311,5 @@ async def mcp_health_check():
         "version": "2.0.0",
         "mode": "HTTP",
         "database": "connected" if state.db_manager else "disconnected",
-        "tool_accessor": "ready" if state.tool_accessor else "not initialized"
+        "tool_accessor": "ready" if state.tool_accessor else "not initialized",
     }

@@ -25,35 +25,33 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
     """
     if not db:
         # If no database session, assume database not initialized
-        return {'database_initialized': False}
+        return {"database_initialized": False}
 
     try:
         from sqlalchemy import select
+
         from src.giljo_mcp.models import SetupState
 
-        stmt = select(SetupState).where(SetupState.tenant_key == 'default')
+        stmt = select(SetupState).where(SetupState.tenant_key == "default")
         result = await db.execute(stmt)
         setup_state = result.scalar_one_or_none()
 
         if setup_state:
             return {
-                'database_initialized': setup_state.database_initialized
+                "database_initialized": setup_state.database_initialized
                 # REMOVED (Handover 0035): default_password_active field no longer exists
                 # v3.0+ uses first_admin_created flag in create-first-admin endpoint
             }
 
         # No setup state found - assume not initialized
-        return {'database_initialized': False}
+        return {"database_initialized": False}
 
     except Exception as e:
         logger.error(f"Failed to get setup state: {e}")
-        return {'database_initialized': False}
+        return {"database_initialized": False}
 
 
-async def authenticate_websocket(
-    websocket: WebSocket,
-    db: AsyncSession = None
-) -> dict[str, Any]:
+async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) -> dict[str, Any]:
     """
     Authenticate WebSocket connection with unified logic.
 
@@ -76,58 +74,55 @@ async def authenticate_websocket(
     """
     # Check setup state
     setup_state = await get_setup_state(db)
-    database_initialized = setup_state.get('database_initialized', True)
+    database_initialized = setup_state.get("database_initialized", True)
 
     # Allow connection without auth during initial setup (database not initialized)
     # REMOVED (Handover 0035): Password change phase check (default_password_active field no longer exists)
     # v3.0+ goes directly from fresh install → Create Admin Account (no password change phase)
     if not database_initialized:
         logger.info("WebSocket connection allowed: initial setup mode (database not initialized)")
-        return {
-            'authenticated': True,
-            'context': 'setup'
-        }
+        return {"authenticated": True, "context": "setup"}
 
     # Post-setup: Require credentials for ALL connections
     # Extract credentials from query params, cookies, or headers
-    token = websocket.query_params.get('token')
-    api_key = websocket.query_params.get('api_key')
+    token = websocket.query_params.get("token")
+    api_key = websocket.query_params.get("api_key")
 
     # Check cookies if not in query params (PRIMARY AUTH METHOD)
     if not token and not api_key:
         # Extract cookies from Cookie header
         headers = dict(websocket.headers)
-        cookie_header = headers.get('cookie', '')
+        cookie_header = headers.get("cookie", "")
 
         # Parse access_token from cookies (httpOnly cookie set by /api/auth/login)
         if cookie_header:
             cookies = {}
-            for cookie in cookie_header.split(';'):
+            for cookie in cookie_header.split(";"):
                 cookie = cookie.strip()
-                if '=' in cookie:
-                    key, value = cookie.split('=', 1)
+                if "=" in cookie:
+                    key, value = cookie.split("=", 1)
                     cookies[key.strip()] = value.strip()
 
             # Get access_token from cookies
-            token = cookies.get('access_token')
+            token = cookies.get("access_token")
             if token:
                 logger.debug("WebSocket: Found JWT token in httpOnly cookie")
 
     # Check Authorization header if not in cookies/query params
     if not token and not api_key:
         headers = dict(websocket.headers)
-        auth_header = headers.get('authorization', '')
-        if auth_header.startswith('Bearer '):
+        auth_header = headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
             token = auth_header[7:]  # Remove 'Bearer ' prefix
 
-        api_key = headers.get('x-api-key') or headers.get('x-api-key'.lower())
+        api_key = headers.get("x-api-key") or headers.get("x-api-key".lower())
 
     # No credentials provided - reject
     if not token and not api_key:
         logger.warning("WebSocket connection rejected: no credentials provided (post-setup)")
         raise WebSocketException(
             code=1008,  # Policy violation
-            reason="Authentication required"
+            reason="Authentication required",
         )
 
     # Validate token (JWT)
@@ -135,10 +130,7 @@ async def authenticate_websocket(
         validated_user = await validate_jwt_token(token, db)
         if validated_user:
             logger.info(f"WebSocket authenticated via JWT: {validated_user.get('user_id')}")
-            return {
-                'authenticated': True,
-                'user': validated_user
-            }
+            return {"authenticated": True, "user": validated_user}
 
     # Validate API key
     if api_key:
@@ -146,19 +138,19 @@ async def authenticate_websocket(
         if validated_key:
             logger.info(f"WebSocket authenticated via API key: {validated_key.get('name')}")
             return {
-                'authenticated': True,
-                'user': {
-                    'user_id': validated_key.get('name'),
-                    'tenant_key': validated_key.get('tenant_key', 'default'),
-                    'permissions': validated_key.get('permissions', ['*'])
-                }
+                "authenticated": True,
+                "user": {
+                    "user_id": validated_key.get("name"),
+                    "tenant_key": validated_key.get("tenant_key", "default"),
+                    "permissions": validated_key.get("permissions", ["*"]),
+                },
             }
 
     # Invalid credentials - reject
     logger.warning("WebSocket connection rejected: invalid credentials")
     raise WebSocketException(
         code=1008,  # Policy violation
-        reason="Invalid credentials"
+        reason="Invalid credentials",
     )
 
 
@@ -182,10 +174,10 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
             return None
 
         return {
-            'user_id': payload.get('username'),
-            'tenant_key': payload.get('tenant_key', 'default'),
-            'role': payload.get('role'),
-            'permissions': ['*']  # JWT users have full permissions
+            "user_id": payload.get("username"),
+            "tenant_key": payload.get("tenant_key", "default"),
+            "role": payload.get("role"),
+            "permissions": ["*"],  # JWT users have full permissions
         }
 
     except Exception as e:
@@ -209,9 +201,10 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
         return None
 
     try:
-        from sqlalchemy import select
-        from src.giljo_mcp.models import APIKey
         import bcrypt
+        from sqlalchemy import select
+
+        from src.giljo_mcp.models import APIKey
 
         # Hash the provided API key to match stored hash
         stmt = select(APIKey).where(APIKey.is_active == True)
@@ -220,13 +213,9 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
 
         # Check each active key
         for key in api_keys:
-            if bcrypt.checkpw(api_key.encode('utf-8'), key.key_hash.encode('utf-8')):
+            if bcrypt.checkpw(api_key.encode("utf-8"), key.key_hash.encode("utf-8")):
                 # Key is valid
-                return {
-                    'name': key.name,
-                    'tenant_key': key.tenant_key,
-                    'permissions': key.permissions or ['*']
-                }
+                return {"name": key.name, "tenant_key": key.tenant_key, "permissions": key.permissions or ["*"]}
 
         return None
 
@@ -236,10 +225,7 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
 
 
 def check_subscription_permission(
-    auth_context: dict[str, Any],
-    entity_type: str,
-    entity_id: str,
-    tenant_key: Optional[str] = None
+    auth_context: dict[str, Any], entity_type: str, entity_id: str, tenant_key: Optional[str] = None
 ) -> bool:
     """
     Check if a WebSocket client has permission to subscribe to an entity.
@@ -259,7 +245,7 @@ def check_subscription_permission(
         True if subscription is allowed, False otherwise
     """
     # Setup mode: Allow all subscriptions (no tenant isolation during setup)
-    if auth_context.get('context') == 'setup':
+    if auth_context.get("context") == "setup":
         return True
 
     # No auth context: Deny (shouldn't happen if authenticate_websocket was called)
@@ -268,8 +254,8 @@ def check_subscription_permission(
         return False
 
     # Get user info from auth context
-    user_info = auth_context.get('user', {})
-    user_tenant_key = user_info.get('tenant_key', 'default')
+    user_info = auth_context.get("user", {})
+    user_tenant_key = user_info.get("tenant_key", "default")
 
     # Multi-tenant isolation: Check tenant_key match
     if tenant_key and user_tenant_key != tenant_key:
@@ -281,10 +267,10 @@ def check_subscription_permission(
         return False
 
     # Check permissions (if implemented)
-    user_permissions = user_info.get('permissions', [])
+    user_permissions = user_info.get("permissions", [])
 
     # Wildcard permission grants all access
-    if '*' in user_permissions:
+    if "*" in user_permissions:
         return True
 
     # Entity-specific permissions (future enhancement)

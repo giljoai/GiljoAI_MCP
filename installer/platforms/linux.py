@@ -77,10 +77,7 @@ class LinuxPlatformHandler(PlatformHandler):
         paths = []
 
         # Standard system paths
-        paths.extend([
-            Path("/usr/bin/psql"),
-            Path("/usr/local/bin/psql")
-        ])
+        paths.extend([Path("/usr/bin/psql"), Path("/usr/local/bin/psql")])
 
         # Debian/Ubuntu version-specific paths
         pg_lib = Path("/usr/lib/postgresql")
@@ -109,7 +106,7 @@ class LinuxPlatformHandler(PlatformHandler):
         try:
             return platform.freedesktop_os_release()
         except Exception:
-            return {'ID': 'unknown', 'VERSION_ID': '', 'NAME': 'Linux'}
+            return {"ID": "unknown", "VERSION_ID": "", "NAME": "Linux"}
 
     def get_postgresql_install_guide(self, recommended_version: int = 18) -> str:
         """
@@ -122,14 +119,14 @@ class LinuxPlatformHandler(PlatformHandler):
             Multi-line installation instructions
         """
         dist_info = self._detect_distribution()
-        dist_id = dist_info.get('ID', 'unknown')
+        dist_id = dist_info.get("ID", "unknown")
 
         # Ubuntu/Debian guide
-        if dist_id in ['ubuntu', 'debian']:
+        if dist_id in ["ubuntu", "debian"]:
             return self._get_ubuntu_install_guide(recommended_version)
 
         # Fedora/RHEL guide
-        elif dist_id in ['fedora', 'rhel', 'centos']:
+        elif dist_id in ["fedora", "rhel", "centos"]:
             return self._get_fedora_install_guide(recommended_version)
 
         # Generic guide for unknown distributions
@@ -242,7 +239,7 @@ class LinuxPlatformHandler(PlatformHandler):
                 name="GiljoAI MCP",
                 exec_path=f'"{venv_dir / "bin" / "python"}" "{install_dir / "startup.py"}"',
                 working_dir=install_dir,
-                description="Launch GiljoAI MCP Orchestrator"
+                description="Launch GiljoAI MCP Orchestrator",
             )
             shortcuts_created.append(str(main_desktop))
 
@@ -253,7 +250,7 @@ class LinuxPlatformHandler(PlatformHandler):
                 name="GiljoAI Dashboard",
                 exec_path=f'"{venv_dir / "bin" / "python"}" "{install_dir / "startup.py"}" --dashboard-only',
                 working_dir=install_dir,
-                description="Launch GiljoAI Dashboard Only"
+                description="Launch GiljoAI Dashboard Only",
             )
             shortcuts_created.append(str(dashboard_desktop))
 
@@ -261,35 +258,22 @@ class LinuxPlatformHandler(PlatformHandler):
             for desktop_file in shortcuts_created:
                 try:
                     subprocess.run(
-                        ['gio', 'set', desktop_file, 'metadata::trusted', 'true'],
-                        capture_output=True,
-                        timeout=5
+                        ["gio", "set", desktop_file, "metadata::trusted", "true"], capture_output=True, timeout=5
                     )
                 except Exception:
                     pass  # Not critical if gio trust fails
 
             return {
-                'success': True,
-                'method': 'desktop',
-                'shortcuts_created': shortcuts_created,
-                'message': f'Created {len(shortcuts_created)} desktop launchers'
+                "success": True,
+                "method": "desktop",
+                "shortcuts_created": shortcuts_created,
+                "message": f"Created {len(shortcuts_created)} desktop launchers",
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'message': f'Failed to create desktop launchers: {e}'
-            }
+            return {"success": False, "error": str(e), "message": f"Failed to create desktop launchers: {e}"}
 
-    def _create_desktop_file(
-        self,
-        path: Path,
-        name: str,
-        exec_path: str,
-        working_dir: Path,
-        description: str
-    ) -> None:
+    def _create_desktop_file(self, path: Path, name: str, exec_path: str, working_dir: Path, description: str) -> None:
         """
         Create .desktop file with proper format.
 
@@ -313,12 +297,7 @@ Categories=Development;
         path.write_text(content)
         path.chmod(0o755)  # Make executable
 
-    def run_npm_command(
-        self,
-        cmd: List[str],
-        cwd: Path,
-        timeout: int = 300
-    ) -> Dict[str, Any]:
+    def run_npm_command(self, cmd: List[str], cwd: Path, timeout: int = 300) -> Dict[str, Any]:
         """
         Run npm command with Linux-specific handling.
 
@@ -340,28 +319,21 @@ Categories=Development;
                 shell=False,  # Direct execution for Linux
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             )
 
             return {
-                'success': result.returncode == 0,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'returncode': result.returncode
+                "success": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode,
             }
 
         except subprocess.TimeoutExpired:
-            return {
-                'success': False,
-                'error': 'Command timed out',
-                'timeout': timeout
-            }
+            return {"success": False, "error": "Command timed out", "timeout": timeout}
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def get_network_ips(self) -> List[str]:
         """
@@ -416,20 +388,22 @@ Categories=Development;
         dist_info = self._detect_distribution()
         platform_info = f"Platform: Linux {platform.release()}"
 
-        if dist_info.get('ID') == 'ubuntu':
-            ubuntu_version = dist_info.get('VERSION_ID', '')
-            ubuntu_name = dist_info.get('NAME', 'Ubuntu')
+        if dist_info.get("ID") == "ubuntu":
+            ubuntu_version = dist_info.get("VERSION_ID", "")
+            ubuntu_name = dist_info.get("NAME", "Ubuntu")
             platform_info = f"Platform: {ubuntu_name} {ubuntu_version} ({platform.machine()})"
             print(f"{Fore.GREEN}Ubuntu detected - installer optimized for your system{Style.RESET_ALL}")
 
-        elif dist_info.get('ID') in ['fedora', 'rhel', 'centos']:
-            distro_name = dist_info.get('NAME', 'Fedora/RHEL')
-            distro_version = dist_info.get('VERSION_ID', '')
+        elif dist_info.get("ID") in ["fedora", "rhel", "centos"]:
+            distro_name = dist_info.get("NAME", "Fedora/RHEL")
+            distro_version = dist_info.get("VERSION_ID", "")
             platform_info = f"Platform: {distro_name} {distro_version} ({platform.machine()})"
             print(f"{Fore.GREEN}{distro_name} detected - installer optimized for your system{Style.RESET_ALL}")
 
         print(f"{Fore.YELLOW}{platform_info}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+        print(
+            f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n"
+        )
 
     def get_platform_specific_warnings(self) -> List[str]:
         """
@@ -445,7 +419,7 @@ Categories=Development;
         dist_info = self._detect_distribution()
 
         # Ubuntu UFW firewall reminder
-        if dist_info.get('ID') == 'ubuntu':
+        if dist_info.get("ID") == "ubuntu":
             warnings.append(
                 "Ubuntu UFW Firewall: If accessing from other devices, configure firewall rules. "
                 "See docs/guides/FIREWALL_CONFIGURATION.md for details."

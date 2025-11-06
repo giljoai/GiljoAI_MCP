@@ -11,10 +11,11 @@ Tests verify:
 - MCP instructions use correct placeholders
 - Production-grade template quality
 """
-import pytest
-from datetime import datetime, timezone
+
 from uuid import uuid4
-from sqlalchemy import select, func
+
+import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
@@ -37,11 +38,7 @@ class TestMCPBehavioralRules:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         expected_mcp_rules = [
@@ -55,28 +52,26 @@ class TestMCPBehavioralRules:
 
         for template in templates:
             # Each template should have behavioral_rules list
-            assert isinstance(template.behavioral_rules, list), \
-                f"{template.role} behavioral_rules should be a list"
-            assert len(template.behavioral_rules) > 0, \
-                f"{template.role} should have behavioral rules"
+            assert isinstance(template.behavioral_rules, list), f"{template.role} behavioral_rules should be a list"
+            assert len(template.behavioral_rules) > 0, f"{template.role} should have behavioral rules"
 
             # Check for MCP-specific rules (should contain key phrases)
             rules_text = " ".join(template.behavioral_rules)
 
             # Critical MCP checkpoint rule
-            assert any(
-                keyword in rules_text.lower() for keyword in ["mcp tools", "checkpoint", "mcp tool"]
-            ), f"{template.role} should have MCP checkpoint rule"
+            assert any(keyword in rules_text.lower() for keyword in ["mcp tools", "checkpoint", "mcp tool"]), (
+                f"{template.role} should have MCP checkpoint rule"
+            )
 
             # Progress reporting rule
-            assert any(
-                keyword in rules_text.lower() for keyword in ["report progress", "report_progress"]
-            ), f"{template.role} should have progress reporting rule"
+            assert any(keyword in rules_text.lower() for keyword in ["report progress", "report_progress"]), (
+                f"{template.role} should have progress reporting rule"
+            )
 
             # Error handling rule
-            assert any(
-                keyword in rules_text.lower() for keyword in ["report_error", "error handling"]
-            ), f"{template.role} should have error reporting rule"
+            assert any(keyword in rules_text.lower() for keyword in ["report_error", "error handling"]), (
+                f"{template.role} should have error reporting rule"
+            )
 
     async def test_orchestrator_has_coordination_rules(self, db_session: AsyncSession, tenant_key: str):
         """Test that orchestrator template has coordination-specific rules"""
@@ -85,18 +80,16 @@ class TestMCPBehavioralRules:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "orchestrator"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
         )
         template = result.scalar_one()
 
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Orchestrator should have agent coordination rules
-        assert "coordinate" in rules_text or "send_message" in rules_text, \
+        assert "coordinate" in rules_text or "send_message" in rules_text, (
             "Orchestrator should have agent coordination rules"
+        )
 
     async def test_implementer_has_file_tracking_rules(self, db_session: AsyncSession, tenant_key: str):
         """Test that implementer template has file modification tracking rules"""
@@ -105,18 +98,14 @@ class TestMCPBehavioralRules:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "implementer"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "implementer")
         )
         template = result.scalar_one()
 
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Implementer should track file modifications
-        assert "file" in rules_text or "token" in rules_text, \
-            "Implementer should have file tracking rules"
+        assert "file" in rules_text or "token" in rules_text, "Implementer should have file tracking rules"
 
 
 @pytest.mark.asyncio
@@ -129,32 +118,26 @@ class TestMCPSuccessCriteria:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             # Each template should have success_criteria list
-            assert isinstance(template.success_criteria, list), \
-                f"{template.role} success_criteria should be a list"
-            assert len(template.success_criteria) > 0, \
-                f"{template.role} should have success criteria"
+            assert isinstance(template.success_criteria, list), f"{template.role} success_criteria should be a list"
+            assert len(template.success_criteria) > 0, f"{template.role} should have success criteria"
 
             # Check for MCP-specific criteria (should contain key phrases)
             criteria_text = " ".join(template.success_criteria).lower()
 
             # MCP checkpoint execution
-            assert any(
-                keyword in criteria_text for keyword in ["mcp checkpoint", "mcp tools", "checkpoints"]
-            ), f"{template.role} should have MCP checkpoint success criteria"
+            assert any(keyword in criteria_text for keyword in ["mcp checkpoint", "mcp tools", "checkpoints"]), (
+                f"{template.role} should have MCP checkpoint success criteria"
+            )
 
             # Progress reporting
-            assert any(
-                keyword in criteria_text for keyword in ["progress", "incremental"]
-            ), f"{template.role} should have progress reporting success criteria"
+            assert any(keyword in criteria_text for keyword in ["progress", "incremental"]), (
+                f"{template.role} should have progress reporting success criteria"
+            )
 
     async def test_tester_has_test_results_criteria(self, db_session: AsyncSession, tenant_key: str):
         """Test that tester template has test results reporting criteria"""
@@ -163,18 +146,16 @@ class TestMCPSuccessCriteria:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "tester"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "tester")
         )
         template = result.scalar_one()
 
         criteria_text = " ".join(template.success_criteria).lower()
 
         # Tester should report test results
-        assert "test result" in criteria_text or "coverage" in criteria_text, \
+        assert "test result" in criteria_text or "coverage" in criteria_text, (
             "Tester should have test results reporting criteria"
+        )
 
 
 @pytest.mark.asyncio
@@ -187,29 +168,28 @@ class TestMCPCoordinationSection:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             content = template.template_content
 
             # Check for MCP coordination section header
-            assert "MCP COMMUNICATION PROTOCOL" in content or "MCP Communication Protocol" in content, \
+            assert "MCP COMMUNICATION PROTOCOL" in content or "MCP Communication Protocol" in content, (
                 f"{template.role} should have MCP coordination section"
+            )
 
             # Check for phase headers
-            assert "Phase 1: Job Acknowledgment" in content or "Job Acknowledgment" in content, \
+            assert "Phase 1: Job Acknowledgment" in content or "Job Acknowledgment" in content, (
                 f"{template.role} should have job acknowledgment phase"
-            assert "Phase 2: Incremental Progress" in content or "Incremental Progress" in content, \
+            )
+            assert "Phase 2: Incremental Progress" in content or "Incremental Progress" in content, (
                 f"{template.role} should have progress reporting phase"
-            assert "Phase 3: Completion" in content or "Completion" in content, \
+            )
+            assert "Phase 3: Completion" in content or "Completion" in content, (
                 f"{template.role} should have completion phase"
-            assert "Error Handling" in content, \
-                f"{template.role} should have error handling section"
+            )
+            assert "Error Handling" in content, f"{template.role} should have error handling section"
 
     async def test_templates_reference_mcp_tools(self, db_session: AsyncSession, tenant_key: str):
         """Test that templates reference the correct MCP tool names"""
@@ -217,11 +197,7 @@ class TestMCPCoordinationSection:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         mcp_tools = [
@@ -237,14 +213,12 @@ class TestMCPCoordinationSection:
             content = template.template_content.lower()
 
             # Check for key MCP tools mentioned
-            assert "get_pending_jobs" in content or "acknowledge_job" in content, \
+            assert "get_pending_jobs" in content or "acknowledge_job" in content, (
                 f"{template.role} should reference job acknowledgment tools"
-            assert "report_progress" in content, \
-                f"{template.role} should reference report_progress"
-            assert "complete_job" in content, \
-                f"{template.role} should reference complete_job"
-            assert "report_error" in content, \
-                f"{template.role} should reference report_error"
+            )
+            assert "report_progress" in content, f"{template.role} should reference report_progress"
+            assert "complete_job" in content, f"{template.role} should reference complete_job"
+            assert "report_error" in content, f"{template.role} should reference report_error"
 
     async def test_templates_use_correct_placeholders(self, db_session: AsyncSession, tenant_key: str):
         """Test that MCP instructions use correct placeholders for orchestrator"""
@@ -252,11 +226,7 @@ class TestMCPCoordinationSection:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -266,10 +236,12 @@ class TestMCPCoordinationSection:
             # Placeholders should be in angle brackets: <AGENT_TYPE>, <TENANT_KEY>
             if "mcp__giljo_mcp__" in content.lower():
                 # If MCP tools are referenced, placeholders should be present
-                assert "<AGENT_TYPE>" in content or "agent_type=" in content.lower(), \
+                assert "<AGENT_TYPE>" in content or "agent_type=" in content.lower(), (
                     f"{template.role} should use AGENT_TYPE placeholder or parameter"
-                assert "<TENANT_KEY>" in content or "tenant_key=" in content.lower(), \
+                )
+                assert "<TENANT_KEY>" in content or "tenant_key=" in content.lower(), (
                     f"{template.role} should use TENANT_KEY placeholder or parameter"
+                )
 
 
 @pytest.mark.asyncio
@@ -283,10 +255,7 @@ class TestTemplateSpecificCustomizations:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "orchestrator"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
         )
         template = result.scalar_one()
 
@@ -294,8 +263,9 @@ class TestTemplateSpecificCustomizations:
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should have coordination-specific instructions
-        assert "coordinate" in content or "coordinate" in rules_text, \
+        assert "coordinate" in content or "coordinate" in rules_text, (
             "Orchestrator should have coordination instructions"
+        )
 
     async def test_implementer_has_file_modification_tracking(self, db_session: AsyncSession, tenant_key: str):
         """Test that implementer template has file modification tracking instructions"""
@@ -304,10 +274,7 @@ class TestTemplateSpecificCustomizations:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "implementer"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "implementer")
         )
         template = result.scalar_one()
 
@@ -315,8 +282,7 @@ class TestTemplateSpecificCustomizations:
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention file modifications and token tracking
-        assert "file" in content or "file" in rules_text, \
-            "Implementer should track file modifications"
+        assert "file" in content or "file" in rules_text, "Implementer should track file modifications"
 
     async def test_tester_has_test_results_reporting(self, db_session: AsyncSession, tenant_key: str):
         """Test that tester template has test results reporting instructions"""
@@ -325,10 +291,7 @@ class TestTemplateSpecificCustomizations:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "tester"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "tester")
         )
         template = result.scalar_one()
 
@@ -338,8 +301,9 @@ class TestTemplateSpecificCustomizations:
 
         # Should mention test results and coverage
         combined_text = content + rules_text + criteria_text
-        assert "test" in combined_text and ("result" in combined_text or "coverage" in combined_text), \
+        assert "test" in combined_text and ("result" in combined_text or "coverage" in combined_text), (
             "Tester should have test results reporting instructions"
+        )
 
     async def test_reviewer_has_review_findings_reporting(self, db_session: AsyncSession, tenant_key: str):
         """Test that reviewer template has review findings reporting instructions"""
@@ -348,10 +312,7 @@ class TestTemplateSpecificCustomizations:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "reviewer"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "reviewer")
         )
         template = result.scalar_one()
 
@@ -359,8 +320,9 @@ class TestTemplateSpecificCustomizations:
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention review findings
-        assert "review" in content or "review" in rules_text, \
+        assert "review" in content or "review" in rules_text, (
             "Reviewer should have review findings reporting instructions"
+        )
 
     async def test_analyzer_has_incremental_analysis_reporting(self, db_session: AsyncSession, tenant_key: str):
         """Test that analyzer template has incremental analysis reporting instructions"""
@@ -369,10 +331,7 @@ class TestTemplateSpecificCustomizations:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "analyzer"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "analyzer")
         )
         template = result.scalar_one()
 
@@ -380,8 +339,7 @@ class TestTemplateSpecificCustomizations:
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention analysis and findings
-        assert "analys" in content or "analys" in rules_text, \
-            "Analyzer should have analysis reporting instructions"
+        assert "analys" in content or "analys" in rules_text, "Analyzer should have analysis reporting instructions"
 
     async def test_documenter_has_documentation_tracking(self, db_session: AsyncSession, tenant_key: str):
         """Test that documenter template has documentation tracking instructions"""
@@ -390,10 +348,7 @@ class TestTemplateSpecificCustomizations:
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "documenter"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "documenter")
         )
         template = result.scalar_one()
 
@@ -401,8 +356,9 @@ class TestTemplateSpecificCustomizations:
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention documentation files
-        assert "document" in content or "document" in rules_text, \
+        assert "document" in content or "document" in rules_text, (
             "Documenter should have documentation tracking instructions"
+        )
 
 
 @pytest.mark.asyncio
@@ -423,9 +379,7 @@ class TestIdempotencyWithEnhancements:
 
         # Verify still only 6 templates
         result = await db_session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         db_count = result.scalar()
         assert db_count == 6, "Should still have exactly 6 templates, no duplicates"
@@ -436,11 +390,7 @@ class TestIdempotencyWithEnhancements:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -451,10 +401,12 @@ class TestIdempotencyWithEnhancements:
             assert isinstance(template.tags, list)
 
             # Verify enhanced rules didn't break existing structure
-            assert len(template.behavioral_rules) >= 6, \
+            assert len(template.behavioral_rules) >= 6, (
                 f"{template.role} should have at least 6 behavioral rules (original + MCP)"
-            assert len(template.success_criteria) >= 4, \
+            )
+            assert len(template.success_criteria) >= 4, (
                 f"{template.role} should have at least 4 success criteria (original + MCP)"
+            )
 
 
 @pytest.mark.asyncio
@@ -467,18 +419,12 @@ class TestOrchestratorRouting:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
-            assert template.tool is not None, \
-                f"{template.role} should have tool set"
-            assert template.tool in ["claude", "codex", "gemini", "auto"], \
-                f"{template.role} tool should be valid value"
+            assert template.tool is not None, f"{template.role} should have tool set"
+            assert template.tool in ["claude", "codex", "gemini", "auto"], f"{template.role} tool should be valid value"
 
     async def test_templates_support_multi_tool_execution(self, db_session: AsyncSession, tenant_key: str):
         """Test that templates can work with different AI tools"""
@@ -486,11 +432,7 @@ class TestOrchestratorRouting:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -498,8 +440,9 @@ class TestOrchestratorRouting:
 
             # Templates should be tool-agnostic (no Claude-specific language)
             # MCP instructions should work with any tool
-            assert "claude code" not in content.lower() or "ai tool" in content.lower(), \
+            assert "claude code" not in content.lower() or "ai tool" in content.lower(), (
                 f"{template.role} should be tool-agnostic or mention multiple tools"
+            )
 
 
 @pytest.mark.asyncio
@@ -512,17 +455,14 @@ class TestProductionQuality:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             # Templates should have substantial content
-            assert len(template.template_content) > 500, \
+            assert len(template.template_content) > 500, (
                 f"{template.role} template should have substantial content (>500 chars)"
+            )
 
             # Should have clear role definition (check for role-related keywords)
             role_keywords = {
@@ -531,17 +471,19 @@ class TestProductionQuality:
                 "implementer": "implementer",
                 "tester": "tester",
                 "reviewer": "reviewer",
-                "documenter": "document"  # "Documentation Agent" contains "document"
+                "documenter": "document",  # "Documentation Agent" contains "document"
             }
             expected_keyword = role_keywords.get(template.role, template.role)
-            assert expected_keyword in template.template_content.lower(), \
+            assert expected_keyword in template.template_content.lower(), (
                 f"{template.role} should define its role (expected '{expected_keyword}')"
+            )
 
             # Should have actionable instructions (imperative verbs)
             action_verbs = ["analyze", "implement", "test", "review", "document", "coordinate", "create", "write"]
             content_lower = template.template_content.lower()
-            assert any(verb in content_lower for verb in action_verbs), \
+            assert any(verb in content_lower for verb in action_verbs), (
                 f"{template.role} should have actionable instructions"
+            )
 
     async def test_templates_have_professional_tone(self, db_session: AsyncSession, tenant_key: str):
         """Test that templates maintain professional tone"""
@@ -549,11 +491,7 @@ class TestProductionQuality:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -561,15 +499,18 @@ class TestProductionQuality:
 
             # Should not contain emojis (professional)
             import re
-            emoji_pattern = re.compile("["
-                u"\U0001F600-\U0001F64F"  # emoticons
-                u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                "]+", flags=re.UNICODE)
 
-            assert not emoji_pattern.search(content), \
-                f"{template.role} should not contain emojis (professional tone)"
+            emoji_pattern = re.compile(
+                "["
+                "\U0001f600-\U0001f64f"  # emoticons
+                "\U0001f300-\U0001f5ff"  # symbols & pictographs
+                "\U0001f680-\U0001f6ff"  # transport & map symbols
+                "\U0001f1e0-\U0001f1ff"  # flags (iOS)
+                "]+",
+                flags=re.UNICODE,
+            )
+
+            assert not emoji_pattern.search(content), f"{template.role} should not contain emojis (professional tone)"
 
     async def test_all_templates_have_complete_metadata(self, db_session: AsyncSession, tenant_key: str):
         """Test that all templates have complete metadata for production use"""
@@ -577,11 +518,7 @@ class TestProductionQuality:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -612,11 +549,7 @@ class TestMCPInstructionQuality:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -624,10 +557,12 @@ class TestMCPInstructionQuality:
 
             # MCP section should have numbered phases
             if "MCP COMMUNICATION PROTOCOL" in content:
-                assert "Phase 1" in content or "1." in content, \
+                assert "Phase 1" in content or "1." in content, (
                     f"{template.role} MCP instructions should have clear phases"
-                assert "Phase 2" in content or "2." in content, \
+                )
+                assert "Phase 2" in content or "2." in content, (
                     f"{template.role} MCP instructions should have multiple phases"
+                )
 
     async def test_mcp_instructions_include_error_handling(self, db_session: AsyncSession, tenant_key: str):
         """Test that all MCP instruction sections include error handling"""
@@ -635,26 +570,24 @@ class TestMCPInstructionQuality:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             content = template.template_content
 
             # Should have explicit error handling section
-            assert "Error Handling" in content or "error" in content.lower(), \
+            assert "Error Handling" in content or "error" in content.lower(), (
                 f"{template.role} should have error handling instructions"
+            )
 
             # Error handling should mention report_error
             if "Error Handling" in content:
                 error_section_start = content.index("Error Handling")
-                error_section = content[error_section_start:error_section_start+500]
-                assert "report_error" in error_section.lower(), \
+                error_section = content[error_section_start : error_section_start + 500]
+                assert "report_error" in error_section.lower(), (
                     f"{template.role} error handling should mention report_error"
+                )
 
     async def test_mcp_instructions_mention_all_required_tools(self, db_session: AsyncSession, tenant_key: str):
         """Test that MCP instructions mention all required coordination tools"""
@@ -662,11 +595,7 @@ class TestMCPInstructionQuality:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         required_tools = [
@@ -680,5 +609,4 @@ class TestMCPInstructionQuality:
             content = template.template_content.lower()
 
             for tool in required_tools:
-                assert tool in content, \
-                    f"{template.role} should mention {tool} in MCP instructions"
+                assert tool in content, f"{template.role} should mention {tool} in MCP instructions"

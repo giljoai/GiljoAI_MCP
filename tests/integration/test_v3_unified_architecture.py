@@ -12,10 +12,9 @@ This test suite follows TDD methodology - tests are written FIRST to define expe
 then code is refactored to pass these tests.
 """
 
-import pytest
+from unittest.mock import MagicMock, mock_open, patch
+
 import yaml
-from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
 
 
 class TestV3UnifiedArchitecture:
@@ -36,29 +35,26 @@ class TestV3UnifiedArchitecture:
 
         # Create a test config.yaml without mode-based configuration
         config_data = {
-            "installation": {
-                "version": "3.0.0",
-                "completed_at": "2025-01-20T00:00:00Z"
-            },
+            "installation": {"version": "3.0.0", "completed_at": "2025-01-20T00:00:00Z"},
             "services": {
                 "api": {
                     "port": 7272,
                     # Note: No host configuration - using v3.0 default
                 }
-            }
+            },
         }
 
         config_path = tmp_path / "config.yaml"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
         # Mock Path to return our test config
-        with patch('pathlib.Path.__new__') as mock_path_new:
+        with patch("pathlib.Path.__new__") as mock_path_new:
             mock_path_new.return_value = MagicMock()
             mock_path_new.return_value.parent.parent.parent = tmp_path
             mock_path_new.return_value.exists.return_value = True
 
-            with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
+            with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
                 # Call get_default_host() - should ALWAYS return 0.0.0.0
                 result = get_default_host()
 
@@ -78,24 +74,20 @@ class TestV3UnifiedArchitecture:
         config_data = {
             "installation": {
                 "mode": "localhost",  # Legacy field - should be ignored
-                "version": "3.0.0"
+                "version": "3.0.0",
             },
-            "services": {
-                "api": {
-                    "port": 7272
-                }
-            }
+            "services": {"api": {"port": 7272}},
         }
 
         config_path = tmp_path / "config.yaml"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
-        with patch('pathlib.Path.__new__') as mock_path_new:
+        with patch("pathlib.Path.__new__") as mock_path_new:
             mock_path_new.return_value = MagicMock()
             mock_path_new.return_value.parent.parent.parent = tmp_path
 
-            with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
+            with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
                 result = get_default_host()
 
         # Even with legacy mode=localhost, v3.0 MUST return 0.0.0.0
@@ -112,26 +104,24 @@ class TestV3UnifiedArchitecture:
 
         # User explicitly configures a specific host
         config_data = {
-            "installation": {
-                "version": "3.0.0"
-            },
+            "installation": {"version": "3.0.0"},
             "services": {
                 "api": {
                     "host": "192.168.1.100",  # Explicit override
-                    "port": 7272
+                    "port": 7272,
                 }
-            }
+            },
         }
 
         config_path = tmp_path / "config.yaml"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
-        with patch('pathlib.Path.__new__') as mock_path_new:
+        with patch("pathlib.Path.__new__") as mock_path_new:
             mock_path_new.return_value = MagicMock()
             mock_path_new.return_value.parent.parent.parent = tmp_path
 
-            with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
+            with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
                 result = get_default_host()
 
         # Explicit configuration should be honored
@@ -146,7 +136,7 @@ class TestV3UnifiedArchitecture:
         from api.run_api import get_default_host
 
         # Mock config file not existing
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             result = get_default_host()
 
         # v3.0 fallback should be 0.0.0.0 (not 127.0.0.1)
@@ -169,36 +159,27 @@ class TestFrontendConfigEndpointV3:
 
         # Create minimal config
         config_data = {
-            "installation": {
-                "version": "3.0.0"
-            },
-            "services": {
-                "api": {
-                    "port": 7272
-                },
-                "external_host": "192.168.1.100"
-            },
-            "features": {
-                "api_keys_required": False,
-                "ssl_enabled": False
-            }
+            "installation": {"version": "3.0.0"},
+            "services": {"api": {"port": 7272}, "external_host": "192.168.1.100"},
+            "features": {"api_keys_required": False, "ssl_enabled": False},
         }
 
         config_path = tmp_path / "config.yaml"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
         # Mock the config file reading in configuration.py
-        with patch('pathlib.Path.__truediv__') as mock_div:
+        with patch("pathlib.Path.__truediv__") as mock_div:
             mock_div.return_value = config_path
 
             # Import endpoint function
-            from api.endpoints.configuration import get_frontend_configuration
-
             # Mock the path resolution to use our test config
             import asyncio
-            with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-                with patch('pathlib.Path.exists', return_value=True):
+
+            from api.endpoints.configuration import get_frontend_configuration
+
+            with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+                with patch("pathlib.Path.exists", return_value=True):
                     # Call endpoint (it's async)
                     response = asyncio.run(get_frontend_configuration())
 
@@ -216,30 +197,21 @@ class TestFrontendConfigEndpointV3:
         - security.api_keys_required
         """
         config_data = {
-            "installation": {
-                "version": "3.0.0"
-            },
-            "services": {
-                "api": {
-                    "port": 7272
-                },
-                "external_host": "192.168.1.100"
-            },
-            "features": {
-                "api_keys_required": True,
-                "ssl_enabled": False
-            }
+            "installation": {"version": "3.0.0"},
+            "services": {"api": {"port": 7272}, "external_host": "192.168.1.100"},
+            "features": {"api_keys_required": True, "ssl_enabled": False},
         }
 
         config_path = tmp_path / "config.yaml"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
-        from api.endpoints.configuration import get_frontend_configuration
         import asyncio
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        from api.endpoints.configuration import get_frontend_configuration
+
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 response = asyncio.run(get_frontend_configuration())
 
         # Verify required fields are present
@@ -265,23 +237,16 @@ class TestFrontendConfigEndpointV3:
         - wss:// for HTTPS (SSL enabled)
         """
         config_data = {
-            "services": {
-                "api": {
-                    "port": 7272
-                },
-                "external_host": "192.168.1.100"
-            },
-            "features": {
-                "ssl_enabled": False,
-                "api_keys_required": False
-            }
+            "services": {"api": {"port": 7272}, "external_host": "192.168.1.100"},
+            "features": {"ssl_enabled": False, "api_keys_required": False},
         }
 
-        from api.endpoints.configuration import get_frontend_configuration
         import asyncio
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        from api.endpoints.configuration import get_frontend_configuration
+
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 response = asyncio.run(get_frontend_configuration())
 
         # Verify WebSocket URL uses ws:// (not SSL)
@@ -295,23 +260,19 @@ class TestFrontendConfigEndpointV3:
         Test that WebSocket URL uses wss:// when SSL is enabled.
         """
         config_data = {
-            "services": {
-                "api": {
-                    "port": 7272
-                },
-                "external_host": "192.168.1.100"
-            },
+            "services": {"api": {"port": 7272}, "external_host": "192.168.1.100"},
             "features": {
                 "ssl_enabled": True,  # SSL enabled
-                "api_keys_required": False
-            }
+                "api_keys_required": False,
+            },
         }
 
-        from api.endpoints.configuration import get_frontend_configuration
         import asyncio
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        from api.endpoints.configuration import get_frontend_configuration
+
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 response = asyncio.run(get_frontend_configuration())
 
         # Verify WebSocket URL uses wss:// (SSL)
@@ -339,12 +300,13 @@ class TestV3ArchitectureDocumentation:
 
         # Verify docstring mentions v3.0 architecture
         docstring_lower = docstring.lower()
-        assert "v3.0" in docstring_lower or "unified" in docstring_lower, \
+        assert "v3.0" in docstring_lower or "unified" in docstring_lower, (
             "Docstring should reference v3.0 unified architecture"
-        assert "0.0.0.0" in docstring, \
-            "Docstring should mention 0.0.0.0 binding"
-        assert "firewall" in docstring_lower or "defense" in docstring_lower, \
+        )
+        assert "0.0.0.0" in docstring, "Docstring should mention 0.0.0.0 binding"
+        assert "firewall" in docstring_lower or "defense" in docstring_lower, (
             "Docstring should explain firewall-based access control"
+        )
 
     def test_frontend_config_endpoint_docstring_reflects_v3_architecture(self):
         """
@@ -363,8 +325,9 @@ class TestV3ArchitectureDocumentation:
         docstring_lower = docstring.lower()
 
         # Docstring should mention v3.0 or unified architecture
-        assert "v3.0" in docstring_lower or "unified" in docstring_lower, \
+        assert "v3.0" in docstring_lower or "unified" in docstring_lower, (
             "Docstring should reference v3.0 unified architecture"
+        )
 
 
 class TestBackwardCompatibility:
@@ -383,18 +346,19 @@ class TestBackwardCompatibility:
             "services": {
                 "api": {
                     "host": "10.1.0.164",  # Explicit configuration
-                    "port": 7272
+                    "port": 7272,
                 }
             }
         }
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 result = get_default_host()
 
         # Explicit configuration should be honored for backward compatibility
-        assert result == "10.1.0.164", \
+        assert result == "10.1.0.164", (
             "Explicit host configuration should still be respected for backward compatibility"
+        )
 
     def test_frontend_config_response_structure_backward_compatible(self, tmp_path):
         """
@@ -404,23 +368,16 @@ class TestBackwardCompatibility:
         clients, only remove the 'mode' field.
         """
         config_data = {
-            "services": {
-                "api": {
-                    "port": 7272
-                },
-                "external_host": "192.168.1.100"
-            },
-            "features": {
-                "api_keys_required": False,
-                "ssl_enabled": False
-            }
+            "services": {"api": {"port": 7272}, "external_host": "192.168.1.100"},
+            "features": {"api_keys_required": False, "ssl_enabled": False},
         }
 
-        from api.endpoints.configuration import get_frontend_configuration
         import asyncio
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        from api.endpoints.configuration import get_frontend_configuration
+
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 response = asyncio.run(get_frontend_configuration())
 
         # Ensure all expected fields are present (except mode)
@@ -428,8 +385,9 @@ class TestBackwardCompatibility:
         actual_keys = set(response.keys())
 
         # All expected keys should be present
-        assert expected_top_level_keys.issubset(actual_keys), \
+        assert expected_top_level_keys.issubset(actual_keys), (
             f"Response missing expected keys. Expected: {expected_top_level_keys}, Got: {actual_keys}"
+        )
 
         # 'mode' should NOT be present
         assert "mode" not in actual_keys, "v3.0 response must not include 'mode' field"
@@ -447,8 +405,8 @@ class TestEdgeCases:
         # Empty config
         config_data = {}
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 result = get_default_host()
 
         # Should return v3.0 default
@@ -463,8 +421,8 @@ class TestEdgeCases:
         # Malformed YAML
         malformed_yaml = "{ invalid yaml: ["
 
-        with patch('builtins.open', mock_open(read_data=malformed_yaml)):
-            with patch('pathlib.Path.exists', return_value=True):
+        with patch("builtins.open", mock_open(read_data=malformed_yaml)):
+            with patch("pathlib.Path.exists", return_value=True):
                 # Should not crash, should return safe default
                 result = get_default_host()
 
@@ -479,27 +437,22 @@ class TestEdgeCases:
         """
         config_data = {
             "services": {
-                "api": {
-                    "port": 7272
-                }
+                "api": {"port": 7272}
                 # No external_host configured
             },
-            "features": {
-                "api_keys_required": False,
-                "ssl_enabled": False
-            }
+            "features": {"api_keys_required": False, "ssl_enabled": False},
         }
 
-        from api.endpoints.configuration import get_frontend_configuration
         import asyncio
 
-        with patch('builtins.open', mock_open(read_data=yaml.dump(config_data))):
-            with patch('pathlib.Path.exists', return_value=True):
+        from api.endpoints.configuration import get_frontend_configuration
+
+        with patch("builtins.open", mock_open(read_data=yaml.dump(config_data))):
+            with patch("pathlib.Path.exists", return_value=True):
                 response = asyncio.run(get_frontend_configuration())
 
         # Should not crash, should fall back to localhost
         assert "api" in response
         assert "host" in response["api"]
         # Fallback should be 'localhost' for frontend connection
-        assert response["api"]["host"] == "localhost", \
-            "Missing external_host should fall back to 'localhost'"
+        assert response["api"]["host"] == "localhost", "Missing external_host should fall back to 'localhost'"

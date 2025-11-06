@@ -9,16 +9,19 @@ Usage:
 import sys
 from pathlib import Path
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from passlib.hash import bcrypt
 from uuid import uuid4
 
-from giljo_mcp.models import User
+from passlib.hash import bcrypt
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from giljo_mcp.config_manager import get_config
+from giljo_mcp.models import User
+
 
 def create_admin():
     """Create the first admin user"""
@@ -46,7 +49,7 @@ def create_admin():
 
             # Ask if user wants to update password
             update = input("Do you want to update the password? (y/n): ")
-            if update.lower() == 'y':
+            if update.lower() == "y":
                 new_password = input("Enter new password: ")
                 existing_admin.password_hash = bcrypt.hash(new_password)
                 session.commit()
@@ -54,9 +57,9 @@ def create_admin():
             return
 
         # Create new admin user
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Create First Admin User")
-        print("="*60)
+        print("=" * 60)
 
         username = input("Username (default: admin): ").strip() or "admin"
         password = input("Password (default: admin123): ").strip() or "admin123"
@@ -72,7 +75,7 @@ def create_admin():
             full_name=full_name,
             role="admin",
             is_active=True,
-            tenant_key="default"
+            tenant_key="default",
         )
 
         session.add(admin_user)
@@ -80,9 +83,9 @@ def create_admin():
 
         print("\n✅ Admin user created successfully!")
         print(f"   Username: {username}")
-        print(f"   Role: admin")
-        print(f"   Tenant: default")
-        print(f"\nYou can now log in at: http://localhost:7274/login")
+        print("   Role: admin")
+        print("   Tenant: default")
+        print("\nYou can now log in at: http://localhost:7274/login")
 
     except Exception as e:
         print(f"❌ Error creating admin user: {e}")
@@ -90,6 +93,7 @@ def create_admin():
         raise
     finally:
         session.close()
+
 
 if __name__ == "__main__":
     create_admin()

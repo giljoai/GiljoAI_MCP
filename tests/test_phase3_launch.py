@@ -4,21 +4,22 @@ Phase 3 Launch Validation Tests
 Tests all Phase 3 implementation components
 """
 
-import sys
 import os
+import socket
+import sys
+import tempfile
 import time
 import unittest
-import tempfile
-import socket
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
+
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from installer.core.launch_validator import LaunchValidator
-from installer.core.service_manager import ServiceManager
 from installer.core.recovery import ErrorRecovery
+from installer.core.service_manager import ServiceManager
 
 
 class TestLaunchValidator(unittest.TestCase):
@@ -30,13 +31,16 @@ class TestLaunchValidator(unittest.TestCase):
     def test_check_config_files(self):
         """Test config file validation"""
         # Create temporary config files
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data='POSTGRES_PASSWORD=test123')):
-                with patch('yaml.safe_load', return_value={
-                    'installation': {'mode': 'localhost'},
-                    'services': {'api_port': 8000},
-                    'features': {'ssl_enabled': False}
-                }):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data="POSTGRES_PASSWORD=test123")):
+                with patch(
+                    "yaml.safe_load",
+                    return_value={
+                        "installation": {"mode": "localhost"},
+                        "services": {"api_port": 8000},
+                        "features": {"ssl_enabled": False},
+                    },
+                ):
                     result = self.validator.check_config_files()
                     self.assertTrue(result)
 
@@ -44,10 +48,10 @@ class TestLaunchValidator(unittest.TestCase):
         """Test port availability checking"""
         # Mock config
         self.validator.config = {
-            'services': {
-                'api_port': 58000,  # Use high port unlikely to be in use
-                'websocket_port': 58001,
-                'dashboard_port': 58002
+            "services": {
+                "api_port": 58000,  # Use high port unlikely to be in use
+                "websocket_port": 58001,
+                "dashboard_port": 58002,
             }
         }
 
@@ -63,7 +67,7 @@ class TestLaunchValidator(unittest.TestCase):
     def test_validation_errors_collection(self):
         """Test that errors are properly collected"""
         # Force a validation failure
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             self.validator.check_config_files()
 
         errors = self.validator.get_errors()
@@ -77,38 +81,31 @@ class TestServiceManager(unittest.TestCase):
     def setUp(self):
         # Create a test config
         self.test_config = {
-            'services': {
-                'bind': '127.0.0.1',
-                'api_port': 58000,
-                'websocket_port': 58001,
-                'dashboard_port': 58002
-            },
-            'features': {
-                'ssl_enabled': False
-            }
+            "services": {"bind": "127.0.0.1", "api_port": 58000, "websocket_port": 58001, "dashboard_port": 58002},
+            "features": {"ssl_enabled": False},
         }
 
-        with patch.object(ServiceManager, 'load_config', return_value=self.test_config):
+        with patch.object(ServiceManager, "load_config", return_value=self.test_config):
             self.manager = ServiceManager()
 
     def test_service_order(self):
         """Test that services have correct startup order"""
-        expected_order = ['database', 'api', 'websocket', 'dashboard']
+        expected_order = ["database", "api", "websocket", "dashboard"]
         self.assertEqual(ServiceManager.SERVICE_ORDER, expected_order)
 
     def test_wait_for_service(self):
         """Test service availability waiting"""
         # Test with a port that's definitely not in use
-        result = self.manager.wait_for_service('localhost', 59999, timeout=1)
+        result = self.manager.wait_for_service("localhost", 59999, timeout=1)
         self.assertFalse(result)
 
         # Test with a mock server
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind(('127.0.0.1', 0))  # Bind to any available port
+            sock.bind(("127.0.0.1", 0))  # Bind to any available port
             sock.listen(1)
             port = sock.getsockname()[1]
 
-            result = self.manager.wait_for_service('localhost', port, timeout=1)
+            result = self.manager.wait_for_service("localhost", port, timeout=1)
             self.assertTrue(result)
 
     def test_check_service_health(self):
@@ -116,14 +113,14 @@ class TestServiceManager(unittest.TestCase):
         # Mock a running process
         mock_proc = MagicMock()
         mock_proc.poll.return_value = None  # Process is running
-        self.manager.processes['api'] = mock_proc
+        self.manager.processes["api"] = mock_proc
 
-        result = self.manager.check_service_health('api')
+        result = self.manager.check_service_health("api")
         self.assertTrue(result)
 
         # Mock a stopped process
         mock_proc.poll.return_value = 1  # Process has exited
-        result = self.manager.check_service_health('api')
+        result = self.manager.check_service_health("api")
         self.assertFalse(result)
 
     def test_retry_logic(self):
@@ -153,19 +150,19 @@ class TestErrorRecovery(unittest.TestCase):
         result = self.recovery.is_our_service(8000)
         self.assertFalse(result)
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_recover_database_windows(self, mock_platform):
         """Test database recovery on Windows"""
         mock_platform.return_value = "Windows"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1  # Simulate failure
             result = self.recovery.recover_database()
             self.assertFalse(result)
 
             # Check that Windows-specific commands were attempted
             calls = [str(call) for call in mock_run.call_args_list]
-            self.assertTrue(any('net' in str(call) for call in calls))
+            self.assertTrue(any("net" in str(call) for call in calls))
 
     def test_update_config_port(self):
         """Test configuration port update"""
@@ -175,7 +172,7 @@ services:
   api_port: 8000
   websocket_port: 8001
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(config_data)
             temp_config = f.name
 
@@ -188,9 +185,10 @@ services:
 
             # Verify update
             import yaml
+
             with open(temp_config) as f:
                 updated_config = yaml.safe_load(f)
-            self.assertEqual(updated_config['services']['api_port'], 8080)
+            self.assertEqual(updated_config["services"]["api_port"], 8080)
 
         finally:
             # Cleanup
@@ -199,8 +197,8 @@ services:
     def test_recover_missing_config(self):
         """Test recovery from missing configuration"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            self.recovery.config_path = Path(temp_dir) / 'config.yaml'
-            self.recovery.env_path = Path(temp_dir) / '.env'
+            self.recovery.config_path = Path(temp_dir) / "config.yaml"
+            self.recovery.env_path = Path(temp_dir) / ".env"
 
             result = self.recovery.recover_missing_config()
 
@@ -229,10 +227,7 @@ class TestIntegration(unittest.TestCase):
         recovery = ErrorRecovery(verbose=False)
 
         # Mock some errors
-        test_errors = [
-            "Port 8000 (API) in use",
-            "Missing .env"
-        ]
+        test_errors = ["Port 8000 (API) in use", "Missing .env"]
 
         # Should handle errors without crashing
         try:
@@ -281,13 +276,7 @@ def run_phase3_tests():
     suite = unittest.TestSuite()
 
     # Add all test classes
-    test_classes = [
-        TestLaunchValidator,
-        TestServiceManager,
-        TestErrorRecovery,
-        TestIntegration,
-        TestPerformance
-    ]
+    test_classes = [TestLaunchValidator, TestServiceManager, TestErrorRecovery, TestIntegration, TestPerformance]
 
     for test_class in test_classes:
         suite.addTests(loader.loadTestsFromTestCase(test_class))
@@ -304,7 +293,9 @@ def run_phase3_tests():
     print(f"Tests run: {result.testsRun}")
     print(f"Failures: {len(result.failures)}")
     print(f"Errors: {len(result.errors)}")
-    print(f"Success rate: {((result.testsRun - len(result.failures) - len(result.errors)) / result.testsRun * 100):.1f}%")
+    print(
+        f"Success rate: {((result.testsRun - len(result.failures) - len(result.errors)) / result.testsRun * 100):.1f}%"
+    )
 
     if result.failures:
         print("\nFailed tests:")

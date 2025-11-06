@@ -102,9 +102,7 @@ class ProjectMissionUpdatedData(BaseModel):
     generated_by: Literal["orchestrator", "user"] = Field(
         default="orchestrator", description="Source of mission generation"
     )
-    user_config_applied: bool = Field(
-        default=False, description="Whether user configuration was applied"
-    )
+    user_config_applied: bool = Field(default=False, description="Whether user configuration was applied")
     field_priorities: Optional[Dict[str, int]] = Field(
         None, description="Field priorities used in generation (1-5 scale)"
     )
@@ -123,20 +121,24 @@ class ProjectMissionUpdatedEvent(BaseModel):
     schema_version: str = Field(default="1.0", description="Event schema version")
     data: ProjectMissionUpdatedData
 
-    model_config = {"json_schema_extra": {"example": {
-        "type": "project:mission_updated",
-        "timestamp": "2025-11-02T10:30:00Z",
-        "schema_version": "1.0",
-        "data": {
-            "project_id": "550e8400-e29b-41d4-a716-446655440000",
-            "tenant_key": "tenant_123",
-            "mission": "Implement user authentication with OAuth2",
-            "token_estimate": 5000,
-            "generated_by": "orchestrator",
-            "user_config_applied": True,
-            "field_priorities": {"security": 5, "performance": 4, "ux": 3},
-        },
-    }}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "type": "project:mission_updated",
+                "timestamp": "2025-11-02T10:30:00Z",
+                "schema_version": "1.0",
+                "data": {
+                    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "tenant_key": "tenant_123",
+                    "mission": "Implement user authentication with OAuth2",
+                    "token_estimate": 5000,
+                    "generated_by": "orchestrator",
+                    "user_config_applied": True,
+                    "field_priorities": {"security": 5, "performance": 4, "ux": 3},
+                },
+            }
+        }
+    }
 
 
 # ============================================================================
@@ -191,22 +193,26 @@ class AgentCreatedEvent(BaseModel):
     schema_version: str = Field(default="1.0", description="Event schema version")
     data: AgentCreatedData
 
-    model_config = {"json_schema_extra": {"example": {
-        "type": "agent:created",
-        "timestamp": "2025-11-02T10:31:00Z",
-        "schema_version": "1.0",
-        "data": {
-            "project_id": "550e8400-e29b-41d4-a716-446655440000",
-            "tenant_key": "tenant_123",
-            "agent": {
-                "id": "660e8400-e29b-41d4-a716-446655440000",
-                "agent_type": "orchestrator",
-                "status": "pending",
-                "mission": "Coordinate project implementation",
-                "mode": "claude",
-            },
-        },
-    }}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "type": "agent:created",
+                "timestamp": "2025-11-02T10:31:00Z",
+                "schema_version": "1.0",
+                "data": {
+                    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "tenant_key": "tenant_123",
+                    "agent": {
+                        "id": "660e8400-e29b-41d4-a716-446655440000",
+                        "agent_type": "orchestrator",
+                        "status": "pending",
+                        "mission": "Coordinate project implementation",
+                        "mode": "claude",
+                    },
+                },
+            }
+        }
+    }
 
 
 class AgentStatusChangedData(BaseModel):
@@ -223,9 +229,7 @@ class AgentStatusChangedData(BaseModel):
     old_status: str = Field(..., min_length=1, description="Previous status")
     new_status: str = Field(..., min_length=1, description="New status")
     agent_type: str = Field(..., min_length=1, description="Type of agent")
-    duration_seconds: Optional[float] = Field(
-        None, ge=0, description="Job duration for completed/failed status"
-    )
+    duration_seconds: Optional[float] = Field(None, ge=0, description="Job duration for completed/failed status")
 
     @field_validator("new_status")
     @classmethod
@@ -262,20 +266,24 @@ class AgentStatusChangedEvent(BaseModel):
     schema_version: str = Field(default="1.0", description="Event schema version")
     data: AgentStatusChangedData
 
-    model_config = {"json_schema_extra": {"example": {
-        "type": "agent:status_changed",
-        "timestamp": "2025-11-02T10:32:00Z",
-        "schema_version": "1.0",
-        "data": {
-            "job_id": "660e8400-e29b-41d4-a716-446655440000",
-            "project_id": "550e8400-e29b-41d4-a716-446655440000",
-            "tenant_key": "tenant_123",
-            "old_status": "pending",
-            "new_status": "active",
-            "agent_type": "orchestrator",
-            "duration_seconds": None,
-        },
-    }}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "type": "agent:status_changed",
+                "timestamp": "2025-11-02T10:32:00Z",
+                "schema_version": "1.0",
+                "data": {
+                    "job_id": "660e8400-e29b-41d4-a716-446655440000",
+                    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "tenant_key": "tenant_123",
+                    "old_status": "pending",
+                    "new_status": "active",
+                    "agent_type": "orchestrator",
+                    "duration_seconds": None,
+                },
+            }
+        }
+    }
 
 
 # ============================================================================
@@ -457,9 +465,7 @@ class EventFactory:
         """
         # Convert UUIDs to strings if needed
         job_id_str = str(job_id) if isinstance(job_id, UUID) else job_id
-        project_id_str = (
-            str(project_id) if project_id and isinstance(project_id, UUID) else project_id
-        )
+        project_id_str = str(project_id) if project_id and isinstance(project_id, UUID) else project_id
 
         event = AgentStatusChangedEvent(
             timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),

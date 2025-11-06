@@ -14,13 +14,15 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy import select
-from src.giljo_mcp.models import AgentTemplate
+
 from src.giljo_mcp.database import get_db_manager
+from src.giljo_mcp.models import AgentTemplate
 
 
 async def verify_templates(tenant_key: str = "default"):
@@ -33,24 +35,24 @@ async def verify_templates(tenant_key: str = "default"):
     Returns:
         dict: Verification results
     """
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"ENHANCED TEMPLATE VERIFICATION - Tenant: {tenant_key}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     db_manager = get_db_manager()
     async with db_manager.get_session_async() as session:
         # Get all templates for tenant
         result = await session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key
-            ).order_by(AgentTemplate.role)
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key).order_by(AgentTemplate.role)
         )
         templates = result.scalars().all()
 
         if not templates:
             print(f"❌ ERROR: No templates found for tenant '{tenant_key}'")
-            print(f"\nTo seed templates, run:")
-            print(f"  python -c \"from src.giljo_mcp.template_seeder import seed_tenant_templates; import asyncio; from src.giljo_mcp.database import get_db_manager; asyncio.run(get_db_manager().run_async(lambda s: seed_tenant_templates(s, '{tenant_key}')))\"\n")
+            print("\nTo seed templates, run:")
+            print(
+                f"  python -c \"from src.giljo_mcp.template_seeder import seed_tenant_templates; import asyncio; from src.giljo_mcp.database import get_db_manager; asyncio.run(get_db_manager().run_async(lambda s: seed_tenant_templates(s, '{tenant_key}')))\"\n"
+            )
             return {"status": "error", "message": "No templates found"}
 
         print(f"Found {len(templates)} templates\n")
@@ -77,16 +79,16 @@ async def verify_templates(tenant_key: str = "default"):
                 "report_progress",
                 "complete_job",
                 "report_error",
-            ]
+            ],
         }
 
         results = {}
         all_passed = True
 
         for template in templates:
-            print(f"\n{'─'*80}")
+            print(f"\n{'─' * 80}")
             print(f"TEMPLATE: {template.role.upper()}")
-            print(f"{'─'*80}")
+            print(f"{'─' * 80}")
 
             template_passed = True
             checks_passed = 0
@@ -128,7 +130,7 @@ async def verify_templates(tenant_key: str = "default"):
                     template_passed = False
 
             # Metadata checks
-            print(f"\n  Metadata:")
+            print("\n  Metadata:")
             total_checks += 3
             tool_ok = template.tool in ["claude", "codex", "gemini", "auto"]
             version_ok = template.version == "3.0.0"
@@ -145,9 +147,9 @@ async def verify_templates(tenant_key: str = "default"):
             # Overall status
             print(f"\n  Overall: {checks_passed}/{total_checks} checks passed")
             if template_passed:
-                print(f"  Status: ✅ PASSED")
+                print("  Status: ✅ PASSED")
             else:
-                print(f"  Status: ❌ FAILED")
+                print("  Status: ❌ FAILED")
                 all_passed = False
 
             results[template.role] = {
@@ -157,9 +159,9 @@ async def verify_templates(tenant_key: str = "default"):
             }
 
         # Summary
-        print(f"\n{'='*80}")
-        print(f"SUMMARY")
-        print(f"{'='*80}\n")
+        print(f"\n{'=' * 80}")
+        print("SUMMARY")
+        print(f"{'=' * 80}\n")
 
         passed_count = sum(1 for r in results.values() if r["passed"])
         total_count = len(results)
@@ -169,15 +171,15 @@ async def verify_templates(tenant_key: str = "default"):
         print(f"  ❌ Failed: {total_count - passed_count}")
 
         if all_passed:
-            print(f"\n🎉 ALL TEMPLATES ENHANCED SUCCESSFULLY!")
+            print("\n🎉 ALL TEMPLATES ENHANCED SUCCESSFULLY!")
         else:
-            print(f"\n⚠️  SOME TEMPLATES NEED ATTENTION")
-            print(f"\nFailed templates:")
+            print("\n⚠️  SOME TEMPLATES NEED ATTENTION")
+            print("\nFailed templates:")
             for role, result in results.items():
                 if not result["passed"]:
                     print(f"  - {role}: {result['checks_passed']}/{result['total_checks']} checks passed")
 
-        print(f"\n{'='*80}\n")
+        print(f"\n{'=' * 80}\n")
 
         return {
             "status": "success" if all_passed else "failed",
@@ -195,10 +197,7 @@ def print_sample_content(tenant_key: str = "default", role: str = "orchestrator"
         db_manager = get_db_manager()
         async with db_manager.get_session_async() as session:
             result = await session.execute(
-                select(AgentTemplate).where(
-                    AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.role == role
-                )
+                select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == role)
             )
             template = result.scalar_one_or_none()
 
@@ -206,9 +205,9 @@ def print_sample_content(tenant_key: str = "default", role: str = "orchestrator"
                 print(f"❌ Template '{role}' not found for tenant '{tenant_key}'")
                 return
 
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print(f"SAMPLE TEMPLATE CONTENT: {role}")
-            print(f"{'='*80}\n")
+            print(f"{'=' * 80}\n")
 
             # Print last 1500 chars (MCP section)
             content = template.template_content
@@ -221,7 +220,7 @@ def print_sample_content(tenant_key: str = "default", role: str = "orchestrator"
                 print("❌ MCP section not found in template!")
                 print(f"\nLast 500 chars:\n{content[-500:]}")
 
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
 
     asyncio.run(get_sample())
 

@@ -8,16 +8,12 @@ Target: 85%+ code coverage
 Priority: CRITICAL - Enables 70% token reduction feature
 """
 
-import pytest
-import pytest_asyncio
 from uuid import uuid4
-from datetime import datetime, timezone
 
-from src.giljo_mcp.thin_prompt_generator import (
-    ThinClientPromptGenerator,
-    ThinPromptResponse
-)
-from src.giljo_mcp.models import MCPAgentJob, Project, Product, User
+import pytest
+
+from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator, ThinPromptResponse
 
 
 @pytest.mark.asyncio
@@ -45,11 +41,7 @@ class TestThinClientGeneratorBasic:
             tenant_key=tenant_key,
             username="testuser",
             email="test@giljoai.com",
-            field_priority_config={
-                'product_vision': 10,
-                'architecture': 7,
-                'codebase_summary': 4
-            }
+            field_priority_config={"product_vision": 10, "architecture": 7, "codebase_summary": 4},
         )
         db_session.add(user)
 
@@ -59,7 +51,7 @@ class TestThinClientGeneratorBasic:
             tenant_key=tenant_key,
             name="Test Product",
             description="Test product for thin prompt testing",
-            vision_document="This is a test product vision document with sufficient content to test token reduction."
+            vision_document="This is a test product vision document with sufficient content to test token reduction.",
         )
         db_session.add(product)
 
@@ -71,7 +63,7 @@ class TestThinClientGeneratorBasic:
             name="Test Project",
             description="Test project for thin prompt",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -80,10 +72,7 @@ class TestThinClientGeneratorBasic:
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
         result = await generator.generate(
-            project_id=str(project.id),
-            user_id=user_id,
-            tool='claude-code',
-            instance_number=1
+            project_id=str(project.id), user_id=user_id, tool="claude-code", instance_number=1
         )
 
         # Verify response structure
@@ -95,15 +84,17 @@ class TestThinClientGeneratorBasic:
         assert result.instructions_stored is True
 
         # Verify prompt is thin
-        prompt_lines = result.prompt.split('\n')
+        prompt_lines = result.prompt.split("\n")
         assert len(prompt_lines) <= 30, f"Prompt should be ~10-30 lines, got {len(prompt_lines)}"
-        assert result.estimated_prompt_tokens < 150, f"Prompt should be <150 tokens, got {result.estimated_prompt_tokens}"
+        assert result.estimated_prompt_tokens < 150, (
+            f"Prompt should be <150 tokens, got {result.estimated_prompt_tokens}"
+        )
 
         # Verify orchestrator job created in database
         orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
         assert orchestrator is not None
-        assert orchestrator.agent_type == 'orchestrator'
-        assert orchestrator.status == 'pending'
+        assert orchestrator.agent_type == "orchestrator"
+        assert orchestrator.status == "pending"
         assert orchestrator.tenant_key == tenant_key
         assert orchestrator.project_id == str(project.id)
         assert orchestrator.instance_number == 1
@@ -111,7 +102,6 @@ class TestThinClientGeneratorBasic:
         # Verify mission stored
         assert orchestrator.mission is not None
         assert len(orchestrator.mission) > 0
-
 
     async def test_thin_prompt_is_actually_thin(self, db_session):
         """
@@ -122,12 +112,7 @@ class TestThinClientGeneratorBasic:
         tenant_key = str(uuid4())
 
         # Create minimal test data
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -137,21 +122,17 @@ class TestThinClientGeneratorBasic:
             name="Project",
             description="Description",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='claude-code',
-            instance_number=1
-        )
+        result = await generator.generate(project_id=str(project.id), tool="claude-code", instance_number=1)
 
         # CRITICAL VALIDATIONS
-        prompt_lines = result.prompt.split('\n')
+        prompt_lines = result.prompt.split("\n")
         non_empty_lines = [line for line in prompt_lines if line.strip()]
 
         # Prompt should be concise
@@ -167,7 +148,6 @@ class TestThinClientGeneratorBasic:
         assert "get_orchestrator_instructions" in result.prompt
         assert result.orchestrator_id in result.prompt
 
-
     async def test_orchestrator_job_created_in_database(self, db_session):
         """
         Verify orchestrator job is created and persisted correctly.
@@ -175,12 +155,7 @@ class TestThinClientGeneratorBasic:
         tenant_key = str(uuid4())
 
         # Create test data
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision content"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision content")
         db_session.add(product)
 
         project = Project(
@@ -189,30 +164,25 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='codex',
-            instance_number=2
-        )
+        result = await generator.generate(project_id=str(project.id), tool="codex", instance_number=2)
 
         # Verify database persistence
         orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
         assert orchestrator is not None
-        assert orchestrator.agent_type == 'orchestrator'
-        assert orchestrator.agent_name == 'Orchestrator #2'
-        assert orchestrator.status == 'pending'
-        assert orchestrator.tool_type == 'codex'
+        assert orchestrator.agent_type == "orchestrator"
+        assert orchestrator.agent_name == "Orchestrator #2"
+        assert orchestrator.status == "pending"
+        assert orchestrator.tool_type == "codex"
         assert orchestrator.instance_number == 2
         assert orchestrator.context_budget == 150000
         assert orchestrator.context_used == 0
-
 
     async def test_mission_stored_with_field_priorities(self, db_session):
         """
@@ -227,21 +197,16 @@ class TestThinClientGeneratorBasic:
             tenant_key=tenant_key,
             username="testuser",
             field_priority_config={
-                'product_vision': 10,  # Full detail
-                'architecture': 4,      # Abbreviated
-                'dependencies': 2       # Minimal
-            }
+                "product_vision": 10,  # Full detail
+                "architecture": 4,  # Abbreviated
+                "dependencies": 2,  # Minimal
+            },
         )
         db_session.add(user)
 
         # Create product with large vision
         large_vision = "PRODUCT VISION:\n" + ("Detail " * 1000)  # Large content
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document=large_vision
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document=large_vision)
         db_session.add(product)
 
         project = Project(
@@ -250,18 +215,14 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         # Generate with user's field priorities
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            user_id=user_id,
-            tool='claude-code'
-        )
+        result = await generator.generate(project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Verify mission is condensed (not full vision)
         orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
@@ -271,7 +232,6 @@ class TestThinClientGeneratorBasic:
         assert mission_length < vision_length, "Mission should be condensed"
         # Mission should be significantly smaller due to field priorities
         assert mission_length < vision_length * 0.5, "Field priorities should reduce content by at least 50%"
-
 
     async def test_user_field_priorities_applied(self, db_session):
         """
@@ -285,21 +245,11 @@ class TestThinClientGeneratorBasic:
             id=user_id,
             tenant_key=tenant_key,
             username="priorityuser",
-            field_priority_config={
-                'product_vision': 10,
-                'architecture': 8,
-                'codebase_summary': 3,
-                'dependencies': 1
-            }
+            field_priority_config={"product_vision": 10, "architecture": 8, "codebase_summary": 3, "dependencies": 1},
         )
         db_session.add(user)
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -308,7 +258,7 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -320,11 +270,10 @@ class TestThinClientGeneratorBasic:
         field_priorities = await generator._get_user_field_priorities(user_id)
 
         assert field_priorities is not None
-        assert field_priorities['product_vision'] == 10
-        assert field_priorities['architecture'] == 8
-        assert field_priorities['codebase_summary'] == 3
-        assert field_priorities['dependencies'] == 1
-
+        assert field_priorities["product_vision"] == 10
+        assert field_priorities["architecture"] == 8
+        assert field_priorities["codebase_summary"] == 3
+        assert field_priorities["dependencies"] == 1
 
     async def test_token_estimate_accurate(self, db_session):
         """
@@ -332,12 +281,7 @@ class TestThinClientGeneratorBasic:
         """
         tenant_key = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -346,16 +290,13 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='claude-code'
-        )
+        result = await generator.generate(project_id=str(project.id), tool="claude-code")
 
         # Token estimate should be reasonable
         # 1 token ≈ 4 characters (rough estimate)
@@ -379,10 +320,7 @@ class TestThinClientGeneratorSecurity:
 
         # Create project for tenant 1
         product1 = Product(
-            id=str(uuid4()),
-            tenant_key=tenant1_key,
-            name="Tenant1 Product",
-            vision_document="Tenant 1 vision"
+            id=str(uuid4()), tenant_key=tenant1_key, name="Tenant1 Product", vision_document="Tenant 1 vision"
         )
         db_session.add(product1)
 
@@ -392,16 +330,13 @@ class TestThinClientGeneratorSecurity:
             product_id=product1.id,
             name="Tenant1 Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project1)
 
         # Create project for tenant 2
         product2 = Product(
-            id=str(uuid4()),
-            tenant_key=tenant2_key,
-            name="Tenant2 Product",
-            vision_document="Tenant 2 vision"
+            id=str(uuid4()), tenant_key=tenant2_key, name="Tenant2 Product", vision_document="Tenant 2 vision"
         )
         db_session.add(product2)
 
@@ -411,7 +346,7 @@ class TestThinClientGeneratorSecurity:
             product_id=product2.id,
             name="Tenant2 Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project2)
         await db_session.commit()
@@ -422,7 +357,7 @@ class TestThinClientGeneratorSecurity:
         with pytest.raises(ValueError, match="Project .* not found"):
             await generator_tenant1.generate(
                 project_id=str(project2.id),  # Tenant 2 project
-                tool='claude-code'
+                tool="claude-code",
             )
 
 
@@ -436,12 +371,7 @@ class TestThinClientGeneratorErrors:
         """
         tenant_key = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -450,7 +380,7 @@ class TestThinClientGeneratorErrors:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -460,9 +390,8 @@ class TestThinClientGeneratorErrors:
         with pytest.raises(ValueError, match="Invalid tool"):
             await generator.generate(
                 project_id=str(project.id),
-                tool='invalid-tool'  # Invalid
+                tool="invalid-tool",  # Invalid
             )
-
 
     async def test_project_not_found_error(self, db_session):
         """
@@ -474,11 +403,7 @@ class TestThinClientGeneratorErrors:
         generator = ThinClientPromptGenerator(db_session, tenant_key)
 
         with pytest.raises(ValueError, match="Project .* not found"):
-            await generator.generate(
-                project_id=fake_project_id,
-                tool='claude-code'
-            )
-
+            await generator.generate(project_id=fake_project_id, tool="claude-code")
 
     async def test_user_not_found_graceful(self, db_session):
         """
@@ -487,12 +412,7 @@ class TestThinClientGeneratorErrors:
         tenant_key = str(uuid4())
         fake_user_id = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -501,7 +421,7 @@ class TestThinClientGeneratorErrors:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -512,7 +432,7 @@ class TestThinClientGeneratorErrors:
         result = await generator.generate(
             project_id=str(project.id),
             user_id=fake_user_id,  # Non-existent user
-            tool='claude-code'
+            tool="claude-code",
         )
 
         assert result is not None
@@ -529,12 +449,7 @@ class TestThinClientGeneratorPromptContent:
         """
         tenant_key = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -543,16 +458,13 @@ class TestThinClientGeneratorPromptContent:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='claude-code'
-        )
+        result = await generator.generate(project_id=str(project.id), tool="claude-code")
 
         # Verify MCP connection details in prompt
         assert "MCP CONNECTION" in result.prompt or "mcp__giljo-mcp__" in result.prompt
@@ -560,19 +472,13 @@ class TestThinClientGeneratorPromptContent:
         assert result.orchestrator_id in result.prompt
         assert tenant_key in result.prompt
 
-
     async def test_prompt_includes_identity_info(self, db_session):
         """
         Verify prompt includes all necessary identity information.
         """
         tenant_key = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="My Test Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="My Test Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -581,17 +487,13 @@ class TestThinClientGeneratorPromptContent:
             product_id=product.id,
             name="My Test Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='claude-code',
-            instance_number=3
-        )
+        result = await generator.generate(project_id=str(project.id), tool="claude-code", instance_number=3)
 
         # Verify identity elements in prompt
         assert "Orchestrator #3" in result.prompt
@@ -599,19 +501,13 @@ class TestThinClientGeneratorPromptContent:
         assert result.orchestrator_id in result.prompt
         assert str(project.id) in result.prompt
 
-
     async def test_prompt_different_tools(self, db_session):
         """
         Test prompt generation for different AI coding tools.
         """
         tenant_key = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision")
         db_session.add(product)
 
         project = Project(
@@ -620,7 +516,7 @@ class TestThinClientGeneratorPromptContent:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -628,12 +524,8 @@ class TestThinClientGeneratorPromptContent:
         generator = ThinClientPromptGenerator(db_session, tenant_key)
 
         # Test each supported tool
-        for tool in ['claude-code', 'codex', 'gemini']:
-            result = await generator.generate(
-                project_id=str(project.id),
-                tool=tool,
-                instance_number=1
-            )
+        for tool in ["claude-code", "codex", "gemini"]:
+            result = await generator.generate(project_id=str(project.id), tool=tool, instance_number=1)
 
             assert result.prompt is not None
             assert len(result.prompt) > 0

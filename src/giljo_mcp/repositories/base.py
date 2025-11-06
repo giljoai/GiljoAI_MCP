@@ -5,12 +5,14 @@ Handover 0017: Provides foundation for all repository classes with CRITICAL tena
 Every database operation MUST filter by tenant_key for security.
 """
 
-from typing import Generic, TypeVar, Optional, List
-from sqlalchemy.orm import Session
-from ..database import DatabaseManager
-from ..tenant import TenantManager
+from typing import Generic, List, Optional, TypeVar
 
-T = TypeVar('T')
+from sqlalchemy.orm import Session
+
+from ..database import DatabaseManager
+
+
+T = TypeVar("T")
 
 
 class BaseRepository(Generic[T]):
@@ -63,10 +65,11 @@ class BaseRepository(Generic[T]):
         Returns:
             Entity instance or None if not found
         """
-        return session.query(self.model_class).filter(
-            self.model_class.tenant_key == tenant_key,
-            self.model_class.id == entity_id
-        ).first()
+        return (
+            session.query(self.model_class)
+            .filter(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
+            .first()
+        )
 
     def list_all(self, session: Session, tenant_key: str) -> List[T]:
         """
@@ -81,9 +84,7 @@ class BaseRepository(Generic[T]):
         Returns:
             List of entities for the tenant
         """
-        return session.query(self.model_class).filter(
-            self.model_class.tenant_key == tenant_key
-        ).all()
+        return session.query(self.model_class).filter(self.model_class.tenant_key == tenant_key).all()
 
     def delete(self, session: Session, tenant_key: str, entity_id: str) -> bool:
         """
@@ -116,9 +117,7 @@ class BaseRepository(Generic[T]):
         Returns:
             Number of entities for the tenant
         """
-        return session.query(self.model_class).filter(
-            self.model_class.tenant_key == tenant_key
-        ).count()
+        return session.query(self.model_class).filter(self.model_class.tenant_key == tenant_key).count()
 
     def exists(self, session: Session, tenant_key: str, entity_id: str) -> bool:
         """
@@ -132,7 +131,9 @@ class BaseRepository(Generic[T]):
         Returns:
             True if entity exists for tenant, False otherwise
         """
-        return session.query(self.model_class).filter(
-            self.model_class.tenant_key == tenant_key,
-            self.model_class.id == entity_id
-        ).first() is not None
+        return (
+            session.query(self.model_class)
+            .filter(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
+            .first()
+            is not None
+        )

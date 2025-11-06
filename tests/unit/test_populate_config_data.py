@@ -5,23 +5,23 @@ Tests configuration extraction and population logic.
 """
 
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from scripts.populate_config_data import (
-    extract_architecture_from_claude_md,
-    extract_tech_stack_from_claude_md,
-    extract_test_commands_from_claude_md,
-    detect_frontend_framework,
+    check_serena_mcp_available,
     detect_backend_framework,
     detect_codebase_structure,
-    check_serena_mcp_available,
-    extract_project_config_data
+    detect_frontend_framework,
+    extract_architecture_from_claude_md,
+    extract_project_config_data,
+    extract_tech_stack_from_claude_md,
+    extract_test_commands_from_claude_md,
 )
 
 
@@ -227,11 +227,7 @@ class TestDetectFrontendFramework:
     def test_detect_vue3_root_package_json(self, tmp_path):
         """Test Vue 3 detection from root package.json"""
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {
-                "vue": "^3.4.0"
-            }
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"vue": "^3.4.0"}}))
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Vue 3"
@@ -239,11 +235,7 @@ class TestDetectFrontendFramework:
     def test_detect_vue_legacy(self, tmp_path):
         """Test Vue.js detection (legacy version)"""
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {
-                "vue": "^2.7.0"
-            }
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"vue": "^2.7.0"}}))
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Vue.js"
@@ -251,11 +243,7 @@ class TestDetectFrontendFramework:
     def test_detect_react(self, tmp_path):
         """Test React detection"""
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {
-                "react": "^18.0.0"
-            }
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"react": "^18.0.0"}}))
 
         result = detect_frontend_framework(tmp_path)
         assert result == "React"
@@ -263,11 +251,7 @@ class TestDetectFrontendFramework:
     def test_detect_angular(self, tmp_path):
         """Test Angular detection"""
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {
-                "@angular/core": "^17.0.0"
-            }
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"@angular/core": "^17.0.0"}}))
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Angular"
@@ -275,11 +259,7 @@ class TestDetectFrontendFramework:
     def test_detect_svelte(self, tmp_path):
         """Test Svelte detection"""
         package_json = tmp_path / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {
-                "svelte": "^4.0.0"
-            }
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"svelte": "^4.0.0"}}))
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Svelte"
@@ -290,11 +270,7 @@ class TestDetectFrontendFramework:
         frontend_dir.mkdir()
 
         package_json = frontend_dir / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {
-                "vue": "3.4.0"
-            }
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"vue": "3.4.0"}}))
 
         result = detect_frontend_framework(tmp_path)
         assert result == "Vue 3"
@@ -409,7 +385,7 @@ class TestDetectCodebaseStructure:
 class TestCheckSerenaMCP:
     """Test Serena MCP availability check"""
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_serena_mcp_available(self, mock_find_spec):
         """Test when Serena MCP is available"""
         mock_find_spec.return_value = MagicMock()
@@ -417,7 +393,7 @@ class TestCheckSerenaMCP:
         result = check_serena_mcp_available()
         assert result is True
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_serena_mcp_not_available(self, mock_find_spec):
         """Test when Serena MCP is not available"""
         mock_find_spec.return_value = None
@@ -425,7 +401,7 @@ class TestCheckSerenaMCP:
         result = check_serena_mcp_available()
         assert result is False
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_serena_mcp_import_error(self, mock_find_spec):
         """Test when import check raises exception"""
         mock_find_spec.side_effect = Exception("Import error")
@@ -464,9 +440,7 @@ npm run test
         # Create package.json
         (tmp_path / "frontend").mkdir()
         package_json = tmp_path / "frontend" / "package.json"
-        package_json.write_text(json.dumps({
-            "dependencies": {"vue": "^3.4.0"}
-        }))
+        package_json.write_text(json.dumps({"dependencies": {"vue": "^3.4.0"}}))
 
         # Create requirements.txt
         requirements = tmp_path / "requirements.txt"
@@ -476,7 +450,7 @@ npm run test
         (tmp_path / "api").mkdir()
         (tmp_path / "docs").mkdir()
 
-        with patch('scripts.populate_config_data.check_serena_mcp_available', return_value=True):
+        with patch("scripts.populate_config_data.check_serena_mcp_available", return_value=True):
             result = extract_project_config_data(tmp_path)
 
         assert result["architecture"] == "FastAPI + PostgreSQL 18 + Vue 3 multi-tenant orchestration system"

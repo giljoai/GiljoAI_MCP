@@ -19,17 +19,20 @@ class TokenEstimateRequest(BaseModel):
     Schema for token estimation request.
     POST /api/prompts/estimate-tokens
     """
+
     mission: str = Field(..., description="Mission text to estimate tokens for")
     agent_count: int = Field(..., ge=0, description="Number of agents (must be >= 0)")
     project_description: Optional[str] = Field(None, description="Optional project context/description")
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class OrchestratorPromptResponse(BaseModel):
     """
     Schema for orchestrator prompt generation response.
     GET /api/prompts/orchestrator/{tool}
     """
+
     prompt: str = Field(..., description="Multi-line bash commands for orchestrator invocation")
     tool: str = Field(..., description="Tool type: claude-code, codex, gemini")
     instructions: str = Field(..., description="Human-readable instructions for using the prompt")
@@ -45,6 +48,7 @@ class AgentPromptResponse(BaseModel):
     Schema for agent prompt generation response.
     GET /api/prompts/agent/{agent_id}
     """
+
     prompt: str = Field(..., description="Multi-line bash commands for agent execution")
     agent_id: str = Field(..., description="Agent job ID")
     agent_name: str = Field(..., description="Agent display name")
@@ -58,11 +62,13 @@ class AgentPromptResponse(BaseModel):
 
 # Broadcast Messaging Schemas
 
+
 class BroadcastMessageRequest(BaseModel):
     """
     Schema for broadcasting a message to all agents in a project.
     POST /api/agent-jobs/broadcast
     """
+
     project_id: str = Field(..., min_length=1, description="Project ID to broadcast to")
     content: str = Field(..., min_length=1, max_length=10000, description="Message content (max 10000 chars)")
 
@@ -73,6 +79,7 @@ class BroadcastMessageResponse(BaseModel):
     """
     Schema for broadcast message response.
     """
+
     broadcast_id: str = Field(..., description="Unique broadcast identifier (UUID)")
     message_ids: list[str] = Field(..., description="List of created message IDs")
     agent_count: int = Field(..., description="Number of agents messaged")
@@ -83,10 +90,12 @@ class BroadcastMessageResponse(BaseModel):
 
 # Project Closeout Schemas
 
+
 class AgentStatusSummary(BaseModel):
     """
     Schema for agent status counts in closeout check.
     """
+
     complete: int = Field(..., description="Count of completed agents")
     failed: int = Field(..., description="Count of failed agents")
     active: int = Field(..., description="Count of active agents (working, preparing, review)")
@@ -100,6 +109,7 @@ class ProjectCanCloseResponse(BaseModel):
     Schema for project closeout readiness check.
     GET /api/projects/{project_id}/can-close
     """
+
     can_close: bool = Field(..., description="Whether project can be closed")
     summary: str | None = Field(None, description="AI-generated summary (if can_close=True)")
     agent_statuses: AgentStatusSummary = Field(..., description="Breakdown of agent statuses")
@@ -113,6 +123,7 @@ class ProjectCloseoutPromptResponse(BaseModel):
     Schema for project closeout prompt generation.
     POST /api/projects/{project_id}/generate-closeout
     """
+
     prompt: str = Field(..., description="Multi-line bash script for closeout")
     checklist: list[str] = Field(..., description="Closeout checklist items")
     project_name: str = Field(..., description="Project name")
@@ -126,6 +137,7 @@ class ProjectCompleteRequest(BaseModel):
     Schema for completing a project.
     POST /api/projects/{project_id}/complete
     """
+
     confirm_closeout: bool = Field(..., description="Must be True to confirm closeout")
 
     model_config = ConfigDict(from_attributes=True)
@@ -135,6 +147,7 @@ class ProjectCompleteResponse(BaseModel):
     """
     Schema for project completion response.
     """
+
     success: bool = Field(..., description="Whether project was successfully completed")
     completed_at: str = Field(..., description="Completion timestamp (ISO format)")
     retired_agents: int = Field(..., description="Number of agents retired")
@@ -150,6 +163,7 @@ class OrchestratorPromptRequest(BaseModel):
     Schema for thin client orchestrator prompt request.
     POST /api/prompts/orchestrator
     """
+
     project_id: str = Field(..., min_length=1, description="Project UUID")
     tool: Literal["claude-code", "codex", "gemini"] = Field("claude-code", description="Target AI tool")
     instance_number: Optional[int] = Field(1, ge=1, description="Orchestrator instance number (for succession)")
@@ -170,6 +184,7 @@ class ThinPromptResponse(BaseModel):
     - instructions_stored: Mission stored in database, not embedded
     - mcp_tool_name: The MCP tool orchestrator will call to fetch mission
     """
+
     prompt: str = Field(..., description="Thin client prompt (~10 lines)")
     orchestrator_id: str = Field(..., description="Created orchestrator job ID")
     project_id: str = Field(..., description="Project UUID")

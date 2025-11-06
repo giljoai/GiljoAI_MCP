@@ -34,15 +34,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Handover 0086B: Production-grade WebSocket dependency injection
-from api.dependencies.websocket import get_websocket_dependency, WebSocketDependency
-from api.events.schemas import EventFactory
+from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 
 # Handover 0086B: Production-grade WebSocket dependency injection
-from api.dependencies.websocket import get_websocket_dependency, WebSocketDependency
-from api.events.schemas import EventFactory
-
 from api.schemas.agent_job import (
-    ChildJobSpec,
     JobAcknowledgeResponse,
     JobCompleteRequest,
     JobCompleteResponse,
@@ -71,11 +66,13 @@ from api.schemas.prompt import BroadcastMessageRequest, BroadcastMessageResponse
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 # Helper Functions
+
 
 def can_access_job(job: MCPAgentJob, user: User) -> bool:
     """
@@ -155,18 +152,19 @@ def job_to_response(job: MCPAgentJob) -> JobResponse:
         acknowledged=job.acknowledged,
         started_at=job.started_at,
         completed_at=job.completed_at,
-        created_at=job.created_at
+        created_at=job.created_at,
     )
 
 
 # Job CRUD Endpoints
+
 
 @router.post("/", response_model=JobCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(
     job_request: JobCreateRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
-    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ) -> JobCreateResponse:
     """
     Create a new agent job.
@@ -189,10 +187,7 @@ async def create_job(
     # Permission check - only admins can create jobs
     if current_user.role != "admin":
         logger.warning(f"User {current_user.username} (role={current_user.role}) attempted to create job")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required to create jobs"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required to create jobs")
 
     # Create job
     job = MCPAgentJob(
@@ -203,7 +198,7 @@ async def create_job(
         spawned_by=job_request.spawned_by,
         context_chunks=job_request.context_chunks or [],
         messages=[],
-        acknowledged=False
+        acknowledged=False,
     )
 
     db.add(job)
@@ -235,7 +230,7 @@ async def create_job(
                 "project_id": project_id,
                 "tenant_key": current_user.tenant_key,
                 "agent": agent_data,
-            }
+            },
         )
 
         logger.info(
@@ -244,27 +239,20 @@ async def create_job(
                 "job_id": str(job.job_id),
                 "agent_type": job.agent_type,
                 "tenant_key": current_user.tenant_key,
-                "sent_count": sent_count
-            }
+                "sent_count": sent_count,
+            },
         )
     except Exception as e:
         logger.error(
             f"Failed to broadcast agent creation: {e}",
-            extra={
-                "job_id": str(job.job_id),
-                "agent_type": job.agent_type,
-                "tenant_key": current_user.tenant_key
-            },
-            exc_info=True
+            extra={"job_id": str(job.job_id), "agent_type": job.agent_type, "tenant_key": current_user.tenant_key},
+            exc_info=True,
         )
         # Non-critical - continue without WebSocket broadcast
 
     logger.info(f"Created job {job.job_id} for tenant {current_user.tenant_key}")
 
-    return JobCreateResponse(
-        job_id=job.job_id,
-        message="Job created successfully"
-    )
+    return JobCreateResponse(job_id=job.job_id, message="Job created successfully")
 
 
 @router.get("/", response_model=JobListResponse)
@@ -275,7 +263,7 @@ async def list_jobs(
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> JobListResponse:
     """
     List jobs with flexible filtering.
@@ -330,17 +318,12 @@ async def list_jobs(
 
     logger.info(f"Found {len(jobs)} jobs for user {current_user.username} (total={total})")
 
-    return JobListResponse(
-        jobs=[job_to_response(job) for job in jobs],
-        total=total
-    )
+    return JobListResponse(jobs=[job_to_response(job) for job in jobs], total=total)
 
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> JobResponse:
     """
     Get job details by job_id.
@@ -359,19 +342,13 @@ async def get_job(
     logger.debug(f"User {current_user.username} getting job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     return job_to_response(job)
 
@@ -381,7 +358,7 @@ async def update_job(
     job_id: str,
     job_update: JobUpdateRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> JobResponse:
     """
     Update a job.
@@ -405,27 +382,18 @@ async def update_job(
     logger.debug(f"User {current_user.username} updating job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Permission check
     if not can_modify_job(job, current_user):
         logger.warning(f"User {current_user.username} not authorized to update job {job_id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update this job"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this job")
 
     # Update status if provided
     update_data = job_update.dict(exclude_unset=True)
@@ -434,13 +402,14 @@ async def update_job(
 
         # Validate status transition
         from src.giljo_mcp.agent_job_manager import AgentJobManager
+
         valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
         if new_status not in valid_transitions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status transition from '{job.status}' to '{new_status}'. "
-                       f"Valid transitions: {valid_transitions or 'none (terminal state)'}"
+                f"Valid transitions: {valid_transitions or 'none (terminal state)'}",
             )
 
         job.status = new_status
@@ -455,9 +424,7 @@ async def update_job(
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Delete a job.
@@ -476,27 +443,18 @@ async def delete_job(
     logger.debug(f"User {current_user.username} deleting job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Permission check
     if not can_delete_job(job, current_user):
         logger.warning(f"User {current_user.username} not authorized to delete job {job_id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can delete jobs"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can delete jobs")
 
     await db.delete(job)
     await db.commit()
@@ -506,11 +464,10 @@ async def delete_job(
 
 # Job Status Management Endpoints
 
+
 @router.post("/{job_id}/acknowledge", response_model=JobAcknowledgeResponse)
 async def acknowledge_job(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> JobAcknowledgeResponse:
     """
     Acknowledge a job (pending -> active).
@@ -533,44 +490,37 @@ async def acknowledge_job(
     logger.debug(f"User {current_user.username} acknowledging job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # If already acknowledged, return as-is (idempotent)
     if job.acknowledged and job.status == "active":
         logger.info(f"Job {job_id} already acknowledged, returning current state")
         return JobAcknowledgeResponse(
-            job_id=job.job_id,
-            status=job.status,
-            started_at=job.started_at,
-            message="Job already acknowledged"
+            job_id=job.job_id, status=job.status, started_at=job.started_at, message="Job already acknowledged"
         )
 
     # Validate status transition
     if job.status != "pending":
         from src.giljo_mcp.agent_job_manager import AgentJobManager
+
         valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
         if "active" not in valid_transitions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status transition from '{job.status}' to 'active'. "
-                       f"Valid transitions: {valid_transitions or 'none (terminal state)'}"
+                f"Valid transitions: {valid_transitions or 'none (terminal state)'}",
             )
 
     # Update job
     from datetime import datetime, timezone
+
     job.acknowledged = True
     job.status = "active"
     job.started_at = datetime.now(timezone.utc)
@@ -581,10 +531,7 @@ async def acknowledge_job(
     logger.info(f"Acknowledged job {job_id} for tenant {current_user.tenant_key}")
 
     return JobAcknowledgeResponse(
-        job_id=job.job_id,
-        status=job.status,
-        started_at=job.started_at,
-        message="Job acknowledged successfully"
+        job_id=job.job_id, status=job.status, started_at=job.started_at, message="Job acknowledged successfully"
     )
 
 
@@ -593,7 +540,7 @@ async def complete_job(
     job_id: str,
     complete_request: JobCompleteRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> JobCompleteResponse:
     """
     Mark job as completed (active -> completed).
@@ -614,33 +561,29 @@ async def complete_job(
     logger.debug(f"User {current_user.username} completing job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Validate status transition
     from src.giljo_mcp.agent_job_manager import AgentJobManager
+
     valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
     if "completed" not in valid_transitions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status transition from '{job.status}' to 'completed'. "
-                   f"Valid transitions: {valid_transitions or 'none (terminal state)'}"
+            f"Valid transitions: {valid_transitions or 'none (terminal state)'}",
         )
 
     # Update job
     from datetime import datetime, timezone
+
     job.status = "completed"
     job.completed_at = datetime.now(timezone.utc)
 
@@ -650,7 +593,7 @@ async def complete_job(
             "role": "system",
             "type": "completion",
             "content": complete_request.result,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         job.messages = job.messages + [result_msg]
 
@@ -660,10 +603,7 @@ async def complete_job(
     logger.info(f"Completed job {job_id} for tenant {current_user.tenant_key}")
 
     return JobCompleteResponse(
-        job_id=job.job_id,
-        status=job.status,
-        completed_at=job.completed_at,
-        message="Job completed successfully"
+        job_id=job.job_id, status=job.status, completed_at=job.completed_at, message="Job completed successfully"
     )
 
 
@@ -672,7 +612,7 @@ async def fail_job(
     job_id: str,
     fail_request: JobFailRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> JobFailResponse:
     """
     Mark job as failed (pending/active -> failed).
@@ -693,33 +633,29 @@ async def fail_job(
     logger.debug(f"User {current_user.username} failing job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Validate status transition
     from src.giljo_mcp.agent_job_manager import AgentJobManager
+
     valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
     if "failed" not in valid_transitions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status transition from '{job.status}' to 'failed'. "
-                   f"Valid transitions: {valid_transitions or 'none (terminal state)'}"
+            f"Valid transitions: {valid_transitions or 'none (terminal state)'}",
         )
 
     # Update job
     from datetime import datetime, timezone
+
     job.status = "failed"
     job.completed_at = datetime.now(timezone.utc)
 
@@ -729,7 +665,7 @@ async def fail_job(
             "role": "system",
             "type": "error",
             "content": fail_request.error,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         job.messages = job.messages + [error_msg]
 
@@ -738,22 +674,18 @@ async def fail_job(
 
     logger.info(f"Failed job {job_id} for tenant {current_user.tenant_key}")
 
-    return JobFailResponse(
-        job_id=job.job_id,
-        status=job.status,
-        completed_at=job.completed_at,
-        message="Job failed"
-    )
+    return JobFailResponse(job_id=job.job_id, status=job.status, completed_at=job.completed_at, message="Job failed")
 
 
 # Agent Communication Endpoints
+
 
 @router.post("/{job_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message(
     job_id: str,
     message_request: MessageSendRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> MessageResponse:
     """
     Send a message to a job.
@@ -773,28 +705,23 @@ async def send_message(
     logger.debug(f"User {current_user.username} sending message to job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Create message
     from datetime import datetime, timezone
+
     message = {
         "role": message_request.role,
         "type": message_request.type,
         "content": message_request.content,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "acknowledged": False
+        "acknowledged": False,
     }
 
     # Add message to job
@@ -814,15 +741,13 @@ async def send_message(
         role=message["role"],
         type=message["type"],
         content=message["content"],
-        acknowledged=message["acknowledged"]
+        acknowledged=message["acknowledged"],
     )
 
 
 @router.get("/{job_id}/messages")
 async def get_messages(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get all messages for a job.
@@ -841,27 +766,18 @@ async def get_messages(
     logger.debug(f"User {current_user.username} getting messages from job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Return messages with message_id (index)
     messages_with_ids = []
     for idx, msg in enumerate(job.messages or []):
-        messages_with_ids.append({
-            "message_id": str(idx),
-            **msg
-        })
+        messages_with_ids.append({"message_id": str(idx), **msg})
 
     return {"messages": messages_with_ids}
 
@@ -871,7 +787,7 @@ async def acknowledge_message(
     job_id: str,
     message_id: str,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> MessageResponse:
     """
     Acknowledge a message.
@@ -891,19 +807,13 @@ async def acknowledge_message(
     logger.debug(f"User {current_user.username} acknowledging message {message_id} in job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Get message by index
     try:
@@ -911,10 +821,7 @@ async def acknowledge_message(
         if msg_idx < 0 or msg_idx >= len(job.messages or []):
             raise IndexError
     except (ValueError, IndexError):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Message not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
 
     # Update message acknowledged status
     messages = job.messages or []
@@ -932,18 +839,19 @@ async def acknowledge_message(
         role=messages[msg_idx]["role"],
         type=messages[msg_idx]["type"],
         content=messages[msg_idx]["content"],
-        acknowledged=True
+        acknowledged=True,
     )
 
 
 # Job Coordination Endpoints
+
 
 @router.post("/{job_id}/spawn-children", response_model=JobSpawnResponse, status_code=status.HTTP_201_CREATED)
 async def spawn_children(
     job_id: str,
     spawn_request: JobSpawnRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> JobSpawnResponse:
     """
     Spawn child jobs from a parent job.
@@ -963,19 +871,13 @@ async def spawn_children(
     logger.debug(f"User {current_user.username} spawning children for job {job_id}")
 
     # Query parent job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     parent_job = result.scalar_one_or_none()
 
     if not parent_job:
         logger.warning(f"Parent job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Create child jobs
     child_job_ids = []
@@ -988,7 +890,7 @@ async def spawn_children(
             spawned_by=parent_job.job_id,
             context_chunks=child_spec.context_chunks or [],
             messages=[],
-            acknowledged=False
+            acknowledged=False,
         )
 
         db.add(child_job)
@@ -1002,15 +904,13 @@ async def spawn_children(
     return JobSpawnResponse(
         parent_job_id=parent_job.job_id,
         child_job_ids=child_job_ids,
-        message=f"{len(child_job_ids)} child jobs spawned successfully"
+        message=f"{len(child_job_ids)} child jobs spawned successfully",
     )
 
 
 @router.get("/{job_id}/hierarchy", response_model=JobHierarchyResponse)
 async def get_hierarchy(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> JobHierarchyResponse:
     """
     Get job hierarchy (parent + all children).
@@ -1030,24 +930,21 @@ async def get_hierarchy(
 
     # Query parent job with tenant isolation
     parent_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key
     )
     result = await db.execute(parent_stmt)
     parent = result.scalar_one_or_none()
 
     if not parent:
         logger.warning(f"Parent job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Query children
-    children_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.spawned_by == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    ).order_by(MCPAgentJob.created_at)
+    children_stmt = (
+        select(MCPAgentJob)
+        .where(MCPAgentJob.spawned_by == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
+        .order_by(MCPAgentJob.created_at)
+    )
 
     result = await db.execute(children_stmt)
     children = result.scalars().all()
@@ -1057,17 +954,16 @@ async def get_hierarchy(
     return JobHierarchyResponse(
         parent=job_to_response(parent),
         children=[job_to_response(child) for child in children],
-        total_children=len(children)
+        total_children=len(children),
     )
 
 
 # Kanban Board Endpoints (Handover 0066)
 
+
 @router.get("/kanban/{project_id}", response_model=KanbanBoardResponse)
 async def get_kanban_board(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> KanbanBoardResponse:
     """
     Get Kanban board data for Agent Kanban Dashboard.
@@ -1089,25 +985,20 @@ async def get_kanban_board(
     logger.debug(f"User {current_user.username} getting Kanban board for project {project_id}")
 
     # Verify project exists and user has access (multi-tenant isolation)
-    project_stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     result = await db.execute(project_stmt)
     project = result.scalar_one_or_none()
 
     if not project:
         logger.warning(f"Project {project_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Query all jobs for this project
-    jobs_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    ).order_by(MCPAgentJob.created_at.desc())
+    jobs_stmt = (
+        select(MCPAgentJob)
+        .where(MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key)
+        .order_by(MCPAgentJob.created_at.desc())
+    )
 
     result = await db.execute(jobs_stmt)
     jobs = result.scalars().all()
@@ -1122,9 +1013,7 @@ async def get_kanban_board(
         sent_count = sum(1 for msg in messages if msg.get("from") in ["developer", "user"])
 
         return MessageCounts(
-            unread_messages=unread_count,
-            acknowledged_messages=acknowledged_count,
-            sent_messages=sent_count
+            unread_messages=unread_count, acknowledged_messages=acknowledged_count, sent_messages=sent_count
         )
 
     # Helper function to convert job to Kanban card
@@ -1139,16 +1028,11 @@ async def get_kanban_board(
             started_at=job.started_at,
             completed_at=job.completed_at,
             created_at=job.created_at,
-            message_counts=calculate_message_counts(job)
+            message_counts=calculate_message_counts(job),
         )
 
     # Group jobs by status (4 columns)
-    columns_data = {
-        "pending": [],
-        "active": [],
-        "completed": [],
-        "blocked": []
-    }
+    columns_data = {"pending": [], "active": [], "completed": [], "blocked": []}
 
     for job in jobs:
         if job.status in columns_data:
@@ -1159,7 +1043,7 @@ async def get_kanban_board(
         KanbanColumn(status="pending", jobs=columns_data["pending"]),
         KanbanColumn(status="active", jobs=columns_data["active"]),
         KanbanColumn(status="completed", jobs=columns_data["completed"]),
-        KanbanColumn(status="blocked", jobs=columns_data["blocked"])
+        KanbanColumn(status="blocked", jobs=columns_data["blocked"]),
     ]
 
     logger.info(
@@ -1168,17 +1052,12 @@ async def get_kanban_board(
         f"completed={len(columns_data['completed'])}, blocked={len(columns_data['blocked'])}"
     )
 
-    return KanbanBoardResponse(
-        project_id=project_id,
-        columns=columns
-    )
+    return KanbanBoardResponse(project_id=project_id, columns=columns)
 
 
 @router.get("/{job_id}/message-thread", response_model=MessageThreadResponse)
 async def get_message_thread(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ) -> MessageThreadResponse:
     """
     Get message thread for a job (Slack-style conversation view).
@@ -1199,19 +1078,13 @@ async def get_message_thread(
     logger.debug(f"User {current_user.username} getting message thread for job {job_id}")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Convert messages to MessageThreadItem format
     messages = []
@@ -1222,16 +1095,13 @@ async def get_message_thread(
                 from_=msg.get("from", "unknown"),
                 content=msg.get("content", ""),
                 timestamp=msg.get("timestamp", ""),
-                status=msg.get("status", "pending")
+                status=msg.get("status", "pending"),
             )
         )
 
     logger.info(f"Retrieved {len(messages)} messages for job {job_id}")
 
-    return MessageThreadResponse(
-        job_id=job.job_id,
-        messages=messages
-    )
+    return MessageThreadResponse(job_id=job.job_id, messages=messages)
 
 
 @router.post("/{job_id}/send-message", response_model=SendMessageResponse, status_code=status.HTTP_201_CREATED)
@@ -1239,7 +1109,7 @@ async def send_developer_message(
     job_id: str,
     message_request: SendMessageRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> SendMessageResponse:
     """
     Send a message from developer to agent.
@@ -1264,33 +1134,25 @@ async def send_developer_message(
 
     # Validate content
     if not message_request.content or not message_request.content.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message content cannot be empty"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty")
 
     # Query job with tenant isolation
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
 
     if not job:
         logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Create message
     from datetime import datetime, timezone
+
     message = {
         "from": "developer",
         "content": message_request.content,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "status": "pending"
+        "status": "pending",
     }
 
     # Add message to job
@@ -1309,7 +1171,7 @@ async def send_developer_message(
         from_="developer",
         content=message["content"],
         timestamp=message["timestamp"],
-        status=message["status"]
+        status=message["status"],
     )
 
 
@@ -1346,46 +1208,34 @@ async def broadcast_message(
 
     # Validate content
     if not message_request.content or not message_request.content.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message content cannot be empty"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty")
 
     if len(message_request.content) > 10000:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message content exceeds maximum length of 10000 characters"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Message content exceeds maximum length of 10000 characters"
         )
 
     # Verify project exists and user has access (multi-tenant isolation)
     project_stmt = select(Project).where(
-        Project.id == message_request.project_id,
-        Project.tenant_key == current_user.tenant_key
+        Project.id == message_request.project_id, Project.tenant_key == current_user.tenant_key
     )
     project_result = await db.execute(project_stmt)
     project = project_result.scalar_one_or_none()
 
     if not project:
         logger.warning(f"Project {message_request.project_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or not accessible"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found or not accessible")
 
     # Get all agents in project (multi-tenant isolation)
     agents_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == message_request.project_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.project_id == message_request.project_id, MCPAgentJob.tenant_key == current_user.tenant_key
     )
     agents_result = await db.execute(agents_stmt)
     agents = agents_result.scalars().all()
 
     if not agents:
         logger.warning(f"No agents found in project {message_request.project_id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No agents found in project"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No agents found in project")
 
     # Generate broadcast ID for tracking
     broadcast_id = str(uuid4())
@@ -1401,7 +1251,7 @@ async def broadcast_message(
         "timestamp": timestamp,
         "status": "pending",
         "type": "mcp_message",
-        "is_broadcast": True
+        "is_broadcast": True,
     }
 
     # Broadcast to all agents
@@ -1418,13 +1268,12 @@ async def broadcast_message(
     # Commit all changes
     await db.commit()
 
-    logger.info(
-        f"Broadcast {broadcast_id} sent to {len(agents)} agents in project {message_request.project_id}"
-    )
+    logger.info(f"Broadcast {broadcast_id} sent to {len(agents)} agents in project {message_request.project_id}")
 
     # Broadcast WebSocket event (if available)
     try:
         from api.app import state
+
         if state.websocket_manager:
             await state.websocket_manager.broadcast_to_project(
                 message_request.project_id,
@@ -1434,18 +1283,15 @@ async def broadcast_message(
                     "project_id": message_request.project_id,
                     "agent_count": len(agents),
                     "content_preview": message_request.content[:100],
-                    "timestamp": timestamp
-                }
+                    "timestamp": timestamp,
+                },
             )
     except Exception as e:
         logger.warning(f"Failed to broadcast WebSocket event: {e}")
         # Don't fail the request if WebSocket broadcast fails
 
     return BroadcastMessageResponse(
-        broadcast_id=broadcast_id,
-        message_ids=message_ids,
-        agent_count=len(agents),
-        timestamp=timestamp
+        broadcast_id=broadcast_id, message_ids=message_ids, agent_count=len(agents), timestamp=timestamp
     )
 
 

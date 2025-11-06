@@ -13,10 +13,10 @@ Usage:
 """
 
 import sys
-import os
 from pathlib import Path
-from alembic.config import Config
+
 from alembic import command
+from alembic.config import Config
 
 
 def setup_alembic_config():
@@ -91,7 +91,7 @@ def run_migration(action: str):
         print("=" * 60)
 
     except Exception as e:
-        print(f"\nERROR: Migration failed!")
+        print("\nERROR: Migration failed!")
         print(f"Error details: {e}")
         print("\nTroubleshooting:")
         print("1. Ensure PostgreSQL is running")

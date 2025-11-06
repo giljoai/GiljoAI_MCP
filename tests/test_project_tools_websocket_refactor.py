@@ -21,8 +21,8 @@ the refactored code uses the production-grade dependency injection pattern.
 
 import logging
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -50,10 +50,11 @@ class TestProjectMissionUpdateWebSocketRefactor:
         - No manual iteration over active_connections
         """
         # Import the actual function
-        from giljo_mcp.tools.project import register_project_tools
+        from fastmcp import FastMCP
+
         from giljo_mcp.database import DatabaseManager
         from giljo_mcp.tenant import TenantManager
-        from fastmcp import FastMCP
+        from giljo_mcp.tools.project import register_project_tools
 
         # Setup mock database manager
         mock_db_manager = MagicMock(spec=DatabaseManager)
@@ -130,10 +131,11 @@ class TestProjectMissionUpdateWebSocketRefactor:
         - Proper parameters are passed
         - Event structure is valid
         """
-        from giljo_mcp.tools.project import register_project_tools
+        from fastmcp import FastMCP
+
         from giljo_mcp.database import DatabaseManager
         from giljo_mcp.tenant import TenantManager
-        from fastmcp import FastMCP
+        from giljo_mcp.tools.project import register_project_tools
 
         # Setup mock database manager
         mock_db_manager = MagicMock(spec=DatabaseManager)
@@ -196,9 +198,7 @@ class TestProjectMissionUpdateWebSocketRefactor:
                     assert update_tool is not None
 
                     # Execute
-                    result = await update_tool.fn(
-                        project_id=str(mock_project.id), mission=new_mission
-                    )
+                    result = await update_tool.fn(project_id=str(mock_project.id), mission=new_mission)
 
                     # Verify EventFactory was called
                     mock_event_factory.project_mission_updated.assert_called_once()
@@ -221,10 +221,11 @@ class TestProjectMissionUpdateWebSocketRefactor:
         - No exceptions are raised
         - Proper logging occurs
         """
-        from giljo_mcp.tools.project import register_project_tools
+        from fastmcp import FastMCP
+
         from giljo_mcp.database import DatabaseManager
         from giljo_mcp.tenant import TenantManager
-        from fastmcp import FastMCP
+        from giljo_mcp.tools.project import register_project_tools
 
         # Setup mock database manager
         mock_db_manager = MagicMock(spec=DatabaseManager)
@@ -281,10 +282,11 @@ class TestProjectMissionUpdateWebSocketRefactor:
         - Logging uses logger.info with extra parameter
         - No bare except blocks (proper Exception catching)
         """
-        from giljo_mcp.tools.project import register_project_tools
+        from fastmcp import FastMCP
+
         from giljo_mcp.database import DatabaseManager
         from giljo_mcp.tenant import TenantManager
-        from fastmcp import FastMCP
+        from giljo_mcp.tools.project import register_project_tools
 
         # Setup mock database manager
         mock_db_manager = MagicMock(spec=DatabaseManager)

@@ -16,20 +16,23 @@ Test scenarios:
 - Config file operations (read/write/atomic)
 """
 
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # Fixtures
 
+
 @pytest.fixture
 async def admin_user(db_session: AsyncSession):
     """Create admin user for testing."""
-    from src.giljo_mcp.models import User
     from passlib.hash import bcrypt
+
+    from src.giljo_mcp.models import User
 
     admin = User(
         username="test_admin",
@@ -37,7 +40,7 @@ async def admin_user(db_session: AsyncSession):
         email="admin@test.com",
         role="admin",
         tenant_key="test_tenant",
-        is_active=True
+        is_active=True,
     )
     db_session.add(admin)
     await db_session.commit()
@@ -48,8 +51,9 @@ async def admin_user(db_session: AsyncSession):
 @pytest.fixture
 async def regular_user(db_session: AsyncSession):
     """Create regular (non-admin) user for testing."""
-    from src.giljo_mcp.models import User
     from passlib.hash import bcrypt
+
+    from src.giljo_mcp.models import User
 
     user = User(
         username="test_user",
@@ -57,7 +61,7 @@ async def regular_user(db_session: AsyncSession):
         email="user@test.com",
         role="user",
         tenant_key="test_tenant",
-        is_active=True
+        is_active=True,
     )
     db_session.add(user)
     await db_session.commit()
@@ -68,13 +72,7 @@ async def regular_user(db_session: AsyncSession):
 @pytest.fixture
 async def admin_token(api_client: AsyncClient, admin_user):
     """Get JWT token for admin user."""
-    response = await api_client.post(
-        "/api/auth/login",
-        json={
-            "username": "test_admin",
-            "password": "admin_password"
-        }
-    )
+    response = await api_client.post("/api/auth/login", json={"username": "test_admin", "password": "admin_password"})
     assert response.status_code == 200
 
     # Extract token from cookie
@@ -88,13 +86,7 @@ async def admin_token(api_client: AsyncClient, admin_user):
 @pytest.fixture
 async def regular_token(api_client: AsyncClient, regular_user):
     """Get JWT token for regular user."""
-    response = await api_client.post(
-        "/api/auth/login",
-        json={
-            "username": "test_user",
-            "password": "user_password"
-        }
-    )
+    response = await api_client.post("/api/auth/login", json={"username": "test_user", "password": "user_password"})
     assert response.status_code == 200
 
     # Extract token from cookie
@@ -131,18 +123,11 @@ def clean_config():
 
     # Create minimal config
     config = {
-        "database": {
-            "host": "localhost",
-            "port": 5432,
-            "database_name": "test_db",
-            "username": "test_user"
-        },
-        "security": {
-            "cookie_domain_whitelist": []
-        }
+        "database": {"host": "localhost", "port": 5432, "database_name": "test_db", "username": "test_user"},
+        "security": {"cookie_domain_whitelist": []},
     }
 
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f)
 
     yield config_path
@@ -154,29 +139,24 @@ def clean_config():
 
 # GET Tests - Retrieve Cookie Domains
 
+
 @pytest.mark.asyncio
 async def test_get_cookie_domains_success(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test successful retrieval of cookie domain whitelist."""
     # Pre-populate config with domains
     config_path = clean_config
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    config['security']['cookie_domain_whitelist'] = ['localhost', 'example.com']
+    config["security"]["cookie_domain_whitelist"] = ["localhost", "example.com"]
 
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f)
 
     # Make request
-    response = await api_client.get(
-        "/api/v1/user/settings/cookie-domains",
-        cookies={"access_token": admin_token}
-    )
+    response = await api_client.get("/api/v1/user/settings/cookie-domains", cookies={"access_token": admin_token})
 
     assert response.status_code == 200
     data = response.json()
@@ -189,16 +169,10 @@ async def test_get_cookie_domains_success(
 
 @pytest.mark.asyncio
 async def test_get_cookie_domains_empty(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test retrieval when whitelist is empty."""
-    response = await api_client.get(
-        "/api/v1/user/settings/cookie-domains",
-        cookies={"access_token": admin_token}
-    )
+    response = await api_client.get("/api/v1/user/settings/cookie-domains", cookies={"access_token": admin_token})
 
     assert response.status_code == 200
     data = response.json()
@@ -207,23 +181,18 @@ async def test_get_cookie_domains_empty(
 
 @pytest.mark.asyncio
 async def test_get_cookie_domains_no_security_section(
-    api_client: AsyncClient,
-    admin_token: str,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, db_session: AsyncSession
 ):
     """Test retrieval when config has no security section."""
     # Create config without security section
     config_path = Path.cwd() / "config.yaml"
     config = {"database": {"host": "localhost"}}
 
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f)
 
     try:
-        response = await api_client.get(
-            "/api/v1/user/settings/cookie-domains",
-            cookies={"access_token": admin_token}
-        )
+        response = await api_client.get("/api/v1/user/settings/cookie-domains", cookies={"access_token": admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -235,16 +204,10 @@ async def test_get_cookie_domains_no_security_section(
 
 @pytest.mark.asyncio
 async def test_get_cookie_domains_requires_admin(
-    api_client: AsyncClient,
-    regular_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, regular_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that non-admin users cannot retrieve whitelist."""
-    response = await api_client.get(
-        "/api/v1/user/settings/cookie-domains",
-        cookies={"access_token": regular_token}
-    )
+    response = await api_client.get("/api/v1/user/settings/cookie-domains", cookies={"access_token": regular_token})
 
     assert response.status_code == 403
     data = response.json()
@@ -252,32 +215,23 @@ async def test_get_cookie_domains_requires_admin(
 
 
 @pytest.mark.asyncio
-async def test_get_cookie_domains_unauthenticated(
-    api_client: AsyncClient,
-    clean_config: Path
-):
+async def test_get_cookie_domains_unauthenticated(api_client: AsyncClient, clean_config: Path):
     """Test that unauthenticated requests are rejected."""
-    response = await api_client.get(
-        "/api/v1/user/settings/cookie-domains"
-    )
+    response = await api_client.get("/api/v1/user/settings/cookie-domains")
 
     assert response.status_code == 401
 
 
 # POST Tests - Add Cookie Domain
 
+
 @pytest.mark.asyncio
 async def test_add_cookie_domain_success(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test successful addition of domain to whitelist."""
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 201
@@ -286,33 +240,26 @@ async def test_add_cookie_domain_success(
     assert "example.com" in data["domains"]
 
     # Verify config was updated
-    with open(clean_config, 'r', encoding='utf-8') as f:
+    with open(clean_config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    assert "example.com" in config['security']['cookie_domain_whitelist']
+    assert "example.com" in config["security"]["cookie_domain_whitelist"]
 
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_idempotent(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that adding duplicate domain is idempotent."""
     # Add domain first time
     response1 = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": admin_token}
     )
     assert response1.status_code == 201
 
     # Add same domain again
     response2 = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": admin_token}
     )
     assert response2.status_code == 201
     data = response2.json()
@@ -323,16 +270,11 @@ async def test_add_cookie_domain_idempotent(
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_lowercase_normalization(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that domains are normalized to lowercase."""
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "Example.COM"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "Example.COM"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 201
@@ -343,16 +285,13 @@ async def test_add_cookie_domain_lowercase_normalization(
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_subdomain(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test adding subdomain is allowed."""
     response = await api_client.post(
         "/api/v1/user/settings/cookie-domains",
         json={"domain": "sub.example.com"},
-        cookies={"access_token": admin_token}
+        cookies={"access_token": admin_token},
     )
 
     assert response.status_code == 201
@@ -362,16 +301,11 @@ async def test_add_cookie_domain_subdomain(
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_localhost(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test adding localhost is allowed."""
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "localhost"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "localhost"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 201
@@ -381,18 +315,14 @@ async def test_add_cookie_domain_localhost(
 
 # Domain Validation Tests
 
+
 @pytest.mark.asyncio
 async def test_add_cookie_domain_rejects_ip_address(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that IP addresses are rejected."""
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "192.168.1.1"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "192.168.1.1"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 422
@@ -402,16 +332,11 @@ async def test_add_cookie_domain_rejects_ip_address(
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_rejects_too_short(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that domains shorter than 3 chars are rejected."""
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "ab"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "ab"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 422
@@ -419,18 +344,13 @@ async def test_add_cookie_domain_rejects_too_short(
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_rejects_too_long(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that domains longer than 255 chars are rejected."""
     long_domain = "a" * 256 + ".com"
 
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": long_domain},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": long_domain}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 422
@@ -438,10 +358,7 @@ async def test_add_cookie_domain_rejects_too_long(
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_rejects_invalid_format(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that invalid domain formats are rejected."""
     invalid_domains = [
@@ -454,25 +371,18 @@ async def test_add_cookie_domain_rejects_invalid_format(
 
     for domain in invalid_domains:
         response = await api_client.post(
-            "/api/v1/user/settings/cookie-domains",
-            json={"domain": domain},
-            cookies={"access_token": admin_token}
+            "/api/v1/user/settings/cookie-domains", json={"domain": domain}, cookies={"access_token": admin_token}
         )
         assert response.status_code == 422, f"Expected 422 for domain: {domain}"
 
 
 @pytest.mark.asyncio
 async def test_add_cookie_domain_requires_admin(
-    api_client: AsyncClient,
-    regular_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, regular_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that non-admin users cannot add domains."""
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": regular_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": regular_token}
     )
 
     assert response.status_code == 403
@@ -480,28 +390,24 @@ async def test_add_cookie_domain_requires_admin(
 
 # DELETE Tests - Remove Cookie Domain
 
+
 @pytest.mark.asyncio
 async def test_remove_cookie_domain_success(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test successful removal of domain from whitelist."""
     # Pre-populate config
-    with open(clean_config, 'r', encoding='utf-8') as f:
+    with open(clean_config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    config['security']['cookie_domain_whitelist'] = ['localhost', 'example.com']
+    config["security"]["cookie_domain_whitelist"] = ["localhost", "example.com"]
 
-    with open(clean_config, 'w', encoding='utf-8') as f:
+    with open(clean_config, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f)
 
     # Remove domain
     response = await api_client.delete(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 200
@@ -510,25 +416,22 @@ async def test_remove_cookie_domain_success(
     assert "localhost" in data["domains"]
 
     # Verify config was updated
-    with open(clean_config, 'r', encoding='utf-8') as f:
+    with open(clean_config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    assert "example.com" not in config['security']['cookie_domain_whitelist']
-    assert "localhost" in config['security']['cookie_domain_whitelist']
+    assert "example.com" not in config["security"]["cookie_domain_whitelist"]
+    assert "localhost" in config["security"]["cookie_domain_whitelist"]
 
 
 @pytest.mark.asyncio
 async def test_remove_cookie_domain_not_found(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test removal of non-existent domain returns 404."""
     response = await api_client.delete(
         "/api/v1/user/settings/cookie-domains",
         json={"domain": "nonexistent.com"},
-        cookies={"access_token": admin_token}
+        cookies={"access_token": admin_token},
     )
 
     assert response.status_code == 404
@@ -538,26 +441,21 @@ async def test_remove_cookie_domain_not_found(
 
 @pytest.mark.asyncio
 async def test_remove_cookie_domain_case_insensitive(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that removal is case-insensitive."""
     # Pre-populate config
-    with open(clean_config, 'r', encoding='utf-8') as f:
+    with open(clean_config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    config['security']['cookie_domain_whitelist'] = ['example.com']
+    config["security"]["cookie_domain_whitelist"] = ["example.com"]
 
-    with open(clean_config, 'w', encoding='utf-8') as f:
+    with open(clean_config, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f)
 
     # Remove using uppercase
     response = await api_client.delete(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "Example.COM"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "Example.COM"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 200
@@ -567,16 +465,11 @@ async def test_remove_cookie_domain_case_insensitive(
 
 @pytest.mark.asyncio
 async def test_remove_cookie_domain_requires_admin(
-    api_client: AsyncClient,
-    regular_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, regular_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that non-admin users cannot remove domains."""
     response = await api_client.delete(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": regular_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": regular_token}
     )
 
     assert response.status_code == 403
@@ -584,12 +477,9 @@ async def test_remove_cookie_domain_requires_admin(
 
 # Error Handling Tests
 
+
 @pytest.mark.asyncio
-async def test_config_file_not_found_error(
-    api_client: AsyncClient,
-    admin_token: str,
-    db_session: AsyncSession
-):
+async def test_config_file_not_found_error(api_client: AsyncClient, admin_token: str, db_session: AsyncSession):
     """Test graceful error when config.yaml doesn't exist."""
     config_path = Path.cwd() / "config.yaml"
 
@@ -598,10 +488,7 @@ async def test_config_file_not_found_error(
         config_path.unlink()
 
     try:
-        response = await api_client.get(
-            "/api/v1/user/settings/cookie-domains",
-            cookies={"access_token": admin_token}
-        )
+        response = await api_client.get("/api/v1/user/settings/cookie-domains", cookies={"access_token": admin_token})
 
         assert response.status_code == 500
         data = response.json()
@@ -613,41 +500,34 @@ async def test_config_file_not_found_error(
 
 @pytest.mark.asyncio
 async def test_atomic_write_operations(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test that config writes are atomic (temp file then rename)."""
     # Add domain
     response = await api_client.post(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": admin_token}
     )
 
     assert response.status_code == 201
 
     # Verify no temp file left behind
-    temp_path = clean_config.with_suffix('.yaml.tmp')
+    temp_path = clean_config.with_suffix(".yaml.tmp")
     assert not temp_path.exists(), "Temp file should be cleaned up after atomic write"
 
     # Verify config was actually written
     assert clean_config.exists()
-    with open(clean_config, 'r', encoding='utf-8') as f:
+    with open(clean_config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    assert "example.com" in config['security']['cookie_domain_whitelist']
+    assert "example.com" in config["security"]["cookie_domain_whitelist"]
 
 
 # Integration Test - Full Workflow
 
+
 @pytest.mark.asyncio
 async def test_full_cookie_domain_workflow(
-    api_client: AsyncClient,
-    admin_token: str,
-    clean_config: Path,
-    db_session: AsyncSession
+    api_client: AsyncClient, admin_token: str, clean_config: Path, db_session: AsyncSession
 ):
     """Test complete workflow: add multiple domains, retrieve, remove."""
     domains_to_add = ["localhost", "example.com", "subdomain.example.com"]
@@ -655,17 +535,12 @@ async def test_full_cookie_domain_workflow(
     # Add domains
     for domain in domains_to_add:
         response = await api_client.post(
-            "/api/v1/user/settings/cookie-domains",
-            json={"domain": domain},
-            cookies={"access_token": admin_token}
+            "/api/v1/user/settings/cookie-domains", json={"domain": domain}, cookies={"access_token": admin_token}
         )
         assert response.status_code == 201
 
     # Retrieve and verify all added
-    response = await api_client.get(
-        "/api/v1/user/settings/cookie-domains",
-        cookies={"access_token": admin_token}
-    )
+    response = await api_client.get("/api/v1/user/settings/cookie-domains", cookies={"access_token": admin_token})
     assert response.status_code == 200
     data = response.json()
 
@@ -674,9 +549,7 @@ async def test_full_cookie_domain_workflow(
 
     # Remove one domain
     response = await api_client.delete(
-        "/api/v1/user/settings/cookie-domains",
-        json={"domain": "example.com"},
-        cookies={"access_token": admin_token}
+        "/api/v1/user/settings/cookie-domains", json={"domain": "example.com"}, cookies={"access_token": admin_token}
     )
     assert response.status_code == 200
     data = response.json()
@@ -685,10 +558,10 @@ async def test_full_cookie_domain_workflow(
     assert "subdomain.example.com" in data["domains"]
 
     # Verify final state in config
-    with open(clean_config, 'r', encoding='utf-8') as f:
+    with open(clean_config, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    whitelist = config['security']['cookie_domain_whitelist']
+    whitelist = config["security"]["cookie_domain_whitelist"]
     assert len(whitelist) == 2
     assert "example.com" not in whitelist
     assert "localhost" in whitelist

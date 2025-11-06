@@ -20,12 +20,10 @@ from websocket import WebSocketException, create_connection
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.app import create_app
-
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.database import DatabaseManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
 
 
 class TestWebSocketSecurity:

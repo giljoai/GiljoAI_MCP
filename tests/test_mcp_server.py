@@ -15,8 +15,8 @@ import pytest_asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.server import GiljoMCPServer, create_server, main
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
 class TestGiljoMCPServer:

@@ -5,14 +5,15 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 # Add src to path
 src_dir = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_dir))
 
+from giljo_mcp.config_manager import get_config
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools.tool_accessor import ToolAccessor
-from giljo_mcp.config_manager import get_config
 
 
 async def main():
@@ -29,22 +30,23 @@ async def main():
     result = await tool_accessor.create_project(
         name="Direct Test Project",
         mission="Testing product_id assignment directly",
-        product_id="e74a3a44-1d3e-48cd-b60d-9158d6b3aae6"
+        product_id="e74a3a44-1d3e-48cd-b60d-9158d6b3aae6",
     )
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Project Creation Result:")
-    print("="*60)
+    print("=" * 60)
     for key, value in result.items():
         print(f"{key}: {value}")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Verify in database
     if result.get("success"):
         project_id = result["project_id"]
         async with db_manager.get_session_async() as session:
-            from giljo_mcp.models import Project
             from sqlalchemy import select
+
+            from giljo_mcp.models import Project
 
             query = select(Project).where(Project.id == project_id)
             db_result = await session.execute(query)

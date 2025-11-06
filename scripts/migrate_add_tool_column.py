@@ -25,11 +25,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -75,18 +73,22 @@ async def upgrade(database_url: str) -> None:
             else:
                 # Add column with default value
                 logger.info("Adding 'tool' column to agent_templates...")
-                await session.execute(text("""
+                await session.execute(
+                    text("""
                     ALTER TABLE agent_templates
                     ADD COLUMN tool VARCHAR(50) NOT NULL DEFAULT 'claude'
-                """))
+                """)
+                )
                 logger.info("Successfully added 'tool' column")
 
                 # Update any existing records (belt and suspenders)
-                update_result = await session.execute(text("""
+                update_result = await session.execute(
+                    text("""
                     UPDATE agent_templates
                     SET tool = 'claude'
                     WHERE tool IS NULL
-                """))
+                """)
+                )
                 rows_updated = update_result.rowcount
                 if rows_updated > 0:
                     logger.info(f"Updated {rows_updated} existing records with default tool='claude'")
@@ -107,9 +109,11 @@ async def upgrade(database_url: str) -> None:
             else:
                 # Create index for tool-based filtering
                 logger.info("Creating index on 'tool' column...")
-                await session.execute(text("""
+                await session.execute(
+                    text("""
                     CREATE INDEX idx_template_tool ON agent_templates(tool)
-                """))
+                """)
+                )
                 logger.info("Successfully created index 'idx_template_tool'")
 
             # Verify migration
@@ -186,17 +190,21 @@ async def downgrade(database_url: str) -> None:
 
             # Drop index first
             logger.info("Dropping index 'idx_template_tool'...")
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 DROP INDEX IF EXISTS idx_template_tool
-            """))
+            """)
+            )
             logger.info("Index dropped")
 
             # Drop column
             logger.info("Dropping 'tool' column...")
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 ALTER TABLE agent_templates
                 DROP COLUMN IF EXISTS tool
-            """))
+            """)
+            )
             logger.info("Column dropped")
 
             await session.commit()
@@ -223,6 +231,7 @@ def get_database_url() -> str:
         RuntimeError: If database URL cannot be determined
     """
     import os
+
     import yaml
 
     # Try environment variable first
@@ -235,7 +244,7 @@ def get_database_url() -> str:
     config_path = Path(__file__).parent.parent / "config.yaml"
     if config_path.exists():
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
                 db_config = config.get("database", {})
 

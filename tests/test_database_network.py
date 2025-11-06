@@ -3,13 +3,13 @@ Unit tests for PostgreSQL network configuration module
 Tests network access setup, backup/restore, and configuration modification
 """
 
-import unittest
-import tempfile
 import shutil
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import sys
-import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -47,14 +47,14 @@ host    all             all             ::1/128                 trust
 
         # Test settings
         self.settings = {
-            'pg_host': 'localhost',
-            'pg_port': 5432,
-            'pg_user': 'postgres',
-            'pg_password': 'test',
-            'mode': 'server',
-            'bind': '0.0.0.0',
-            'ssl_enabled': False,
-            'batch': True  # Suppress interactive prompts
+            "pg_host": "localhost",
+            "pg_port": 5432,
+            "pg_user": "postgres",
+            "pg_password": "test",
+            "mode": "server",
+            "bind": "0.0.0.0",
+            "ssl_enabled": False,
+            "batch": True,  # Suppress interactive prompts
         }
 
     def tearDown(self):
@@ -66,30 +66,26 @@ host    all             all             ::1/128                 trust
         """Test DatabaseNetworkConfig initialization"""
         config = DatabaseNetworkConfig(self.settings)
 
-        self.assertEqual(config.pg_host, 'localhost')
+        self.assertEqual(config.pg_host, "localhost")
         self.assertEqual(config.pg_port, 5432)
-        self.assertEqual(config.db_name, 'giljo_mcp')
-        self.assertEqual(config.bind_address, '0.0.0.0')
+        self.assertEqual(config.db_name, "giljo_mcp")
+        self.assertEqual(config.bind_address, "0.0.0.0")
         self.assertFalse(config.allow_ssl_only)
 
     def test_default_allowed_networks(self):
         """Test default allowed network ranges"""
         config = DatabaseNetworkConfig(self.settings)
 
-        expected_networks = [
-            '192.168.0.0/16',
-            '10.0.0.0/8',
-            '172.16.0.0/12'
-        ]
+        expected_networks = ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"]
 
         self.assertEqual(config.allowed_networks, expected_networks)
 
     def test_custom_allowed_networks(self):
         """Test custom allowed network ranges"""
-        self.settings['allowed_networks'] = ['192.168.1.0/24']
+        self.settings["allowed_networks"] = ["192.168.1.0/24"]
         config = DatabaseNetworkConfig(self.settings)
 
-        self.assertEqual(config.allowed_networks, ['192.168.1.0/24'])
+        self.assertEqual(config.allowed_networks, ["192.168.1.0/24"])
 
     def test_backup_configs(self):
         """Test configuration file backup"""
@@ -105,8 +101,8 @@ host    all             all             ::1/128                 trust
         # Run backup
         result = config.backup_configs()
 
-        self.assertTrue(result['success'])
-        self.assertEqual(len(result['backups']), 2)
+        self.assertTrue(result["success"])
+        self.assertEqual(len(result["backups"]), 2)
 
         # Verify backup files exist
         self.assertTrue((config.backup_dir / "postgresql.conf").exists())
@@ -121,7 +117,7 @@ host    all             all             ::1/128                 trust
         # Run configuration
         result = config.configure_postgresql_conf()
 
-        self.assertTrue(result['success'])
+        self.assertTrue(result["success"])
 
         # Verify changes
         content = self.postgresql_conf.read_text()
@@ -131,14 +127,14 @@ host    all             all             ::1/128                 trust
 
     def test_configure_postgresql_conf_specific_bind(self):
         """Test postgresql.conf with specific bind address"""
-        self.settings['bind'] = '192.168.1.10'
+        self.settings["bind"] = "192.168.1.10"
         config = DatabaseNetworkConfig(self.settings)
         config.postgresql_conf = self.postgresql_conf
 
         # Run configuration
         result = config.configure_postgresql_conf()
 
-        self.assertTrue(result['success'])
+        self.assertTrue(result["success"])
 
         # Verify changes
         content = self.postgresql_conf.read_text()
@@ -152,7 +148,7 @@ host    all             all             ::1/128                 trust
         # Run configuration
         result = config.configure_pg_hba_conf()
 
-        self.assertTrue(result['success'])
+        self.assertTrue(result["success"])
 
         # Verify changes
         content = self.pg_hba_conf.read_text()
@@ -162,7 +158,7 @@ host    all             all             ::1/128                 trust
 
     def test_configure_pg_hba_conf_ssl_only(self):
         """Test pg_hba.conf with SSL enforcement"""
-        self.settings['ssl_enabled'] = True
+        self.settings["ssl_enabled"] = True
         config = DatabaseNetworkConfig(self.settings)
         config.allow_ssl_only = True
         config.pg_hba_conf = self.pg_hba_conf
@@ -170,7 +166,7 @@ host    all             all             ::1/128                 trust
         # Run configuration
         result = config.configure_pg_hba_conf()
 
-        self.assertTrue(result['success'])
+        self.assertTrue(result["success"])
 
         # Verify SSL entries
         content = self.pg_hba_conf.read_text()
@@ -185,9 +181,9 @@ host    all             all             ::1/128                 trust
         # Run configuration
         result = config.configure_pg_hba_conf()
 
-        self.assertTrue(result['success'])
-        self.assertGreater(len(result['warnings']), 0)
-        self.assertTrue(any('SSL' in warning for warning in result['warnings']))
+        self.assertTrue(result["success"])
+        self.assertGreater(len(result["warnings"]), 0)
+        self.assertTrue(any("SSL" in warning for warning in result["warnings"]))
 
     def test_restore_configs(self):
         """Test configuration restoration"""
@@ -200,7 +196,7 @@ host    all             all             ::1/128                 trust
         config.backup_dir = self.test_dir / "backups"
         config.backup_dir.mkdir()
         backup_result = config.backup_configs()
-        config.backups_created = backup_result['backups']
+        config.backups_created = backup_result["backups"]
 
         # Modify files
         self.postgresql_conf.write_text("modified content")
@@ -209,7 +205,7 @@ host    all             all             ::1/128                 trust
         # Restore
         result = config.restore_configs()
 
-        self.assertTrue(result['success'])
+        self.assertTrue(result["success"])
 
         # Verify restoration
         self.assertNotEqual(self.postgresql_conf.read_text(), "modified content")
@@ -226,20 +222,20 @@ host    all             all             ::1/128                 trust
         scripts_dir.mkdir()
 
         # Generate scripts (mock the actual script generation)
-        with patch.object(config, '_generate_windows_restore_script') as mock_windows:
-            with patch.object(config, '_generate_unix_restore_script') as mock_unix:
+        with patch.object(config, "_generate_windows_restore_script") as mock_windows:
+            with patch.object(config, "_generate_unix_restore_script") as mock_unix:
                 mock_windows.return_value = scripts_dir / "restore.ps1"
                 mock_unix.return_value = scripts_dir / "restore.sh"
 
                 result = config.generate_restore_scripts()
 
-                self.assertTrue(result['success'])
-                self.assertEqual(len(result['scripts']), 2)
+                self.assertTrue(result["success"])
+                self.assertEqual(len(result["scripts"]), 2)
                 mock_windows.assert_called_once()
                 mock_unix.assert_called_once()
 
-    @patch('installer.core.database_network.DatabaseNetworkConfig._confirm_network_exposure')
-    @patch('installer.core.database_network.DatabaseNetworkConfig.find_pg_config_dir')
+    @patch("installer.core.database_network.DatabaseNetworkConfig._confirm_network_exposure")
+    @patch("installer.core.database_network.DatabaseNetworkConfig.find_pg_config_dir")
     def test_setup_remote_access_user_declined(self, mock_find_config, mock_confirm):
         """Test setup fails when user declines network exposure"""
         mock_confirm.return_value = False
@@ -247,29 +243,26 @@ host    all             all             ::1/128                 trust
         config = DatabaseNetworkConfig(self.settings)
         result = config.setup_remote_access()
 
-        self.assertFalse(result['success'])
-        self.assertGreater(len(result['errors']), 0)
-        self.assertIn("declined", result['errors'][0].lower())
+        self.assertFalse(result["success"])
+        self.assertGreater(len(result["errors"]), 0)
+        self.assertIn("declined", result["errors"][0].lower())
 
-    @patch('installer.core.database_network.DatabaseNetworkConfig._confirm_network_exposure')
-    @patch('installer.core.database_network.DatabaseNetworkConfig.find_pg_config_dir')
+    @patch("installer.core.database_network.DatabaseNetworkConfig._confirm_network_exposure")
+    @patch("installer.core.database_network.DatabaseNetworkConfig.find_pg_config_dir")
     def test_setup_remote_access_config_not_found(self, mock_find_config, mock_confirm):
         """Test setup fails when config directory not found"""
         mock_confirm.return_value = True
-        mock_find_config.return_value = {
-            'success': False,
-            'errors': ['Config directory not found']
-        }
+        mock_find_config.return_value = {"success": False, "errors": ["Config directory not found"]}
 
         config = DatabaseNetworkConfig(self.settings)
         result = config.setup_remote_access()
 
-        self.assertFalse(result['success'])
-        self.assertGreater(len(result['errors']), 0)
+        self.assertFalse(result["success"])
+        self.assertGreater(len(result["errors"]), 0)
 
     def test_batch_mode_consent(self):
         """Test batch mode automatically grants consent"""
-        self.settings['batch'] = True
+        self.settings["batch"] = True
         config = DatabaseNetworkConfig(self.settings)
 
         # Should return True without prompting
@@ -282,16 +275,12 @@ class TestConfigurationDetection(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.settings = {
-            'pg_host': 'localhost',
-            'pg_port': 5432,
-            'batch': True
-        }
+        self.settings = {"pg_host": "localhost", "pg_port": 5432, "batch": True}
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_find_pg_config_dir_windows(self, mock_platform):
         """Test config directory detection on Windows"""
-        mock_platform.return_value = 'Windows'
+        mock_platform.return_value = "Windows"
 
         config = DatabaseNetworkConfig(self.settings)
 
@@ -299,24 +288,24 @@ class TestConfigurationDetection(unittest.TestCase):
         result = config.find_pg_config_dir()
 
         # Verify result structure
-        self.assertIn('success', result)
-        if not result['success']:
-            self.assertIn('errors', result)
+        self.assertIn("success", result)
+        if not result["success"]:
+            self.assertIn("errors", result)
 
-    @patch('platform.system')
+    @patch("platform.system")
     def test_find_pg_config_dir_linux(self, mock_platform):
         """Test config directory detection on Linux"""
-        mock_platform.return_value = 'Linux'
+        mock_platform.return_value = "Linux"
 
         config = DatabaseNetworkConfig(self.settings)
         result = config.find_pg_config_dir()
 
         # Verify result structure
-        self.assertIn('success', result)
-        if not result['success']:
-            self.assertIn('errors', result)
+        self.assertIn("success", result)
+        if not result["success"]:
+            self.assertIn("errors", result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests
     unittest.main(verbosity=2)

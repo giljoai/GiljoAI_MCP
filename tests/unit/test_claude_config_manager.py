@@ -7,9 +7,8 @@ Tests management of ~/.claude.json configuration file for MCP server registratio
 import json
 import sys
 from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import patch
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -35,12 +34,12 @@ class TestClaudeConfigManager:
             }
         }
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch(
-            "shutil.copy2"
-        ) as mock_copy:
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2") as mock_copy,
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             # Verify backup was created
@@ -51,10 +50,10 @@ class TestClaudeConfigManager:
     def test_inject_serena_validates_config(self):
         """Test validation catches invalid config."""
         # Invalid JSON in config file
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value="{invalid json"
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value="{invalid json"),
         ):
-
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is False
@@ -65,14 +64,13 @@ class TestClaudeConfigManager:
         """Test write is atomic (temp file then replace)."""
         mock_config = {"mcpServers": {}}
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch(
-            "shutil.copy2"
-        ), patch(
-            "pathlib.Path.replace"
-        ) as mock_replace:
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+            patch("pathlib.Path.replace") as mock_replace,
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             # Verify atomic write pattern (temp file creation + replace)
@@ -83,12 +81,12 @@ class TestClaudeConfigManager:
         """Test rollback restores backup if write fails."""
         mock_config = {"mcpServers": {}}
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("tempfile.mkstemp", side_effect=IOError("Write failed")), patch(
-            "shutil.copy2"
-        ) as mock_backup:
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("tempfile.mkstemp", side_effect=OSError("Write failed")),
+            patch("shutil.copy2") as mock_backup,
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is False
@@ -109,10 +107,12 @@ class TestClaudeConfigManager:
             }
         }
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch("shutil.copy2"):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is True
@@ -128,10 +128,11 @@ class TestClaudeConfigManager:
 
     def test_inject_serena_creates_config_if_not_exists(self):
         """Test creates ~/.claude.json if it doesn't exist."""
-        with patch("pathlib.Path.exists", return_value=False), patch(
-            "pathlib.Path.write_text"
-        ) as mock_write, patch("pathlib.Path.parent") as mock_parent:
-
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("pathlib.Path.parent") as mock_parent,
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is True
@@ -147,10 +148,12 @@ class TestClaudeConfigManager:
         """Test Serena config uses correct uvx path."""
         mock_config = {"mcpServers": {}}
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch("shutil.copy2"):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is True
@@ -178,10 +181,12 @@ class TestClaudeConfigManager:
             }
         }
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch("shutil.copy2"):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+        ):
             result = self.manager.remove_serena()
 
             assert result["success"] is True
@@ -203,10 +208,12 @@ class TestClaudeConfigManager:
             }
         }
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch("shutil.copy2"):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+        ):
             result = self.manager.remove_serena()
 
             assert result["success"] is True
@@ -214,14 +221,11 @@ class TestClaudeConfigManager:
     def test_remove_serena_when_config_not_exists(self):
         """Test removal handles missing config file gracefully."""
         with patch("pathlib.Path.exists", return_value=False):
-
             result = self.manager.remove_serena()
 
             # Should succeed with a message that config doesn't exist
             assert result["success"] is True
-            assert "not found" in result.get("message", "").lower() or result.get(
-                "error"
-            ) is None
+            assert "not found" in result.get("message", "").lower() or result.get("error") is None
 
     def test_utf8_encoding_preserved(self):
         """Test that UTF-8 encoding is preserved (important for unicode chars in config)."""
@@ -234,10 +238,12 @@ class TestClaudeConfigManager:
             }
         }
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config, ensure_ascii=False)
-        ), patch("pathlib.Path.write_text") as mock_write, patch("shutil.copy2"):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config, ensure_ascii=False)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is True
@@ -251,10 +257,12 @@ class TestClaudeConfigManager:
         """Test that backup file path is returned on successful injection."""
         mock_config = {"mcpServers": {}}
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text"), patch("shutil.copy2") as mock_copy:
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text"),
+            patch("shutil.copy2") as mock_copy,
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is True
@@ -267,10 +275,12 @@ class TestClaudeConfigManager:
         """Test that project root path is passed correctly to Serena config."""
         mock_config = {"mcpServers": {}}
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.read_text", return_value=json.dumps(mock_config)
-        ), patch("pathlib.Path.write_text") as mock_write, patch("shutil.copy2"):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=json.dumps(mock_config)),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("shutil.copy2"),
+        ):
             result = self.manager.inject_serena(self.test_project_root)
 
             assert result["success"] is True

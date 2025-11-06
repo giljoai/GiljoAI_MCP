@@ -1,11 +1,14 @@
 """Verify setup_state table creation."""
+
 import os
 import sys
-from sqlalchemy import create_engine, inspect, text
+
+from sqlalchemy import create_engine, inspect
+
 
 # Fix encoding for Windows console
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Database connection
 DATABASE_URL = "postgresql://giljo_user:isw8HkrRSY1GXYH5G62d@localhost:5432/giljo_mcp"
@@ -29,7 +32,7 @@ if "setup_state" in inspector.get_table_names():
     for col in columns:
         nullable = "NULL" if col["nullable"] else "NOT NULL"
         default = f" DEFAULT {col.get('default', 'none')}" if col.get("default") else ""
-        print(f"  {col['name']:<25} {str(col['type']):<30} {nullable}{default}")
+        print(f"  {col['name']:<25} {col['type']!s:<30} {nullable}{default}")
 
     # Get indexes
     print("\n\nINDEXES:")
@@ -65,8 +68,9 @@ if "setup_state" in inspector.get_table_names():
     # Test insert and query using ORM
     print("\n\nTEST INSERT (using ORM):")
     print("-" * 80)
-    from sqlalchemy.orm import sessionmaker
     from uuid import uuid4
+
+    from sqlalchemy.orm import sessionmaker
 
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -74,6 +78,7 @@ if "setup_state" in inspector.get_table_names():
     try:
         # Import the model
         import sys
+
         sys.path.insert(0, str(os.path.join(os.path.dirname(__file__), "src")))
         from giljo_mcp.models import SetupState
 
@@ -87,7 +92,7 @@ if "setup_state" in inspector.get_table_names():
             tools_enabled=[],
             validation_passed=True,
             validation_failures=[],
-            validation_warnings=[]
+            validation_warnings=[],
         )
         session.add(test_state)
         session.commit()
@@ -95,9 +100,7 @@ if "setup_state" in inspector.get_table_names():
         print(f"  Inserted: id={test_state.id}, tenant_key={test_state.tenant_key}")
 
         # Query it back
-        retrieved = session.query(SetupState).filter(
-            SetupState.tenant_key == "test_tenant"
-        ).first()
+        retrieved = session.query(SetupState).filter(SetupState.tenant_key == "test_tenant").first()
         print(f"  Queried: tenant_key={retrieved.tenant_key}, completed={retrieved.completed}")
 
         # Test helper methods

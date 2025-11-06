@@ -6,21 +6,24 @@ All operations enforce tenant isolation for security.
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Form
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.models import Product, MCPContextIndex, MCPContextSummary, MCPAgentJob
-from src.giljo_mcp.repositories.context_repository import ContextRepository
+from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
+from src.giljo_mcp.repositories.context_repository import ContextRepository
 from src.giljo_mcp.tools.chunking import EnhancedChunker
+
 
 router = APIRouter(prefix="/api/agent", tags=["Agent Management"])
 
 
 # Pydantic models for request/response
+
 
 class VisionUploadRequest(BaseModel):
     product_id: str = Field(..., description="Product ID to upload vision for")
@@ -92,7 +95,7 @@ class TokenReductionStats(BaseModel):
 async def upload_vision_document(
     product_id: str,
     content: str = Form(..., description="Vision document content"),
-    tenant_key: str = Depends(get_tenant_key)
+    tenant_key: str = Depends(get_tenant_key),
 ):
     """
     Upload vision document for a product.
@@ -109,10 +112,7 @@ async def upload_vision_document(
 
         async with state.db_manager.get_session_async() as db:
             # Verify product exists and belongs to tenant
-            stmt = select(Product).where(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
+            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -132,12 +132,14 @@ async def upload_vision_document(
 
             for chunk in chunks:
                 context_repo.create_chunk(
-                    db, tenant_key, product_id,
+                    db,
+                    tenant_key,
+                    product_id,
                     content=chunk["content"],
                     keywords=chunk["keywords"],
                     token_count=chunk["tokens"],
                     chunk_order=chunk["chunk_number"],
-                    summary=None  # No LLM summary for Phase 1
+                    summary=None,  # No LLM summary for Phase 1
                 )
                 chunks_created += 1
                 total_tokens += chunk["tokens"]
@@ -154,7 +156,7 @@ async def upload_vision_document(
                 product_id=product_id,
                 chunks_created=chunks_created,
                 total_tokens=total_tokens,
-                chunked=True
+                chunked=True,
             )
 
     except HTTPException:
@@ -166,7 +168,7 @@ async def upload_vision_document(
 @router.get("/agent-jobs/active", response_model=List[AgentJobResponse])
 async def get_active_agent_jobs(
     agent_type: Optional[str] = Query(None, description="Filter by agent type"),
-    tenant_key: str = Depends(get_tenant_key)
+    tenant_key: str = Depends(get_tenant_key),
 ):
     """List all active agent jobs for tenant."""
     from api.app import state
@@ -192,7 +194,7 @@ async def get_active_agent_jobs(
                     acknowledged=job.acknowledged,
                     created_at=job.created_at,
                     started_at=job.started_at,
-                    completed_at=job.completed_at
+                    completed_at=job.completed_at,
                 )
                 for job in jobs
             ]
@@ -202,10 +204,7 @@ async def get_active_agent_jobs(
 
 
 @router.post("/agent-jobs", response_model=AgentJobResponse)
-async def create_agent_job(
-    job_data: AgentJobCreate,
-    tenant_key: str = Depends(get_tenant_key)
-):
+async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(get_tenant_key)):
     """Create a new agent job."""
     from api.app import state
 
@@ -217,11 +216,12 @@ async def create_agent_job(
 
         async with state.db_manager.get_session_async() as db:
             job = job_repo.create_job(
-                db, tenant_key,
+                db,
+                tenant_key,
                 agent_type=job_data.agent_type,
                 mission=job_data.mission,
                 spawned_by=job_data.spawned_by,
-                context_chunks=job_data.context_chunks
+                context_chunks=job_data.context_chunks,
             )
 
             await db.commit()
@@ -234,7 +234,7 @@ async def create_agent_job(
                     tenant_key=tenant_key,
                     spawned_by=job.spawned_by,
                     mission_preview=job.mission[:100] if job.mission else None,
-                    created_at=job.created_at
+                    created_at=job.created_at,
                 )
 
             return AgentJobResponse(
@@ -248,7 +248,7 @@ async def create_agent_job(
                 acknowledged=job.acknowledged,
                 created_at=job.created_at,
                 started_at=job.started_at,
-                completed_at=job.completed_at
+                completed_at=job.completed_at,
             )
 
     except Exception as e:
@@ -257,9 +257,7 @@ async def create_agent_job(
 
 @router.put("/agent-jobs/{job_id}/status", response_model=dict)
 async def update_agent_job_status(
-    job_id: str,
-    status_update: AgentJobStatusUpdate,
-    tenant_key: str = Depends(get_tenant_key)
+    job_id: str, status_update: AgentJobStatusUpdate, tenant_key: str = Depends(get_tenant_key)
 ):
     """Update agent job status."""
     from api.app import state
@@ -279,9 +277,7 @@ async def update_agent_job_status(
             old_status = job.status
 
             # Update status
-            success = job_repo.update_status(
-                db, tenant_key, job_id, status_update.status
-            )
+            success = job_repo.update_status(db, tenant_key, job_id, status_update.status)
 
             if not success:
                 raise HTTPException(status_code=404, detail="Agent job not found")
@@ -290,6 +286,7 @@ async def update_agent_job_status(
             duration_seconds = None
             if status_update.status in ["completed", "failed"] and job.started_at:
                 from datetime import datetime, timezone
+
                 completed_at = job.completed_at or datetime.now(timezone.utc)
                 duration_seconds = (completed_at - job.started_at).total_seconds()
 
@@ -303,7 +300,7 @@ async def update_agent_job_status(
                     tenant_key=tenant_key,
                     old_status=old_status,
                     new_status=status_update.status,
-                    duration_seconds=duration_seconds
+                    duration_seconds=duration_seconds,
                 )
 
             return {"message": f"Job status updated to {status_update.status}"}
@@ -315,10 +312,7 @@ async def update_agent_job_status(
 
 
 @router.post("/agent-jobs/{job_id}/acknowledge", response_model=dict)
-async def acknowledge_job_message(
-    job_id: str,
-    tenant_key: str = Depends(get_tenant_key)
-):
+async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Acknowledge receipt of a job message."""
     from api.app import state
 
@@ -350,7 +344,7 @@ async def acknowledge_job_message(
                     agent_type=job.agent_type,
                     tenant_key=tenant_key,
                     old_status=old_status,
-                    new_status="active"  # Acknowledgment implies active status
+                    new_status="active",  # Acknowledgment implies active status
                 )
 
             return {"message": "Job acknowledged successfully"}
@@ -362,14 +356,11 @@ async def acknowledge_job_message(
 
 
 @router.post("/agent-jobs/{job_id}/messages", response_model=dict)
-async def add_job_message(
-    job_id: str,
-    message_data: AgentJobMessage,
-    tenant_key: str = Depends(get_tenant_key)
-):
+async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key: str = Depends(get_tenant_key)):
     """Add a message to an agent job."""
-    from api.app import state
     from uuid import uuid4
+
+    from api.app import state
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -383,9 +374,7 @@ async def add_job_message(
             if not job:
                 raise HTTPException(status_code=404, detail="Agent job not found")
 
-            success = job_repo.add_message(
-                db, tenant_key, job_id, message_data.message
-            )
+            success = job_repo.add_message(db, tenant_key, job_id, message_data.message)
 
             if not success:
                 raise HTTPException(status_code=404, detail="Agent job not found")
@@ -395,7 +384,9 @@ async def add_job_message(
             # Broadcast message via WebSocket
             if state.websocket_manager:
                 message_content = message_data.message.get("content", "")
-                content_preview = message_content[:100] if isinstance(message_content, str) else str(message_content)[:100]
+                content_preview = (
+                    message_content[:100] if isinstance(message_content, str) else str(message_content)[:100]
+                )
 
                 await state.websocket_manager.broadcast_job_message(
                     job_id=job_id,
@@ -404,7 +395,7 @@ async def add_job_message(
                     tenant_key=tenant_key,
                     to_agent=message_data.message.get("to_agent"),
                     message_type=message_data.message.get("type", "status"),
-                    content_preview=content_preview
+                    content_preview=content_preview,
                 )
 
             return {"message": "Message added to job successfully"}
@@ -416,10 +407,7 @@ async def add_job_message(
 
 
 @router.post("/context/search", response_model=List[ContextChunkResponse])
-async def search_context(
-    search_data: ContextSearchRequest,
-    tenant_key: str = Depends(get_tenant_key)
-):
+async def search_context(search_data: ContextSearchRequest, tenant_key: str = Depends(get_tenant_key)):
     """Full-text search on vision chunks."""
     from api.app import state
 
@@ -431,10 +419,7 @@ async def search_context(
 
         async with state.db_manager.get_session_async() as db:
             # Verify product exists and belongs to tenant
-            stmt = select(Product).where(
-                Product.id == search_data.product_id,
-                Product.tenant_key == tenant_key
-            )
+            stmt = select(Product).where(Product.id == search_data.product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -443,8 +428,7 @@ async def search_context(
 
             # Search chunks
             chunks = context_repo.search_chunks(
-                db, tenant_key, search_data.product_id,
-                search_data.query, search_data.limit
+                db, tenant_key, search_data.product_id, search_data.query, search_data.limit
             )
 
             return [
@@ -455,7 +439,7 @@ async def search_context(
                     token_count=chunk.token_count or 0,
                     chunk_order=chunk.chunk_order or 0,
                     summary=chunk.summary,
-                    created_at=chunk.created_at
+                    created_at=chunk.created_at,
                 )
                 for chunk in chunks
             ]
@@ -467,10 +451,7 @@ async def search_context(
 
 
 @router.get("/context/product/{product_id}/chunks", response_model=List[ContextChunkResponse])
-async def get_product_chunks(
-    product_id: str,
-    tenant_key: str = Depends(get_tenant_key)
-):
+async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get all context chunks for a product."""
     from api.app import state
 
@@ -482,10 +463,7 @@ async def get_product_chunks(
 
         async with state.db_manager.get_session_async() as db:
             # Verify product exists and belongs to tenant
-            stmt = select(Product).where(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
+            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -503,7 +481,7 @@ async def get_product_chunks(
                     token_count=chunk.token_count or 0,
                     chunk_order=chunk.chunk_order or 0,
                     summary=chunk.summary,
-                    created_at=chunk.created_at
+                    created_at=chunk.created_at,
                 )
                 for chunk in chunks
             ]
@@ -515,10 +493,7 @@ async def get_product_chunks(
 
 
 @router.get("/context/stats/{product_id}", response_model=TokenReductionStats)
-async def get_token_reduction_stats(
-    product_id: str,
-    tenant_key: str = Depends(get_tenant_key)
-):
+async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get token reduction statistics for a product."""
     from api.app import state
 
@@ -530,10 +505,7 @@ async def get_token_reduction_stats(
 
         async with state.db_manager.get_session_async() as db:
             # Verify product exists and belongs to tenant
-            stmt = select(Product).where(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
+            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -554,7 +526,7 @@ async def get_token_reduction_stats(
 @router.get("/agent-jobs/stats", response_model=dict)
 async def get_agent_job_statistics(
     agent_type: Optional[str] = Query(None, description="Filter by agent type"),
-    tenant_key: str = Depends(get_tenant_key)
+    tenant_key: str = Depends(get_tenant_key),
 ):
     """Get agent job statistics for tenant."""
     from api.app import state

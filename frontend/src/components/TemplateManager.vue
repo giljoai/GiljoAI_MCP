@@ -667,6 +667,32 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Error Snackbar (Red styled error notification) -->
+    <v-snackbar
+      v-model="errorSnackbar"
+      color="error"
+      location="top right"
+      :timeout="6000"
+      multi-line
+    >
+      <div class="d-flex align-center">
+        <v-icon class="mr-3" size="large">mdi-alert-circle</v-icon>
+        <div>
+          <div class="font-weight-bold mb-1">Error</div>
+          <div>{{ errorMessage }}</div>
+        </div>
+      </div>
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="errorSnackbar = false"
+          aria-label="Close error notification"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -740,6 +766,10 @@ const deleting = ref(false)
 const generating = ref(false)
 const activeCount = ref(null) // Handover 0075: Track active agent count
 const previewContent = ref('') // Handover 0103: Preview window content
+
+// Error snackbar state
+const errorSnackbar = ref(false)
+const errorMessage = ref('')
 
 // Export state
 
@@ -1121,7 +1151,8 @@ const saveTemplateAndPreview = async () => {
     console.error('Failed to save template:', error)
     previewContent.value = ''
     // Show error notification to user
-    alert(error.response?.data?.detail || 'Failed to save template')
+    errorMessage.value = error.response?.data?.detail || 'Failed to save template'
+    errorSnackbar.value = true
   } finally {
     saving.value = false
   }
@@ -1139,7 +1170,8 @@ const copyPreview = async () => {
     (error) => {
       // Error - show error toast
       console.error('Failed to copy preview:', error)
-      alert('Failed to copy to clipboard')
+      errorMessage.value = 'Failed to copy to clipboard'
+      errorSnackbar.value = true
     }
   )
 }

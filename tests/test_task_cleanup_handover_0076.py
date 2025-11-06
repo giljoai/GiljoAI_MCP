@@ -9,18 +9,15 @@ Tests:
 5. API endpoint behavior with new filtering
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
-from uuid import uuid4
-from pathlib import Path
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Base, Task, Product, Project, User
-from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Base, Product, Project, Task, User
 
 
 # Test Configuration
@@ -49,9 +46,7 @@ async def async_engine():
 @pytest_asyncio.fixture
 async def db_session(async_engine):
     """Create async database session"""
-    async_session = sessionmaker(
-        async_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
         yield session
@@ -72,7 +67,7 @@ async def test_user(db_session, test_tenant_key):
         username="testuser",
         email="test@example.com",
         password_hash="test_hash",
-        role="admin"
+        role="admin",
     )
     db_session.add(user)
     await db_session.commit()
@@ -84,11 +79,7 @@ async def test_user(db_session, test_tenant_key):
 async def active_product(db_session, test_tenant_key):
     """Create active product"""
     product = Product(
-        id=str(uuid4()),
-        tenant_key=test_tenant_key,
-        name="Test Product",
-        description="Test Description",
-        is_active=True
+        id=str(uuid4()), tenant_key=test_tenant_key, name="Test Product", description="Test Description", is_active=True
     )
     db_session.add(product)
     await db_session.commit()
@@ -104,7 +95,7 @@ async def inactive_product(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         name="Inactive Product",
         description="Inactive Description",
-        is_active=False
+        is_active=False,
     )
     db_session.add(product)
     await db_session.commit()
@@ -124,12 +115,11 @@ class TestTaskModelWithoutAssignmentFields:
             title="Test Task",
             description="Test Description",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         # Verify field does not exist
-        assert not hasattr(task, 'assigned_to_user_id'), \
-            "Task model should not have assigned_to_user_id field"
+        assert not hasattr(task, "assigned_to_user_id"), "Task model should not have assigned_to_user_id field"
 
     @pytest.mark.asyncio
     async def test_task_model_no_assigned_to_agent_field(self, db_session, test_tenant_key):
@@ -140,12 +130,11 @@ class TestTaskModelWithoutAssignmentFields:
             title="Test Task",
             description="Test Description",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         # Verify field does not exist
-        assert not hasattr(task, 'assigned_to_agent_id'), \
-            "Task model should not have assigned_to_agent_id field"
+        assert not hasattr(task, "assigned_to_agent_id"), "Task model should not have assigned_to_agent_id field"
 
     @pytest.mark.asyncio
     async def test_task_creation_without_assignment_fields(
@@ -160,7 +149,7 @@ class TestTaskModelWithoutAssignmentFields:
             description="Test Description",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         db_session.add(task)
@@ -190,7 +179,7 @@ class TestProductScopedTaskFiltering:
             title="Active Product Task",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         inactive_task = Task(
@@ -200,7 +189,7 @@ class TestProductScopedTaskFiltering:
             title="Inactive Product Task",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         null_product_task = Task(
@@ -210,17 +199,14 @@ class TestProductScopedTaskFiltering:
             title="NULL Product Task",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         db_session.add_all([active_task, inactive_task, null_product_task])
         await db_session.commit()
 
         # Query for active product tasks only
-        query = select(Task).where(
-            Task.tenant_key == test_tenant_key,
-            Task.product_id == active_product.id
-        )
+        query = select(Task).where(Task.tenant_key == test_tenant_key, Task.product_id == active_product.id)
         result = await db_session.execute(query)
         product_tasks = result.scalars().all()
 
@@ -242,7 +228,7 @@ class TestProductScopedTaskFiltering:
             title="Product Task",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         null_task_1 = Task(
@@ -252,7 +238,7 @@ class TestProductScopedTaskFiltering:
             title="NULL Product Task 1",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         null_task_2 = Task(
@@ -262,17 +248,14 @@ class TestProductScopedTaskFiltering:
             title="NULL Product Task 2",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
 
         db_session.add_all([product_task, null_task_1, null_task_2])
         await db_session.commit()
 
         # Query for NULL product tasks only
-        query = select(Task).where(
-            Task.tenant_key == test_tenant_key,
-            Task.product_id.is_(None)
-        )
+        query = select(Task).where(Task.tenant_key == test_tenant_key, Task.product_id.is_(None))
         result = await db_session.execute(query)
         all_tasks = result.scalars().all()
 
@@ -284,9 +267,7 @@ class TestProductScopedTaskFiltering:
         assert "Product Task" not in task_titles
 
     @pytest.mark.asyncio
-    async def test_product_tasks_empty_when_no_active_product(
-        self, db_session, test_tenant_key, test_user
-    ):
+    async def test_product_tasks_empty_when_no_active_product(self, db_session, test_tenant_key, test_user):
         """Product Tasks filter returns empty when no active product"""
         # Create task with NULL product_id
         task = Task(
@@ -296,16 +277,13 @@ class TestProductScopedTaskFiltering:
             title="Unassigned Task",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(task)
         await db_session.commit()
 
         # Query for active product (should not exist)
-        product_query = select(Product).where(
-            Product.tenant_key == test_tenant_key,
-            Product.is_active == True
-        )
+        product_query = select(Product).where(Product.tenant_key == test_tenant_key, Product.is_active == True)
         product_result = await db_session.execute(product_query)
         active_product = product_result.scalar_one_or_none()
 
@@ -318,8 +296,7 @@ class TestProductScopedTaskFiltering:
             product_id = None  # Will match no tasks
 
         task_query = select(Task).where(
-            Task.tenant_key == test_tenant_key,
-            Task.id == None if product_id is None else Task.product_id == product_id
+            Task.tenant_key == test_tenant_key, Task.id == None if product_id is None else Task.product_id == product_id
         )
         task_result = await db_session.execute(task_query)
         product_tasks = task_result.scalars().all()
@@ -344,7 +321,7 @@ class TestTaskToProjectConversion:
             description="Task Description",
             status="pending",
             priority="high",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(task)
         await db_session.commit()
@@ -357,7 +334,7 @@ class TestTaskToProjectConversion:
             product_id=active_product.id,
             name=task.title,
             mission=task.description or f"Converted from task: {task.title}",
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.flush()
@@ -379,9 +356,7 @@ class TestTaskToProjectConversion:
         assert task.converted_to_project_id == project.id
 
     @pytest.mark.asyncio
-    async def test_convert_task_requires_active_product(
-        self, db_session, test_tenant_key, test_user
-    ):
+    async def test_convert_task_requires_active_product(self, db_session, test_tenant_key, test_user):
         """Task conversion should fail when no active product exists"""
         # Create task with NULL product_id
         task = Task(
@@ -392,30 +367,24 @@ class TestTaskToProjectConversion:
             description="Task Description",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(task)
         await db_session.commit()
 
         # Check for active product
-        query = select(Product).where(
-            Product.tenant_key == test_tenant_key,
-            Product.is_active == True
-        )
+        query = select(Product).where(Product.tenant_key == test_tenant_key, Product.is_active == True)
         result = await db_session.execute(query)
         active_product = result.scalar_one_or_none()
 
         # Should have no active product
-        assert active_product is None, \
-            "No active product should exist for this test"
+        assert active_product is None, "No active product should exist for this test"
 
         # Conversion should fail (simulated - API would return 400)
         # This test validates the precondition check
 
     @pytest.mark.asyncio
-    async def test_converted_task_marked_completed(
-        self, db_session, test_tenant_key, test_user, active_product
-    ):
+    async def test_converted_task_marked_completed(self, db_session, test_tenant_key, test_user, active_product):
         """Converted task should be marked as completed"""
         # Create and convert task
         task = Task(
@@ -425,7 +394,7 @@ class TestTaskToProjectConversion:
             title="Task to Convert",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(task)
         await db_session.commit()
@@ -437,7 +406,7 @@ class TestTaskToProjectConversion:
             product_id=active_product.id,
             name=task.title,
             mission=f"Converted from task: {task.title}",
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.flush()
@@ -457,9 +426,7 @@ class TestMCPTaskCreation:
     """Test MCP task creation without assignment parameters"""
 
     @pytest.mark.asyncio
-    async def test_mcp_create_task_with_active_product(
-        self, db_session, test_tenant_key, active_product
-    ):
+    async def test_mcp_create_task_with_active_product(self, db_session, test_tenant_key, active_product):
         """MCP task creation sets product_id when active product exists"""
         task = Task(
             id=str(uuid4()),
@@ -468,7 +435,7 @@ class TestMCPTaskCreation:
             title="MCP Task",
             description="Created via MCP",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         db_session.add(task)
@@ -480,9 +447,7 @@ class TestMCPTaskCreation:
         assert task.title == "MCP Task"
 
     @pytest.mark.asyncio
-    async def test_mcp_create_task_without_active_product(
-        self, db_session, test_tenant_key
-    ):
+    async def test_mcp_create_task_without_active_product(self, db_session, test_tenant_key):
         """MCP task creation sets product_id=NULL when no active product"""
         # No active product in this test
         task = Task(
@@ -492,7 +457,7 @@ class TestMCPTaskCreation:
             title="MCP Task No Product",
             description="Created via MCP without active product",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         db_session.add(task)
@@ -504,9 +469,7 @@ class TestMCPTaskCreation:
         assert task.title == "MCP Task No Product"
 
     @pytest.mark.asyncio
-    async def test_mcp_task_no_assignment_fields(
-        self, db_session, test_tenant_key, active_product
-    ):
+    async def test_mcp_task_no_assignment_fields(self, db_session, test_tenant_key, active_product):
         """MCP-created tasks should not have assignment fields"""
         task = Task(
             id=str(uuid4()),
@@ -514,21 +477,19 @@ class TestMCPTaskCreation:
             product_id=active_product.id,
             title="MCP Task",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         # Verify no assignment fields exist
-        assert not hasattr(task, 'assigned_to_user_id')
-        assert not hasattr(task, 'assigned_to_agent_id')
+        assert not hasattr(task, "assigned_to_user_id")
+        assert not hasattr(task, "assigned_to_agent_id")
 
 
 class TestEdgeCases:
     """Test edge cases and error conditions"""
 
     @pytest.mark.asyncio
-    async def test_task_with_subtasks_not_converted(
-        self, db_session, test_tenant_key, test_user, active_product
-    ):
+    async def test_task_with_subtasks_not_converted(self, db_session, test_tenant_key, test_user, active_product):
         """Task with subtasks should be handled appropriately during conversion"""
         # Create parent task
         parent_task = Task(
@@ -538,7 +499,7 @@ class TestEdgeCases:
             title="Parent Task",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(parent_task)
         await db_session.flush()
@@ -552,7 +513,7 @@ class TestEdgeCases:
             title="Subtask",
             status="pending",
             priority="medium",
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(subtask)
         await db_session.commit()
@@ -564,9 +525,7 @@ class TestEdgeCases:
         # This just validates the relationship exists
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation(
-        self, db_session, active_product
-    ):
+    async def test_multi_tenant_isolation(self, db_session, active_product):
         """Tasks from different tenants should not be visible"""
         tenant1 = str(uuid4())
         tenant2 = str(uuid4())
@@ -577,7 +536,7 @@ class TestEdgeCases:
             product_id=active_product.id,
             title="Tenant 1 Task",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         task2 = Task(
@@ -586,7 +545,7 @@ class TestEdgeCases:
             product_id=active_product.id,
             title="Tenant 2 Task",
             status="pending",
-            priority="medium"
+            priority="medium",
         )
 
         db_session.add_all([task1, task2])

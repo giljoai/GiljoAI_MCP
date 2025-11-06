@@ -17,13 +17,13 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
@@ -82,9 +82,10 @@ class UserProfileResponse(BaseModel):
     last_login: Optional[str]
     password_change_required: Optional[bool] = None  # v3.0 Unified: Indicates default password must be changed
 
+
 class UserListResponse(BaseModel):
     """User list response for tenant users"""
-    
+
     id: str
     username: str
     email: Optional[str]
@@ -143,7 +144,7 @@ class RegisterUserRequest(BaseModel):
     role: str = Field(default="developer", description="User role: admin, developer, viewer")
     tenant_key: str = Field(
         default="tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd",
-        description="Tenant key for multi-tenant isolation (must start with 'tk_')"
+        description="Tenant key for multi-tenant isolation (must start with 'tk_')",
     )
 
     @field_validator("role")
@@ -279,10 +280,10 @@ class CompleteFirstLoginResponse(BaseModel):
 
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 async def login(
-    login_data: LoginRequest = Body(...), 
-    response: Response = None, 
+    login_data: LoginRequest = Body(...),
+    response: Response = None,
     request: Request = None,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Login with username/password, returns JWT in httpOnly cookie.
@@ -377,7 +378,7 @@ async def login(
             # Localhost (127.0.0.1) treated same as network IPs for production parity
             # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
             # IP addresses have no subdomain hierarchy, so domain=IP is safe
-            if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
+            if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_only):
                 cookie_domain = host_only
                 logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
 
@@ -398,7 +399,7 @@ async def login(
                         f"Cookie domain set to None for unknown host '{host_only}' "
                         f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
                     )
-    
+
     # Set httpOnly cookie (session cookie - expires on browser close)
     response.set_cookie(
         key="access_token",
@@ -415,14 +416,16 @@ async def login(
     user.last_login = datetime.now(timezone.utc)
     await db.commit()
 
-    logger.info(f"User logged in successfully: {user.username} (role: {user.role}) (password_change_required: {password_change_required})")
+    logger.info(
+        f"User logged in successfully: {user.username} (role: {user.role}) (password_change_required: {password_change_required})"
+    )
 
     # v3.0 Unified: Include password change requirement in response for frontend handling
     response_data = {
         "message": "Login successful",
         "username": user.username,
         "role": user.role,
-        "tenant_key": user.tenant_key
+        "tenant_key": user.tenant_key,
     }
 
     if password_change_required:
@@ -485,7 +488,6 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
         )
 
     # Check if password change is required (for admin user with default password)
-    from src.giljo_mcp.models import SetupState
 
     # v3.0 Unified (Handover 0034): No more default admin/admin password
     # Fresh installs go directly to "Create Admin Account" page via first_admin_created flag
@@ -644,42 +646,33 @@ async def revoke_api_key(
     return APIKeyRevokeResponse(id=str(api_key.id), name=api_key.name, message="API key revoked successfully")
 
 
-
 @router.get("/users", response_model=List[UserListResponse], tags=["auth"])
-async def list_users(
-    current_user: User = Depends(get_current_active_user), 
-    db: AsyncSession = Depends(get_db_session)
-):
+async def list_users(current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)):
     """
     List all users in the current tenant (admin only).
-    
+
     This endpoint returns all users in the same tenant as the authenticated user.
     Only admins can list users.
-    
+
     Args:
         current_user: User from JWT token (dependency)
         db: Database session
-        
+
     Returns:
         List of users in the tenant
-        
+
     Raises:
         HTTPException: 403 if user is not admin
     """
     # Check if user is admin
     if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Admin access required"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
     # Query users in the same tenant
-    stmt = select(User).where(
-        User.tenant_key == current_user.tenant_key
-    ).order_by(User.created_at.desc())
+    stmt = select(User).where(User.tenant_key == current_user.tenant_key).order_by(User.created_at.desc())
     result = await db.execute(stmt)
     users = result.scalars().all()
-    
+
     return [
         UserListResponse(
             id=str(user.id),
@@ -693,6 +686,7 @@ async def list_users(
         )
         for user in users
     ]
+
 
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def register_user(
@@ -769,13 +763,12 @@ async def register_user(
     )
 
 
-
 @router.post("/create-first-admin", response_model=RegisterUserResponse, status_code=201, tags=["auth"])
 async def create_first_admin_user(
     response: Response,
     request: Request,
     request_body: RegisterUserRequest = Body(...),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Create first administrator account on fresh install (Handover 0034).
@@ -807,8 +800,9 @@ async def create_first_admin_user(
         HTTPException 503: If database check fails (fail-secure)
     """
     from uuid import uuid4
-    from src.giljo_mcp.tenant import TenantManager
+
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+    from src.giljo_mcp.tenant import TenantManager
 
     # Log client IP for audit trail (LAN access allowed for remote setup)
     client_ip = request.client.host
@@ -836,7 +830,7 @@ async def create_first_admin_user(
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Administrator account already exists. This setup endpoint has been disabled. "
-                           "Please use the login page instead."
+                    "Please use the login page instead.",
                 )
         except HTTPException:
             raise  # Re-raise our 403
@@ -857,7 +851,7 @@ async def create_first_admin_user(
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="System temporarily unavailable. Database connection error. Please try again in a moment."
+                detail="System temporarily unavailable. Database connection error. Please try again in a moment.",
             )
 
         if total_users > 0:
@@ -867,14 +861,13 @@ async def create_first_admin_user(
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Administrator account already exists. Please use the login page instead."
+                detail="Administrator account already exists. Please use the login page instead.",
             )
 
         # Validate password strength (enforce 12+ char minimum for admin)
         if len(request_body.password) < 12:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Admin password must be at least 12 characters long"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Admin password must be at least 12 characters long"
             )
 
         # Check password complexity
@@ -886,7 +879,7 @@ async def create_first_admin_user(
         if not (has_upper and has_lower and has_digit and has_special):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must contain uppercase, lowercase, digit, and special character"
+                detail="Password must contain uppercase, lowercase, digit, and special character",
             )
 
         # Hash password
@@ -902,10 +895,10 @@ async def create_first_admin_user(
             email=request_body.email,
             full_name=request_body.full_name or "Administrator",
             password_hash=password_hash,
-            role='admin',  # FORCE admin role for first user
+            role="admin",  # FORCE admin role for first user
             tenant_key=tenant_key,
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db.add(admin_user)
@@ -927,17 +920,14 @@ async def create_first_admin_user(
         except IntegrityError as e:
             await db.rollback()
             logger.error(f"Failed to create first admin user: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
 
         # Generate JWT token for immediate login
         token = JWTManager.create_access_token(
             user_id=str(admin_user.id),
             username=admin_user.username,
             role=admin_user.role,
-            tenant_key=admin_user.tenant_key
+            tenant_key=admin_user.tenant_key,
         )
 
         # SECURITY: Cookie domain validation and whitelist enforcement
@@ -982,7 +972,7 @@ async def create_first_admin_user(
                 # Localhost (127.0.0.1) treated same as network IPs for production parity
                 # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
                 # IP addresses have no subdomain hierarchy, so domain=IP is safe
-                if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
+                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_only):
                     cookie_domain = host_only
                     logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
 
@@ -1003,7 +993,7 @@ async def create_first_admin_user(
                             f"Cookie domain set to None for unknown host '{host_only}' "
                             f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
                         )
-        
+
         # Set httpOnly cookie for immediate login (same pattern as login endpoint)
         response.set_cookie(
             key="access_token",
@@ -1013,7 +1003,7 @@ async def create_first_admin_user(
             samesite="lax",
             path="/",  # Accessible from all paths (frontend and API)
             domain=cookie_domain,  # Set to request host for cross-port cookie sharing
-            max_age=86400  # 24 hours
+            max_age=86400,  # 24 hours
         )
 
         # SECURITY: Disable this endpoint permanently after first admin created
@@ -1035,7 +1025,7 @@ async def create_first_admin_user(
                 database_initialized=True,
                 database_initialized_at=datetime.now(timezone.utc),
                 first_admin_created=True,
-                first_admin_created_at=datetime.now(timezone.utc)
+                first_admin_created_at=datetime.now(timezone.utc),
             )
             db.add(setup_state)
 
@@ -1055,8 +1045,8 @@ async def create_first_admin_user(
             role=admin_user.role,
             tenant_key=admin_user.tenant_key,
             is_active=admin_user.is_active,
-        message="Administrator account created successfully. Redirecting to dashboard..."
-    )
+            message="Administrator account created successfully. Redirecting to dashboard...",
+        )
 
 
 # REMOVED (Handover 0034): Legacy password change endpoint

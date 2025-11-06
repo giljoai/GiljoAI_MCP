@@ -44,7 +44,7 @@ def get_network_ips(platform_handler: Optional[Any] = None) -> List[str]:
                 if address.family == socket.AF_INET:
                     ip = address.address
                     # Exclude loopback addresses
-                    if ip and ip != '127.0.0.1' and not ip.startswith('127.'):
+                    if ip and ip != "127.0.0.1" and not ip.startswith("127."):
                         ips.append(ip)
 
         if ips:
@@ -62,7 +62,7 @@ def get_network_ips(platform_handler: Optional[Any] = None) -> List[str]:
         hostname = socket.gethostname()
         ip = socket.gethostbyname(hostname)
 
-        if ip and ip != '127.0.0.1' and not ip.startswith('127.'):
+        if ip and ip != "127.0.0.1" and not ip.startswith("127."):
             ips.append(ip)
             logger.info(f"Found network IP via socket: {ip}")
             return ips
@@ -71,7 +71,7 @@ def get_network_ips(platform_handler: Optional[Any] = None) -> List[str]:
         logger.warning(f"socket IP detection failed: {e}")
 
     # Strategy 3: Use platform handler if available
-    if platform_handler and hasattr(platform_handler, 'get_network_ips'):
+    if platform_handler and hasattr(platform_handler, "get_network_ips"):
         try:
             logger.debug("Using platform handler for network IP detection")
             handler_ips = platform_handler.get_network_ips()
@@ -103,13 +103,13 @@ def get_primary_ip() -> Optional[str]:
 
         # Connect to an external address (doesn't actually send data)
         # Using Google's public DNS as target
-        s.connect(('8.8.8.8', 80))
+        s.connect(("8.8.8.8", 80))
 
         # Get the socket's own address
         ip = s.getsockname()[0]
         s.close()
 
-        if ip and ip != '127.0.0.1':
+        if ip and ip != "127.0.0.1":
             logger.info(f"Primary IP detected: {ip}")
             return ip
 
@@ -136,7 +136,7 @@ def validate_ip_address(ip: str) -> bool:
         return False
 
 
-def is_port_available(port: int, host: str = '0.0.0.0') -> bool:
+def is_port_available(port: int, host: str = "0.0.0.0") -> bool:
     """
     Check if a port is available for binding.
 
@@ -172,7 +172,7 @@ def get_hostname() -> str:
         return socket.gethostname()
     except Exception as e:
         logger.warning(f"Hostname detection failed: {e}")
-        return 'localhost'
+        return "localhost"
 
 
 def resolve_hostname(hostname: str) -> Optional[str]:

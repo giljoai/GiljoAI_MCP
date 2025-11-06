@@ -2,10 +2,12 @@
 Slash command registry for GiljoAI
 Maps /gil_* commands to handler functions
 """
+
 from typing import Callable
 
 from .handover import handle_gil_handover
-from .import_agents import handle_import_productagents, handle_import_personalagents
+from .import_agents import handle_import_personalagents, handle_import_productagents
+
 
 # Slash command registry
 SLASH_COMMANDS: dict[str, Callable] = {

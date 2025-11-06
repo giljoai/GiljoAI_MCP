@@ -10,12 +10,13 @@ from typing import Dict, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Product, Project, User
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["orchestration"])
@@ -42,6 +43,7 @@ async def _get_user_config_with_overrides(
     override_serena: Optional[bool],
 ) -> Dict:
     from sqlalchemy import select
+
     result = await db.execute(select(User).filter_by(id=user_id))
     user = result.scalar_one_or_none()
 
@@ -74,17 +76,14 @@ async def regenerate_mission(
     logger.info(f"Mission regeneration requested for project {request.project_id}")
 
     from sqlalchemy import select
-    result = await db.execute(
-        select(Project).filter_by(id=request.project_id, tenant_key=current_user.tenant_key)
-    )
+
+    result = await db.execute(select(Project).filter_by(id=request.project_id, tenant_key=current_user.tenant_key))
     project = result.scalar_one_or_none()
 
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    result = await db.execute(
-        select(Product).filter_by(id=project.product_id, tenant_key=current_user.tenant_key)
-    )
+    result = await db.execute(select(Product).filter_by(id=project.product_id, tenant_key=current_user.tenant_key))
     product = result.scalar_one_or_none()
 
     if not product:

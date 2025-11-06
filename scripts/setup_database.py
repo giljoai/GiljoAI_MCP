@@ -4,10 +4,12 @@ Database setup script for GiljoAI MCP v3.0
 Creates database, users, and grants necessary permissions
 """
 
-import psycopg2
-from psycopg2 import sql
 import sys
 from pathlib import Path
+
+import psycopg2
+from psycopg2 import sql
+
 
 # Database configuration
 DB_NAME = "giljo_mcp"
@@ -16,22 +18,19 @@ DB_OWNER = "giljo_owner"
 USER_PASSWORD = "4010"
 ADMIN_PASSWORD = "4010"
 
+
 def create_database_and_users():
     """Create the giljo_mcp database and required users."""
 
-    print("="*60)
+    print("=" * 60)
     print("  GiljoAI MCP Database Setup")
-    print("="*60)
+    print("=" * 60)
 
     try:
         # Connect as postgres admin
         print("\n[1] Connecting to PostgreSQL as admin...")
         conn = psycopg2.connect(
-            host="localhost",
-            port=5432,
-            database="postgres",
-            user="postgres",
-            password=ADMIN_PASSWORD
+            host="localhost", port=5432, database="postgres", user="postgres", password=ADMIN_PASSWORD
         )
         conn.autocommit = True
         cur = conn.cursor()
@@ -57,12 +56,10 @@ def create_database_and_users():
         if cur.fetchone():
             print(f"[SUCCESS] User '{DB_USER}' already exists")
             # Update password to ensure it's correct
-            cur.execute(sql.SQL("ALTER USER {} WITH PASSWORD %s").format(
-                sql.Identifier(DB_USER)), (USER_PASSWORD,))
+            cur.execute(sql.SQL("ALTER USER {} WITH PASSWORD %s").format(sql.Identifier(DB_USER)), (USER_PASSWORD,))
             print(f"[SUCCESS] Password updated for '{DB_USER}'")
         else:
-            cur.execute(sql.SQL("CREATE USER {} WITH PASSWORD %s").format(
-                sql.Identifier(DB_USER)), (USER_PASSWORD,))
+            cur.execute(sql.SQL("CREATE USER {} WITH PASSWORD %s").format(sql.Identifier(DB_USER)), (USER_PASSWORD,))
             print(f"[SUCCESS] User '{DB_USER}' created")
 
         # Check if giljo_owner exists
@@ -70,22 +67,24 @@ def create_database_and_users():
         if cur.fetchone():
             print(f"[SUCCESS] User '{DB_OWNER}' already exists")
             # Update password
-            cur.execute(sql.SQL("ALTER USER {} WITH PASSWORD %s").format(
-                sql.Identifier(DB_OWNER)), (USER_PASSWORD,))
+            cur.execute(sql.SQL("ALTER USER {} WITH PASSWORD %s").format(sql.Identifier(DB_OWNER)), (USER_PASSWORD,))
             print(f"[SUCCESS] Password updated for '{DB_OWNER}'")
         else:
-            cur.execute(sql.SQL("CREATE USER {} WITH PASSWORD %s").format(
-                sql.Identifier(DB_OWNER)), (USER_PASSWORD,))
+            cur.execute(sql.SQL("CREATE USER {} WITH PASSWORD %s").format(sql.Identifier(DB_OWNER)), (USER_PASSWORD,))
             print(f"[SUCCESS] User '{DB_OWNER}' created")
 
         # Grant privileges on database
         print("\n[4] Granting database privileges...")
-        cur.execute(sql.SQL("GRANT ALL PRIVILEGES ON DATABASE {} TO {}").format(
-            sql.Identifier(DB_NAME), sql.Identifier(DB_OWNER)))
+        cur.execute(
+            sql.SQL("GRANT ALL PRIVILEGES ON DATABASE {} TO {}").format(
+                sql.Identifier(DB_NAME), sql.Identifier(DB_OWNER)
+            )
+        )
         print(f"[SUCCESS] Granted all privileges on '{DB_NAME}' to '{DB_OWNER}'")
 
-        cur.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
-            sql.Identifier(DB_NAME), sql.Identifier(DB_USER)))
+        cur.execute(
+            sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(sql.Identifier(DB_NAME), sql.Identifier(DB_USER))
+        )
         print(f"[SUCCESS] Granted connect privilege on '{DB_NAME}' to '{DB_USER}'")
 
         # Close connection to postgres database
@@ -94,31 +93,27 @@ def create_database_and_users():
 
         # Connect to giljo_mcp database to set schema permissions
         print("\n[5] Setting schema permissions...")
-        conn = psycopg2.connect(
-            host="localhost",
-            port=5432,
-            database=DB_NAME,
-            user="postgres",
-            password=ADMIN_PASSWORD
-        )
+        conn = psycopg2.connect(host="localhost", port=5432, database=DB_NAME, user="postgres", password=ADMIN_PASSWORD)
         conn.autocommit = True
         cur = conn.cursor()
 
         # Grant schema permissions
-        cur.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(
-            sql.Identifier(DB_USER)))
-        cur.execute(sql.SQL("GRANT CREATE ON SCHEMA public TO {}").format(
-            sql.Identifier(DB_USER)))
-        cur.execute(sql.SQL("GRANT ALL ON ALL TABLES IN SCHEMA public TO {}").format(
-            sql.Identifier(DB_USER)))
-        cur.execute(sql.SQL("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {}").format(
-            sql.Identifier(DB_USER)))
+        cur.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(sql.Identifier(DB_USER)))
+        cur.execute(sql.SQL("GRANT CREATE ON SCHEMA public TO {}").format(sql.Identifier(DB_USER)))
+        cur.execute(sql.SQL("GRANT ALL ON ALL TABLES IN SCHEMA public TO {}").format(sql.Identifier(DB_USER)))
+        cur.execute(sql.SQL("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {}").format(sql.Identifier(DB_USER)))
 
         # Set default privileges for future objects
-        cur.execute(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {}").format(
-            sql.Identifier(DB_USER)))
-        cur.execute(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {}").format(
-            sql.Identifier(DB_USER)))
+        cur.execute(
+            sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {}").format(
+                sql.Identifier(DB_USER)
+            )
+        )
+        cur.execute(
+            sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {}").format(
+                sql.Identifier(DB_USER)
+            )
+        )
 
         print(f"[SUCCESS] Schema permissions granted to '{DB_USER}'")
 
@@ -128,18 +123,14 @@ def create_database_and_users():
         conn.close()
 
         test_conn = psycopg2.connect(
-            host="localhost",
-            port=5432,
-            database=DB_NAME,
-            user=DB_USER,
-            password=USER_PASSWORD
+            host="localhost", port=5432, database=DB_NAME, user=DB_USER, password=USER_PASSWORD
         )
         test_conn.close()
         print(f"[SUCCESS] Successfully connected as '{DB_USER}'")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("  Database setup completed successfully!")
-        print("="*60)
+        print("=" * 60)
         print(f"\nDatabase: {DB_NAME}")
         print(f"Users: {DB_USER}, {DB_OWNER}")
         print(f"Password: {USER_PASSWORD}")
@@ -153,6 +144,7 @@ def create_database_and_users():
     except Exception as e:
         print(f"\n[ERROR] Unexpected error: {e}")
         return False
+
 
 def check_requirements():
     """Check if requirements.txt has the necessary dependencies."""
@@ -186,6 +178,7 @@ def check_requirements():
         print("[SUCCESS] All required dependencies present in requirements.txt")
 
     return True
+
 
 if __name__ == "__main__":
     print("\nGiljoAI MCP Database Setup Script")

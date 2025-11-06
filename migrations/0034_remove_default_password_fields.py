@@ -16,18 +16,20 @@ Applies to: GiljoAI MCP v3.0+
 
 import asyncio
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
+
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
 import os
+
+from dotenv import load_dotenv
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+
 
 # Load environment variables
 load_dotenv()
@@ -57,34 +59,40 @@ async def upgrade():
         # Check if columns exist before attempting to drop
         logger.info("Checking if columns exist...")
 
-        result = await conn.execute(text("""
+        result = await conn.execute(
+            text("""
             SELECT column_name
             FROM information_schema.columns
             WHERE table_name = 'setup_state'
             AND column_name IN ('default_password_active', 'password_changed_at')
-        """))
+        """)
+        )
 
         existing_columns = [row[0] for row in result.fetchall()]
         logger.info(f"Found existing columns: {existing_columns}")
 
         # Drop default_password_active column
-        if 'default_password_active' in existing_columns:
+        if "default_password_active" in existing_columns:
             logger.info("Dropping column: default_password_active")
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 ALTER TABLE setup_state
                 DROP COLUMN IF EXISTS default_password_active
-            """))
+            """)
+            )
             logger.info("✓ Dropped default_password_active column")
         else:
             logger.info("Column default_password_active does not exist (already removed)")
 
         # Drop password_changed_at column
-        if 'password_changed_at' in existing_columns:
+        if "password_changed_at" in existing_columns:
             logger.info("Dropping column: password_changed_at")
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 ALTER TABLE setup_state
                 DROP COLUMN IF EXISTS password_changed_at
-            """))
+            """)
+            )
             logger.info("✓ Dropped password_changed_at column")
         else:
             logger.info("Column password_changed_at does not exist (already removed)")
@@ -147,18 +155,22 @@ async def downgrade():
     async with engine.begin() as conn:
         # Re-add default_password_active column
         logger.info("Adding column: default_password_active")
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE setup_state
             ADD COLUMN IF NOT EXISTS default_password_active BOOLEAN DEFAULT FALSE NOT NULL
-        """))
+        """)
+        )
         logger.info("✓ Added default_password_active column (default: FALSE)")
 
         # Re-add password_changed_at column
         logger.info("Adding column: password_changed_at")
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE setup_state
             ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP WITH TIME ZONE
-        """))
+        """)
+        )
         logger.info("✓ Added password_changed_at column (default: NULL)")
 
     await engine.dispose()

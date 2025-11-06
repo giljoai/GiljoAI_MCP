@@ -10,10 +10,12 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi.testclient import TestClient
+
 from api.app import create_app
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
@@ -49,10 +51,7 @@ class ProjectActivationValidationTests:
         print(f"\n{Colors.CYAN}Setting up test environment...{Colors.RESET}")
 
         # Initialize test database
-        self.db_manager = DatabaseManager(
-            PostgreSQLTestHelper.get_test_db_url(async_driver=False),
-            is_async=True
-        )
+        self.db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
         await self.db_manager.create_tables_async()
 
         # Store in app state
@@ -71,7 +70,7 @@ class ProjectActivationValidationTests:
                 name="Active Product",
                 description="Product with is_active=True",
                 tenant_key=self.tenant_key,
-                is_active=True
+                is_active=True,
             )
             session.add(self.active_product)
             await session.flush()
@@ -81,7 +80,7 @@ class ProjectActivationValidationTests:
                 name="Inactive Product",
                 description="Product with is_active=False",
                 tenant_key=self.tenant_key,
-                is_active=False
+                is_active=False,
             )
             session.add(self.inactive_product)
             await session.flush()
@@ -92,7 +91,7 @@ class ProjectActivationValidationTests:
                 mission="Test project with active parent",
                 tenant_key=self.tenant_key,
                 product_id=self.active_product.id,
-                status="inactive"
+                status="inactive",
             )
             session.add(self.project_active_parent)
 
@@ -102,7 +101,7 @@ class ProjectActivationValidationTests:
                 mission="Test project with inactive parent",
                 tenant_key=self.tenant_key,
                 product_id=self.inactive_product.id,
-                status="inactive"
+                status="inactive",
             )
             session.add(self.project_inactive_parent)
 
@@ -112,7 +111,7 @@ class ProjectActivationValidationTests:
                 mission="Test project without parent",
                 tenant_key=self.tenant_key,
                 product_id=None,
-                status="inactive"
+                status="inactive",
             )
             session.add(self.project_orphan)
 
@@ -165,7 +164,7 @@ class ProjectActivationValidationTests:
         response = self.client.patch(
             f"/api/projects/{self.project_active_parent.id}",
             json={"status": "active"},
-            headers={"X-Tenant-Key": self.tenant_key}
+            headers={"X-Tenant-Key": self.tenant_key},
         )
 
         passed = response.status_code == 200
@@ -179,11 +178,7 @@ class ProjectActivationValidationTests:
                 passed = False
                 details += f" | ERROR: Expected status 'active', got '{data.get('status')}'"
 
-        self.test_result(
-            "Activate project with active parent product",
-            passed,
-            details
-        )
+        self.test_result("Activate project with active parent product", passed, details)
 
     async def test_fail_activate_with_inactive_parent(self):
         """Test: Project cannot be activated when parent product is inactive"""
@@ -192,7 +187,7 @@ class ProjectActivationValidationTests:
         response = self.client.patch(
             f"/api/projects/{self.project_inactive_parent.id}",
             json={"status": "active"},
-            headers={"X-Tenant-Key": self.tenant_key}
+            headers={"X-Tenant-Key": self.tenant_key},
         )
 
         passed = response.status_code == 400
@@ -210,11 +205,7 @@ class ProjectActivationValidationTests:
             passed = False
             details += " | ERROR: Expected 400 Bad Request"
 
-        self.test_result(
-            "Cannot activate project with inactive parent",
-            passed,
-            details
-        )
+        self.test_result("Cannot activate project with inactive parent", passed, details)
 
     async def test_activate_orphan_project(self):
         """Test: Orphan project (no parent) can be activated"""
@@ -223,7 +214,7 @@ class ProjectActivationValidationTests:
         response = self.client.patch(
             f"/api/projects/{self.project_orphan.id}",
             json={"status": "active"},
-            headers={"X-Tenant-Key": self.tenant_key}
+            headers={"X-Tenant-Key": self.tenant_key},
         )
 
         passed = response.status_code == 200
@@ -237,11 +228,7 @@ class ProjectActivationValidationTests:
                 passed = False
                 details += f" | ERROR: Expected status 'active', got '{data.get('status')}'"
 
-        self.test_result(
-            "Activate orphan project without parent",
-            passed,
-            details
-        )
+        self.test_result("Activate orphan project without parent", passed, details)
 
     async def test_update_non_status_fields(self):
         """Test: Updating non-status fields doesn't trigger validation"""
@@ -250,7 +237,7 @@ class ProjectActivationValidationTests:
         response = self.client.patch(
             f"/api/projects/{self.project_inactive_parent.id}",
             json={"name": "Updated Project Name"},
-            headers={"X-Tenant-Key": self.tenant_key}
+            headers={"X-Tenant-Key": self.tenant_key},
         )
 
         passed = response.status_code == 200
@@ -262,13 +249,9 @@ class ProjectActivationValidationTests:
                 details += " | Name updated successfully (validation bypassed)"
             else:
                 passed = False
-                details += f" | ERROR: Name not updated correctly"
+                details += " | ERROR: Name not updated correctly"
 
-        self.test_result(
-            "Update project name without status validation",
-            passed,
-            details
-        )
+        self.test_result("Update project name without status validation", passed, details)
 
     async def test_error_message_clarity(self):
         """Test: Error messages are clear and actionable"""
@@ -277,7 +260,7 @@ class ProjectActivationValidationTests:
         response = self.client.patch(
             f"/api/projects/{self.project_inactive_parent.id}",
             json={"status": "active"},
-            headers={"X-Tenant-Key": self.tenant_key}
+            headers={"X-Tenant-Key": self.tenant_key},
         )
 
         passed = True
@@ -290,7 +273,7 @@ class ProjectActivationValidationTests:
             checks = {
                 "Mentions product name": "Inactive Product" in error_msg,
                 "Explains reason": "not active" in error_msg.lower(),
-                "Provides solution": "activate the product" in error_msg.lower()
+                "Provides solution": "activate the product" in error_msg.lower(),
             }
 
             for check_name, check_result in checks.items():
@@ -305,11 +288,7 @@ class ProjectActivationValidationTests:
             passed = False
             details = f"Expected 400, got {response.status_code}"
 
-        self.test_result(
-            "Error message is clear and actionable",
-            passed,
-            details
-        )
+        self.test_result("Error message is clear and actionable", passed, details)
 
     def print_summary(self):
         """Print test execution summary"""

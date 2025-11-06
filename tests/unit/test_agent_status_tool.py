@@ -13,7 +13,7 @@ Tests set_agent_status tool:
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -34,9 +34,7 @@ class TestAgentStatusTool:
 
         # Create test project
         async with self.db_manager.get_session_async() as session:
-            self.project = await ToolsTestHelper.create_test_project(
-                session, "Agent Status Test Project"
-            )
+            self.project = await ToolsTestHelper.create_test_project(session, "Agent Status Test Project")
             self.tenant_key = self.project.tenant_key
 
     async def _create_test_job(self, session, status="waiting", progress=0):
@@ -50,7 +48,7 @@ class TestAgentStatusTool:
             status=status,
             progress=progress,
             agent_name="test-agent",
-            tool_type="claude-code"
+            tool_type="claude-code",
         )
         session.add(job)
         await session.commit()
@@ -68,7 +66,7 @@ class TestAgentStatusTool:
             job_id = job.job_id
 
         # Mock WebSocket manager
-        with patch('src.giljo_mcp.tools.agent_status.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_status.websocket_manager") as mock_ws:
             mock_ws.broadcast_agent_status_update = AsyncMock()
 
             # Update status to working
@@ -77,7 +75,7 @@ class TestAgentStatusTool:
                 tenant_key=self.tenant_key,
                 status="working",
                 progress=25,
-                current_task="Implementing feature X"
+                current_task="Implementing feature X",
             )
 
         # Verify response
@@ -109,11 +107,7 @@ class TestAgentStatusTool:
 
         # Try to set working without progress
         with pytest.raises(ValueError, match="progress.*required.*working"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working"
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="working")
 
     @pytest.mark.asyncio
     async def test_set_agent_status_blocked_requires_reason(self):
@@ -126,11 +120,7 @@ class TestAgentStatusTool:
 
         # Try to set blocked without reason
         with pytest.raises(ValueError, match="reason.*required.*blocked"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="blocked"
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="blocked")
 
     @pytest.mark.asyncio
     async def test_set_agent_status_failed_requires_reason(self):
@@ -143,11 +133,7 @@ class TestAgentStatusTool:
 
         # Try to set failed without reason
         with pytest.raises(ValueError, match="reason.*required.*failed"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="failed"
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="failed")
 
     @pytest.mark.asyncio
     async def test_set_agent_status_progress_validation(self):
@@ -160,21 +146,11 @@ class TestAgentStatusTool:
 
         # Test progress > 100
         with pytest.raises(ValueError, match="progress.*0.*100"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=150
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="working", progress=150)
 
         # Test progress < 0
         with pytest.raises(ValueError, match="progress.*0.*100"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=-10
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="working", progress=-10)
 
     @pytest.mark.asyncio
     async def test_set_agent_status_invalid_status(self):
@@ -186,11 +162,7 @@ class TestAgentStatusTool:
             job_id = job.job_id
 
         with pytest.raises(ValueError, match="Invalid status"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="invalid_status"
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="invalid_status")
 
     @pytest.mark.asyncio
     async def test_set_agent_status_terminal_state_rejection(self):
@@ -203,12 +175,7 @@ class TestAgentStatusTool:
             job_id = job.job_id
 
         with pytest.raises(ValueError, match="Cannot transition from.*complete"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=50
-            )
+            await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="working", progress=50)
 
         # Test from failed
         async with self.db_manager.get_session_async() as session:
@@ -216,12 +183,7 @@ class TestAgentStatusTool:
             job_id2 = job2.job_id
 
         with pytest.raises(ValueError, match="Cannot transition from.*failed"):
-            await set_agent_status(
-                job_id=job_id2,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=50
-            )
+            await set_agent_status(job_id=job_id2, tenant_key=self.tenant_key, status="working", progress=50)
 
     @pytest.mark.asyncio
     async def test_set_agent_status_job_not_found(self):
@@ -231,12 +193,7 @@ class TestAgentStatusTool:
         fake_job_id = str(uuid.uuid4())
 
         with pytest.raises(ValueError, match="Job.*not found"):
-            await set_agent_status(
-                job_id=fake_job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=50
-            )
+            await set_agent_status(job_id=fake_job_id, tenant_key=self.tenant_key, status="working", progress=50)
 
     @pytest.mark.asyncio
     async def test_set_agent_status_multi_tenant_isolation(self):
@@ -252,12 +209,7 @@ class TestAgentStatusTool:
         other_tenant = "other-tenant-" + str(uuid.uuid4())
 
         with pytest.raises(ValueError, match="Job.*not found"):
-            await set_agent_status(
-                job_id=job_id,
-                tenant_key=other_tenant,
-                status="working",
-                progress=50
-            )
+            await set_agent_status(job_id=job_id, tenant_key=other_tenant, status="working", progress=50)
 
     @pytest.mark.asyncio
     async def test_set_agent_status_complete_state(self):
@@ -268,14 +220,10 @@ class TestAgentStatusTool:
             job = await self._create_test_job(session, status="review")
             job_id = job.job_id
 
-        with patch('src.giljo_mcp.tools.agent_status.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_status.websocket_manager") as mock_ws:
             mock_ws.broadcast_agent_status_update = AsyncMock()
 
-            result = await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="complete"
-            )
+            result = await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="complete")
 
         assert result["success"] is True
         assert result["new_status"] == "complete"
@@ -296,14 +244,14 @@ class TestAgentStatusTool:
             job = await self._create_test_job(session, status="working")
             job_id = job.job_id
 
-        with patch('src.giljo_mcp.tools.agent_status.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_status.websocket_manager") as mock_ws:
             mock_ws.broadcast_agent_status_update = AsyncMock()
 
             result = await set_agent_status(
                 job_id=job_id,
                 tenant_key=self.tenant_key,
                 status="blocked",
-                reason="Waiting for database migration approval"
+                reason="Waiting for database migration approval",
             )
 
         assert result["success"] is True
@@ -327,15 +275,11 @@ class TestAgentStatusTool:
 
         estimated = datetime.now(timezone.utc) + timedelta(hours=2)
 
-        with patch('src.giljo_mcp.tools.agent_status.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_status.websocket_manager") as mock_ws:
             mock_ws.broadcast_agent_status_update = AsyncMock()
 
             result = await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=75,
-                estimated_completion=estimated
+                job_id=job_id, tenant_key=self.tenant_key, status="working", progress=75, estimated_completion=estimated
             )
 
         assert result["success"] is True
@@ -359,40 +303,23 @@ class TestAgentStatusTool:
             job = await self._create_test_job(session, status="waiting")
             job_id = job.job_id
 
-        with patch('src.giljo_mcp.tools.agent_status.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_status.websocket_manager") as mock_ws:
             mock_ws.broadcast_agent_status_update = AsyncMock()
 
             # waiting -> preparing
-            result = await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="preparing"
-            )
+            result = await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="preparing")
             assert result["new_status"] == "preparing"
 
             # preparing -> working
-            result = await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=30
-            )
+            result = await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="working", progress=30)
             assert result["new_status"] == "working"
 
             # working -> review
-            result = await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="review"
-            )
+            result = await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="review")
             assert result["new_status"] == "review"
 
             # review -> complete
-            result = await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="complete"
-            )
+            result = await set_agent_status(job_id=job_id, tenant_key=self.tenant_key, status="complete")
             assert result["new_status"] == "complete"
 
     @pytest.mark.asyncio
@@ -404,15 +331,11 @@ class TestAgentStatusTool:
             job = await self._create_test_job(session, status="waiting")
             job_id = job.job_id
 
-        with patch('src.giljo_mcp.tools.agent_status.websocket_manager') as mock_ws:
+        with patch("src.giljo_mcp.tools.agent_status.websocket_manager") as mock_ws:
             mock_ws.broadcast_agent_status_update = AsyncMock()
 
             await set_agent_status(
-                job_id=job_id,
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=50,
-                current_task="Testing feature"
+                job_id=job_id, tenant_key=self.tenant_key, status="working", progress=50, current_task="Testing feature"
             )
 
             # Verify WebSocket was called with correct parameters
@@ -433,12 +356,7 @@ class TestAgentStatusTool:
         from src.giljo_mcp.tools.agent_status import set_agent_status
 
         with pytest.raises(ValueError, match="job_id.*cannot be empty"):
-            await set_agent_status(
-                job_id="",
-                tenant_key=self.tenant_key,
-                status="working",
-                progress=50
-            )
+            await set_agent_status(job_id="", tenant_key=self.tenant_key, status="working", progress=50)
 
     @pytest.mark.asyncio
     async def test_set_agent_status_empty_tenant_key(self):
@@ -446,9 +364,4 @@ class TestAgentStatusTool:
         from src.giljo_mcp.tools.agent_status import set_agent_status
 
         with pytest.raises(ValueError, match="tenant_key.*cannot be empty"):
-            await set_agent_status(
-                job_id="some-job-id",
-                tenant_key="",
-                status="working",
-                progress=50
-            )
+            await set_agent_status(job_id="some-job-id", tenant_key="", status="working", progress=50)

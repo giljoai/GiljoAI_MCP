@@ -18,17 +18,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from api.schemas.prompt import (
     AgentPromptResponse,
-    OrchestratorPromptResponse,
     OrchestratorPromptRequest,
+    OrchestratorPromptResponse,
     ThinPromptResponse,
     TokenEstimateRequest,
 )
-from api.dependencies.websocket import get_websocket_dependency, WebSocketDependency
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
-from src.giljo_mcp.prompt_generator import OrchestratorPromptGenerator
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -61,23 +61,18 @@ async def generate_orchestrator_prompt(
         403: User not authorized to access project
     """
     # Get project with tenant isolation
-    stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
 
     if not project:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project {project_id} not found or not accessible"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
         )
 
     # Count agents in project
     agent_count_stmt = select(func.count(MCPAgentJob.id)).where(
-        MCPAgentJob.project_id == project_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key
     )
     agent_count_result = await db.execute(agent_count_stmt)
     agent_count = agent_count_result.scalar() or 0
@@ -127,7 +122,7 @@ Prerequisites:
         instructions=instructions,
         project_name=project.name,
         project_id=project.id,
-        agent_count=agent_count
+        agent_count=agent_count,
     )
 
 
@@ -135,7 +130,7 @@ Prerequisites:
 async def generate_orchestrator_prompt_thin(
     request: OrchestratorPromptRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Generate thin client orchestrator prompt (~10 lines).
@@ -166,8 +161,8 @@ async def generate_orchestrator_prompt_thin(
         400: Invalid tool parameter
         500: Generation error
     """
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
     from api.dependencies.websocket import get_websocket_dependency
+    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
     try:
         # Initialize thin client generator
@@ -178,7 +173,7 @@ async def generate_orchestrator_prompt_thin(
             project_id=request.project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=request.tool,
-            instance_number=request.instance_number or 1
+            instance_number=request.instance_number or 1,
         )
 
         # Broadcast WebSocket event for real-time UI update
@@ -190,17 +185,15 @@ async def generate_orchestrator_prompt_thin(
                 tenant_key=current_user.tenant_key,
                 event_type="orchestrator:prompt_generated",
                 data={
-                    'orchestrator_id': result.orchestrator_id,
-                    'project_id': result.project_id,
-                    'estimated_prompt_tokens': result.estimated_prompt_tokens,
-                    'thin_client': True,
-                    'tool': request.tool,
-                    'instance_number': request.instance_number or 1
-                }
+                    "orchestrator_id": result.orchestrator_id,
+                    "project_id": result.project_id,
+                    "estimated_prompt_tokens": result.estimated_prompt_tokens,
+                    "thin_client": True,
+                    "tool": request.tool,
+                    "instance_number": request.instance_number or 1,
+                },
             )
-            logger.info(
-                f"[THIN PROMPT] WebSocket broadcast sent for orchestrator {result.orchestrator_id}"
-            )
+            logger.info(f"[THIN PROMPT] WebSocket broadcast sent for orchestrator {result.orchestrator_id}")
 
         logger.info(
             f"[THIN PROMPT] Generated successfully - "
@@ -214,21 +207,13 @@ async def generate_orchestrator_prompt_thin(
 
     except ValueError as e:
         # Project not found or invalid tool
-        logger.warning(
-            f"[THIN PROMPT] Validation error for project={request.project_id}: {e}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        logger.warning(f"[THIN PROMPT] Validation error for project={request.project_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         # Unexpected error
-        logger.exception(
-            f"[THIN PROMPT] Generation failed for project={request.project_id}: {e}"
-        )
+        logger.exception(f"[THIN PROMPT] Generation failed for project={request.project_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate thin prompt: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin prompt: {e!s}"
         )
 
 
@@ -257,28 +242,20 @@ async def generate_agent_prompt(
         403: User not authorized to access agent
     """
     # Get agent job with project relationship and tenant isolation
-    stmt = (
-        select(MCPAgentJob)
-        .where(
-            MCPAgentJob.job_id == agent_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key
-        )
-    )
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_id, MCPAgentJob.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     agent = result.scalar_one_or_none()
 
     if not agent:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent {agent_id} not found or not accessible"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found or not accessible"
         )
 
     # Get project for path information
     project_path = "."
     if agent.project_id:
         project_stmt = select(Project).where(
-            Project.id == agent.project_id,
-            Project.tenant_key == current_user.tenant_key
+            Project.id == agent.project_id, Project.tenant_key == current_user.tenant_key
         )
         project_result = await db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
@@ -303,7 +280,7 @@ async def generate_agent_prompt(
 cd {project_path}
 export AGENT_ID={agent.job_id}
 export AGENT_TYPE={agent.agent_type}
-export PROJECT_ID={agent.project_id or 'none'}
+export PROJECT_ID={agent.project_id or "none"}
 
 # Create mission file
 mkdir -p .missions
@@ -334,7 +311,7 @@ Prerequisites:
         agent_type=agent.agent_type,
         tool_type=agent.tool_type,
         instructions=instructions,
-        mission_preview=mission_preview
+        mission_preview=mission_preview,
     )
 
 
@@ -404,7 +381,7 @@ async def estimate_mission_tokens(
         "total_estimate": total_estimate,
         "budget_available": budget_available,
         "within_budget": within_budget,
-        "utilization_percent": utilization_percent
+        "utilization_percent": utilization_percent,
     }
 
 
@@ -477,7 +454,7 @@ async def generate_staging_prompt(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            instance_number=instance_number
+            instance_number=instance_number,
         )
 
         # Broadcast WebSocket event for real-time UI update
@@ -486,16 +463,14 @@ async def generate_staging_prompt(
                 tenant_key=current_user.tenant_key,
                 event_type="orchestrator:prompt_generated",
                 data={
-                    'orchestrator_id': result['orchestrator_id'],
-                    'project_id': project_id,
-                    'thin_client': True,
-                    'tool': tool,
-                    'instance_number': result['instance_number']
-                }
+                    "orchestrator_id": result["orchestrator_id"],
+                    "project_id": project_id,
+                    "thin_client": True,
+                    "tool": tool,
+                    "instance_number": result["instance_number"],
+                },
             )
-            logger.info(
-                f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result['orchestrator_id']}"
-            )
+            logger.info(f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result['orchestrator_id']}")
 
         # Log successful generation
         logger.info(
@@ -507,25 +482,21 @@ async def generate_staging_prompt(
 
         # Return response with 'prompt' key for frontend compatibility
         return {
-            'orchestrator_id': result['orchestrator_id'],
-            'prompt': result['thin_prompt'],  # Rename thin_prompt → prompt for frontend
-            'instance_number': result['instance_number'],
-            'context_budget': result['context_budget'],
-            'estimated_prompt_tokens': result['estimated_prompt_tokens']
+            "orchestrator_id": result["orchestrator_id"],
+            "prompt": result["thin_prompt"],  # Rename thin_prompt → prompt for frontend
+            "instance_number": result["instance_number"],
+            "context_budget": result["context_budget"],
+            "estimated_prompt_tokens": result["estimated_prompt_tokens"],
         }
 
     except ValueError as e:
         # Project not found or invalid tool
         logger.warning(f"[STAGING PROMPT THIN] Validation error for project={project_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
     except Exception as e:
         # Unexpected error during generation
         logger.exception(f"[STAGING PROMPT THIN] Generation failed for project={project_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate thin staging prompt: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin staging prompt: {e!s}"
         )

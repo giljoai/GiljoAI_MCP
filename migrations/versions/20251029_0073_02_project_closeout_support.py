@@ -28,17 +28,19 @@ Rollback strategy: Full downgrade support (column drop)
 Multi-tenant isolation: Preserved (columns scoped to existing tenant_key)
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
+from alembic import op
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 # revision identifiers, used by Alembic
-revision: str = '20251029_0073_02'
-down_revision: Union[str, Sequence[str], None] = '20251029_0073_01'
+revision: str = "20251029_0073_02"
+down_revision: Union[str, Sequence[str], None] = "20251029_0073_01"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -70,15 +72,11 @@ def upgrade() -> None:
     # =============================
     print("[0073-02] Step 1: Analyzing current projects state...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM projects"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM projects"))
     total_projects = result.scalar()
     print(f"[0073-02]   - Total projects in database: {total_projects}")
 
-    result = connection.execute(text(
-        "SELECT status, COUNT(*) as count FROM projects GROUP BY status ORDER BY status"
-    ))
+    result = connection.execute(text("SELECT status, COUNT(*) as count FROM projects GROUP BY status ORDER BY status"))
     status_distribution = result.fetchall()
 
     print("[0073-02]   Project status distribution:")
@@ -90,13 +88,13 @@ def upgrade() -> None:
     print("[0073-02] Step 2: Adding orchestrator_summary column...")
 
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'orchestrator_summary',
+            "orchestrator_summary",
             sa.Text(),
             nullable=True,
-            comment='AI-generated final summary of project outcomes and deliverables'
-        )
+            comment="AI-generated final summary of project outcomes and deliverables",
+        ),
     )
     print("[0073-02]   - Added 'orchestrator_summary' column (TEXT, nullable)")
 
@@ -105,13 +103,13 @@ def upgrade() -> None:
     print("[0073-02] Step 3: Adding closeout_prompt column...")
 
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'closeout_prompt',
+            "closeout_prompt",
             sa.Text(),
             nullable=True,
-            comment='Prompt template used by orchestrator for closeout generation'
-        )
+            comment="Prompt template used by orchestrator for closeout generation",
+        ),
     )
     print("[0073-02]   - Added 'closeout_prompt' column (TEXT, nullable)")
 
@@ -120,13 +118,13 @@ def upgrade() -> None:
     print("[0073-02] Step 4: Adding closeout_executed_at column...")
 
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'closeout_executed_at',
+            "closeout_executed_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment='Timestamp when closeout workflow was executed'
-        )
+            comment="Timestamp when closeout workflow was executed",
+        ),
     )
     print("[0073-02]   - Added 'closeout_executed_at' column (TIMESTAMP WITH TIME ZONE, nullable)")
 
@@ -137,14 +135,14 @@ def upgrade() -> None:
     print("[0073-02] Step 5: Adding closeout_checklist column...")
 
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'closeout_checklist',
+            "closeout_checklist",
             JSONB,
             nullable=False,
             server_default=text("'[]'::jsonb"),  # PRODUCTION-GRADE: Explicit cast with text() wrapper
-            comment='Structured checklist of closeout tasks (JSONB array)'
-        )
+            comment="Structured checklist of closeout tasks (JSONB array)",
+        ),
     )
     print("[0073-02]   - Added 'closeout_checklist' column (JSONB, default='[]'::jsonb)")
 
@@ -154,11 +152,11 @@ def upgrade() -> None:
 
     # Partial index for closeout queries (only index rows with closeout data)
     op.create_index(
-        'idx_projects_closeout_executed',
-        'projects',
-        ['closeout_executed_at'],
+        "idx_projects_closeout_executed",
+        "projects",
+        ["closeout_executed_at"],
         unique=False,
-        postgresql_where=text("closeout_executed_at IS NOT NULL")
+        postgresql_where=text("closeout_executed_at IS NOT NULL"),
     )
     print("[0073-02]   - Created partial index 'idx_projects_closeout_executed'")
 
@@ -166,19 +164,15 @@ def upgrade() -> None:
     # =========================
     print("[0073-02] Step 7: Verifying migration...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM projects WHERE closeout_checklist IS NOT NULL"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM projects WHERE closeout_checklist IS NOT NULL"))
     projects_with_checklist = result.scalar()
-    print(f"[0073-02]   - Verification complete: All projects have closeout_checklist")
+    print("[0073-02]   - Verification complete: All projects have closeout_checklist")
 
     # STEP 8: Final state summary
     # ============================
     print("[0073-02] Step 8: Final state summary...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM projects WHERE closeout_executed_at IS NOT NULL"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM projects WHERE closeout_executed_at IS NOT NULL"))
     closeout_count = result.scalar()
 
     print("[0073-02]   Projects ready for closeout tracking:")
@@ -219,11 +213,13 @@ def downgrade() -> None:
     # =========================================
     print("[0073-02 Downgrade] Step 1: Checking for existing closeout data...")
 
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT COUNT(*)
         FROM projects
         WHERE closeout_executed_at IS NOT NULL
-    """))
+    """)
+    )
     projects_with_closeout = result.scalar()
 
     if projects_with_closeout > 0:
@@ -234,32 +230,30 @@ def downgrade() -> None:
     # ============================
     print("[0073-02 Downgrade] Step 2: Dropping closeout index...")
 
-    op.drop_index('idx_projects_closeout_executed', table_name='projects')
+    op.drop_index("idx_projects_closeout_executed", table_name="projects")
     print("[0073-02]   - Dropped 'idx_projects_closeout_executed' index")
 
     # STEP 3: Drop closeout columns
     # ==============================
     print("[0073-02 Downgrade] Step 3: Removing closeout columns...")
 
-    op.drop_column('projects', 'closeout_checklist')
+    op.drop_column("projects", "closeout_checklist")
     print("[0073-02]   - Dropped 'closeout_checklist' column")
 
-    op.drop_column('projects', 'closeout_executed_at')
+    op.drop_column("projects", "closeout_executed_at")
     print("[0073-02]   - Dropped 'closeout_executed_at' column")
 
-    op.drop_column('projects', 'closeout_prompt')
+    op.drop_column("projects", "closeout_prompt")
     print("[0073-02]   - Dropped 'closeout_prompt' column")
 
-    op.drop_column('projects', 'orchestrator_summary')
+    op.drop_column("projects", "orchestrator_summary")
     print("[0073-02]   - Dropped 'orchestrator_summary' column")
 
     # STEP 4: Verify downgrade success
     # =================================
     print("[0073-02 Downgrade] Step 4: Verifying downgrade...")
 
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM projects"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM projects"))
     total_projects = result.scalar()
 
     print(f"[0073-02]   - {total_projects} project(s) remain functional")

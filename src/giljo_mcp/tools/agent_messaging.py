@@ -15,11 +15,12 @@ Production-grade features:
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
 from sqlalchemy import select
 
 from ..models import Job
+
 
 logger = logging.getLogger(__name__)
 
@@ -88,30 +89,24 @@ async def send_mcp_message(
             raise ValueError("content cannot be empty")
 
         if len(content) > MAX_MESSAGE_LENGTH:
-            raise ValueError(
-                f"content cannot exceed {MAX_MESSAGE_LENGTH} characters, got: {len(content)}"
-            )
+            raise ValueError(f"content cannot exceed {MAX_MESSAGE_LENGTH} characters, got: {len(content)}")
 
         if target not in ("orchestrator", "broadcast", "agent"):
-            raise ValueError(
-                f"target must be one of: orchestrator, broadcast, agent. Got: {target}"
-            )
+            raise ValueError(f"target must be one of: orchestrator, broadcast, agent. Got: {target}")
 
         if target == "agent" and not agent_id:
             raise ValueError("agent_id is required when target='agent'")
 
         # Import database manager and websocket manager
-        from ..database import DatabaseManager
         from api.websocket import websocket_manager
+
+        from ..database import DatabaseManager
 
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
             # Verify sender job exists
-            stmt = select(Job).where(
-                Job.job_id == job_id,
-                Job.tenant_key == tenant_key
-            )
+            stmt = select(Job).where(Job.job_id == job_id, Job.tenant_key == tenant_key)
             result = await session.execute(stmt)
             sender_job = result.scalar_one_or_none()
 
@@ -150,9 +145,7 @@ async def send_mcp_message(
                 message["is_broadcast"] = True
 
                 # Get all jobs in tenant
-                stmt = select(Job).where(
-                    Job.tenant_key == tenant_key
-                )
+                stmt = select(Job).where(Job.tenant_key == tenant_key)
                 result = await session.execute(stmt)
                 all_jobs = result.scalars().all()
 
@@ -166,10 +159,7 @@ async def send_mcp_message(
             elif target == "agent":
                 # Send to specific agent
                 # Verify target agent exists in same tenant
-                stmt = select(Job).where(
-                    Job.job_id == agent_id,
-                    Job.tenant_key == tenant_key
-                )
+                stmt = select(Job).where(Job.job_id == agent_id, Job.tenant_key == tenant_key)
                 result = await session.execute(stmt)
                 target_job = result.scalar_one_or_none()
 
@@ -199,7 +189,7 @@ async def send_mcp_message(
                     to_agent=message.get("to_agent"),
                     message_type="mcp_message",
                     content_preview=content[:100],  # First 100 chars
-                    timestamp=timestamp
+                    timestamp=timestamp,
                 )
             except Exception as ws_error:
                 logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
@@ -227,7 +217,7 @@ async def send_mcp_message(
         raise
     except Exception as e:
         logger.error(f"[send_mcp_message] Error sending message: {e}", exc_info=True)
-        raise ValueError(f"Failed to send message: {str(e)}")
+        raise ValueError(f"Failed to send message: {e!s}")
 
 
 async def read_mcp_messages(
@@ -286,10 +276,7 @@ async def read_mcp_messages(
 
         async with db_manager.get_session_async() as session:
             # Get job with tenant isolation
-            stmt = select(Job).where(
-                Job.job_id == job_id,
-                Job.tenant_key == tenant_key
-            )
+            stmt = select(Job).where(Job.job_id == job_id, Job.tenant_key == tenant_key)
             result = await session.execute(stmt)
             job = result.scalar_one_or_none()
 
@@ -304,10 +291,7 @@ async def read_mcp_messages(
 
             # Filter messages if unread_only
             if unread_only:
-                filtered_messages = [
-                    msg for msg in all_messages
-                    if msg.get("status") == "pending"
-                ]
+                filtered_messages = [msg for msg in all_messages if msg.get("status") == "pending"]
             else:
                 filtered_messages = all_messages
 
@@ -343,7 +327,7 @@ async def read_mcp_messages(
         raise
     except Exception as e:
         logger.error(f"[read_mcp_messages] Error reading messages: {e}", exc_info=True)
-        raise ValueError(f"Failed to read messages: {str(e)}")
+        raise ValueError(f"Failed to read messages: {e!s}")
 
 
 def register_agent_messaging_tools(server, db_manager, tenant_manager=None):

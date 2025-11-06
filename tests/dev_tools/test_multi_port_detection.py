@@ -10,33 +10,29 @@ Tests comprehensive port detection capabilities including:
 - Offer to stop processes on wrong ports
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
-import subprocess
-import sys
-import os
-import platform
 
 
 class TestMultiPortBackendDetection:
     """Test detecting backend processes on any port."""
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_backend_on_standard_port_7272(self, mock_process_iter):
         """Test finding backend on standard port 7272."""
         # Mock backend process
         mock_proc = Mock()
         mock_proc.pid = 12345
         mock_proc.info = {
-            'pid': 12345,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', 'api/run_api.py', '--port', '7272']
+            "pid": 12345,
+            "name": "python.exe",
+            "cmdline": ["python.exe", "api/run_api.py", "--port", "7272"],
         }
 
         # Mock connection on port 7272
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 7272
         mock_proc.connections.return_value = [mock_conn]
 
@@ -48,19 +44,19 @@ class TestMultiPortBackendDetection:
         assert mock_proc.pid == 12345
         assert mock_conn.laddr.port == 7272
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_backend_on_alternative_port_7273(self, mock_process_iter):
         """Test finding backend on alternative port 7273."""
         mock_proc = Mock()
         mock_proc.pid = 67890
         mock_proc.info = {
-            'pid': 67890,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', 'api/run_api.py', '--port', '7273']
+            "pid": 67890,
+            "name": "python.exe",
+            "cmdline": ["python.exe", "api/run_api.py", "--port", "7273"],
         }
 
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 7273
         mock_proc.connections.return_value = [mock_conn]
 
@@ -70,57 +66,53 @@ class TestMultiPortBackendDetection:
         assert mock_proc.pid == 67890
         assert mock_conn.laddr.port == 7273
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_backend_uvicorn_process(self, mock_process_iter):
         """Test finding backend when running via uvicorn."""
         mock_proc = Mock()
         mock_proc.pid = 11111
         mock_proc.info = {
-            'pid': 11111,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', '-m', 'uvicorn', 'api.main:app', '--port', '8000']
+            "pid": 11111,
+            "name": "python.exe",
+            "cmdline": ["python.exe", "-m", "uvicorn", "api.main:app", "--port", "8000"],
         }
 
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 8000
         mock_proc.connections.return_value = [mock_conn]
 
         mock_process_iter.return_value = [mock_proc]
 
         # Expected: should detect uvicorn processes too
-        assert 'uvicorn' in mock_proc.info['cmdline']
+        assert "uvicorn" in mock_proc.info["cmdline"]
         assert mock_conn.laddr.port == 8000
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_no_backend_when_not_running(self, mock_process_iter):
         """Test finding no backend when none are running."""
         # Mock some processes but none are backend
         mock_proc1 = Mock()
-        mock_proc1.info = {
-            'pid': 1234,
-            'name': 'chrome.exe',
-            'cmdline': ['chrome.exe', '--type=renderer']
-        }
+        mock_proc1.info = {"pid": 1234, "name": "chrome.exe", "cmdline": ["chrome.exe", "--type=renderer"]}
 
         mock_process_iter.return_value = [mock_proc1]
 
         # Expected: empty list, no backend found
-        assert 'api/run_api.py' not in str(mock_proc1.info['cmdline'])
+        assert "api/run_api.py" not in str(mock_proc1.info["cmdline"])
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_multiple_backend_instances(self, mock_process_iter):
         """Test finding multiple backend instances on different ports."""
         # Backend on port 7272
         mock_proc1 = Mock()
         mock_proc1.pid = 12345
         mock_proc1.info = {
-            'pid': 12345,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', 'api/run_api.py', '--port', '7272']
+            "pid": 12345,
+            "name": "python.exe",
+            "cmdline": ["python.exe", "api/run_api.py", "--port", "7272"],
         }
         mock_conn1 = Mock()
-        mock_conn1.status = 'LISTEN'
+        mock_conn1.status = "LISTEN"
         mock_conn1.laddr.port = 7272
         mock_proc1.connections.return_value = [mock_conn1]
 
@@ -128,12 +120,12 @@ class TestMultiPortBackendDetection:
         mock_proc2 = Mock()
         mock_proc2.pid = 67890
         mock_proc2.info = {
-            'pid': 67890,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', 'api/run_api.py', '--port', '7273']
+            "pid": 67890,
+            "name": "python.exe",
+            "cmdline": ["python.exe", "api/run_api.py", "--port", "7273"],
         }
         mock_conn2 = Mock()
-        mock_conn2.status = 'LISTEN'
+        mock_conn2.status = "LISTEN"
         mock_conn2.laddr.port = 7273
         mock_proc2.connections.return_value = [mock_conn2]
 
@@ -142,13 +134,13 @@ class TestMultiPortBackendDetection:
         # Expected: find both backends
         assert len([mock_proc1, mock_proc2]) == 2
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_handle_access_denied_gracefully(self, mock_process_iter):
         """Test handling psutil.AccessDenied exceptions."""
         import psutil
 
         mock_proc = Mock()
-        mock_proc.info = {'pid': 1234, 'name': 'system', 'cmdline': None}
+        mock_proc.info = {"pid": 1234, "name": "system", "cmdline": None}
         mock_proc.connections.side_effect = psutil.AccessDenied()
 
         mock_process_iter.return_value = [mock_proc]
@@ -160,19 +152,15 @@ class TestMultiPortBackendDetection:
 class TestMultiPortFrontendDetection:
     """Test detecting frontend processes on any port."""
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_frontend_on_standard_port_7274(self, mock_process_iter):
         """Test finding frontend on standard port 7274."""
         mock_proc = Mock()
         mock_proc.pid = 22222
-        mock_proc.info = {
-            'pid': 22222,
-            'name': 'node.exe',
-            'cmdline': ['node.exe', 'npm', 'run', 'dev']
-        }
+        mock_proc.info = {"pid": 22222, "name": "node.exe", "cmdline": ["node.exe", "npm", "run", "dev"]}
 
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 7274
         mock_proc.connections.return_value = [mock_conn]
 
@@ -182,41 +170,37 @@ class TestMultiPortFrontendDetection:
         assert mock_proc.pid == 22222
         assert mock_conn.laddr.port == 7274
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_frontend_on_vite_default_port_5173(self, mock_process_iter):
         """Test finding frontend on Vite's default port 5173."""
         mock_proc = Mock()
         mock_proc.pid = 33333
-        mock_proc.info = {
-            'pid': 33333,
-            'name': 'node.exe',
-            'cmdline': ['node.exe', 'vite']
-        }
+        mock_proc.info = {"pid": 33333, "name": "node.exe", "cmdline": ["node.exe", "vite"]}
 
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 5173
         mock_proc.connections.return_value = [mock_conn]
 
         mock_process_iter.return_value = [mock_proc]
 
         # Expected: frontend found on wrong port 5173
-        assert 'vite' in mock_proc.info['cmdline']
+        assert "vite" in mock_proc.info["cmdline"]
         assert mock_conn.laddr.port == 5173
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_frontend_on_alternative_port_7275(self, mock_process_iter):
         """Test finding frontend on alternative port 7275."""
         mock_proc = Mock()
         mock_proc.pid = 44444
         mock_proc.info = {
-            'pid': 44444,
-            'name': 'node.exe',
-            'cmdline': ['node.exe', 'npm', 'run', 'dev', '--', '--port', '7275']
+            "pid": 44444,
+            "name": "node.exe",
+            "cmdline": ["node.exe", "npm", "run", "dev", "--", "--port", "7275"],
         }
 
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 7275
         mock_proc.connections.return_value = [mock_conn]
 
@@ -226,47 +210,35 @@ class TestMultiPortFrontendDetection:
         assert mock_proc.pid == 44444
         assert mock_conn.laddr.port == 7275
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_distinguish_frontend_from_other_node_processes(self, mock_process_iter):
         """Test that we only detect frontend dev server, not other Node processes."""
         # Frontend dev server
         mock_frontend = Mock()
-        mock_frontend.info = {
-            'pid': 1111,
-            'name': 'node.exe',
-            'cmdline': ['node.exe', 'npm', 'run', 'dev']
-        }
+        mock_frontend.info = {"pid": 1111, "name": "node.exe", "cmdline": ["node.exe", "npm", "run", "dev"]}
 
         # Other Node process (not frontend)
         mock_other = Mock()
-        mock_other.info = {
-            'pid': 2222,
-            'name': 'node.exe',
-            'cmdline': ['node.exe', 'some-other-script.js']
-        }
+        mock_other.info = {"pid": 2222, "name": "node.exe", "cmdline": ["node.exe", "some-other-script.js"]}
 
         mock_process_iter.return_value = [mock_frontend, mock_other]
 
         # Expected: should only detect frontend dev server
         # Check for 'npm run dev' or 'vite' in cmdline
-        assert 'npm' in mock_frontend.info['cmdline']
-        assert 'dev' in mock_frontend.info['cmdline']
+        assert "npm" in mock_frontend.info["cmdline"]
+        assert "dev" in mock_frontend.info["cmdline"]
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_find_no_frontend_when_not_running(self, mock_process_iter):
         """Test finding no frontend when none are running."""
         mock_proc = Mock()
-        mock_proc.info = {
-            'pid': 9999,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', 'script.py']
-        }
+        mock_proc.info = {"pid": 9999, "name": "python.exe", "cmdline": ["python.exe", "script.py"]}
 
         mock_process_iter.return_value = [mock_proc]
 
         # Expected: empty list, no frontend found
-        assert 'npm' not in str(mock_proc.info['cmdline'])
-        assert 'vite' not in str(mock_proc.info['cmdline'])
+        assert "npm" not in str(mock_proc.info["cmdline"])
+        assert "vite" not in str(mock_proc.info["cmdline"])
 
 
 class TestStartupDetection:
@@ -279,7 +251,6 @@ class TestStartupDetection:
         # 2. Scan for backend and frontend processes
         # 3. If found, show cleanup dialog
         # 4. If not found, show "No instances running" message
-        pass
 
     def test_show_cleanup_dialog_when_services_found(self):
         """Test showing cleanup dialog when existing services found."""
@@ -301,7 +272,6 @@ class TestStartupDetection:
         # 1. Terminate all found processes
         # 2. Wait for termination
         # 3. Continue with control panel
-        pass
 
     def test_cleanup_dialog_keep_running_option(self):
         """Test 'Keep running' option in cleanup dialog."""
@@ -309,7 +279,6 @@ class TestStartupDetection:
         # 1. Track PIDs as managed by control panel
         # 2. Update UI to show services as running
         # 3. Continue with control panel
-        pass
 
     def test_no_dialog_when_no_services_running(self):
         """Test no dialog shown when no services found."""
@@ -323,12 +292,8 @@ class TestStartupDetection:
 
     def test_cleanup_dialog_displays_correct_info(self):
         """Test cleanup dialog shows correct process information."""
-        backend_procs = [
-            {"pid": 12345, "port": 7272, "cmdline": "python api/run_api.py --port 7272"}
-        ]
-        frontend_procs = [
-            {"pid": 67890, "port": 7275, "cmdline": "npm run dev -- --port 7275"}
-        ]
+        backend_procs = [{"pid": 12345, "port": 7272, "cmdline": "python api/run_api.py --port 7272"}]
+        frontend_procs = [{"pid": 67890, "port": 7275, "cmdline": "npm run dev -- --port 7275"}]
 
         # Expected dialog content:
         # "Found existing services:"
@@ -405,14 +370,10 @@ class TestDynamicPortDisplay:
         """Test that status labels update automatically every 2 seconds."""
         # Expected: update_status() should be called on timer
         # Should refresh port display every 2 seconds
-        pass
 
     def test_multiple_backends_shows_first_only(self):
         """Test that when multiple backends found, only first is shown."""
-        backend_procs = [
-            {"pid": 12345, "port": 7272},
-            {"pid": 67890, "port": 7273}
-        ]
+        backend_procs = [{"pid": 12345, "port": 7272}, {"pid": 67890, "port": 7273}]
 
         # Expected: UI shows first backend only
         # User would need to manually manage multiple instances
@@ -423,19 +384,19 @@ class TestDynamicPortDisplay:
 class TestEnhancedStartMethods:
     """Test enhanced start methods with comprehensive port checking."""
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_start_backend_checks_for_any_process(self, mock_process_iter):
         """Test start_backend checks for ANY backend process, not just port."""
         # Mock existing backend on port 7273
         mock_proc = Mock()
         mock_proc.pid = 12345
         mock_proc.info = {
-            'pid': 12345,
-            'name': 'python.exe',
-            'cmdline': ['python.exe', 'api/run_api.py', '--port', '7273']
+            "pid": 12345,
+            "name": "python.exe",
+            "cmdline": ["python.exe", "api/run_api.py", "--port", "7273"],
         }
         mock_conn = Mock()
-        mock_conn.status = 'LISTEN'
+        mock_conn.status = "LISTEN"
         mock_conn.laddr.port = 7273
         mock_proc.connections.return_value = [mock_conn]
 
@@ -467,7 +428,7 @@ class TestEnhancedStartMethods:
         # Do not start another instance
         assert existing_backend["port"] == 7272
 
-    @patch('socket.socket')
+    @patch("socket.socket")
     def test_start_backend_checks_port_availability(self, mock_socket):
         """Test start_backend checks if port 7272 is available."""
         # Mock port in use by non-backend process
@@ -514,7 +475,6 @@ class TestEnhancedStartMethods:
         # 2. Update indicator color
         # 3. Show port number
         # Should not wait for next status check cycle
-        pass
 
 
 class TestPort7273Mystery:
@@ -538,7 +498,6 @@ class TestPort7273Mystery:
         # - User's test server
 
         # Should detect and display in UI
-        pass
 
     def test_alternative_ports_list_includes_7273(self):
         """Test that 7273 is in alternative ports list."""
@@ -550,7 +509,7 @@ class TestPort7273Mystery:
 class TestErrorHandlingMultiPort:
     """Test error handling for multi-port detection."""
 
-    @patch('psutil.process_iter')
+    @patch("psutil.process_iter")
     def test_handle_no_psutil_gracefully(self, mock_process_iter):
         """Test handling when psutil is not available."""
         # Expected: should handle gracefully
@@ -559,25 +518,20 @@ class TestErrorHandlingMultiPort:
 
     def test_handle_access_denied_on_process(self):
         """Test handling psutil.AccessDenied for system processes."""
-        import psutil
 
         # Some processes require admin access
         # Expected: catch exception, skip process, continue
-        pass
 
     def test_handle_process_terminated_during_check(self):
         """Test handling process that terminates while checking."""
-        import psutil
 
         # Process might terminate between discovery and check
         # Expected: catch psutil.NoSuchProcess, skip, continue
-        pass
 
     def test_handle_permission_error_killing_process(self):
         """Test handling permission error when killing process."""
         # User might not have permission to kill process
         # Expected: show error message with instructions
-        pass
 
 
 # Integration tests
@@ -594,7 +548,6 @@ class TestMultiPortIntegration:
         # 5. User selects "Stop all"
         # 6. Processes are killed
         # 7. UI updates to show stopped
-        pass
 
     @pytest.mark.integration
     def test_full_wrong_port_restart_workflow(self):
@@ -607,7 +560,6 @@ class TestMultiPortIntegration:
         # 6. Process killed
         # 7. Backend started on 7272
         # 8. UI shows "Running on port 7272" (green)
-        pass
 
     @pytest.mark.integration
     def test_continuous_monitoring_of_ports(self):
@@ -619,4 +571,3 @@ class TestMultiPortIntegration:
         # 5. UI updates to red, stopped
         # 6. Process started again on different port
         # 7. UI shows yellow, port 7273 warning
-        pass

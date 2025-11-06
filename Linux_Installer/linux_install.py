@@ -30,7 +30,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import click
 from colorama import Fore, Style, init
@@ -78,17 +78,17 @@ class UnifiedInstaller:
         self.settings = settings or {}
 
         # Apply defaults
-        self.settings.setdefault('install_dir', str(Path.cwd()))
-        self.settings.setdefault('pg_host', 'localhost')
-        self.settings.setdefault('pg_port', 5432)
-        self.settings.setdefault('api_port', DEFAULT_API_PORT)
-        self.settings.setdefault('dashboard_port', DEFAULT_FRONTEND_PORT)
-        self.settings.setdefault('bind', '0.0.0.0')  # v3.0: Always bind all interfaces
+        self.settings.setdefault("install_dir", str(Path.cwd()))
+        self.settings.setdefault("pg_host", "localhost")
+        self.settings.setdefault("pg_port", 5432)
+        self.settings.setdefault("api_port", DEFAULT_API_PORT)
+        self.settings.setdefault("dashboard_port", DEFAULT_FRONTEND_PORT)
+        self.settings.setdefault("bind", "0.0.0.0")  # v3.0: Always bind all interfaces
 
         # Paths
-        self.install_dir = Path(self.settings['install_dir'])
-        self.venv_dir = self.install_dir / 'venv'
-        self.requirements_file = self.install_dir / 'requirements.txt'
+        self.install_dir = Path(self.settings["install_dir"])
+        self.venv_dir = self.install_dir / "venv"
+        self.requirements_file = self.install_dir / "requirements.txt"
 
         # State
         self.postgresql_found = False
@@ -120,89 +120,89 @@ class UnifiedInstaller:
         Returns:
             Result dictionary with success status and details
         """
-        result = {'success': False, 'steps': []}
+        result = {"success": False, "steps": []}
 
         try:
             # Step 1: Welcome screen
             self.welcome_screen()
-            result['steps'].append('welcome_shown')
+            result["steps"].append("welcome_shown")
 
             # Step 1.5: Ask installation questions (NEW)
-            if not self.settings.get('headless'):
+            if not self.settings.get("headless"):
                 self._print_header("Installation Configuration")
                 self.ask_installation_questions()
-                result['steps'].append('configuration_gathered')
+                result["steps"].append("configuration_gathered")
 
             # Step 2: Check Python version
             self._print_header("Checking Python Version")
             if not self.check_python_version():
                 self._print_error("Python version check failed")
-                result['error'] = "Python 3.10+ required"
+                result["error"] = "Python 3.10+ required"
                 return result
-            result['steps'].append('python_verified')
+            result["steps"].append("python_verified")
 
             # Step 3: Discover PostgreSQL
             self._print_header("Discovering PostgreSQL")
             pg_result = self.discover_postgresql()
-            if not pg_result['found']:
+            if not pg_result["found"]:
                 self._print_error("PostgreSQL not found")
                 self._print_postgresql_install_guide()
-                result['error'] = "PostgreSQL 18 required"
+                result["error"] = "PostgreSQL 18 required"
                 return result
-            result['steps'].append('postgresql_found')
+            result["steps"].append("postgresql_found")
 
             # Step 4: Install dependencies
             self._print_header("Installing Dependencies")
             dep_result = self.install_dependencies()
-            if not dep_result['success']:
+            if not dep_result["success"]:
                 self._print_error("Dependency installation failed")
-                result['error'] = dep_result.get('error', 'Unknown error')
+                result["error"] = dep_result.get("error", "Unknown error")
                 return result
-            result['steps'].append('dependencies_installed')
+            result["steps"].append("dependencies_installed")
 
             # Step 5: Generate configs (MUST happen before database setup!)
             # Table creation in step 6 needs .env file with DATABASE_URL
             self._print_header("Generating Configuration Files")
             config_result = self.generate_configs()
-            if not config_result['success']:
+            if not config_result["success"]:
                 self._print_error("Configuration generation failed")
-                result['error'] = '; '.join(config_result.get('errors', ['Unknown error']))
+                result["error"] = "; ".join(config_result.get("errors", ["Unknown error"]))
                 return result
-            result['steps'].append('configs_generated')
+            result["steps"].append("configs_generated")
 
             # Step 6: Setup database (create DB, roles, tables, admin user, setup_state)
             self._print_header("Setting Up Database")
             db_result = self.setup_database()
-            if not db_result['success']:
+            if not db_result["success"]:
                 self._print_error("Database setup failed")
-                result['error'] = '; '.join(db_result.get('errors', ['Unknown error']))
+                result["error"] = "; ".join(db_result.get("errors", ["Unknown error"]))
                 return result
-            self.database_credentials = db_result.get('credentials', {})
-            result['steps'].append('database_created')
-            result['steps'].append('tables_created')  # Added by inline table creation
+            self.database_credentials = db_result.get("credentials", {})
+            result["steps"].append("database_created")
+            result["steps"].append("tables_created")  # Added by inline table creation
 
             # REMOVED: Service launching - services will not auto-start after installation
 
             # Step 7: Create desktop shortcuts (Linux .desktop launchers)
-            if self.settings.get('create_shortcuts', False):
+            if self.settings.get("create_shortcuts", False):
                 self._print_header("Creating Desktop Shortcuts")
                 self.create_desktop_shortcuts()
-                result['steps'].append('shortcuts_created')
+                result["steps"].append("shortcuts_created")
 
             # Success
-            result['success'] = True
+            result["success"] = True
             self._print_success_summary()
 
             return result
 
         except KeyboardInterrupt:
             self._print_warning("\nInstallation cancelled by user")
-            result['error'] = 'User cancelled'
+            result["error"] = "User cancelled"
             return result
 
         except Exception as e:
             self._print_error(f"Installation failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
     def welcome_screen(self) -> None:
@@ -217,26 +217,28 @@ class UnifiedInstaller:
         print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
 
         print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
-        print(f"  • PostgreSQL database (giljo_mcp)")
-        print(f"  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
-        print(f"  • Configuration files (.env, config.yaml)")
-        print(f"  • API server + Frontend dashboard")
-        print(f"  • MCP server integration\n")
+        print("  • PostgreSQL database (giljo_mcp)")
+        print("  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
+        print("  • Configuration files (.env, config.yaml)")
+        print("  • API server + Frontend dashboard")
+        print("  • MCP server integration\n")
 
         # Detect and display Ubuntu information
         platform_info = f"Platform: {platform.system()} {platform.release()}"
         try:
             dist_info = platform.freedesktop_os_release()
-            if dist_info.get('ID') == 'ubuntu':
-                ubuntu_version = dist_info.get('VERSION_ID', '')
-                ubuntu_name = dist_info.get('NAME', 'Ubuntu')
+            if dist_info.get("ID") == "ubuntu":
+                ubuntu_version = dist_info.get("VERSION_ID", "")
+                ubuntu_name = dist_info.get("NAME", "Ubuntu")
                 platform_info = f"Platform: {ubuntu_name} {ubuntu_version} ({platform.machine()})"
                 print(f"{Fore.GREEN}✓ Ubuntu detected - installer optimized for your system{Style.RESET_ALL}")
         except:
             pass
-            
+
         print(f"{Fore.YELLOW}{platform_info}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+        print(
+            f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n"
+        )
 
     def ask_installation_questions(self) -> None:
         """Gather user preferences for installation"""
@@ -244,13 +246,13 @@ class UnifiedInstaller:
 
         # Network Configuration (NEW)
         print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
-        print(f"Configuring external access for frontend connections...")
+        print("Configuring external access for frontend connections...")
 
         # Detect network interfaces
         network_ips = self._get_all_network_ips()
 
-        print(f"\nDetected network interfaces:")
-        print(f"  1. localhost (local access only)")
+        print("\nDetected network interfaces:")
+        print("  1. localhost (local access only)")
 
         # Add detected IPs
         for i, ip in enumerate(network_ips, 2):
@@ -266,29 +268,28 @@ class UnifiedInstaller:
 
             if not choice:
                 # Default to localhost
-                self.settings['external_host'] = 'localhost'
+                self.settings["external_host"] = "localhost"
                 self._print_info("Using localhost for frontend connections")
                 break
 
             try:
                 choice_num = int(choice)
                 if choice_num == 1:
-                    self.settings['external_host'] = 'localhost'
+                    self.settings["external_host"] = "localhost"
                     self._print_info("Using localhost for frontend connections")
                     break
-                elif 2 <= choice_num < custom_option:
+                if 2 <= choice_num < custom_option:
                     selected_ip = network_ips[choice_num - 2]
-                    self.settings['external_host'] = selected_ip
+                    self.settings["external_host"] = selected_ip
                     self._print_success(f"Using {selected_ip} for frontend connections")
                     break
-                elif choice_num == custom_option:
+                if choice_num == custom_option:
                     custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
                     if custom_addr:
-                        self.settings['external_host'] = custom_addr
+                        self.settings["external_host"] = custom_addr
                         self._print_success(f"Using {custom_addr} for frontend connections")
                         break
-                    else:
-                        self._print_warning("Empty address provided")
+                    self._print_warning("Empty address provided")
                 else:
                     self._print_warning(f"Invalid choice. Please select 1-{custom_option}")
             except ValueError:
@@ -296,7 +297,7 @@ class UnifiedInstaller:
 
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
-        print(f"Enter the password for PostgreSQL 'postgres' user")
+        print("Enter the password for PostgreSQL 'postgres' user")
         print(f"{Fore.RED}(Required - no defaults allowed){Style.RESET_ALL}")
 
         # Ask twice to confirm
@@ -314,33 +315,34 @@ class UnifiedInstaller:
 
             # Check if they match
             if pg_pass == pg_pass_confirm:
-                self.settings['pg_password'] = pg_pass
+                self.settings["pg_password"] = pg_pass
                 self._print_success("Password confirmed")
                 break
+            remaining = max_attempts - attempt - 1
+            if remaining > 0:
+                self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
             else:
-                remaining = max_attempts - attempt - 1
-                if remaining > 0:
-                    self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
-                else:
-                    self._print_error("Too many failed attempts. Installation cannot continue without valid PostgreSQL password.")
-                    raise ValueError("PostgreSQL password required for installation")
+                self._print_error(
+                    "Too many failed attempts. Installation cannot continue without valid PostgreSQL password."
+                )
+                raise ValueError("PostgreSQL password required for installation")
 
         # REMOVED: Start services prompt - services will not auto-start
 
         # REMOVED: Database table creation prompt - table creation is now MANDATORY
 
         # Set defaults for MCP and Serena (will be configured in setup wizard)
-        self.settings['register_mcp_tools'] = False
-        self.settings['enable_serena'] = False
+        self.settings["register_mcp_tools"] = False
+        self.settings["enable_serena"] = False
 
         # Create desktop shortcuts (Linux .desktop launchers)
         if platform.system() == "Linux":
             print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
             print("Would you like to create desktop launchers in ~/Desktop and ~/.local/share/applications?")
             shortcuts_response = input(f"{Fore.YELLOW}Create launchers? (Y/n): {Style.RESET_ALL}").strip().lower()
-            self.settings['create_shortcuts'] = shortcuts_response != 'n'
+            self.settings["create_shortcuts"] = shortcuts_response != "n"
         else:
-            self.settings['create_shortcuts'] = False
+            self.settings["create_shortcuts"] = False
 
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
@@ -360,7 +362,7 @@ class UnifiedInstaller:
         is_compatible = current_version >= MIN_PYTHON_VERSION
 
         # Handle both sys.version_info (named tuple) and regular tuple
-        if hasattr(current_version, 'major'):
+        if hasattr(current_version, "major"):
             version_str = f"{current_version.major}.{current_version.minor}.{current_version.micro}"
         else:
             version_str = f"{current_version[0]}.{current_version[1]}.{current_version[2]}"
@@ -385,20 +387,16 @@ class UnifiedInstaller:
         Returns:
             Discovery result with found status and paths
         """
-        result = {
-            'found': False,
-            'psql_path': None,
-            'scanned_paths': []
-        }
+        result = {"found": False, "psql_path": None, "scanned_paths": []}
 
         # Method 1: Check PATH
         self._print_info("Checking PATH for psql...")
-        psql_path = shutil.which('psql')
+        psql_path = shutil.which("psql")
 
         if psql_path:
             self._print_success(f"PostgreSQL detected in PATH: {psql_path}")
-            result['found'] = True
-            result['psql_path'] = psql_path
+            result["found"] = True
+            result["psql_path"] = psql_path
             self.psql_path = Path(psql_path)
             self.postgresql_found = True
             return result
@@ -408,18 +406,18 @@ class UnifiedInstaller:
         scan_paths = self._get_postgresql_scan_paths()
 
         for path in scan_paths:
-            result['scanned_paths'].append(str(path))
+            result["scanned_paths"].append(str(path))
 
             if path.exists():
                 self._print_success(f"PostgreSQL detected: {path}")
-                result['found'] = True
-                result['psql_path'] = str(path)
+                result["found"] = True
+                result["psql_path"] = str(path)
                 self.psql_path = path
                 self.postgresql_found = True
 
                 # Add to PATH for session
                 bin_dir = path.parent
-                os.environ['PATH'] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
+                os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
 
                 return result
 
@@ -427,17 +425,19 @@ class UnifiedInstaller:
         self._print_warning("PostgreSQL not found in PATH or common Linux locations")
 
         # Skip prompt in headless mode
-        if self.settings.get('headless'):
+        if self.settings.get("headless"):
             return result
 
-        print(f"\n{Fore.YELLOW}Do you have PostgreSQL installed on this system? (y/N): {Style.RESET_ALL}", end='')
-        response = input().strip().lower() or 'n'
+        print(f"\n{Fore.YELLOW}Do you have PostgreSQL installed on this system? (y/N): {Style.RESET_ALL}", end="")
+        response = input().strip().lower() or "n"
 
-        if response in ['n', 'no']:
+        if response in ["n", "no"]:
             self._print_warning("PostgreSQL must be installed before continuing.")
             print(f"{Fore.CYAN}Download the installer here: {POSTGRESQL_DOWNLOAD_URL}{Style.RESET_ALL}")
             print(f"{Fore.WHITE}Please install PostgreSQL 18, then re-run this installer.{Style.RESET_ALL}\n")
-            print(f"{Fore.YELLOW}Press Ctrl+C to cancel this installer, install PostgreSQL, and then run it again.{Style.RESET_ALL}")
+            print(
+                f"{Fore.YELLOW}Press Ctrl+C to cancel this installer, install PostgreSQL, and then run it again.{Style.RESET_ALL}"
+            )
             try:
                 while True:
                     time.sleep(1)
@@ -454,7 +454,7 @@ class UnifiedInstaller:
         for attempt in range(max_attempts):
             print(f"\n{Fore.YELLOW}Enter the full path to your PostgreSQL bin directory{Style.RESET_ALL}")
             print(f"{Fore.WHITE}Example: /usr/lib/postgresql/18/bin or /opt/postgresql/bin{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}Path: {Style.RESET_ALL}", end='')
+            print(f"{Fore.YELLOW}Path: {Style.RESET_ALL}", end="")
 
             custom_path = input().strip()
 
@@ -467,13 +467,13 @@ class UnifiedInstaller:
                 # Custom path is valid
                 psql_path = Path(custom_path) / "psql"
 
-                result['found'] = True
-                result['psql_path'] = str(psql_path)
+                result["found"] = True
+                result["psql_path"] = str(psql_path)
                 self.psql_path = psql_path
                 self.postgresql_found = True
 
                 # Add to PATH for session
-                os.environ['PATH'] = f"{custom_path}{os.pathsep}{os.environ['PATH']}"
+                os.environ["PATH"] = f"{custom_path}{os.pathsep}{os.environ['PATH']}"
 
                 return result
 
@@ -548,10 +548,12 @@ class UnifiedInstaller:
         paths = []
 
         # Standard system paths
-        paths.extend([
-            Path("/usr/bin/psql"),
-            Path("/usr/local/bin/psql"),
-        ])
+        paths.extend(
+            [
+                Path("/usr/bin/psql"),
+                Path("/usr/local/bin/psql"),
+            ]
+        )
 
         # Version-specific paths (Debian/Ubuntu layout)
         pg_lib = Path("/usr/lib/postgresql")
@@ -573,60 +575,56 @@ class UnifiedInstaller:
         Returns:
             Installation result with success status
         """
-        result = {'success': False}
+        result = {"success": False}
 
         try:
             # Step 1: Create venv if needed
             if self.venv_dir.exists():
                 self._print_info(f"Virtual environment already exists: {self.venv_dir}")
-                result['venv_existed'] = True
+                result["venv_existed"] = True
             else:
                 self._print_info(f"Creating virtual environment: {self.venv_dir}")
-                subprocess.run(
-                    [sys.executable, '-m', 'venv', str(self.venv_dir)],
-                    check=True,
-                    capture_output=True
-                )
+                subprocess.run([sys.executable, "-m", "venv", str(self.venv_dir)], check=True, capture_output=True)
                 self._print_success("Virtual environment created")
-                result['venv_created'] = True
+                result["venv_created"] = True
                 self.venv_created = True
 
             # Determine pip executable for Linux virtualenv
-            pip_executable = self.venv_dir / 'bin' / 'pip'
+            pip_executable = self.venv_dir / "bin" / "pip"
 
             # Step 2: Install requirements
             if not self.requirements_file.exists():
                 self._print_error(f"requirements.txt not found: {self.requirements_file}")
-                result['error'] = "requirements.txt missing"
+                result["error"] = "requirements.txt missing"
                 return result
 
             self._print_info("Installing Python packages (this may take 2-3 minutes)...")
 
             subprocess.run(
-                [str(pip_executable), 'install', '-r', str(self.requirements_file)],
+                [str(pip_executable), "install", "-r", str(self.requirements_file)],
                 check=True,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             self._print_success("Dependencies installed successfully")
-            result['success'] = True
+            result["success"] = True
             return result
 
         except subprocess.TimeoutExpired:
             self._print_error("Installation timed out (exceeded 5 minutes)")
-            result['error'] = "Timeout"
+            result["error"] = "Timeout"
             return result
 
         except subprocess.CalledProcessError as e:
             self._print_error(f"pip install failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
         except Exception as e:
             self._print_error(f"Dependency installation failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
     def setup_database(self) -> Dict[str, Any]:
@@ -649,10 +647,10 @@ class UnifiedInstaller:
 
             # Prepare settings for DatabaseInstaller
             db_settings = {
-                'pg_host': self.settings.get('pg_host', 'localhost'),
-                'pg_port': self.settings.get('pg_port', 5432),
-                'pg_password': self.settings.get('pg_password'),
-                'pg_user': self.settings.get('pg_user', 'postgres')
+                "pg_host": self.settings.get("pg_host", "localhost"),
+                "pg_port": self.settings.get("pg_port", 5432),
+                "pg_password": self.settings.get("pg_password"),
+                "pg_user": self.settings.get("pg_user", "postgres"),
             }
 
             db_installer = DatabaseInstaller(settings=db_settings)
@@ -661,44 +659,46 @@ class UnifiedInstaller:
             self._print_info("Creating database and roles...")
             result = db_installer.setup()
 
-            if not result['success']:
+            if not result["success"]:
                 self._print_error("Database creation failed")
-                for error in result.get('errors', []):
+                for error in result.get("errors", []):
                     self._print_error(f"  • {error}")
                 return result
 
             self._print_success("Database and roles created successfully")
 
             # STEP 2: Store real credentials
-            self.database_credentials = result.get('credentials', {})
+            self.database_credentials = result.get("credentials", {})
 
             if not self.database_credentials:
-                result['errors'] = ["Database credentials not returned by DatabaseInstaller"]
-                result['success'] = False
+                result["errors"] = ["Database credentials not returned by DatabaseInstaller"]
+                result["success"] = False
                 return result
 
             # STEP 3: Update .env with REAL database credentials
             self._print_info("Generating .env with real database credentials...")
             env_result = self.update_env_with_real_credentials()
 
-            if not env_result['success']:
+            if not env_result["success"]:
                 self._print_error("Failed to generate .env file")
-                for error in env_result.get('errors', []):
+                for error in env_result.get("errors", []):
                     self._print_error(f"  • {error}")
-                result['success'] = False
+                result["success"] = False
                 return result
 
             self._print_success(".env file generated with database credentials")
 
             # STEP 4: Reload environment variables
             import os
+
             from dotenv import load_dotenv
+
             load_dotenv(override=True)  # Force reload to pick up new DATABASE_URL
 
             db_url = os.getenv("DATABASE_URL")
             if not db_url:
-                result['errors'] = ["DATABASE_URL not found in .env after regeneration"]
-                result['success'] = False
+                result["errors"] = ["DATABASE_URL not found in .env after regeneration"]
+                result["success"] = False
                 return result
 
             self._print_info(f"Loaded DATABASE_URL from .env: {db_url.split('@')[0]}@...")
@@ -713,12 +713,12 @@ class UnifiedInstaller:
             project_root = Path(__file__).resolve().parent.parent
             sys.path.insert(0, str(project_root / "src"))
 
-            from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.models import User, SetupState
-            from giljo_mcp.tenant import TenantManager
             from datetime import datetime, timezone
             from uuid import uuid4
-            from passlib.hash import bcrypt
+
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models import SetupState
+            from giljo_mcp.tenant import TenantManager
 
             # Generate proper tenant key for default installation
             default_tenant_key = TenantManager.generate_tenant_key("default_admin")
@@ -751,12 +751,14 @@ class UnifiedInstaller:
                             id=str(uuid4()),
                             tenant_key=default_tenant_key,  # Use generated tenant key
                             database_initialized=True,
-                            database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
+                            database_initialized_at=datetime.now(
+                                timezone.utc
+                            ),  # REQUIRED by ck_database_initialized_at_required constraint
                             # REMOVED (Handover 0034): default_password_active and password_changed_at
                             # These fields have been removed from the model
-                            setup_version='3.0.0',
+                            setup_version="3.0.0",
                             created_at=datetime.now(timezone.utc),
-                            updated_at=datetime.now(timezone.utc)
+                            updated_at=datetime.now(timezone.utc),
                         )
                         session.add(setup_state)
                         await session.commit()
@@ -770,24 +772,22 @@ class UnifiedInstaller:
             if tables_created:
                 self._print_success("Database tables created successfully")
                 self._print_success("Setup state initialized (Handover 0034: No default admin - create via web UI)")
-                result['tables_created'] = True
-                result['admin_created'] = False  # Handover 0034: No default admin
-                result['setup_state_created'] = True
+                result["tables_created"] = True
+                result["admin_created"] = False  # Handover 0034: No default admin
+                result["setup_state_created"] = True
             else:
                 self._print_error("Table creation failed")
-                result['success'] = False
+                result["success"] = False
                 return result
 
             return result
 
         except Exception as e:
             import traceback
+
             self._print_error(f"Database setup failed: {e}")
             traceback.print_exc()
-            return {
-                'success': False,
-                'errors': [str(e)]
-            }
+            return {"success": False, "errors": [str(e)]}
 
     def generate_configs(self) -> Dict[str, Any]:
         """
@@ -804,13 +804,13 @@ class UnifiedInstaller:
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
             config_settings = {
-                'pg_host': self.settings.get('pg_host', 'localhost'),
-                'pg_port': self.settings.get('pg_port', 5432),
-                'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
-                'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
-                'install_dir': str(self.install_dir),
-                'bind': '0.0.0.0',
-                'external_host': self.settings.get('external_host', 'localhost'),
+                "pg_host": self.settings.get("pg_host", "localhost"),
+                "pg_port": self.settings.get("pg_port", 5432),
+                "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
+                "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
+                "install_dir": str(self.install_dir),
+                "bind": "0.0.0.0",
+                "external_host": self.settings.get("external_host", "localhost"),
             }
 
             config_manager = ConfigManager(settings=config_settings)
@@ -819,21 +819,18 @@ class UnifiedInstaller:
             self._print_info("Generating config.yaml...")
             yaml_result = config_manager.generate_config_yaml()
 
-            if yaml_result['success']:
+            if yaml_result["success"]:
                 self._print_success("Configuration file generated (config.yaml)")
             else:
                 self._print_error("Configuration generation failed")
-                for error in yaml_result.get('errors', []):
+                for error in yaml_result.get("errors", []):
                     self._print_error(f"  • {error}")
 
             return yaml_result
 
         except Exception as e:
             self._print_error(f"Config generation failed: {e}")
-            return {
-                'success': False,
-                'errors': [str(e)]
-            }
+            return {"success": False, "errors": [str(e)]}
 
     def update_env_with_real_credentials(self) -> Dict[str, Any]:
         """
@@ -852,15 +849,17 @@ class UnifiedInstaller:
 
             # Prepare settings with REAL database credentials
             config_settings = {
-                'pg_host': self.settings.get('pg_host', 'localhost'),
-                'pg_port': self.settings.get('pg_port', 5432),
-                'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
-                'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
-                'install_dir': str(self.install_dir),
-                'owner_password': self.database_credentials.get('owner_password'),
-                'user_password': self.database_credentials.get('user_password'),
-                'default_tenant_key': getattr(self, 'default_tenant_key', 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'),  # Pass generated tenant key
-                'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
+                "pg_host": self.settings.get("pg_host", "localhost"),
+                "pg_port": self.settings.get("pg_port", 5432),
+                "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
+                "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
+                "install_dir": str(self.install_dir),
+                "owner_password": self.database_credentials.get("owner_password"),
+                "user_password": self.database_credentials.get("user_password"),
+                "default_tenant_key": getattr(
+                    self, "default_tenant_key", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"
+                ),  # Pass generated tenant key
+                "bind": "0.0.0.0",  # v3.0: Always bind all interfaces
             }
 
             # Create config manager
@@ -870,21 +869,18 @@ class UnifiedInstaller:
             self._print_info("Regenerating .env with real database passwords...")
             env_result = config_manager.generate_env_file()
 
-            if env_result['success']:
+            if env_result["success"]:
                 self._print_success("Configuration updated with database credentials")
             else:
                 self._print_error("Failed to update configuration")
-                for error in env_result.get('errors', []):
+                for error in env_result.get("errors", []):
                     self._print_error(f"  • {error}")
 
             return env_result
 
         except Exception as e:
             self._print_error(f"Credential update failed: {e}")
-            return {
-                'success': False,
-                'errors': [str(e)]
-            }
+            return {"success": False, "errors": [str(e)]}
 
     def launch_services(self) -> Dict[str, Any]:
         """
@@ -893,18 +889,18 @@ class UnifiedInstaller:
         Returns:
             Launch result with process IDs
         """
-        result = {'success': False}
+        result = {"success": False}
 
         try:
             # Check port availability
-            api_port = self.settings.get('api_port', DEFAULT_API_PORT)
-            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+            api_port = self.settings.get("api_port", DEFAULT_API_PORT)
+            frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
 
             if not self._is_port_available(api_port):
                 self._print_warning(f"Port {api_port} is in use - finding alternative...")
                 api_port = self._find_available_port(api_port)
                 if not api_port:
-                    result['error'] = "No available port for API"
+                    result["error"] = "No available port for API"
                     return result
                 self._print_info(f"Using alternative API port: {api_port}")
 
@@ -916,18 +912,18 @@ class UnifiedInstaller:
                     frontend_port = None
 
             # Determine Python executable for Linux virtualenv
-            python_executable = self.venv_dir / 'bin' / 'python'
+            python_executable = self.venv_dir / "bin" / "python"
 
             # Get ports from settings
-            api_port = self.settings.get('api_port', DEFAULT_API_PORT)
-            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
-            
+            api_port = self.settings.get("api_port", DEFAULT_API_PORT)
+            frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
+
             # Launch API server
-            api_script = self.install_dir / 'api' / 'run_api.py'
+            api_script = self.install_dir / "api" / "run_api.py"
 
             if not api_script.exists():
                 self._print_error(f"API script not found: {api_script}")
-                result['error'] = "API script missing"
+                result["error"] = "API script missing"
                 return result
 
             self._print_info("Starting API server...")
@@ -936,42 +932,34 @@ class UnifiedInstaller:
                 [str(python_executable), str(api_script), "--port", str(api_port)],
                 cwd=str(self.install_dir),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
             self._print_success(f"API server started (PID: {api_process.pid})")
 
-            result['api_pid'] = api_process.pid
+            result["api_pid"] = api_process.pid
 
             # Launch frontend (if npm available)
             frontend_process = None
-            if shutil.which('npm'):
-                frontend_dir = self.install_dir / 'frontend'
+            if shutil.which("npm"):
+                frontend_dir = self.install_dir / "frontend"
 
                 if frontend_dir.exists():
                     # Check if node_modules exists
-                    if not (frontend_dir / 'node_modules').exists():
+                    if not (frontend_dir / "node_modules").exists():
                         self._print_info("Installing frontend dependencies...")
 
-                        subprocess.run(
-                            ['npm', 'install'],
-                            cwd=str(frontend_dir),
-                            check=True,
-                            capture_output=True
-                        )
+                        subprocess.run(["npm", "install"], cwd=str(frontend_dir), check=True, capture_output=True)
 
                     self._print_info("Starting frontend server...")
 
-                    npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
+                    npm_cmd = ["npm", "run", "dev", "--", "--port", str(frontend_port), "--strictPort"]
 
                     frontend_process = subprocess.Popen(
-                        npm_cmd,
-                        cwd=str(frontend_dir),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
+                        npm_cmd, cwd=str(frontend_dir), stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
                     self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
 
-                    result['frontend_pid'] = frontend_process.pid
+                    result["frontend_pid"] = frontend_process.pid
                 else:
                     self._print_warning("Frontend directory not found")
             else:
@@ -981,15 +969,13 @@ class UnifiedInstaller:
             self._print_info("Waiting for services to initialize...")
             time.sleep(3)
 
-            result['success'] = True
+            result["success"] = True
             return result
 
         except Exception as e:
             self._print_error(f"Service launch failed: {e}")
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
-
-
 
     def create_desktop_shortcuts(self) -> None:
         """Create .desktop launchers for Linux desktops"""
@@ -1099,18 +1085,13 @@ class UnifiedInstaller:
         # Fallback 2: use `ip -4 addr` command (available on most Linux distros)
         if not ips:
             try:
-                result = subprocess.run(
-                    ['ip', '-4', 'addr', 'show'],
-                    check=True,
-                    capture_output=True,
-                    text=True
-                )
+                result = subprocess.run(["ip", "-4", "addr", "show"], check=True, capture_output=True, text=True)
                 for line in result.stdout.splitlines():
                     line = line.strip()
                     if line.startswith("inet "):
                         parts = line.split()
                         if len(parts) >= 2:
-                            ip = parts[1].split('/')[0]
+                            ip = parts[1].split("/")[0]
                             if ip and not ip.startswith("127.") and not ip.startswith("169.254."):
                                 ips.append(ip)
             except Exception:
@@ -1129,11 +1110,11 @@ class UnifiedInstaller:
         # Database credentials
         if self.database_credentials:
             print(f"{Fore.YELLOW}Database Credentials (SAVE THESE):{Style.RESET_ALL}")
-            print(f"  • Database: giljo_mcp")
-            print(f"  • Owner: giljo_owner")
-            print(f"  • User: giljo_user")
-            print(f"  • Host: localhost")
-            print(f"  • Port: 5432")
+            print("  • Database: giljo_mcp")
+            print("  • Owner: giljo_owner")
+            print("  • User: giljo_user")
+            print("  • Host: localhost")
+            print("  • Port: 5432")
             print()
 
         # Startup guidance
@@ -1145,7 +1126,7 @@ class UnifiedInstaller:
 
         # Manual start instructions
         print(f"{Fore.CYAN}{Style.BRIGHT}Manual control (separate terminals):{Style.RESET_ALL}\n")
-        
+
         print(f"{Fore.WHITE}1. Start the API server:{Style.RESET_ALL}")
         print(f"   {Fore.GREEN}venv/bin/python api/run_api.py{Style.RESET_ALL}")
         print()
@@ -1156,21 +1137,21 @@ class UnifiedInstaller:
         print()
 
         print(f"{Fore.WHITE}3. Open your browser:{Style.RESET_ALL}")
-        
+
         # Detect network IPs
         network_ips = self._get_all_network_ips()
-        frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
-        api_port = self.settings.get('api_port', DEFAULT_API_PORT)
+        frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
+        api_port = self.settings.get("api_port", DEFAULT_API_PORT)
 
         # Show localhost first (most common)
         print(f"   {Fore.CYAN}http://localhost:{frontend_port}{Style.RESET_ALL}")
-        
+
         # Show network IPs if detected
         if network_ips:
             print(f"\n   {Fore.WHITE}Or from other devices on your network:{Style.RESET_ALL}")
             for ip in network_ips:
                 print(f"   {Fore.CYAN}http://{ip}:{frontend_port}{Style.RESET_ALL}")
-        
+
         print()
 
         # API documentation
@@ -1180,20 +1161,20 @@ class UnifiedInstaller:
 
         # Next steps
         print(f"{Fore.WHITE}{Style.BRIGHT}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Start the services with python startup.py (or the manual commands above)")
-        print(f"  2. Open your browser to the frontend URL")
-        print(f"  3. Complete the first-time setup wizard:")
-        print(f"     • Change default admin password")
-        print(f"     • Configure MCP integration (optional)")
-        print(f"     • Configure Serena (optional)")
-        print(f"  4. Create your first product and start orchestrating!")
+        print("  1. Start the services with python startup.py (or the manual commands above)")
+        print("  2. Open your browser to the frontend URL")
+        print("  3. Complete the first-time setup wizard:")
+        print("     • Change default admin password")
+        print("     • Configure MCP integration (optional)")
+        print("     • Configure Serena (optional)")
+        print("  4. Create your first product and start orchestrating!")
         print()
 
         # Firewall configuration note
         print(f"{Fore.YELLOW}Network Access (Optional):{Style.RESET_ALL}")
-        print(f"  To allow access from other devices on your network:")
-        print(f"  1. Configure your OS firewall (see docs/guides/FIREWALL_CONFIGURATION.md)")
-        print(f"  2. Update config.yaml: firewall_configured: true")
+        print("  To allow access from other devices on your network:")
+        print("  1. Configure your OS firewall (see docs/guides/FIREWALL_CONFIGURATION.md)")
+        print("  2. Update config.yaml: firewall_configured: true")
         print()
 
         print(f"{Fore.GREEN}Installation successful! Start the services to continue.{Style.RESET_ALL}\n")
@@ -1201,73 +1182,77 @@ class UnifiedInstaller:
     def _print_postgresql_install_guide(self) -> None:
         """Print platform-specific PostgreSQL installation guide with Ubuntu focus"""
         import platform
-        
+
         print(f"\n{Fore.YELLOW}PostgreSQL Installation Required{Style.RESET_ALL}\n")
 
         # Detect Ubuntu version for more specific instructions
         try:
             dist_info = platform.freedesktop_os_release()
-            if dist_info.get('ID') == 'ubuntu':
-                ubuntu_version = dist_info.get('VERSION_ID', '')
+            if dist_info.get("ID") == "ubuntu":
+                ubuntu_version = dist_info.get("VERSION_ID", "")
                 print(f"{Fore.GREEN}Ubuntu {ubuntu_version} Detected - Optimized Instructions:{Style.RESET_ALL}")
-                
+
                 print(f"\n{Fore.CYAN}Method 1 - Official PostgreSQL APT Repository (Recommended):{Style.RESET_ALL}")
-                print(f"  # Install the repository signing key")
-                print(f"  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -")
-                print(f"  echo \"deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main\" | sudo tee /etc/apt/sources.list.d/pgdg.list")
-                print(f"  sudo apt update")
-                print(f"  sudo apt install postgresql-18 postgresql-client-18 postgresql-contrib-18")
-                print(f"  sudo systemctl enable --now postgresql")
-                print(f"  # Set password for postgres user")
-                print(f"  sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"")
-                
+                print("  # Install the repository signing key")
+                print("  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -")
+                print(
+                    '  echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list'
+                )
+                print("  sudo apt update")
+                print("  sudo apt install postgresql-18 postgresql-client-18 postgresql-contrib-18")
+                print("  sudo systemctl enable --now postgresql")
+                print("  # Set password for postgres user")
+                print("  sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"")
+
                 print(f"\n{Fore.CYAN}Method 2 - Ubuntu Default Repository (May have older version):{Style.RESET_ALL}")
-                print(f"  sudo apt update")
-                print(f"  sudo apt install postgresql postgresql-contrib")
-                print(f"  sudo systemctl enable --now postgresql")
-                print(f"  # Set password for postgres user")
-                print(f"  sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"")
-                
+                print("  sudo apt update")
+                print("  sudo apt install postgresql postgresql-contrib")
+                print("  sudo systemctl enable --now postgresql")
+                print("  # Set password for postgres user")
+                print("  sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"")
+
                 print(f"\n{Fore.CYAN}Method 3 - Docker (Development Only):{Style.RESET_ALL}")
-                print(f"  # Install Docker if not already installed")
-                print(f"  sudo apt update && sudo apt install docker.io")
-                print(f"  sudo systemctl enable --now docker")
-                print(f"  # Run PostgreSQL 18 in Docker")
-                print(f"  sudo docker run --name giljo-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18")
-                
+                print("  # Install Docker if not already installed")
+                print("  sudo apt update && sudo apt install docker.io")
+                print("  sudo systemctl enable --now docker")
+                print("  # Run PostgreSQL 18 in Docker")
+                print(
+                    "  sudo docker run --name giljo-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18"
+                )
+
             else:
                 print(f"{Fore.CYAN}Linux Distribution: {dist_info.get('NAME', 'Unknown')}{Style.RESET_ALL}")
         except:
             pass
 
         print(f"\n{Fore.CYAN}General Linux Installation:{Style.RESET_ALL}")
-        print(f"  Ubuntu/Debian:")
-        print(f"     sudo apt update")
-        print(f"     sudo apt install postgresql-18 postgresql-client-18")
-        print(f"     sudo systemctl enable --now postgresql")
-        print(f"  RHEL/CentOS/Fedora:")
-        print(f"     sudo dnf install postgresql18-server postgresql18")
-        print(f"     sudo /usr/pgsql-18/bin/postgresql-18-setup initdb")
-        print(f"     sudo systemctl enable --now postgresql-18")
-        print(f"  Arch:")
-        print(f"     sudo pacman -S postgresql")
-        print(f"     sudo -iu postgres initdb -D /var/lib/postgres/data")
-        print(f"     sudo systemctl enable --now postgresql")
-        
+        print("  Ubuntu/Debian:")
+        print("     sudo apt update")
+        print("     sudo apt install postgresql-18 postgresql-client-18")
+        print("     sudo systemctl enable --now postgresql")
+        print("  RHEL/CentOS/Fedora:")
+        print("     sudo dnf install postgresql18-server postgresql18")
+        print("     sudo /usr/pgsql-18/bin/postgresql-18-setup initdb")
+        print("     sudo systemctl enable --now postgresql-18")
+        print("  Arch:")
+        print("     sudo pacman -S postgresql")
+        print("     sudo -iu postgres initdb -D /var/lib/postgres/data")
+        print("     sudo systemctl enable --now postgresql")
+
         print(f"\n{Fore.YELLOW}Important for Ubuntu Users:{Style.RESET_ALL}")
-        print(f"  • After installation, PostgreSQL runs on port 5432")
-        print(f"  • Default admin user is 'postgres'")
-        print(f"  • You MUST set a password for the postgres user")
-        print(f"  • Use 'sudo systemctl status postgresql' to check service status")
-        print(f"  • Logs are in /var/log/postgresql/")
-        
+        print("  • After installation, PostgreSQL runs on port 5432")
+        print("  • Default admin user is 'postgres'")
+        print("  • You MUST set a password for the postgres user")
+        print("  • Use 'sudo systemctl status postgresql' to check service status")
+        print("  • Logs are in /var/log/postgresql/")
+
         print(f"\n{Fore.RED}If you need help:{Style.RESET_ALL}")
-        print(f"  • PostgreSQL Ubuntu documentation: https://help.ubuntu.com/community/PostgreSQL")
+        print("  • PostgreSQL Ubuntu documentation: https://help.ubuntu.com/community/PostgreSQL")
         print(f"  • Official docs: {POSTGRESQL_DOWNLOAD_URL}")
 
         print()
 
-    def _is_port_available(self, port: int, host: str = '127.0.0.1') -> bool:
+    def _is_port_available(self, port: int, host: str = "127.0.0.1") -> bool:
         """Check if port is available"""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -1311,10 +1296,10 @@ class UnifiedInstaller:
 
 
 @click.command()
-@click.option('--headless', is_flag=True, help='Non-interactive mode (use defaults)')
-@click.option('--pg-password', default=None, help='PostgreSQL admin password (REQUIRED)')
-@click.option('--api-port', default=DEFAULT_API_PORT, type=int, help='API server port')
-@click.option('--frontend-port', default=DEFAULT_FRONTEND_PORT, type=int, help='Frontend port')
+@click.option("--headless", is_flag=True, help="Non-interactive mode (use defaults)")
+@click.option("--pg-password", default=None, help="PostgreSQL admin password (REQUIRED)")
+@click.option("--api-port", default=DEFAULT_API_PORT, type=int, help="API server port")
+@click.option("--frontend-port", default=DEFAULT_FRONTEND_PORT, type=int, help="Frontend port")
 def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
     """
     GiljoAI MCP v3.0 - Linux Installer
@@ -1324,11 +1309,11 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
     try:
         # Prepare settings
         settings = {
-            'install_dir': str(Path.cwd()),
-            'pg_password': pg_password,
-            'api_port': api_port,
-            'dashboard_port': frontend_port,
-            'headless': headless
+            "install_dir": str(Path.cwd()),
+            "pg_password": pg_password,
+            "api_port": api_port,
+            "dashboard_port": frontend_port,
+            "headless": headless,
         }
 
         # Create installer
@@ -1338,7 +1323,7 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
         result = installer.run()
 
         # Exit with appropriate code
-        sys.exit(0 if result['success'] else 1)
+        sys.exit(0 if result["success"] else 1)
 
     except KeyboardInterrupt:
         print(f"\n{Fore.YELLOW}Installation cancelled{Style.RESET_ALL}")
@@ -1349,5 +1334,5 @@ def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) ->
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

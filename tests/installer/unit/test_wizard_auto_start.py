@@ -49,15 +49,12 @@ class TestInstallerWizardAutoStartLogic:
 
             if setup_mode:
                 return f"http://localhost:{frontend_port}/wizard.html"
-            else:
-                return f"http://localhost:{frontend_port}"
+            return f"http://localhost:{frontend_port}"
 
         url = get_browser_url(fresh_install_config)
         assert url == "http://localhost:7274/wizard.html"
 
-    def test_determine_browser_url_complete_setup(
-        self, complete_install_config: Dict
-    ):
+    def test_determine_browser_url_complete_setup(self, complete_install_config: Dict):
         """Test URL determination for completed setup."""
 
         def get_browser_url(config: Dict) -> str:
@@ -67,8 +64,7 @@ class TestInstallerWizardAutoStartLogic:
 
             if setup_mode:
                 return f"http://localhost:{frontend_port}/wizard.html"
-            else:
-                return f"http://localhost:{frontend_port}"
+            return f"http://localhost:{frontend_port}"
 
         url = get_browser_url(complete_install_config)
         assert url == "http://localhost:7274"
@@ -87,8 +83,7 @@ class TestInstallerWizardAutoStartLogic:
 
             if setup_mode:
                 return f"http://localhost:{frontend_port}/wizard.html"
-            else:
-                return f"http://localhost:{frontend_port}"
+            return f"http://localhost:{frontend_port}"
 
         url = get_browser_url(config)
         assert url == "http://localhost:7274/wizard.html"
@@ -104,9 +99,7 @@ class TestInstallerWizardAutoStartLogic:
         result = should_open_browser(fresh_install_config)
         assert result is False
 
-    def test_auto_open_enabled_triggers_browser_launch(
-        self, fresh_install_config: Dict
-    ):
+    def test_auto_open_enabled_triggers_browser_launch(self, fresh_install_config: Dict):
         """Test that auto_open: true triggers browser launch."""
         fresh_install_config["services"]["frontend"]["auto_open"] = True
 
@@ -153,7 +146,7 @@ class TestInstallerConfigGeneration:
         # Simulate wizard completion update
         def complete_setup(config_path: Path):
             """Mark setup as complete in config."""
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
 
             config["setup_mode"] = False
@@ -165,7 +158,7 @@ class TestInstallerConfigGeneration:
         complete_setup(config_file)
 
         # Verify update
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             updated_config = yaml.safe_load(f)
 
         assert updated_config["setup_mode"] is False

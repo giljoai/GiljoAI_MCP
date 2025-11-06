@@ -141,24 +141,24 @@ def check_python_version() -> bool:
 def load_postgresql_config() -> Optional[dict]:
     """
     Load PostgreSQL configuration from config.yaml if available.
-    
+
     Returns:
         PostgreSQL config dict or None if not available
     """
     try:
         import yaml
-        
+
         config_path = Path.cwd() / "config.yaml"
-        
+
         if config_path.exists():
             with open(config_path) as f:
                 config = yaml.safe_load(f)
-            
+
             # Get PostgreSQL configuration from database section
             return config.get("database", {}).get("postgresql")
     except Exception as e:
         print_warning(f"Could not read PostgreSQL config from config.yaml: {e}")
-    
+
     return None
 
 
@@ -178,21 +178,21 @@ def check_postgresql_installed() -> bool:
     # Method 1: Check saved PostgreSQL paths from installation
     postgresql_config = load_postgresql_config()
     if postgresql_config:
-        psql_path = postgresql_config.get('psql_path')
-        bin_path = postgresql_config.get('bin_path')
-        discovery_method = postgresql_config.get('discovery_method', 'UNKNOWN')
-        
+        psql_path = postgresql_config.get("psql_path")
+        bin_path = postgresql_config.get("bin_path")
+        discovery_method = postgresql_config.get("discovery_method", "UNKNOWN")
+
         if psql_path and Path(psql_path).exists():
             print_success(f"PostgreSQL detected from saved config: {psql_path}")
             print_info(f"Originally discovered via: {discovery_method}")
-            
+
             # Add bin directory to PATH for session if needed
-            if bin_path and bin_path not in os.environ.get('PATH', ''):
-                os.environ['PATH'] = f"{bin_path}{os.pathsep}{os.environ['PATH']}"
+            if bin_path and bin_path not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = f"{bin_path}{os.pathsep}{os.environ['PATH']}"
                 print_info("Added PostgreSQL bin directory to PATH for this session")
-            
+
             return True
-        elif psql_path:
+        if psql_path:
             print_warning(f"Saved PostgreSQL path no longer exists: {psql_path}")
             print_info("Falling back to standard discovery methods...")
 
@@ -237,9 +237,8 @@ def check_pip_available() -> bool:
     if pip_path:
         print_success(f"pip detected at: {pip_path}")
         return True
-    else:
-        print_error("pip not found in system PATH")
-        return False
+    print_error("pip not found in system PATH")
+    return False
 
 
 def check_npm_available() -> bool:
@@ -254,10 +253,9 @@ def check_npm_available() -> bool:
     if npm_path:
         print_success(f"npm detected at: {npm_path}")
         return True
-    else:
-        print_warning("npm not found - frontend will not be available")
-        print_info("Install Node.js from: https://nodejs.org/")
-        return False
+    print_warning("npm not found - frontend will not be available")
+    print_info("Install Node.js from: https://nodejs.org/")
+    return False
 
 
 def check_database_connectivity() -> Tuple[bool, Optional[str]]:
@@ -502,11 +500,10 @@ def get_network_ip() -> Optional[str]:
                 selected = physical[0]
                 print_info(f"Detected primary network adapter: {selected['name']} ({selected['ip']})")
                 return selected["ip"]
-            else:
-                # Fall back to first virtual adapter if no physical found
-                selected = candidates[0]
-                print_info(f"Detected network adapter: {selected['name']} ({selected['ip']})")
-                return selected["ip"]
+            # Fall back to first virtual adapter if no physical found
+            selected = candidates[0]
+            print_info(f"Detected network adapter: {selected['name']} ({selected['ip']})")
+            return selected["ip"]
 
     except ImportError:
         print_warning("psutil not available for network detection")
@@ -568,8 +565,8 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
 
         print_success(f"API server started (PID: {process.pid})")
         if not verbose:
-            print_info(f"API logs: {str((Path.cwd() / 'logs' / 'api_stdout.log').resolve())}")
-            print_info(f"API errors: {str((Path.cwd() / 'logs' / 'api_stderr.log').resolve())}")
+            print_info(f"API logs: {(Path.cwd() / 'logs' / 'api_stdout.log').resolve()!s}")
+            print_info(f"API errors: {(Path.cwd() / 'logs' / 'api_stderr.log').resolve()!s}")
         return process
 
     except Exception as e:
@@ -631,8 +628,8 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
 
         print_success(f"Frontend server started (PID: {process.pid})")
         if not verbose:
-            print_info(f"Frontend logs: {str((Path.cwd() / 'logs' / 'frontend_stdout.log').resolve())}")
-            print_info(f"Frontend errors: {str((Path.cwd() / 'logs' / 'frontend_stderr.log').resolve())}")
+            print_info(f"Frontend logs: {(Path.cwd() / 'logs' / 'frontend_stdout.log').resolve()!s}")
+            print_info(f"Frontend errors: {(Path.cwd() / 'logs' / 'frontend_stderr.log').resolve()!s}")
         return process
 
     except FileNotFoundError:
@@ -655,8 +652,8 @@ def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5)
     Returns:
         True if API is ready, False if timeout
     """
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     url = f"http://localhost:{port}/health"
     print_info(f"Waiting for API to be ready (max {max_attempts * interval:.0f}s)...")
@@ -855,7 +852,9 @@ def run_database_migrations() -> bool:
         return False
 
 
-def run_startup(check_only: bool = False, verbose: bool = False, no_browser: bool = False, no_migrations: bool = False) -> int:
+def run_startup(
+    check_only: bool = False, verbose: bool = False, no_browser: bool = False, no_migrations: bool = False
+) -> int:
     """
     Main startup function.
 
@@ -966,10 +965,10 @@ def run_startup(check_only: bool = False, verbose: bool = False, no_browser: boo
         # User chose not to auto-launch browser
         network_ip = get_network_ip()
         if network_ip:
-            print_info(f"Login to your published IP on your PC to begin setup!")
+            print_info("Login to your published IP on your PC to begin setup!")
             print_success(f"Setup URL: http://{network_ip}:{frontend_port}/setup")
         else:
-            print_info(f"Login to your published IP on your PC to begin setup!")
+            print_info("Login to your published IP on your PC to begin setup!")
             print_success(f"Localhost URL: http://localhost:{frontend_port}/setup")
 
         print_header("Welcome to GiljoAI's Agent Orchestration MCP Server! -Gil")
@@ -1033,7 +1032,9 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool)
     including dependency checking, database verification, and service launching.
     """
     try:
-        exit_code = run_startup(check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations)
+        exit_code = run_startup(
+            check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations
+        )
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")

@@ -7,7 +7,6 @@ Provides:
 - Multi-tenant test setup
 """
 
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,21 +19,13 @@ from tests.fixtures.auth_fixtures import UserFactory
 @pytest_asyncio.fixture(scope="function")
 async def test_user(db_session: AsyncSession) -> User:
     """Create primary test user."""
-    return await UserFactory.create_developer(
-        db_session,
-        username="testuser",
-        tenant_key="test_tenant_1"
-    )
+    return await UserFactory.create_developer(db_session, username="testuser", tenant_key="test_tenant_1")
 
 
 @pytest_asyncio.fixture(scope="function")
 async def test_user_2(db_session: AsyncSession) -> User:
     """Create secondary test user for multi-tenant tests."""
-    return await UserFactory.create_developer(
-        db_session,
-        username="testuser2",
-        tenant_key="test_tenant_2"
-    )
+    return await UserFactory.create_developer(db_session, username="testuser2", tenant_key="test_tenant_2")
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -43,9 +34,7 @@ async def auth_headers(test_user: User) -> dict:
     from src.giljo_mcp.auth.jwt_manager import JWTManager
 
     jwt_manager = JWTManager()
-    token = jwt_manager.create_access_token(
-        {"sub": test_user.username, "tenant_key": test_user.tenant_key}
-    )
+    token = jwt_manager.create_access_token({"sub": test_user.username, "tenant_key": test_user.tenant_key})
 
     return {"Authorization": f"Bearer {token}"}
 
@@ -56,9 +45,7 @@ async def auth_headers_user_2(test_user_2: User) -> dict:
     from src.giljo_mcp.auth.jwt_manager import JWTManager
 
     jwt_manager = JWTManager()
-    token = jwt_manager.create_access_token(
-        {"sub": test_user_2.username, "tenant_key": test_user_2.tenant_key}
-    )
+    token = jwt_manager.create_access_token({"sub": test_user_2.username, "tenant_key": test_user_2.tenant_key})
 
     return {"Authorization": f"Bearer {token}"}
 

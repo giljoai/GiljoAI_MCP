@@ -7,12 +7,12 @@ Compares fat prompts (old) vs thin client prompts (new) to validate
 This test validates the CORE VALUE PROPOSITION of this handover.
 """
 
-import pytest
-import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+import pytest
+
 from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 @pytest.mark.asyncio
@@ -42,11 +42,11 @@ class TestTokenReductionComparison:
             username="testuser",
             email="test@giljoai.com",
             field_priority_config={
-                'product_vision': 10,  # Full detail
-                'architecture': 7,      # Moderate
-                'codebase_summary': 4,  # Abbreviated
-                'dependencies': 2       # Minimal
-            }
+                "product_vision": 10,  # Full detail
+                "architecture": 7,  # Moderate
+                "codebase_summary": 4,  # Abbreviated
+                "dependencies": 2,  # Minimal
+            },
         )
         db_session.add(user)
 
@@ -180,7 +180,7 @@ class TestTokenReductionComparison:
             tenant_key=tenant_key,
             name="Enterprise Platform",
             description="Comprehensive enterprise software platform",
-            vision_document=large_vision
+            vision_document=large_vision,
         )
         db_session.add(product)
 
@@ -191,7 +191,7 @@ class TestTokenReductionComparison:
             name="Platform MVP",
             description="Minimum viable product for platform launch",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -200,10 +200,7 @@ class TestTokenReductionComparison:
         # THIN PROMPT APPROACH (NEW)
         thin_generator = ThinClientPromptGenerator(db_session, tenant_key)
         thin_result = await thin_generator.generate(
-            project_id=str(project.id),
-            user_id=user_id,
-            tool='claude-code',
-            instance_number=1
+            project_id=str(project.id), user_id=user_id, tool="claude-code", instance_number=1
         )
 
         # Calculate token counts
@@ -211,13 +208,10 @@ class TestTokenReductionComparison:
 
         # Get mission tokens by fetching the stored mission
         from sqlalchemy import select
+
         from src.giljo_mcp.models import MCPAgentJob
 
-        result = await db_session.execute(
-            select(MCPAgentJob).where(
-                MCPAgentJob.id == thin_result.orchestrator_id
-            )
-        )
+        result = await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.id == thin_result.orchestrator_id))
         orchestrator = result.scalar_one()
         mission_tokens = len(orchestrator.mission) // 4  # 1 token ≈ 4 chars
 
@@ -232,16 +226,16 @@ class TestTokenReductionComparison:
         reduction_percent = (savings / fat_tokens) * 100
 
         # Print comparison for documentation
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("TOKEN REDUCTION COMPARISON")
-        print("="*60)
+        print("=" * 60)
         print(f"Fat Prompt (OLD):        {fat_tokens:,} tokens")
         print(f"Thin Prompt (NEW):       {thin_prompt_tokens:,} tokens")
         print(f"Mission via MCP:         {mission_tokens:,} tokens")
         print(f"Total New Approach:      {total_thin_tokens:,} tokens")
         print(f"Savings:                 {savings:,} tokens")
         print(f"Reduction:               {reduction_percent:.1f}%")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         # CRITICAL ASSERTIONS
         assert thin_prompt_tokens < 200, f"Thin prompt too large: {thin_prompt_tokens} tokens"
@@ -250,8 +244,9 @@ class TestTokenReductionComparison:
 
         # Document the win
         print(f"✅ SUCCESS: Achieved {reduction_percent:.1f}% token reduction")
-        print(f"   User experience improved: Copy {len(thin_result.prompt.split())} words instead of {len(fat_prompt_simulation.split())} words")
-
+        print(
+            f"   User experience improved: Copy {len(thin_result.prompt.split())} words instead of {len(fat_prompt_simulation.split())} words"
+        )
 
     async def test_thin_prompt_line_count_professional(self, db_session):
         """
@@ -261,12 +256,7 @@ class TestTokenReductionComparison:
         """
         tenant_key = str(uuid4())
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document="Vision content"
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document="Vision content")
         db_session.add(product)
 
         project = Project(
@@ -275,24 +265,20 @@ class TestTokenReductionComparison:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='claude-code'
-        )
+        result = await generator.generate(project_id=str(project.id), tool="claude-code")
 
         # Professional UX validation
-        lines = result.prompt.split('\n')
+        lines = result.prompt.split("\n")
         non_empty_lines = [line for line in lines if line.strip()]
 
         assert len(non_empty_lines) <= 30, f"Unprofessional: {len(non_empty_lines)} lines to copy"
         print(f"✅ Professional UX: Only {len(non_empty_lines)} lines to copy")
-
 
     async def test_mission_fetch_token_efficiency(self, db_session):
         """
@@ -307,23 +293,18 @@ class TestTokenReductionComparison:
             tenant_key=tenant_key,
             username="tokenoptimizer",
             field_priority_config={
-                'product_vision': 5,    # Abbreviated
-                'architecture': 3,      # Minimal
-                'codebase_summary': 2,  # Minimal
-                'dependencies': 1       # Exclude
-            }
+                "product_vision": 5,  # Abbreviated
+                "architecture": 3,  # Minimal
+                "codebase_summary": 2,  # Minimal
+                "dependencies": 1,  # Exclude
+            },
         )
         db_session.add(user)
 
         # Large vision document
         large_vision = "PRODUCT VISION:\n" + ("Detail " * 2000)  # ~10K tokens raw
 
-        product = Product(
-            id=str(uuid4()),
-            tenant_key=tenant_key,
-            name="Product",
-            vision_document=large_vision
-        )
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", vision_document=large_vision)
         db_session.add(product)
 
         project = Project(
@@ -332,26 +313,21 @@ class TestTokenReductionComparison:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         # Generate with aggressive token optimization
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            user_id=user_id,
-            tool='claude-code'
-        )
+        result = await generator.generate(project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Get mission
         from sqlalchemy import select
+
         from src.giljo_mcp.models import MCPAgentJob
 
-        db_result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.id == result.orchestrator_id)
-        )
+        db_result = await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.id == result.orchestrator_id))
         orchestrator = db_result.scalar_one()
 
         mission_tokens = len(orchestrator.mission) // 4
@@ -360,13 +336,12 @@ class TestTokenReductionComparison:
         # Mission should be significantly smaller than raw vision
         reduction = ((raw_vision_tokens - mission_tokens) / raw_vision_tokens) * 100
 
-        print(f"\nMission Token Efficiency:")
+        print("\nMission Token Efficiency:")
         print(f"  Raw vision: {raw_vision_tokens:,} tokens")
         print(f"  Condensed mission: {mission_tokens:,} tokens")
         print(f"  Reduction: {reduction:.1f}%")
 
         assert mission_tokens < raw_vision_tokens * 0.7, "Field priorities should reduce mission size"
-
 
     async def test_no_mission_in_prompt(self, db_session):
         """
@@ -382,7 +357,7 @@ class TestTokenReductionComparison:
             id=str(uuid4()),
             tenant_key=tenant_key,
             name="Product",
-            vision_document=f"Product vision with {distinctive_content} embedded."
+            vision_document=f"Product vision with {distinctive_content} embedded.",
         )
         db_session.add(product)
 
@@ -392,27 +367,23 @@ class TestTokenReductionComparison:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000
+            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id),
-            tool='claude-code'
-        )
+        result = await generator.generate(project_id=str(project.id), tool="claude-code")
 
         # CRITICAL ASSERTION: Distinctive content must NOT be in prompt
         assert distinctive_content not in result.prompt, "Mission content embedded in prompt - ARCHITECTURE VIOLATION"
 
         # Mission should be in database, not prompt
         from sqlalchemy import select
+
         from src.giljo_mcp.models import MCPAgentJob
 
-        db_result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.id == result.orchestrator_id)
-        )
+        db_result = await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.id == result.orchestrator_id))
         orchestrator = db_result.scalar_one()
 
         # Content should be in stored mission

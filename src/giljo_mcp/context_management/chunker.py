@@ -14,7 +14,6 @@ Target chunk size: 5000 tokens with semantic boundaries.
 """
 
 import logging
-import re
 from typing import Any, Dict, List
 
 import tiktoken
@@ -56,9 +55,7 @@ class VisionDocumentChunker:
         max_tokens_for_enhanced = target_chunk_size
         self.enhanced_chunker = EnhancedChunker(max_tokens=max_tokens_for_enhanced)
 
-        logger.info(
-            f"VisionDocumentChunker initialized with target size: {target_chunk_size} tokens"
-        )
+        logger.info(f"VisionDocumentChunker initialized with target size: {target_chunk_size} tokens")
 
     def count_tokens(self, text: str) -> int:
         """
@@ -103,9 +100,17 @@ class VisionDocumentChunker:
 
         # Additional technical terms specific to our domain
         additional_terms = [
-            "Vision", "Mission", "Architecture", "Implementation",
-            "Testing", "Deployment", "Security", "Performance",
-            "Scalability", "Integration", "Configuration"
+            "Vision",
+            "Mission",
+            "Architecture",
+            "Implementation",
+            "Testing",
+            "Deployment",
+            "Security",
+            "Performance",
+            "Scalability",
+            "Integration",
+            "Configuration",
         ]
 
         # Add additional matches not in base keywords
@@ -146,27 +151,24 @@ class VisionDocumentChunker:
         truncated = text[:max_length]
 
         # Try to break at sentence boundary
-        sentence_ends = ['.', '!', '?', '\n']
+        sentence_ends = [".", "!", "?", "\n"]
         last_sentence = -1
 
         for end_char in sentence_ends:
             pos = truncated.rfind(end_char)
-            if pos > last_sentence:
-                last_sentence = pos
+            last_sentence = max(last_sentence, pos)
 
         if last_sentence > 0:
-            return truncated[:last_sentence + 1].strip()
+            return truncated[: last_sentence + 1].strip()
 
         # Fallback: break at word boundary
-        last_space = truncated.rfind(' ')
+        last_space = truncated.rfind(" ")
         if last_space > 0:
             return truncated[:last_space].strip() + "..."
 
         return truncated.strip() + "..."
 
-    def chunk_document(
-        self, content: str, product_id: str
-    ) -> List[Dict[str, Any]]:
+    def chunk_document(self, content: str, product_id: str) -> List[Dict[str, Any]]:
         """
         Chunk document into semantic chunks with metadata.
 
@@ -187,9 +189,7 @@ class VisionDocumentChunker:
             return []
 
         # Use EnhancedChunker to get initial chunks with boundary detection
-        enhanced_chunks = self.enhanced_chunker.chunk_content(
-            content, document_name=f"product_{product_id}"
-        )
+        enhanced_chunks = self.enhanced_chunker.chunk_content(content, document_name=f"product_{product_id}")
 
         if not enhanced_chunks:
             return []
@@ -239,12 +239,7 @@ class VisionDocumentChunker:
 
         return processed_chunks
 
-    async def chunk_vision_document(
-        self,
-        session,
-        tenant_key: str,
-        vision_document_id: str
-    ) -> Dict[str, Any]:
+    async def chunk_vision_document(self, session, tenant_key: str, vision_document_id: str) -> Dict[str, Any]:
         """
         Chunk a specific vision document with selective re-chunking.
 
@@ -279,13 +274,12 @@ class VisionDocumentChunker:
             }
         """
         from pathlib import Path
-        import uuid
 
         # Import repositories
         try:
-            from ..repositories.vision_document_repository import VisionDocumentRepository
-            from ..repositories.context_repository import ContextRepository
             from ..models import MCPContextIndex
+            from ..repositories.context_repository import ContextRepository
+            from ..repositories.vision_document_repository import VisionDocumentRepository
         except ImportError as e:
             logger.error(f"Failed to import repositories: {e}")
             return {"success": False, "error": f"Import error: {e}"}
@@ -306,21 +300,16 @@ class VisionDocumentChunker:
             if doc.storage_type in ("file", "hybrid") and doc.vision_path:
                 # IMPORTANT: Normalize path to handle legacy backslash paths
                 # (prevents escape sequence bugs like \v being interpreted as vertical tab)
-                normalized_path = doc.vision_path.replace('\\', '/')
+                normalized_path = doc.vision_path.replace("\\", "/")
                 file_path = Path(normalized_path)
 
                 if file_path.exists():
                     content += file_path.read_text(encoding="utf-8")
                 else:
-                    logger.warning(
-                        f"File path {normalized_path} does not exist for document {vision_document_id}"
-                    )
+                    logger.warning(f"File path {normalized_path} does not exist for document {vision_document_id}")
                     if doc.storage_type == "file":
                         # For file-only storage, this is an error
-                        return {
-                            "success": False,
-                            "error": f"File not found: {normalized_path}"
-                        }
+                        return {"success": False, "error": f"File not found: {normalized_path}"}
 
             if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
                 content += doc.vision_document
@@ -336,13 +325,9 @@ class VisionDocumentChunker:
             return {"success": False, "error": error_msg}
 
         # Delete existing chunks for this document (selective deletion, async)
-        deleted_count = await context_repo.delete_chunks_by_vision_document(
-            session, tenant_key, vision_document_id
-        )
+        deleted_count = await context_repo.delete_chunks_by_vision_document(session, tenant_key, vision_document_id)
 
-        logger.info(
-            f"Deleted {deleted_count} existing chunks for document {vision_document_id}"
-        )
+        logger.info(f"Deleted {deleted_count} existing chunks for document {vision_document_id}")
 
         # Chunk content using existing chunk_document method
         # This uses EnhancedChunker with semantic boundaries
@@ -357,7 +342,7 @@ class VisionDocumentChunker:
                 "document_name": doc.document_name,
                 "chunks_created": 0,
                 "total_tokens": 0,
-                "old_chunks_deleted": deleted_count
+                "old_chunks_deleted": deleted_count,
             }
 
         # Create chunk records with vision_document_id link
@@ -371,7 +356,7 @@ class VisionDocumentChunker:
                 keywords=chunk_data.get("keywords", []),
                 token_count=chunk_data.get("tokens", 0),
                 chunk_order=idx,
-                summary=chunk_data.get("summary", None)
+                summary=chunk_data.get("summary", None),
             )
             session.add(chunk_record)
             total_tokens += chunk_data.get("tokens", 0)
@@ -379,9 +364,7 @@ class VisionDocumentChunker:
         await session.flush()
 
         # Update vision document metadata (async)
-        await vision_repo.mark_chunked(
-            session, vision_document_id, len(chunks), total_tokens
-        )
+        await vision_repo.mark_chunked(session, vision_document_id, len(chunks), total_tokens)
 
         logger.info(
             f"Successfully chunked document {vision_document_id}: "
@@ -395,5 +378,5 @@ class VisionDocumentChunker:
             "document_name": doc.document_name,
             "chunks_created": len(chunks),
             "total_tokens": total_tokens,
-            "old_chunks_deleted": deleted_count
+            "old_chunks_deleted": deleted_count,
         }

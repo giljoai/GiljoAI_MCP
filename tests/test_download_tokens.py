@@ -22,16 +22,12 @@ import uuid
 import zipfile
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
-from pathlib import Path
-from typing import Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException, status
-from httpx import AsyncClient
+from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, User
 
@@ -100,9 +96,7 @@ class TestTokenManager:
         tokens = set()
         for _ in range(100):
             token = await manager.generate_token(
-                tenant_key="test-tenant",
-                download_type="slash_commands",
-                metadata={"test": True}
+                tenant_key="test-tenant", download_type="slash_commands", metadata={"test": True}
             )
             tokens.add(token)
 
@@ -122,17 +116,9 @@ class TestTokenManager:
         manager = TokenManager(db_session)
         tenant_key = TokenTestData.generate_tenant_key()
 
-        metadata = {
-            "filename": "test.zip",
-            "file_count": 5,
-            "file_size": 2048
-        }
+        metadata = {"filename": "test.zip", "file_count": 5, "file_size": 2048}
 
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="agent_templates",
-            metadata=metadata
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="agent_templates", metadata=metadata)
 
         # Verify token exists in database
         stmt = select(DownloadToken).where(DownloadToken.token == token)
@@ -154,11 +140,7 @@ class TestTokenManager:
         manager = TokenManager(db_session)
         tenant_key = TokenTestData.generate_tenant_key()
 
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Validate token
         is_valid = await manager.validate_token(token, tenant_key)
@@ -185,11 +167,7 @@ class TestTokenManager:
         tenant_key = TokenTestData.generate_tenant_key()
 
         # Create token
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Manually expire token
         stmt = select(DownloadToken).where(DownloadToken.token == token)
@@ -211,11 +189,7 @@ class TestTokenManager:
         manager = TokenManager(db_session)
         tenant_key = TokenTestData.generate_tenant_key()
 
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Mark as used
         await manager.mark_as_used(token)
@@ -234,11 +208,7 @@ class TestTokenManager:
         tenant_b = TokenTestData.generate_tenant_key()
 
         # Tenant A creates token
-        token = await manager.generate_token(
-            tenant_key=tenant_a,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_a, download_type="slash_commands", metadata={})
 
         # Tenant B tries to validate
         is_valid = await manager.validate_token(token, tenant_b)
@@ -253,11 +223,7 @@ class TestTokenManager:
         manager = TokenManager(db_session)
         tenant_key = TokenTestData.generate_tenant_key()
 
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Mark as used
         await manager.mark_as_used(token)
@@ -281,18 +247,10 @@ class TestTokenManager:
         tenant_key = TokenTestData.generate_tenant_key()
 
         # Create fresh token
-        fresh_token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        fresh_token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Create expired token
-        expired_token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        expired_token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Manually expire second token
         stmt = select(DownloadToken).where(DownloadToken.token == expired_token)
@@ -326,11 +284,7 @@ class TestTokenManager:
 
         # Generate 50 tokens concurrently
         tasks = [
-            manager.generate_token(
-                tenant_key=tenant_key,
-                download_type="slash_commands",
-                metadata={}
-            )
+            manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
             for _ in range(50)
         ]
 
@@ -347,11 +301,7 @@ class TestTokenManager:
         manager = TokenManager(db_session)
         tenant_key = TokenTestData.generate_tenant_key()
 
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Simulate concurrent downloads
         async def attempt_download():
@@ -411,17 +361,17 @@ class TestFileStaging:
         tenant_key = TokenTestData.generate_tenant_key()
         token = TokenTestData.generate_token()
 
-        zip_path = await staging.stage_slash_commands(tenant_key, token)
+        staging_dir = await staging.create_staging_directory(tenant_key, token)
+        zip_path, message = await staging.stage_slash_commands(staging_dir)
 
         # Verify ZIP exists
         assert zip_path.exists()
         assert zip_path.suffix == ".zip"
 
         # Verify ZIP contents
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(zip_path, "r") as zf:
             namelist = zf.namelist()
-            assert "gil_import_productagents.md" in namelist
-            assert "gil_import_personalagents.md" in namelist
+            # Refactored 0102: Only gil_handover.md included in slash commands
             assert "gil_handover.md" in namelist
 
     @pytest.mark.asyncio
@@ -456,13 +406,14 @@ class TestFileStaging:
         staging = FileStaging(base_path=tmp_path, db_session=db_session)
         token = TokenTestData.generate_token()
 
-        zip_path = await staging.stage_agent_templates(tenant_key, token)
+        staging_dir = await staging.create_staging_directory(tenant_key, token)
+        zip_path, message = await staging.stage_agent_templates(staging_dir, tenant_key, db_session=db_session)
 
         # Verify ZIP exists
         assert zip_path.exists()
 
         # Verify ZIP contents
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(zip_path, "r") as zf:
             namelist = zf.namelist()
             assert "orchestrator.md" in namelist
             assert "implementor.md" in namelist
@@ -548,11 +499,7 @@ class TestDownloadEndpointsWithTokens:
     async def test_generate_token_endpoint_success(self, api_client, auth_headers, db_session):
         """Test POST /api/download/generate-token creates valid token"""
         response = await api_client.post(
-            "/api/download/generate-token",
-            headers=auth_headers,
-            json={
-                "download_type": "slash_commands"
-            }
+            "/api/download/generate-token", headers=auth_headers, json={"download_type": "slash_commands"}
         )
 
         assert response.status_code == 201
@@ -573,9 +520,7 @@ class TestDownloadEndpointsWithTokens:
         """Test GET /api/download/file/{token} downloads file successfully"""
         # Generate token
         response = await api_client.post(
-            "/api/download/generate-token",
-            headers=auth_headers,
-            json={"download_type": "slash_commands"}
+            "/api/download/generate-token", headers=auth_headers, json={"download_type": "slash_commands"}
         )
         token = response.json()["token"]
 
@@ -588,7 +533,7 @@ class TestDownloadEndpointsWithTokens:
 
         # Verify ZIP is valid
         zip_bytes = response.content
-        with zipfile.ZipFile(BytesIO(zip_bytes), 'r') as zf:
+        with zipfile.ZipFile(BytesIO(zip_bytes), "r") as zf:
             assert len(zf.namelist()) > 0
 
     @pytest.mark.asyncio
@@ -601,11 +546,7 @@ class TestDownloadEndpointsWithTokens:
         manager = TokenManager(db_session)
         tenant_key = "test-tenant"
 
-        token = await manager.generate_token(
-            tenant_key=tenant_key,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
         # Expire token
         stmt = select(DownloadToken).where(DownloadToken.token == token)
@@ -625,9 +566,7 @@ class TestDownloadEndpointsWithTokens:
         """Test one-time use enforcement: Second download with same token fails"""
         # Generate token
         response = await api_client.post(
-            "/api/download/generate-token",
-            headers=auth_headers,
-            json={"download_type": "slash_commands"}
+            "/api/download/generate-token", headers=auth_headers, json={"download_type": "slash_commands"}
         )
         token = response.json()["token"]
 
@@ -659,17 +598,12 @@ class TestDownloadEndpointsWithTokens:
         manager = TokenManager(db_session)
         tenant_a = "tenant-a"
 
-        token = await manager.generate_token(
-            tenant_key=tenant_a,
-            download_type="slash_commands",
-            metadata={}
-        )
+        token = await manager.generate_token(tenant_key=tenant_a, download_type="slash_commands", metadata={})
 
         # Tenant B tries to download (using different auth)
         # (In practice, tenant key comes from JWT token)
         response = await api_client.get(
-            f"/api/download/file/{token}",
-            headers={"Authorization": "Bearer tenant-b-token"}
+            f"/api/download/file/{token}", headers={"Authorization": "Bearer tenant-b-token"}
         )
 
         assert response.status_code == 403  # Forbidden
@@ -682,9 +616,7 @@ class TestDownloadEndpointsWithTokens:
 
         # Generate token
         response = await api_client.post(
-            "/api/download/generate-token",
-            headers=auth_headers,
-            json={"download_type": "slash_commands"}
+            "/api/download/generate-token", headers=auth_headers, json={"download_type": "slash_commands"}
         )
         token = response.json()["token"]
 
@@ -722,9 +654,7 @@ class TestMCPToolDownloadIntegration:
     async def test_setup_slash_commands_returns_download_url(self, api_client, auth_headers):
         """Test setup_slash_commands MCP tool returns valid download URL"""
         response = await api_client.post(
-            "/api/mcp/tools/setup_slash_commands",
-            headers=auth_headers,
-            json={"platform": "linux"}
+            "/api/mcp/tools/setup_slash_commands", headers=auth_headers, json={"platform": "linux"}
         )
 
         assert response.status_code == 200
@@ -755,11 +685,7 @@ class TestMCPToolDownloadIntegration:
         db_session.add(template)
         await db_session.commit()
 
-        response = await api_client.post(
-            "/api/mcp/tools/gil_import_personalagents",
-            headers=auth_headers,
-            json={}
-        )
+        response = await api_client.post("/api/mcp/tools/gil_import_personalagents", headers=auth_headers, json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -771,22 +697,16 @@ class TestMCPToolDownloadIntegration:
         download_response = await api_client.get(data["download_url"])
         assert download_response.status_code == 200
 
-        with zipfile.ZipFile(BytesIO(download_response.content), 'r') as zf:
+        with zipfile.ZipFile(BytesIO(download_response.content), "r") as zf:
             assert "test_agent.md" in zf.namelist()
 
     @pytest.mark.asyncio
-    async def test_gil_import_productagents_returns_download_url(
-        self, api_client, auth_headers, db_session, test_user
-    ):
+    async def test_gil_import_productagents_returns_download_url(self, api_client, auth_headers, db_session, test_user):
         """Test gil_import_productagents MCP tool returns valid download URL"""
         # Create active product and templates
         # (Implementation depends on product model)
 
-        response = await api_client.post(
-            "/api/mcp/tools/gil_import_productagents",
-            headers=auth_headers,
-            json={}
-        )
+        response = await api_client.post("/api/mcp/tools/gil_import_productagents", headers=auth_headers, json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -799,9 +719,7 @@ class TestMCPToolDownloadIntegration:
         """Test token expires after 15 minutes (configurable)"""
         # Generate token via tool
         response = await api_client.post(
-            "/api/mcp/tools/setup_slash_commands",
-            headers=auth_headers,
-            json={"platform": "linux"}
+            "/api/mcp/tools/setup_slash_commands", headers=auth_headers, json={"platform": "linux"}
         )
 
         data = response.json()
@@ -833,9 +751,7 @@ class TestEndToEndDownloadFlow:
         """Test complete flow: UI button → generate token → download → cleanup"""
         # Step 1: UI requests download token
         response = await api_client.post(
-            "/api/download/generate-token",
-            headers=auth_headers,
-            json={"download_type": "slash_commands"}
+            "/api/download/generate-token", headers=auth_headers, json={"download_type": "slash_commands"}
         )
         assert response.status_code == 201
 
@@ -847,7 +763,7 @@ class TestEndToEndDownloadFlow:
         assert response.status_code == 200
 
         # Step 3: Verify ZIP content
-        with zipfile.ZipFile(BytesIO(response.content), 'r') as zf:
+        with zipfile.ZipFile(BytesIO(response.content), "r") as zf:
             assert len(zf.namelist()) > 0
 
         # Step 4: Verify token now invalid (one-time use)
@@ -858,11 +774,7 @@ class TestEndToEndDownloadFlow:
     async def test_mcp_slash_command_download_flow(self, api_client, auth_headers):
         """Test complete flow: MCP slash command → token → download → cleanup"""
         # Step 1: User executes /gil_import_personalagents
-        response = await api_client.post(
-            "/api/mcp/tools/gil_import_personalagents",
-            headers=auth_headers,
-            json={}
-        )
+        response = await api_client.post("/api/mcp/tools/gil_import_personalagents", headers=auth_headers, json={})
         assert response.status_code == 200
 
         download_url = response.json()["download_url"]
@@ -886,11 +798,7 @@ class TestEndToEndDownloadFlow:
         tokens = []
 
         for tenant in tenants:
-            token = await manager.generate_token(
-                tenant_key=tenant,
-                download_type="slash_commands",
-                metadata={}
-            )
+            token = await manager.generate_token(tenant_key=tenant, download_type="slash_commands", metadata={})
             tokens.append((tenant, token))
 
         # Simulate concurrent downloads
@@ -939,15 +847,11 @@ class TestEdgeCasesAndErrors:
         from src.giljo_mcp.download_tokens import TokenManager
 
         # Mock database error
-        with patch.object(db_session, 'commit', side_effect=Exception("DB error")):
+        with patch.object(db_session, "commit", side_effect=Exception("DB error")):
             manager = TokenManager(db_session)
 
             with pytest.raises(HTTPException) as exc_info:
-                await manager.generate_token(
-                    tenant_key="test",
-                    download_type="slash_commands",
-                    metadata={}
-                )
+                await manager.generate_token(tenant_key="test", download_type="slash_commands", metadata={})
 
             assert exc_info.value.status_code == 500
 
@@ -957,13 +861,15 @@ class TestEdgeCasesAndErrors:
         from src.giljo_mcp.file_staging import FileStaging
 
         staging = FileStaging(base_path=tmp_path)
+        tenant_key = TokenTestData.generate_tenant_key()
+        token = TokenTestData.generate_token()
+        staging_dir = await staging.create_staging_directory(tenant_key, token)
 
-        # Mock disk full error
-        with patch('pathlib.Path.write_bytes', side_effect=OSError("No space left")):
-            with pytest.raises(HTTPException) as exc_info:
-                await staging.stage_slash_commands("tenant", "token")
-
-            assert exc_info.value.status_code == 507  # Insufficient Storage
+        # Mock disk full error on writing into ZIP
+        with patch("zipfile.ZipFile.writestr", side_effect=OSError("No space left")):
+            zip_path, message = await staging.stage_slash_commands(staging_dir)
+            assert zip_path is None
+            assert "disk" in message.lower() or "error" in message.lower()
 
     @pytest.mark.asyncio
     async def test_cleanup_handles_missing_directory(self, tmp_path):
@@ -983,9 +889,7 @@ class TestEdgeCasesAndErrors:
         responses = []
         for _ in range(100):
             response = await api_client.post(
-                "/api/download/generate-token",
-                headers=auth_headers,
-                json={"download_type": "slash_commands"}
+                "/api/download/generate-token", headers=auth_headers, json={"download_type": "slash_commands"}
             )
             responses.append(response.status_code)
 
@@ -1111,9 +1015,7 @@ async def test_user(db_session):
 async def auth_headers(test_user):
     """Generate authentication headers for test user"""
     # In practice, this would create a valid JWT token
-    return {
-        "Authorization": f"Bearer test-token-{test_user.id}"
-    }
+    return {"Authorization": f"Bearer test-token-{test_user.id}"}
 
 
 @pytest_asyncio.fixture
@@ -1121,4 +1023,3 @@ async def api_client():
     """Create async HTTP client for API testing"""
     # This would be a TestClient or httpx.AsyncClient
     # connected to the FastAPI app
-    pass

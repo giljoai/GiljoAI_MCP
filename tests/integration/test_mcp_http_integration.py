@@ -18,26 +18,29 @@ Test Coverage:
 - Error response format compliance
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPSession, APIKey, User
-from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
-from api.app import app, state
+from api.app import app
+from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
+from src.giljo_mcp.models import APIKey, MCPSession, User
 
 
 # Fixtures
+
 
 @pytest_asyncio.fixture
 async def api_client():
     """Create async HTTP client for testing API"""
     from httpx import ASGITransport
-    from src.giljo_mcp.database import DatabaseManager
+
     from src.giljo_mcp.auth.dependencies import get_db_session
+    from src.giljo_mcp.database import DatabaseManager
     from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     # Create test database manager
@@ -53,10 +56,7 @@ async def api_client():
     app.dependency_overrides[get_db_session] = override_get_db_session
 
     try:
-        async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
     finally:
         app.dependency_overrides.clear()
@@ -75,7 +75,7 @@ async def test_user(db_session: AsyncSession):
         role="developer",
         tenant_key="test_tenant",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -105,7 +105,7 @@ async def test_api_key(db_session: AsyncSession, test_user: User):
         key_prefix=key_prefix,
         permissions=["*"],
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db_session.add(api_key)
@@ -121,6 +121,7 @@ async def test_api_key(db_session: AsyncSession, test_user: User):
 
 
 # Test 1: Server Startup and Endpoint Registration
+
 
 @pytest.mark.asyncio
 async def test_server_startup_mcp_endpoint_registered():
@@ -151,32 +152,20 @@ async def test_mcp_endpoint_accessibility(api_client: AsyncClient):
     - Endpoint responds to requests
     - Returns proper error when X-API-Key missing (not 404)
     """
-    response = await api_client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {},
-            "id": 1
-        }
-    )
+    response = await api_client.post("/mcp", json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1})
 
     # Should not be 404 (endpoint exists)
     assert response.status_code != 404, "MCP endpoint returned 404 - not registered"
 
     # Should be accessible (even if auth fails)
-    assert response.status_code in [200, 400, 401], \
-        f"Unexpected status code: {response.status_code}"
+    assert response.status_code in [200, 400, 401], f"Unexpected status code: {response.status_code}"
 
 
 # Test 2: Authentication Tests
 
+
 @pytest.mark.asyncio
-async def test_authentication_valid_api_key(
-    api_client: AsyncClient,
-    test_api_key: tuple,
-    db_session: AsyncSession
-):
+async def test_authentication_valid_api_key(api_client: AsyncClient, test_api_key: tuple, db_session: AsyncSession):
     """
     Test successful authentication with valid API key.
 
@@ -195,11 +184,11 @@ async def test_authentication_valid_api_key(
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "client_info": {"name": "test-client", "version": "1.0.0"}
+                "client_info": {"name": "test-client", "version": "1.0.0"},
             },
-            "id": 1
+            "id": 1,
         },
-        headers={"X-API-Key": api_key_value}
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
@@ -232,12 +221,7 @@ async def test_authentication_missing_api_key(api_client: AsyncClient):
     """
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {},
-            "id": 1
-        }
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1},
         # No X-API-Key header
     )
 
@@ -268,13 +252,8 @@ async def test_authentication_invalid_api_key(api_client: AsyncClient):
     """
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {},
-            "id": 1
-        },
-        headers={"X-API-Key": "invalid_key_12345"}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1},
+        headers={"X-API-Key": "invalid_key_12345"},
     )
 
     assert response.status_code == 200, "Should return 200 with JSON-RPC error"
@@ -287,17 +266,14 @@ async def test_authentication_invalid_api_key(api_client: AsyncClient):
 
     # Verify error indicates invalid key
     error = data["error"]
-    assert "Invalid API key" in error.get("message", ""), \
-        "Error message should indicate invalid API key"
+    assert "Invalid API key" in error.get("message", ""), "Error message should indicate invalid API key"
 
 
 # Test 3: Protocol Tests
 
+
 @pytest.mark.asyncio
-async def test_protocol_initialize_method(
-    api_client: AsyncClient,
-    test_api_key: tuple
-):
+async def test_protocol_initialize_method(api_client: AsyncClient, test_api_key: tuple):
     """
     Test the initialize method with proper JSON-RPC 2.0 format.
 
@@ -316,11 +292,11 @@ async def test_protocol_initialize_method(
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "client_info": {"name": "test-client", "version": "1.0.0"}
+                "client_info": {"name": "test-client", "version": "1.0.0"},
             },
-            "id": 1
+            "id": 1,
         },
-        headers={"X-API-Key": api_key_value}
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200
@@ -339,10 +315,7 @@ async def test_protocol_initialize_method(
 
 
 @pytest.mark.asyncio
-async def test_protocol_tools_list_method(
-    api_client: AsyncClient,
-    test_api_key: tuple
-):
+async def test_protocol_tools_list_method(api_client: AsyncClient, test_api_key: tuple):
     """
     Test the tools/list method.
 
@@ -356,25 +329,15 @@ async def test_protocol_tools_list_method(
     # First initialize
     await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05"},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2024-11-05"}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
 
     # Then list tools
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/list",
-            "params": {},
-            "id": 2
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200
@@ -394,11 +357,7 @@ async def test_protocol_tools_list_method(
 
 
 @pytest.mark.asyncio
-async def test_protocol_tools_call_method(
-    api_client: AsyncClient,
-    test_api_key: tuple,
-    db_session: AsyncSession
-):
+async def test_protocol_tools_call_method(api_client: AsyncClient, test_api_key: tuple, db_session: AsyncSession):
     """
     Test the tools/call method with a basic tool.
 
@@ -412,28 +371,15 @@ async def test_protocol_tools_call_method(
     # Initialize session
     await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05"},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2024-11-05"}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
 
     # Call list_projects tool
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "list_projects",
-                "arguments": {}
-            },
-            "id": 3
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "list_projects", "arguments": {}}, "id": 3},
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200
@@ -452,11 +398,10 @@ async def test_protocol_tools_call_method(
 
 # Test 4: Session Management Tests
 
+
 @pytest.mark.asyncio
 async def test_session_creation_on_first_request(
-    api_client: AsyncClient,
-    test_api_key: tuple,
-    db_session: AsyncSession
+    api_client: AsyncClient, test_api_key: tuple, db_session: AsyncSession
 ):
     """
     Test that session is created on first authenticated request.
@@ -479,13 +424,8 @@ async def test_session_creation_on_first_request(
     # Make first request
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05"},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2024-11-05"}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200
@@ -502,9 +442,7 @@ async def test_session_creation_on_first_request(
 
 @pytest.mark.asyncio
 async def test_session_persistence_across_requests(
-    api_client: AsyncClient,
-    test_api_key: tuple,
-    db_session: AsyncSession
+    api_client: AsyncClient, test_api_key: tuple, db_session: AsyncSession
 ):
     """
     Test that session persists across multiple requests.
@@ -519,13 +457,8 @@ async def test_session_persistence_across_requests(
     # First request (initialize)
     response1 = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05"},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2024-11-05"}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
     assert response1.status_code == 200
 
@@ -539,13 +472,8 @@ async def test_session_persistence_across_requests(
     # Second request (tools/list)
     response2 = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/list",
-            "params": {},
-            "id": 2
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
+        headers={"X-API-Key": api_key_value},
     )
     assert response2.status_code == 200
 
@@ -561,10 +489,7 @@ async def test_session_persistence_across_requests(
 
 
 @pytest.mark.asyncio
-async def test_session_tenant_context_isolation(
-    api_client: AsyncClient,
-    db_session: AsyncSession
-):
+async def test_session_tenant_context_isolation(api_client: AsyncClient, db_session: AsyncSession):
     """
     Test that sessions maintain tenant context isolation.
 
@@ -582,7 +507,7 @@ async def test_session_tenant_context_isolation(
         tenant_key="tenant1",
         role="developer",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     user2 = User(
         username="tenant2_user",
@@ -590,7 +515,7 @@ async def test_session_tenant_context_isolation(
         tenant_key="tenant2",
         role="developer",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add_all([user1, user2])
     await db_session.commit()
@@ -607,7 +532,7 @@ async def test_session_tenant_context_isolation(
         key_prefix=get_key_prefix(api_key1_value),
         permissions=["*"],
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     api_key2_value = generate_api_key()
@@ -619,7 +544,7 @@ async def test_session_tenant_context_isolation(
         key_prefix=get_key_prefix(api_key2_value),
         permissions=["*"],
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db_session.add_all([api_key1, api_key2])
@@ -630,12 +555,12 @@ async def test_session_tenant_context_isolation(
         response1 = await api_client.post(
             "/mcp",
             json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1},
-            headers={"X-API-Key": api_key1_value}
+            headers={"X-API-Key": api_key1_value},
         )
         response2 = await api_client.post(
             "/mcp",
             json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 2},
-            headers={"X-API-Key": api_key2_value}
+            headers={"X-API-Key": api_key2_value},
         )
 
         assert response1.status_code == 200
@@ -665,11 +590,9 @@ async def test_session_tenant_context_isolation(
 
 # Test 5: Error Handling Tests
 
+
 @pytest.mark.asyncio
-async def test_error_handling_invalid_json_rpc_format(
-    api_client: AsyncClient,
-    test_api_key: tuple
-):
+async def test_error_handling_invalid_json_rpc_format(api_client: AsyncClient, test_api_key: tuple):
     """
     Test error handling for invalid JSON-RPC 2.0 format.
 
@@ -687,21 +610,17 @@ async def test_error_handling_invalid_json_rpc_format(
             "jsonrpc": "2.0",
             # Missing "method"
             "params": {},
-            "id": 1
+            "id": 1,
         },
-        headers={"X-API-Key": api_key_value}
+        headers={"X-API-Key": api_key_value},
     )
 
     # Should return 422 Unprocessable Entity (Pydantic validation error)
-    assert response.status_code == 422, \
-        f"Expected 422 for invalid format, got {response.status_code}"
+    assert response.status_code == 422, f"Expected 422 for invalid format, got {response.status_code}"
 
 
 @pytest.mark.asyncio
-async def test_error_handling_unknown_method(
-    api_client: AsyncClient,
-    test_api_key: tuple
-):
+async def test_error_handling_unknown_method(api_client: AsyncClient, test_api_key: tuple):
     """
     Test error handling for unknown method calls.
 
@@ -714,13 +633,8 @@ async def test_error_handling_unknown_method(
 
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "nonexistent/method",
-            "params": {},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "nonexistent/method", "params": {}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200, "Should return 200 with JSON-RPC error"
@@ -729,17 +643,12 @@ async def test_error_handling_unknown_method(
     assert "error" in data, "Missing error field"
 
     error = data["error"]
-    assert error.get("code") == -32601, \
-        f"Expected error code -32601, got {error.get('code')}"
-    assert "nonexistent/method" in error.get("message", ""), \
-        "Error message should mention method name"
+    assert error.get("code") == -32601, f"Expected error code -32601, got {error.get('code')}"
+    assert "nonexistent/method" in error.get("message", ""), "Error message should mention method name"
 
 
 @pytest.mark.asyncio
-async def test_error_handling_malformed_tool_call(
-    api_client: AsyncClient,
-    test_api_key: tuple
-):
+async def test_error_handling_malformed_tool_call(api_client: AsyncClient, test_api_key: tuple):
     """
     Test error handling for malformed tool call requests.
 
@@ -753,13 +662,8 @@ async def test_error_handling_malformed_tool_call(
     # Initialize first
     await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
 
     # Call tool without name
@@ -772,9 +676,9 @@ async def test_error_handling_malformed_tool_call(
                 # Missing "name"
                 "arguments": {}
             },
-            "id": 2
+            "id": 2,
         },
-        headers={"X-API-Key": api_key_value}
+        headers={"X-API-Key": api_key_value},
     )
 
     assert response.status_code == 200, "Should return 200 with JSON-RPC error"
@@ -783,16 +687,14 @@ async def test_error_handling_malformed_tool_call(
     assert "error" in data, "Missing error field"
 
     error = data["error"]
-    assert "required" in error.get("message", "").lower() or \
-           "tool name" in error.get("message", "").lower(), \
-           "Error should indicate missing tool name"
+    assert "required" in error.get("message", "").lower() or "tool name" in error.get("message", "").lower(), (
+        "Error should indicate missing tool name"
+    )
 
 
 @pytest.mark.asyncio
 async def test_error_handling_session_expiration(
-    api_client: AsyncClient,
-    test_api_key: tuple,
-    db_session: AsyncSession
+    api_client: AsyncClient, test_api_key: tuple, db_session: AsyncSession
 ):
     """
     Test error handling for expired sessions.
@@ -811,7 +713,7 @@ async def test_error_handling_session_expiration(
         session_data={},
         created_at=datetime.now(timezone.utc) - timedelta(hours=48),
         last_accessed=datetime.now(timezone.utc) - timedelta(hours=48),
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1)  # Expired
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),  # Expired
     )
     db_session.add(expired_session)
     await db_session.commit()
@@ -819,27 +721,20 @@ async def test_error_handling_session_expiration(
     # Try to use expired session (should create new one)
     response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1},
+        headers={"X-API-Key": api_key_value},
     )
 
     # Should succeed by creating new session
-    assert response.status_code == 200, \
-        "Expired session should be handled gracefully"
+    assert response.status_code == 200, "Expired session should be handled gracefully"
 
 
 # Test 6: Integration Test - Full MCP Flow
 
+
 @pytest.mark.asyncio
 async def test_full_mcp_flow_initialize_list_call(
-    api_client: AsyncClient,
-    test_api_key: tuple,
-    db_session: AsyncSession
+    api_client: AsyncClient, test_api_key: tuple, db_session: AsyncSession
 ):
     """
     Test complete MCP flow: initialize → tools/list → tools/call.
@@ -861,11 +756,11 @@ async def test_full_mcp_flow_initialize_list_call(
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "client_info": {"name": "integration-test", "version": "1.0"}
+                "client_info": {"name": "integration-test", "version": "1.0"},
             },
-            "id": 1
+            "id": 1,
         },
-        headers={"X-API-Key": api_key_value}
+        headers={"X-API-Key": api_key_value},
     )
 
     assert init_response.status_code == 200
@@ -876,13 +771,8 @@ async def test_full_mcp_flow_initialize_list_call(
     # Step 2: List tools
     list_response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/list",
-            "params": {},
-            "id": 2
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
+        headers={"X-API-Key": api_key_value},
     )
 
     assert list_response.status_code == 200
@@ -895,16 +785,8 @@ async def test_full_mcp_flow_initialize_list_call(
     # Step 3: Call tool
     call_response = await api_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "list_projects",
-                "arguments": {}
-            },
-            "id": 3
-        },
-        headers={"X-API-Key": api_key_value}
+        json={"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "list_projects", "arguments": {}}, "id": 3},
+        headers={"X-API-Key": api_key_value},
     )
 
     assert call_response.status_code == 200

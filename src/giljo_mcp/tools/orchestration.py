@@ -8,7 +8,6 @@ This module also provides tools that act as "prompt generators" for slash comman
 enabling automated agent setup and project orchestration via Claude Code CLI commands.
 """
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -17,13 +16,11 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from fastmcp import FastMCP
-from sqlalchemy import and_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, AgentTemplate, Job, MCPAgentJob, Project, Product
+from giljo_mcp.models import AgentTemplate, Job, MCPAgentJob, Product, Project
 from giljo_mcp.orchestrator import ProjectOrchestrator
-from giljo_mcp.template_manager import get_template_manager
 
 
 logger = logging.getLogger(__name__)
@@ -42,10 +39,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
     # Core Orchestration Tools (existing tools remain unchanged)
     # ========================================================================
     @mcp.tool()
-    async def orchestrate_project(
-        project_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def orchestrate_project(project_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Complete project orchestration workflow.
 
@@ -82,41 +76,35 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         try:
             # Validate inputs
             if not project_id or not project_id.strip():
-                return {'error': 'Project ID is required'}
+                return {"error": "Project ID is required"}
 
             if not tenant_key or not tenant_key.strip():
-                return {'error': 'Tenant key is required'}
+                return {"error": "Tenant key is required"}
 
             # Get project by ID with tenant isolation
             async with db_manager.get_session_async() as session:
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {'error': f"Project '{project_id}' not found"}
+                    return {"error": f"Project '{project_id}' not found"}
 
                 # Ensure project has product_id
                 if not project.product_id:
-                    return {'error': f"Project '{project_id}' has no associated product"}
+                    return {"error": f"Project '{project_id}' has no associated product"}
 
                 # Initialize orchestrator
                 orchestrator = ProjectOrchestrator()
 
                 # Run orchestration workflow
                 logger.info(
-                    f"Starting orchestration for project {project.id} "
-                    f"(name: {project.name}, tenant: {tenant_key})"
+                    f"Starting orchestration for project {project.id} (name: {project.name}, tenant: {tenant_key})"
                 )
 
                 result_dict = await orchestrator.process_product_vision(
-                    tenant_key=tenant_key,
-                    product_id=project.product_id,
-                    project_requirements=project.mission
+                    tenant_key=tenant_key, product_id=project.product_id, project_requirements=project.mission
                 )
 
                 logger.info(
@@ -128,16 +116,13 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
 
         except ValueError as e:
             logger.error(f"Orchestration validation error: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
         except Exception as e:
             logger.error(f"Orchestration failed: {e}", exc_info=True)
-            return {'error': f"Orchestration failed: {str(e)}"}
+            return {"error": f"Orchestration failed: {e!s}"}
 
     @mcp.tool()
-    async def get_agent_mission(
-        agent_job_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Fetch agent-specific mission and context (Thin Client Architecture).
 
@@ -169,59 +154,56 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 # Get agent job from MCPAgentJob table
                 result = await session.execute(
                     select(MCPAgentJob).where(
-                        and_(
-                            MCPAgentJob.job_id == agent_job_id,
-                            MCPAgentJob.tenant_key == tenant_key
-                        )
+                        and_(MCPAgentJob.job_id == agent_job_id, MCPAgentJob.tenant_key == tenant_key)
                     )
                 )
                 agent_job = result.scalar_one_or_none()
 
                 if not agent_job:
                     return {
-                        'error': 'NOT_FOUND',
-                        'message': f'Agent job {agent_job_id} not found',
-                        'troubleshooting': [
-                            'Verify agent was spawned successfully',
-                            'Check if project was deleted',
-                            'Ensure tenant_key matches',
-                            f'Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = \'{agent_job_id}\''
+                        "error": "NOT_FOUND",
+                        "message": f"Agent job {agent_job_id} not found",
+                        "troubleshooting": [
+                            "Verify agent was spawned successfully",
+                            "Check if project was deleted",
+                            "Ensure tenant_key matches",
+                            f"Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = '{agent_job_id}'",
                         ],
-                        'severity': 'ERROR'
+                        "severity": "ERROR",
                     }
 
                 # Mission is stored in job.mission field (thin client pattern)
-                estimated_tokens = len(agent_job.mission or '') // 4
+                estimated_tokens = len(agent_job.mission or "") // 4
 
                 logger.info(
                     f"[THIN CLIENT] Agent mission fetched: {agent_job.agent_type}",
-                    extra={'agent_job_id': agent_job_id, 'tokens': estimated_tokens}
+                    extra={"agent_job_id": agent_job_id, "tokens": estimated_tokens},
                 )
 
                 return {
-                    'success': True,
-                    'agent_job_id': agent_job_id,
-                    'agent_name': agent_job.agent_type,  # Use agent_type as name
-                    'agent_type': agent_job.agent_type,
-                    'mission': agent_job.mission or '',
-                    'project_id': str(agent_job.project_id),
-                    'parent_job_id': str(agent_job.spawned_by) if agent_job.spawned_by else None,
-                    'estimated_tokens': estimated_tokens,
-                    'status': agent_job.status,
-                    'thin_client': True
+                    "success": True,
+                    "agent_job_id": agent_job_id,
+                    "agent_name": agent_job.agent_type,  # Use agent_type as name
+                    "agent_type": agent_job.agent_type,
+                    "mission": agent_job.mission or "",
+                    "project_id": str(agent_job.project_id),
+                    "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
+                    "estimated_tokens": estimated_tokens,
+                    "status": agent_job.status,
+                    "thin_client": True,
                 }
 
         except Exception as e:
             logger.error(f"[ERROR] Failed to get agent mission: {e}", exc_info=True)
             return {
-                'error': 'INTERNAL_ERROR',
-                'message': f'Unexpected error: {str(e)}',
-                'troubleshooting': [
-                    'Check MCP server logs',
-                    'Verify database connection',
-                    'Contact support if issue persists'
+                "error": "INTERNAL_ERROR",
+                "message": f"Unexpected error: {e!s}",
+                "troubleshooting": [
+                    "Check MCP server logs",
+                    "Verify database connection",
+                    "Contact support if issue persists",
                 ],
-                'severity': 'ERROR'
+                "severity": "ERROR",
             }
 
     @mcp.tool()
@@ -231,7 +213,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         mission: str,
         project_id: str,
         tenant_key: str,
-        parent_job_id: Optional[str] = None
+        parent_job_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Spawn agent job with THIN CLIENT prompt (Handover 0088 Amendment B).
@@ -265,17 +247,12 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             async with db_manager.get_session_async() as session:
                 # Get project for context
                 result = await session.execute(
-                    select(Project).where(
-                        and_(
-                            Project.id == project_id,
-                            Project.tenant_key == tenant_key
-                        )
-                    )
+                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {'error': 'NOT_FOUND', 'message': 'Project not found'}
+                    return {"error": "NOT_FOUND", "message": "Project not found"}
 
                 # Create agent job with mission STORED in database
                 agent_job_id = str(uuid4())
@@ -286,12 +263,12 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     agent_type=agent_type,
                     mission=mission,  # STORED HERE, not in prompt
                     spawned_by=parent_job_id,
-                    status='pending',
+                    status="pending",
                     metadata={
-                        'created_via': 'thin_client_spawn',
-                        'created_at': datetime.now(timezone.utc).isoformat(),
-                        'thin_client': True
-                    }
+                        "created_via": "thin_client_spawn",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "thin_client": True,
+                    },
                 )
 
                 session.add(agent_job)
@@ -305,7 +282,7 @@ IDENTITY:
 - Agent ID: {agent_job_id}
 - Agent Type: {agent_type}
 - Project ID: {project_id}
-- Parent Orchestrator: {parent_job_id or 'None'}
+- Parent Orchestrator: {parent_job_id or "None"}
 
 INSTRUCTIONS:
 1. Fetch mission: get_agent_mission(agent_job_id='{agent_job_id}', tenant_key='{tenant_key}')
@@ -324,52 +301,45 @@ Begin by fetching your mission.
                 try:
                     from api.app import state
 
-                    ws_manager = getattr(state, 'websocket_manager', None)
+                    ws_manager = getattr(state, "websocket_manager", None)
 
                     if ws_manager:
                         await ws_manager.broadcast_to_tenant(
                             tenant_key=tenant_key,
                             event_type="agent:created",
                             data={
-                                'agent_id': agent_job_id,
-                                'agent_job_id': agent_job_id,
-                                'agent_type': agent_type,
-                                'agent_name': agent_name,
-                                'project_id': project_id,
-                                'status': 'pending',
-                                'thin_client': True,
-                                'prompt_tokens': prompt_tokens,
-                                'mission_tokens': mission_tokens
-                            }
+                                "agent_id": agent_job_id,
+                                "agent_job_id": agent_job_id,
+                                "agent_type": agent_type,
+                                "agent_name": agent_name,
+                                "project_id": project_id,
+                                "status": "pending",
+                                "thin_client": True,
+                                "prompt_tokens": prompt_tokens,
+                                "mission_tokens": mission_tokens,
+                            },
                         )
                         logger.info(f"[WEBSOCKET] Agent spawned: {agent_name} ({agent_type})")
                 except Exception as ws_error:
                     logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
                 return {
-                    'success': True,
-                    'agent_job_id': agent_job_id,
-                    'agent_prompt': thin_agent_prompt,  # ~10 lines
-                    'prompt_tokens': prompt_tokens,  # ~50
-                    'mission_stored': True,
-                    'mission_tokens': mission_tokens,  # ~2000
-                    'total_tokens': prompt_tokens + mission_tokens,
-                    'thin_client': True
+                    "success": True,
+                    "agent_job_id": agent_job_id,
+                    "agent_prompt": thin_agent_prompt,  # ~10 lines
+                    "prompt_tokens": prompt_tokens,  # ~50
+                    "mission_stored": True,
+                    "mission_tokens": mission_tokens,  # ~2000
+                    "total_tokens": prompt_tokens + mission_tokens,
+                    "thin_client": True,
                 }
 
         except Exception as e:
             logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
-            return {
-                'error': 'INTERNAL_ERROR',
-                'message': f'Failed to spawn agent: {str(e)}',
-                'severity': 'ERROR'
-            }
+            return {"error": "INTERNAL_ERROR", "message": f"Failed to spawn agent: {e!s}", "severity": "ERROR"}
 
     @mcp.tool()
-    async def get_workflow_status(
-        project_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def get_workflow_status(project_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Get current workflow status for a project.
 
@@ -408,38 +378,31 @@ Begin by fetching your mission.
         try:
             # Validate inputs
             if not project_id or not project_id.strip():
-                return {'error': 'Project ID is required'}
+                return {"error": "Project ID is required"}
 
             if not tenant_key or not tenant_key.strip():
-                return {'error': 'Tenant key is required'}
+                return {"error": "Tenant key is required"}
 
             # Verify project exists with tenant isolation
             async with db_manager.get_session_async() as session:
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {'error': f"Project '{project_id}' not found"}
+                    return {"error": f"Project '{project_id}' not found"}
 
                 # Get all Jobs for this project/tenant
                 # Note: Job doesn't have project_id, so we filter by tenant_key
-                jobs_result = await session.execute(
-                    select(Job).where(
-                        Job.tenant_key == tenant_key
-                    )
-                )
+                jobs_result = await session.execute(select(Job).where(Job.tenant_key == tenant_key))
                 jobs = jobs_result.scalars().all()
 
                 # Count by status
-                active_count = sum(1 for job in jobs if job.status == 'active')
-                completed_count = sum(1 for job in jobs if job.status == 'completed')
-                failed_count = sum(1 for job in jobs if job.status == 'failed')
-                pending_count = sum(1 for job in jobs if job.status == 'pending')
+                active_count = sum(1 for job in jobs if job.status == "active")
+                completed_count = sum(1 for job in jobs if job.status == "completed")
+                failed_count = sum(1 for job in jobs if job.status == "failed")
+                pending_count = sum(1 for job in jobs if job.status == "pending")
                 total_count = len(jobs)
 
                 # Calculate progress percentage
@@ -468,19 +431,18 @@ Begin by fetching your mission.
                 )
 
                 return {
-                    'active_agents': active_count,
-                    'completed_agents': completed_count,
-                    'failed_agents': failed_count,
-                    'pending_agents': pending_count,
-                    'current_stage': current_stage,
-                    'progress_percent': round(progress_percent, 2),
-                    'total_agents': total_count
+                    "active_agents": active_count,
+                    "completed_agents": completed_count,
+                    "failed_agents": failed_count,
+                    "pending_agents": pending_count,
+                    "current_stage": current_stage,
+                    "progress_percent": round(progress_percent, 2),
+                    "total_agents": total_count,
                 }
 
         except Exception as e:
             logger.error(f"Failed to get workflow status: {e}", exc_info=True)
-            return {'error': f"Failed to get workflow status: {str(e)}"}
-
+            return {"error": f"Failed to get workflow status: {e!s}"}
 
     # ========================================================================
     # Slash Command Support Tools (Prompt Generators)
@@ -491,90 +453,83 @@ Begin by fetching your mission.
     async def get_project_by_alias(alias: str) -> dict[str, Any]:
         """
         Fetch project details using its 6-character alias.
-        
+
         This tool enables quick project access without needing to remember
         long UUIDs. Each project has a unique 6-character alphanumeric alias.
-        
+
         Args:
             alias: 6-character project alias (case insensitive)
-            
+
         Returns:
             Dictionary containing project details or error
         """
         try:
             if not alias or len(alias) != 6:
-                return {'error': 'Alias must be exactly 6 characters'}
-                
+                return {"error": "Alias must be exactly 6 characters"}
+
             alias_upper = alias.upper()
-            
+
             async with db_manager.get_session_async() as session:
                 # For now, use project name search as fallback until alias column is added
-                result = await session.execute(
-                    select(Project).where(
-                        Project.name.ilike(f"%{alias_upper}%")
-                    )
-                )
+                result = await session.execute(select(Project).where(Project.name.ilike(f"%{alias_upper}%")))
                 project = result.scalar_one_or_none()
-                
+
                 if not project:
-                    return {'error': f"Project with alias '{alias_upper}' not found"}
-                    
+                    return {"error": f"Project with alias '{alias_upper}' not found"}
+
                 # Get product details if available
                 product_name = None
                 if project.product_id:
-                    product_result = await session.execute(
-                        select(Product).where(Product.id == project.product_id)
-                    )
+                    product_result = await session.execute(select(Product).where(Product.id == project.product_id))
                     product = product_result.scalar_one_or_none()
                     if product:
                         product_name = product.name
-                
+
                 return {
-                    'success': True,
-                    'project_id': str(project.id),
-                    'project_name': project.name,
-                    'alias': alias_upper,
-                    'tenant_key': project.tenant_key,
-                    'product_id': str(project.product_id) if project.product_id else None,
-                    'product_name': product_name,
-                    'mission': project.mission,
-                    'status': project.status,
-                    'created_at': project.created_at.isoformat() if project.created_at else None
+                    "success": True,
+                    "project_id": str(project.id),
+                    "project_name": project.name,
+                    "alias": alias_upper,
+                    "tenant_key": project.tenant_key,
+                    "product_id": str(project.product_id) if project.product_id else None,
+                    "product_name": product_name,
+                    "mission": project.mission,
+                    "status": project.status,
+                    "created_at": project.created_at.isoformat() if project.created_at else None,
                 }
-                
+
         except Exception as e:
             logger.error(f"Failed to get project by alias '{alias}': {e}", exc_info=True)
-            return {'error': f"Failed to fetch project: {str(e)}"}
-
+            return {"error": f"Failed to fetch project: {e!s}"}
 
     @mcp.tool()
     async def activate_project_mission(alias: str) -> dict[str, Any]:
         """
         Activate a project and create mission plan for orchestration.
-        
+
         This tool prepares a project for orchestration by analyzing requirements
         and generating detailed instructions for launching the workflow.
-        
+
         Args:
             alias: 6-character project alias
-            
+
         Returns:
             Dictionary with activation status and launch instructions
         """
         try:
             # Get project by alias
             project_result = await get_project_by_alias(alias)
-            
-            if 'error' in project_result:
+
+            if "error" in project_result:
                 return project_result
-                
-            project_id = project_result['project_id']
-            tenant_key = project_result['tenant_key']
-            project_name = project_result['project_name']
-            
-            if not project_result.get('product_id'):
-                return {'error': f"Project '{alias}' has no associated product vision"}
-            
+
+            project_id = project_result["project_id"]
+            tenant_key = project_result["tenant_key"]
+            project_name = project_result["project_name"]
+
+            if not project_result.get("product_id"):
+                return {"error": f"Project '{alias}' has no associated product vision"}
+
             # Generate formatted instructions for mission activation
             instructions = f"""
 # Project Mission Activation
@@ -606,45 +561,44 @@ This will:
 
 The mission plan has been staged and is ready for execution.
 """
-            
+
             return {
-                'success': True,
-                'project_id': project_id,
-                'alias': alias.upper(),
-                'status': 'activated',
-                'instructions': instructions
+                "success": True,
+                "project_id": project_id,
+                "alias": alias.upper(),
+                "status": "activated",
+                "instructions": instructions,
             }
-                
+
         except Exception as e:
             logger.error(f"Failed to activate project '{alias}': {e}", exc_info=True)
-            return {'error': f"Failed to activate project: {str(e)}"}
+            return {"error": f"Failed to activate project: {e!s}"}
 
-
-    @mcp.tool()  
+    @mcp.tool()
     async def get_launch_prompt(alias: str) -> dict[str, Any]:
         """
         Generate orchestration launch instructions for a project.
-        
+
         Returns formatted instructions that guide Claude Code through
         launching the full orchestration workflow.
-        
+
         Args:
             alias: 6-character project alias
-            
+
         Returns:
             Dictionary with launch instructions
         """
         try:
             # Get project details
             project_result = await get_project_by_alias(alias)
-            
-            if 'error' in project_result:
+
+            if "error" in project_result:
                 return project_result
-            
-            project_id = project_result['project_id']
-            tenant_key = project_result['tenant_key']
-            project_name = project_result['project_name']
-            
+
+            project_id = project_result["project_id"]
+            tenant_key = project_result["tenant_key"]
+            project_name = project_result["project_name"]
+
             # Format launch instructions
             instructions = f"""
 # Launch Project Orchestration
@@ -682,33 +636,27 @@ result = await orchestrate_project(
 
 The orchestration workflow is now starting...
 """
-            
-            return {
-                'success': True,
-                'project_id': project_id,
-                'alias': alias.upper(),
-                'instructions': instructions
-            }
-                
+
+            return {"success": True, "project_id": project_id, "alias": alias.upper(), "instructions": instructions}
+
         except Exception as e:
             logger.error(f"Failed to get launch prompt for '{alias}': {e}", exc_info=True)
-            return {'error': f"Failed to generate launch prompt: {str(e)}"}
-
+            return {"error": f"Failed to generate launch prompt: {e!s}"}
 
     @mcp.tool()
     async def get_fetch_agents_instructions() -> dict[str, Any]:
         """
         Generate instructions for installing GiljoAI agent templates.
-        
+
         Provides step-by-step instructions for downloading and installing
         the standard agent templates to enable subagent orchestration.
-        
+
         Returns:
             Dictionary with installation instructions
         """
         try:
-            server_url = os.environ.get('GILJO_SERVER_URL', 'http://localhost:7272')
-            
+            server_url = os.environ.get("GILJO_SERVER_URL", "http://localhost:7272")
+
             instructions = f"""
 # Install GiljoAI Agent Templates
 
@@ -752,17 +700,12 @@ Once agents are installed and Claude Code is restarted:
 
 The agent templates include MCP tool integration for seamless coordination.
 """
-            
-            return {
-                'success': True,
-                'server_url': server_url,
-                'instructions': instructions
-            }
-                
+
+            return {"success": True, "server_url": server_url, "instructions": instructions}
+
         except Exception as e:
             logger.error(f"Failed to generate fetch agents instructions: {e}", exc_info=True)
-            return {'error': f"Failed to generate instructions: {str(e)}"}
-
+            return {"error": f"Failed to generate instructions: {e!s}"}
 
     @mcp.tool()
     async def get_update_agents_instructions() -> dict[str, Any]:
@@ -776,14 +719,14 @@ The agent templates include MCP tool integration for seamless coordination.
             Dictionary with update instructions
         """
         try:
-            server_url = os.environ.get('GILJO_SERVER_URL', 'http://localhost:7272')
-            agents_dir = Path.home() / '.claude' / 'agents'
+            server_url = os.environ.get("GILJO_SERVER_URL", "http://localhost:7272")
+            agents_dir = Path.home() / ".claude" / "agents"
 
             # Check if agents are already installed
             if not agents_dir.exists():
                 return {
-                    'success': False,
-                    'instructions': "No agents installed. Please run /mcp__gil__fetch_agents first."
+                    "success": False,
+                    "instructions": "No agents installed. Please run /mcp__gil__fetch_agents first.",
                 }
 
             instructions = f"""
@@ -828,16 +771,11 @@ If you have agents currently running, restart Claude Code to load the updates.
 The agent templates are now being updated...
 """
 
-            return {
-                'success': True,
-                'server_url': server_url,
-                'instructions': instructions
-            }
+            return {"success": True, "server_url": server_url, "instructions": instructions}
 
         except Exception as e:
             logger.error(f"Failed to generate update agents instructions: {e}", exc_info=True)
-            return {'error': f"Failed to generate instructions: {str(e)}"}
-
+            return {"error": f"Failed to generate instructions: {e!s}"}
 
     # ========================================================================
     # Thin Client MCP Tools (Handover 0088)
@@ -867,19 +805,16 @@ The agent templates are now being updated...
         from datetime import datetime, timezone
 
         return {
-            'status': 'healthy',
-            'server': 'giljo-mcp',
-            'version': '3.1.0',
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'database': 'connected',
-            'message': 'GiljoAI MCP server is operational'
+            "status": "healthy",
+            "server": "giljo-mcp",
+            "version": "3.1.0",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "database": "connected",
+            "message": "GiljoAI MCP server is operational",
         }
 
     @mcp.tool()
-    async def get_orchestrator_instructions(
-        orchestrator_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Fetch orchestrator-specific mission and instructions (Handover 0088).
 
@@ -922,24 +857,24 @@ The agent templates are now being updated...
             # Validate inputs (Amendment D: Production-grade error handling)
             if not orchestrator_id or not orchestrator_id.strip():
                 return {
-                    'error': 'VALIDATION_ERROR',
-                    'message': 'Orchestrator ID is required and cannot be empty',
-                    'troubleshooting': [
-                        'Check thin prompt for orchestrator_id value',
-                        'Verify you copied the entire prompt correctly'
+                    "error": "VALIDATION_ERROR",
+                    "message": "Orchestrator ID is required and cannot be empty",
+                    "troubleshooting": [
+                        "Check thin prompt for orchestrator_id value",
+                        "Verify you copied the entire prompt correctly",
                     ],
-                    'severity': 'ERROR'
+                    "severity": "ERROR",
                 }
 
             if not tenant_key or not tenant_key.strip():
                 return {
-                    'error': 'VALIDATION_ERROR',
-                    'message': 'Tenant key is required for multi-tenant isolation',
-                    'troubleshooting': [
-                        'Check thin prompt for tenant_key value',
-                        'Ensure MCP server is authenticated correctly'
+                    "error": "VALIDATION_ERROR",
+                    "message": "Tenant key is required for multi-tenant isolation",
+                    "troubleshooting": [
+                        "Check thin prompt for tenant_key value",
+                        "Ensure MCP server is authenticated correctly",
                     ],
-                    'severity': 'ERROR'
+                    "severity": "ERROR",
                 }
 
             async with db_manager.get_session_async() as session:
@@ -949,7 +884,7 @@ The agent templates are now being updated...
                         and_(
                             MCPAgentJob.job_id == orchestrator_id,
                             MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.agent_type == 'orchestrator'
+                            MCPAgentJob.agent_type == "orchestrator",
                         )
                     )
                 )
@@ -957,55 +892,42 @@ The agent templates are now being updated...
 
                 if not orchestrator:
                     return {
-                        'error': 'NOT_FOUND',
-                        'message': f'Orchestrator {orchestrator_id} not found in database',
-                        'details': {
-                            'orchestrator_id': orchestrator_id,
-                            'tenant_key': tenant_key,
-                            'search_performed': True
+                        "error": "NOT_FOUND",
+                        "message": f"Orchestrator {orchestrator_id} not found in database",
+                        "details": {
+                            "orchestrator_id": orchestrator_id,
+                            "tenant_key": tenant_key,
+                            "search_performed": True,
                         },
-                        'troubleshooting': [
-                            'Verify orchestrator was created successfully during staging',
-                            'Check if project was deleted',
-                            'Ensure tenant_key matches the staging environment',
-                            f'Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = \'{orchestrator_id}\''
+                        "troubleshooting": [
+                            "Verify orchestrator was created successfully during staging",
+                            "Check if project was deleted",
+                            "Ensure tenant_key matches the staging environment",
+                            f"Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = '{orchestrator_id}'",
                         ],
-                        'severity': 'ERROR',
-                        'contact_support': 'If problem persists: support@giljoai.com'
+                        "severity": "ERROR",
+                        "contact_support": "If problem persists: support@giljoai.com",
                     }
 
                 # Get project with tenant isolation
                 result = await session.execute(
-                    select(Project).where(
-                        and_(
-                            Project.id == orchestrator.project_id,
-                            Project.tenant_key == tenant_key
-                        )
-                    )
+                    select(Project).where(and_(Project.id == orchestrator.project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
                 if not project:
                     return {
-                        'error': 'NOT_FOUND',
-                        'message': 'Project not found',
-                        'troubleshooting': [
-                            'Project may have been deleted',
-                            'Check database integrity'
-                        ],
-                        'severity': 'ERROR'
+                        "error": "NOT_FOUND",
+                        "message": "Project not found",
+                        "troubleshooting": ["Project may have been deleted", "Check database integrity"],
+                        "severity": "ERROR",
                     }
 
                 # Get product (if exists)
                 product = None
                 if project.product_id:
                     result = await session.execute(
-                        select(Product).where(
-                            and_(
-                                Product.id == project.product_id,
-                                Product.tenant_key == tenant_key
-                            )
-                        )
+                        select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
                     )
                     product = result.scalar_one_or_none()
 
@@ -1018,34 +940,45 @@ The agent templates are now being updated...
                 # Get field priorities from orchestrator job_metadata (Handover 0088)
                 # Uses dedicated job_metadata JSONB column for thin client data
                 metadata = orchestrator.job_metadata or {}
-                field_priorities = metadata.get('field_priorities', {})
-                user_id = metadata.get('user_id')
+                field_priorities = metadata.get("field_priorities", {})
+                user_id = metadata.get("user_id")
+
+                # Check if Serena is enabled (from config.yaml)
+                # Serena toggle is in My Settings → Integrations
+                include_serena = False
+                try:
+                    from pathlib import Path
+                    import yaml
+
+                    config_path = Path.cwd() / "config.yaml"
+                    if config_path.exists():
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f) or {}
+                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        if include_serena:
+                            logger.info(
+                                f"[SERENA] Enabled for orchestrator {orchestrator_id}",
+                                extra={"orchestrator_id": orchestrator_id, "project_id": str(project.id)}
+                            )
+                except Exception as e:
+                    logger.warning(f"[SERENA] Failed to read config for Serena toggle: {e}")
+                    include_serena = False
 
                 # Generate condensed mission with field priorities applied
                 condensed_mission = await planner._build_context_with_priorities(
-                    product=product,
-                    project=project,
-                    field_priorities=field_priorities,
-                    user_id=user_id
+                    product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
                 )
 
                 # Get agent templates
                 result = await session.execute(
-                    select(AgentTemplate).where(
-                        and_(
-                            AgentTemplate.tenant_key == tenant_key,
-                            AgentTemplate.is_active == True
-                        )
-                    ).limit(8)  # Max 8 agent types
+                    select(AgentTemplate)
+                    .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
+                    .limit(8)  # Max 8 agent types
                 )
                 templates = result.scalars().all()
 
                 template_list = [
-                    {
-                        'name': t.name,
-                        'role': t.role,
-                        'description': t.description[:200] if t.description else ''
-                    }
+                    {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
                     for t in templates
                 ]
 
@@ -1057,24 +990,24 @@ The agent templates are now being updated...
                     # Import WebSocket manager (avoid circular imports)
                     from api.app import state
 
-                    ws_manager = getattr(state, 'websocket_manager', None)
+                    ws_manager = getattr(state, "websocket_manager", None)
 
                     if ws_manager:
                         await ws_manager.broadcast_to_tenant(
                             tenant_key=tenant_key,
                             event_type="orchestrator:instructions_fetched",
                             data={
-                                'orchestrator_id': orchestrator_id,
-                                'project_id': str(project.id),
-                                'estimated_tokens': estimated_tokens,
-                                'status': 'active',
-                                'timestamp': datetime.now(timezone.utc).isoformat(),
-                                'thin_client': True
-                            }
+                                "orchestrator_id": orchestrator_id,
+                                "project_id": str(project.id),
+                                "estimated_tokens": estimated_tokens,
+                                "status": "active",
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "thin_client": True,
+                            },
                         )
                         logger.info(
                             f"[WEBSOCKET] Broadcasted orchestrator:instructions_fetched to {tenant_key}",
-                            extra={'orchestrator_id': orchestrator_id}
+                            extra={"orchestrator_id": orchestrator_id},
                         )
                     else:
                         logger.debug("[WEBSOCKET] WebSocket manager not available (non-critical)")
@@ -1084,33 +1017,33 @@ The agent templates are now being updated...
                     logger.warning(f"[WEBSOCKET] Failed to broadcast event: {ws_error}")
 
                 return {
-                    'orchestrator_id': orchestrator_id,
-                    'project_id': str(project.id),
-                    'project_name': project.name,
-                    'project_description': project.description or '',
-                    'mission': condensed_mission,
-                    'context_budget': orchestrator.context_budget or 150000,
-                    'context_used': orchestrator.context_used or 0,
-                    'agent_templates': template_list,
-                    'field_priorities': field_priorities,
-                    'token_reduction_applied': bool(field_priorities),
-                    'estimated_tokens': estimated_tokens,
-                    'instance_number': orchestrator.instance_number or 1,
-                    'thin_client': True
+                    "orchestrator_id": orchestrator_id,
+                    "project_id": str(project.id),
+                    "project_name": project.name,
+                    "project_description": project.description or "",
+                    "mission": condensed_mission,
+                    "context_budget": orchestrator.context_budget or 150000,
+                    "context_used": orchestrator.context_used or 0,
+                    "agent_templates": template_list,
+                    "field_priorities": field_priorities,
+                    "token_reduction_applied": bool(field_priorities),
+                    "estimated_tokens": estimated_tokens,
+                    "instance_number": orchestrator.instance_number or 1,
+                    "thin_client": True,
                 }
 
         except Exception as e:
             logger.error(f"Error fetching orchestrator instructions: {e}", exc_info=True)
             return {
-                'error': 'INTERNAL_ERROR',
-                'message': f'Unexpected error: {str(e)}',
-                'troubleshooting': [
-                    'Check MCP server logs: ~/.giljo_mcp/logs/mcp_adapter.log',
-                    'Check API server logs: ~/.giljo_mcp/logs/api.log',
-                    'Restart MCP server if issue persists'
+                "error": "INTERNAL_ERROR",
+                "message": f"Unexpected error: {e!s}",
+                "troubleshooting": [
+                    "Check MCP server logs: ~/.giljo_mcp/logs/mcp_adapter.log",
+                    "Check API server logs: ~/.giljo_mcp/logs/api.log",
+                    "Restart MCP server if issue persists",
                 ],
-                'severity': 'ERROR',
-                'contact_support': 'support@giljoai.com'
+                "severity": "ERROR",
+                "contact_support": "support@giljoai.com",
             }
 
 
@@ -1118,6 +1051,7 @@ The agent templates are now being updated...
 # Standalone Functions for Testing
 # These are test-friendly wrappers that can be imported directly
 # ========================================================================
+
 
 async def health_check() -> dict[str, Any]:
     """
@@ -1129,19 +1063,16 @@ async def health_check() -> dict[str, Any]:
     from datetime import datetime, timezone
 
     return {
-        'status': 'healthy',
-        'server': 'giljo-mcp',
-        'version': '3.1.0',
-        'timestamp': datetime.now(timezone.utc).isoformat(),
-        'database': 'connected',
-        'message': 'GiljoAI MCP server is operational'
+        "status": "healthy",
+        "server": "giljo-mcp",
+        "version": "3.1.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": "connected",
+        "message": "GiljoAI MCP server is operational",
     }
 
 
-async def get_orchestrator_instructions(
-    orchestrator_id: str,
-    tenant_key: str
-) -> dict[str, Any]:
+async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
     """
     Fetch orchestrator instructions (standalone for testing).
 
@@ -1159,24 +1090,19 @@ async def get_orchestrator_instructions(
 
     db_manager = DatabaseManager()
     async with db_manager.get_session() as session:
-        from sqlalchemy import select, and_
+        from sqlalchemy import and_, select
         from sqlalchemy.orm import joinedload
-        from giljo_mcp.models import MCPAgentJob, Project, Product, AgentTemplate
+
         from giljo_mcp.mission_planner import MissionPlanner
+        from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product
 
         try:
             # Validate inputs
             if not orchestrator_id or not orchestrator_id.strip():
-                return {
-                    'error': 'VALIDATION_ERROR',
-                    'message': 'Orchestrator ID is required'
-                }
+                return {"error": "VALIDATION_ERROR", "message": "Orchestrator ID is required"}
 
             if not tenant_key or not tenant_key.strip():
-                return {
-                    'error': 'VALIDATION_ERROR',
-                    'message': 'Tenant key is required'
-                }
+                return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
 
             # Fetch orchestrator from database with multi-tenant isolation
             result = await session.execute(
@@ -1186,7 +1112,7 @@ async def get_orchestrator_instructions(
                     and_(
                         MCPAgentJob.job_id == orchestrator_id,
                         MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.agent_type == 'orchestrator'
+                        MCPAgentJob.agent_type == "orchestrator",
                     )
                 )
             )
@@ -1194,77 +1120,53 @@ async def get_orchestrator_instructions(
 
             if not orchestrator:
                 return {
-                    'error': 'NOT_FOUND',
-                    'message': f'Orchestrator {orchestrator_id} not found for tenant',
-                    'troubleshooting': [
-                        'Verify orchestrator_id is correct',
-                        'Check tenant_key matches project',
-                        'Ensure orchestrator was created successfully'
+                    "error": "NOT_FOUND",
+                    "message": f"Orchestrator {orchestrator_id} not found for tenant",
+                    "troubleshooting": [
+                        "Verify orchestrator_id is correct",
+                        "Check tenant_key matches project",
+                        "Ensure orchestrator was created successfully",
                     ],
-                    'severity': 'ERROR'
+                    "severity": "ERROR",
                 }
 
             # Get project and product
             project = orchestrator.project
             if not project:
-                return {
-                    'error': 'NOT_FOUND',
-                    'message': 'Project not found for orchestrator'
-                }
+                return {"error": "NOT_FOUND", "message": "Project not found for orchestrator"}
 
             # Get product
             if not project.product_id:
-                return {
-                    'error': 'NOT_FOUND',
-                    'message': 'No product linked to project'
-                }
+                return {"error": "NOT_FOUND", "message": "No product linked to project"}
 
             result = await session.execute(
-                select(Product).where(
-                    and_(
-                        Product.id == project.product_id,
-                        Product.tenant_key == tenant_key
-                    )
-                )
+                select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
             )
             product = result.scalar_one_or_none()
 
             if not product:
-                return {
-                    'error': 'NOT_FOUND',
-                    'message': 'Product not found'
-                }
+                return {"error": "NOT_FOUND", "message": "Product not found"}
 
             # Generate condensed mission
             planner = MissionPlanner(db_manager)
             metadata = orchestrator.job_metadata or {}
-            field_priorities = metadata.get('field_priorities', {})
-            user_id = metadata.get('user_id')
+            field_priorities = metadata.get("field_priorities", {})
+            user_id = metadata.get("user_id")
 
             condensed_mission = await planner._build_context_with_priorities(
-                product=product,
-                project=project,
-                field_priorities=field_priorities,
-                user_id=user_id
+                product=product, project=project, field_priorities=field_priorities, user_id=user_id
             )
 
             # Get agent templates
             result = await session.execute(
-                select(AgentTemplate).where(
-                    and_(
-                        AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active == True
-                    )
-                ).limit(8)
+                select(AgentTemplate)
+                .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
+                .limit(8)
             )
             templates = result.scalars().all()
 
             template_list = [
-                {
-                    'name': t.name,
-                    'role': t.role,
-                    'description': t.description[:200] if t.description else ''
-                }
+                {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
                 for t in templates
             ]
 
@@ -1272,33 +1174,27 @@ async def get_orchestrator_instructions(
             estimated_tokens = len(condensed_mission) // 4
 
             return {
-                'orchestrator_id': orchestrator_id,
-                'project_id': str(project.id),
-                'project_name': project.name,
-                'project_description': project.description or '',
-                'mission': condensed_mission,
-                'context_budget': orchestrator.context_budget or 150000,
-                'context_used': orchestrator.context_used or 0,
-                'agent_templates': template_list,
-                'field_priorities': field_priorities,
-                'token_reduction_applied': bool(field_priorities),
-                'estimated_tokens': estimated_tokens,
-                'instance_number': orchestrator.instance_number or 1,
-                'thin_client': True
+                "orchestrator_id": orchestrator_id,
+                "project_id": str(project.id),
+                "project_name": project.name,
+                "project_description": project.description or "",
+                "mission": condensed_mission,
+                "context_budget": orchestrator.context_budget or 150000,
+                "context_used": orchestrator.context_used or 0,
+                "agent_templates": template_list,
+                "field_priorities": field_priorities,
+                "token_reduction_applied": bool(field_priorities),
+                "estimated_tokens": estimated_tokens,
+                "instance_number": orchestrator.instance_number or 1,
+                "thin_client": True,
             }
 
         except Exception as e:
             logger.error(f"Error in get_orchestrator_instructions: {e}", exc_info=True)
-            return {
-                'error': 'INTERNAL_ERROR',
-                'message': f'Unexpected error: {str(e)}'
-            }
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
 
-async def get_agent_mission(
-    agent_job_id: str,
-    tenant_key: str
-) -> dict[str, Any]:
+async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any]:
     """
     Fetch agent mission (standalone for testing).
 
@@ -1313,43 +1209,35 @@ async def get_agent_mission(
 
     db_manager = DatabaseManager()
     async with db_manager.get_session() as session:
-        from sqlalchemy import select, and_
+        from sqlalchemy import and_, select
+
         from giljo_mcp.models import MCPAgentJob
 
         try:
             result = await session.execute(
                 select(MCPAgentJob).where(
-                    and_(
-                        MCPAgentJob.job_id == agent_job_id,
-                        MCPAgentJob.tenant_key == tenant_key
-                    )
+                    and_(MCPAgentJob.job_id == agent_job_id, MCPAgentJob.tenant_key == tenant_key)
                 )
             )
             agent_job = result.scalar_one_or_none()
 
             if not agent_job:
-                return {
-                    'error': 'NOT_FOUND',
-                    'message': f'Agent job {agent_job_id} not found'
-                }
+                return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
 
             estimated_tokens = len(agent_job.mission or "") // 4
 
             return {
-                'agent_job_id': agent_job_id,
-                'agent_name': agent_job.agent_name,
-                'agent_type': agent_job.agent_type,
-                'mission': agent_job.mission or '',
-                'thin_client': True,
-                'estimated_tokens': estimated_tokens
+                "agent_job_id": agent_job_id,
+                "agent_name": agent_job.agent_name,
+                "agent_type": agent_job.agent_type,
+                "mission": agent_job.mission or "",
+                "thin_client": True,
+                "estimated_tokens": estimated_tokens,
             }
 
         except Exception as e:
             logger.error(f"Error in get_agent_mission: {e}", exc_info=True)
-            return {
-                'error': 'INTERNAL_ERROR',
-                'message': f'Unexpected error: {str(e)}'
-            }
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
 
 async def spawn_agent_job(
@@ -1358,7 +1246,7 @@ async def spawn_agent_job(
     mission: str,
     project_id: str,
     tenant_key: str,
-    parent_job_id: Optional[str] = None
+    parent_job_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Spawn agent job (standalone for testing).
@@ -1374,8 +1262,9 @@ async def spawn_agent_job(
     Returns:
         Spawn result dict
     """
-    from giljo_mcp.database import DatabaseManager
     from uuid import uuid4
+
+    from giljo_mcp.database import DatabaseManager
 
     db_manager = DatabaseManager()
     async with db_manager.get_session() as session:
@@ -1391,9 +1280,9 @@ async def spawn_agent_job(
                 agent_type=agent_type,
                 agent_name=agent_name,
                 mission=mission,
-                status='pending',
+                status="pending",
                 context_budget=10000,
-                context_used=0
+                context_used=0,
             )
 
             session.add(agent_job)
@@ -1411,16 +1300,13 @@ Execute mission and report back."""
             prompt_tokens = len(thin_prompt) // 4
 
             return {
-                'success': True,
-                'agent_job_id': agent_job_id,
-                'agent_prompt': thin_prompt,
-                'prompt_tokens': prompt_tokens,
-                'mission_tokens': mission_tokens
+                "success": True,
+                "agent_job_id": agent_job_id,
+                "agent_prompt": thin_prompt,
+                "prompt_tokens": prompt_tokens,
+                "mission_tokens": mission_tokens,
             }
 
         except Exception as e:
             logger.error(f"Error in spawn_agent_job: {e}", exc_info=True)
-            return {
-                'success': False,
-                'error': f'Failed to spawn agent: {str(e)}'
-            }
+            return {"success": False, "error": f"Failed to spawn agent: {e!s}"}

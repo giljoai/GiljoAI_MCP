@@ -72,10 +72,7 @@ class WindowsPlatformHandler(PlatformHandler):
         """
         paths = []
 
-        program_files_locations = [
-            Path("C:/Program Files/PostgreSQL"),
-            Path("C:/Program Files (x86)/PostgreSQL")
-        ]
+        program_files_locations = [Path("C:/Program Files/PostgreSQL"), Path("C:/Program Files (x86)/PostgreSQL")]
 
         for base in program_files_locations:
             if base.exists():
@@ -147,11 +144,7 @@ class WindowsPlatformHandler(PlatformHandler):
                 return result
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'message': f'Failed to create shortcuts: {e}'
-            }
+            return {"success": False, "error": str(e), "message": f"Failed to create shortcuts: {e}"}
 
     def _create_shortcuts_win32com(self, install_dir: Path, venv_dir: Path) -> Dict[str, Any]:
         """
@@ -204,10 +197,10 @@ class WindowsPlatformHandler(PlatformHandler):
         shortcuts_created.append(str(dashboard_shortcut_path))
 
         return {
-            'success': True,
-            'method': 'win32com',
-            'shortcuts_created': shortcuts_created,
-            'message': f'Created {len(shortcuts_created)} desktop shortcuts'
+            "success": True,
+            "method": "win32com",
+            "shortcuts_created": shortcuts_created,
+            "message": f"Created {len(shortcuts_created)} desktop shortcuts",
         }
 
     def _create_shortcuts_batch(self, install_dir: Path, venv_dir: Path) -> Dict[str, Any]:
@@ -226,37 +219,32 @@ class WindowsPlatformHandler(PlatformHandler):
 
         # Main application batch file
         main_bat = desktop / "GiljoAI MCP.bat"
-        with open(main_bat, 'w') as f:
-            f.write('@echo off\n')
+        with open(main_bat, "w") as f:
+            f.write("@echo off\n")
             f.write(f'cd /d "{install_dir}"\n')
             f.write(f'"{venv_dir / "Scripts" / "python.exe"}" startup.py\n')
-            f.write('pause\n')
+            f.write("pause\n")
 
         shortcuts_created.append(str(main_bat))
 
         # Dashboard-only batch file
         dashboard_bat = desktop / "GiljoAI Dashboard.bat"
-        with open(dashboard_bat, 'w') as f:
-            f.write('@echo off\n')
+        with open(dashboard_bat, "w") as f:
+            f.write("@echo off\n")
             f.write(f'cd /d "{install_dir}"\n')
             f.write(f'"{venv_dir / "Scripts" / "python.exe"}" startup.py --dashboard-only\n')
-            f.write('pause\n')
+            f.write("pause\n")
 
         shortcuts_created.append(str(dashboard_bat))
 
         return {
-            'success': True,
-            'method': 'batch',
-            'shortcuts_created': shortcuts_created,
-            'message': f'Created {len(shortcuts_created)} batch file shortcuts (win32com not available)'
+            "success": True,
+            "method": "batch",
+            "shortcuts_created": shortcuts_created,
+            "message": f"Created {len(shortcuts_created)} batch file shortcuts (win32com not available)",
         }
 
-    def run_npm_command(
-        self,
-        cmd: List[str],
-        cwd: Path,
-        timeout: int = 300
-    ) -> Dict[str, Any]:
+    def run_npm_command(self, cmd: List[str], cwd: Path, timeout: int = 300) -> Dict[str, Any]:
         """
         Run npm command with Windows-specific shell handling.
 
@@ -278,28 +266,21 @@ class WindowsPlatformHandler(PlatformHandler):
                 shell=True,  # CRITICAL for Windows
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             )
 
             return {
-                'success': result.returncode == 0,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'returncode': result.returncode
+                "success": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode,
             }
 
         except subprocess.TimeoutExpired:
-            return {
-                'success': False,
-                'error': 'Command timed out',
-                'timeout': timeout
-            }
+            return {"success": False, "error": "Command timed out", "timeout": timeout}
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def get_network_ips(self) -> List[str]:
         """
@@ -351,9 +332,11 @@ class WindowsPlatformHandler(PlatformHandler):
         print(f"  • MCP server integration\n")
 
         # Windows platform info
-        windows_version = platform.win32_ver()[0] if hasattr(platform, 'win32_ver') else platform.release()
+        windows_version = platform.win32_ver()[0] if hasattr(platform, "win32_ver") else platform.release()
         print(f"{Fore.YELLOW}Platform: Windows {windows_version}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+        print(
+            f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n"
+        )
 
     def get_platform_specific_warnings(self) -> List[str]:
         """

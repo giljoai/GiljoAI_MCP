@@ -129,8 +129,9 @@ async def get_network_adapters():
         HTTPException: If adapter detection fails
     """
     try:
-        import psutil
         import platform
+
+        import psutil
 
         adapters = []
         virtual_patterns = [
@@ -156,14 +157,10 @@ async def get_network_adapters():
 
         for interface_name, addresses in interfaces.items():
             # Check if interface is virtual
-            is_virtual = any(
-                pattern.lower() in interface_name.lower() for pattern in virtual_patterns
-            )
+            is_virtual = any(pattern.lower() in interface_name.lower() for pattern in virtual_patterns)
 
             # Check if interface is loopback
-            is_loopback = any(
-                pattern.lower() in interface_name.lower() for pattern in loopback_patterns
-            )
+            is_loopback = any(pattern.lower() in interface_name.lower() for pattern in loopback_patterns)
 
             # Get interface stats (speed, is_up)
             stats = interface_stats.get(interface_name)
@@ -200,9 +197,7 @@ async def get_network_adapters():
         recommended = _select_recommended_adapter(adapters)
 
         if recommended:
-            logger.info(
-                f"Recommended adapter: {recommended.interface_id} ({recommended.ip_address})"
-            )
+            logger.info(f"Recommended adapter: {recommended.interface_id} ({recommended.ip_address})")
         else:
             logger.warning("No suitable adapter found for recommendation")
 

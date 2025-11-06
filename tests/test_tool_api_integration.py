@@ -20,7 +20,6 @@ from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestToolAPIIntegration:
     """Comprehensive integration tests for Tool-API bridge"""
 

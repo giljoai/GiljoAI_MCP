@@ -2,6 +2,7 @@
 Quick fix script to create database tables and setup_state record.
 This is needed because the installer didn't create the tables, causing the API to start in setup mode.
 """
+
 import asyncio
 import os
 import sys
@@ -9,18 +10,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from dotenv import load_dotenv
 
+
 # Load environment variables
 load_dotenv()
 
 # Import database manager and models
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Base, SetupState, User
 from passlib.hash import bcrypt
+
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import SetupState, User
+
 
 async def main():
     # Get database URL
@@ -29,7 +34,7 @@ async def main():
         print("ERROR: DATABASE_URL not found in .env file")
         sys.exit(1)
 
-    print(f"Connecting to database...")
+    print("Connecting to database...")
     db_manager = DatabaseManager(db_url, is_async=True)
 
     # STEP 1: Create all tables
@@ -40,6 +45,7 @@ async def main():
     except Exception as e:
         print(f"ERROR creating tables: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
@@ -48,7 +54,7 @@ async def main():
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(User).where(User.username == 'admin')
+        stmt = select(User).where(User.username == "admin")
         result = await session.execute(stmt)
         admin_user = result.scalar_one_or_none()
 
@@ -56,14 +62,14 @@ async def main():
             print("  Creating admin user (username: admin, password: admin)...")
             admin_user = User(
                 id=str(uuid4()),
-                username='admin',
+                username="admin",
                 email=None,
-                full_name='Administrator',
-                password_hash=bcrypt.hash('admin'),
-                role='admin',
-                tenant_key='default',
+                full_name="Administrator",
+                password_hash=bcrypt.hash("admin"),
+                role="admin",
+                tenant_key="default",
                 is_active=True,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(admin_user)
             await session.commit()
@@ -79,7 +85,7 @@ async def main():
         existing = result.scalar_one_or_none()
 
         if existing:
-            print(f"[OK] setup_state record already exists:")
+            print("[OK] setup_state record already exists:")
             print(f"  - completed: {existing.completed}")
             print(f"  - default_password_active: {existing.default_password_active}")
             print(f"  - setup_version: {existing.setup_version}")
@@ -93,17 +99,17 @@ async def main():
                 password_changed_at=None,
                 setup_version="3.0.0",
                 created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
+                updated_at=datetime.now(timezone.utc),
             )
 
             session.add(setup_state)
             await session.commit()
 
-            print(f"[OK] Created setup_state record:")
-            print(f"  - tenant_key: default")
-            print(f"  - completed: False")
-            print(f"  - default_password_active: True")
-            print(f"  - setup_version: 3.0.0")
+            print("[OK] Created setup_state record:")
+            print("  - tenant_key: default")
+            print("  - completed: False")
+            print("  - default_password_active: True")
+            print("  - setup_version: 3.0.0")
 
     # Clean up
     await db_manager.close_async()
@@ -114,6 +120,7 @@ async def main():
     print("   3. Login with admin/admin")
     print("   4. Change the default password")
     print("\nDone!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

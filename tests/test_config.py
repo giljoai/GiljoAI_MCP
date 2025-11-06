@@ -24,7 +24,6 @@ from src.giljo_mcp.config_manager import ConfigManager, get_config, set_config
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestConfigManager:
     """Test suite for ConfigManager class."""
 

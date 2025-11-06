@@ -12,14 +12,16 @@ Priority: CRITICAL - Enables Commercial Product
 """
 
 import logging
-from typing import Any, Dict, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
 from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
-from src.giljo_mcp.models import Project, Product, MCPAgentJob, User
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.giljo_mcp.config_manager import get_config
+from src.giljo_mcp.models import MCPAgentJob, Project, User
+
 
 logger = logging.getLogger(__name__)
 
@@ -150,10 +152,10 @@ class ThinClientPromptGenerator:
             tool_type=tool,
             # Handover 0088: Store thin client data in metadata column
             job_metadata={
-                'field_priorities': field_priorities or {},
-                'user_id': user_id,
-                'tool': tool,
-                'created_via': 'thin_client_generator'
+                "field_priorities": field_priorities or {},
+                "user_id": user_id,
+                "tool": tool,
+                "created_via": "thin_client_generator"
             } if field_priorities or user_id else {}
         )
 
@@ -174,11 +176,11 @@ class ThinClientPromptGenerator:
         estimated_tokens = len(thin_prompt) // 4
 
         return {
-            'orchestrator_id': orchestrator_id,
-            'thin_prompt': thin_prompt,
-            'instance_number': instance_number,
-            'context_budget': project.context_budget,
-            'estimated_prompt_tokens': estimated_tokens
+            "orchestrator_id": orchestrator_id,
+            "thin_prompt": thin_prompt,
+            "instance_number": instance_number,
+            "context_budget": project.context_budget,
+            "estimated_prompt_tokens": estimated_tokens
         }
 
     def _build_thin_prompt(
@@ -202,13 +204,14 @@ class ThinClientPromptGenerator:
         # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
         # External host is configured during installation for network access
         # Need to read config.yaml directly as ConfigManager doesn't load services section
-        import yaml
         from pathlib import Path
+
+        import yaml
 
         try:
             config_path = Path("config.yaml")
             if config_path.exists():
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, encoding="utf-8") as f:
                     config_data = yaml.safe_load(f) or {}
                 mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
             else:

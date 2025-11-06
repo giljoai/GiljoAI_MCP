@@ -7,8 +7,9 @@ Handover 0018: Shows token reduction metrics without database dependencies.
 import sys
 from pathlib import Path
 
+
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import tiktoken
 
@@ -25,7 +26,7 @@ def demo_tiktoken_accuracy():
         "Hello world!",
         "The quick brown fox jumps over the lazy dog.",
         "# GiljoAI MCP\n\nAgent orchestration platform with PostgreSQL and FastAPI.",
-        "def calculate_token_reduction(full_tokens: int, condensed_tokens: int) -> float:\n    return ((full_tokens - condensed_tokens) / full_tokens) * 100"
+        "def calculate_token_reduction(full_tokens: int, condensed_tokens: int) -> float:\n    return ((full_tokens - condensed_tokens) / full_tokens) * 100",
     ]
 
     print("\nToken counts for sample texts:")
@@ -177,25 +178,25 @@ Deploy: Docker (API + DB + Frontend + Redis), Nginx reverse proxy.
     tokens_saved = full_tokens - condensed_tokens
     reduction_percent = (tokens_saved / full_tokens) * 100
 
-    print(f"\nOriginal Full Context:")
+    print("\nOriginal Full Context:")
     print(f"  Characters: {len(full_context)}")
     print(f"  Tokens: {full_tokens}")
 
-    print(f"\nCondensed Mission:")
+    print("\nCondensed Mission:")
     print(f"  Characters: {len(condensed_mission)}")
     print(f"  Tokens: {condensed_tokens}")
 
-    print(f"\nToken Reduction Metrics:")
+    print("\nToken Reduction Metrics:")
     print(f"  Tokens Saved: {tokens_saved}")
     print(f"  Reduction Percentage: {reduction_percent:.1f}%")
     print(f"  Compression Ratio: {full_tokens / condensed_tokens:.2f}x")
 
-    print(f"\nTarget Achievement:")
-    print(f"  Goal: 70% reduction")
+    print("\nTarget Achievement:")
+    print("  Goal: 70% reduction")
     print(f"  Achieved: {reduction_percent:.1f}%")
     print(f"  Status: {'SUCCESS' if reduction_percent >= 70 else 'NEEDS IMPROVEMENT'}")
     if reduction_percent >= 70:
-        print(f"  Result: GOAL EXCEEDED")
+        print("  Result: GOAL EXCEEDED")
 
 
 def demo_chunking_strategy():

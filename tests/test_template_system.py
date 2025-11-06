@@ -25,7 +25,6 @@ from src.giljo_mcp.tools.template import register_template_tools
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 def _apply_augmentation(template: str, replacements: dict) -> str:
     """Simple variable substitution for testing"""
     result = template

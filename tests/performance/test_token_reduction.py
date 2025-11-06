@@ -9,16 +9,13 @@ Tests verify that role-based filtering achieves token reduction targets:
 - Overall average: 40% reduction
 """
 
-import pytest
 import json
-from typing import Dict, Any
-from src.giljo_mcp.database import get_db_manager
+from typing import Any, Dict
+
+import pytest
+
+from src.giljo_mcp.context_manager import ROLE_CONFIG_FILTERS, get_filtered_config, get_full_config
 from src.giljo_mcp.models import Product
-from src.giljo_mcp.context_manager import (
-    get_full_config,
-    get_filtered_config,
-    ROLE_CONFIG_FILTERS
-)
 
 
 def estimate_tokens(text: str) -> int:
@@ -64,9 +61,8 @@ def realistic_product(db_session):
                 "SQLAlchemy",
                 "Pydantic",
                 "pytest",
-                "Vuetify 3"
+                "Vuetify 3",
             ],
-
             # Codebase structure (implementation roles)
             "codebase_structure": {
                 "src/giljo_mcp/": "Core orchestration engine",
@@ -77,9 +73,8 @@ def realistic_product(db_session):
                 "tests/": "Comprehensive test suite (unit, integration, performance)",
                 "installer/": "Cross-platform installation system",
                 "scripts/": "Utility and migration scripts",
-                "docs/": "Documentation and technical specifications"
+                "docs/": "Documentation and technical specifications",
             },
-
             # Critical features (all roles should know)
             "critical_features": [
                 "Multi-tenant isolation (CRITICAL - all queries filtered by tenant_key)",
@@ -88,23 +83,21 @@ def realistic_product(db_session):
                 "Real-time WebSocket updates",
                 "Template-based agent configuration",
                 "Context chunking for vision documents",
-                "Role-based config filtering (this feature!)"
+                "Role-based config filtering (this feature!)",
             ],
-
             # Test configuration (testing roles)
             "test_commands": [
                 "pytest tests/unit/",
                 "pytest tests/integration/",
                 "pytest tests/performance/",
-                "pytest tests/ --cov=giljo_mcp --cov-report=html"
+                "pytest tests/ --cov=giljo_mcp --cov-report=html",
             ],
             "test_config": {
                 "coverage_threshold": 80,
                 "test_database": "giljo_mcp_test",
                 "async_tests": True,
-                "markers": ["unit", "integration", "slow", "performance"]
+                "markers": ["unit", "integration", "slow", "performance"],
             },
-
             # Database configuration (implementation roles)
             "database_type": "postgresql",
             "database_version": "18",
@@ -113,9 +106,8 @@ def realistic_product(db_session):
                 "GIN indexes for JSON queries",
                 "Async SQLAlchemy sessions",
                 "Connection pooling",
-                "Multi-tenant row-level filtering"
+                "Multi-tenant row-level filtering",
             ],
-
             # Backend framework details (implementation roles)
             "backend_framework": "FastAPI",
             "backend_features": [
@@ -123,9 +115,8 @@ def realistic_product(db_session):
                 "Pydantic validation",
                 "OpenAPI/Swagger docs",
                 "WebSocket support",
-                "Middleware for auth and CORS"
+                "Middleware for auth and CORS",
             ],
-
             # Frontend framework details (implementation roles)
             "frontend_framework": "Vue.js 3",
             "frontend_features": [
@@ -133,25 +124,13 @@ def realistic_product(db_session):
                 "Vuetify 3 components",
                 "Pinia state management",
                 "WebSocket integration",
-                "Real-time agent monitoring"
+                "Real-time agent monitoring",
             ],
-
             # Deployment modes (implementation roles)
-            "deployment_modes": [
-                "localhost (development, no auth)",
-                "server/LAN (production, API key auth)"
-            ],
-
+            "deployment_modes": ["localhost (development, no auth)", "server/LAN (production, API key auth)"],
             # API documentation (documentation roles)
             "api_docs": "/docs/api.md",
-            "api_endpoints": [
-                "/api/projects",
-                "/api/agents",
-                "/api/messages",
-                "/api/tasks",
-                "/api/templates"
-            ],
-
+            "api_endpoints": ["/api/projects", "/api/agents", "/api/messages", "/api/tasks", "/api/templates"],
             # Documentation style (documentation roles)
             "documentation_style": "Markdown with code examples",
             "documentation_sections": [
@@ -159,15 +138,10 @@ def realistic_product(db_session):
                 "API reference",
                 "MCP tools manual",
                 "Deployment guides",
-                "Testing strategy"
+                "Testing strategy",
             ],
-
             # Known issues (QA/testing roles)
-            "known_issues": [
-                "WebSocket reconnection needs retry logic",
-                "Template caching could improve performance"
-            ],
-
+            "known_issues": ["WebSocket reconnection needs retry logic", "Template caching could improve performance"],
             # Serena MCP integration (all roles)
             "serena_mcp_enabled": True,
             "serena_tools": [
@@ -175,9 +149,9 @@ def realistic_product(db_session):
                 "find_symbol",
                 "search_for_pattern",
                 "replace_symbol_body",
-                "execute_shell_command"
-            ]
-        }
+                "execute_shell_command",
+            ],
+        },
     )
     db_session.add(product)
     db_session.commit()
@@ -198,7 +172,7 @@ class TestTokenReductionBaseline:
         full_text = config_to_text(full_config)
         full_tokens = estimate_tokens(full_text)
 
-        print(f"\n=== Full Config (Orchestrator) ===")
+        print("\n=== Full Config (Orchestrator) ===")
         print(f"Fields: {len(full_config)}")
         print(f"Characters: {len(full_text)}")
         print(f"Estimated Tokens: {full_tokens}")
@@ -230,7 +204,7 @@ class TestImplementerTokenReduction:
         reduction_percent = ((full_tokens - impl_tokens) / full_tokens) * 100
         field_reduction = ((len(full_config) - len(impl_config)) / len(full_config)) * 100
 
-        print(f"\n=== Implementer Config ===")
+        print("\n=== Implementer Config ===")
         print(f"Fields: {len(impl_config)} (was {len(full_config)}, -{field_reduction:.1f}%)")
         print(f"Characters: {len(impl_text)} (was {len(full_text)})")
         print(f"Estimated Tokens: {impl_tokens} (was {full_tokens}, -{reduction_percent:.1f}%)")
@@ -269,7 +243,7 @@ class TestTesterTokenReduction:
         reduction_percent = ((full_tokens - tester_tokens) / full_tokens) * 100
         field_reduction = ((len(full_config) - len(tester_config)) / len(full_config)) * 100
 
-        print(f"\n=== Tester Config ===")
+        print("\n=== Tester Config ===")
         print(f"Fields: {len(tester_config)} (was {len(full_config)}, -{field_reduction:.1f}%)")
         print(f"Characters: {len(tester_text)} (was {len(full_text)})")
         print(f"Estimated Tokens: {tester_tokens} (was {full_tokens}, -{reduction_percent:.1f}%)")
@@ -308,7 +282,7 @@ class TestDocumenterTokenReduction:
         reduction_percent = ((full_tokens - doc_tokens) / full_tokens) * 100
         field_reduction = ((len(full_config) - len(doc_config)) / len(full_config)) * 100
 
-        print(f"\n=== Documenter Config ===")
+        print("\n=== Documenter Config ===")
         print(f"Fields: {len(doc_config)} (was {len(full_config)}, -{field_reduction:.1f}%)")
         print(f"Characters: {len(doc_text)} (was {len(full_text)})")
         print(f"Estimated Tokens: {doc_tokens} (was {full_tokens}, -{reduction_percent:.1f}%)")
@@ -343,14 +317,14 @@ class TestOverallTokenReduction:
             ("tester-qa-1", "tester"),
             ("documenter-1", "documenter"),
             ("reviewer-1", "reviewer"),
-            ("analyzer-1", "analyzer")
+            ("analyzer-1", "analyzer"),
         ]
 
         role_reductions = []
 
-        print(f"\n=== Token Reduction Summary ===")
+        print("\n=== Token Reduction Summary ===")
         print(f"Baseline (Orchestrator): {full_tokens} tokens")
-        print(f"\nRole Reductions:")
+        print("\nRole Reductions:")
 
         for agent_name, role in roles:
             config = get_filtered_config(agent_name, realistic_product, role)
@@ -365,7 +339,7 @@ class TestOverallTokenReduction:
         avg_reduction = sum(role_reductions) / len(role_reductions)
 
         print(f"\nAverage Reduction: {avg_reduction:.1f}%")
-        print(f"Target: 40%")
+        print("Target: 40%")
         print(f"Status: {'✓ PASS' if avg_reduction >= 40 else '✗ FAIL'}")
 
         # Verify average reduction meets target
@@ -375,7 +349,7 @@ class TestOverallTokenReduction:
         pytest.token_metrics = {
             "baseline_tokens": full_tokens,
             "role_reductions": dict(zip([r[1] for r in roles], role_reductions)),
-            "average_reduction": avg_reduction
+            "average_reduction": avg_reduction,
         }
 
 
@@ -386,7 +360,7 @@ class TestRoleFilteringAccuracy:
         """Test each role receives exactly its designated fields"""
         accuracy_results = []
 
-        print(f"\n=== Role Filtering Accuracy ===")
+        print("\n=== Role Filtering Accuracy ===")
 
         for role, allowed_fields in ROLE_CONFIG_FILTERS.items():
             if role == "orchestrator":
@@ -420,7 +394,7 @@ class TestRoleFilteringAccuracy:
         avg_accuracy = sum(accuracy_results) / len(accuracy_results)
 
         print(f"\nAverage Accuracy: {avg_accuracy:.1f}%")
-        print(f"Target: 100%")
+        print("Target: 100%")
 
         assert avg_accuracy >= 95.0, f"Role filtering accuracy {avg_accuracy:.1f}% below 95% threshold"
 
@@ -434,7 +408,7 @@ class TestConfigDataSchemaCompliance:
 
         is_valid, errors = validate_config_data(realistic_product.config_data)
 
-        print(f"\n=== Config Schema Validation ===")
+        print("\n=== Config Schema Validation ===")
         print(f"Valid: {is_valid}")
         if errors:
             print(f"Errors: {errors}")
@@ -448,10 +422,7 @@ class TestConfigDataSchemaCompliance:
         """Test minimal valid config passes validation"""
         from src.giljo_mcp.context_manager import validate_config_data
 
-        minimal_config = {
-            "architecture": "Simple REST API",
-            "serena_mcp_enabled": False
-        }
+        minimal_config = {"architecture": "Simple REST API", "serena_mcp_enabled": False}
 
         is_valid, errors = validate_config_data(minimal_config)
 
@@ -483,7 +454,7 @@ class TestPerformanceMetrics:
         # Measure filtering time for each role
         roles = ["implementer", "tester", "documenter", "reviewer", "analyzer"]
 
-        print(f"\n=== Config Filtering Performance ===")
+        print("\n=== Config Filtering Performance ===")
 
         for role in roles:
             agent_name = f"{role}-perf-test"
@@ -505,25 +476,19 @@ class TestPerformanceMetrics:
         full_config = get_full_config(realistic_product)
         full_tokens = estimate_tokens(config_to_text(full_config))
 
-        print(f"\n{'='*60}")
-        print(f"TOKEN REDUCTION METRICS REPORT")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print("TOKEN REDUCTION METRICS REPORT")
+        print(f"{'=' * 60}")
 
-        print(f"\nBASELINE (Orchestrator):")
+        print("\nBASELINE (Orchestrator):")
         print(f"  Fields: {len(full_config)}")
         print(f"  Estimated Tokens: {full_tokens}")
 
-        roles = [
-            ("implementer", 40),
-            ("tester", 60),
-            ("documenter", 50),
-            ("reviewer", 45),
-            ("analyzer", 35)
-        ]
+        roles = [("implementer", 40), ("tester", 60), ("documenter", 50), ("reviewer", 45), ("analyzer", 35)]
 
         total_reduction = 0
 
-        print(f"\nROLE-BASED REDUCTIONS:")
+        print("\nROLE-BASED REDUCTIONS:")
         for role, target in roles:
             config = get_filtered_config(f"{role}-1", realistic_product, role)
             tokens = estimate_tokens(config_to_text(config))
@@ -535,11 +500,11 @@ class TestPerformanceMetrics:
 
         avg_reduction = total_reduction / len(roles)
 
-        print(f"\nOVERALL METRICS:")
+        print("\nOVERALL METRICS:")
         print(f"  Average Reduction: {avg_reduction:.1f}%")
-        print(f"  Target: 40%")
+        print("  Target: 40%")
         print(f"  Status: {'✓ SUCCESS' if avg_reduction >= 40 else '✗ NEEDS IMPROVEMENT'}")
 
-        print(f"\n{'='*60}\n")
+        print(f"\n{'=' * 60}\n")
 
         assert avg_reduction >= 35, f"Overall reduction {avg_reduction:.1f}% below minimum threshold"

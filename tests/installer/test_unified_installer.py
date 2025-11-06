@@ -9,13 +9,12 @@ These tests verify:
 5. Cross-platform compatibility (no hardcoded paths)
 """
 
-import asyncio
 import sys
 from pathlib import Path
-from typing import Dict, Any
-from unittest.mock import MagicMock, patch, AsyncMock, call
+from unittest.mock import MagicMock, patch
 
 import pytest
+
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -36,25 +35,19 @@ class TestUnifiedInstallerPlatformDelegation:
         handler.get_postgresql_scan_paths.return_value = [Path("/mock/psql")]
         handler.get_postgresql_install_guide.return_value = "Mock install guide"
         handler.supports_desktop_shortcuts.return_value = True
-        handler.create_desktop_shortcuts.return_value = {
-            'success': True,
-            'shortcuts_created': ['mock_shortcut']
-        }
-        handler.run_npm_command.return_value = {
-            'success': True,
-            'stdout': 'mock output',
-            'returncode': 0
-        }
-        handler.get_network_ips.return_value = ['192.168.1.100']
+        handler.create_desktop_shortcuts.return_value = {"success": True, "shortcuts_created": ["mock_shortcut"]}
+        handler.run_npm_command.return_value = {"success": True, "stdout": "mock output", "returncode": 0}
+        handler.get_network_ips.return_value = ["192.168.1.100"]
         handler.get_platform_specific_warnings.return_value = []
         return handler
 
     def test_installer_imports_platform_handler(self):
         """Test that installer can import platform handler factory"""
         from installer.platforms import get_platform_handler
+
         handler = get_platform_handler()
         assert handler is not None
-        assert hasattr(handler, 'platform_name')
+        assert hasattr(handler, "platform_name")
 
     def test_installer_no_hardcoded_venv_paths(self):
         """Test that installer doesn't hardcode venv paths (uses platform handler)"""
@@ -63,8 +56,8 @@ class TestUnifiedInstallerPlatformDelegation:
         source = install_file.read_text()
 
         # Should NOT contain hardcoded Windows-specific venv paths
-        assert 'Scripts/python.exe' not in source or 'get_venv_python' in source
-        assert 'Scripts/pip.exe' not in source or 'get_venv_pip' in source
+        assert "Scripts/python.exe" not in source or "get_venv_python" in source
+        assert "Scripts/pip.exe" not in source or "get_venv_pip" in source
 
         # Old pattern (BEFORE refactoring) should be removed:
         # if platform.system() == 'Windows':
@@ -72,8 +65,7 @@ class TestUnifiedInstallerPlatformDelegation:
         old_pattern = "venv_dir / 'Scripts' / 'python.exe'"
         if old_pattern in source:
             # Check if it's wrapped in platform handler method
-            assert 'def get_venv_python' in source, \
-                "Hardcoded venv path found without platform handler abstraction"
+            assert "def get_venv_python" in source, "Hardcoded venv path found without platform handler abstraction"
 
     def test_installer_no_hardcoded_postgresql_paths(self):
         """Test that installer doesn't hardcode PostgreSQL scan paths"""
@@ -87,8 +79,9 @@ class TestUnifiedInstallerPlatformDelegation:
         if old_windows_pattern in source:
             # Should only appear in _get_postgresql_scan_paths method
             # which should be delegated to platform handler
-            assert 'get_postgresql_scan_paths' in source, \
+            assert "get_postgresql_scan_paths" in source, (
                 "Hardcoded PostgreSQL paths without platform handler delegation"
+            )
 
     def test_installer_no_hardcoded_npm_shell_logic(self):
         """Test that installer doesn't hardcode npm shell logic"""
@@ -100,8 +93,7 @@ class TestUnifiedInstallerPlatformDelegation:
         old_shell_pattern = 'shell=(platform.system() == "Windows")'
         if old_shell_pattern in source:
             # Should be delegated to platform.run_npm_command()
-            assert 'run_npm_command' in source, \
-                "Hardcoded npm shell logic without platform handler delegation"
+            assert "run_npm_command" in source, "Hardcoded npm shell logic without platform handler delegation"
 
 
 class TestUnifiedInstallerHandover0034Compliance:
@@ -113,16 +105,10 @@ class TestUnifiedInstallerHandover0034Compliance:
         source = install_file.read_text()
 
         # BANNED PHRASES (from Bug #2):
-        banned_phrases = [
-            "Username: admin",
-            "Password: admin",
-            "Default Admin Account:",
-            "admin/admin"
-        ]
+        banned_phrases = ["Username: admin", "Password: admin", "Default Admin Account:", "admin/admin"]
 
         for phrase in banned_phrases:
-            assert phrase not in source, \
-                f"Found banned phrase '{phrase}' - violates Handover 0034"
+            assert phrase not in source, f"Found banned phrase '{phrase}' - violates Handover 0034"
 
     def test_success_messages_mention_create_admin(self):
         """Test that success messages tell users to create their admin account"""
@@ -138,8 +124,7 @@ class TestUnifiedInstallerHandover0034Compliance:
         ]
 
         for phrase in required_phrases:
-            assert phrase in source, \
-                f"Missing required phrase '{phrase}' - violates Handover 0034"
+            assert phrase in source, f"Missing required phrase '{phrase}' - violates Handover 0034"
 
     def test_no_admin_user_creation_in_database_setup(self):
         """Test that database setup doesn't create admin user"""
@@ -165,14 +150,15 @@ class TestUnifiedInstallerHandover0034Compliance:
         ]
 
         for pattern in banned_patterns:
-            assert pattern not in setup_db_method, \
+            assert pattern not in setup_db_method, (
                 f"Found '{pattern}' in setup_database - should NOT create admin user (Handover 0034)"
+            )
 
         # REQUIRED: Should mark admin_created=False
-        assert "admin_created" in setup_db_method, \
-            "setup_database should track that admin was NOT created"
-        assert "admin_created'] = False" in setup_db_method or "admin_created': False" in setup_db_method, \
+        assert "admin_created" in setup_db_method, "setup_database should track that admin was NOT created"
+        assert "admin_created'] = False" in setup_db_method or "admin_created': False" in setup_db_method, (
             "setup_database should explicitly mark admin_created=False"
+        )
 
 
 class TestUnifiedInstallerHandover0035Compliance:
@@ -185,16 +171,17 @@ class TestUnifiedInstallerHandover0035Compliance:
         from giljo_mcp.models import SetupState
 
         # Verify field exists in model
-        assert hasattr(SetupState, 'first_admin_created'), \
+        assert hasattr(SetupState, "first_admin_created"), (
             "SetupState missing 'first_admin_created' field (Handover 0035)"
+        )
 
         # Field should be Boolean
         from sqlalchemy import inspect
+
         mapper = inspect(SetupState)
-        column = mapper.columns.get('first_admin_created')
+        column = mapper.columns.get("first_admin_created")
         assert column is not None, "first_admin_created column not found"
-        assert str(column.type) == 'BOOLEAN', \
-            f"first_admin_created should be BOOLEAN, got {column.type}"
+        assert str(column.type) == "BOOLEAN", f"first_admin_created should be BOOLEAN, got {column.type}"
 
 
 class TestUnifiedInstallerBugFixes:
@@ -203,19 +190,16 @@ class TestUnifiedInstallerBugFixes:
     def test_pg_trgm_extension_created(self):
         """Test that pg_trgm extension creation is preserved (Bug #1 fix)"""
         # This test verifies the fix from Phase 1 is preserved in DatabaseInstaller
-        from installer.core.database import DatabaseInstaller
 
         # Read DatabaseInstaller source to verify pg_trgm extension is created
         db_installer_file = Path(__file__).parent.parent.parent / "installer" / "core" / "database.py"
         source = db_installer_file.read_text()
 
         # Verify pg_trgm extension is created in DatabaseInstaller.setup()
-        assert 'pg_trgm' in source, \
-            "pg_trgm extension not found in DatabaseInstaller - Bug #1 regression"
+        assert "pg_trgm" in source, "pg_trgm extension not found in DatabaseInstaller - Bug #1 regression"
 
         # Verify it's used in CREATE EXTENSION statement
-        assert 'CREATE EXTENSION IF NOT EXISTS pg_trgm' in source, \
-            "pg_trgm extension creation statement not found"
+        assert "CREATE EXTENSION IF NOT EXISTS pg_trgm" in source, "pg_trgm extension creation statement not found"
 
         print("\npg_trgm extension creation preserved in DatabaseInstaller")
 
@@ -244,14 +228,13 @@ class TestUnifiedInstallerCrossPlatformPaths:
 
         # BANNED PATTERNS:
         banned_patterns = [
-            'F:\\GiljoAI_MCP',  # Windows absolute path
-            'C:\\Program Files\\GiljoAI',  # Windows system path
-            '/home/user/giljo',  # Linux absolute path
+            "F:\\GiljoAI_MCP",  # Windows absolute path
+            "C:\\Program Files\\GiljoAI",  # Windows system path
+            "/home/user/giljo",  # Linux absolute path
         ]
 
         for pattern in banned_patterns:
-            assert pattern not in source, \
-                f"Found hardcoded absolute path '{pattern}' - breaks cross-platform"
+            assert pattern not in source, f"Found hardcoded absolute path '{pattern}' - breaks cross-platform"
 
     def test_uses_pathlib_for_all_paths(self):
         """Test that install.py uses pathlib.Path for all path operations"""
@@ -272,36 +255,40 @@ class TestUnifiedInstallerWorkflow:
     def test_installer_runs_all_steps(self):
         """Test that installer executes all 12 steps"""
         settings = {
-            'install_dir': str(Path.cwd()),
-            'pg_password': 'test123',
-            'headless': True,
-            'external_host': 'localhost'
+            "install_dir": str(Path.cwd()),
+            "pg_password": "test123",
+            "headless": True,
+            "external_host": "localhost",
         }
 
         installer = UnifiedInstaller(settings)
 
         # Mock all external dependencies
-        with patch.object(installer, 'welcome_screen'):
-            with patch.object(installer, 'check_python_version', return_value=True):
-                with patch.object(installer, 'discover_postgresql', return_value={'found': True}):
-                    with patch.object(installer, 'install_dependencies', return_value={'success': True}):
-                        with patch.object(installer, 'generate_configs', return_value={'success': True}):
-                            with patch.object(installer, 'setup_database', return_value={
-                                'success': True,
-                                'credentials': {'owner_password': 'p1', 'user_password': 'p2'}
-                            }):
-                                with patch.object(installer, 'create_desktop_shortcuts'):
-                                    with patch.object(installer, '_print_success_summary'):
+        with patch.object(installer, "welcome_screen"):
+            with patch.object(installer, "check_python_version", return_value=True):
+                with patch.object(installer, "discover_postgresql", return_value={"found": True}):
+                    with patch.object(installer, "install_dependencies", return_value={"success": True}):
+                        with patch.object(installer, "generate_configs", return_value={"success": True}):
+                            with patch.object(
+                                installer,
+                                "setup_database",
+                                return_value={
+                                    "success": True,
+                                    "credentials": {"owner_password": "p1", "user_password": "p2"},
+                                },
+                            ):
+                                with patch.object(installer, "create_desktop_shortcuts"):
+                                    with patch.object(installer, "_print_success_summary"):
                                         result = installer.run()
 
         # Verify workflow completed
-        assert result['success'] == True
-        assert 'welcome_shown' in result['steps']
-        assert 'python_verified' in result['steps']
-        assert 'postgresql_found' in result['steps']
-        assert 'dependencies_installed' in result['steps']
-        assert 'configs_generated' in result['steps']
-        assert 'database_created' in result['steps']
+        assert result["success"] == True
+        assert "welcome_shown" in result["steps"]
+        assert "python_verified" in result["steps"]
+        assert "postgresql_found" in result["steps"]
+        assert "dependencies_installed" in result["steps"]
+        assert "configs_generated" in result["steps"]
+        assert "database_created" in result["steps"]
 
     def test_installer_uses_platform_handler_for_venv_paths(self):
         """Test that installer gets venv paths from platform handler"""
@@ -316,8 +303,8 @@ class TestUnifiedInstallerWorkflow:
 
         assert isinstance(python_path, Path)
         assert isinstance(pip_path, Path)
-        assert 'python' in str(python_path).lower()
-        assert 'pip' in str(pip_path).lower()
+        assert "python" in str(python_path).lower()
+        assert "pip" in str(pip_path).lower()
 
 
 class TestUnifiedInstallerConfigGeneration:
@@ -338,8 +325,7 @@ class TestUnifiedInstallerConfigGeneration:
 
         assert config_gen_pos > 0, "generate_configs not found in run() method"
         assert db_setup_pos > 0, "setup_database not found in run() method"
-        assert config_gen_pos < db_setup_pos, \
-            "config.yaml must be generated BEFORE database setup"
+        assert config_gen_pos < db_setup_pos, "config.yaml must be generated BEFORE database setup"
 
     def test_env_file_generated_after_database_setup(self):
         """Test that .env is generated AFTER database with real credentials"""
@@ -348,8 +334,7 @@ class TestUnifiedInstallerConfigGeneration:
 
         # .env generation should use real database credentials
         # (not admin password)
-        assert "update_env_with_real_credentials" in source or \
-               "generate_env_file" in source
+        assert "update_env_with_real_credentials" in source or "generate_env_file" in source
 
 
 class TestUnifiedInstallerCodeReduction:
@@ -364,14 +349,12 @@ class TestUnifiedInstallerCodeReduction:
         # Target: Significant reduction through platform handler delegation
         # Realistic target: < 1,300 lines (10% reduction minimum)
         # Stretch goal: < 1,200 lines (achieved!)
-        assert line_count < 1344, \
-            f"install.py has {line_count} lines, must be less than original 1,344 lines"
+        assert line_count < 1344, f"install.py has {line_count} lines, must be less than original 1,344 lines"
 
         # Verify significant reduction achieved
         reduction = 1344 - line_count
         reduction_pct = (reduction / 1344) * 100
-        assert reduction_pct >= 5, \
-            f"Only {reduction_pct:.1f}% reduction - target is at least 5%"
+        assert reduction_pct >= 5, f"Only {reduction_pct:.1f}% reduction - target is at least 5%"
 
         # Report actual metrics
         print(f"\ninstall.py line count: {line_count} (was 1,344)")
@@ -384,11 +367,10 @@ class TestUnifiedInstallerCodeReduction:
 
         # Count occurrences of platform.system() checks
         # Should be minimal (only in legacy compatibility code if any)
-        platform_checks = source.count('platform.system()')
+        platform_checks = source.count("platform.system()")
 
         # Target: < 5 occurrences (most should be delegated to platform handlers)
-        assert platform_checks < 10, \
-            f"Found {platform_checks} platform.system() checks - should delegate to handlers"
+        assert platform_checks < 10, f"Found {platform_checks} platform.system() checks - should delegate to handlers"
 
         print(f"\nplatform.system() occurrences: {platform_checks}")
 
@@ -409,8 +391,7 @@ class TestUnifiedInstallerImportStructure:
         ]
 
         for expected_import in expected_imports:
-            assert expected_import in source, \
-                f"Missing import: {expected_import}"
+            assert expected_import in source, f"Missing import: {expected_import}"
 
     def test_no_old_imports(self):
         """Test that old installer imports are removed"""
@@ -424,5 +405,4 @@ class TestUnifiedInstallerImportStructure:
         ]
 
         for old_import in old_imports:
-            assert old_import not in source, \
-                f"Found old import: {old_import} - should be removed"
+            assert old_import not in source, f"Found old import: {old_import} - should be removed"

@@ -7,9 +7,7 @@ Tests centralized configuration management with caching.
 import sys
 import time
 from pathlib import Path
-from unittest.mock import patch, mock_open
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 

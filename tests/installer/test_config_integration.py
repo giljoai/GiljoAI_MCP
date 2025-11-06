@@ -5,7 +5,7 @@ Tests the full generate_config_yaml() method to ensure cookie_domains is properl
 
 import pytest
 import yaml
-from pathlib import Path
+
 from installer.core.config import ConfigManager
 
 
@@ -35,7 +35,7 @@ class TestConfigIntegration:
         assert manager.config_file.exists()
 
         # Load and verify structure
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Verify all top-level sections exist
@@ -94,7 +94,7 @@ class TestConfigIntegration:
         assert result["success"] is True
 
         # Load config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Verify existing fields are unchanged
@@ -173,7 +173,7 @@ class TestConfigIntegration:
         assert "- server1.example.com" in yaml_text
 
         # Load and verify parsed structure
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         cookie_domains = config["security"]["cookie_domains"]

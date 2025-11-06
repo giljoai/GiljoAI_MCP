@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 """Test the fixed PostgreSQL guide layout"""
 
+import sys
 import tkinter as tk
 from tkinter import ttk
-import sys
+
 
 # Enable DPI awareness
 if sys.platform == "win32":
     try:
         from ctypes import windll
+
         windll.shcore.SetProcessDpiAwareness(2)
     except:
         pass
 
 # Colors
 COLORS = {
-    'bg_primary': '#0e1c2d',
-    'bg_elevated': '#1e3147',
-    'text_primary': '#ffc300',
-    'text_success': '#67bd6d',
-    'text_light': '#e1e1e1',
+    "bg_primary": "#0e1c2d",
+    "bg_elevated": "#1e3147",
+    "text_primary": "#ffc300",
+    "text_success": "#67bd6d",
+    "text_light": "#e1e1e1",
 }
+
 
 def show_postgres_guide():
     """Show a properly formatted PostgreSQL guide window"""
@@ -29,7 +32,7 @@ def show_postgres_guide():
     root = tk.Tk()
     root.title("PostgreSQL Installation Guide")
     root.geometry("800x600")
-    root.configure(bg=COLORS['bg_primary'])
+    root.configure(bg=COLORS["bg_primary"])
     root.resizable(False, False)
 
     # Center window
@@ -40,21 +43,23 @@ def show_postgres_guide():
 
     # Configure styles
     style = ttk.Style()
-    style.configure('TFrame', background=COLORS['bg_primary'])
-    style.configure('TLabel', background=COLORS['bg_primary'], foreground='#ffffff')
-    style.configure('TLabelframe', background=COLORS['bg_primary'], foreground='#ffffff')
-    style.configure('TButton', font=('Segoe UI', 9))
+    style.configure("TFrame", background=COLORS["bg_primary"])
+    style.configure("TLabel", background=COLORS["bg_primary"], foreground="#ffffff")
+    style.configure("TLabelframe", background=COLORS["bg_primary"], foreground="#ffffff")
+    style.configure("TButton", font=("Segoe UI", 9))
 
     # Main container with padding
     main_container = ttk.Frame(root)
     main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
     # Title
-    title = tk.Label(main_container,
-                    text="PostgreSQL Installation Guide",
-                    font=('Segoe UI', 14, 'bold'),
-                    fg='#ffffff',
-                    bg=COLORS['bg_primary'])
+    title = tk.Label(
+        main_container,
+        text="PostgreSQL Installation Guide",
+        font=("Segoe UI", 14, "bold"),
+        fg="#ffffff",
+        bg=COLORS["bg_primary"],
+    )
     title.pack(pady=(0, 15))
 
     # Instructions in simple labels (NO TEXT WIDGET)
@@ -69,7 +74,7 @@ def show_postgres_guide():
         ("", "  • User: postgres (YOU SELECTED THIS!)"),
         ("", "  • Password: Choose and REMEMBER it"),
         ("Step 4:", "Complete installation"),
-        ("Step 5:", "Test connection below")
+        ("Step 5:", "Test connection below"),
     ]
 
     for label, text in steps:
@@ -77,12 +82,12 @@ def show_postgres_guide():
         frame.pack(fill=tk.X, pady=2)
 
         if label:
-            lbl = tk.Label(frame, text=label, font=('Segoe UI', 10, 'bold'),
-                          fg=COLORS['text_primary'], bg=COLORS['bg_primary'])
+            lbl = tk.Label(
+                frame, text=label, font=("Segoe UI", 10, "bold"), fg=COLORS["text_primary"], bg=COLORS["bg_primary"]
+            )
             lbl.pack(side=tk.LEFT, padx=(0, 5))
 
-        txt = tk.Label(frame, text=text, font=('Segoe UI', 10),
-                      fg='#ffffff', bg=COLORS['bg_primary'])
+        txt = tk.Label(frame, text=text, font=("Segoe UI", 10), fg="#ffffff", bg=COLORS["bg_primary"])
         txt.pack(side=tk.LEFT)
 
     # Download button
@@ -125,6 +130,7 @@ def show_postgres_guide():
     print("- Skip and Continue buttons at bottom")
 
     root.mainloop()
+
 
 if __name__ == "__main__":
     show_postgres_guide()

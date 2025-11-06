@@ -11,13 +11,14 @@ Handles:
 import logging
 import os
 import shutil
-import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
+import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -104,20 +105,19 @@ async def test_database_connection(request: DatabaseSetupRequest) -> Dict:
                 "status": "auth_failed",
                 "message": "Invalid PostgreSQL admin password",
             }
-        elif "could not connect" in error_msg or "connection refused" in error_msg:
+        if "could not connect" in error_msg or "connection refused" in error_msg:
             return {
                 "success": False,
                 "status": "connection_refused",
                 "message": "Cannot connect to PostgreSQL server. Is PostgreSQL running?",
             }
-        else:
-            return {"success": False, "status": "error", "message": f"Connection failed: {str(e)}"}
+        return {"success": False, "status": "error", "message": f"Connection failed: {e!s}"}
 
     except ImportError:
         raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
 
     except Exception as e:
-        return {"success": False, "status": "error", "message": f"Connection test failed: {str(e)}"}
+        return {"success": False, "status": "error", "message": f"Connection test failed: {e!s}"}
 
 
 @router.post("/setup")
@@ -232,7 +232,7 @@ async def setup_database(request: DatabaseSetupRequest) -> Dict:
 
     except Exception as e:
         logger.error(f"Database setup failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database setup failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Database setup failed: {e!s}") from e
 
 
 @router.get("/verify")
@@ -343,31 +343,30 @@ async def verify_database_setup() -> Dict:
                     "message": "Database authentication failed. Credentials in .env may be incorrect.",
                     "error": str(e),
                 }
-            elif "database" in error_msg and "does not exist" in error_msg:
+            if "database" in error_msg and "does not exist" in error_msg:
                 return {
                     "success": False,
                     "status": "database_missing",
                     "message": f"Database '{db_name}' does not exist. Please run CLI installer first.",
                     "error": str(e),
                 }
-            elif "could not connect" in error_msg or "connection refused" in error_msg:
+            if "could not connect" in error_msg or "connection refused" in error_msg:
                 return {
                     "success": False,
                     "status": "connection_refused",
                     "message": "Cannot connect to PostgreSQL server. Is PostgreSQL running?",
                     "error": str(e),
                 }
-            else:
-                return {
-                    "success": False,
-                    "status": "connection_error",
-                    "message": f"Database connection failed: {str(e)}",
-                    "error": str(e),
-                }
+            return {
+                "success": False,
+                "status": "connection_error",
+                "message": f"Database connection failed: {e!s}",
+                "error": str(e),
+            }
 
     except ImportError:
         raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
 
     except Exception as e:
         logger.error(f"Database verification failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database verification failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Database verification failed: {e!s}") from e

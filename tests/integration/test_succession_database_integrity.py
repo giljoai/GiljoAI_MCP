@@ -11,13 +11,10 @@ Tests database schema constraints, indexes, and data integrity:
 """
 
 import json
-import uuid
 from datetime import datetime, timezone
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import inspect, select, text
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import MCPAgentJob, Project
@@ -80,7 +77,7 @@ async def test_spawned_by_chain_integrity(
         parent_result = await db_session.execute(parent_stmt)
         parent = parent_result.scalar_one_or_none()
 
-        assert parent is not None, f"Instance {i+1} has orphaned spawned_by reference"
+        assert parent is not None, f"Instance {i + 1} has orphaned spawned_by reference"
         assert parent.job_id == instances[i - 1].job_id
 
 

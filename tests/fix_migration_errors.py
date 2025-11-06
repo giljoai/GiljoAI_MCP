@@ -13,22 +13,31 @@ def fix_file(file_path: Path) -> bool:
         original_content = content
 
         # Fix malformed string concatenation like fPostgreSQLTestHelper
-        content = re.sub(r'f(["\'])PostgreSQLTestHelper', r'\1PostgreSQLTestHelper', content)
+        content = re.sub(r'f(["\'])PostgreSQLTestHelper', r"\1PostgreSQLTestHelper", content)
 
         # Fix string prefix issues
-        content = re.sub(r'(["\'])PostgreSQLTestHelper\.get_test_db_url\(', r'PostgreSQLTestHelper.get_test_db_url(', content)
+        content = re.sub(
+            r'(["\'])PostgreSQLTestHelper\.get_test_db_url\(', r"PostgreSQLTestHelper.get_test_db_url(", content
+        )
 
         # Ensure import is added if PostgreSQLTestHelper is used
-        if 'PostgreSQLTestHelper' in content and 'from tests.helpers.test_db_helper import PostgreSQLTestHelper' not in content:
+        if (
+            "PostgreSQLTestHelper" in content
+            and "from tests.helpers.test_db_helper import PostgreSQLTestHelper" not in content
+        ):
             # Find first import
-            import_match = re.search(r'^(import |from )', content, re.MULTILINE)
+            import_match = re.search(r"^(import |from )", content, re.MULTILINE)
             if import_match:
                 # Find all imports
-                all_imports = list(re.finditer(r'^(?:import |from ).*$', content, re.MULTILINE))
+                all_imports = list(re.finditer(r"^(?:import |from ).*$", content, re.MULTILINE))
                 if all_imports:
                     last_import = all_imports[-1]
                     insert_pos = last_import.end()
-                    content = content[:insert_pos] + '\nfrom tests.helpers.test_db_helper import PostgreSQLTestHelper\n' + content[insert_pos:]
+                    content = (
+                        content[:insert_pos]
+                        + "\nfrom tests.helpers.test_db_helper import PostgreSQLTestHelper\n"
+                        + content[insert_pos:]
+                    )
 
         if content != original_content:
             file_path.write_text(content, encoding="utf-8")

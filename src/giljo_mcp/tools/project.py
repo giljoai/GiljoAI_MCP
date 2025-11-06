@@ -313,11 +313,7 @@ Project: {project.name}"""
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def update_project_mission(
-        project_id: str,
-        mission: str,
-        user_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def update_project_mission(project_id: str, mission: str, user_id: Optional[str] = None) -> dict[str, Any]:
         """
         Update the mission field after orchestrator analysis
 
@@ -337,7 +333,7 @@ Project: {project.name}"""
                     "project_id": project_id,
                     "user_id": user_id,
                     "has_user_id": user_id is not None,
-                }
+                },
             )
 
             async with db_manager.get_session_async() as session:

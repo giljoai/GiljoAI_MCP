@@ -22,9 +22,8 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_user, get_db_session
+from src.giljo_mcp.auth.dependencies import get_current_user
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 
@@ -34,16 +33,12 @@ router = APIRouter()
 
 # JWT secret for token generation
 # Load from environment variable or use default for development
-SECRET_KEY = os.getenv(
-    'MCP_INSTALLER_SECRET_KEY',
-    'giljo-mcp-installer-default-dev-key'
-)
+SECRET_KEY = os.getenv("MCP_INSTALLER_SECRET_KEY", "giljo-mcp-installer-default-dev-key")
 
 # Warn if using default secret in production
-if SECRET_KEY == 'giljo-mcp-installer-default-dev-key':
+if SECRET_KEY == "giljo-mcp-installer-default-dev-key":
     logger.warning(
-        "Using default MCP installer secret key. "
-        "Set MCP_INSTALLER_SECRET_KEY environment variable for production."
+        "Using default MCP installer secret key. Set MCP_INSTALLER_SECRET_KEY environment variable for production."
     )
 
 ALGORITHM = "HS256"
@@ -51,8 +46,10 @@ ALGORITHM = "HS256"
 
 # Pydantic Models
 
+
 class ShareLinkResponse(BaseModel):
     """Response model for share link generation"""
+
     windows_url: str
     unix_url: str
     expires_at: str
@@ -60,6 +57,7 @@ class ShareLinkResponse(BaseModel):
 
 
 # Helper Functions
+
 
 def get_server_url() -> str:
     """
@@ -70,8 +68,8 @@ def get_server_url() -> str:
     """
     try:
         config = get_config()
-        host = config.api.host if hasattr(config, 'api') else "localhost"
-        port = config.api.port if hasattr(config, 'api') else 7272
+        host = config.api.host if hasattr(config, "api") else "localhost"
+        port = config.api.port if hasattr(config, "api") else 7272
 
         # Use localhost if host is 0.0.0.0 (not accessible from external)
         if host == "0.0.0.0":
@@ -96,11 +94,7 @@ def generate_secure_token(user_id: str, expires_in: int) -> str:
     """
     expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
 
-    payload = {
-        "user_id": user_id,
-        "expires_at": expires_at.isoformat() + "Z",
-        "type": "mcp_installer_download"
-    }
+    payload = {"user_id": user_id, "expires_at": expires_at.isoformat() + "Z", "type": "mcp_installer_download"}
 
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
@@ -120,7 +114,7 @@ def validate_token(token: str) -> Optional[dict]:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
         # Check expiration
-        expires_at = datetime.fromisoformat(payload["expires_at"].replace('Z', '+00:00'))
+        expires_at = datetime.fromisoformat(payload["expires_at"].replace("Z", "+00:00"))
         if datetime.now(timezone.utc) > expires_at:
             logger.warning(f"Token expired: {expires_at}")
             return None
@@ -138,12 +132,7 @@ def validate_token(token: str) -> Optional[dict]:
 
 
 def render_template(
-    template_path: Path,
-    server_url: str,
-    api_key: str,
-    username: str,
-    organization: str,
-    timestamp: str
+    template_path: Path, server_url: str, api_key: str, username: str, organization: str, timestamp: str
 ) -> str:
     """
     Render script template with user credentials.
@@ -165,15 +154,11 @@ def render_template(
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
 
-    template_content = template_path.read_text(encoding='utf-8')
+    template_content = template_path.read_text(encoding="utf-8")
 
     # Replace placeholders
     script = template_content.format(
-        server_url=server_url,
-        api_key=api_key,
-        username=username,
-        organization=organization,
-        timestamp=timestamp
+        server_url=server_url, api_key=api_key, username=username, organization=organization, timestamp=timestamp
     )
 
     return script
@@ -190,6 +175,7 @@ async def get_user_by_id(user_id: str) -> Optional[User]:
         User object or None if not found
     """
     import os
+
     from giljo_mcp.database import DatabaseManager
 
     db_url = os.getenv("DATABASE_URL")
@@ -207,10 +193,9 @@ async def get_user_by_id(user_id: str) -> Optional[User]:
 
 # API Endpoints
 
+
 @router.get("/windows", tags=["MCP Integration"])
-async def download_windows_installer(
-    current_user: Optional[User] = Depends(get_current_user)
-):
+async def download_windows_installer(current_user: Optional[User] = Depends(get_current_user)):
     """
     Generate Windows .bat installer with embedded credentials.
 
@@ -232,8 +217,7 @@ async def download_windows_installer(
     """
     if current_user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for MCP installer download"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for MCP installer download"
         )
 
     logger.info(f"Generating Windows installer for user: {current_user.username}")
@@ -250,7 +234,7 @@ async def download_windows_installer(
     # Get or create API key for user
     # For now, assume user has api_key attribute (Phase 1 implementation)
     # TODO: Query from APIKey table if needed
-    api_key = getattr(current_user, 'api_key', f'gk_{current_user.username}_default')
+    api_key = getattr(current_user, "api_key", f"gk_{current_user.username}_default")
 
     # Render template
     try:
@@ -260,13 +244,13 @@ async def download_windows_installer(
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.utcnow().isoformat() + "Z"
+            timestamp=datetime.utcnow().isoformat() + "Z",
         )
     except FileNotFoundError as e:
         logger.error(f"Template not found: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Installer template not found. Please contact administrator."
+            detail="Installer template not found. Please contact administrator.",
         )
 
     logger.info(f"Windows installer generated successfully for: {current_user.username}")
@@ -274,16 +258,12 @@ async def download_windows_installer(
     return Response(
         content=script_content,
         media_type="application/bat",
-        headers={
-            "Content-Disposition": "attachment; filename=giljo-mcp-setup.bat"
-        }
+        headers={"Content-Disposition": "attachment; filename=giljo-mcp-setup.bat"},
     )
 
 
 @router.get("/unix", tags=["MCP Integration"])
-async def download_unix_installer(
-    current_user: Optional[User] = Depends(get_current_user)
-):
+async def download_unix_installer(current_user: Optional[User] = Depends(get_current_user)):
     """
     Generate macOS/Linux .sh installer with embedded credentials.
 
@@ -305,8 +285,7 @@ async def download_unix_installer(
     """
     if current_user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for MCP installer download"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for MCP installer download"
         )
 
     logger.info(f"Generating Unix installer for user: {current_user.username}")
@@ -321,7 +300,7 @@ async def download_unix_installer(
     organization = current_user.organization.name if current_user.organization else "Personal"
 
     # Get or create API key for user
-    api_key = getattr(current_user, 'api_key', f'gk_{current_user.username}_default')
+    api_key = getattr(current_user, "api_key", f"gk_{current_user.username}_default")
 
     # Render template
     try:
@@ -331,13 +310,13 @@ async def download_unix_installer(
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.utcnow().isoformat() + "Z"
+            timestamp=datetime.utcnow().isoformat() + "Z",
         )
     except FileNotFoundError as e:
         logger.error(f"Template not found: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Installer template not found. Please contact administrator."
+            detail="Installer template not found. Please contact administrator.",
         )
 
     logger.info(f"Unix installer generated successfully for: {current_user.username}")
@@ -345,16 +324,12 @@ async def download_unix_installer(
     return Response(
         content=script_content,
         media_type="application/x-sh",
-        headers={
-            "Content-Disposition": "attachment; filename=giljo-mcp-setup.sh"
-        }
+        headers={"Content-Disposition": "attachment; filename=giljo-mcp-setup.sh"},
     )
 
 
 @router.post("/share-link", response_model=ShareLinkResponse, tags=["MCP Integration"])
-async def generate_share_link(
-    current_user: Optional[User] = Depends(get_current_user)
-):
+async def generate_share_link(current_user: Optional[User] = Depends(get_current_user)):
     """
     Generate secure URLs for script download (email-friendly).
 
@@ -375,8 +350,7 @@ async def generate_share_link(
     """
     if current_user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to generate share links"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required to generate share links"
         )
 
     logger.info(f"Generating share link for user: {current_user.username}")
@@ -384,7 +358,7 @@ async def generate_share_link(
     # Generate token with 7-day expiration
     token = generate_secure_token(
         user_id=current_user.id,
-        expires_in=7*24*3600  # 7 days in seconds
+        expires_in=7 * 24 * 3600,  # 7 days in seconds
     )
 
     # Get server URL
@@ -397,12 +371,7 @@ async def generate_share_link(
 
     logger.info(f"Share link generated for {current_user.username}, expires: {expires_at}")
 
-    return ShareLinkResponse(
-        windows_url=windows_url,
-        unix_url=unix_url,
-        expires_at=expires_at,
-        token=token
-    )
+    return ShareLinkResponse(windows_url=windows_url, unix_url=unix_url, expires_at=expires_at, token=token)
 
 
 @router.get("/download/{token}/{platform}", tags=["MCP Integration"])
@@ -431,11 +400,8 @@ async def download_via_token(token: str, platform: str):
     # Validate token
     user_info = validate_token(token)
     if not user_info:
-        logger.warning(f"Invalid/expired token used for download")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
+        logger.warning("Invalid/expired token used for download")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     # Get user from database
     user_id = user_info["user_id"]
@@ -443,16 +409,12 @@ async def download_via_token(token: str, platform: str):
 
     if not user:
         logger.warning(f"User not found for token: {user_id}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     # Validate platform
     if platform not in ["windows", "unix"]:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid platform. Must be 'windows' or 'unix'"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid platform. Must be 'windows' or 'unix'"
         )
 
     logger.info(f"Token validated for user: {user.username}, platform: {platform}")
@@ -460,5 +422,5 @@ async def download_via_token(token: str, platform: str):
     # Generate appropriate script
     if platform == "windows":
         return await download_windows_installer(current_user=user)
-    else:  # unix
-        return await download_unix_installer(current_user=user)
+    # unix
+    return await download_unix_installer(current_user=user)

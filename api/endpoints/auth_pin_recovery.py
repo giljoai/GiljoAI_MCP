@@ -110,8 +110,7 @@ class CompleteFirstLoginResponse(BaseModel):
 
 @router.post("/verify-pin-and-reset-password", response_model=PinPasswordResetResponse, tags=["auth"])
 async def verify_pin_and_reset_password(
-    request_data: PinPasswordResetRequest = Body(...),
-    db: AsyncSession = Depends(get_db_session)
+    request_data: PinPasswordResetRequest = Body(...), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Verify recovery PIN and reset password (Handover 0023).
@@ -143,10 +142,7 @@ async def verify_pin_and_reset_password(
     """
     # Validate password confirmation match
     if request_data.new_password != request_data.confirm_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
 
     # Find user by username
     stmt = select(User).where(User.username == request_data.username)
@@ -156,31 +152,23 @@ async def verify_pin_and_reset_password(
     # SECURITY: Generic error message - don't reveal if username exists
     if not user:
         logger.warning(f"PIN reset attempt for non-existent username: {request_data.username}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid username or PIN"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid username or PIN")
 
     # Check if user has recovery PIN set
     if not user.recovery_pin_hash:
         logger.warning(f"PIN reset attempt for user without PIN: {user.username}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid username or PIN"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid username or PIN")
 
     # Check if user is locked out
     if user.pin_lockout_until and datetime.now(timezone.utc) < user.pin_lockout_until:
         lockout_remaining = user.pin_lockout_until - datetime.now(timezone.utc)
         minutes_remaining = int(lockout_remaining.total_seconds() / 60)
         logger.warning(
-            f"PIN reset attempt while locked out - user: {user.username}, "
-            f"remaining: {minutes_remaining} minutes"
+            f"PIN reset attempt while locked out - user: {user.username}, remaining: {minutes_remaining} minutes"
         )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Account locked out due to too many failed attempts. "
-                   f"Try again in {minutes_remaining} minutes."
+            detail=f"Account locked out due to too many failed attempts. Try again in {minutes_remaining} minutes.",
         )
 
     # Verify PIN with bcrypt (timing-safe comparison)
@@ -200,7 +188,7 @@ async def verify_pin_and_reset_password(
 
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Account locked out due to too many failed attempts. Try again in 15 minutes."
+                detail="Account locked out due to too many failed attempts. Try again in 15 minutes.",
             )
 
         await db.commit()
@@ -212,10 +200,7 @@ async def verify_pin_and_reset_password(
         )
 
         # SECURITY: Generic error message
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid username or PIN"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid username or PIN")
 
     # PIN verified successfully - reset password
     user.password_hash = bcrypt.hash(request_data.new_password)
@@ -226,15 +211,12 @@ async def verify_pin_and_reset_password(
 
     logger.info(f"Password reset successful via PIN - user: {user.username}")
 
-    return PinPasswordResetResponse(
-        message="Password reset successful"
-    )
+    return PinPasswordResetResponse(message="Password reset successful")
 
 
 @router.post("/check-first-login", response_model=CheckFirstLoginResponse, tags=["auth"])
 async def check_first_login(
-    request_data: CheckFirstLoginRequest = Body(...),
-    db: AsyncSession = Depends(get_db_session)
+    request_data: CheckFirstLoginRequest = Body(...), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Check if user must change password or set PIN on first login (Handover 0023).
@@ -258,14 +240,10 @@ async def check_first_login(
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     return CheckFirstLoginResponse(
-        must_change_password=user.must_change_password or False,
-        must_set_pin=user.must_set_pin or False
+        must_change_password=user.must_change_password or False, must_set_pin=user.must_set_pin or False
     )
 
 
@@ -273,7 +251,7 @@ async def check_first_login(
 async def complete_first_login(
     request_data: CompleteFirstLoginRequest = Body(...),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Complete first login by changing password and setting recovery PIN (Handover 0023).
@@ -301,31 +279,21 @@ async def complete_first_login(
     """
     # Validate current password
     if not bcrypt.verify(request_data.current_password, current_user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
     # Validate new password != current password
     if request_data.new_password == request_data.current_password:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be different from current password"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different from current password"
         )
 
     # Validate password confirmation match
     if request_data.new_password != request_data.confirm_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
 
     # Validate PIN confirmation match
     if request_data.recovery_pin != request_data.confirm_pin:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="PINs do not match"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PINs do not match")
 
     # Update password
     current_user.password_hash = bcrypt.hash(request_data.new_password)
@@ -341,9 +309,7 @@ async def complete_first_login(
 
     logger.info(f"First login completed - user: {current_user.username}")
 
-    return CompleteFirstLoginResponse(
-        message="First login completed successfully"
-    )
+    return CompleteFirstLoginResponse(message="First login completed successfully")
 
 
 class SetRecoveryPinRequest(BaseModel):

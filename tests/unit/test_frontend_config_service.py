@@ -6,7 +6,6 @@ to ensure WebSocket connections use the correct host.
 """
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 
 
 class TestFrontendConfigService:
@@ -16,34 +15,20 @@ class TestFrontendConfigService:
     def mock_fetch_response_localhost(self):
         """Mock fetch response for localhost mode."""
         return {
-            "api": {
-                "host": "127.0.0.1",
-                "port": 7272
-            },
-            "websocket": {
-                "url": "ws://127.0.0.1:7272"
-            },
+            "api": {"host": "127.0.0.1", "port": 7272},
+            "websocket": {"url": "ws://127.0.0.1:7272"},
             "mode": "localhost",
-            "security": {
-                "api_keys_required": False
-            }
+            "security": {"api_keys_required": False},
         }
 
     @pytest.fixture
     def mock_fetch_response_lan(self):
         """Mock fetch response for LAN mode."""
         return {
-            "api": {
-                "host": "10.1.0.164",
-                "port": 7272
-            },
-            "websocket": {
-                "url": "ws://10.1.0.164:7272"
-            },
+            "api": {"host": "10.1.0.164", "port": 7272},
+            "websocket": {"url": "ws://10.1.0.164:7272"},
             "mode": "lan",
-            "security": {
-                "api_keys_required": True
-            }
+            "security": {"api_keys_required": True},
         }
 
     def test_config_service_exists(self):
@@ -51,14 +36,14 @@ class TestFrontendConfigService:
         # This test will fail initially - we need to create the service
         # from frontend.src.services.config import ConfigService
         # assert ConfigService is not None
-        pass  # Placeholder for now
+        # Placeholder for now
 
     def test_fetch_config_method_exists(self):
         """Test that fetchConfig method exists on ConfigService."""
         # from frontend.src.services.config import ConfigService
         # service = ConfigService()
         # assert hasattr(service, 'fetchConfig')
-        pass  # Placeholder for now
+        # Placeholder for now
 
     @pytest.mark.asyncio
     async def test_fetch_config_returns_api_host(self, mock_fetch_response_localhost):
@@ -67,44 +52,44 @@ class TestFrontendConfigService:
         # Pseudo-code test logic:
         # config = await configService.fetchConfig()
         # assert config.api.host === "127.0.0.1"
-        pass  # Placeholder - actual test will be in JavaScript/Jest
+        # Placeholder - actual test will be in JavaScript/Jest
 
     @pytest.mark.asyncio
     async def test_fetch_config_handles_network_error(self):
         """Test that fetchConfig handles network errors gracefully."""
         # Should fall back to window.location.hostname if fetch fails
-        pass  # Placeholder
+        # Placeholder
 
     @pytest.mark.asyncio
     async def test_fetch_config_caches_result(self):
         """Test that fetchConfig caches the result to avoid repeated requests."""
         # First call should fetch from network
         # Second call should return cached value
-        pass  # Placeholder
+        # Placeholder
 
     @pytest.mark.asyncio
     async def test_fetch_config_timeout(self):
         """Test that fetchConfig times out after reasonable period."""
         # Should timeout and fall back to default if backend doesn't respond
-        pass  # Placeholder
+        # Placeholder
 
     def test_get_websocket_url_uses_fetched_host(self, mock_fetch_response_lan):
         """Test that getWebSocketUrl uses the host from fetchConfig."""
         # wsUrl = configService.getWebSocketUrl()
         # assert wsUrl === "ws://10.1.0.164:7272"
-        pass  # Placeholder
+        # Placeholder
 
     def test_fallback_to_window_location_on_error(self):
         """Test that service falls back to window.location.hostname if fetch fails."""
         # If fetch fails, should use window.location.hostname as fallback
-        pass  # Placeholder
+        # Placeholder
 
     def test_config_service_singleton(self):
         """Test that ConfigService is a singleton."""
         # const instance1 = ConfigService.getInstance()
         # const instance2 = ConfigService.getInstance()
         # assert instance1 === instance2
-        pass  # Placeholder
+        # Placeholder
 
 
 # Note: These are Python test stubs for documentation purposes.
@@ -125,28 +110,24 @@ class FrontendConfigServiceSpec:
         The ConfigService should use a singleton pattern to ensure
         only one instance exists throughout the application lifecycle.
         """
-        pass
 
     def spec_fetch_on_initialization(self):
         """
         The service should fetch configuration from the backend
         when the application initializes, before WebSocket connection.
         """
-        pass
 
     def spec_cache_configuration(self):
         """
         The fetched configuration should be cached in memory
         to avoid repeated network requests during the same session.
         """
-        pass
 
     def spec_timeout_and_fallback(self):
         """
         If the backend doesn't respond within 5 seconds,
         fall back to window.location.hostname for the API host.
         """
-        pass
 
     def spec_expose_api_host(self):
         """
@@ -156,14 +137,12 @@ class FrontendConfigServiceSpec:
         - Deployment mode
         - Security configuration
         """
-        pass
 
     def spec_type_safety(self):
         """
         The service should validate the structure of the response
         from the backend to ensure type safety.
         """
-        pass
 
 
 @pytest.mark.skip(reason="JavaScript tests - documentation only")
@@ -175,7 +154,7 @@ class JavaScriptTestExamples:
     """
 
     def example_test_structure(self):
-        """
+        r"""
         Example JavaScript test using Vitest:
 
         ```javascript
@@ -223,4 +202,3 @@ class JavaScriptTestExamples:
         })
         ```
         """
-        pass

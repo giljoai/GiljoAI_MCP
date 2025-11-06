@@ -6,16 +6,13 @@ Each test gets a clean database state through transaction rollback.
 """
 
 import asyncio
-import contextlib
 from typing import Optional
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Base
-
 
 
 class PostgreSQLTestHelper:
@@ -58,11 +55,10 @@ class PostgreSQLTestHelper:
                 f"postgresql+asyncpg://{config['username']}:{config['password']}"
                 f"@{config['host']}:{config['port']}/{config['database']}"
             )
-        else:
-            return (
-                f"postgresql://{config['username']}:{config['password']}"
-                f"@{config['host']}:{config['port']}/{config['database']}"
-            )
+        return (
+            f"postgresql://{config['username']}:{config['password']}"
+            f"@{config['host']}:{config['port']}/{config['database']}"
+        )
 
     @staticmethod
     async def ensure_test_database_exists():
@@ -79,9 +75,7 @@ class PostgreSQLTestHelper:
         try:
             async with admin_engine.connect() as conn:
                 # Check if test database exists
-                result = await conn.execute(
-                    text("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp_test'")
-                )
+                result = await conn.execute(text("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp_test'"))
                 exists = result.scalar()
 
                 if not exists:

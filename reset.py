@@ -15,12 +15,13 @@ NOTE: This script does NOT install anything. After running, you must manually ru
   - install.sh (Linux/Mac)
 """
 
+import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-import json
+
 
 # Directories
 TEST_DIR = Path(__file__).parent.resolve()
@@ -80,7 +81,7 @@ def print_header(text):
 def confirm_action(message):
     """Ask user for confirmation"""
     response = input(f"\n{message} (y/N): ").strip().lower()
-    return response == 'y'
+    return response == "y"
 
 
 def is_symlink(path):
@@ -101,20 +102,11 @@ def drop_postgresql_databases():
     for db in databases:
         print(f"Dropping database: {db}...")
         try:
-            cmd = [
-                str(PSQL_PATH),
-                "-U", "postgres",
-                "-c", f"DROP DATABASE IF EXISTS {db};"
-            ]
+            cmd = [str(PSQL_PATH), "-U", "postgres", "-c", f"DROP DATABASE IF EXISTS {db};"]
             env = os.environ.copy()
             env["PGPASSWORD"] = POSTGRES_PASSWORD
 
-            result = subprocess.run(
-                cmd,
-                env=env,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(cmd, check=False, env=env, capture_output=True, text=True)
 
             if result.returncode == 0:
                 print(f"[OK] Dropped database: {db}")
@@ -128,20 +120,11 @@ def drop_postgresql_databases():
     for user in users:
         print(f"Dropping user: {user}...")
         try:
-            cmd = [
-                str(PSQL_PATH),
-                "-U", "postgres",
-                "-c", f"DROP USER IF EXISTS {user};"
-            ]
+            cmd = [str(PSQL_PATH), "-U", "postgres", "-c", f"DROP USER IF EXISTS {user};"]
             env = os.environ.copy()
             env["PGPASSWORD"] = POSTGRES_PASSWORD
 
-            result = subprocess.run(
-                cmd,
-                env=env,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(cmd, check=False, env=env, capture_output=True, text=True)
 
             if result.returncode == 0:
                 print(f"[OK] Dropped user: {user}")
@@ -212,7 +195,7 @@ def backup_preserved_items():
 
     # Save manifest
     manifest_path = backup_dir / "manifest.json"
-    with open(manifest_path, 'w') as f:
+    with open(manifest_path, "w") as f:
         json.dump(preserved, f, indent=2)
 
     print(f"\n[OK] Backed up {len(preserved)} items to: {backup_dir}")
@@ -280,7 +263,6 @@ def copy_from_dev_repo():
         "push_to_dev.py",
         "break_symlinks.py",
         # Note: Many utility scripts moved to /scripts directory
-
         # Batch files
         "start_giljo.bat",
         "start_backend.bat",
@@ -295,12 +277,10 @@ def copy_from_dev_repo():
         "check_databases.bat",
         "install.bat",
         "open_dashboard.bat",
-
         # Shell scripts
         "start_giljo.sh",
         "stop_giljo.sh",
         "quickstart.sh",
-
         # Config files
         "requirements.txt",
         "pyproject.toml",
@@ -312,7 +292,6 @@ def copy_from_dev_repo():
         "config.yaml.example",
         "vite.config.js",
         "uv.lock",
-
         # Documentation
         "README.md",
         "LICENSE",
@@ -324,7 +303,6 @@ def copy_from_dev_repo():
         "MIGRATION_NOTES.md",
         "SECURITY.md",
         "CONTRIBUTING.md",
-
         # Other
         ".release-ignore",
         ".clauderc",
@@ -352,11 +330,13 @@ def copy_from_dev_repo():
                     continue
                 shutil.rmtree(dst_dir)
 
-            shutil.copytree(src_dir, dst_dir,
-                          ignore=shutil.ignore_patterns(
-                              '__pycache__', '*.pyc', '.pytest_cache',
-                              'node_modules', '.mypy_cache', '.ruff_cache'
-                          ))
+            shutil.copytree(
+                src_dir,
+                dst_dir,
+                ignore=shutil.ignore_patterns(
+                    "__pycache__", "*.pyc", ".pytest_cache", "node_modules", ".mypy_cache", ".ruff_cache"
+                ),
+            )
             copied_count += 1
             print(f"[OK] Copied: {dirname}")
         except Exception as e:
@@ -393,7 +373,7 @@ def restore_preserved_items(backup_dir):
         print("[X] No manifest found")
         return
 
-    with open(manifest_path, 'r') as f:
+    with open(manifest_path) as f:
         preserved = json.load(f)
 
     restored_count = 0
@@ -445,7 +425,7 @@ def main():
 
     print(f"Test Directory: {TEST_DIR}")
     print(f"Dev Repository: {DEV_REPO}")
-    print(f"\nThis will:")
+    print("\nThis will:")
     print("  - Drop PostgreSQL databases (giljo_mcp, giljo_mcp_test)")
     print("  - Drop PostgreSQL users (giljo_user, giljo_owner)")
     print("  - Clean %APPDATA% installations")

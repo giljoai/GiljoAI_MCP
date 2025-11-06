@@ -11,7 +11,8 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class ClaudeConfigManager:
             logger.error(f"JSON decode error: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
-        except IOError as e:
+        except OSError as e:
             result["error"] = f"IO error: {e}"
             logger.error(f"IO error during injection: {e}")
             if backup_path:
@@ -170,9 +171,7 @@ class ClaudeConfigManager:
 
             return config
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(
-                f"Invalid JSON in {self.claude_config_path}", e.doc, e.pos
-            )
+            raise json.JSONDecodeError(f"Invalid JSON in {self.claude_config_path}", e.doc, e.pos)
 
     def _backup_claude_config(self) -> Path:
         """

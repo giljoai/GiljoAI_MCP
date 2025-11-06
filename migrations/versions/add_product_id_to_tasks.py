@@ -5,6 +5,7 @@ Revises: add_template_management_tables
 Create Date: 2025-09-15
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

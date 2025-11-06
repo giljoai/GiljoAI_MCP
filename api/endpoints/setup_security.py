@@ -9,12 +9,14 @@ Replaces complex legacy admin/admin password change flow.
 """
 
 import logging
+
 from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.models import User
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,31 +45,21 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
         total_users_count = total_users_result.scalar()
 
         # Simple fresh install detection
-        is_fresh_install = (total_users_count == 0)
+        is_fresh_install = total_users_count == 0
 
         # Security logging
         if is_fresh_install:
-            logger.info(
-                "[SETUP] Fresh install detected - no users exist. "
-                "Will show create admin account flow."
-            )
+            logger.info("[SETUP] Fresh install detected - no users exist. Will show create admin account flow.")
         else:
-            logger.debug(
-                f"[SETUP] Normal operation - {total_users_count} user(s) exist. "
-                "Will show login flow."
-            )
+            logger.debug(f"[SETUP] Normal operation - {total_users_count} user(s) exist. Will show login flow.")
 
         return {
             "is_fresh_install": is_fresh_install,
             "total_users_count": total_users_count,
-            "requires_admin_creation": is_fresh_install
+            "requires_admin_creation": is_fresh_install,
         }
 
     except Exception as e:
         logger.error(f"Failed to get setup status: {e}")
         # Conservative fallback - assume fresh install (allows account creation)
-        return {
-            "is_fresh_install": True,
-            "total_users_count": 0,
-            "requires_admin_creation": True
-        }
+        return {"is_fresh_install": True, "total_users_count": 0, "requires_admin_creation": True}

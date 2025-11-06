@@ -109,7 +109,9 @@ async def get_current_user(
         'admin'
     """
     # DIAGNOSTIC: Log incoming auth attempt
-    logger.info(f"[AUTH] get_current_user called - path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)}")
+    logger.info(
+        f"[AUTH] get_current_user called - path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)}"
+    )
 
     # Try JWT cookie first (web users)
     if access_token:
@@ -169,7 +171,9 @@ async def get_current_user(
             logger.error(f"API key authentication error: {e}")
 
     # No valid authentication found
-    logger.error(f"[AUTH] FAILED - No valid authentication found (path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)})")
+    logger.error(
+        f"[AUTH] FAILED - No valid authentication found (path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)})"
+    )
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated. Please login or provide a valid API key.",

@@ -12,14 +12,12 @@ import logging
 from pathlib import Path
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -176,6 +174,7 @@ async def verify_index_performance(database_url: str) -> None:
 def get_database_url() -> str:
     """Get database URL from config or environment"""
     import os
+
     import yaml
 
     # Try environment variable first
@@ -187,7 +186,7 @@ def get_database_url() -> str:
     config_path = Path(__file__).parent.parent / "config.yaml"
     if config_path.exists():
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
                 db_config = config.get("database", {})
 

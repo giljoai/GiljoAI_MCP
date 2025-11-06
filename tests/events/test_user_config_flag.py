@@ -9,15 +9,16 @@ Created: 2025-11-02
 Coverage Target: 100%
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
+
+import pytest
 from pydantic import ValidationError
 
 from api.events.schemas import (
     EventFactory,
-    ProjectMissionUpdatedEvent,
     ProjectMissionUpdatedData,
+    ProjectMissionUpdatedEvent,
 )
 
 
@@ -44,7 +45,7 @@ def test_event_factory_mission_updated_with_user_config():
         mission="Implement authentication system",
         token_estimate=5000,
         user_config_applied=True,
-        field_priorities={"security": 5, "performance": 4}
+        field_priorities={"security": 5, "performance": 4},
     )
 
     # Assert
@@ -83,7 +84,7 @@ def test_event_factory_mission_updated_without_user_config():
         tenant_key=tenant_key,
         mission="Generic mission",
         token_estimate=3000,
-        user_config_applied=False  # Default, no user config
+        user_config_applied=False,  # Default, no user config
     )
 
     # Assert
@@ -112,7 +113,7 @@ def test_event_factory_mission_updated_default_user_config_false():
         project_id=project_id,
         tenant_key=tenant_key,
         mission="Default mission",
-        token_estimate=2000
+        token_estimate=2000,
         # user_config_applied not specified
     )
 
@@ -137,12 +138,7 @@ def test_event_schema_includes_field_priorities_with_config():
     schema for frontend display and analytics.
     """
     # Arrange
-    priorities = {
-        "product_vision": 10,
-        "project_description": 8,
-        "codebase_summary": 6,
-        "architecture": 4
-    }
+    priorities = {"product_vision": 10, "project_description": 8, "codebase_summary": 6, "architecture": 4}
 
     # Act
     event = ProjectMissionUpdatedEvent(
@@ -153,8 +149,8 @@ def test_event_schema_includes_field_priorities_with_config():
             mission="Mission with priorities",
             token_estimate=4500,
             user_config_applied=True,
-            field_priorities=priorities
-        )
+            field_priorities=priorities,
+        ),
     )
 
     # Assert
@@ -181,8 +177,8 @@ def test_event_schema_validates_field_priorities_dict():
             mission="Test mission",
             token_estimate=1000,
             user_config_applied=True,
-            field_priorities={"field1": 5, "field2": 3}  # Valid dict
-        )
+            field_priorities={"field1": 5, "field2": 3},  # Valid dict
+        ),
     )
 
     # Assert
@@ -208,9 +204,9 @@ def test_event_schema_backwards_compatible_without_flag():
             project_id=str(uuid4()),
             tenant_key="tenant_abc",
             mission="Legacy mission",
-            token_estimate=2000
+            token_estimate=2000,
             # user_config_applied not provided
-        )
+        ),
     )
 
     # Assert
@@ -227,10 +223,7 @@ def test_event_factory_backwards_compatible():
     """
     # Arrange & Act - Old-style call (minimal parameters)
     event = EventFactory.project_mission_updated(
-        project_id=str(uuid4()),
-        tenant_key="tenant_abc",
-        mission="Legacy style mission",
-        token_estimate=1500
+        project_id=str(uuid4()), tenant_key="tenant_abc", mission="Legacy style mission", token_estimate=1500
     )
 
     # Assert
@@ -260,7 +253,7 @@ def test_event_factory_generated_by_user():
         token_estimate=4000,
         generated_by="user",  # User-initiated
         user_config_applied=True,
-        field_priorities={"security": 5}
+        field_priorities={"security": 5},
     )
 
     # Assert
@@ -281,7 +274,7 @@ def test_event_factory_generated_by_orchestrator():
         tenant_key="tenant_abc",
         mission="Auto-generated mission",
         token_estimate=3000,
-        generated_by="orchestrator"  # Default
+        generated_by="orchestrator",  # Default
     )
 
     # Assert
@@ -307,8 +300,8 @@ def test_event_schema_validates_token_estimate_positive():
             project_id=str(uuid4()),
             tenant_key="tenant_abc",
             mission="Test mission",
-            token_estimate=5000  # Valid (>= 0)
-        )
+            token_estimate=5000,  # Valid (>= 0)
+        ),
     )
 
     # Assert
@@ -327,7 +320,7 @@ def test_event_schema_rejects_negative_token_estimate():
             project_id=str(uuid4()),
             tenant_key="tenant_abc",
             mission="Test mission",
-            token_estimate=-100  # Invalid (< 0)
+            token_estimate=-100,  # Invalid (< 0)
         )
 
     # Verify error message
@@ -346,7 +339,7 @@ def test_event_schema_validates_tenant_key_not_empty():
             project_id=str(uuid4()),
             tenant_key="",  # Invalid (empty)
             mission="Test mission",
-            token_estimate=1000
+            token_estimate=1000,
         )
 
     # Verify error message
@@ -375,7 +368,7 @@ def test_event_serialization_includes_all_fields():
         token_estimate=6000,
         generated_by="user",
         user_config_applied=True,
-        field_priorities=priorities
+        field_priorities=priorities,
     )
 
     # Act - Serialize for WebSocket

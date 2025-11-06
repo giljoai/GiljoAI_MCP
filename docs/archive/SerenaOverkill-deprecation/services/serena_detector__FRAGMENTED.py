@@ -10,6 +10,7 @@ import re
 import subprocess
 from typing import Any, Optional
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -79,6 +80,7 @@ class SerenaDetector:
         try:
             result = subprocess.run(
                 ["uvx", "--version"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=self.uvx_timeout,
@@ -87,8 +89,7 @@ class SerenaDetector:
 
             if result.returncode == 0:
                 return True, None
-            else:
-                return False, f"uvx check failed with code {result.returncode}"
+            return False, f"uvx check failed with code {result.returncode}"
 
         except FileNotFoundError:
             return False, "uvx not found on system PATH"
@@ -98,7 +99,7 @@ class SerenaDetector:
             return False, f"uvx check failed: {e.stderr}"
         except Exception as e:
             logger.error(f"Unexpected error checking uvx: {e}")
-            return False, f"Unexpected error: {str(e)}"
+            return False, f"Unexpected error: {e!s}"
 
     def _check_serena(self) -> tuple[bool, Optional[str], Optional[str]]:
         """
@@ -110,6 +111,7 @@ class SerenaDetector:
         try:
             result = subprocess.run(
                 ["uvx", "serena", "--version"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=self.serena_timeout,
@@ -119,8 +121,7 @@ class SerenaDetector:
             if result.returncode == 0:
                 version = self._parse_version(result.stdout)
                 return True, version, None
-            else:
-                return False, None, f"Serena check failed with code {result.returncode}"
+            return False, None, f"Serena check failed with code {result.returncode}"
 
         except subprocess.TimeoutExpired:
             return False, None, "Serena check timeout"
@@ -129,7 +130,7 @@ class SerenaDetector:
             return False, None, f"Serena not found: {error_msg}"
         except Exception as e:
             logger.error(f"Unexpected error checking Serena: {e}")
-            return False, None, f"Unexpected error: {str(e)}"
+            return False, None, f"Unexpected error: {e!s}"
 
     def _parse_version(self, version_output: str) -> Optional[str]:
         """

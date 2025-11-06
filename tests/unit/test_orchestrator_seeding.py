@@ -4,9 +4,9 @@ Tests ensure the seeding script properly populates the database
 with the enhanced orchestrator template.
 """
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
 
 from src.giljo_mcp.models import AgentTemplate
 

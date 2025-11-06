@@ -12,16 +12,18 @@ Revises: 20251027_project_soft_delete
 Create Date: 2025-10-28 00:00:00.000000
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
-revision: str = '20251028_completed_at'
-down_revision: Union[str, Sequence[str], None] = '20251027_project_soft_delete'
+revision: str = "20251028_completed_at"
+down_revision: Union[str, Sequence[str], None] = "20251027_project_soft_delete"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -45,17 +47,24 @@ def upgrade() -> None:
 
     # Check if column already exists (idempotent migration)
     conn = op.get_bind()
-    result = conn.execute(text(
-        "SELECT column_name FROM information_schema.columns "
-        "WHERE table_name='projects' AND column_name='completed_at'"
-    ))
+    result = conn.execute(
+        text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='projects' AND column_name='completed_at'"
+        )
+    )
 
     if result.fetchone():
         print("  - Column 'completed_at' already exists, skipping...")
     else:
-        op.add_column('projects',
-            sa.Column('completed_at', sa.TIMESTAMP(timezone=True), nullable=True,
-                     comment='Timestamp when project was marked as completed or cancelled')
+        op.add_column(
+            "projects",
+            sa.Column(
+                "completed_at",
+                sa.TIMESTAMP(timezone=True),
+                nullable=True,
+                comment="Timestamp when project was marked as completed or cancelled",
+            ),
         )
         print("  - Column 'completed_at' added successfully")
 
@@ -75,14 +84,16 @@ def downgrade() -> None:
 
     # Check if column exists before dropping (idempotent migration)
     conn = op.get_bind()
-    result = conn.execute(text(
-        "SELECT column_name FROM information_schema.columns "
-        "WHERE table_name='projects' AND column_name='completed_at'"
-    ))
+    result = conn.execute(
+        text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='projects' AND column_name='completed_at'"
+        )
+    )
 
     if result.fetchone():
         print("  - Dropping completed_at column")
-        op.drop_column('projects', 'completed_at')
+        op.drop_column("projects", "completed_at")
         print("  - Column 'completed_at' dropped successfully")
     else:
         print("  - Column 'completed_at' does not exist, skipping...")

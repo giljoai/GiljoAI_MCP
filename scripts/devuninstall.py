@@ -34,7 +34,7 @@ class GiljoDevUninstaller:
         """Load installation manifest"""
         if self.manifest_path.exists():
             try:
-                with open(self.manifest_path, 'r') as f:
+                with open(self.manifest_path) as f:
                     return json.load(f)
             except:
                 return {}
@@ -73,9 +73,13 @@ class GiljoDevUninstaller:
         self.log("Removing generated config files...")
 
         configs_to_remove = [
-            "config.yaml", "config.json", ".env",
-            ".env.local", ".env.production",
-            "uninstall.log", "uninstall_commands.txt"
+            "config.yaml",
+            "config.json",
+            ".env",
+            ".env.local",
+            ".env.production",
+            "uninstall.log",
+            "uninstall_commands.txt",
         ]
 
         removed = 0
@@ -101,7 +105,7 @@ class GiljoDevUninstaller:
             "test_repair.py",
             "test_export.py",
             "giltest.bat",
-            "GILTEST_README.md"
+            "GILTEST_README.md",
         ]
 
         removed = 0
@@ -122,33 +126,33 @@ class GiljoDevUninstaller:
         self.log("Dropping PostgreSQL databases (server will remain installed)...")
 
         # Default PostgreSQL configuration
-        host = 'localhost'
-        port = '5432'
-        user = 'postgres'
-        password = '4010'  # Default development password
+        host = "localhost"
+        port = "5432"
+        user = "postgres"
+        password = "4010"  # Default development password
 
         # Check manifest for configuration
-        pg_info = self.manifest.get('postgresql', {})
+        pg_info = self.manifest.get("postgresql", {})
         if pg_info:
-            host = pg_info.get('host', host)
-            port = pg_info.get('port', port)
-            user = pg_info.get('user', user)
-            password = pg_info.get('password', password)
+            host = pg_info.get("host", host)
+            port = pg_info.get("port", port)
+            user = pg_info.get("user", user)
+            password = pg_info.get("password", password)
 
         # Also check .env file for password if manifest doesn't have it
-        env_file = self.root_path / '.env'
+        env_file = self.root_path / ".env"
         if env_file.exists() and not pg_info:
             try:
-                with open(env_file, 'r') as f:
+                with open(env_file) as f:
                     for line in f:
-                        if line.startswith('DB_PASSWORD='):
-                            password = line.split('=', 1)[1].strip().strip('"\'')
+                        if line.startswith("DB_PASSWORD="):
+                            password = line.split("=", 1)[1].strip().strip("\"'")
                             break
             except:
                 pass
 
         # Databases to drop
-        databases = ['giljo_mcp', 'giljo_mcp_test']
+        databases = ["giljo_mcp", "giljo_mcp_test"]
 
         # Find psql executable
         psql_paths = [
@@ -162,7 +166,7 @@ class GiljoDevUninstaller:
             "/c/Program Files/PostgreSQL/18/bin/psql.exe",
             "/c/Program Files/PostgreSQL/17/bin/psql.exe",
             "/c/Program Files/PostgreSQL/16/bin/psql.exe",
-            "psql"  # Fallback to PATH
+            "psql",  # Fallback to PATH
         ]
 
         psql_cmd = None
@@ -180,35 +184,33 @@ class GiljoDevUninstaller:
         for database in databases:
             try:
                 env = os.environ.copy()
-                env['PGPASSWORD'] = password
+                env["PGPASSWORD"] = password
 
                 # First, terminate all connections to the database
                 # Using parameterized query to avoid SQL injection (bandit B608)
                 terminate_query = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid();"
-                terminate_cmd = [psql_cmd, "-h", host, "-p", port, "-U", user, "-d", "postgres",
-                                "-c", terminate_query.replace('%s', f"'{database}'")]  # nosec B608
+                terminate_cmd = [
+                    psql_cmd,
+                    "-h",
+                    host,
+                    "-p",
+                    port,
+                    "-U",
+                    user,
+                    "-d",
+                    "postgres",
+                    "-c",
+                    terminate_query.replace("%s", f"'{database}'"),
+                ]  # nosec B608
 
-                subprocess.run(
-                    terminate_cmd,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
+                subprocess.run(terminate_cmd, check=False, env=env, capture_output=True, text=True, timeout=5)
                 self.log(f"Terminated connections to '{database}'", "INFO")
 
                 # Now drop the database
-                cmd = [psql_cmd, "-h", host, "-p", port, "-U", user,
-                       "-c", f"DROP DATABASE IF EXISTS {database};"]
+                cmd = [psql_cmd, "-h", host, "-p", port, "-U", user, "-c", f"DROP DATABASE IF EXISTS {database};"]
 
                 # Run command
-                result = subprocess.run(
-                    cmd,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
+                result = subprocess.run(cmd, check=False, env=env, capture_output=True, text=True, timeout=10)
 
                 if result.returncode == 0 or "does not exist" in result.stderr:
                     self.log(f"PostgreSQL database '{database}' dropped", "SUCCESS")
@@ -222,22 +224,15 @@ class GiljoDevUninstaller:
                 self.log(f"Could not drop '{database}': {e}", "WARNING")
 
         # Also drop the roles if they exist
-        roles_to_drop = ['giljo_owner', 'giljo_user']
+        roles_to_drop = ["giljo_owner", "giljo_user"]
         for role in roles_to_drop:
             try:
                 env = os.environ.copy()
-                env['PGPASSWORD'] = password
+                env["PGPASSWORD"] = password
 
-                cmd = [psql_cmd, "-h", host, "-p", port, "-U", user,
-                       "-c", f"DROP ROLE IF EXISTS {role};"]
+                cmd = [psql_cmd, "-h", host, "-p", port, "-U", user, "-c", f"DROP ROLE IF EXISTS {role};"]
 
-                result = subprocess.run(
-                    cmd,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
+                result = subprocess.run(cmd, check=False, env=env, capture_output=True, text=True, timeout=5)
 
                 if result.returncode == 0 or "does not exist" in result.stderr:
                     self.log(f"PostgreSQL role '{role}' dropped", "SUCCESS")
@@ -262,9 +257,9 @@ class GiljoDevUninstaller:
 
         locations = []
         if self.platform == "win32":
-            appdata = Path(os.getenv('APPDATA', ''))
-            localappdata = Path(os.getenv('LOCALAPPDATA', ''))
-            userprofile = Path(os.getenv('USERPROFILE', ''))
+            appdata = Path(os.getenv("APPDATA", ""))
+            localappdata = Path(os.getenv("LOCALAPPDATA", ""))
+            userprofile = Path(os.getenv("USERPROFILE", ""))
 
             locations = [
                 appdata / "GiljoAI",
@@ -323,10 +318,10 @@ class GiljoDevUninstaller:
 
     def run(self):
         """Run the uninstaller"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("   GiljoAI MCP Uninstaller")
         print("   Cleanup Utility for Failed Installations")
-        print("="*70)
+        print("=" * 70)
 
         print("\n[INFO] Select reset mode:")
         print("  1. Remove all files (keeps PostgreSQL server)")
@@ -353,18 +348,18 @@ class GiljoDevUninstaller:
                 print("Reset cancelled.")
                 return
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("REMOVING ALL FILES")
-            print("="*70)
+            print("=" * 70)
 
             # Execute cleanup steps
             mcp_unregistered = self.remove_mcp_registrations()
             appdata_removed = self.remove_appdata_configs()
             files_removed = self.remove_all_installation_files()
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("FILE REMOVAL COMPLETE")
-            print("="*70)
+            print("=" * 70)
             print(f"\nMCP unregistrations: {mcp_unregistered}")
             print(f"Files removed: {files_removed}")
             print(f"APPDATA locations removed: {appdata_removed}")
@@ -391,9 +386,9 @@ class GiljoDevUninstaller:
                 print("Reset cancelled.")
                 return
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("REMOVING ALL FILES AND DATABASES")
-            print("="*70)
+            print("=" * 70)
 
             # Execute cleanup steps
             db_removed = self.remove_all_databases()
@@ -401,9 +396,9 @@ class GiljoDevUninstaller:
             appdata_removed = self.remove_appdata_configs()
             files_removed = self.remove_all_installation_files()
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("COMPLETE RESET FINISHED")
-            print("="*70)
+            print("=" * 70)
             print(f"\nDatabases dropped: {db_removed}")
             print(f"MCP unregistrations: {mcp_unregistered}")
             print(f"Files removed: {files_removed}")
@@ -431,15 +426,15 @@ class GiljoDevUninstaller:
                 print("Database deletion cancelled.")
                 return
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("DROPPING DATABASES")
-            print("="*70)
+            print("=" * 70)
 
             db_removed = self.remove_all_databases()
 
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("DATABASE DROP COMPLETE")
-            print("="*70)
+            print("=" * 70)
             print(f"\nDatabases dropped: {db_removed}")
 
             print("\n[OK] Databases removed - fresh data on next start!")

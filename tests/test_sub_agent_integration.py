@@ -26,7 +26,6 @@ from src.giljo_mcp.models import Agent, AgentInteraction, Base, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 # We'll mock these since they require MCP server context
 spawn_and_log_sub_agent = None
 log_sub_agent_completion = None

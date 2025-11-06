@@ -7,13 +7,9 @@ Test-Driven Development: These tests are written BEFORE implementation.
 
 import io
 import zipfile
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-from sqlalchemy import select
 
 from src.giljo_mcp.models import AgentTemplate, User
 
@@ -81,10 +77,7 @@ class TestDownloadSlashCommands:
     @pytest.mark.asyncio
     async def test_download_slash_commands_authenticated(self, api_client, auth_headers):
         """Test slash commands download with authentication"""
-        response = api_client.get(
-            "/api/download/slash-commands.zip",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/slash-commands.zip", headers=auth_headers)
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/zip"
@@ -100,18 +93,15 @@ class TestDownloadSlashCommands:
 
     @pytest.mark.asyncio
     async def test_download_slash_commands_unauthenticated(self, api_client):
-        """Test slash commands download without authentication"""
+        """Test slash commands download without authentication (public endpoint)"""
         response = api_client.get("/api/download/slash-commands.zip")
 
-        assert response.status_code == 401
+        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_download_slash_commands_content_verification(self, api_client, auth_headers):
         """Test slash commands ZIP contains correct content"""
-        response = api_client.get(
-            "/api/download/slash-commands.zip",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/slash-commands.zip", headers=auth_headers)
 
         zip_bytes = response.content
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
@@ -126,9 +116,7 @@ class TestDownloadAgentTemplates:
     """Test /api/download/agent-templates.zip endpoint"""
 
     @pytest.mark.asyncio
-    async def test_download_agent_templates_authenticated(
-        self, api_client, auth_headers, test_db_session, test_user
-    ):
+    async def test_download_agent_templates_authenticated(self, api_client, auth_headers, test_db_session, test_user):
         """Test agent templates download with authentication"""
         # Create test templates
         templates = [
@@ -152,10 +140,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add_all(templates)
         await test_db_session.commit()
 
-        response = api_client.get(
-            "/api/download/agent-templates.zip",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/agent-templates.zip", headers=auth_headers)
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/zip"
@@ -168,9 +153,7 @@ class TestDownloadAgentTemplates:
             assert "implementor.md" in namelist
 
     @pytest.mark.asyncio
-    async def test_download_agent_templates_active_only(
-        self, api_client, auth_headers, test_db_session, test_user
-    ):
+    async def test_download_agent_templates_active_only(self, api_client, auth_headers, test_db_session, test_user):
         """Test agent templates download filters inactive templates"""
         # Create active and inactive templates
         templates = [
@@ -194,10 +177,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add_all(templates)
         await test_db_session.commit()
 
-        response = api_client.get(
-            "/api/download/agent-templates.zip?active_only=true",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/agent-templates.zip?active_only=true", headers=auth_headers)
 
         zip_bytes = response.content
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
@@ -222,10 +202,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add(template)
         await test_db_session.commit()
 
-        response = api_client.get(
-            "/api/download/agent-templates.zip",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/agent-templates.zip", headers=auth_headers)
 
         zip_bytes = response.content
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
@@ -234,7 +211,8 @@ class TestDownloadAgentTemplates:
             assert "---" in content
             assert "name: tester" in content
             assert "description: Test agent" in content
-            assert 'tools: ["mcp__giljo_mcp__*"]' in content
+            # 0102a: Omit tools field to inherit all
+            assert "tools:" not in content
             assert "model: sonnet" in content
 
     @pytest.mark.asyncio
@@ -265,10 +243,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add_all(templates)
         await test_db_session.commit()
 
-        response = api_client.get(
-            "/api/download/agent-templates.zip",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/agent-templates.zip", headers=auth_headers)
 
         zip_bytes = response.content
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
@@ -291,8 +266,7 @@ class TestDownloadInstallScript:
     async def test_download_install_script_sh(self, api_client, auth_headers):
         """Test Unix install script download"""
         response = api_client.get(
-            "/api/download/install-script.sh?type=slash-commands",
-            headers=auth_headers
+            "/api/download/install-script.sh?script_type=slash-commands", headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -309,8 +283,7 @@ class TestDownloadInstallScript:
     async def test_download_install_script_ps1(self, api_client, auth_headers):
         """Test PowerShell install script download"""
         response = api_client.get(
-            "/api/download/install-script.ps1?type=agent-templates",
-            headers=auth_headers
+            "/api/download/install-script.ps1?script_type=agent-templates", headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -326,8 +299,7 @@ class TestDownloadInstallScript:
     async def test_download_install_script_invalid_extension(self, api_client, auth_headers):
         """Test install script download with invalid extension"""
         response = api_client.get(
-            "/api/download/install-script.bat?type=slash-commands",
-            headers=auth_headers
+            "/api/download/install-script.bat?script_type=slash-commands", headers=auth_headers
         )
 
         assert response.status_code == 400
@@ -336,21 +308,15 @@ class TestDownloadInstallScript:
     async def test_download_install_script_invalid_type(self, api_client, auth_headers):
         """Test install script download with invalid type"""
         response = api_client.get(
-            "/api/download/install-script.sh?type=invalid",
-            headers=auth_headers
+            "/api/download/install-script.sh?script_type=invalid", headers=auth_headers
         )
 
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_download_install_script_server_url_templating(
-        self, api_client, auth_headers
-    ):
+    async def test_download_install_script_server_url_templating(self, api_client, auth_headers):
         """Test install script includes correct server URL"""
-        response = api_client.get(
-            "/api/download/install-script.sh?type=slash-commands",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/install-script.sh?type=slash-commands", headers=auth_headers)
 
         content = response.text
         # Should have replaced template variable
@@ -368,10 +334,7 @@ class TestAPIKeyAuthentication:
         # Assume user has api_key attribute
         api_key = f"gk_{test_user.username}_test"
 
-        response = api_client.get(
-            "/api/download/slash-commands.zip",
-            headers={"X-API-Key": api_key}
-        )
+        response = api_client.get("/api/download/slash-commands.zip", headers={"X-API-Key": api_key})
 
         # Should succeed with valid API key
         assert response.status_code in [200, 401]  # Depends on API key validation
@@ -379,10 +342,7 @@ class TestAPIKeyAuthentication:
     @pytest.mark.asyncio
     async def test_download_with_bearer_token(self, api_client, auth_headers):
         """Test download endpoint with Bearer token"""
-        response = api_client.get(
-            "/api/download/slash-commands.zip",
-            headers=auth_headers
-        )
+        response = api_client.get("/api/download/slash-commands.zip", headers=auth_headers)
 
         assert response.status_code == 200
 
@@ -436,6 +396,4 @@ def test_user():
 def auth_headers(test_user):
     """Generate authentication headers"""
     # Mock JWT token
-    return {
-        "Authorization": "Bearer test-token-12345"
-    }
+    return {"Authorization": "Bearer test-token-12345"}

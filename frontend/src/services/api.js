@@ -415,6 +415,19 @@ export const api = {
     downloadViaToken: (token, filename) =>
       apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),
   },
+
+  // Developer Panel (dev-only utilities)
+  developer: {
+    health: () => apiClient.get('/api/v1/developer/health'),
+    apiCatalog: () => apiClient.get('/api/v1/developer/api-catalog'),
+    mcpTools: () => apiClient.get('/api/v1/developer/mcp-tools'),
+    agentsTemplates: () => apiClient.get('/api/v1/developer/agents-templates'),
+    dbSchema: () => apiClient.get('/api/v1/developer/db-schema'),
+    dependencyIndex: () => apiClient.get('/api/v1/developer/dependency-index'),
+    flows: () => apiClient.get('/api/v1/developer/flows'),
+    searchIndex: () => apiClient.get('/api/v1/developer/search-index'),
+    techStack: () => apiClient.get('/api/v1/developer/tech-stack'),
+  },
 }
 
 export default api

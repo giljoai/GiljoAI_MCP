@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -37,10 +38,7 @@ async def app():
     app = create_app()
 
     # Initialize test database
-    db_manager = DatabaseManager(
-        PostgreSQLTestHelper.get_test_db_url(async_driver=False),
-        is_async=True
-    )
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
     await db_manager.create_tables_async()
 
     # Store in app state
@@ -78,21 +76,13 @@ class TestProductActivation:
         """Test that list_products endpoint includes is_active field"""
         # Create test product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product A",
-                "description": "Test Product A"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product A", "description": "Test Product A"}, headers=headers
         )
         assert create_response.status_code == 200
         product_id = create_response.json()["id"]
 
         # List products
-        list_response = client.get(
-            "/api/v1/products/",
-            headers=headers
-        )
+        list_response = client.get("/api/v1/products/", headers=headers)
         assert list_response.status_code == 200
         products = list_response.json()
 
@@ -100,7 +90,7 @@ class TestProductActivation:
         assert len(products) > 0
         product = next((p for p in products if p["id"] == product_id), None)
         assert product is not None, "Created product not found in list"
-        
+
         # CRITICAL: Verify is_active field is present (this was the bug)
         assert "is_active" in product, "is_active field missing from list_products response"
         assert product["is_active"] is False, "New product should not be active by default"
@@ -110,21 +100,13 @@ class TestProductActivation:
         """Test activating a product"""
         # Create product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product B",
-                "description": "Test Product B"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product B", "description": "Test Product B"}, headers=headers
         )
         assert create_response.status_code == 200
         product_id = create_response.json()["id"]
 
         # Activate product
-        activate_response = client.post(
-            f"/api/v1/products/{product_id}/activate",
-            headers=headers
-        )
+        activate_response = client.post(f"/api/v1/products/{product_id}/activate", headers=headers)
         assert activate_response.status_code == 200
         data = activate_response.json()
 
@@ -137,28 +119,17 @@ class TestProductActivation:
         """Test deactivating a product"""
         # Create and activate product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product C",
-                "description": "Test Product C"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product C", "description": "Test Product C"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
         # Activate first
-        activate_response = client.post(
-            f"/api/v1/products/{product_id}/activate",
-            headers=headers
-        )
+        activate_response = client.post(f"/api/v1/products/{product_id}/activate", headers=headers)
         assert activate_response.status_code == 200
         assert activate_response.json()["is_active"] is True
 
         # Deactivate
-        deactivate_response = client.post(
-            f"/api/v1/products/{product_id}/deactivate",
-            headers=headers
-        )
+        deactivate_response = client.post(f"/api/v1/products/{product_id}/deactivate", headers=headers)
         assert deactivate_response.status_code == 200
         data = deactivate_response.json()
 
@@ -173,19 +144,13 @@ class TestProductActivation:
         for i in range(1, 4):
             response = client.post(
                 "/api/v1/products/",
-                data={
-                    "name": f"Product D{i}",
-                    "description": f"Test Product D{i}"
-                },
-                headers=headers
+                data={"name": f"Product D{i}", "description": f"Test Product D{i}"},
+                headers=headers,
             )
             products.append(response.json()["id"])
 
         # Activate first product
-        client.post(
-            f"/api/v1/products/{products[0]}/activate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{products[0]}/activate", headers=headers)
 
         # Verify first is active
         list_response = client.get("/api/v1/products/", headers=headers)
@@ -193,10 +158,7 @@ class TestProductActivation:
         assert next(p for p in product_list if p["id"] == products[0])["is_active"] is True
 
         # Activate second product
-        client.post(
-            f"/api/v1/products/{products[1]}/activate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{products[1]}/activate", headers=headers)
 
         # Verify second is active, first is now inactive
         list_response = client.get("/api/v1/products/", headers=headers)
@@ -206,10 +168,7 @@ class TestProductActivation:
         assert next(p for p in product_list if p["id"] == products[2])["is_active"] is False
 
         # Activate third product
-        client.post(
-            f"/api/v1/products/{products[2]}/activate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{products[2]}/activate", headers=headers)
 
         # Verify third is active, others are inactive
         list_response = client.get("/api/v1/products/", headers=headers)
@@ -223,20 +182,12 @@ class TestProductActivation:
         """Test that get_product endpoint includes is_active field"""
         # Create product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product E",
-                "description": "Test Product E"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product E", "description": "Test Product E"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
         # Get product by ID
-        get_response = client.get(
-            f"/api/v1/products/{product_id}",
-            headers=headers
-        )
+        get_response = client.get(f"/api/v1/products/{product_id}", headers=headers)
         assert get_response.status_code == 200
         data = get_response.json()
 
@@ -245,15 +196,9 @@ class TestProductActivation:
         assert data["is_active"] is False
 
         # Activate and verify
-        client.post(
-            f"/api/v1/products/{product_id}/activate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{product_id}/activate", headers=headers)
 
-        get_response = client.get(
-            f"/api/v1/products/{product_id}",
-            headers=headers
-        )
+        get_response = client.get(f"/api/v1/products/{product_id}", headers=headers)
         data = get_response.json()
         assert data["is_active"] is True
 
@@ -261,12 +206,7 @@ class TestProductActivation:
     async def test_create_product_includes_is_active(self, client, headers):
         """Test that create_product endpoint includes is_active field"""
         response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product F",
-                "description": "Test Product F"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product F", "description": "Test Product F"}, headers=headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -280,29 +220,18 @@ class TestProductActivation:
         """Test that updating product preserves is_active status"""
         # Create and activate product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product G",
-                "description": "Test Product G"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product G", "description": "Test Product G"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
         # Activate
-        client.post(
-            f"/api/v1/products/{product_id}/activate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{product_id}/activate", headers=headers)
 
         # Update product
         update_response = client.put(
             f"/api/v1/products/{product_id}",
-            data={
-                "name": "Product G Updated",
-                "description": "Updated description"
-            },
-            headers=headers
+            data={"name": "Product G Updated", "description": "Updated description"},
+            headers=headers,
         )
         assert update_response.status_code == 200
         data = update_response.json()
@@ -319,20 +248,12 @@ class TestProductActivation:
         """
         # Create product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Product H",
-                "description": "Test Product H"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Product H", "description": "Test Product H"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
         # Get product - should show "Activate" button
-        response = client.get(
-            f"/api/v1/products/{product_id}",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}", headers=headers)
         product = response.json()
         assert product["is_active"] is False
         # Frontend logic: if is_active is False, button shows "Activate"
@@ -340,16 +261,10 @@ class TestProductActivation:
         assert button_text == "Activate"
 
         # Activate product
-        client.post(
-            f"/api/v1/products/{product_id}/activate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{product_id}/activate", headers=headers)
 
         # Get product again - should show "Deactivate" button
-        response = client.get(
-            f"/api/v1/products/{product_id}",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}", headers=headers)
         product = response.json()
         assert product["is_active"] is True
         # Frontend logic: if is_active is True, button shows "Deactivate"
@@ -357,16 +272,10 @@ class TestProductActivation:
         assert button_text == "Deactivate"
 
         # Deactivate product
-        client.post(
-            f"/api/v1/products/{product_id}/deactivate",
-            headers=headers
-        )
+        client.post(f"/api/v1/products/{product_id}/deactivate", headers=headers)
 
         # Get product again - should show "Activate" button
-        response = client.get(
-            f"/api/v1/products/{product_id}",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}", headers=headers)
         product = response.json()
         assert product["is_active"] is False
         button_text = "Deactivate" if product["is_active"] else "Activate"
@@ -388,30 +297,21 @@ class TestProductActivationWithTenantIsolation:
         # Create product in tenant1
         response1 = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Tenant1 Product",
-                "description": "Product for tenant1"
-            },
-            headers=headers1
+            data={"name": "Tenant1 Product", "description": "Product for tenant1"},
+            headers=headers1,
         )
         product1_id = response1.json()["id"]
 
         # Create product in tenant2
         response2 = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Tenant2 Product",
-                "description": "Product for tenant2"
-            },
-            headers=headers2
+            data={"name": "Tenant2 Product", "description": "Product for tenant2"},
+            headers=headers2,
         )
         product2_id = response2.json()["id"]
 
         # Activate product in tenant1
-        client.post(
-            f"/api/v1/products/{product1_id}/activate",
-            headers=headers1
-        )
+        client.post(f"/api/v1/products/{product1_id}/activate", headers=headers1)
 
         # Verify product1 is active in tenant1
         response = client.get(f"/api/v1/products/{product1_id}", headers=headers1)
@@ -422,10 +322,7 @@ class TestProductActivationWithTenantIsolation:
         assert response.json()["is_active"] is False
 
         # Activate product2 in tenant2
-        client.post(
-            f"/api/v1/products/{product2_id}/activate",
-            headers=headers2
-        )
+        client.post(f"/api/v1/products/{product2_id}/activate", headers=headers2)
 
         # Verify both are active in their respective tenants
         response = client.get(f"/api/v1/products/{product1_id}", headers=headers1)

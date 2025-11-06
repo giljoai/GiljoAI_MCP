@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, Body, HTTPException
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -68,7 +69,7 @@ async def toggle_serena(enabled: bool = Body(..., embed=True)):
         return {
             "success": True,
             "enabled": enabled,
-            "message": f"Serena prompt instructions {'enabled' if enabled else 'disabled'}"
+            "message": f"Serena prompt instructions {'enabled' if enabled else 'disabled'}",
         }
 
     except Exception as e:
@@ -81,14 +82,9 @@ async def get_serena_status():
     """Get current Serena prompt toggle status."""
     try:
         config = read_config()
-        enabled = (config.get("features", {})
-                         .get("serena_mcp", {})
-                         .get("use_in_prompts", False))
+        enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
-        return {
-            "enabled": enabled,
-            "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"
-        }
+        return {"enabled": enabled, "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"}
     except Exception as e:
         logger.exception("Failed to get Serena status")
         raise HTTPException(status_code=500, detail=str(e))
@@ -145,7 +141,7 @@ async def update_serena_config(payload: Dict[str, Any]):
             "context_halo": int,
         }
 
-        unknown = [k for k in payload.keys() if k not in allowed_types]
+        unknown = [k for k in payload if k not in allowed_types]
         if unknown:
             raise HTTPException(status_code=400, detail=f"Unknown keys: {', '.join(unknown)}")
 

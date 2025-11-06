@@ -99,10 +99,12 @@ class MacOSPlatformHandler(PlatformHandler):
             paths.append(generic_pg)
 
         # Standard Homebrew bin paths
-        paths.extend([
-            Path("/usr/local/bin/psql"),  # Intel
-            Path("/opt/homebrew/bin/psql")  # ARM
-        ])
+        paths.extend(
+            [
+                Path("/usr/local/bin/psql"),  # Intel
+                Path("/opt/homebrew/bin/psql"),  # ARM
+            ]
+        )
 
         # Postgres.app paths
         postgres_app_base = Path("/Applications/Postgres.app/Contents/Versions")
@@ -205,17 +207,12 @@ class MacOSPlatformHandler(PlatformHandler):
             Result dictionary indicating not supported
         """
         return {
-            'success': False,
-            'method': 'not_supported',
-            'message': 'Desktop shortcuts not currently supported on macOS. Future enhancement: .app bundles'
+            "success": False,
+            "method": "not_supported",
+            "message": "Desktop shortcuts not currently supported on macOS. Future enhancement: .app bundles",
         }
 
-    def run_npm_command(
-        self,
-        cmd: List[str],
-        cwd: Path,
-        timeout: int = 300
-    ) -> Dict[str, Any]:
+    def run_npm_command(self, cmd: List[str], cwd: Path, timeout: int = 300) -> Dict[str, Any]:
         """
         Run npm command with macOS-specific handling.
 
@@ -237,28 +234,21 @@ class MacOSPlatformHandler(PlatformHandler):
                 shell=False,  # Direct execution for macOS
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             )
 
             return {
-                'success': result.returncode == 0,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'returncode': result.returncode
+                "success": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode,
             }
 
         except subprocess.TimeoutExpired:
-            return {
-                'success': False,
-                'error': 'Command timed out',
-                'timeout': timeout
-            }
+            return {"success": False, "error": "Command timed out", "timeout": timeout}
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def get_network_ips(self) -> List[str]:
         """
@@ -320,7 +310,9 @@ class MacOSPlatformHandler(PlatformHandler):
             arch_info = "Intel"
 
         print(f"{Fore.YELLOW}Platform: macOS {macos_version} ({arch_info}){Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+        print(
+            f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n"
+        )
 
     def get_platform_specific_warnings(self) -> List[str]:
         """

@@ -3,7 +3,7 @@ Temporary script to update agent_jobs.py with production-grade WebSocket depende
 Handover 0086B Task 3.1
 """
 
-with open('api/endpoints/agent_jobs.py', 'r', encoding='utf-8') as f:
+with open("api/endpoints/agent_jobs.py", encoding="utf-8") as f:
     content = f.read()
 
 # 1. Add new imports after line 34 (after AsyncSession import)
@@ -126,7 +126,7 @@ new_websocket_code = """    # Emit WebSocket event for real-time UI update (Hand
 content = content.replace(old_websocket_code, new_websocket_code)
 
 # Write the updated content
-with open('api/endpoints/agent_jobs.py', 'w', encoding='utf-8') as f:
+with open("api/endpoints/agent_jobs.py", "w", encoding="utf-8") as f:
     f.write(content)
 
 print("✓ Task 3.1 complete: agent_jobs.py updated with production-grade WebSocket dependency injection")
