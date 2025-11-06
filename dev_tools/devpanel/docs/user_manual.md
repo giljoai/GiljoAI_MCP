@@ -4,12 +4,10 @@ Purpose
 - A localhost-only, dev-only toolkit that lives entirely under `dev_tools/devpanel`. It inspects the main repo (architecture, APIs, MCP tools, agent templates, DB schema, dependencies) without touching production services.
 
 Prerequisites
-- Use your project venv and dev dependencies.
-  - `python -m venv .venv && source .venv/bin/activate`
-  - `pip install -e .[dev]` (or `pip install -r requirements.txt -r dev-requirements.txt`)
+- No changes needed to your main project venv. The quick-start scripts will create an isolated environment under `dev_tools/devpanel/.venv` the first time they run.
 
 Install (one-time)
-- From the repo root run the installer script in `dev_tools/devpanel/scripts/`:
+- Optional: run the installer in `dev_tools/devpanel/scripts/` if you want a dedicated `.env.devpanel` file:
   - `python dev_tools/devpanel/scripts/devpanel_install.py`
   - This writes `.env.devpanel` with safe defaults:
     - `ENABLE_DEVPANEL=true`
@@ -33,7 +31,7 @@ Generate Indexes (Phase 1001)
 - Outputs: `temp/devpanel/index/*.json` (API catalog, DB schema, MCP tools, dependency graph, flows, search seed, tech stack).
 
 Run / Inspect
-- Quick start helpers:
+- Quick start helpers (auto-manage isolated venv):
   - Windows: `dev_tools\devpanel\scripts\start_devpanel.bat`
   - Linux/macOS: `bash dev_tools/devpanel/scripts/start_devpanel.sh`
 - Manual: `python dev_tools/devpanel/run_backend.py` (defaults to `http://127.0.0.1:8283`).
