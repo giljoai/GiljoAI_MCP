@@ -2,7 +2,7 @@
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
-pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
+pushd "%SCRIPT_DIR%\..\..\.." >nul 2>&1
 set "REPO_ROOT=%CD%"
 
 rem Determine Python command (prefer py -3 on Windows, fallback to python)
@@ -19,6 +19,7 @@ if not defined PYTHON_BOOT (
 
 set "VENV_DIR=%REPO_ROOT%\dev_tools\devpanel\.venv"
 set "VENV_PY=%VENV_DIR%\Scripts\python.exe"
+set "SETUP_SENTINEL=%VENV_DIR%\devpanel_setup_done.txt"
 
 if not exist "%VENV_PY%" (
     echo [DevPanel] Creating isolated virtual environment...
@@ -27,9 +28,17 @@ if not exist "%VENV_PY%" (
         echo [DevPanel] Failed to create virtual environment.
         exit /b 1
     )
+)
+
+if not exist "%SETUP_SENTINEL%" (
     echo [DevPanel] Installing project dependencies into isolated venv...
     call "%VENV_PY%" -m pip install --upgrade pip
     call "%VENV_PY%" -m pip install -e .[dev]
+    if errorlevel 1 (
+        echo [DevPanel] Dependency installation failed.
+        exit /b 1
+    )
+    echo setup>"%SETUP_SENTINEL%"
 )
 
 echo [DevPanel] Generating inventories (Phase 1001)...
