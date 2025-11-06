@@ -245,16 +245,30 @@
       </v-btn>
 
       <!-- Jobs Tab: Waiting State - Launch Agent -->
-      <v-btn
-        v-else-if="agent.status === 'waiting'"
-        variant="elevated"
-        color="yellow-darken-2"
-        block
-        @click="$emit('launch-agent', agent)"
+      <v-tooltip
+        v-if="agent.status === 'waiting'"
+        :disabled="!promptButtonDisabled"
+        location="bottom"
       >
-        <v-icon start>mdi-rocket-launch</v-icon>
-        Launch Agent
-      </v-btn>
+        <template v-slot:activator="{ props: tooltipProps }">
+          <v-btn
+            v-bind="tooltipProps"
+            variant="elevated"
+            :color="promptButtonDisabled ? 'grey' : 'yellow-darken-2'"
+            :disabled="promptButtonDisabled"
+            block
+            @click="$emit('launch-agent', agent)"
+          >
+            <v-icon start>
+              {{ promptButtonDisabled ? 'mdi-pause-circle' : 'mdi-rocket-launch' }}
+            </v-icon>
+            {{ promptButtonDisabled ? 'Claude Code Mode' : 'Launch Agent' }}
+          </v-btn>
+        </template>
+        <span class="text-caption">
+          This agent will run as a Claude Code subagent - orchestrator will spawn it automatically
+        </span>
+      </v-tooltip>
 
       <!-- Orchestrator: Hand Over (Handover 0080a) -->
       <v-btn
@@ -365,6 +379,10 @@ const props = defineProps({
     default: false
   },
   showCloseoutButton: {
+    type: Boolean,
+    default: false
+  },
+  promptButtonDisabled: {
     type: Boolean,
     default: false
   }

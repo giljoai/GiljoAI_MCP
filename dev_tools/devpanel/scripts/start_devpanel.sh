@@ -35,8 +35,15 @@ if [[ ! -f "$SETUP_SENTINEL" ]]; then
     echo "[DevPanel] Dependency installation failed." >&2
     exit 1
   }
+  "$VENV_PY" -m pip install -r requirements.txt
+  if [[ -f dev-requirements.txt ]]; then
+    "$VENV_PY" -m pip install -r dev-requirements.txt
+  fi
   echo "setup" > "$SETUP_SENTINEL"
 fi
+
+echo "[DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles)..."
+"$VENV_PY" -m pip install watchdog rich aiohttp tiktoken aiofiles >/dev/null 2>&1
 
 cd "$REPO_ROOT"
 
@@ -58,18 +65,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-FRONTEND_HTML="$REPO_ROOT/dev_tools/devpanel/frontend/index.html"
-if [[ -f "$FRONTEND_HTML" ]]; then
-  echo "[DevPanel] Opening frontend: $FRONTEND_HTML"
-  if command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$FRONTEND_HTML" >/dev/null 2>&1 || true
-  elif command -v open >/dev/null 2>&1; then
-    open "$FRONTEND_HTML" >/dev/null 2>&1 || true
-  else
-    echo "[DevPanel] No known opener (xdg-open/open). Open manually." >&2
-  fi
+echo "[DevPanel] Launching frontend server on http://127.0.0.1:5173 ..."
+"$VENV_PY" dev_tools/devpanel/scripts/start_frontend_server.py &
+FRONTEND_PID=$!
+
+sleep 2
+if command -v xdg-open >/dev/null 2>&1; then
+  xdg-open "http://127.0.0.1:5173/index.html" >/dev/null 2>&1 || true
+elif command -v open >/dev/null 2>&1; then
+  open "http://127.0.0.1:5173/index.html" >/dev/null 2>&1 || true
 else
-  echo "[DevPanel] Frontend HTML not found at $FRONTEND_HTML" >&2
+  echo "[DevPanel] Open http://127.0.0.1:5173/index.html manually (no opener found)." >&2
 fi
 
 echo "[DevPanel] Backend running (PID $BACKEND_PID). Press Ctrl+C to stop."

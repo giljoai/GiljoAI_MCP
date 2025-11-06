@@ -42,6 +42,31 @@
             </h3>
           </div>
 
+          <!-- Claude Code Subagent Mode Toggle (Handover 0105) -->
+          <v-card
+            class="claude-code-toggle mb-3"
+            elevation="2"
+          >
+            <v-card-text class="pa-3">
+              <v-switch
+                v-model="usingClaudeCodeSubagents"
+                color="primary"
+                density="comfortable"
+                hide-details
+              >
+                <template v-slot:label>
+                  <div class="d-flex align-center">
+                    <v-icon color="orange" class="mr-2">mdi-robot</v-icon>
+                    <span class="font-weight-medium">Using Claude Code subagents</span>
+                  </div>
+                </template>
+              </v-switch>
+              <div class="text-caption text-grey mt-2 ml-8">
+                {{ toggleHintText }}
+              </div>
+            </v-card-text>
+          </v-card>
+
           <!-- Horizontal Scrollable Agent Cards -->
           <div
             ref="agentsScrollContainer"
@@ -60,6 +85,7 @@
                 :instance-number="getInstanceNumber(agent)"
                 :is-orchestrator="isOrchestratorAgent(agent)"
                 :show-closeout-button="allAgentsComplete && isOrchestratorAgent(agent)"
+                :prompt-button-disabled="shouldDisablePromptButton(agent)"
                 @launch-agent="handleLaunchAgent"
                 @view-details="handleViewDetails"
                 @view-error="handleViewError"
@@ -236,6 +262,11 @@ const showLeftScroll = ref(false)
 const showRightScroll = ref(false)
 
 /**
+ * Claude Code Subagent Mode Toggle (Handover 0105)
+ */
+const usingClaudeCodeSubagents = ref(false)
+
+/**
  * Agent sorting priority map
  * Lower number = higher priority (appears first)
  */
@@ -297,6 +328,30 @@ function getInstanceNumber(agent) {
  */
 function isOrchestratorAgent(agent) {
   return agent.agent_type === 'orchestrator'
+}
+
+/**
+ * Toggle hint text - explains mode behavior
+ */
+const toggleHintText = computed(() => {
+  if (usingClaudeCodeSubagents.value) {
+    return 'Claude Code subagent mode active - Launch only orchestrators. All other agents will run as Claude Code subagents.'
+  } else {
+    return 'Normal mode - All agents launch as independent MCP server instances.'
+  }
+})
+
+/**
+ * Determine if prompt button should be disabled for this agent
+ * Only non-orchestrators are disabled when toggle is ON
+ */
+function shouldDisablePromptButton(agent) {
+  if (!usingClaudeCodeSubagents.value) {
+    return false // Normal mode - all enabled
+  }
+
+  // Claude Code mode - disable non-orchestrators
+  return !isOrchestratorAgent(agent)
 }
 
 /**
@@ -499,6 +554,13 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+
+  /* Claude Code Toggle Card (Handover 0105) */
+  .claude-code-toggle {
+    border-radius: 8px;
+    background: var(--color-bg-primary, #ffffff);
+    border: 1px solid rgba(0, 0, 0, 0.08);
   }
 
   &__agents-scroll {
