@@ -53,6 +53,7 @@ class AgentHealthMonitor:
         self.config = config or HealthCheckConfig()
         self.running = False
         self._task: Optional[asyncio.Task] = None
+        self._first_scan = True  # Suppress verbose logging on first scan
 
     async def start(self):
         """Start background monitoring loop."""
@@ -96,6 +97,12 @@ class AgentHealthMonitor:
             for tenant_key in tenants:
                 # Scan for unhealthy jobs per tenant
                 unhealthy_jobs = await self._scan_tenant_jobs(session, tenant_key)
+
+                # On first scan, just log a summary instead of individual alerts
+                if self._first_scan and unhealthy_jobs:
+                    logger.info(f"Initial health scan: Found {len(unhealthy_jobs)} stale jobs (alerts suppressed on first scan)")
+                    self._first_scan = False
+                    continue
 
                 for health_status in unhealthy_jobs:
                     await self._handle_unhealthy_job(session, health_status, tenant_key)
