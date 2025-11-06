@@ -570,19 +570,19 @@ class ToolAccessor:
             async with self.db_manager.get_session_async() as session:
                 # Find project - prefer active project if multiple exist
                 project_query = select(Project).where(
-                    and_(
-                        Project.tenant_key == tenant_key,
-                        Project.status == 'active'
-                    )
+                    and_(Project.tenant_key == tenant_key, Project.status == "active")
                 )
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
 
                 # Fallback to most recent project if no active project
                 if not project:
-                    project_query = select(Project).where(
-                        Project.tenant_key == tenant_key
-                    ).order_by(Project.created_at.desc()).limit(1)
+                    project_query = (
+                        select(Project)
+                        .where(Project.tenant_key == tenant_key)
+                        .order_by(Project.created_at.desc())
+                        .limit(1)
+                    )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
 
@@ -865,19 +865,19 @@ class ToolAccessor:
                 else:
                     # Find project by tenant key - prefer active project if multiple exist
                     project_query = select(Project).where(
-                        and_(
-                            Project.tenant_key == tenant_key,
-                            Project.status == 'active'
-                        )
+                        and_(Project.tenant_key == tenant_key, Project.status == "active")
                     )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
 
                     # Fallback to most recent project if no active project
                     if not project:
-                        project_query = select(Project).where(
-                            Project.tenant_key == tenant_key
-                        ).order_by(Project.created_at.desc()).limit(1)
+                        project_query = (
+                            select(Project)
+                            .where(Project.tenant_key == tenant_key)
+                            .order_by(Project.created_at.desc())
+                            .limit(1)
+                        )
                         project_result = await session.execute(project_query)
                         project = project_result.scalar_one_or_none()
 
@@ -976,19 +976,19 @@ class ToolAccessor:
             async with self.db_manager.get_session_async() as session:
                 # Find project - prefer active project if multiple exist
                 project_query = select(Project).where(
-                    and_(
-                        Project.tenant_key == tenant_key,
-                        Project.status == 'active'
-                    )
+                    and_(Project.tenant_key == tenant_key, Project.status == "active")
                 )
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
 
                 # Fallback to most recent project if no active project
                 if not project:
-                    project_query = select(Project).where(
-                        Project.tenant_key == tenant_key
-                    ).order_by(Project.created_at.desc()).limit(1)
+                    project_query = (
+                        select(Project)
+                        .where(Project.tenant_key == tenant_key)
+                        .order_by(Project.created_at.desc())
+                        .limit(1)
+                    )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
 
@@ -1080,7 +1080,13 @@ class ToolAccessor:
             "settings": {"product_id": product_id or "default", "config": {}},
         }
 
-    async def discover_context(self, project_id: Optional[str] = None, path: Optional[str] = None, agent_role: str = "default", force_refresh: bool = False) -> dict[str, Any]:
+    async def discover_context(
+        self,
+        project_id: Optional[str] = None,
+        path: Optional[str] = None,
+        agent_role: str = "default",
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
         """
         Discover project context dynamically.
 
@@ -1102,12 +1108,7 @@ class ToolAccessor:
                     project = await session.get(Project, project_id)
                 else:
                     result = await session.execute(
-                        select(Project).where(
-                            and_(
-                                Project.tenant_key == tenant_key,
-                                Project.status == 'active'
-                            )
-                        )
+                        select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
                     )
                     project = result.scalar_one_or_none()
 
@@ -1125,7 +1126,7 @@ class ToolAccessor:
                         "name": project.name,
                         "description": project.description,
                         "mission": project.mission,
-                        "status": project.status
+                        "status": project.status,
                     }
                 }
 
@@ -1134,7 +1135,7 @@ class ToolAccessor:
                         "id": str(product.id),
                         "name": product.name,
                         "context": product.config_data or {},
-                        "tech_stack": product.config_data.get('tech_stack') if product.config_data else None
+                        "tech_stack": product.config_data.get("tech_stack") if product.config_data else None,
                     }
 
                 return {"success": True, "context": context}
@@ -1163,8 +1164,8 @@ class ToolAccessor:
                 "file_path": file_path,
                 "context": {
                     "message": "File context discovery via Serena MCP tools",
-                    "note": "Use Serena file tools (read_file, get_symbols_overview) for detailed context"
-                }
+                    "note": "Use Serena file tools (read_file, get_symbols_overview) for detailed context",
+                },
             }
         except Exception as e:
             logger.error(f"Error getting file context for {file_path}: {e}", exc_info=True)
@@ -1192,7 +1193,7 @@ class ToolAccessor:
                 "query": query,
                 "file_types": file_types or [],
                 "message": "Context search via Serena MCP tools",
-                "note": "Use Serena search tools (Grep) for detailed pattern matching and content search"
+                "note": "Use Serena search tools (Grep) for detailed pattern matching and content search",
             }
         except Exception as e:
             logger.error(f"Error searching context for query '{query}': {e}", exc_info=True)
@@ -1210,10 +1211,11 @@ class ToolAccessor:
         """
         try:
             # Get current tenant and project
+            from sqlalchemy import and_, select
+
             from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.models import Project, Product
+            from giljo_mcp.models import Product, Project
             from giljo_mcp.tenant_manager import tenant_manager
-            from sqlalchemy import select, and_
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:
@@ -1223,14 +1225,10 @@ class ToolAccessor:
             async with db_manager.get_session_async() as session:
                 # Get project
                 if project_id:
-                    query = select(Project).where(
-                        and_(Project.id == project_id, Project.tenant_key == tenant_key)
-                    )
+                    query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
                 else:
                     # Get active project
-                    query = select(Project).where(
-                        and_(Project.tenant_key == tenant_key, Project.status == "active")
-                    )
+                    query = select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
 
                 result = await session.execute(query)
                 project = result.scalar_one_or_none()
@@ -1242,9 +1240,7 @@ class ToolAccessor:
                 product = None
                 if project.product_id:
                     result = await session.execute(
-                        select(Product).where(
-                            and_(Product.id == project.product_id, Product.tenant_key == tenant_key)
-                        )
+                        select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
                     )
                     product = result.scalar_one_or_none()
 
@@ -1264,7 +1260,7 @@ class ToolAccessor:
                     "project_id": str(project.id),
                     "project_name": project.name,
                     "product_id": str(product.id) if product else None,
-                    "product_name": product.name if product else None
+                    "product_name": product.name if product else None,
                 }
 
         except Exception as e:
@@ -1283,9 +1279,7 @@ class ToolAccessor:
             async with self.db_manager.get_session_async() as session:
                 from giljo_mcp.models import AgentTemplate
 
-                result = await session.execute(
-                    select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-                )
+                result = await session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
                 templates = result.scalars().all()
 
                 return {
