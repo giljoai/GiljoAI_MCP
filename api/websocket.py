@@ -1261,3 +1261,55 @@ class WebSocketManager:
             self.disconnect(client_id)
 
         logger.error(f"Broadcast auto_failed - job {job_id}: {reason}")
+
+    async def broadcast_validation_failure(
+        self,
+        tenant_key: str,
+        template_id: str,
+        validation_errors: list
+    ):
+        """
+        Broadcast template validation failure event.
+
+        Event type: 'template:validation_failed'
+
+        Used when a template fails validation and system falls back to default.
+        Alerts users to template issues requiring attention.
+
+        Args:
+            tenant_key: Tenant key for isolation
+            template_id: Template ID that failed validation
+            validation_errors: List of ValidationError objects
+        """
+        message_data = {
+            "template_id": template_id,
+            "errors": [e.to_dict() if hasattr(e, 'to_dict') else str(e) for e in validation_errors],
+            "fallback_used": True,
+            "severity": "warning"
+        }
+
+        message = {
+            "type": "template:validation_failed",
+            "data": message_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting validation_failure to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.warning(
+            f"Broadcast validation_failed - template {template_id}: "
+            f"{len(validation_errors)} error(s)"
+        )
