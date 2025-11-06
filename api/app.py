@@ -287,7 +287,14 @@ async def lifespan(app: FastAPI):
     # Start agent health monitoring service (Handover 0107)
     try:
         logger.info("Initializing agent health monitoring...")
-        health_config_dict = state.config.data.get('health_monitoring', {})
+
+        # Load health_monitoring config directly from YAML
+        import yaml
+        health_config_dict = {}
+        if state.config.config_path.exists():
+            with open(state.config.config_path, 'r', encoding='utf-8') as f:
+                config_data = yaml.safe_load(f) or {}
+                health_config_dict = config_data.get('health_monitoring', {})
 
         # Only start if enabled in config
         if health_config_dict.get('enabled', True):
