@@ -997,8 +997,22 @@ class AgentTemplate(Base):
     role = Column(String(50), nullable=True)  # AgentRole enum value
     project_type = Column(String(50), nullable=True)  # ProjectType enum value
 
-    # Template content
-    template_content = Column(Text, nullable=False)  # Template with {variable} placeholders
+    # Template content (Handover 0106: Dual-field system)
+    system_instructions = Column(
+        Text,
+        nullable=False,
+        comment="Protected MCP coordination instructions (non-editable by users)",
+    )
+    user_instructions = Column(
+        Text,
+        nullable=True,
+        comment="User-customizable role-specific guidance (editable)",
+    )
+    template_content = Column(
+        Text,
+        nullable=False,
+        comment="DEPRECATED (v3.1): Use system_instructions + user_instructions. Kept for backward compatibility.",
+    )  # Template with {variable} placeholders
     variables = Column(JSON, default=list)  # List of required variables
     behavioral_rules = Column(JSON, default=list)  # Role-specific rules
     success_criteria = Column(JSON, default=list)  # Success metrics

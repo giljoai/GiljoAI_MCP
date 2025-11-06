@@ -48,6 +48,11 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     Version 3.1.0: Enhanced with MCP coordination instructions for Phase 7
     (Handover 0045 - Multi-Tool Agent Orchestration System)
 
+    Version 3.1.1: Dual-field template system (Handover 0106)
+    - system_instructions: Protected MCP coordination (non-editable)
+    - user_instructions: Role-specific guidance (editable by users)
+    - template_content: Deprecated legacy field (system + user for compatibility)
+
     Args:
         session: AsyncSession - Database session for operations
         tenant_key: str - Tenant key to seed templates for (must be non-empty)
@@ -101,7 +106,17 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         current_time = datetime.now(timezone.utc)
 
         for template_def in default_templates:
-            # Create template instance with Handover 0103 format
+            # Handover 0106: Dual-field system (system_instructions + user_instructions)
+            # Get MCP coordination section (same for all templates)
+            system_instructions = mcp_section
+
+            # Get role-specific user instructions
+            user_instructions = template_def["template_content"]
+
+            # Legacy template_content = system + user (backward compatibility)
+            legacy_template_content = f"{user_instructions}\n\n{system_instructions}"
+
+            # Create template instance with Handover 0106 dual-field format
             template = AgentTemplate(
                 id=str(uuid4()),
                 tenant_key=tenant_key,
@@ -112,7 +127,11 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 cli_tool=template_def["cli_tool"],
                 background_color=template_def["background_color"],
                 description=template_def["description"],
-                template_content=template_def["template_content"],
+                # NEW (Handover 0106): Dual-field system
+                system_instructions=system_instructions,  # Protected MCP coordination
+                user_instructions=user_instructions,  # Editable role-specific guidance
+                # DEPRECATED: Legacy field for backward compatibility
+                template_content=legacy_template_content,
                 model=template_def.get("model", "sonnet"),
                 tools=template_def.get("tools"),
                 variables=[],  # No variables in new format
