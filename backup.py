@@ -10,12 +10,13 @@ Usage:
     python backup.py --quick   # Exclude large/temporary files
 """
 
-import os
-import sys
-import shutil
 import argparse
-from pathlib import Path
+import os
+import shutil
+import sys
 from datetime import datetime
+from pathlib import Path
+
 
 # Configuration
 PROJECT_DIR = Path(__file__).parent
@@ -108,7 +109,7 @@ def copy_with_exclusions(src: Path, dst: Path, exclude_dirs: list, exclude_files
 
     print(f"\nCopying from: {src}")
     print(f"         to: {dst}")
-    print(f"\nProgress:")
+    print("\nProgress:")
 
     for root, dirs, files in os.walk(src):
         # Get relative path
@@ -152,24 +153,11 @@ def copy_with_exclusions(src: Path, dst: Path, exclude_dirs: list, exclude_files
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Backup GiljoAI MCP project",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Backup GiljoAI MCP project", formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument(
-        "--no-git",
-        action="store_true",
-        help="Exclude .git directory from backup"
-    )
-    parser.add_argument(
-        "--quick",
-        action="store_true",
-        help="Quick backup (exclude logs, data, temp files)"
-    )
-    parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Auto mode (skip confirmation prompts)"
-    )
+    parser.add_argument("--no-git", action="store_true", help="Exclude .git directory from backup")
+    parser.add_argument("--quick", action="store_true", help="Quick backup (exclude logs, data, temp files)")
+    parser.add_argument("--auto", action="store_true", help="Auto mode (skip confirmation prompts)")
 
     args = parser.parse_args()
 
@@ -208,7 +196,7 @@ def main():
     # Calculate source size
     print("Calculating source size...")
     source_size = get_directory_size(PROJECT_DIR)
-    print(f"Source size: {source_size / (1024*1024):.1f} MB")
+    print(f"Source size: {source_size / (1024 * 1024):.1f} MB")
     print()
 
     # Confirm
@@ -226,10 +214,7 @@ def main():
     # Create backup
     try:
         copied_files, copied_dirs, skipped_files, skipped_dirs = copy_with_exclusions(
-            PROJECT_DIR,
-            backup_path,
-            exclude_dirs,
-            exclude_files
+            PROJECT_DIR, backup_path, exclude_dirs, exclude_files
         )
 
         # Calculate backup size
@@ -248,9 +233,9 @@ def main():
         print(f"  Files skipped:   {skipped_files:,}")
         print(f"  Dirs skipped:    {skipped_dirs:,}")
         print()
-        print(f"  Source size:     {source_size / (1024*1024):.1f} MB")
-        print(f"  Backup size:     {backup_size / (1024*1024):.1f} MB")
-        print(f"  Space saved:     {(source_size - backup_size) / (1024*1024):.1f} MB")
+        print(f"  Source size:     {source_size / (1024 * 1024):.1f} MB")
+        print(f"  Backup size:     {backup_size / (1024 * 1024):.1f} MB")
+        print(f"  Space saved:     {(source_size - backup_size) / (1024 * 1024):.1f} MB")
         print()
 
         # Ask to open folder
@@ -268,6 +253,7 @@ def main():
         print("=" * 70)
         print(f"\nError: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

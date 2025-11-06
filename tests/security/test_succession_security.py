@@ -13,8 +13,7 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
-import pytest_asyncio
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import MCPAgentJob, Project

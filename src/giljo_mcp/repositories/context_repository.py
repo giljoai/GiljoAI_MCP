@@ -6,9 +6,11 @@ All operations enforce tenant isolation for security.
 """
 
 from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
+
 from ..models import MCPContextIndex, MCPContextSummary
 from .base import BaseRepository
 
@@ -34,10 +36,17 @@ class ContextRepository:
 
     # MCPContextIndex operations
 
-    def create_chunk(self, session: Session, tenant_key: str,
-                     product_id: str, content: str, keywords: List[str],
-                     token_count: int, chunk_order: int,
-                     summary: Optional[str] = None) -> MCPContextIndex:
+    def create_chunk(
+        self,
+        session: Session,
+        tenant_key: str,
+        product_id: str,
+        content: str,
+        keywords: List[str],
+        token_count: int,
+        chunk_order: int,
+        summary: Optional[str] = None,
+    ) -> MCPContextIndex:
         """
         Create a context chunk.
 
@@ -55,17 +64,19 @@ class ContextRepository:
             Created MCPContextIndex instance
         """
         return self.context_index_repo.create(
-            session, tenant_key,
+            session,
+            tenant_key,
             product_id=product_id,
             content=content,
             keywords=keywords,
             token_count=token_count,
             chunk_order=chunk_order,
-            summary=summary
+            summary=summary,
         )
 
-    def search_chunks(self, session: Session, tenant_key: str,
-                      product_id: str, query: str, limit: int = 10) -> List[MCPContextIndex]:
+    def search_chunks(
+        self, session: Session, tenant_key: str, product_id: str, query: str, limit: int = 10
+    ) -> List[MCPContextIndex]:
         """
         Search chunks by keywords using PostgreSQL full-text search.
 
@@ -100,27 +111,27 @@ class ContextRepository:
             LIMIT :limit
         """)
 
-        result = session.execute(search_query, {
-            'tenant_key': tenant_key,
-            'product_id': product_id,
-            'query_pattern': f'%{query}%',
-            'exact_pattern': f'%{query}%',
-            'limit': limit
-        })
+        result = session.execute(
+            search_query,
+            {
+                "tenant_key": tenant_key,
+                "product_id": product_id,
+                "query_pattern": f"%{query}%",
+                "exact_pattern": f"%{query}%",
+                "limit": limit,
+            },
+        )
 
         # Convert results to MCPContextIndex objects
         chunks = []
         for row in result:
-            chunk = session.query(MCPContextIndex).filter(
-                MCPContextIndex.id == row.id
-            ).first()
+            chunk = session.query(MCPContextIndex).filter(MCPContextIndex.id == row.id).first()
             if chunk:
                 chunks.append(chunk)
 
         return chunks
 
-    def get_chunks_by_product(self, session: Session, tenant_key: str,
-                              product_id: str) -> List[MCPContextIndex]:
+    def get_chunks_by_product(self, session: Session, tenant_key: str, product_id: str) -> List[MCPContextIndex]:
         """
         Get all chunks for a product ordered by chunk_order.
 
@@ -132,13 +143,14 @@ class ContextRepository:
         Returns:
             List of MCPContextIndex instances ordered by chunk_order
         """
-        return session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.product_id == product_id
-        ).order_by(MCPContextIndex.chunk_order).all()
+        return (
+            session.query(MCPContextIndex)
+            .filter(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
+            .order_by(MCPContextIndex.chunk_order)
+            .all()
+        )
 
-    def get_chunk_by_id(self, session: Session, tenant_key: str,
-                        chunk_id: str) -> Optional[MCPContextIndex]:
+    def get_chunk_by_id(self, session: Session, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
         """
         Get a specific chunk by chunk_id.
 
@@ -150,13 +162,13 @@ class ContextRepository:
         Returns:
             MCPContextIndex instance or None if not found
         """
-        return session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.chunk_id == chunk_id
-        ).first()
+        return (
+            session.query(MCPContextIndex)
+            .filter(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.chunk_id == chunk_id)
+            .first()
+        )
 
-    def delete_chunks_by_product(self, session: Session, tenant_key: str,
-                                 product_id: str) -> int:
+    def delete_chunks_by_product(self, session: Session, tenant_key: str, product_id: str) -> int:
         """
         Delete all chunks for a product.
 
@@ -168,23 +180,20 @@ class ContextRepository:
         Returns:
             Number of chunks deleted
         """
-        count = session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.product_id == product_id
-        ).count()
+        count = (
+            session.query(MCPContextIndex)
+            .filter(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
+            .count()
+        )
 
         session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.product_id == product_id
+            MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id
         ).delete()
 
         return count
 
     async def delete_chunks_by_vision_document(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        vision_document_id: str
+        self, session: AsyncSession, tenant_key: str, vision_document_id: str
     ) -> int:
         """
         Delete all chunks for a specific vision document.
@@ -202,12 +211,11 @@ class ContextRepository:
         Returns:
             Number of chunks deleted
         """
-        from sqlalchemy import select, delete
+        from sqlalchemy import delete, select
 
         # Count chunks before deletion
         stmt = select(MCPContextIndex).where(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.vision_document_id == vision_document_id
+            MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.vision_document_id == vision_document_id
         )
         result = await session.execute(stmt)
         chunks = result.scalars().all()
@@ -215,8 +223,7 @@ class ContextRepository:
 
         # Delete chunks
         delete_stmt = delete(MCPContextIndex).where(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.vision_document_id == vision_document_id
+            MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.vision_document_id == vision_document_id
         )
         await session.execute(delete_stmt)
 
@@ -224,10 +231,16 @@ class ContextRepository:
 
     # MCPContextSummary operations
 
-    def create_summary(self, session: Session, tenant_key: str,
-                       product_id: str, full_content: str,
-                       condensed_mission: str, full_tokens: int,
-                       condensed_tokens: int) -> MCPContextSummary:
+    def create_summary(
+        self,
+        session: Session,
+        tenant_key: str,
+        product_id: str,
+        full_content: str,
+        condensed_mission: str,
+        full_tokens: int,
+        condensed_tokens: int,
+    ) -> MCPContextSummary:
         """
         Create a context summary with token reduction calculation.
 
@@ -246,17 +259,17 @@ class ContextRepository:
         reduction_percent = ((full_tokens - condensed_tokens) / full_tokens) * 100 if full_tokens > 0 else 0.0
 
         return self.context_summary_repo.create(
-            session, tenant_key,
+            session,
+            tenant_key,
             product_id=product_id,
             full_content=full_content,
             condensed_mission=condensed_mission,
             full_token_count=full_tokens,
             condensed_token_count=condensed_tokens,
-            reduction_percent=reduction_percent
+            reduction_percent=reduction_percent,
         )
 
-    def get_summaries_by_product(self, session: Session, tenant_key: str,
-                                 product_id: str) -> List[MCPContextSummary]:
+    def get_summaries_by_product(self, session: Session, tenant_key: str, product_id: str) -> List[MCPContextSummary]:
         """
         Get all summaries for a product.
 
@@ -268,13 +281,14 @@ class ContextRepository:
         Returns:
             List of MCPContextSummary instances
         """
-        return session.query(MCPContextSummary).filter(
-            MCPContextSummary.tenant_key == tenant_key,
-            MCPContextSummary.product_id == product_id
-        ).order_by(MCPContextSummary.created_at.desc()).all()
+        return (
+            session.query(MCPContextSummary)
+            .filter(MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.product_id == product_id)
+            .order_by(MCPContextSummary.created_at.desc())
+            .all()
+        )
 
-    def get_summary_by_id(self, session: Session, tenant_key: str,
-                          context_id: str) -> Optional[MCPContextSummary]:
+    def get_summary_by_id(self, session: Session, tenant_key: str, context_id: str) -> Optional[MCPContextSummary]:
         """
         Get a specific summary by context_id.
 
@@ -286,13 +300,13 @@ class ContextRepository:
         Returns:
             MCPContextSummary instance or None if not found
         """
-        return session.query(MCPContextSummary).filter(
-            MCPContextSummary.tenant_key == tenant_key,
-            MCPContextSummary.context_id == context_id
-        ).first()
+        return (
+            session.query(MCPContextSummary)
+            .filter(MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.context_id == context_id)
+            .first()
+        )
 
-    def get_token_reduction_stats(self, session: Session, tenant_key: str,
-                                  product_id: Optional[str] = None) -> dict:
+    def get_token_reduction_stats(self, session: Session, tenant_key: str, product_id: Optional[str] = None) -> dict:
         """
         Get token reduction statistics for a tenant or specific product.
 
@@ -304,9 +318,7 @@ class ContextRepository:
         Returns:
             Dictionary with reduction statistics
         """
-        query = session.query(MCPContextSummary).filter(
-            MCPContextSummary.tenant_key == tenant_key
-        )
+        query = session.query(MCPContextSummary).filter(MCPContextSummary.tenant_key == tenant_key)
 
         if product_id:
             query = query.filter(MCPContextSummary.product_id == product_id)
@@ -315,11 +327,11 @@ class ContextRepository:
 
         if not summaries:
             return {
-                'total_summaries': 0,
-                'total_tokens_saved': 0,
-                'average_reduction_percent': 0.0,
-                'total_original_tokens': 0,
-                'total_condensed_tokens': 0
+                "total_summaries": 0,
+                "total_tokens_saved": 0,
+                "average_reduction_percent": 0.0,
+                "total_original_tokens": 0,
+                "total_condensed_tokens": 0,
             }
 
         total_original = sum(s.full_token_count or 0 for s in summaries)
@@ -328,9 +340,9 @@ class ContextRepository:
         avg_reduction = sum(s.reduction_percent or 0 for s in summaries) / len(summaries)
 
         return {
-            'total_summaries': len(summaries),
-            'total_tokens_saved': total_saved,
-            'average_reduction_percent': round(avg_reduction, 2),
-            'total_original_tokens': total_original,
-            'total_condensed_tokens': total_condensed
+            "total_summaries": len(summaries),
+            "total_tokens_saved": total_saved,
+            "average_reduction_percent": round(avg_reduction, 2),
+            "total_original_tokens": total_original,
+            "total_condensed_tokens": total_condensed,
         }

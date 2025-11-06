@@ -20,11 +20,12 @@ from pathlib import Path
 import pytest
 from httpx import AsyncClient
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from api.app import create_app
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product, MCPContextIndex
+from src.giljo_mcp.models import Product
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -52,7 +53,7 @@ async def app(db_manager):
     app = create_app()
     app.state.api_state.db_manager = db_manager
     app.state.db_manager = db_manager
-    yield app
+    return app
 
 
 @pytest.fixture
@@ -118,7 +119,7 @@ Multi-tenant isolation is enforced at the database level.
         description="Test product for context API integration tests",
         vision_document=vision_content,
         vision_type="inline",
-        chunked=False
+        chunked=False,
     )
 
     async with db_manager.get_session_async() as session:
@@ -142,9 +143,7 @@ class TestContextAPIEndpoints:
     async def test_chunk_vision_document_success(self, client, headers, sample_product):
         """Test successful vision document chunking"""
         response = await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -166,9 +165,7 @@ class TestContextAPIEndpoints:
             await session.commit()
 
         response = await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         assert response.status_code == 200
@@ -192,9 +189,7 @@ class TestContextAPIEndpoints:
             await session.commit()
 
         response = await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": True},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": True}, headers=headers
         )
 
         assert response.status_code == 200
@@ -207,9 +202,7 @@ class TestContextAPIEndpoints:
     async def test_chunk_vision_document_product_not_found(self, client, headers):
         """Test chunking with non-existent product"""
         response = await client.post(
-            "/api/v1/context/products/nonexistent-product/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            "/api/v1/context/products/nonexistent-product/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         assert response.status_code == 404
@@ -219,11 +212,7 @@ class TestContextAPIEndpoints:
     async def test_chunk_vision_document_no_vision(self, client, headers, db_manager, tenant_key):
         """Test chunking product without vision document"""
         product = Product(
-            id="test-no-vision",
-            tenant_key=tenant_key,
-            name="No Vision Product",
-            vision_type="none",
-            chunked=False
+            id="test-no-vision", tenant_key=tenant_key, name="No Vision Product", vision_type="none", chunked=False
         )
 
         async with db_manager.get_session_async() as session:
@@ -232,9 +221,7 @@ class TestContextAPIEndpoints:
 
         try:
             response = await client.post(
-                f"/api/v1/context/products/{product.id}/chunk-vision",
-                json={"force_rechunk": False},
-                headers=headers
+                f"/api/v1/context/products/{product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
             )
 
             assert response.status_code == 404
@@ -249,19 +236,13 @@ class TestContextAPIEndpoints:
     async def test_search_context_success(self, client, headers, sample_product):
         """Test context search functionality"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         response = await client.get(
             "/api/v1/context/search",
-            params={
-                "query": "architecture microservices",
-                "product_id": sample_product.id,
-                "limit": 5
-            },
-            headers=headers
+            params={"query": "architecture microservices", "product_id": sample_product.id, "limit": 5},
+            headers=headers,
         )
 
         assert response.status_code == 200
@@ -282,19 +263,13 @@ class TestContextAPIEndpoints:
     async def test_search_context_no_results(self, client, headers, sample_product):
         """Test search with no matching results"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         response = await client.get(
             "/api/v1/context/search",
-            params={
-                "query": "quantum computing blockchain xyz",
-                "product_id": sample_product.id,
-                "limit": 5
-            },
-            headers=headers
+            params={"query": "quantum computing blockchain xyz", "product_id": sample_product.id, "limit": 5},
+            headers=headers,
         )
 
         assert response.status_code == 200
@@ -307,9 +282,7 @@ class TestContextAPIEndpoints:
     async def test_load_context_for_agent_success(self, client, headers, sample_product):
         """Test loading context for specific agent"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         response = await client.post(
@@ -318,9 +291,9 @@ class TestContextAPIEndpoints:
                 "agent_type": "backend",
                 "mission": "Implement authentication service",
                 "product_id": sample_product.id,
-                "max_tokens": 5000
+                "max_tokens": 5000,
             },
-            headers=headers
+            headers=headers,
         )
 
         assert response.status_code == 200
@@ -342,9 +315,7 @@ class TestContextAPIEndpoints:
     async def test_load_context_for_agent_different_roles(self, client, headers, sample_product):
         """Test loading context for different agent types"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         agent_types = ["backend", "frontend", "database", "devops"]
@@ -356,9 +327,9 @@ class TestContextAPIEndpoints:
                     "agent_type": agent_type,
                     "mission": f"Implement {agent_type} functionality",
                     "product_id": sample_product.id,
-                    "max_tokens": 3000
+                    "max_tokens": 3000,
                 },
-                headers=headers
+                headers=headers,
             )
 
             assert response.status_code == 200
@@ -370,15 +341,10 @@ class TestContextAPIEndpoints:
     async def test_get_token_stats_success(self, client, headers, sample_product):
         """Test getting token reduction statistics"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
-        response = await client.get(
-            f"/api/v1/context/products/{sample_product.id}/token-stats",
-            headers=headers
-        )
+        response = await client.get(f"/api/v1/context/products/{sample_product.id}/token-stats", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -392,10 +358,7 @@ class TestContextAPIEndpoints:
     @pytest.mark.asyncio
     async def test_get_token_stats_no_chunks(self, client, headers, sample_product):
         """Test getting token stats when no chunks exist"""
-        response = await client.get(
-            f"/api/v1/context/products/{sample_product.id}/token-stats",
-            headers=headers
-        )
+        response = await client.get(f"/api/v1/context/products/{sample_product.id}/token-stats", headers=headers)
 
         assert response.status_code == 404
         assert "No chunks found" in response.text
@@ -404,15 +367,10 @@ class TestContextAPIEndpoints:
     async def test_health_check_success(self, client, headers, sample_product):
         """Test context management system health check"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
-        response = await client.get(
-            "/api/v1/context/health",
-            headers=headers
-        )
+        response = await client.get("/api/v1/context/health", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -426,10 +384,7 @@ class TestContextAPIEndpoints:
     @pytest.mark.asyncio
     async def test_health_check_no_chunks(self, client, headers):
         """Test health check with no chunks in database"""
-        response = await client.get(
-            "/api/v1/context/health",
-            headers=headers
-        )
+        response = await client.get("/api/v1/context/health", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -455,7 +410,7 @@ class TestMultiTenantIsolation:
             name="Tenant 1 Product",
             vision_document=vision_content,
             vision_type="inline",
-            chunked=False
+            chunked=False,
         )
 
         product2 = Product(
@@ -464,7 +419,7 @@ class TestMultiTenantIsolation:
             name="Tenant 2 Product",
             vision_document=vision_content,
             vision_type="inline",
-            chunked=False
+            chunked=False,
         )
 
         async with db_manager.get_session_async() as session:
@@ -476,25 +431,25 @@ class TestMultiTenantIsolation:
             await client.post(
                 f"/api/v1/context/products/{product1.id}/chunk-vision",
                 json={"force_rechunk": False},
-                headers={"X-Tenant-Key": tenant1_key}
+                headers={"X-Tenant-Key": tenant1_key},
             )
 
             await client.post(
                 f"/api/v1/context/products/{product2.id}/chunk-vision",
                 json={"force_rechunk": False},
-                headers={"X-Tenant-Key": tenant2_key}
+                headers={"X-Tenant-Key": tenant2_key},
             )
 
             response1 = await client.get(
                 "/api/v1/context/search",
                 params={"query": "test", "product_id": product1.id, "limit": 10},
-                headers={"X-Tenant-Key": tenant1_key}
+                headers={"X-Tenant-Key": tenant1_key},
             )
 
             response2 = await client.get(
                 "/api/v1/context/search",
                 params={"query": "test", "product_id": product2.id, "limit": 10},
-                headers={"X-Tenant-Key": tenant2_key}
+                headers={"X-Tenant-Key": tenant2_key},
             )
 
             assert response1.status_code == 200
@@ -509,7 +464,7 @@ class TestMultiTenantIsolation:
             tenant2_with_tenant1_key = await client.get(
                 "/api/v1/context/search",
                 params={"query": "test", "product_id": product2.id, "limit": 10},
-                headers={"X-Tenant-Key": tenant1_key}
+                headers={"X-Tenant-Key": tenant1_key},
             )
 
             assert tenant2_with_tenant1_key.status_code == 200
@@ -522,9 +477,10 @@ class TestMultiTenantIsolation:
                 await session.delete(product2)
 
                 from sqlalchemy import text
+
                 await session.execute(
                     text("DELETE FROM mcp_context_index WHERE product_id IN (:p1, :p2)"),
-                    {"p1": product1.id, "p2": product2.id}
+                    {"p1": product1.id, "p2": product2.id},
                 )
                 await session.commit()
 
@@ -536,9 +492,7 @@ class TestErrorHandling:
     async def test_invalid_product_id(self, client, headers):
         """Test with invalid product ID"""
         response = await client.post(
-            "/api/v1/context/products/invalid-id/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            "/api/v1/context/products/invalid-id/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         assert response.status_code == 404
@@ -553,22 +507,14 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_search_query(self, client, headers):
         """Test search with empty query"""
-        response = await client.get(
-            "/api/v1/context/search",
-            params={"query": "", "limit": 10},
-            headers=headers
-        )
+        response = await client.get("/api/v1/context/search", params={"query": "", "limit": 10}, headers=headers)
 
         assert response.status_code in [200, 422]
 
     @pytest.mark.asyncio
     async def test_load_context_missing_fields(self, client, headers):
         """Test loading context with missing required fields"""
-        response = await client.post(
-            "/api/v1/context/load-for-agent",
-            json={"agent_type": "backend"},
-            headers=headers
-        )
+        response = await client.post("/api/v1/context/load-for-agent", json={"agent_type": "backend"}, headers=headers)
 
         assert response.status_code == 422
 
@@ -579,10 +525,12 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_large_document_chunking(self, client, headers, db_manager, tenant_key):
         """Test chunking large vision document"""
-        large_vision = "\n\n".join([
-            f"# Section {i}\n\nThis is section {i} with detailed content about the system architecture."
-            for i in range(100)
-        ])
+        large_vision = "\n\n".join(
+            [
+                f"# Section {i}\n\nThis is section {i} with detailed content about the system architecture."
+                for i in range(100)
+            ]
+        )
 
         product = Product(
             id="test-large-doc",
@@ -590,7 +538,7 @@ class TestPerformance:
             name="Large Document Product",
             vision_document=large_vision,
             vision_type="inline",
-            chunked=False
+            chunked=False,
         )
 
         async with db_manager.get_session_async() as session:
@@ -599,12 +547,11 @@ class TestPerformance:
 
         try:
             import time
+
             start_time = time.time()
 
             response = await client.post(
-                f"/api/v1/context/products/{product.id}/chunk-vision",
-                json={"force_rechunk": False},
-                headers=headers
+                f"/api/v1/context/products/{product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
             )
 
             elapsed_time = time.time() - start_time
@@ -621,9 +568,9 @@ class TestPerformance:
                 await session.delete(product)
 
                 from sqlalchemy import text
+
                 await session.execute(
-                    text("DELETE FROM mcp_context_index WHERE product_id = :product_id"),
-                    {"product_id": product.id}
+                    text("DELETE FROM mcp_context_index WHERE product_id = :product_id"), {"product_id": product.id}
                 )
                 await session.commit()
 
@@ -631,9 +578,7 @@ class TestPerformance:
     async def test_concurrent_searches(self, client, headers, sample_product):
         """Test concurrent search requests"""
         await client.post(
-            f"/api/v1/context/products/{sample_product.id}/chunk-vision",
-            json={"force_rechunk": False},
-            headers=headers
+            f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
         queries = ["architecture", "database", "security", "performance", "API"]
@@ -642,7 +587,7 @@ class TestPerformance:
             client.get(
                 "/api/v1/context/search",
                 params={"query": query, "product_id": sample_product.id, "limit": 5},
-                headers=headers
+                headers=headers,
             )
             for query in queries
         ]

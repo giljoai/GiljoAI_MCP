@@ -34,16 +34,18 @@ Rollback strategy: Full downgrade support included
 Multi-tenant isolation: Preserved (no tenant_key changes)
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic
-revision: str = '20251029_0073_01'
-down_revision: Union[str, Sequence[str], None] = '20251028_simplify_states'
+revision: str = "20251029_0073_01"
+down_revision: Union[str, Sequence[str], None] = "20251028_simplify_states"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -76,9 +78,9 @@ def upgrade() -> None:
     # =============================
     print("[0073-01] Step 1: Analyzing current state...")
 
-    result = connection.execute(text(
-        "SELECT status, COUNT(*) as count FROM mcp_agent_jobs GROUP BY status ORDER BY status"
-    ))
+    result = connection.execute(
+        text("SELECT status, COUNT(*) as count FROM mcp_agent_jobs GROUP BY status ORDER BY status")
+    )
     current_states = result.fetchall()
 
     print("[0073-01]   Current agent job status distribution:")
@@ -90,11 +92,7 @@ def upgrade() -> None:
     print("[0073-01] Step 2: Dropping old status constraint...")
 
     try:
-        op.drop_constraint(
-            'ck_mcp_agent_job_status',
-            'mcp_agent_jobs',
-            type_='check'
-        )
+        op.drop_constraint("ck_mcp_agent_job_status", "mcp_agent_jobs", type_="check")
         print("[0073-01]   - Old constraint dropped successfully")
     except Exception as e:
         print(f"[0073-01]   - Warning: Could not drop constraint (may not exist): {e}")
@@ -104,39 +102,27 @@ def upgrade() -> None:
     print("[0073-01] Step 3: Migrating existing status values...")
 
     # Map: pending → waiting
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM mcp_agent_jobs WHERE status = 'pending'"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM mcp_agent_jobs WHERE status = 'pending'"))
     pending_count = result.scalar()
 
     if pending_count > 0:
-        op.execute(text(
-            "UPDATE mcp_agent_jobs SET status = 'waiting' WHERE status = 'pending'"
-        ))
+        op.execute(text("UPDATE mcp_agent_jobs SET status = 'waiting' WHERE status = 'pending'"))
         print(f"[0073-01]   - Migrated {pending_count} 'pending' → 'waiting'")
 
     # Map: active → working
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM mcp_agent_jobs WHERE status = 'active'"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM mcp_agent_jobs WHERE status = 'active'"))
     active_count = result.scalar()
 
     if active_count > 0:
-        op.execute(text(
-            "UPDATE mcp_agent_jobs SET status = 'working' WHERE status = 'active'"
-        ))
+        op.execute(text("UPDATE mcp_agent_jobs SET status = 'working' WHERE status = 'active'"))
         print(f"[0073-01]   - Migrated {active_count} 'active' → 'working'")
 
     # Map: completed → complete
-    result = connection.execute(text(
-        "SELECT COUNT(*) FROM mcp_agent_jobs WHERE status = 'completed'"
-    ))
+    result = connection.execute(text("SELECT COUNT(*) FROM mcp_agent_jobs WHERE status = 'completed'"))
     completed_count = result.scalar()
 
     if completed_count > 0:
-        op.execute(text(
-            "UPDATE mcp_agent_jobs SET status = 'complete' WHERE status = 'completed'"
-        ))
+        op.execute(text("UPDATE mcp_agent_jobs SET status = 'complete' WHERE status = 'completed'"))
         print(f"[0073-01]   - Migrated {completed_count} 'completed' → 'complete'")
 
     # 'failed' and 'blocked' remain unchanged
@@ -147,9 +133,9 @@ def upgrade() -> None:
     print("[0073-01] Step 4: Adding new status constraint...")
 
     op.create_check_constraint(
-        'ck_mcp_agent_job_status',
-        'mcp_agent_jobs',
-        "status IN ('waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked')"
+        "ck_mcp_agent_job_status",
+        "mcp_agent_jobs",
+        "status IN ('waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked')",
     )
     print("[0073-01]   - New constraint created with 7 states")
 
@@ -159,58 +145,39 @@ def upgrade() -> None:
 
     # Add progress column (0-100%)
     op.add_column(
-        'mcp_agent_jobs',
+        "mcp_agent_jobs",
         sa.Column(
-            'progress',
-            sa.Integer(),
-            nullable=False,
-            server_default='0',
-            comment='Job completion progress (0-100%)'
-        )
+            "progress", sa.Integer(), nullable=False, server_default="0", comment="Job completion progress (0-100%)"
+        ),
     )
     print("[0073-01]   - Added 'progress' column (INTEGER, default=0)")
 
     # Add CHECK constraint for progress range
-    op.create_check_constraint(
-        'ck_mcp_agent_job_progress_range',
-        'mcp_agent_jobs',
-        'progress >= 0 AND progress <= 100'
-    )
+    op.create_check_constraint("ck_mcp_agent_job_progress_range", "mcp_agent_jobs", "progress >= 0 AND progress <= 100")
     print("[0073-01]   - Added progress range constraint (0-100)")
 
     # Add block_reason column
     op.add_column(
-        'mcp_agent_jobs',
+        "mcp_agent_jobs",
         sa.Column(
-            'block_reason',
-            sa.Text(),
-            nullable=True,
-            comment='Explanation of why job is blocked (NULL if not blocked)'
-        )
+            "block_reason", sa.Text(), nullable=True, comment="Explanation of why job is blocked (NULL if not blocked)"
+        ),
     )
     print("[0073-01]   - Added 'block_reason' column (TEXT, nullable)")
 
     # Add current_task column
     op.add_column(
-        'mcp_agent_jobs',
-        sa.Column(
-            'current_task',
-            sa.Text(),
-            nullable=True,
-            comment='Description of current task being executed'
-        )
+        "mcp_agent_jobs",
+        sa.Column("current_task", sa.Text(), nullable=True, comment="Description of current task being executed"),
     )
     print("[0073-01]   - Added 'current_task' column (TEXT, nullable)")
 
     # Add estimated_completion column
     op.add_column(
-        'mcp_agent_jobs',
+        "mcp_agent_jobs",
         sa.Column(
-            'estimated_completion',
-            sa.DateTime(timezone=True),
-            nullable=True,
-            comment='Estimated completion timestamp'
-        )
+            "estimated_completion", sa.DateTime(timezone=True), nullable=True, comment="Estimated completion timestamp"
+        ),
     )
     print("[0073-01]   - Added 'estimated_completion' column (TIMESTAMP WITH TIME ZONE, nullable)")
 
@@ -219,12 +186,14 @@ def upgrade() -> None:
     print("[0073-01] Step 6: Verifying migration...")
 
     # Check for any invalid status values
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT status, COUNT(*) as count
         FROM mcp_agent_jobs
         WHERE status NOT IN ('waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked')
         GROUP BY status
-    """))
+    """)
+    )
     invalid_statuses = result.fetchall()
 
     if invalid_statuses:
@@ -239,12 +208,14 @@ def upgrade() -> None:
     # ========================
     print("[0073-01] Step 7: Final state summary...")
 
-    result = connection.execute(text("""
+    result = connection.execute(
+        text("""
         SELECT status, COUNT(*) as count
         FROM mcp_agent_jobs
         GROUP BY status
         ORDER BY status
-    """))
+    """)
+    )
     final_states = result.fetchall()
 
     print("[0073-01]   New agent job status distribution:")
@@ -296,25 +267,25 @@ def downgrade() -> None:
     # =============================
     print("[0073-01 Downgrade] Step 1: Removing progress tracking columns...")
 
-    op.drop_column('mcp_agent_jobs', 'estimated_completion')
+    op.drop_column("mcp_agent_jobs", "estimated_completion")
     print("[0073-01]   - Dropped 'estimated_completion' column")
 
-    op.drop_column('mcp_agent_jobs', 'current_task')
+    op.drop_column("mcp_agent_jobs", "current_task")
     print("[0073-01]   - Dropped 'current_task' column")
 
-    op.drop_column('mcp_agent_jobs', 'block_reason')
+    op.drop_column("mcp_agent_jobs", "block_reason")
     print("[0073-01]   - Dropped 'block_reason' column")
 
     # Drop progress constraint first, then column
-    op.drop_constraint('ck_mcp_agent_job_progress_range', 'mcp_agent_jobs', type_='check')
-    op.drop_column('mcp_agent_jobs', 'progress')
+    op.drop_constraint("ck_mcp_agent_job_progress_range", "mcp_agent_jobs", type_="check")
+    op.drop_column("mcp_agent_jobs", "progress")
     print("[0073-01]   - Dropped 'progress' column and constraint")
 
     # STEP 2: Drop new status constraint
     # ===================================
     print("[0073-01 Downgrade] Step 2: Dropping new status constraint...")
 
-    op.drop_constraint('ck_mcp_agent_job_status', 'mcp_agent_jobs', type_='check')
+    op.drop_constraint("ck_mcp_agent_job_status", "mcp_agent_jobs", type_="check")
     print("[0073-01]   - New status constraint dropped")
 
     # STEP 3: Migrate status values back to originals
@@ -322,21 +293,15 @@ def downgrade() -> None:
     print("[0073-01 Downgrade] Step 3: Reverting status values...")
 
     # Map: waiting → pending, preparing → pending
-    op.execute(text(
-        "UPDATE mcp_agent_jobs SET status = 'pending' WHERE status IN ('waiting', 'preparing')"
-    ))
+    op.execute(text("UPDATE mcp_agent_jobs SET status = 'pending' WHERE status IN ('waiting', 'preparing')"))
     print("[0073-01]   - Reverted 'waiting', 'preparing' → 'pending'")
 
     # Map: working → active, review → active
-    op.execute(text(
-        "UPDATE mcp_agent_jobs SET status = 'active' WHERE status IN ('working', 'review')"
-    ))
+    op.execute(text("UPDATE mcp_agent_jobs SET status = 'active' WHERE status IN ('working', 'review')"))
     print("[0073-01]   - Reverted 'working', 'review' → 'active'")
 
     # Map: complete → completed
-    op.execute(text(
-        "UPDATE mcp_agent_jobs SET status = 'completed' WHERE status = 'complete'"
-    ))
+    op.execute(text("UPDATE mcp_agent_jobs SET status = 'completed' WHERE status = 'complete'"))
     print("[0073-01]   - Reverted 'complete' → 'completed'")
 
     # STEP 4: Restore original status constraint
@@ -344,9 +309,7 @@ def downgrade() -> None:
     print("[0073-01 Downgrade] Step 4: Restoring original status constraint...")
 
     op.create_check_constraint(
-        'ck_mcp_agent_job_status',
-        'mcp_agent_jobs',
-        "status IN ('pending', 'active', 'completed', 'failed', 'blocked')"
+        "ck_mcp_agent_job_status", "mcp_agent_jobs", "status IN ('pending', 'active', 'completed', 'failed', 'blocked')"
     )
     print("[0073-01]   - Original constraint restored with 5 states")
 

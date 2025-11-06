@@ -5,7 +5,6 @@ Simple unit tests that don't require full database schema.
 Tests the core logic of thin prompt generation.
 """
 
-import pytest
 from src.giljo_mcp.thin_prompt_generator import ThinPromptResponse
 
 
@@ -21,7 +20,7 @@ class TestThinPromptResponse:
             project_name="Test Project",
             estimated_prompt_tokens=50,
             mcp_tool_name="get_orchestrator_instructions",
-            instructions_stored=True
+            instructions_stored=True,
         )
 
         assert response.prompt == "Test prompt"
@@ -38,7 +37,6 @@ class TestThinPromptBuildLogic:
 
     def test_prompt_structure(self):
         """Test that prompts have correct structure."""
-        from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
         # We can't easily test _build_thin_prompt without a full instance,
         # but we can verify the structure we expect
@@ -47,7 +45,7 @@ class TestThinPromptBuildLogic:
             "IDENTITY",
             "MCP CONNECTION",
             "STARTUP SEQUENCE",
-            "get_orchestrator_instructions"
+            "get_orchestrator_instructions",
         ]
 
         # This is a validation that our design is correct
@@ -82,7 +80,6 @@ class TestTokenEstimation:
         # Our implementation uses this formula
         assert estimated_tokens == 10  # 42 chars // 4 = 10
 
-
     def test_thin_prompt_token_budget(self):
         """Verify thin prompts stay under 150 token budget."""
         # A thin prompt should be ~10-30 lines
@@ -111,7 +108,6 @@ class TestPromptProfessionalism:
 
         reduction = ((fat_lines - thin_lines) / fat_lines) * 100
         assert reduction >= 99, "Thin prompts should be 99%+ smaller in line count"
-
 
     def test_copy_paste_burden(self):
         """Test that copy-paste burden is minimized."""

@@ -22,7 +22,6 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 async def test_path_resolver():
     """Test PathResolver functionality"""
 

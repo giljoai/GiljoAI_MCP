@@ -3,23 +3,28 @@
 Simple script to create test users using DATABASE_URL from .env
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Load environment variables
 from dotenv import load_dotenv
+
+
 load_dotenv()
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from passlib.hash import bcrypt
 from uuid import uuid4
 
+from passlib.hash import bcrypt
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from giljo_mcp.models import User
+
 
 def create_test_users():
     """Create test users using DATABASE_URL from environment"""
@@ -32,7 +37,7 @@ def create_test_users():
         print("   Make sure .env file exists with DATABASE_URL")
         return
 
-    print(f"Connecting to database...")
+    print("Connecting to database...")
 
     # Create engine and session
     engine = create_engine(db_url)
@@ -64,9 +69,9 @@ def create_test_users():
         },
     ]
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Creating Test Users for Authentication Testing")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     try:
         created_count = 0
@@ -74,9 +79,7 @@ def create_test_users():
 
         for user_data in test_users:
             # Check if user already exists
-            existing_user = session.query(User).filter(
-                User.username == user_data["username"]
-            ).first()
+            existing_user = session.query(User).filter(User.username == user_data["username"]).first()
 
             if existing_user:
                 print(f"[!] User '{user_data['username']}' already exists")
@@ -97,7 +100,7 @@ def create_test_users():
                     full_name=user_data["full_name"],
                     role=user_data["role"],
                     is_active=True,
-                    tenant_key="default"
+                    tenant_key="default",
                 )
 
                 session.add(new_user)
@@ -106,11 +109,11 @@ def create_test_users():
 
         session.commit()
 
-        print("\n" + "="*60)
-        print(f"Test Users Setup Complete!")
+        print("\n" + "=" * 60)
+        print("Test Users Setup Complete!")
         print(f"  Created: {created_count}")
         print(f"  Updated: {updated_count}")
-        print("="*60)
+        print("=" * 60)
 
         print("\nTest Credentials:")
         print("-" * 40)
@@ -118,12 +121,13 @@ def create_test_users():
             print(f"  {user_data['username']:12} / {user_data['password']:12} ({user_data['role']})")
         print("-" * 40)
 
-        print(f"\nLogin at: http://10.1.0.164:7274/login")
+        print("\nLogin at: http://10.1.0.164:7274/login")
         print("Use the test checklist: tests/manual/test_auth_flows.md\n")
 
     except Exception as e:
         print(f"[ERROR] Error creating test users: {e}")
         import traceback
+
         traceback.print_exc()
         session.rollback()
         raise

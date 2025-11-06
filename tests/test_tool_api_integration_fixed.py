@@ -8,7 +8,6 @@ import asyncio
 import json
 import os
 import sys
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -17,7 +16,6 @@ from typing import Optional
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -25,7 +23,6 @@ from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 # Import our benchmark utilities
 from tests.benchmark_tools import PerformanceBenchmark
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
 
 
 class ToolAPIIntegrationTester:

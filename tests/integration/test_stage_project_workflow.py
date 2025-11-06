@@ -13,19 +13,18 @@ PRODUCTION-GRADE: Validates complete user journey from staging to launch
 """
 
 import asyncio
-import pytest
+from unittest.mock import AsyncMock
 from uuid import uuid4
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
 
-from sqlalchemy.orm import Session
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import User, Product, Project, AgentJob
-from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.agent_selector import AgentSelector
 from api.app import create_app
 from api.dependencies.websocket import WebSocketDependency
+from src.giljo_mcp.agent_selector import AgentSelector
+from src.giljo_mcp.mission_planner import MissionPlanner
+from src.giljo_mcp.models import AgentJob, Product, Project, User
 
 
 @pytest.fixture
@@ -49,7 +48,7 @@ def test_user(db: Session):
         email=f"test_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_{uuid4().hex[:8]}",
         role="user",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db.add(user)
     db.commit()
@@ -65,7 +64,7 @@ def test_user_2(db: Session):
         email=f"test2_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant2_{uuid4().hex[:8]}",
         role="user",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db.add(user)
     db.commit()
@@ -83,8 +82,8 @@ def test_product(db: Session, test_user: User):
         status="active",
         config_data={
             "architecture": "Microservices architecture with event-driven design.",
-            "tech_stack": "Python, FastAPI, PostgreSQL, Vue 3"
-        }
+            "tech_stack": "Python, FastAPI, PostgreSQL, Vue 3",
+        },
     )
     db.add(product)
     db.commit()
@@ -101,7 +100,7 @@ def test_project(db: Session, test_user: User, test_product: Product):
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
         status="active",
-        codebase_summary="# Codebase Summary\n\nLarge codebase with multiple modules and components."
+        codebase_summary="# Codebase Summary\n\nLarge codebase with multiple modules and components.",
     )
     db.add(project)
     db.commit()
@@ -115,6 +114,7 @@ class TestStageProjectWorkflow:
     Test 1: Complete staging workflow with user config
     Validates end-to-end flow from staging to mission generation
     """
+
     async def test_complete_staging_workflow_with_user_config(
         self, db: Session, test_user: User, test_project: Project
     ):
@@ -123,10 +123,10 @@ class TestStageProjectWorkflow:
         """
         # Arrange: User config with field priorities
         user_config = {
-            "product_vision": 10,        # Full detail
-            "project_description": 8,    # Full detail
-            "codebase_summary": 4,       # Abbreviated (50% tokens)
-            "architecture": 2,           # Minimal (20% tokens)
+            "product_vision": 10,  # Full detail
+            "project_description": 8,  # Full detail
+            "codebase_summary": 4,  # Abbreviated (50% tokens)
+            "architecture": 2,  # Minimal (20% tokens)
         }
 
         # Mock WebSocket dependency
@@ -136,10 +136,7 @@ class TestStageProjectWorkflow:
         # Act: Generate mission with user config
         mission_planner = MissionPlanner(db=db)
         mission_result = await mission_planner.generate_mission(
-            project_id=test_project.id,
-            user_id=test_user.id,
-            field_priorities=user_config,
-            ws_dep=mock_ws_dep
+            project_id=test_project.id, user_id=test_user.id, field_priorities=user_config, ws_dep=mock_ws_dep
         )
 
         # Assert: Mission generated with user config applied
@@ -163,9 +160,8 @@ class TestStageProjectWorkflow:
     Test 2: Mission generation with field priorities
     Validates token reduction through field priority system
     """
-    async def test_mission_generation_with_field_priorities(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+
+    async def test_mission_generation_with_field_priorities(self, db: Session, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Validate 70% token reduction through field priorities
         """
@@ -176,23 +172,23 @@ class TestStageProjectWorkflow:
             product=test_project.product,
             project=test_project,
             field_priorities={},  # No priorities (full detail)
-            user_id=None
+            user_id=None,
         )
         baseline_tokens = len(baseline_mission) // 4  # Approximate token count
 
         # Act: Generate optimized mission with priorities
         optimized_priorities = {
-            "product_vision": 6,         # Abbreviated
-            "project_description": 6,    # Abbreviated
-            "codebase_summary": 2,       # Minimal
-            "architecture": 0,           # Excluded
+            "product_vision": 6,  # Abbreviated
+            "project_description": 6,  # Abbreviated
+            "codebase_summary": 2,  # Minimal
+            "architecture": 0,  # Excluded
         }
 
         optimized_mission = await mission_planner._build_context_with_priorities(
             product=test_project.product,
             project=test_project,
             field_priorities=optimized_priorities,
-            user_id=test_user.id
+            user_id=test_user.id,
         )
         optimized_tokens = len(optimized_mission) // 4
 
@@ -207,9 +203,8 @@ class TestStageProjectWorkflow:
     Test 3: Agent creation and WebSocket broadcasts
     Validates agent creation with real-time WebSocket events
     """
-    async def test_agent_creation_and_websocket_broadcasts(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+
+    async def test_agent_creation_and_websocket_broadcasts(self, db: Session, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Agent creation with WebSocket broadcast validation
         """
@@ -224,15 +219,15 @@ class TestStageProjectWorkflow:
             agent_type="implementor",
             mission="Implement feature X",
             user_id=test_user.id,
-            ws_dep=mock_ws_dep
+            ws_dep=mock_ws_dep,
         )
 
         # Assert: Agent created in database
-        agent = db.query(AgentJob).filter_by(
-            project_id=test_project.id,
-            tenant_key=test_user.tenant_key,
-            agent_type="implementor"
-        ).first()
+        agent = (
+            db.query(AgentJob)
+            .filter_by(project_id=test_project.id, tenant_key=test_user.tenant_key, agent_type="implementor")
+            .first()
+        )
 
         assert agent is not None
         assert agent.mission == "Implement feature X"
@@ -249,6 +244,7 @@ class TestStageProjectWorkflow:
     Test 4: Multi-tenant isolation across workflow
     Validates zero cross-tenant leakage in staging workflow
     """
+
     async def test_multi_tenant_isolation_across_workflow(
         self, db: Session, test_user: User, test_user_2: User, test_project: Project
     ):
@@ -262,10 +258,7 @@ class TestStageProjectWorkflow:
         # Act: Generate mission for tenant A (test_user)
         mission_planner = MissionPlanner(db=db)
         mission_result = await mission_planner.generate_mission(
-            project_id=test_project.id,
-            user_id=test_user.id,
-            field_priorities={},
-            ws_dep=mock_ws_dep
+            project_id=test_project.id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
         )
 
         # Assert: WebSocket broadcast only to tenant A
@@ -275,19 +268,22 @@ class TestStageProjectWorkflow:
         # Assert: Tenant B cannot access mission
         with pytest.raises(Exception):
             # Attempt to access project from different tenant (should fail)
-            other_project = db.query(Project).filter_by(
-                id=test_project.id,
-                tenant_key=test_user_2.tenant_key  # Wrong tenant
-            ).first()
+            other_project = (
+                db.query(Project)
+                .filter_by(
+                    id=test_project.id,
+                    tenant_key=test_user_2.tenant_key,  # Wrong tenant
+                )
+                .first()
+            )
             assert other_project is None
 
     """
     Test 5: Serena toggle integration
     Validates Serena MCP integration in staging workflow
     """
-    async def test_serena_toggle_integration(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+
+    async def test_serena_toggle_integration(self, db: Session, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Serena MCP toggle affects mission generation
         """
@@ -302,10 +298,7 @@ class TestStageProjectWorkflow:
         # Act: Generate mission with Serena enabled
         mission_planner = MissionPlanner(db=db)
         mission_result = await mission_planner.generate_mission(
-            project_id=test_project.id,
-            user_id=test_user.id,
-            field_priorities={},
-            ws_dep=mock_ws_dep
+            project_id=test_project.id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
         )
 
         # Assert: Mission includes Serena context (if implemented)
@@ -320,6 +313,7 @@ class TestStageProjectWorkflow:
     Test 6: Token reduction validation (70% target)
     Validates business goal of 70% token reduction
     """
+
     async def test_token_reduction_validation_70_percent_target(
         self, db: Session, test_user: User, test_project: Project
     ):
@@ -343,7 +337,7 @@ class TestStageProjectWorkflow:
                 "codebase_summary": 10,
                 "architecture": 10,
             },
-            user_id=None
+            user_id=None,
         )
         baseline_tokens = len(baseline_mission) // 4
 
@@ -352,20 +346,18 @@ class TestStageProjectWorkflow:
             product=test_project.product,
             project=test_project,
             field_priorities={
-                "product_vision": 2,         # Minimal
-                "project_description": 2,    # Minimal
-                "codebase_summary": 2,       # Minimal
-                "architecture": 0,           # Excluded
+                "product_vision": 2,  # Minimal
+                "project_description": 2,  # Minimal
+                "codebase_summary": 2,  # Minimal
+                "architecture": 0,  # Excluded
             },
-            user_id=test_user.id
+            user_id=test_user.id,
         )
         optimized_tokens = len(optimized_mission) // 4
 
         # Assert: 70%+ token reduction achieved
         token_reduction_pct = ((baseline_tokens - optimized_tokens) / baseline_tokens) * 100
-        assert token_reduction_pct >= 70, (
-            f"Target: 70% reduction, Achieved: {token_reduction_pct:.1f}%"
-        )
+        assert token_reduction_pct >= 70, f"Target: 70% reduction, Achieved: {token_reduction_pct:.1f}%"
 
         # Assert: Optimized mission still meaningful
         assert len(optimized_mission) > 100  # Not empty
@@ -375,9 +367,8 @@ class TestStageProjectWorkflow:
     Test 7: Error handling in staging workflow
     Validates graceful error handling and recovery
     """
-    async def test_error_handling_in_staging_workflow(
-        self, db: Session, test_user: User
-    ):
+
+    async def test_error_handling_in_staging_workflow(self, db: Session, test_user: User):
         """
         PRODUCTION-GRADE: Error boundaries and graceful degradation
         """
@@ -391,10 +382,7 @@ class TestStageProjectWorkflow:
         mission_planner = MissionPlanner(db=db)
         with pytest.raises(Exception) as exc_info:
             await mission_planner.generate_mission(
-                project_id=invalid_project_id,
-                user_id=test_user.id,
-                field_priorities={},
-                ws_dep=mock_ws_dep
+                project_id=invalid_project_id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
             )
 
         # Assert: Error message is meaningful
@@ -404,9 +392,8 @@ class TestStageProjectWorkflow:
     Test 8: Concurrent staging requests
     Validates race condition prevention in concurrent scenarios
     """
-    async def test_concurrent_staging_requests(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+
+    async def test_concurrent_staging_requests(self, db: Session, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Race condition prevention for concurrent requests
         """
@@ -419,10 +406,7 @@ class TestStageProjectWorkflow:
 
         async def generate_mission():
             return await mission_planner.generate_mission(
-                project_id=test_project.id,
-                user_id=test_user.id,
-                field_priorities={},
-                ws_dep=mock_ws_dep
+                project_id=test_project.id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
             )
 
         tasks = [generate_mission() for _ in range(10)]
@@ -440,9 +424,8 @@ class TestStageProjectWorkflow:
     Test 9: Mission regeneration with overrides
     Validates mission regeneration endpoint with field priority overrides
     """
-    async def test_mission_regeneration_with_overrides(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+
+    async def test_mission_regeneration_with_overrides(self, db: Session, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Mission regeneration with user-specified overrides
         """
@@ -455,7 +438,7 @@ class TestStageProjectWorkflow:
             project_id=test_project.id,
             user_id=test_user.id,
             field_priorities={"product_vision": 10},
-            ws_dep=mock_ws_dep
+            ws_dep=mock_ws_dep,
         )
 
         # Act: Regenerate with different priorities
@@ -463,7 +446,7 @@ class TestStageProjectWorkflow:
             project_id=test_project.id,
             user_id=test_user.id,
             field_priorities={"product_vision": 2},  # Changed to minimal
-            ws_dep=mock_ws_dep
+            ws_dep=mock_ws_dep,
         )
 
         # Assert: Missions different (different detail levels)
@@ -474,9 +457,8 @@ class TestStageProjectWorkflow:
     Test 10: User config propagation chain
     Validates user_id propagates through entire workflow
     """
-    async def test_user_config_propagation_chain(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+
+    async def test_user_config_propagation_chain(self, db: Session, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Validate user_id parameter chain (Task 2.1)
         """
@@ -490,7 +472,7 @@ class TestStageProjectWorkflow:
             project_id=test_project.id,
             user_id=test_user.id,  # User ID provided
             field_priorities={"product_vision": 10},
-            ws_dep=mock_ws_dep
+            ws_dep=mock_ws_dep,
         )
 
         # Assert: user_config_applied flag set
@@ -507,7 +489,7 @@ class TestStageProjectWorkflow:
             project_id=test_project.id,
             user_id=None,  # No user ID
             field_priorities={},
-            ws_dep=mock_ws_dep
+            ws_dep=mock_ws_dep,
         )
 
         # Assert: user_config_applied flag NOT set
@@ -518,9 +500,7 @@ class TestStageProjectWorkflow:
 class TestStageProjectEdgeCases:
     """Edge cases and error scenarios"""
 
-    async def test_staging_with_missing_product(
-        self, db: Session, test_user: User
-    ):
+    async def test_staging_with_missing_product(self, db: Session, test_user: User):
         """
         Validate error handling when product is missing
         """
@@ -530,7 +510,7 @@ class TestStageProjectEdgeCases:
             description="Project without product",
             product_id=None,  # Missing product
             tenant_key=test_user.tenant_key,
-            status="active"
+            status="active",
         )
         db.add(project)
         db.commit()
@@ -541,17 +521,12 @@ class TestStageProjectEdgeCases:
 
         with pytest.raises(Exception) as exc_info:
             await mission_planner.generate_mission(
-                project_id=project.id,
-                user_id=test_user.id,
-                field_priorities={},
-                ws_dep=mock_ws_dep
+                project_id=project.id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
             )
 
         assert "product" in str(exc_info.value).lower()
 
-    async def test_staging_with_empty_field_priorities(
-        self, db: Session, test_user: User, test_project: Project
-    ):
+    async def test_staging_with_empty_field_priorities(self, db: Session, test_user: User, test_project: Project):
         """
         Validate default behavior when field_priorities is empty
         """
@@ -565,7 +540,7 @@ class TestStageProjectEdgeCases:
             project_id=test_project.id,
             user_id=test_user.id,
             field_priorities={},  # Empty
-            ws_dep=mock_ws_dep
+            ws_dep=mock_ws_dep,
         )
 
         # Assert: Mission generated with defaults (full detail)

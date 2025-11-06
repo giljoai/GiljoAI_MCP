@@ -101,10 +101,10 @@ class TestProjectStatuss:
         assert ProjectStatus.DELETED.value == "deleted"
 
         # Verify old statuses don't exist
-        assert not hasattr(ProjectStatus, 'DRAFT')
-        assert not hasattr(ProjectStatus, 'PAUSED')
-        assert not hasattr(ProjectStatus, 'ARCHIVED')
-        assert not hasattr(ProjectStatus, 'PLANNING')
+        assert not hasattr(ProjectStatus, "DRAFT")
+        assert not hasattr(ProjectStatus, "PAUSED")
+        assert not hasattr(ProjectStatus, "ARCHIVED")
+        assert not hasattr(ProjectStatus, "PLANNING")
 
 
 class TestHandoffLogic:

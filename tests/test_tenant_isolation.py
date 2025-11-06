@@ -23,7 +23,6 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestTenantManager:
     """Test TenantManager functionality."""
 

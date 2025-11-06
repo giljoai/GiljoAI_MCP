@@ -171,7 +171,7 @@ export const useAgentStore = defineStore('agents', () => {
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
-    const { agent_name, project_id, status, health, active_jobs, context_used } = data
+    const { agent_name, project_id, status, health, active_jobs, context_used, progress_percentage } = data
 
     // Find agent by name and project
     const agent = agents.value.find((a) => a.name === agent_name && a.project_id === project_id)
@@ -191,6 +191,15 @@ export const useAgentStore = defineStore('agents', () => {
           active_jobs,
           last_updated: new Date().toISOString(),
         }
+      }
+
+      // Clear health alert state when agent reports progress (Handover 0106)
+      // Progress updates indicate the agent is healthy again
+      if (progress_percentage !== undefined || status === 'working') {
+        agent.health_state = 'healthy'
+        agent.minutes_since_update = 0
+        agent.health_issue_description = null
+        agent.recommended_action = null
       }
 
       // Update timestamp
@@ -260,6 +269,66 @@ export const useAgentStore = defineStore('agents', () => {
     handleRealtimeUpdate({ ...data, status: 'completed' })
   }
 
+  // Handle health alert events (Handover 0106)
+  function handleHealthAlert(data) {
+    const { job_id, health_state, minutes_since_update, issue_description, recommended_action } = data
+
+    // Find agent by job_id
+    const agent = agents.value.find((a) => a.job_id === job_id)
+
+    if (agent) {
+      // Update health fields
+      agent.health_state = health_state
+      agent.minutes_since_update = minutes_since_update
+      agent.health_issue_description = issue_description
+      agent.recommended_action = recommended_action
+      agent.updated_at = new Date().toISOString()
+
+      // Also update health data cache
+      healthData.value[agent.id] = {
+        ...healthData.value[agent.id],
+        health_state,
+        minutes_since_update,
+        issue_description,
+        recommended_action,
+        last_updated: new Date().toISOString()
+      }
+
+      // If this is the current agent, update it too
+      if (currentAgent.value?.id === agent.id) {
+        currentAgent.value = { ...agent }
+      }
+    }
+  }
+
+  // Handle health recovery events (Handover 0106)
+  function handleHealthRecovered(data) {
+    const { job_id } = data
+
+    // Find agent by job_id
+    const agent = agents.value.find((a) => a.job_id === job_id)
+
+    if (agent) {
+      // Clear health fields
+      agent.health_state = 'healthy'
+      agent.minutes_since_update = 0
+      agent.health_issue_description = null
+      agent.recommended_action = null
+      agent.updated_at = new Date().toISOString()
+
+      // Clear health data cache
+      if (healthData.value[agent.id]) {
+        healthData.value[agent.id].health_state = 'healthy'
+        healthData.value[agent.id].minutes_since_update = 0
+      }
+
+      // If this is the current agent, update it too
+      if (currentAgent.value?.id === agent.id) {
+        currentAgent.value = { ...agent }
+      }
+    }
+  }
+
   // Initialize WebSocket listeners for real-time updates
   function initializeWebSocketListeners() {
     // Listen for agent updates
@@ -275,6 +344,16 @@ export const useAgentStore = defineStore('agents', () => {
     // Listen for agent completions
     websocketService.onMessage('agent:complete', (data) => {
       handleAgentComplete(data.data)
+    })
+
+    // Listen for health alerts (Handover 0106)
+    websocketService.onMessage('agent:health_alert', (data) => {
+      handleHealthAlert(data.data)
+    })
+
+    // Listen for health recovery (Handover 0106)
+    websocketService.onMessage('agent:health_recovered', (data) => {
+      handleHealthRecovered(data.data)
     })
 
     // Listen for entity updates (legacy format)
@@ -320,5 +399,7 @@ export const useAgentStore = defineStore('agents', () => {
     addTimelineEvent,
     handleAgentSpawn,
     handleAgentComplete,
+    handleHealthAlert,
+    handleHealthRecovered,
   }
 })

@@ -10,13 +10,10 @@ This module provides a robust configuration system that:
 - Supports hot-reloading of configuration
 """
 
-import ipaddress
 import logging
 import os
-import socket
 import threading
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
@@ -466,54 +463,54 @@ class ConfigManager:
         Returns:
             Migrated configuration dictionary
         """
-        if 'version' in data and data.get('version', '').startswith('3.'):
+        if "version" in data and data.get("version", "").startswith("3."):
             return data  # Already v3
 
         logger.info("Migrating v2.x config to v3.0 format")
 
         # Detect old mode
-        old_mode = data.get('server', {}).get('mode', 'local')
-        if 'installation' in data and 'mode' in data['installation']:
-            old_mode = data['installation']['mode']
+        old_mode = data.get("server", {}).get("mode", "local")
+        if "installation" in data and "mode" in data["installation"]:
+            old_mode = data["installation"]["mode"]
 
         # Remove mode field from server section
-        if 'server' in data and 'mode' in data['server']:
-            del data['server']['mode']
+        if "server" in data and "mode" in data["server"]:
+            del data["server"]["mode"]
 
         # Remove mode field from installation section
-        if 'installation' in data and 'mode' in data['installation']:
-            del data['installation']['mode']
+        if "installation" in data and "mode" in data["installation"]:
+            del data["installation"]["mode"]
 
         # Add v3 fields
-        data['version'] = '3.0.0'
+        data["version"] = "3.0.0"
 
         # Map old mode to deployment context (informational only)
-        data['deployment_context'] = old_mode
+        data["deployment_context"] = old_mode
 
         # Ensure features section
-        if 'features' not in data:
-            data['features'] = {}
+        if "features" not in data:
+            data["features"] = {}
 
-        data['features']['authentication'] = True
-        data['features']['auto_login_localhost'] = True
-        data['features']['firewall_configured'] = False
+        data["features"]["authentication"] = True
+        data["features"]["auto_login_localhost"] = True
+        data["features"]["firewall_configured"] = False
 
         # Ensure all hosts bind to 0.0.0.0
-        if 'server' not in data:
-            data['server'] = {}
+        if "server" not in data:
+            data["server"] = {}
 
         # Update network binding
-        if 'api' not in data['server']:
-            data['server']['api'] = {}
-        data['server']['api']['host'] = '0.0.0.0'
+        if "api" not in data["server"]:
+            data["server"]["api"] = {}
+        data["server"]["api"]["host"] = "0.0.0.0"
 
-        if 'dashboard' not in data['server']:
-            data['server']['dashboard'] = {}
-        data['server']['dashboard']['host'] = '0.0.0.0'
+        if "dashboard" not in data["server"]:
+            data["server"]["dashboard"] = {}
+        data["server"]["dashboard"]["host"] = "0.0.0.0"
 
-        if 'mcp' not in data['server']:
-            data['server']['mcp'] = {}
-        data['server']['mcp']['host'] = '0.0.0.0'
+        if "mcp" not in data["server"]:
+            data["server"]["mcp"] = {}
+        data["server"]["mcp"]["host"] = "0.0.0.0"
 
         logger.info(f"Config migrated from {old_mode} mode to v3.0")
 
@@ -593,9 +590,7 @@ class ConfigManager:
                 self.database.host = db.get("host", self.database.host)
                 self.database.port = db.get("port", self.database.port)
                 # Prefer 'database_name' then 'name'
-                self.database.database_name = db.get(
-                    "database_name", db.get("name", self.database.database_name)
-                )
+                self.database.database_name = db.get("database_name", db.get("name", self.database.database_name))
                 # Prefer 'username' then 'user'
                 self.database.username = db.get("username", db.get("user", self.database.username))
                 # Do not read password from file by default; env overrides handled in _load_from_env

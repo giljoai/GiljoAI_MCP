@@ -35,6 +35,7 @@ class AgentResponse(BaseModel):
 async def get_db_session():
     """Get database session dependency"""
     import os
+
     from src.giljo_mcp.database import DatabaseManager
 
     db_url = os.getenv("DATABASE_URL")
@@ -231,8 +232,6 @@ class AgentMetrics(BaseModel):
     response_time_ms: float
 
 
-
-
 @router.get("/tree", response_model=AgentTreeResponse)
 async def get_agents_tree(
     project_id: str = Query(..., description="Project ID"),
@@ -410,7 +409,7 @@ async def get_agents_metrics(
             active_in_hour = sum(1 for a in agents if a.last_active and hour_start <= a.last_active < hour_end)
 
             hourly_activity.append(
-                {"hour": hour_start.isoformat(), "active_agents": active_in_hour, "hour_label": f"{i+1}h ago"}
+                {"hour": hour_start.isoformat(), "active_agents": active_in_hour, "hour_label": f"{i + 1}h ago"}
             )
 
         hourly_activity.reverse()  # Show oldest first

@@ -133,9 +133,7 @@ class SetupStateManager:
             if state_dict is not None:
                 return state_dict
         except Exception as e:
-            logger.warning(
-                f"Failed to get state from file for tenant {self.tenant_key}: {e}. " "Returning default state."
-            )
+            logger.warning(f"Failed to get state from file for tenant {self.tenant_key}: {e}. Returning default state.")
 
         # Return default state
         return self._get_default_state()
@@ -363,7 +361,9 @@ class SetupStateManager:
                 tenant_key=self.tenant_key,
                 database_initialized=file_state.get("database_initialized", False),
                 database_initialized_at=(
-                    datetime.fromisoformat(file_state["database_initialized_at"]) if file_state.get("database_initialized_at") else None
+                    datetime.fromisoformat(file_state["database_initialized_at"])
+                    if file_state.get("database_initialized_at")
+                    else None
                 ),
                 setup_version=file_state.get("setup_version"),
                 database_version=file_state.get("database_version"),
@@ -423,7 +423,7 @@ class SetupStateManager:
         if self.current_version and state.get("setup_version"):
             if state["setup_version"] != self.current_version:
                 errors.append(
-                    f"Setup version mismatch: stored={state['setup_version']}, " f"current={self.current_version}"
+                    f"Setup version mismatch: stored={state['setup_version']}, current={self.current_version}"
                 )
 
         # Check database version
@@ -632,5 +632,5 @@ class SetupStateManager:
 
         if not re.match(pattern, version):
             raise ValueError(
-                f"Invalid version format: {version}. " "Expected semantic versioning (e.g., 1.0.0, 2.1.0-beta)"
+                f"Invalid version format: {version}. Expected semantic versioning (e.g., 1.0.0, 2.1.0-beta)"
             )

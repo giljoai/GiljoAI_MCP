@@ -5,12 +5,9 @@ Tests the automatic service restart feature triggered after setup wizard complet
 Ensures cross-platform compatibility and proper service lifecycle management.
 """
 
-import json
 import os
-import subprocess
 import time
 from pathlib import Path
-from typing import Dict
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -88,7 +85,7 @@ class TestRestartScript:
     def test_restart_script_is_executable(self, restart_script_path):
         """Test that restart script has shebang for execution."""
         if restart_script_path.exists():
-            with open(restart_script_path, "r", encoding="utf-8") as f:
+            with open(restart_script_path, encoding="utf-8") as f:
                 first_line = f.readline()
                 # Should have Python shebang
                 assert first_line.startswith("#!"), "Script should have shebang"
@@ -97,20 +94,17 @@ class TestRestartScript:
     def test_restart_script_uses_pathlib(self, restart_script_path):
         """Test that restart script uses pathlib for cross-platform compatibility."""
         if restart_script_path.exists():
-            with open(restart_script_path, "r", encoding="utf-8") as f:
+            with open(restart_script_path, encoding="utf-8") as f:
                 content = f.read()
                 assert "from pathlib import Path" in content, "Should import pathlib.Path"
                 # Should not use hardcoded path separators
-                assert 'os.path.join' not in content or "Path" in content, "Should prefer pathlib over os.path"
+                assert "os.path.join" not in content or "Path" in content, "Should prefer pathlib over os.path"
 
     @patch("subprocess.run")
     def test_restart_script_finds_running_processes(self, mock_run):
         """Test that restart script can find running launcher processes."""
         # Mock process list output
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="12345 python start_giljo.py\n67890 python other_script.py\n"
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="12345 python start_giljo.py\n67890 python other_script.py\n")
 
         # Import and run the script logic
         # (This will be implemented in the actual script)
@@ -133,7 +127,8 @@ class TestConfigReload:
 
         # Read original config
         import yaml
-        with open(config_path, "r", encoding="utf-8") as f:
+
+        with open(config_path, encoding="utf-8") as f:
             original_config = yaml.safe_load(f)
 
         original_setup_mode = original_config.get("setup_mode", True)
@@ -153,7 +148,7 @@ class TestConfigReload:
         import yaml
 
         # Read config
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
         # setup_mode should exist as a boolean
@@ -178,6 +173,7 @@ class TestFrontendRestartFlow:
     def test_backend_health_polling(self):
         """Test that frontend can poll /health endpoint during restart."""
         from fastapi.testclient import TestClient
+
         from api.app import app
 
         client = TestClient(app)
@@ -222,11 +218,10 @@ class TestCrossPlatformCompatibility:
         if not restart_script.exists():
             pytest.skip("Restart script not created yet")
 
-        with open(restart_script, "r", encoding="utf-8") as f:
+        with open(restart_script, encoding="utf-8") as f:
             content = f.read()
             # Should import platform module for OS detection
-            assert "import platform" in content or "sys.platform" in content, \
-                "Script should detect platform"
+            assert "import platform" in content or "sys.platform" in content, "Script should detect platform"
 
 
 class TestErrorHandling:

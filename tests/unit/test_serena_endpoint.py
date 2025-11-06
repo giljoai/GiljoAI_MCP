@@ -1,23 +1,16 @@
 """Tests for Serena MCP toggle endpoint."""
 
-import pytest
-import yaml
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
+
+import pytest
 from fastapi import HTTPException
 
 
 @pytest.fixture
 def mock_config():
     """Mock config.yaml content."""
-    return {
-        "installation": {"mode": "localhost"},
-        "features": {
-            "serena_mcp": {
-                "use_in_prompts": False
-            }
-        }
-    }
+    return {"installation": {"mode": "localhost"}, "features": {"serena_mcp": {"use_in_prompts": False}}}
 
 
 @pytest.fixture
@@ -31,14 +24,13 @@ class TestSerenaToggle:
 
     def test_toggle_enable_serena(self, mock_config):
         """Test enabling Serena prompts."""
-        from api.endpoints.serena import write_config, read_config
 
         # Mock file operations
-        with patch('api.endpoints.serena.get_config_path') as mock_path:
+        with patch("api.endpoints.serena.get_config_path") as mock_path:
             mock_path.return_value = Path("test_config.yaml")
 
-            with patch('api.endpoints.serena.read_config', return_value=mock_config):
-                with patch('api.endpoints.serena.write_config') as mock_write:
+            with patch("api.endpoints.serena.read_config", return_value=mock_config):
+                with patch("api.endpoints.serena.write_config") as mock_write:
                     # Simulate toggle
                     config = mock_config.copy()
                     config["features"]["serena_mcp"]["use_in_prompts"] = True
@@ -48,16 +40,15 @@ class TestSerenaToggle:
 
     def test_toggle_disable_serena(self, mock_config):
         """Test disabling Serena prompts."""
-        from api.endpoints.serena import write_config, read_config
 
         # Enable first
         mock_config["features"]["serena_mcp"]["use_in_prompts"] = True
 
-        with patch('api.endpoints.serena.get_config_path') as mock_path:
+        with patch("api.endpoints.serena.get_config_path") as mock_path:
             mock_path.return_value = Path("test_config.yaml")
 
-            with patch('api.endpoints.serena.read_config', return_value=mock_config):
-                with patch('api.endpoints.serena.write_config') as mock_write:
+            with patch("api.endpoints.serena.read_config", return_value=mock_config):
+                with patch("api.endpoints.serena.write_config") as mock_write:
                     # Simulate toggle off
                     config = mock_config.copy()
                     config["features"]["serena_mcp"]["use_in_prompts"] = False
@@ -67,7 +58,6 @@ class TestSerenaToggle:
 
     def test_toggle_creates_features_section(self, empty_config):
         """Test toggle creates features section if missing."""
-        from api.endpoints.serena import write_config
 
         config = empty_config.copy()
 
@@ -87,25 +77,19 @@ class TestSerenaToggle:
         """Test getting status when Serena is enabled."""
         mock_config["features"]["serena_mcp"]["use_in_prompts"] = True
 
-        enabled = (mock_config.get("features", {})
-                             .get("serena_mcp", {})
-                             .get("use_in_prompts", False))
+        enabled = mock_config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
         assert enabled is True
 
     def test_get_status_disabled(self, mock_config):
         """Test getting status when Serena is disabled."""
-        enabled = (mock_config.get("features", {})
-                             .get("serena_mcp", {})
-                             .get("use_in_prompts", False))
+        enabled = mock_config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
         assert enabled is False
 
     def test_get_status_missing_config(self, empty_config):
         """Test getting status with missing config sections."""
-        enabled = (empty_config.get("features", {})
-                              .get("serena_mcp", {})
-                              .get("use_in_prompts", False))
+        enabled = empty_config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
         assert enabled is False  # Default to False
 
@@ -122,10 +106,10 @@ class TestSerenaToggle:
         """Test read_config returns empty dict for missing file."""
         from api.endpoints.serena import read_config
 
-        with patch('api.endpoints.serena.get_config_path') as mock_path:
+        with patch("api.endpoints.serena.get_config_path") as mock_path:
             mock_path.return_value = Path("nonexistent.yaml")
 
-            with patch('pathlib.Path.exists', return_value=False):
+            with patch("pathlib.Path.exists", return_value=False):
                 config = read_config()
 
                 assert config == {}
@@ -134,11 +118,11 @@ class TestSerenaToggle:
         """Test read_config handles YAML parsing errors gracefully."""
         from api.endpoints.serena import read_config
 
-        with patch('api.endpoints.serena.get_config_path') as mock_path:
+        with patch("api.endpoints.serena.get_config_path") as mock_path:
             mock_path.return_value = Path("invalid.yaml")
 
-            with patch('pathlib.Path.exists', return_value=True):
-                with patch('builtins.open', mock_open(read_data="invalid: yaml: content:")):
+            with patch("pathlib.Path.exists", return_value=True):
+                with patch("builtins.open", mock_open(read_data="invalid: yaml: content:")):
                     config = read_config()
 
                     # Should return empty dict on error
@@ -148,18 +132,14 @@ class TestSerenaToggle:
         """Test write_config produces valid YAML."""
         from api.endpoints.serena import write_config
 
-        with patch('api.endpoints.serena.get_config_path') as mock_path:
+        with patch("api.endpoints.serena.get_config_path") as mock_path:
             mock_path.return_value = Path("test_config.yaml")
 
-            with patch('builtins.open', mock_open()) as mock_file:
+            with patch("builtins.open", mock_open()) as mock_file:
                 write_config(mock_config)
 
                 # Verify file was opened for writing
-                mock_file.assert_called_once_with(
-                    Path("test_config.yaml"),
-                    "w",
-                    encoding="utf-8"
-                )
+                mock_file.assert_called_once_with(Path("test_config.yaml"), "w", encoding="utf-8")
 
 
 class TestSerenaEndpoints:
@@ -170,8 +150,8 @@ class TestSerenaEndpoints:
         """Test POST /toggle endpoint to enable Serena."""
         from api.endpoints.serena import toggle_serena
 
-        with patch('api.endpoints.serena.read_config', return_value={}):
-            with patch('api.endpoints.serena.write_config') as mock_write:
+        with patch("api.endpoints.serena.read_config", return_value={}):
+            with patch("api.endpoints.serena.write_config") as mock_write:
                 result = await toggle_serena(enabled=True)
 
                 assert result["success"] is True
@@ -183,16 +163,10 @@ class TestSerenaEndpoints:
         """Test POST /toggle endpoint to disable Serena."""
         from api.endpoints.serena import toggle_serena
 
-        config = {
-            "features": {
-                "serena_mcp": {
-                    "use_in_prompts": True
-                }
-            }
-        }
+        config = {"features": {"serena_mcp": {"use_in_prompts": True}}}
 
-        with patch('api.endpoints.serena.read_config', return_value=config):
-            with patch('api.endpoints.serena.write_config') as mock_write:
+        with patch("api.endpoints.serena.read_config", return_value=config):
+            with patch("api.endpoints.serena.write_config") as mock_write:
                 result = await toggle_serena(enabled=False)
 
                 assert result["success"] is True
@@ -204,15 +178,9 @@ class TestSerenaEndpoints:
         """Test GET /status endpoint when enabled."""
         from api.endpoints.serena import get_serena_status
 
-        config = {
-            "features": {
-                "serena_mcp": {
-                    "use_in_prompts": True
-                }
-            }
-        }
+        config = {"features": {"serena_mcp": {"use_in_prompts": True}}}
 
-        with patch('api.endpoints.serena.read_config', return_value=config):
+        with patch("api.endpoints.serena.read_config", return_value=config):
             result = await get_serena_status()
 
             assert result["enabled"] is True
@@ -223,7 +191,7 @@ class TestSerenaEndpoints:
         """Test GET /status endpoint when disabled."""
         from api.endpoints.serena import get_serena_status
 
-        with patch('api.endpoints.serena.read_config', return_value={}):
+        with patch("api.endpoints.serena.read_config", return_value={}):
             result = await get_serena_status()
 
             assert result["enabled"] is False
@@ -234,8 +202,8 @@ class TestSerenaEndpoints:
         """Test toggle endpoint handles write errors gracefully."""
         from api.endpoints.serena import toggle_serena
 
-        with patch('api.endpoints.serena.read_config', return_value={}):
-            with patch('api.endpoints.serena.write_config', side_effect=Exception("Write failed")):
+        with patch("api.endpoints.serena.read_config", return_value={}):
+            with patch("api.endpoints.serena.write_config", side_effect=Exception("Write failed")):
                 with pytest.raises(HTTPException) as exc_info:
                     await toggle_serena(enabled=True)
 
@@ -246,7 +214,7 @@ class TestSerenaEndpoints:
         """Test status endpoint handles read errors gracefully."""
         from api.endpoints.serena import get_serena_status
 
-        with patch('api.endpoints.serena.read_config', side_effect=Exception("Read failed")):
+        with patch("api.endpoints.serena.read_config", side_effect=Exception("Read failed")):
             with pytest.raises(HTTPException) as exc_info:
                 await get_serena_status()
 

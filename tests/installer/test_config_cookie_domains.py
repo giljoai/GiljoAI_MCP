@@ -5,7 +5,7 @@ Validates installer/core/config.py correctly adds cookie_domains to security con
 
 import pytest
 import yaml
-from pathlib import Path
+
 from installer.core.config import ConfigManager
 
 
@@ -33,7 +33,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # Load generated config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Verify cookie_domains exists and is empty
@@ -63,7 +63,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # Load generated config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # IPs should NOT be in cookie_domains
@@ -90,7 +90,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # Load generated config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Domain should be in cookie_domains
@@ -117,7 +117,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # Load generated config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Custom domain should be in cookie_domains
@@ -145,7 +145,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # Load generated config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Domain should appear only once
@@ -174,7 +174,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # Load generated config
-        with open(manager.config_file, "r") as f:
+        with open(manager.config_file) as f:
             config = yaml.safe_load(f)
 
         # Only domain should be in list
@@ -198,7 +198,7 @@ class TestCookieDomains:
             yaml.dump(old_config, f)
 
         # Load and verify it doesn't crash
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             loaded = yaml.safe_load(f)
 
         # Old config loads fine (no cookie_domains key)
@@ -224,7 +224,7 @@ class TestCookieDomains:
         assert result["success"] is True
 
         # New config has cookie_domains
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             new_config = yaml.safe_load(f)
 
         assert "cookie_domains" in new_config["security"]

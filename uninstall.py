@@ -30,7 +30,7 @@ class GiljoProductionUninstaller:
         """Load installation manifest"""
         if self.manifest_path.exists():
             try:
-                with open(self.manifest_path, 'r') as f:
+                with open(self.manifest_path) as f:
                     return json.load(f)
             except:
                 return {}
@@ -46,23 +46,24 @@ class GiljoProductionUninstaller:
 
         try:
             # Get list of packages from manifest
-            packages = self.manifest.get('dependencies', {}).get('python_packages', [])
+            packages = self.manifest.get("dependencies", {}).get("python_packages", [])
 
             if packages:
                 # Extract package names (before ==)
-                pkg_names = [pkg.split('==')[0] for pkg in packages]
+                pkg_names = [pkg.split("==")[0] for pkg in packages]
 
                 self.log(f"Uninstalling {len(pkg_names)} Python packages...", "INFO")
 
                 # Uninstall in batches
                 batch_size = 50
                 for i in range(0, len(pkg_names), batch_size):
-                    batch = pkg_names[i:i+batch_size]
+                    batch = pkg_names[i : i + batch_size]
                     try:
                         subprocess.run(
                             [sys.executable, "-m", "pip", "uninstall", "-y"] + batch,
+                            check=False,
                             capture_output=True,
-                            timeout=300
+                            timeout=300,
                         )
                     except Exception as e:
                         self.log(f"Error uninstalling batch: {e}", "WARNING")
@@ -76,8 +77,9 @@ class GiljoProductionUninstaller:
                     self.log("Attempting uninstall from requirements.txt...", "INFO")
                     subprocess.run(
                         [sys.executable, "-m", "pip", "uninstall", "-r", str(req_file), "-y"],
+                        check=False,
                         capture_output=True,
-                        timeout=300
+                        timeout=300,
                     )
         except Exception as e:
             self.log(f"Error removing packages: {e}", "ERROR")
@@ -87,21 +89,21 @@ class GiljoProductionUninstaller:
         self.log("Removing PostgreSQL completely...")
 
         # First, drop the database
-        pg_info = self.manifest.get('postgresql', {})
-        database = pg_info.get('database', 'giljo_mcp')
-        host = pg_info.get('host', 'localhost')
-        port = pg_info.get('port', '5432')
-        user = pg_info.get('user', 'postgres')
-        password = pg_info.get('password', '4010')
+        pg_info = self.manifest.get("postgresql", {})
+        database = pg_info.get("database", "giljo_mcp")
+        host = pg_info.get("host", "localhost")
+        port = pg_info.get("port", "5432")
+        user = pg_info.get("user", "postgres")
+        password = pg_info.get("password", "4010")
 
         # Also check .env file for password if manifest doesn't have it
-        env_file = self.root_path / '.env'
-        if env_file.exists() and not pg_info.get('password'):
+        env_file = self.root_path / ".env"
+        if env_file.exists() and not pg_info.get("password"):
             try:
-                with open(env_file, 'r') as f:
+                with open(env_file) as f:
                     for line in f:
-                        if line.startswith('DB_PASSWORD='):
-                            password = line.split('=', 1)[1].strip().strip('"\'')
+                        if line.startswith("DB_PASSWORD="):
+                            password = line.split("=", 1)[1].strip().strip("\"'")
                             break
             except:
                 pass
@@ -112,7 +114,7 @@ class GiljoProductionUninstaller:
             r"C:\Program Files\PostgreSQL\17\bin\psql.exe",
             r"C:\Program Files\PostgreSQL\16\bin\psql.exe",
             "/c/Program Files/PostgreSQL/18/bin/psql.exe",
-            "psql"  # Fallback to PATH
+            "psql",  # Fallback to PATH
         ]
 
         psql_cmd = None
@@ -124,25 +126,37 @@ class GiljoProductionUninstaller:
         if psql_cmd:
             try:
                 env = os.environ.copy()
-                env['PGPASSWORD'] = password
+                env["PGPASSWORD"] = password
 
                 # Terminate connections
                 subprocess.run(
-                    [psql_cmd, "-h", host, "-p", port, "-U", user, "-d", "postgres",
-                     "-c", f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}' AND pid <> pg_backend_pid();"],
+                    [
+                        psql_cmd,
+                        "-h",
+                        host,
+                        "-p",
+                        port,
+                        "-U",
+                        user,
+                        "-d",
+                        "postgres",
+                        "-c",
+                        f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}' AND pid <> pg_backend_pid();",
+                    ],
+                    check=False,
                     env=env,
                     capture_output=True,
-                    timeout=5
+                    timeout=5,
                 )
 
                 # Drop database
                 result = subprocess.run(
-                    [psql_cmd, "-h", host, "-p", port, "-U", user,
-                     "-c", f"DROP DATABASE IF EXISTS {database};"],
+                    [psql_cmd, "-h", host, "-p", port, "-U", user, "-c", f"DROP DATABASE IF EXISTS {database};"],
+                    check=False,
                     env=env,
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=10,
                 )
 
                 if result.returncode == 0 or "does not exist" in result.stderr:
@@ -150,21 +164,21 @@ class GiljoProductionUninstaller:
 
                 # Drop test database
                 subprocess.run(
-                    [psql_cmd, "-h", host, "-p", port, "-U", user,
-                     "-c", f"DROP DATABASE IF EXISTS {database}_test;"],
+                    [psql_cmd, "-h", host, "-p", port, "-U", user, "-c", f"DROP DATABASE IF EXISTS {database}_test;"],
+                    check=False,
                     env=env,
                     capture_output=True,
-                    timeout=10
+                    timeout=10,
                 )
 
                 # Drop roles
-                for role in ['giljo_owner', 'giljo_user']:
+                for role in ["giljo_owner", "giljo_user"]:
                     subprocess.run(
-                        [psql_cmd, "-h", host, "-p", port, "-U", user,
-                         "-c", f"DROP ROLE IF EXISTS {role};"],
+                        [psql_cmd, "-h", host, "-p", port, "-U", user, "-c", f"DROP ROLE IF EXISTS {role};"],
+                        check=False,
                         env=env,
                         capture_output=True,
-                        timeout=5
+                        timeout=5,
                     )
                     self.log(f"Role '{role}' dropped", "SUCCESS")
 
@@ -172,25 +186,27 @@ class GiljoProductionUninstaller:
                 self.log(f"Error dropping database: {e}", "WARNING")
 
         # Then remove PostgreSQL server
-        pg_deps = self.manifest.get('dependencies', {}).get('postgresql', {})
+        pg_deps = self.manifest.get("dependencies", {}).get("postgresql", {})
 
-        if pg_deps.get('installed'):
+        if pg_deps.get("installed"):
             self.log("Uninstalling PostgreSQL server...", "INFO")
             try:
                 if self.platform == "win32":
-                    location = pg_deps.get('location', 'C:/PostgreSQL/18')
+                    location = pg_deps.get("location", "C:/PostgreSQL/18")
                     uninstaller = Path(location) / "uninstall-postgresql.exe"
                     if uninstaller.exists():
-                        subprocess.run([str(uninstaller), "--mode", "unattended"], timeout=120)
+                        subprocess.run([str(uninstaller), "--mode", "unattended"], check=False, timeout=120)
                         self.log("PostgreSQL server uninstalled", "SUCCESS")
                     else:
                         self.log(f"PostgreSQL uninstaller not found at: {uninstaller}", "WARNING")
                 elif self.platform == "darwin":
-                    subprocess.run(["brew", "uninstall", "postgresql@18"], timeout=60)
-                    subprocess.run(["brew", "services", "stop", "postgresql@18"], timeout=30)
+                    subprocess.run(["brew", "uninstall", "postgresql@18"], check=False, timeout=60)
+                    subprocess.run(["brew", "services", "stop", "postgresql@18"], check=False, timeout=30)
                     self.log("PostgreSQL server uninstalled", "SUCCESS")
                 else:
-                    subprocess.run(["sudo", "apt", "remove", "postgresql", "postgresql-contrib", "-y"], timeout=120)
+                    subprocess.run(
+                        ["sudo", "apt", "remove", "postgresql", "postgresql-contrib", "-y"], check=False, timeout=120
+                    )
                     self.log("PostgreSQL server uninstalled", "SUCCESS")
             except Exception as e:
                 self.log(f"Failed to uninstall PostgreSQL: {e}", "ERROR")
@@ -235,9 +251,9 @@ class GiljoProductionUninstaller:
 
         locations = []
         if self.platform == "win32":
-            appdata = Path(os.getenv('APPDATA', ''))
-            localappdata = Path(os.getenv('LOCALAPPDATA', ''))
-            userprofile = Path(os.getenv('USERPROFILE', ''))
+            appdata = Path(os.getenv("APPDATA", ""))
+            localappdata = Path(os.getenv("LOCALAPPDATA", ""))
+            userprofile = Path(os.getenv("USERPROFILE", ""))
 
             locations = [
                 appdata / "GiljoAI",
@@ -268,14 +284,14 @@ class GiljoProductionUninstaller:
 
     def run(self):
         """Run the complete production uninstall"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("   GiljoAI MCP Production Uninstaller")
         print("   TRUE NUCLEAR OPTION - REMOVES EVERYTHING")
-        print("="*70)
+        print("=" * 70)
 
-        print("\n" + "*"*70)
+        print("\n" + "*" * 70)
         print("  !!!  CRITICAL WARNING  !!!")
-        print("*"*70)
+        print("*" * 70)
         print("\n[CRITICAL] This will remove:")
         print("  - ALL files in this directory")
         print("  - ALL Python packages installed by GiljoAI (196+ packages)")
@@ -291,9 +307,9 @@ class GiljoProductionUninstaller:
         print("\n[INFO] For development/testing, use devuninstall.py instead!")
         print("[INFO] devuninstall.py keeps Python packages and PostgreSQL server")
 
-        print("\n" + "*"*70)
+        print("\n" + "*" * 70)
         print("  Use this ONLY on production servers with no other projects!")
-        print("*"*70)
+        print("*" * 70)
 
         confirm1 = input("\nType 'I UNDERSTAND' to continue: ")
         if confirm1 != "I UNDERSTAND":
@@ -305,9 +321,9 @@ class GiljoProductionUninstaller:
             print("Uninstall cancelled.")
             return
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("STARTING NUCLEAR UNINSTALL")
-        print("="*70)
+        print("=" * 70)
 
         # Execute uninstall steps
         mcp_unregistered = self.remove_mcp_registrations()
@@ -318,7 +334,7 @@ class GiljoProductionUninstaller:
 
         # Create completion log
         log_path = self.root_path / "uninstall_complete.log"
-        with open(log_path, 'w') as f:
+        with open(log_path, "w") as f:
             f.write("GiljoAI MCP Nuclear Uninstall Complete\n")
             f.write(f"MCP unregistrations: {mcp_unregistered}\n")
             f.write(f"Files removed: {files_removed}\n")
@@ -326,9 +342,9 @@ class GiljoProductionUninstaller:
             f.write("All Python packages uninstalled\n")
             f.write("PostgreSQL removed\n")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("NUCLEAR UNINSTALL COMPLETE")
-        print("="*70)
+        print("=" * 70)
         print(f"\nMCP unregistrations: {mcp_unregistered}")
         print(f"Files removed: {files_removed}")
         print(f"APPDATA locations removed: {appdata_removed}")
@@ -339,9 +355,9 @@ class GiljoProductionUninstaller:
         print("[OK] All GiljoAI MCP components removed from system.")
         print(f"\n[INFO] Log saved to: {log_path}")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("MANUAL CLEANUP REMINDER")
-        print("="*70)
+        print("=" * 70)
         print("\n[REMINDER] Please manually delete desktop shortcuts:")
         if self.platform == "win32":
             print("  - Start GiljoAI.lnk (on Desktop)")
@@ -352,8 +368,10 @@ class GiljoProductionUninstaller:
         else:
             print("  - Start-GiljoAI.desktop (on Desktop)")
             print("  - Stop-GiljoAI.desktop (on Desktop)")
-        print("\n[INFO] These shortcuts were not automatically removed to prevent"
-              "\n       accidental deletion of user-created shortcuts.")
+        print(
+            "\n[INFO] These shortcuts were not automatically removed to prevent"
+            "\n       accidental deletion of user-created shortcuts."
+        )
 
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ that enables zero-click authentication for 127.0.0.1/::1 clients.
 """
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 
 from src.giljo_mcp.auth.localhost_user import ensure_localhost_user, get_localhost_user

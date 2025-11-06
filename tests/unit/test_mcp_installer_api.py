@@ -11,15 +11,16 @@ Tests cover:
 Following TDD principles: tests written before implementation.
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
+import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
 # Import the functions we'll implement
 from api.endpoints import mcp_installer
+
 
 # Test configuration
 TEST_SERVER_URL = "http://localhost:7272"
@@ -77,7 +78,7 @@ class TestTokenGeneration:
 
         # Check expiration is approximately correct (within 10 seconds)
         expected_expiry = datetime.now(tz.utc) + timedelta(seconds=expires_in)
-        actual_expiry = datetime.fromisoformat(user_info["expires_at"].replace('Z', '+00:00'))
+        actual_expiry = datetime.fromisoformat(user_info["expires_at"].replace("Z", "+00:00"))
         time_diff = abs((expected_expiry - actual_expiry).total_seconds())
 
         assert time_diff < 10  # Should be very close
@@ -88,7 +89,6 @@ class TestTemplateRendering:
 
     def test_render_template_with_all_placeholders(self):
         """Template should render with all user data placeholders"""
-        from unittest.mock import mock_open
 
         template_content = """
 SERVER_URL={server_url}
@@ -98,15 +98,17 @@ ORG={organization}
 TIMESTAMP={timestamp}
 """
         # Mock Path.exists() to return True and Path.read_text() to return template
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('pathlib.Path.read_text', return_value=template_content):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=template_content),
+        ):
             rendered = mcp_installer.render_template(
                 template_path=Path("test.template"),
                 server_url=TEST_SERVER_URL,
                 api_key=TEST_API_KEY,
                 username=TEST_USERNAME,
                 organization=TEST_ORGANIZATION,
-                timestamp="2024-01-01T00:00:00"
+                timestamp="2024-01-01T00:00:00",
             )
 
         assert TEST_SERVER_URL in rendered
@@ -120,8 +122,10 @@ TIMESTAMP={timestamp}
         template_content = "USERNAME={username}"
 
         # Mock Path.exists() and Path.read_text()
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('pathlib.Path.read_text', return_value=template_content):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=template_content),
+        ):
             # Username with special characters
             special_username = "test&user<script>"
             rendered = mcp_installer.render_template(
@@ -130,7 +134,7 @@ TIMESTAMP={timestamp}
                 api_key=TEST_API_KEY,
                 username=special_username,
                 organization=TEST_ORGANIZATION,
-                timestamp="2024-01-01T00:00:00"
+                timestamp="2024-01-01T00:00:00",
             )
 
         # Should contain the special username (no escaping for scripts)
@@ -153,8 +157,8 @@ class TestDownloadWindowsEndpoint:
         return user
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_download_windows_returns_bat_file(self, mock_get_server, mock_render, mock_user):
         """Endpoint should return .bat file with correct content type"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -166,8 +170,8 @@ class TestDownloadWindowsEndpoint:
         assert "giljo-mcp-setup.bat" in response.headers.get("Content-Disposition", "")
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_download_windows_embeds_user_credentials(self, mock_get_server, mock_render, mock_user):
         """Script should contain embedded user credentials"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -200,8 +204,8 @@ class TestDownloadUnixEndpoint:
         return user
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_download_unix_returns_sh_file(self, mock_get_server, mock_render, mock_user):
         """Endpoint should return .sh file with correct content type"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -213,8 +217,8 @@ class TestDownloadUnixEndpoint:
         assert "giljo-mcp-setup.sh" in response.headers.get("Content-Disposition", "")
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_download_unix_embeds_user_credentials(self, mock_get_server, mock_render, mock_user):
         """Script should contain embedded user credentials"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -242,8 +246,8 @@ class TestShareLinkEndpoint:
         return user
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.generate_secure_token')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.generate_secure_token")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_generate_share_link_returns_urls(self, mock_get_server, mock_gen_token, mock_user):
         """Endpoint should return Windows and Unix URLs"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -261,8 +265,8 @@ class TestShareLinkEndpoint:
         assert "unix" in result.unix_url
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.generate_secure_token')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.generate_secure_token")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_share_link_token_expires_in_7_days(self, mock_get_server, mock_gen_token, mock_user):
         """Token should expire in 7 days"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -271,13 +275,10 @@ class TestShareLinkEndpoint:
         result = await mcp_installer.generate_share_link(current_user=mock_user)
 
         # Verify generate_secure_token called with 7 days
-        mock_gen_token.assert_called_once_with(
-            user_id=TEST_USER_ID,
-            expires_in=7*24*3600
-        )
+        mock_gen_token.assert_called_once_with(user_id=TEST_USER_ID, expires_in=7 * 24 * 3600)
 
         # Verify expires_at is approximately 7 days from now
-        expires_at = datetime.fromisoformat(result.expires_at.replace('Z', '+00:00'))
+        expires_at = datetime.fromisoformat(result.expires_at.replace("Z", "+00:00"))
         expected_expiry = datetime.now(timezone.utc) + timedelta(days=7)
         time_diff = abs((expected_expiry - expires_at).total_seconds())
 
@@ -300,12 +301,13 @@ class TestDownloadViaTokenEndpoint:
         return user
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.validate_token')
-    @patch('api.endpoints.mcp_installer.get_user_by_id')
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
-    async def test_download_via_valid_token_windows(self, mock_get_server, mock_render,
-                                               mock_get_user, mock_validate, mock_user):
+    @patch("api.endpoints.mcp_installer.validate_token")
+    @patch("api.endpoints.mcp_installer.get_user_by_id")
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
+    async def test_download_via_valid_token_windows(
+        self, mock_get_server, mock_render, mock_get_user, mock_validate, mock_user
+    ):
         """Valid token should allow download without authentication"""
         mock_validate.return_value = {"user_id": TEST_USER_ID}
         mock_get_user.return_value = mock_user
@@ -318,7 +320,7 @@ class TestDownloadViaTokenEndpoint:
         mock_validate.assert_called_once_with("valid-token")
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.validate_token')
+    @patch("api.endpoints.mcp_installer.validate_token")
     async def test_download_via_invalid_token_raises_401(self, mock_validate):
         """Invalid token should raise 401 Unauthorized"""
         mock_validate.return_value = None  # Invalid token
@@ -330,8 +332,8 @@ class TestDownloadViaTokenEndpoint:
         assert "Invalid or expired token" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.validate_token')
-    @patch('api.endpoints.mcp_installer.get_user_by_id')
+    @patch("api.endpoints.mcp_installer.validate_token")
+    @patch("api.endpoints.mcp_installer.get_user_by_id")
     async def test_download_via_invalid_platform_raises_400(self, mock_get_user, mock_validate, mock_user):
         """Invalid platform should raise 400 Bad Request"""
         mock_validate.return_value = {"user_id": TEST_USER_ID}
@@ -360,8 +362,8 @@ class TestErrorHandling:
         return user
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_missing_template_file_raises_error(self, mock_get_server, mock_render, mock_user):
         """Missing template file should raise HTTPException 500"""
         mock_get_server.return_value = TEST_SERVER_URL
@@ -374,8 +376,8 @@ class TestErrorHandling:
         assert "template not found" in str(exc_info.value.detail).lower()
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
     async def test_user_without_organization_uses_personal(self, mock_get_server, mock_render, mock_user):
         """User without organization should default to 'Personal'"""
         mock_user.organization = None
@@ -404,14 +406,14 @@ class TestIntegration:
         return user
 
     @pytest.mark.asyncio
-    @patch('api.endpoints.mcp_installer.validate_token')
-    @patch('api.endpoints.mcp_installer.get_user_by_id')
-    @patch('api.endpoints.mcp_installer.generate_secure_token')
-    @patch('api.endpoints.mcp_installer.render_template')
-    @patch('api.endpoints.mcp_installer.get_server_url')
-    async def test_full_share_link_workflow(self, mock_get_server, mock_render,
-                                       mock_gen_token, mock_get_user,
-                                       mock_validate, mock_user):
+    @patch("api.endpoints.mcp_installer.validate_token")
+    @patch("api.endpoints.mcp_installer.get_user_by_id")
+    @patch("api.endpoints.mcp_installer.generate_secure_token")
+    @patch("api.endpoints.mcp_installer.render_template")
+    @patch("api.endpoints.mcp_installer.get_server_url")
+    async def test_full_share_link_workflow(
+        self, mock_get_server, mock_render, mock_gen_token, mock_get_user, mock_validate, mock_user
+    ):
         """Test complete workflow: generate link -> download via token"""
         # Setup mocks
         mock_get_server.return_value = TEST_SERVER_URL
@@ -438,7 +440,7 @@ class TestIntegration:
 class TestHelperFunctions:
     """Tests for helper functions"""
 
-    @patch('api.endpoints.mcp_installer.get_config')
+    @patch("api.endpoints.mcp_installer.get_config")
     def test_get_server_url_from_config(self, mock_config):
         """get_server_url should read from config"""
         mock_cfg = Mock()
@@ -450,8 +452,8 @@ class TestHelperFunctions:
 
         assert url == "http://127.0.0.1:7272"
 
-    @patch('api.endpoints.mcp_installer.get_db_session')
+    @patch("api.endpoints.mcp_installer.get_db_session")
     async def test_get_user_by_id_queries_database(self, mock_get_session):
         """get_user_by_id should query database for user"""
         # This test would need async support
-        pass  # Placeholder for async test
+        # Placeholder for async test

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool

@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -35,10 +36,7 @@ async def app():
     app = create_app()
 
     # Initialize test database
-    db_manager = DatabaseManager(
-        PostgreSQLTestHelper.get_test_db_url(async_driver=False),
-        is_async=True
-    )
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
     await db_manager.create_tables_async()
 
     # Store in app state
@@ -74,12 +72,7 @@ class TestProductsAPI:
     def test_create_product_basic(self, client, headers):
         """Test creating a basic product without vision document"""
         response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Test Product",
-                "description": "Test Description"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Test Product", "description": "Test Description"}, headers=headers
         )
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -101,14 +94,9 @@ class TestProductsAPI:
 
         response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Product with Vision",
-                "description": "Has vision document"
-            },
-            files={
-                "vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")
-            },
-            headers=headers
+            data={"name": "Product with Vision", "description": "Has vision document"},
+            files={"vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")},
+            headers=headers,
         )
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -126,14 +114,9 @@ class TestProductsAPI:
         """Test creating product with invalid vision file type"""
         response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Product with Invalid Vision",
-                "description": "Should fail"
-            },
-            files={
-                "vision_file": ("vision.pdf", io.BytesIO(b"fake pdf"), "application/pdf")
-            },
-            headers=headers
+            data={"name": "Product with Invalid Vision", "description": "Should fail"},
+            files={"vision_file": ("vision.pdf", io.BytesIO(b"fake pdf"), "application/pdf")},
+            headers=headers,
         )
 
         assert response.status_code == 400, f"Expected 400, got {response.status_code}"
@@ -145,11 +128,8 @@ class TestProductsAPI:
         for i in range(3):
             client.post(
                 "/api/v1/products/",
-                data={
-                    "name": f"List Test Product {i}",
-                    "description": f"Description {i}"
-                },
-                headers=headers
+                data={"name": f"List Test Product {i}", "description": f"Description {i}"},
+                headers=headers,
             )
 
         # List products
@@ -175,10 +155,7 @@ class TestProductsAPI:
 
     def test_list_products_pagination(self, client, headers):
         """Test products list pagination"""
-        response = client.get(
-            "/api/v1/products/?limit=2&offset=0",
-            headers=headers
-        )
+        response = client.get("/api/v1/products/?limit=2&offset=0", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -190,12 +167,7 @@ class TestProductsAPI:
         """Test getting a specific product"""
         # Create a product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Get Test Product",
-                "description": "For get test"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Get Test Product", "description": "For get test"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
@@ -219,10 +191,7 @@ class TestProductsAPI:
 
     def test_get_product_not_found(self, client, headers):
         """Test getting non-existent product"""
-        response = client.get(
-            "/api/v1/products/non-existent-id",
-            headers=headers
-        )
+        response = client.get("/api/v1/products/non-existent-id", headers=headers)
 
         assert response.status_code == 404, f"Expected 404, got {response.status_code}"
 
@@ -231,22 +200,16 @@ class TestProductsAPI:
         # Create a product
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Update Test Product",
-                "description": "Original description"
-            },
-            headers=headers
+            data={"name": "Update Test Product", "description": "Original description"},
+            headers=headers,
         )
         product_id = create_response.json()["id"]
 
         # Update the product
         response = client.put(
             f"/api/v1/products/{product_id}",
-            json={
-                "name": "Updated Product Name",
-                "description": "Updated description"
-            },
-            headers=headers
+            json={"name": "Updated Product Name", "description": "Updated description"},
+            headers=headers,
         )
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -262,20 +225,13 @@ class TestProductsAPI:
         # Create a product
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Partial Update Test",
-                "description": "Original description"
-            },
-            headers=headers
+            data={"name": "Partial Update Test", "description": "Original description"},
+            headers=headers,
         )
         product_id = create_response.json()["id"]
 
         # Update only name
-        response = client.put(
-            f"/api/v1/products/{product_id}",
-            json={"name": "New Name Only"},
-            headers=headers
-        )
+        response = client.put(f"/api/v1/products/{product_id}", json={"name": "New Name Only"}, headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -287,12 +243,7 @@ class TestProductsAPI:
         """Test deleting a product"""
         # Create a product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Delete Test Product",
-                "description": "Will be deleted"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Delete Test Product", "description": "Will be deleted"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
@@ -316,14 +267,9 @@ class TestProductsAPI:
         # Create product with vision
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Delete Vision Product",
-                "description": "Has vision"
-            },
-            files={
-                "vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")
-            },
-            headers=headers
+            data={"name": "Delete Vision Product", "description": "Has vision"},
+            files={"vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")},
+            headers=headers,
         )
         product_id = create_response.json()["id"]
         vision_path = Path(create_response.json()["vision_path"])
@@ -341,11 +287,8 @@ class TestProductsAPI:
         # Create a product without vision
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Vision Upload Test",
-                "description": "Will get vision later"
-            },
-            headers=headers
+            data={"name": "Vision Upload Test", "description": "Will get vision later"},
+            headers=headers,
         )
         product_id = create_response.json()["id"]
 
@@ -353,10 +296,8 @@ class TestProductsAPI:
         vision_content = b"# New Vision\n\nThis is uploaded later."
         response = client.post(
             f"/api/v1/products/{product_id}/upload-vision",
-            files={
-                "vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")
-            },
-            headers=headers
+            files={"vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")},
+            headers=headers,
         )
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -374,14 +315,9 @@ class TestProductsAPI:
         vision_content_1 = b"# Original Vision\n\nOriginal content."
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Vision Replace Test",
-                "description": "Has vision"
-            },
-            files={
-                "vision_file": ("vision1.md", io.BytesIO(vision_content_1), "text/markdown")
-            },
-            headers=headers
+            data={"name": "Vision Replace Test", "description": "Has vision"},
+            files={"vision_file": ("vision1.md", io.BytesIO(vision_content_1), "text/markdown")},
+            headers=headers,
         )
         product_id = create_response.json()["id"]
 
@@ -389,10 +325,8 @@ class TestProductsAPI:
         vision_content_2 = b"# New Vision\n\nReplaced content."
         response = client.post(
             f"/api/v1/products/{product_id}/upload-vision",
-            files={
-                "vision_file": ("vision2.md", io.BytesIO(vision_content_2), "text/markdown")
-            },
-            headers=headers
+            files={"vision_file": ("vision2.md", io.BytesIO(vision_content_2), "text/markdown")},
+            headers=headers,
         )
 
         assert response.status_code == 200
@@ -404,22 +338,15 @@ class TestProductsAPI:
         """Test uploading invalid vision file type"""
         # Create a product
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "Invalid Vision Test",
-                "description": "Test"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "Invalid Vision Test", "description": "Test"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
         # Try to upload invalid file type
         response = client.post(
             f"/api/v1/products/{product_id}/upload-vision",
-            files={
-                "vision_file": ("vision.exe", io.BytesIO(b"fake exe"), "application/octet-stream")
-            },
-            headers=headers
+            files={"vision_file": ("vision.exe", io.BytesIO(b"fake exe"), "application/octet-stream")},
+            headers=headers,
         )
 
         assert response.status_code == 400
@@ -441,22 +368,14 @@ This is section 3.
 """
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Chunks Test Product",
-                "description": "Has vision"
-            },
-            files={
-                "vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")
-            },
-            headers=headers
+            data={"name": "Chunks Test Product", "description": "Has vision"},
+            files={"vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")},
+            headers=headers,
         )
         product_id = create_response.json()["id"]
 
         # Get vision chunks
-        response = client.get(
-            f"/api/v1/products/{product_id}/vision-chunks",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}/vision-chunks", headers=headers)
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
@@ -479,20 +398,12 @@ This is section 3.
         """Test getting chunks for product without vision"""
         # Create product without vision
         create_response = client.post(
-            "/api/v1/products/",
-            data={
-                "name": "No Vision Product",
-                "description": "No vision"
-            },
-            headers=headers
+            "/api/v1/products/", data={"name": "No Vision Product", "description": "No vision"}, headers=headers
         )
         product_id = create_response.json()["id"]
 
         # Try to get vision chunks
-        response = client.get(
-            f"/api/v1/products/{product_id}/vision-chunks",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}/vision-chunks", headers=headers)
 
         assert response.status_code == 404
         assert "No vision document" in response.text
@@ -503,11 +414,8 @@ This is section 3.
         headers_1 = {"X-Tenant-Key": "tk_tenant_1"}
         response_1 = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Tenant 1 Product",
-                "description": "Belongs to tenant 1"
-            },
-            headers=headers_1
+            data={"name": "Tenant 1 Product", "description": "Belongs to tenant 1"},
+            headers=headers_1,
         )
         assert response_1.status_code == 200
         product_id_1 = response_1.json()["id"]
@@ -531,20 +439,14 @@ This is section 3.
         # Create a product with no projects/tasks/vision
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Cascade Test Product",
-                "description": "Test cascade impact"
-            },
-            headers=headers
+            data={"name": "Cascade Test Product", "description": "Test cascade impact"},
+            headers=headers,
         )
         assert create_response.status_code == 200
         product_id = create_response.json()["id"]
 
         # Get cascade impact
-        response = client.get(
-            f"/api/v1/products/{product_id}/cascade-impact",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}/cascade-impact", headers=headers)
 
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
@@ -564,23 +466,15 @@ This is section 3.
         vision_content = b"# Product Vision\n\nTest vision content for cascade impact."
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Vision Cascade Product",
-                "description": "Has vision"
-            },
-            files={
-                "vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")
-            },
-            headers=headers
+            data={"name": "Vision Cascade Product", "description": "Has vision"},
+            files={"vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")},
+            headers=headers,
         )
         assert create_response.status_code == 200
         product_id = create_response.json()["id"]
 
         # Get cascade impact
-        response = client.get(
-            f"/api/v1/products/{product_id}/cascade-impact",
-            headers=headers
-        )
+        response = client.get(f"/api/v1/products/{product_id}/cascade-impact", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -594,10 +488,7 @@ This is section 3.
 
     def test_cascade_impact_not_found(self, client, headers):
         """Test cascade impact for non-existent product"""
-        response = client.get(
-            "/api/v1/products/non-existent-id/cascade-impact",
-            headers=headers
-        )
+        response = client.get("/api/v1/products/non-existent-id/cascade-impact", headers=headers)
 
         assert response.status_code == 404, f"Expected 404, got {response.status_code}"
         assert "not found" in response.text.lower()
@@ -608,21 +499,15 @@ This is section 3.
         headers_1 = {"X-Tenant-Key": "tk_cascade_tenant_1"}
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Tenant 1 Cascade Product",
-                "description": "Belongs to tenant 1"
-            },
-            headers=headers_1
+            data={"name": "Tenant 1 Cascade Product", "description": "Belongs to tenant 1"},
+            headers=headers_1,
         )
         assert create_response.status_code == 200
         product_id = create_response.json()["id"]
 
         # Try to get cascade impact with tenant 2
         headers_2 = {"X-Tenant-Key": "tk_cascade_tenant_2"}
-        response = client.get(
-            f"/api/v1/products/{product_id}/cascade-impact",
-            headers=headers_2
-        )
+        response = client.get(f"/api/v1/products/{product_id}/cascade-impact", headers=headers_2)
 
         # Should return 404 since product doesn't belong to tenant 2
         assert response.status_code == 404, "Should not find product from different tenant"
@@ -630,9 +515,6 @@ This is section 3.
 
     def test_product_metrics_computation(self, client, headers):
         """Test that unresolved_tasks and unfinished_projects are computed correctly (Issue #2 & #3)"""
-        from src.giljo_mcp.models import Product, Project, Task
-        from api.app import create_app
-        import asyncio
 
         # This test verifies that the list and get endpoints compute statistics correctly
         # We need to create a product with mixed status projects and tasks
@@ -640,11 +522,8 @@ This is section 3.
         # Create a product
         create_response = client.post(
             "/api/v1/products/",
-            data={
-                "name": "Metrics Test Product",
-                "description": "Test metrics computation"
-            },
-            headers=headers
+            data={"name": "Metrics Test Product", "description": "Test metrics computation"},
+            headers=headers,
         )
         assert create_response.status_code == 200
         product_id = create_response.json()["id"]
@@ -876,4 +755,5 @@ class TestProductsConfigData:
 if __name__ == "__main__":
     # Import json at module level for tests
     import json
+
     pytest.main([__file__, "-v", "-s"])

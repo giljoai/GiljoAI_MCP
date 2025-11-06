@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import AgentTemplate, User
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -94,10 +95,10 @@ def build_template_markdown(template: AgentTemplate) -> str:
     # Build template header
     header = f"""# {template.name} Agent Template
 
-**Role:** {template.role or 'General'}
+**Role:** {template.role or "General"}
 **Version:** {template.version}
 **Category:** {template.category}
-**Description:** {template.description or 'No description provided'}
+**Description:** {template.description or "No description provided"}
 
 ---
 
@@ -109,8 +110,7 @@ def build_template_markdown(template: AgentTemplate) -> str:
 
 @router.get("/", response_model=TemplateListResponse)
 async def list_agent_templates(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     List all available agent templates
@@ -165,17 +165,13 @@ async def list_agent_templates(
                     role=template.role or "general",
                     description=template.description,
                     version=template.version,
-                    category=template.category
+                    category=template.category,
                 )
             )
 
         logger.info(f"Listed {len(files)} agent templates for tenant {current_user.tenant_key}")
 
-        return TemplateListResponse(
-            count=len(files),
-            base_url=base_url,
-            files=files
-        )
+        return TemplateListResponse(count=len(files), base_url=base_url, files=files)
 
     except Exception as e:
         logger.error(f"Failed to list agent templates: {e}", exc_info=True)
@@ -184,9 +180,7 @@ async def list_agent_templates(
 
 @router.get("/{filename}")
 async def download_agent_template(
-    filename: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    filename: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Download an agent template as a markdown file
@@ -231,10 +225,7 @@ async def download_agent_template(
 
         if not template:
             logger.warning(f"Template not found: {filename} for tenant {current_user.tenant_key}")
-            raise HTTPException(
-                status_code=404,
-                detail=f"Template '{filename}' not found or inactive"
-            )
+            raise HTTPException(status_code=404, detail=f"Template '{filename}' not found or inactive")
 
         # Build complete markdown content
         markdown_content = build_template_markdown(template)
@@ -245,9 +236,7 @@ async def download_agent_template(
         return Response(
             content=markdown_content,
             media_type="text/markdown",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     except HTTPException:

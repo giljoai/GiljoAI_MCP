@@ -35,7 +35,7 @@ class UserFactory:
         role: str = "developer",
         tenant_key: str = "test_tenant",
         is_active: bool = True,
-        **kwargs
+        **kwargs,
     ) -> User:
         """
         Create a test user.
@@ -63,7 +63,7 @@ class UserFactory:
             is_active=is_active,
             created_at=kwargs.get("created_at", datetime.now(timezone.utc)),
             full_name=kwargs.get("full_name"),
-            last_login=kwargs.get("last_login")
+            last_login=kwargs.get("last_login"),
         )
 
         session.add(user)
@@ -74,51 +74,26 @@ class UserFactory:
 
     @staticmethod
     async def create_admin(
-        session: AsyncSession,
-        username: str = "admin",
-        tenant_key: str = "test_tenant",
-        **kwargs
+        session: AsyncSession, username: str = "admin", tenant_key: str = "test_tenant", **kwargs
     ) -> User:
         """Create admin user."""
-        return await UserFactory.create_user(
-            session,
-            username=username,
-            role="admin",
-            tenant_key=tenant_key,
-            **kwargs
-        )
+        return await UserFactory.create_user(session, username=username, role="admin", tenant_key=tenant_key, **kwargs)
 
     @staticmethod
     async def create_developer(
-        session: AsyncSession,
-        username: str = "developer",
-        tenant_key: str = "test_tenant",
-        **kwargs
+        session: AsyncSession, username: str = "developer", tenant_key: str = "test_tenant", **kwargs
     ) -> User:
         """Create developer user."""
         return await UserFactory.create_user(
-            session,
-            username=username,
-            role="developer",
-            tenant_key=tenant_key,
-            **kwargs
+            session, username=username, role="developer", tenant_key=tenant_key, **kwargs
         )
 
     @staticmethod
     async def create_viewer(
-        session: AsyncSession,
-        username: str = "viewer",
-        tenant_key: str = "test_tenant",
-        **kwargs
+        session: AsyncSession, username: str = "viewer", tenant_key: str = "test_tenant", **kwargs
     ) -> User:
         """Create viewer user."""
-        return await UserFactory.create_user(
-            session,
-            username=username,
-            role="viewer",
-            tenant_key=tenant_key,
-            **kwargs
-        )
+        return await UserFactory.create_user(session, username=username, role="viewer", tenant_key=tenant_key, **kwargs)
 
 
 class APIKeyFactory:
@@ -132,7 +107,7 @@ class APIKeyFactory:
         name: str = "Test API Key",
         permissions: Optional[List[str]] = None,
         is_active: bool = True,
-        **kwargs
+        **kwargs,
     ) -> tuple[APIKey, str]:
         """
         Create a test API key.
@@ -164,7 +139,7 @@ class APIKeyFactory:
             is_active=is_active,
             created_at=kwargs.get("created_at", datetime.now(timezone.utc)),
             last_used=kwargs.get("last_used"),
-            revoked_at=kwargs.get("revoked_at")
+            revoked_at=kwargs.get("revoked_at"),
         )
 
         session.add(api_key)
@@ -175,11 +150,7 @@ class APIKeyFactory:
 
     @staticmethod
     async def create_revoked_key(
-        session: AsyncSession,
-        user_id: str,
-        tenant_key: str,
-        name: str = "Revoked API Key",
-        **kwargs
+        session: AsyncSession, user_id: str, tenant_key: str, name: str = "Revoked API Key", **kwargs
     ) -> tuple[APIKey, str]:
         """Create a revoked API key."""
         return await APIKeyFactory.create_api_key(
@@ -189,7 +160,7 @@ class APIKeyFactory:
             name=name,
             is_active=False,
             revoked_at=datetime.now(timezone.utc),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -208,10 +179,7 @@ class JWTHelper:
             JWT token string
         """
         return JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
     @staticmethod
@@ -244,6 +212,7 @@ class JWTHelper:
 
 # Pytest fixtures for common test scenarios
 
+
 @pytest_asyncio.fixture
 async def admin_user(db_session):
     """Create admin user for testing."""
@@ -265,31 +234,20 @@ async def viewer_user(db_session):
 @pytest_asyncio.fixture
 async def inactive_user(db_session):
     """Create inactive user for testing."""
-    return await UserFactory.create_user(
-        db_session,
-        username="inactive_user",
-        is_active=False
-    )
+    return await UserFactory.create_user(db_session, username="inactive_user", is_active=False)
 
 
 @pytest_asyncio.fixture
 async def other_tenant_user(db_session):
     """Create user in different tenant for isolation testing."""
-    return await UserFactory.create_developer(
-        db_session,
-        username="other_tenant_user",
-        tenant_key="other_tenant"
-    )
+    return await UserFactory.create_developer(db_session, username="other_tenant_user", tenant_key="other_tenant")
 
 
 @pytest_asyncio.fixture
 async def admin_with_api_key(db_session, admin_user):
     """Create admin user with API key."""
     api_key, plaintext_key = await APIKeyFactory.create_api_key(
-        db_session,
-        user_id=admin_user.id,
-        tenant_key=admin_user.tenant_key,
-        name="Admin API Key"
+        db_session, user_id=admin_user.id, tenant_key=admin_user.tenant_key, name="Admin API Key"
     )
     return admin_user, api_key, plaintext_key
 
@@ -298,10 +256,7 @@ async def admin_with_api_key(db_session, admin_user):
 async def developer_with_api_key(db_session, developer_user):
     """Create developer user with API key."""
     api_key, plaintext_key = await APIKeyFactory.create_api_key(
-        db_session,
-        user_id=developer_user.id,
-        tenant_key=developer_user.tenant_key,
-        name="Developer API Key"
+        db_session, user_id=developer_user.id, tenant_key=developer_user.tenant_key, name="Developer API Key"
     )
     return developer_user, api_key, plaintext_key
 
@@ -332,27 +287,17 @@ async def multi_tenant_users(db_session):
     Returns:
         Dict with tenant_key -> list of users mapping
     """
-    tenants = {
-        "tenant_1": [],
-        "tenant_2": [],
-        "tenant_3": []
-    }
+    tenants = {"tenant_1": [], "tenant_2": [], "tenant_3": []}
 
-    for tenant_key in tenants.keys():
+    for tenant_key in tenants:
         # Create admin
-        admin = await UserFactory.create_admin(
-            db_session,
-            username=f"{tenant_key}_admin",
-            tenant_key=tenant_key
-        )
+        admin = await UserFactory.create_admin(db_session, username=f"{tenant_key}_admin", tenant_key=tenant_key)
         tenants[tenant_key].append(admin)
 
         # Create developers
         for i in range(2):
             dev = await UserFactory.create_developer(
-                db_session,
-                username=f"{tenant_key}_dev_{i}",
-                tenant_key=tenant_key
+                db_session, username=f"{tenant_key}_dev_{i}", tenant_key=tenant_key
             )
             tenants[tenant_key].append(dev)
 
@@ -373,30 +318,21 @@ async def users_with_api_keys(db_session):
     admin = await UserFactory.create_admin(db_session, username="admin_multi_key")
     for i in range(3):
         key, plaintext = await APIKeyFactory.create_api_key(
-            db_session,
-            user_id=admin.id,
-            tenant_key=admin.tenant_key,
-            name=f"Admin Key {i+1}"
+            db_session, user_id=admin.id, tenant_key=admin.tenant_key, name=f"Admin Key {i + 1}"
         )
         users_and_keys.append((admin, key, plaintext))
 
     # Developer with one key
     dev = await UserFactory.create_developer(db_session, username="dev_single_key")
     key, plaintext = await APIKeyFactory.create_api_key(
-        db_session,
-        user_id=dev.id,
-        tenant_key=dev.tenant_key,
-        name="Developer Key"
+        db_session, user_id=dev.id, tenant_key=dev.tenant_key, name="Developer Key"
     )
     users_and_keys.append((dev, key, plaintext))
 
     # Developer with revoked key
     dev2 = await UserFactory.create_developer(db_session, username="dev_revoked_key")
     key, plaintext = await APIKeyFactory.create_revoked_key(
-        db_session,
-        user_id=dev2.id,
-        tenant_key=dev2.tenant_key,
-        name="Revoked Key"
+        db_session, user_id=dev2.id, tenant_key=dev2.tenant_key, name="Revoked Key"
     )
     users_and_keys.append((dev2, key, plaintext))
 
@@ -417,7 +353,7 @@ async def setup_wizard_state(db_session):
             "tools_attached": ["claude-code"],
             "serena_enabled": True,
             "admin_created": False,
-            "api_key_generated": False
+            "api_key_generated": False,
         },
         "lan": {
             "mode": "lan",
@@ -426,7 +362,7 @@ async def setup_wizard_state(db_session):
             "admin_created": True,
             "api_key_generated": True,
             "server_ip": "192.168.1.100",
-            "hostname": "giljo.local"
+            "hostname": "giljo.local",
         },
         "wan": {
             "mode": "wan",
@@ -435,8 +371,8 @@ async def setup_wizard_state(db_session):
             "admin_created": True,
             "api_key_generated": True,
             "server_ip": "203.0.113.45",  # Example public IP
-            "hostname": "giljo.example.com"
-        }
+            "hostname": "giljo.example.com",
+        },
     }
 
 
@@ -449,39 +385,34 @@ async def password_test_cases():
         Dict with password test scenarios
     """
     return {
-        "valid": [
-            "SecurePass123!",
-            "MyP@ssw0rd2024",
-            "Complex_Pass_123",
-            "!@#$%^&*()_+Pass1"
-        ],
+        "valid": ["SecurePass123!", "MyP@ssw0rd2024", "Complex_Pass_123", "!@#$%^&*()_+Pass1"],
         "invalid": {
             "too_short": "Pass1!",  # < 8 chars
             "no_number": "PasswordOnly!",
             "no_special": "Password123",
             "spaces": "Pass Word 123!",
-            "empty": ""
-        }
+            "empty": "",
+        },
     }
 
 
 # Export all factories and helpers for easy import
 __all__ = [
-    "UserFactory",
     "APIKeyFactory",
     "JWTHelper",
+    "UserFactory",
     "admin_user",
-    "developer_user",
-    "viewer_user",
-    "inactive_user",
-    "other_tenant_user",
     "admin_with_api_key",
-    "developer_with_api_key",
     "auth_headers_admin",
     "auth_headers_developer",
     "auth_headers_viewer",
+    "developer_user",
+    "developer_with_api_key",
+    "inactive_user",
     "multi_tenant_users",
-    "users_with_api_keys",
+    "other_tenant_user",
+    "password_test_cases",
     "setup_wizard_state",
-    "password_test_cases"
+    "users_with_api_keys",
+    "viewer_user",
 ]

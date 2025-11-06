@@ -20,14 +20,14 @@ from .task import register_task_tools
 
 
 __all__ = [
-    "register_agent_tools",
     "register_agent_communication_tools",
     "register_agent_coordination_tools",
     "register_agent_job_status_tools",
     "register_agent_messaging_tools",
     "register_agent_status_tools",
-    "register_external_agent_coordination_tools",
+    "register_agent_tools",
     "register_context_tools",
+    "register_external_agent_coordination_tools",
     "register_git_tools",
     "register_message_tools",
     "register_optimization_tools",

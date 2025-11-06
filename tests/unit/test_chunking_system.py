@@ -23,7 +23,6 @@ from src.giljo_mcp.tools.chunking import EnhancedChunker
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestEnhancedChunker:
     """Test the enhanced chunking algorithm."""
 

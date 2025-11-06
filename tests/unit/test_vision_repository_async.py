@@ -4,34 +4,24 @@ Tests the async refactoring for Handover 0047 - Vision Document Chunking Async F
 """
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import MCPContextIndex, VisionDocument
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
-from tests.fixtures.vision_document_fixtures import (
-    test_product,
-    vision_document_with_chunks,
-    vision_document_with_file,
-)
 
 
 class TestVisionDocumentRepositoryAsync:
     """Test VisionDocumentRepository async methods"""
 
     @pytest.mark.asyncio
-    async def test_get_by_id_is_async(
-        self, db_session: AsyncSession, vision_document_with_file: VisionDocument
-    ):
+    async def test_get_by_id_is_async(self, db_session: AsyncSession, vision_document_with_file: VisionDocument):
         """Verify get_by_id is async and accepts AsyncSession"""
         repo = VisionDocumentRepository()
 
         # Should be async method
-        doc = await repo.get_by_id(
-            db_session, vision_document_with_file.tenant_key, vision_document_with_file.id
-        )
+        doc = await repo.get_by_id(db_session, vision_document_with_file.tenant_key, vision_document_with_file.id)
 
         assert doc is not None
         assert doc.id == vision_document_with_file.id
@@ -45,9 +35,7 @@ class TestVisionDocumentRepositoryAsync:
         repo = VisionDocumentRepository()
 
         # Attempt to get document with wrong tenant key
-        doc = await repo.get_by_id(
-            db_session, "wrong-tenant-key", vision_document_with_file.id
-        )
+        doc = await repo.get_by_id(db_session, "wrong-tenant-key", vision_document_with_file.id)
 
         # Should return None (tenant isolation)
         assert doc is None
@@ -122,14 +110,10 @@ class TestContextRepositoryAsync:
         # NOTE: Method should be async after refactoring
         try:
             # Try async call
-            deleted_count = await repo.delete_chunks_by_vision_document(
-                db_session, doc.tenant_key, doc.id
-            )
+            deleted_count = await repo.delete_chunks_by_vision_document(db_session, doc.tenant_key, doc.id)
         except TypeError:
             # Fallback to sync call (current implementation)
-            deleted_count = repo.delete_chunks_by_vision_document(
-                db_session, doc.tenant_key, doc.id
-            )
+            deleted_count = repo.delete_chunks_by_vision_document(db_session, doc.tenant_key, doc.id)
 
         await db_session.flush()
 
@@ -144,22 +128,16 @@ class TestContextRepositoryAsync:
         assert len(remaining_chunks) == 0
 
     @pytest.mark.asyncio
-    async def test_delete_chunks_tenant_isolation(
-        self, db_session: AsyncSession, vision_document_with_chunks
-    ):
+    async def test_delete_chunks_tenant_isolation(self, db_session: AsyncSession, vision_document_with_chunks):
         """Verify delete_chunks enforces tenant isolation"""
         doc, chunks = vision_document_with_chunks
         repo = ContextRepository(db_manager=None)
 
         # Try to delete with wrong tenant key
         try:
-            deleted_count = await repo.delete_chunks_by_vision_document(
-                db_session, "wrong-tenant", doc.id
-            )
+            deleted_count = await repo.delete_chunks_by_vision_document(db_session, "wrong-tenant", doc.id)
         except TypeError:
-            deleted_count = repo.delete_chunks_by_vision_document(
-                db_session, "wrong-tenant", doc.id
-            )
+            deleted_count = repo.delete_chunks_by_vision_document(db_session, "wrong-tenant", doc.id)
 
         await db_session.flush()
 
@@ -222,9 +200,7 @@ class TestAsyncSessionCompatibility:
         repo = VisionDocumentRepository()
 
         # All database operations should be awaited
-        doc = await repo.get_by_id(
-            db_session, vision_document_with_file.tenant_key, vision_document_with_file.id
-        )
+        doc = await repo.get_by_id(db_session, vision_document_with_file.tenant_key, vision_document_with_file.id)
 
         # Flush should also be awaited
         await db_session.flush()
@@ -241,7 +217,6 @@ class TestAsyncSessionCompatibility:
 
         # Should not have sync-only methods
         # AsyncSession.execute returns awaitable
-        from inspect import iscoroutinefunction
 
         # execute should return coroutine
         result = db_session.execute(select(VisionDocument))

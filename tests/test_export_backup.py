@@ -10,9 +10,9 @@ Tests validate:
 """
 
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -140,8 +140,14 @@ class TestCreateZipBackup:
 
         # Create 8 agent files
         agent_names = [
-            "orchestrator", "analyzer", "implementor", "tester",
-            "documenter", "reviewer", "security", "optimizer"
+            "orchestrator",
+            "analyzer",
+            "implementor",
+            "tester",
+            "documenter",
+            "reviewer",
+            "security",
+            "optimizer",
         ]
 
         for name in agent_names:
@@ -196,9 +202,7 @@ class TestExportWithBackup:
     """Test suite for export flow with backup integration"""
 
     @pytest.mark.asyncio
-    async def test_export_creates_backup_before_export(
-        self, tmp_path, db_session, test_user, create_template
-    ):
+    async def test_export_creates_backup_before_export(self, tmp_path, db_session, test_user, create_template):
         """Test: Export creates backup before writing new files"""
         from api.endpoints.claude_export import export_templates_to_claude_code
 
@@ -212,9 +216,7 @@ class TestExportWithBackup:
 
         # Perform export
         result = await export_templates_to_claude_code(
-            db=db_session,
-            current_user=test_user,
-            export_path=str(export_dir)
+            db=db_session, current_user=test_user, export_path=str(export_dir)
         )
 
         # Verify backup created
@@ -233,9 +235,7 @@ class TestExportWithBackup:
             assert "old_agent.md" in zipf.namelist()
 
     @pytest.mark.asyncio
-    async def test_export_no_backup_when_empty(
-        self, tmp_path, db_session, test_user, create_template
-    ):
+    async def test_export_no_backup_when_empty(self, tmp_path, db_session, test_user, create_template):
         """Test: Export skips backup when no existing files"""
         from api.endpoints.claude_export import export_templates_to_claude_code
 
@@ -248,9 +248,7 @@ class TestExportWithBackup:
 
         # Perform export
         result = await export_templates_to_claude_code(
-            db=db_session,
-            current_user=test_user,
-            export_path=str(export_dir)
+            db=db_session, current_user=test_user, export_path=str(export_dir)
         )
 
         # Verify no backup created
@@ -259,9 +257,7 @@ class TestExportWithBackup:
         assert "reason" in result["backup"]
 
     @pytest.mark.asyncio
-    async def test_export_succeeds_even_if_backup_fails(
-        self, tmp_path, db_session, test_user, create_template
-    ):
+    async def test_export_succeeds_even_if_backup_fails(self, tmp_path, db_session, test_user, create_template):
         """Test: Export completes even if backup creation fails (non-blocking)"""
         from api.endpoints.claude_export import export_templates_to_claude_code
 
@@ -278,9 +274,7 @@ class TestExportWithBackup:
 
             # Export should still succeed
             result = await export_templates_to_claude_code(
-                db=db_session,
-                current_user=test_user,
-                export_path=str(export_dir)
+                db=db_session, current_user=test_user, export_path=str(export_dir)
             )
 
             assert result["success"] is True
@@ -288,9 +282,7 @@ class TestExportWithBackup:
             assert result["backup"]["backup_created"] is False
 
     @pytest.mark.asyncio
-    async def test_export_backup_info_in_response(
-        self, tmp_path, db_session, test_user, create_template
-    ):
+    async def test_export_backup_info_in_response(self, tmp_path, db_session, test_user, create_template):
         """Test: Export response includes backup information"""
         from api.endpoints.claude_export import export_templates_to_claude_code
 
@@ -301,9 +293,7 @@ class TestExportWithBackup:
         await create_template(test_user.tenant_key, "agent", is_active=True)
 
         result = await export_templates_to_claude_code(
-            db=db_session,
-            current_user=test_user,
-            export_path=str(export_dir)
+            db=db_session, current_user=test_user, export_path=str(export_dir)
         )
 
         # Verify response structure
@@ -325,9 +315,7 @@ class TestExportWithBackup:
             assert backup["backup_size_bytes"] > 0
 
     @pytest.mark.asyncio
-    async def test_export_backup_with_8_agents(
-        self, tmp_path, db_session, test_user, create_template
-    ):
+    async def test_export_backup_with_8_agents(self, tmp_path, db_session, test_user, create_template):
         """Test: Backup works correctly with maximum 8 active agents"""
         from api.endpoints.claude_export import export_templates_to_claude_code
 
@@ -343,9 +331,7 @@ class TestExportWithBackup:
             await create_template(test_user.tenant_key, f"new_agent{i}", is_active=True)
 
         result = await export_templates_to_claude_code(
-            db=db_session,
-            current_user=test_user,
-            export_path=str(export_dir)
+            db=db_session, current_user=test_user, export_path=str(export_dir)
         )
 
         # Verify backup created with all 8 files
@@ -377,8 +363,8 @@ class TestClaudeExportResultModel:
             backup={
                 "backup_created": True,
                 "backup_path": "/path/backups/agents_backup_20251030_120000.zip",
-                "backup_size_bytes": 4096
-            }
+                "backup_size_bytes": 4096,
+            },
         )
 
         assert result.success is True
@@ -390,13 +376,7 @@ class TestClaudeExportResultModel:
         """Test: ClaudeExportResult allows None backup"""
         from api.endpoints.claude_export import ClaudeExportResult
 
-        result = ClaudeExportResult(
-            success=True,
-            exported_count=3,
-            files=[],
-            message="Export successful",
-            backup=None
-        )
+        result = ClaudeExportResult(success=True, exported_count=3, files=[], message="Export successful", backup=None)
 
         assert result.success is True
         assert result.backup is None
@@ -406,12 +386,7 @@ class TestClaudeExportResultModel:
         from api.endpoints.claude_export import ClaudeExportResult
 
         # Should work without backup field
-        result = ClaudeExportResult(
-            success=True,
-            exported_count=5,
-            files=[],
-            message="Export successful"
-        )
+        result = ClaudeExportResult(success=True, exported_count=5, files=[], message="Export successful")
 
         assert result.success is True
         assert hasattr(result, "backup")

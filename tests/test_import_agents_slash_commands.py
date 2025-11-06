@@ -2,23 +2,25 @@
 Unit tests for agent import slash command handlers (Handover 0084b)
 Tests the /gil_import_productagents and /gil_import_personalagents slash commands
 """
-import pytest
-import uuid
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
-from sqlalchemy import select
-from dataclasses import dataclass
 
-from src.giljo_mcp.models import Product, User, AgentTemplate
+import uuid
+from dataclasses import dataclass
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from src.giljo_mcp.models import AgentTemplate, Product, User
 from src.giljo_mcp.slash_commands.import_agents import (
-    handle_import_productagents,
     handle_import_personalagents,
+    handle_import_productagents,
 )
 
 
 @dataclass
 class TestTenant:
     """Simple test tenant object"""
+
     tenant_key: str
 
 
@@ -34,8 +36,9 @@ def sync_db_manager():
     Create synchronous database manager for slash command testing.
     Slash command handlers use sync sessions, not async.
     """
-    from tests.helpers.test_db_helper import PostgreSQLTestHelper
     import asyncio
+
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     # Ensure test database exists
     asyncio.run(PostgreSQLTestHelper.ensure_test_database_exists())
@@ -165,9 +168,7 @@ class TestHandleImportProductAgents:
     """Tests for handle_import_productagents slash command handler"""
 
     @pytest.mark.asyncio
-    async def test_imports_to_product_path(
-        self, db_session, test_tenant, test_user, active_product, test_templates
-    ):
+    async def test_imports_to_product_path(self, db_session, test_tenant, test_user, active_product, test_templates):
         """Test /gil_import_productagents imports to product's .claude/agents"""
         result = await handle_import_productagents(
             db_session=db_session,
@@ -196,6 +197,7 @@ class TestHandleImportProductAgents:
         # Ensure directory doesn't exist
         if export_path.exists():
             import shutil
+
             shutil.rmtree(export_path.parent)
 
         result = await handle_import_productagents(
@@ -208,9 +210,7 @@ class TestHandleImportProductAgents:
         assert export_path.is_dir()
 
     @pytest.mark.asyncio
-    async def test_error_no_active_product(
-        self, db_session, test_tenant, test_user, inactive_product
-    ):
+    async def test_error_no_active_product(self, db_session, test_tenant, test_user, inactive_product):
         """Test error when no active product exists"""
         result = await handle_import_productagents(
             db_session=db_session,
@@ -222,9 +222,7 @@ class TestHandleImportProductAgents:
         assert "No active product found" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_error_product_without_project_path(
-        self, db_session, test_tenant, test_user, product_without_path
-    ):
+    async def test_error_product_without_project_path(self, db_session, test_tenant, test_user, product_without_path):
         """Test error when product doesn't have project_path configured"""
         result = await handle_import_productagents(
             db_session=db_session,
@@ -237,9 +235,7 @@ class TestHandleImportProductAgents:
         assert product_without_path.name in result["message"]
 
     @pytest.mark.asyncio
-    async def test_error_invalid_project_path(
-        self, db_session, test_tenant, test_user
-    ):
+    async def test_error_invalid_project_path(self, db_session, test_tenant, test_user):
         """Test error when product's project_path doesn't exist"""
         # Create product with non-existent path
         product = Product(
@@ -274,9 +270,7 @@ class TestHandleImportProductAgents:
         assert "User not found" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation(
-        self, db_session, test_tenant, test_user, active_product
-    ):
+    async def test_multi_tenant_isolation(self, db_session, test_tenant, test_user, active_product):
         """Test tenant isolation enforced"""
         # Create product for different tenant
         other_product = Product(
@@ -299,9 +293,7 @@ class TestHandleImportProductAgents:
         assert active_product.name in result["message"]
 
     @pytest.mark.asyncio
-    async def test_backup_creation(
-        self, db_session, test_tenant, test_user, active_product, test_templates
-    ):
+    async def test_backup_creation(self, db_session, test_tenant, test_user, active_product, test_templates):
         """Test backup is created when overwriting existing files"""
         # First export
         result1 = await handle_import_productagents(
@@ -323,9 +315,7 @@ class TestHandleImportPersonalAgents:
     """Tests for handle_import_personalagents slash command handler"""
 
     @pytest.mark.asyncio
-    async def test_imports_to_personal_directory(
-        self, db_session, test_tenant, test_user, test_templates, tmp_path
-    ):
+    async def test_imports_to_personal_directory(self, db_session, test_tenant, test_user, test_templates, tmp_path):
         """Test /gil_import_personalagents imports to ~/.claude/agents"""
         # Mock Path.home() to use tmp_path
         mock_home = tmp_path / "home"
@@ -350,9 +340,7 @@ class TestHandleImportPersonalAgents:
             assert (export_path / "implementer.md").exists()
 
     @pytest.mark.asyncio
-    async def test_creates_personal_directory(
-        self, db_session, test_tenant, test_user, test_templates, tmp_path
-    ):
+    async def test_creates_personal_directory(self, db_session, test_tenant, test_user, test_templates, tmp_path):
         """Test creates ~/.claude/agents directory if it doesn't exist"""
         mock_home = tmp_path / "home"
         mock_home.mkdir(parents=True, exist_ok=True)
@@ -385,9 +373,7 @@ class TestHandleImportPersonalAgents:
         assert "User not found" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_no_active_product_required(
-        self, db_session, test_tenant, test_user, test_templates, tmp_path
-    ):
+    async def test_no_active_product_required(self, db_session, test_tenant, test_user, test_templates, tmp_path):
         """Test personal import works without active product"""
         # No active product created
         mock_home = tmp_path / "home"
@@ -404,9 +390,7 @@ class TestHandleImportPersonalAgents:
             assert result["exported_count"] == 2
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation(
-        self, db_session, test_tenant, test_user, tmp_path
-    ):
+    async def test_multi_tenant_isolation(self, db_session, test_tenant, test_user, tmp_path):
         """Test tenant isolation enforced"""
         # Create templates for different tenant
         other_template = AgentTemplate(
@@ -435,9 +419,7 @@ class TestHandleImportPersonalAgents:
             assert not (export_path / "other_agent.md").exists()
 
     @pytest.mark.asyncio
-    async def test_backup_creation(
-        self, db_session, test_tenant, test_user, test_templates, tmp_path
-    ):
+    async def test_backup_creation(self, db_session, test_tenant, test_user, test_templates, tmp_path):
         """Test backup is created when overwriting existing files"""
         mock_home = tmp_path / "home"
         mock_home.mkdir(parents=True, exist_ok=True)
@@ -463,9 +445,7 @@ class TestEdgeCases:
     """Test edge cases and error handling"""
 
     @pytest.mark.asyncio
-    async def test_no_active_templates(
-        self, db_session, test_tenant, test_user, active_product
-    ):
+    async def test_no_active_templates(self, db_session, test_tenant, test_user, active_product):
         """Test when tenant has no active templates"""
         result = await handle_import_productagents(
             db_session=db_session,
@@ -477,9 +457,7 @@ class TestEdgeCases:
         assert "No active templates found" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_handles_export_exception(
-        self, db_session, test_tenant, test_user, active_product, test_templates
-    ):
+    async def test_handles_export_exception(self, db_session, test_tenant, test_user, active_product, test_templates):
         """Test exception handling during export"""
         # Mock export function to raise exception
         with patch(

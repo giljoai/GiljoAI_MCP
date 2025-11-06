@@ -13,11 +13,11 @@ from typing import Any
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.server import create_server
+
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
 
 
 class MCPToolsTester:

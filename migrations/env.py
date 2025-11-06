@@ -20,6 +20,8 @@ config = context.config
 # Override database URL with environment variable if set
 # CRITICAL: PostgreSQL is REQUIRED - SQLite is not supported
 from dotenv import load_dotenv
+
+
 load_dotenv()  # Load .env file
 
 db_url = os.getenv("DATABASE_URL")
@@ -97,9 +99,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

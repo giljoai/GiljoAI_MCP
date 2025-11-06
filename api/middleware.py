@@ -41,6 +41,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Process all requests through authentication"""
+        # Public endpoints bypass auth as early as possible
+        if self._is_public_endpoint(request.url.path):
+            return await call_next(request)
         # Get auth manager (from callable or fallback to app state)
         if self.get_auth_manager:
             auth_manager = self.get_auth_manager()
@@ -57,12 +60,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     },
                 )
 
-        # Public endpoints bypass auth
-        if self._is_public_endpoint(request.url.path):
-            return await call_next(request)
+        # (already handled above)
 
         # DIAGNOSTIC: Log incoming request details
-        logger.info(f"[AuthMiddleware] {request.method} {request.url.path} - IP: {request.client.host if request.client else 'unknown'}")
+        logger.info(
+            f"[AuthMiddleware] {request.method} {request.url.path} - IP: {request.client.host if request.client else 'unknown'}"
+        )
         logger.info(f"[AuthMiddleware] Cookie header present: {bool(request.headers.get('cookie'))}")
         logger.info(f"[AuthMiddleware] Authorization header present: {bool(request.headers.get('authorization'))}")
 
@@ -70,7 +73,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result
-        logger.info(f"[AuthMiddleware] Auth result: authenticated={auth_result.get('authenticated')}, user={auth_result.get('user')}, error={auth_result.get('error')}")
+        logger.info(
+            f"[AuthMiddleware] Auth result: authenticated={auth_result.get('authenticated')}, user={auth_result.get('user')}, error={auth_result.get('error')}"
+        )
 
         # Set request state consistently
         request.state.authenticated = auth_result.get("authenticated", False)
@@ -78,10 +83,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if auth_result.get("authenticated"):
             # Always set both user_id (string) and user (object if available)
             import os
+
             request.state.user_id = auth_result.get("user_id") or auth_result.get("user")
             request.state.user = auth_result.get("user_obj")  # User object or None
             request.state.is_auto_login = auth_result.get("is_auto_login", False)
-            request.state.tenant_key = auth_result.get("tenant_key", os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"))
+            request.state.tenant_key = auth_result.get(
+                "tenant_key", os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+            )
         else:
             # Auth failed - return 401
             return JSONResponse(
@@ -112,6 +120,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/agent-templates.zip",  # Optional-auth downloads (handles own auth logic)
             "/api/download/temp",  # Public download with token auth (one-time tokens)
         ]
+        # Always allow token download path (token is the auth)
+        if path.startswith("/api/download/temp") or "/api/download/temp/" in path:
+            return True
         return any(path.startswith(p) for p in PUBLIC_PATHS)
 
 
@@ -148,14 +159,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.exempt_paths = [
             "/api/health",
             "/api/auth/me",  # Auth status check
-            "/api/v1/ws",    # WebSocket connections
-            "/docs",         # API documentation
-            "/openapi.json", # OpenAPI schema
+            "/api/v1/ws",  # WebSocket connections
+            "/docs",  # API documentation
+            "/openapi.json",  # OpenAPI schema
         ]
 
     async def dispatch(self, request: Request, call_next):
         """Apply rate limiting"""
-        
+
         # Check if path is exempt from rate limiting
         request_path = request.url.path
         for exempt_path in self.exempt_paths:
@@ -180,14 +191,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Check rate limit
         if len(self.request_times[client_ip]) >= self.requests_per_minute:
-            logger.warning(f"[Rate Limit] Exceeded for {client_ip}: {len(self.request_times[client_ip])} requests in last minute")
+            logger.warning(
+                f"[Rate Limit] Exceeded for {client_ip}: {len(self.request_times[client_ip])} requests in last minute"
+            )
             return JSONResponse(
-                status_code=429, 
+                status_code=429,
                 content={
                     "error": "Rate limit exceeded",
                     "detail": f"Maximum {self.requests_per_minute} requests per minute",
-                    "retry_after": "60"
-                }
+                    "retry_after": "60",
+                },
             )
 
         # Add current request time

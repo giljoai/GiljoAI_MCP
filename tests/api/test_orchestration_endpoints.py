@@ -8,9 +8,6 @@ Tests follow TDD principles:
 4. Run tests (expect pass)
 """
 
-import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -21,7 +18,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def mock_db_manager():
     """Mock database manager for testing"""
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import AsyncMock
 
     db_manager = Mock()
 
@@ -40,33 +37,19 @@ def mock_orchestrator():
     orchestrator = Mock()
 
     # Mock process_product_vision
-    orchestrator.process_product_vision = AsyncMock(return_value={
-        'project_id': 'test-project-123',
-        'mission_plan': {
-            'analyzer': {
-                'role': 'analyzer',
-                'description': 'Analyze requirements',
-                'token_count': 1000
+    orchestrator.process_product_vision = AsyncMock(
+        return_value={
+            "project_id": "test-project-123",
+            "mission_plan": {
+                "analyzer": {"role": "analyzer", "description": "Analyze requirements", "token_count": 1000},
+                "implementer": {"role": "implementer", "description": "Implement features", "token_count": 1500},
             },
-            'implementer': {
-                'role': 'implementer',
-                'description': 'Implement features',
-                'token_count': 1500
-            }
-        },
-        'selected_agents': ['analyzer', 'implementer'],
-        'spawned_jobs': ['job-1', 'job-2'],
-        'workflow_result': Mock(
-            status='completed',
-            completed=['analyzer', 'implementer'],
-            failed=[]
-        ),
-        'token_reduction': {
-            'original_tokens': 10000,
-            'optimized_tokens': 2500,
-            'reduction_percent': 75.0
+            "selected_agents": ["analyzer", "implementer"],
+            "spawned_jobs": ["job-1", "job-2"],
+            "workflow_result": Mock(status="completed", completed=["analyzer", "implementer"], failed=[]),
+            "token_reduction": {"original_tokens": 10000, "optimized_tokens": 2500, "reduction_percent": 75.0},
         }
-    })
+    )
 
     return orchestrator
 
@@ -81,18 +64,20 @@ def client(mock_db_manager, mock_orchestrator):
 
     # Mock auth manager for middleware
     mock_auth = Mock()
-    mock_auth.authenticate_request = AsyncMock(return_value={
-        'authenticated': True,
-        'user_id': 'test-user',
-        'user': 'test-user',
-        'user_obj': {'id': 'test-user', 'tenant_key': 'test-tenant'},
-        'tenant_key': 'test-tenant',
-        'is_auto_login': False
-    })
+    mock_auth.authenticate_request = AsyncMock(
+        return_value={
+            "authenticated": True,
+            "user_id": "test-user",
+            "user": "test-user",
+            "user_obj": {"id": "test-user", "tenant_key": "test-tenant"},
+            "tenant_key": "test-tenant",
+            "is_auto_login": False,
+        }
+    )
     state.auth = mock_auth
 
     # Patch ProjectOrchestrator
-    with patch('api.endpoints.orchestration.ProjectOrchestrator', return_value=mock_orchestrator):
+    with patch("api.endpoints.orchestration.ProjectOrchestrator", return_value=mock_orchestrator):
         yield TestClient(app)
 
 
@@ -103,13 +88,13 @@ class TestProcessVisionEndpoint:
         """Test successful vision processing workflow"""
         # Setup mocks
         mock_product = Mock()
-        mock_product.id = 'product-123'
-        mock_product.tenant_key = 'test-tenant'
-        mock_product.name = 'Test Product'
-        mock_product.vision_path = '/path/to/vision.md'
+        mock_product.id = "product-123"
+        mock_product.tenant_key = "test-tenant"
+        mock_product.name = "Test Product"
+        mock_product.vision_path = "/path/to/vision.md"
 
         async def mock_get_product(product_type, product_id):
-            if product_id == 'product-123':
+            if product_id == "product-123":
                 return mock_product
             return None
 
@@ -125,39 +110,39 @@ class TestProcessVisionEndpoint:
 
         # Make request
         response = client.post(
-            '/api/orchestrator/process-vision',
+            "/api/orchestrator/process-vision",
             json={
-                'tenant_key': 'test-tenant',
-                'product_id': 'product-123',
-                'project_requirements': 'Build REST API for user management',
-                'workflow_type': 'waterfall'
+                "tenant_key": "test-tenant",
+                "product_id": "product-123",
+                "project_requirements": "Build REST API for user management",
+                "workflow_type": "waterfall",
             },
-            headers={'Authorization': 'Bearer test-token'}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         # Assertions
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert 'project_id' in data
-        assert data['project_id'] == 'test-project-123'
+        assert "project_id" in data
+        assert data["project_id"] == "test-project-123"
 
-        assert 'mission_plan' in data
-        assert 'analyzer' in data['mission_plan']
-        assert 'implementer' in data['mission_plan']
+        assert "mission_plan" in data
+        assert "analyzer" in data["mission_plan"]
+        assert "implementer" in data["mission_plan"]
 
-        assert 'selected_agents' in data
-        assert 'analyzer' in data['selected_agents']
-        assert 'implementer' in data['selected_agents']
+        assert "selected_agents" in data
+        assert "analyzer" in data["selected_agents"]
+        assert "implementer" in data["selected_agents"]
 
-        assert 'spawned_jobs' in data
-        assert len(data['spawned_jobs']) == 2
+        assert "spawned_jobs" in data
+        assert len(data["spawned_jobs"]) == 2
 
-        assert 'workflow_status' in data
-        assert data['workflow_status'] == 'completed'
+        assert "workflow_status" in data
+        assert data["workflow_status"] == "completed"
 
-        assert 'token_reduction' in data
-        assert data['token_reduction']['reduction_percent'] == 75.0
+        assert "token_reduction" in data
+        assert data["token_reduction"]["reduction_percent"] == 75.0
 
         # Verify orchestrator was called
         mock_orchestrator.process_product_vision.assert_called_once()
@@ -175,27 +160,27 @@ class TestProcessVisionEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.post(
-            '/api/orchestrator/process-vision',
+            "/api/orchestrator/process-vision",
             json={
-                'tenant_key': 'test-tenant',
-                'product_id': 'non-existent-product',
-                'project_requirements': 'Build something',
-                'workflow_type': 'waterfall'
+                "tenant_key": "test-tenant",
+                "product_id": "non-existent-product",
+                "project_requirements": "Build something",
+                "workflow_type": "waterfall",
             },
-            headers={'Authorization': 'Bearer test-token'}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         data = response.json()
-        detail = data.get('detail') or data.get('error', '')
-        assert 'not found' in detail.lower()
+        detail = data.get("detail") or data.get("error", "")
+        assert "not found" in detail.lower()
 
     def test_process_vision_tenant_mismatch(self, client, mock_db_manager):
         """Test 404 error for tenant mismatch (multi-tenant isolation)"""
         # Mock product with different tenant
         mock_product = Mock()
-        mock_product.id = 'product-123'
-        mock_product.tenant_key = 'other-tenant'
+        mock_product.id = "product-123"
+        mock_product.tenant_key = "other-tenant"
 
         async def mock_get_product(product_type, product_id):
             return mock_product
@@ -209,27 +194,27 @@ class TestProcessVisionEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.post(
-            '/api/orchestrator/process-vision',
+            "/api/orchestrator/process-vision",
             json={
-                'tenant_key': 'test-tenant',
-                'product_id': 'product-123',
-                'project_requirements': 'Build something',
-                'workflow_type': 'waterfall'
+                "tenant_key": "test-tenant",
+                "product_id": "product-123",
+                "project_requirements": "Build something",
+                "workflow_type": "waterfall",
             },
-            headers={'Authorization': 'Bearer test-token'}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         data = response.json()
-        detail = data.get('detail') or data.get('error', '')
-        assert 'not found' in detail.lower()
+        detail = data.get("detail") or data.get("error", "")
+        assert "not found" in detail.lower()
 
     def test_process_vision_no_vision_document(self, client, mock_db_manager, mock_orchestrator):
         """Test 400 error when product has no vision document"""
         # Mock product without vision
         mock_product = Mock()
-        mock_product.id = 'product-123'
-        mock_product.tenant_key = 'test-tenant'
+        mock_product.id = "product-123"
+        mock_product.tenant_key = "test-tenant"
         mock_product.vision_path = None
         mock_product.vision_document = None
         mock_product.vision_type = None
@@ -247,24 +232,24 @@ class TestProcessVisionEndpoint:
 
         # Mock orchestrator to raise ValueError
         mock_orchestrator.process_product_vision = AsyncMock(
-            side_effect=ValueError('Product product-123 has no vision document')
+            side_effect=ValueError("Product product-123 has no vision document")
         )
 
         response = client.post(
-            '/api/orchestrator/process-vision',
+            "/api/orchestrator/process-vision",
             json={
-                'tenant_key': 'test-tenant',
-                'product_id': 'product-123',
-                'project_requirements': 'Build something',
-                'workflow_type': 'waterfall'
+                "tenant_key": "test-tenant",
+                "product_id": "product-123",
+                "project_requirements": "Build something",
+                "workflow_type": "waterfall",
             },
-            headers={'Authorization': 'Bearer test-token'}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         data = response.json()
-        detail = data.get('detail') or data.get('error', '')
-        assert 'vision' in detail.lower()
+        detail = data.get("detail") or data.get("error", "")
+        assert "vision" in detail.lower()
 
 
 class TestWorkflowStatusEndpoint:
@@ -272,26 +257,26 @@ class TestWorkflowStatusEndpoint:
 
     def test_workflow_status_success(self, client, mock_db_manager):
         """Test successful workflow status retrieval"""
-        from src.giljo_mcp.models import Project, Agent
+        from src.giljo_mcp.models import Agent, Project
 
         # Mock project
         mock_project = Mock(spec=Project)
-        mock_project.id = 'project-123'
-        mock_project.tenant_key = 'test-tenant'
-        mock_project.status = 'active'
+        mock_project.id = "project-123"
+        mock_project.tenant_key = "test-tenant"
+        mock_project.status = "active"
         mock_project.context_used = 5000
         mock_project.context_budget = 150000
 
         # Mock agents
         mock_agents = [
-            Mock(spec=Agent, status='completed', role='analyzer'),
-            Mock(spec=Agent, status='active', role='implementer'),
-            Mock(spec=Agent, status='pending', role='tester'),
+            Mock(spec=Agent, status="completed", role="analyzer"),
+            Mock(spec=Agent, status="active", role="implementer"),
+            Mock(spec=Agent, status="pending", role="tester"),
         ]
         mock_project.agents = mock_agents
 
         async def mock_get_project(project_type, project_id):
-            if project_id == 'project-123':
+            if project_id == "project-123":
                 return mock_project
             return None
 
@@ -304,20 +289,20 @@ class TestWorkflowStatusEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.get(
-            '/api/orchestrator/workflow-status/project-123',
-            params={'tenant_key': 'test-tenant'},
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/workflow-status/project-123",
+            params={"tenant_key": "test-tenant"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert data['project_id'] == 'project-123'
-        assert data['active_agents'] == 1
-        assert data['completed_agents'] == 1
-        assert data['failed_agents'] == 0
-        assert data['current_stage'] == 'active'
-        assert 'progress_percent' in data
+        assert data["project_id"] == "project-123"
+        assert data["active_agents"] == 1
+        assert data["completed_agents"] == 1
+        assert data["failed_agents"] == 0
+        assert data["current_stage"] == "active"
+        assert "progress_percent" in data
 
     def test_workflow_status_invalid_project(self, client, mock_db_manager):
         """Test 404 for invalid project ID"""
@@ -330,9 +315,9 @@ class TestWorkflowStatusEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.get(
-            '/api/orchestrator/workflow-status/invalid-project',
-            params={'tenant_key': 'test-tenant'},
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/workflow-status/invalid-project",
+            params={"tenant_key": "test-tenant"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -342,8 +327,8 @@ class TestWorkflowStatusEndpoint:
         from src.giljo_mcp.models import Project
 
         mock_project = Mock(spec=Project)
-        mock_project.id = 'project-123'
-        mock_project.tenant_key = 'other-tenant'
+        mock_project.id = "project-123"
+        mock_project.tenant_key = "other-tenant"
 
         async def mock_get_project(project_type, project_id):
             return mock_project
@@ -357,9 +342,9 @@ class TestWorkflowStatusEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.get(
-            '/api/orchestrator/workflow-status/project-123',
-            params={'tenant_key': 'test-tenant'},
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/workflow-status/project-123",
+            params={"tenant_key": "test-tenant"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -374,18 +359,18 @@ class TestMetricsEndpoint:
 
         # Mock project with token metrics
         mock_project = Mock(spec=Project)
-        mock_project.id = 'project-123'
-        mock_project.tenant_key = 'test-tenant'
+        mock_project.id = "project-123"
+        mock_project.tenant_key = "test-tenant"
         mock_project.token_metrics = {
-            'total_tokens': 50000,
-            'tokens_used': 15000,
-            'tokens_saved': 35000,
-            'reduction_percent': 70.0,
-            'estimated_cost_savings': 12.50
+            "total_tokens": 50000,
+            "tokens_used": 15000,
+            "tokens_saved": 35000,
+            "reduction_percent": 70.0,
+            "estimated_cost_savings": 12.50,
         }
 
         async def mock_get_project(project_type, project_id):
-            if project_id == 'project-123':
+            if project_id == "project-123":
                 return mock_project
             return None
 
@@ -398,25 +383,25 @@ class TestMetricsEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.get(
-            '/api/orchestrator/metrics/project-123',
-            params={'tenant_key': 'test-tenant'},
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/metrics/project-123",
+            params={"tenant_key": "test-tenant"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert data['project_id'] == 'project-123'
-        assert data['token_metrics']['total_tokens'] == 50000
-        assert data['token_metrics']['reduction_percent'] == 70.0
+        assert data["project_id"] == "project-123"
+        assert data["token_metrics"]["total_tokens"] == 50000
+        assert data["token_metrics"]["reduction_percent"] == 70.0
 
     def test_metrics_no_metrics(self, client, mock_db_manager):
         """Test metrics endpoint handles missing metrics gracefully"""
         from src.giljo_mcp.models import Project
 
         mock_project = Mock(spec=Project)
-        mock_project.id = 'project-123'
-        mock_project.tenant_key = 'test-tenant'
+        mock_project.id = "project-123"
+        mock_project.tenant_key = "test-tenant"
         mock_project.token_metrics = None
 
         async def mock_get_project(project_type, project_id):
@@ -431,16 +416,16 @@ class TestMetricsEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.get(
-            '/api/orchestrator/metrics/project-123',
-            params={'tenant_key': 'test-tenant'},
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/metrics/project-123",
+            params={"tenant_key": "test-tenant"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert data['project_id'] == 'project-123'
-        assert data['token_metrics'] == {}
+        assert data["project_id"] == "project-123"
+        assert data["token_metrics"] == {}
 
     def test_metrics_invalid_project(self, client, mock_db_manager):
         """Test 404 for invalid project"""
@@ -453,9 +438,9 @@ class TestMetricsEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         response = client.get(
-            '/api/orchestrator/metrics/invalid-project',
-            params={'tenant_key': 'test-tenant'},
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/metrics/invalid-project",
+            params={"tenant_key": "test-tenant"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -469,8 +454,8 @@ class TestCreateMissionsEndpoint:
         from src.giljo_mcp.models import Product
 
         mock_product = Mock(spec=Product)
-        mock_product.id = 'product-123'
-        mock_product.tenant_key = 'test-tenant'
+        mock_product.id = "product-123"
+        mock_product.tenant_key = "test-tenant"
 
         async def mock_get_product(product_type, product_id):
             return mock_product
@@ -484,27 +469,25 @@ class TestCreateMissionsEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         # Mock generate_mission_plan
-        mock_orchestrator.generate_mission_plan = AsyncMock(return_value={
-            'analyzer': {'role': 'analyzer', 'description': 'Analyze requirements'},
-            'implementer': {'role': 'implementer', 'description': 'Implement features'}
-        })
+        mock_orchestrator.generate_mission_plan = AsyncMock(
+            return_value={
+                "analyzer": {"role": "analyzer", "description": "Analyze requirements"},
+                "implementer": {"role": "implementer", "description": "Implement features"},
+            }
+        )
 
         response = client.post(
-            '/api/orchestrator/create-missions',
-            json={
-                'tenant_key': 'test-tenant',
-                'product_id': 'product-123',
-                'project_description': 'Build REST API'
-            },
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/create-missions",
+            json={"tenant_key": "test-tenant", "product_id": "product-123", "project_description": "Build REST API"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert 'missions' in data
-        assert 'analyzer' in data['missions']
-        assert 'implementer' in data['missions']
+        assert "missions" in data
+        assert "analyzer" in data["missions"]
+        assert "implementer" in data["missions"]
 
 
 class TestSpawnTeamEndpoint:
@@ -515,8 +498,8 @@ class TestSpawnTeamEndpoint:
         from src.giljo_mcp.models import Project
 
         mock_project = Mock(spec=Project)
-        mock_project.id = 'project-123'
-        mock_project.tenant_key = 'test-tenant'
+        mock_project.id = "project-123"
+        mock_project.tenant_key = "test-tenant"
 
         async def mock_get_project(project_type, project_id):
             return mock_project
@@ -530,28 +513,26 @@ class TestSpawnTeamEndpoint:
         mock_db_manager.get_session_async.return_value = mock_session_cm
 
         # Mock workflow coordination
-        mock_orchestrator.coordinate_agent_workflow = AsyncMock(return_value=Mock(
-            status='completed',
-            completed=['analyzer', 'implementer'],
-            failed=[]
-        ))
+        mock_orchestrator.coordinate_agent_workflow = AsyncMock(
+            return_value=Mock(status="completed", completed=["analyzer", "implementer"], failed=[])
+        )
 
         response = client.post(
-            '/api/orchestrator/spawn-team',
+            "/api/orchestrator/spawn-team",
             json={
-                'tenant_key': 'test-tenant',
-                'project_id': 'project-123',
-                'agent_roles': ['analyzer', 'implementer'],
-                'workflow_type': 'waterfall'
+                "tenant_key": "test-tenant",
+                "project_id": "project-123",
+                "agent_roles": ["analyzer", "implementer"],
+                "workflow_type": "waterfall",
             },
-            headers={'Authorization': 'Bearer test-token'}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert data['workflow_status'] == 'completed'
-        assert len(data['spawned_agents']) == 2
+        assert data["workflow_status"] == "completed"
+        assert len(data["spawned_agents"]) == 2
 
 
 class TestCoordinateEndpoint:
@@ -559,25 +540,20 @@ class TestCoordinateEndpoint:
 
     def test_coordinate_success(self, client, mock_orchestrator):
         """Test successful coordination request"""
-        mock_orchestrator.coordinate_agent_workflow = AsyncMock(return_value=Mock(
-            status='in_progress',
-            completed=[],
-            failed=[]
-        ))
+        mock_orchestrator.coordinate_agent_workflow = AsyncMock(
+            return_value=Mock(status="in_progress", completed=[], failed=[])
+        )
 
         response = client.post(
-            '/api/orchestrator/coordinate',
-            json={
-                'project_id': 'project-123',
-                'coordination_action': 'start'
-            },
-            headers={'Authorization': 'Bearer test-token'}
+            "/api/orchestrator/coordinate",
+            json={"project_id": "project-123", "coordination_action": "start"},
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert data['status'] == 'in_progress'
+        assert data["status"] == "in_progress"
 
 
 class TestHandleFailureEndpoint:
@@ -586,18 +562,18 @@ class TestHandleFailureEndpoint:
     def test_handle_failure_success(self, client):
         """Test successful failure handling"""
         response = client.post(
-            '/api/orchestrator/handle-failure',
+            "/api/orchestrator/handle-failure",
             json={
-                'project_id': 'project-123',
-                'agent_id': 'agent-456',
-                'failure_reason': 'Agent context limit exceeded',
-                'recovery_action': 'handoff'
+                "project_id": "project-123",
+                "agent_id": "agent-456",
+                "failure_reason": "Agent context limit exceeded",
+                "recovery_action": "handoff",
             },
-            headers={'Authorization': 'Bearer test-token'}
+            headers={"Authorization": "Bearer test-token"},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        assert 'recovery_status' in data
-        assert data['recovery_status'] in ['success', 'pending', 'failed']
+        assert "recovery_status" in data
+        assert data["recovery_status"] in ["success", "pending", "failed"]

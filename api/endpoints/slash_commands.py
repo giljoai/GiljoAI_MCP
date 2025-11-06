@@ -2,13 +2,15 @@
 Slash command HTTP endpoints
 Allows MCP adapter to route slash commands via HTTP (Handover 0080a)
 """
+
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.giljo_mcp.slash_commands import get_slash_command
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +55,7 @@ async def execute_slash_command(request: SlashCommandRequest):
     handler = get_slash_command(request.command)
 
     if not handler:
-        raise HTTPException(
-            status_code=404, detail=f"Slash command /{request.command} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Slash command /{request.command} not found")
 
     try:
         # Import here to avoid circular dependency
@@ -76,5 +76,5 @@ async def execute_slash_command(request: SlashCommandRequest):
         logger.error(f"Failed to execute slash command /{request.command}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to execute slash command: {str(e)}",
+            detail=f"Failed to execute slash command: {e!s}",
         )

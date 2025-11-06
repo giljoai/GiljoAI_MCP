@@ -11,8 +11,9 @@ timezone-aware datetime.now(timezone.utc) for comparison, causing:
 Fix: Convert naive datetime to UTC-aware before performing arithmetic.
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
+
+import pytest
 
 
 def test_timezone_conversion_logic():
@@ -65,11 +66,11 @@ def test_purge_countdown_calculation():
     Test purge countdown calculation with various deletion dates.
     """
     test_cases = [
-        (1, 9),    # Deleted 1 day ago -> 9 days until purge
-        (5, 5),    # Deleted 5 days ago -> 5 days until purge
-        (9, 1),    # Deleted 9 days ago -> 1 day until purge
-        (10, 0),   # Deleted 10 days ago -> 0 days (due for purge)
-        (11, 0),   # Deleted 11 days ago -> 0 days (overdue, capped at 0)
+        (1, 9),  # Deleted 1 day ago -> 9 days until purge
+        (5, 5),  # Deleted 5 days ago -> 5 days until purge
+        (9, 1),  # Deleted 9 days ago -> 1 day until purge
+        (10, 0),  # Deleted 10 days ago -> 0 days (due for purge)
+        (11, 0),  # Deleted 11 days ago -> 0 days (overdue, capped at 0)
     ]
 
     now = datetime.now(timezone.utc)
@@ -79,13 +80,16 @@ def test_purge_countdown_calculation():
         deleted_at_naive = (now - timedelta(days=days_ago)).replace(tzinfo=None)
 
         # Apply the fix
-        deleted_at_utc = deleted_at_naive.replace(tzinfo=timezone.utc) if deleted_at_naive.tzinfo is None else deleted_at_naive
+        deleted_at_utc = (
+            deleted_at_naive.replace(tzinfo=timezone.utc) if deleted_at_naive.tzinfo is None else deleted_at_naive
+        )
         purge_date = deleted_at_utc + timedelta(days=10)
         days_until_purge = max(0, (purge_date - now).days)
 
         # Allow +/- 1 day tolerance due to timing
-        assert abs(days_until_purge - expected_days_until_purge) <= 1, \
+        assert abs(days_until_purge - expected_days_until_purge) <= 1, (
             f"For {days_ago} days ago, expected ~{expected_days_until_purge} days until purge, got {days_until_purge}"
+        )
 
 
 if __name__ == "__main__":

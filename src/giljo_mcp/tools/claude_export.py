@@ -7,17 +7,16 @@ from user's terminal context, solving path resolution issues.
 Handover 0084: Agent Export Copy-Command Interface
 """
 
-import os
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.models import Product, AgentTemplate, User
-from giljo_mcp.database import DatabaseManager
 from api.endpoints.claude_export import export_templates_to_claude_code
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Product, User
+
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +81,7 @@ async def export_agents_command(
 
 
 async def get_product_for_tenant(
-    db_manager: DatabaseManager,
-    tenant_key: str,
-    product_id: Optional[str] = None
+    db_manager: DatabaseManager, tenant_key: str, product_id: Optional[str] = None
 ) -> Optional[Product]:
     """
     Get product for tenant, optionally by product ID.
@@ -101,16 +98,10 @@ async def get_product_for_tenant(
         async with db_manager.get_tenant_session_async(tenant_key) as session:
             if product_id:
                 # Get specific product
-                query = select(Product).where(
-                    Product.id == product_id,
-                    Product.tenant_key == tenant_key
-                )
+                query = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             else:
                 # Get active product for tenant
-                query = select(Product).where(
-                    Product.tenant_key == tenant_key,
-                    Product.is_active == True
-                ).limit(1)
+                query = select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True).limit(1)
 
             result = await session.execute(query)
             return result.scalar_one_or_none()
@@ -121,10 +112,7 @@ async def get_product_for_tenant(
 
 
 async def validate_product_path(
-    db_manager: DatabaseManager,
-    tenant_key: str,
-    product_id: str,
-    project_path: str
+    db_manager: DatabaseManager, tenant_key: str, product_id: str, project_path: str
 ) -> Dict[str, Any]:
     """
     Validate and update product's project_path.
@@ -148,10 +136,7 @@ async def validate_product_path(
 
         async with db_manager.get_tenant_session_async(tenant_key) as session:
             # Get product
-            query = select(Product).where(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
+            query = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await session.execute(query)
             product = result.scalar_one_or_none()
 
@@ -166,7 +151,7 @@ async def validate_product_path(
                 "success": True,
                 "product_id": product_id,
                 "project_path": str(path),
-                "message": "Product path updated successfully"
+                "message": "Product path updated successfully",
             }
 
     except Exception as e:

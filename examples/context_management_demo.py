@@ -11,11 +11,7 @@ This demo illustrates:
 5. ContextManagementSystem complete workflow
 """
 
-from pathlib import Path
-from giljo_mcp.context_management import (
-    VisionDocumentChunker,
-    ContextManagementSystem
-)
+from giljo_mcp.context_management import VisionDocumentChunker
 
 
 def demo_chunking():
@@ -64,7 +60,7 @@ Database queries always include tenant_key in WHERE clauses.
 
     chunks = chunker.chunk_document(vision_doc, product_id="demo-product")
 
-    print(f"\nDocument chunking results:")
+    print("\nDocument chunking results:")
     print(f"  Total chunks: {len(chunks)}")
     print(f"  Total tokens: {sum(c['tokens'] for c in chunks)}")
 
@@ -119,7 +115,7 @@ via context management. Use tiktoken for accuracy.
     condensed_tokens = chunker.count_tokens(condensed_mission)
     reduction_percent = ((full_tokens - condensed_tokens) / full_tokens) * 100
 
-    print(f"\nToken Reduction Metrics:")
+    print("\nToken Reduction Metrics:")
     print(f"  Original tokens: {full_tokens}")
     print(f"  Condensed tokens: {condensed_tokens}")
     print(f"  Tokens saved: {full_tokens - condensed_tokens}")

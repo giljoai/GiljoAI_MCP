@@ -1,3 +1,10 @@
+---
+**Document Type:** Product Vision & User Journey  
+**Last Updated:** 2025-01-05  
+**Related Documents:** [start_to_finish_agent_FLOW.md](./start_to_finish_agent_FLOW.md) (technical verification)  
+**Harmonization Status:** ✅ Aligned with codebase (Handovers 0088, 0102, 0073)  
+---
+
 [Developer note] I need to harmonize terminology in this document: **"product"** refers to the top-level organizational unit (a software product being built), **"project"** refers to work initiatives under a product, **"tasks"** are work items that can exist standalone or under a product, and **"jobs"** are the execution phases when agents work on a project. This document describes both the **GiljoAI application itself** and the **products/projects/tasks/jobs as features within the application**. I may have used these terms inconsistently throughout - keeping this note as a clarification.
 
 ### Product vision realized?
@@ -32,7 +39,9 @@ From a hierarchy perspective a product is the top of the hierarchy and under tha
 
 Customized agents are also under each user tenant, When the user account is created a default set of six agents are created but the user can add and customize more agents.
 
-**Note on agent templates**: Six default agent templates are seeded per tenant (orchestrator, implementer, tester, frontend-implementer, code-reviewer, documenter). This is a recommended starting set, **not a technical limitation**. The codebase supports unlimited agent templates - users can create, customize, and activate as many agent types as needed for their workflow.
+**Note on agent templates**: Six default agent templates are seeded per tenant (**orchestrator**, **implementer**, **tester**, **analyzer**, **reviewer**, **documenter**). This is a recommended starting set, **not a technical limitation**. The codebase supports unlimited agent templates - users can create, customize, and activate as many agent types as needed for their workflow.
+
+**Technical Reference**: See `src/giljo_mcp/template_seeder.py` for complete template definitions and seeding logic. For technical verification of the full agent flow, see `handovers/start_to_finish_agent_FLOW.md`.
 
 **⚠️ Context Budget Warning**: When using Claude Code, limit active agents to **8 maximum**. Each agent's template description consumes context budget, reducing available tokens for your project. The 6 default templates are designed to fit comfortably within this limit while covering most development scenarios.
 
@@ -59,22 +68,38 @@ This allows users to customize agent behavior at different scopes: globally (ten
 
 We have one primary and important agent called the Orchestrator. The orchestrator is a well-prompted and templated staging agent in this application and as a project gets launched its job is to aggregate all contexts around the product and the project description, harmonize the mission, divide up the jobs and assign them to the proper agents. The orchestrator is also or should also be the primary interface for the developer and all other subagents should report to the orchestrator.
 
-## 70% Token Reduction Achievement
+## 70% Token Reduction Achievement (Handover 0088)
 
 The orchestrator achieves **70% token reduction** through intelligent context management:
 - **Mission Planner** (`mission_planner.py`) - Generates condensed missions from vision docs, avoiding context duplication
 - **Agent Selector** (`agent_selector.py`) - Smart agent selection based on capabilities, assigning only necessary agents
 - **Workflow Engine** (`workflow_engine.py`) - Coordinates waterfall/parallel execution, preventing redundant context loading
-- **Field Priority System** - Only includes high-priority fields in missions, respecting token budgets
-- **Template Resolution Cascade** - Efficient template loading without redundant database hits
+- **Field Priority System** - Only includes high-priority fields in missions, respecting token budgets (Handover 0048, 0049)
+- **Template Resolution Cascade** - Efficient template loading without redundant database hits (Handover 0041)
 
 Instead of flooding agents with ALL product context, the orchestrator intelligently extracts, condenses, and prioritizes information. This means agents get exactly what they need to do their work - nothing more, nothing less.
+
+**Technical Reference**: For detailed verification of the token reduction architecture, see `handovers/start_to_finish_agent_FLOW.md`.
 
 The key restriction we have in this application is the lack of automation The closest we have is the MCP message communications but that only works while the agents are active.  so there will always be in need for the developer to nudge agents along in their various terminal windows to read messagesi  In the future states it would be amazing if that could be automated and perhaps we build the terminal into the application or find ways to inject commands into active terminals.
 
 Claude stands out in this because with Claude we can end one prompt launch the orchestrator and it could spawn subagents through its own internal communications protocol So this will always work a little bit smoother with Claude but there's nothing preventing the developer to even with Claude just like Codex and Gemini work in multiple CLI terminal windows copy prompts to trigger the agents and then regularly nudge them along to communicate and do the job.
 
-The application includes agent template export for Claude Code via **My Settings → Integrations** only (manual user-triggered export). The export creates `.old.YYYYMMDD_HHMMSS` backup files before overwriting. Users control when and which templates to export - no automatic export occurs during project workflows.
+The application includes agent template export for Claude Code via **My Settings → Integrations** only (manual user-triggered export). The export uses a secure download token system (Handover 0102) with 15-minute expiration. Users control when and which templates to export - no automatic export occurs during project workflows.
+
+### Agent Template Export System (Handover 0102)
+
+The export process uses a token-based download system for security and efficiency:
+1. **Generate Token**: User clicks "Export Agents" button in My Settings → Integrations
+2. **Token Creation**: System creates one-time download token (15-minute TTL)
+3. **ZIP Generation**: Backend packages active agent templates into ZIP file with YAML frontmatter
+4. **Copy Command**: User copies CLI installation command with tokenized download URL
+5. **CLI Installation**: User pastes command into terminal (Claude Code, Codex CLI, or Gemini CLI)
+6. **Template Registration**: CLI tool downloads ZIP, extracts to `~/.claude/agents/`, registers in MCP
+
+**8-Role Cap**: Export enforces maximum 8 distinct agent roles (unlimited agents per role type).
+
+**Technical Reference**: For detailed verification of the export and download system, see `handovers/start_to_finish_agent_FLOW.md` (Steps 2-3).
 
 Agents should have strict prompting to regularly check in and communicate via MCP and that should be in their agent profiles today.
 
@@ -108,10 +133,12 @@ Projects are also all human entered This is where the developer describes what t
 ## Project Description vs Mission (Handover 0062)
 
 It's important to understand the distinction between two key project fields:
-- **Description**: Human-written project goal by the developer. This is what YOU want to accomplish, written in your own words. This field is user-editable and captures your intent.
-- **Mission**: AI-generated by the orchestrator. After analyzing the product context, vision documents, tech stack, and your description, the orchestrator creates a detailed mission statement with specific tasks, context, and agent assignments. This is auto-populated and represents the orchestrator's interpretation and expansion of your description.
+- **Description** (`Project.description`): Human-written project goal by the developer. This is what YOU want to accomplish, written in your own words. This field is user-editable and captures your intent.
+- **Mission** (`Project.mission`): AI-generated by the orchestrator. After analyzing the product context, vision documents, tech stack, and your description, the orchestrator creates a detailed mission statement with specific tasks, context, and agent assignments. This is auto-populated and represents the orchestrator's interpretation and expansion of your description.
 
 The description stays user-controlled; the mission is the orchestrator's work plan.
+
+**Technical Note**: Both fields exist in the `projects` table. The UI displays the human `description` in the "Project Description" window and the AI-generated `mission` in the "Orchestrator Created Mission" window during project staging.
 
 Projects can have various states like I mentioned earlier only one project may be active at any time If the user or developer creates multiple projects they will remain inactive They can have canceled projects they can have completed projects and they can delete the projects.
 
@@ -185,15 +212,28 @@ This system ensures that the creative and iterative nature of AI-assisted develo
 
 # Project Launch Preview
 
-The project launch preview is where the templated instructions for the orchestrator shows up as the first agents to be activated.  It also shows the human description of the project being worked on.
+The project launch preview is where the orchestrator agent is configured and the project is prepared for execution. This interface uses a dual-tab layout (**Launch** and **Implementation** tabs) accessible via the custom project link (e.g., `http://10.1.0.164:7274/projects/{project_id}?via=jobs`).
 
-The orchestrator can be activated By clicking the copy prompt button and pasting it into the CLI tool to get working.  The first thing the orchestrator does is builds out the mission which populates in the screen for the user to see and review and continues to assign agents, based on the active agent templates in the application.
+## Stage Project Flow
 
-We also have a token counter based on the mission prompts and the agent prompts as a totality I don't have all the details yet of how we have implemented the counter but it's there and will require some tuning.
+When you click the **"Stage Project"** button (which technically calls `POST /api/v1/projects/{id}/activate`), the orchestrator:
+1. Reads the human-written project description from the database
+2. Retrieves product context (vision documents, tech stack, dependencies)
+3. Applies field priority settings from "My Settings" to optimize token usage
+4. Generates a condensed mission statement (displayed in "Orchestrator Created Mission" window)
+5. Selects appropriate agents from active templates (max 8 roles, unlimited per type)
+6. Creates agent cards that appear live in the "Agent Team" window
+7. Creates `MCPAgentJob` records with initial status `"waiting"`
 
-We we also have a projects during the launch phase which restores the project to a blank slate and returns it to the project list removing any created mission and any assigned agents and immediately deletes them.
+**Technical Reference**: For detailed technical verification of the staging process, see `handovers/start_to_finish_agent_FLOW.md` (Phase 4: Project Orchestration).
 
-Once the developer is happy with the initial staging they go activate the actual work and moves on to the Jobs pane.
+The orchestrator can be activated by clicking the copy prompt button and pasting it into the CLI tool to get working. The mission populates on-screen for the user to see and review, and agent cards appear as they get selected.
+
+We also have a token counter based on the mission prompts and the agent prompts as a totality. The token estimation system (Handover 0048, 0049) helps keep context within AI tool limits (Claude Code's 25K token input limit being the primary target).
+
+We also have a "Cancel" option during the launch phase which restores the project to a blank slate and returns it to the project list, removing any created mission and any assigned agents.
+
+Once the developer is happy with the initial staging, they proceed to activate the actual work and move to the Implementation tab (Jobs pane).
 
 # Jobs (Agent Job Management - Handovers 0019, 0020)
 
@@ -201,14 +241,20 @@ The Jobs system manages the full lifecycle of agent execution with multi-tenant 
 
 ## Agent Job Lifecycle
 
-Each agent job moves through these states:
-1. **Waiting** - Agent assigned but not yet started
-2. **Acknowledged** - Agent has received its prompt and begun work
-3. **In Progress** - Agent actively working (can receive messages)
-4. **Completed** - Agent finished successfully
-5. **Failed** - Agent encountered errors
+Each agent job moves through these states during execution:
+1. **Waiting** - Agent job created, waiting for agent to claim it (initial status after staging)
+2. **Active** - Agent has acknowledged the job and begun coordination
+3. **Working** - Agent actively executing tasks (can receive messages and report progress)
+4. **Terminal States**:
+   - **Complete** - Agent finished successfully
+   - **Failed** - Agent encountered errors
+   - **Blocked** - Agent cannot proceed (waiting for user input or dependency)
 
-The system tracks job metadata including assigned agents, prompts, start/end times, and execution results. WebSocket events (`job:status_changed`, `job:completed`, `job:failed`) provide real-time updates to the dashboard.
+**Status Transitions**: `waiting → active → working → complete/failed/blocked`
+
+The system tracks job metadata including assigned agents, prompts, start/end times, execution results, and progress percentage. WebSocket events (`job:status_changed`, `job:completed`, `job:failed`) provide real-time updates to the dashboard, allowing users to monitor agent activity in the Implementation tab.
+
+**Technical Reference**: For MCP tool verification and job management details, see `handovers/start_to_finish_agent_FLOW.md` (Phase 5: Agent Execution).
 
 ## Agent Communication Queue
 
@@ -283,7 +329,16 @@ We have an API key function in the application for future integrations but it's 
 
 # Installation
 
-Because this is a intended shared and downloadable products To flow from the install.py File is critical and must work in a multi OS environment between windows Linux and Mac OS this application should be ground up built for all three OS's with paths and functions.
+The installation process uses `install.py` as the primary entry point and must work across Windows, Linux, and macOS environments. The installer handles:
+1. PostgreSQL database setup and table creation
+2. **Alembic migrations** (Step 6.5) - including migration `6adac1467121` which adds agent template columns
+3. **First user creation** - triggers automatic seeding of 6 default agent templates per tenant
+4. API server configuration and launch
+
+**Installation Sequence**:
+- Database tables created → Migrations applied → First user created → Templates seeded → API started
+
+**Technical Reference**: For complete installation flow verification and database migration details, see `handovers/start_to_finish_agent_FLOW.md` (Phase 1: Installation & Setup).
 
 # database
 

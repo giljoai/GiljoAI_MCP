@@ -22,9 +22,9 @@ from .macos import MacOSPlatformHandler
 
 # Platform mapping
 _PLATFORM_HANDLERS: dict[str, Type[PlatformHandler]] = {
-    'Windows': WindowsPlatformHandler,
-    'Linux': LinuxPlatformHandler,
-    'Darwin': MacOSPlatformHandler,  # macOS reports as 'Darwin'
+    "Windows": WindowsPlatformHandler,
+    "Linux": LinuxPlatformHandler,
+    "Darwin": MacOSPlatformHandler,  # macOS reports as 'Darwin'
 }
 
 
@@ -51,20 +51,17 @@ def get_platform_handler() -> PlatformHandler:
     handler_class = _PLATFORM_HANDLERS.get(system)
 
     if handler_class is None:
-        supported = ', '.join(_PLATFORM_HANDLERS.keys())
-        raise RuntimeError(
-            f"Unsupported platform: {system}. "
-            f"Supported platforms: {supported}"
-        )
+        supported = ", ".join(_PLATFORM_HANDLERS.keys())
+        raise RuntimeError(f"Unsupported platform: {system}. Supported platforms: {supported}")
 
     return handler_class()
 
 
 # Public API
 __all__ = [
-    'PlatformHandler',
-    'WindowsPlatformHandler',
-    'LinuxPlatformHandler',
-    'MacOSPlatformHandler',
-    'get_platform_handler',
+    "PlatformHandler",
+    "WindowsPlatformHandler",
+    "LinuxPlatformHandler",
+    "MacOSPlatformHandler",
+    "get_platform_handler",
 ]

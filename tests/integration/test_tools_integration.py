@@ -20,6 +20,7 @@ from src.giljo_mcp.tools.agent import (
     _get_agent_health,
     _handoff_agent_work,
 )
+
 # TODO: These context functions don't exist yet - commenting out for test collection
 # from src.giljo_mcp.tools.context import (
 #     _get_project_context,
@@ -469,7 +470,9 @@ class TestToolsIntegration:
             )
 
             # Complete task
-            await _update_task_status(self.db_manager, self.tenant_manager, task["task_id"], "database_initialized", agent)
+            await _update_task_status(
+                self.db_manager, self.tenant_manager, task["task_id"], "database_initialized", agent
+            )
 
         # 5. Verification phase
         # All tasks should be completed

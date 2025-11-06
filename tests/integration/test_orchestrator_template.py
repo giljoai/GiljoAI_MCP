@@ -10,11 +10,10 @@ Tests complete workflow:
 """
 
 import pytest
-import pytest_asyncio
-from pathlib import Path
-from src.giljo_mcp.models import Product, Project, Agent, AgentTemplate
+
+from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
+from src.giljo_mcp.models import Agent, AgentTemplate, Product, Project
 from src.giljo_mcp.template_manager import get_template_manager
-from src.giljo_mcp.context_manager import get_full_config, get_filtered_config
 
 
 @pytest.fixture
@@ -27,17 +26,14 @@ def sample_product(db_session):
         config_data={
             "architecture": "FastAPI + PostgreSQL + Vue.js",
             "tech_stack": ["Python 3.11", "PostgreSQL 18", "Vue 3"],
-            "codebase_structure": {
-                "api": "REST endpoints",
-                "frontend": "Vue dashboard"
-            },
+            "codebase_structure": {"api": "REST endpoints", "frontend": "Vue dashboard"},
             "critical_features": ["Multi-tenant isolation"],
             "test_commands": ["pytest tests/"],
             "test_config": {"coverage_threshold": 80},
             "api_docs": "/docs/api.md",
             "documentation_style": "Markdown",
-            "serena_mcp_enabled": True
-        }
+            "serena_mcp_enabled": True,
+        },
     )
     db_session.add(product)
     db_session.commit()
@@ -58,7 +54,7 @@ def sample_project(db_session, sample_product):
         product_id=sample_product.id,
         name="Template Test Project",
         mission="Test orchestrator template integration",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     db_session.commit()
@@ -75,19 +71,21 @@ class TestOrchestratorTemplateExists:
 
     def test_orchestrator_template_exists(self, db_session):
         """Test that default orchestrator template exists"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         assert template is not None, "Default orchestrator template not found"
 
     def test_orchestrator_template_properties(self, db_session):
         """Test orchestrator template has correct properties"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         assert template.role == "orchestrator"
         assert template.is_active is True
@@ -100,30 +98,33 @@ class TestOrchestratorTemplateContent:
 
     def test_template_contains_30_80_10_principle(self, db_session):
         """Test template contains 30-80-10 principle"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content.lower()
         assert "30-80-10" in content or "30/80/10" in content
 
     def test_template_contains_3_tool_rule(self, db_session):
         """Test template contains 3-tool rule"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content.lower()
         assert "3-tool" in content or "3 tool" in content
 
     def test_template_contains_discovery_workflow(self, db_session):
         """Test template contains discovery workflow"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content.lower()
 
@@ -134,10 +135,11 @@ class TestOrchestratorTemplateContent:
 
     def test_template_contains_delegation_rules(self, db_session):
         """Test template contains delegation rules"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content.lower()
 
@@ -147,10 +149,11 @@ class TestOrchestratorTemplateContent:
 
     def test_template_contains_closure_requirements(self, db_session):
         """Test template contains project closure requirements"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content.lower()
 
@@ -160,10 +163,11 @@ class TestOrchestratorTemplateContent:
 
     def test_template_mentions_config_data(self, db_session):
         """Test template mentions config_data or product settings"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content.lower()
 
@@ -182,7 +186,7 @@ class TestOrchestratorAgentCreation:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="active"
+            status="active",
         )
 
         db_session.add(orchestrator)
@@ -205,7 +209,7 @@ class TestOrchestratorAgentCreation:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(orchestrator)
         db_session.commit()
@@ -250,7 +254,7 @@ class TestWorkerAgentSpawning:
             project_id=sample_project.id,
             name="implementer-dev-1",
             role="implementer",
-            status="active"
+            status="active",
         )
 
         tester = Agent(
@@ -258,7 +262,7 @@ class TestWorkerAgentSpawning:
             project_id=sample_project.id,
             name="tester-qa-1",
             role="tester",
-            status="active"
+            status="active",
         )
 
         db_session.add_all([implementer, tester])
@@ -293,7 +297,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(orchestrator)
         db_session.commit()
@@ -311,7 +315,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="implementer-1",
             role="implementer",
-            status="active"
+            status="active",
         )
         db_session.add(worker)
         db_session.commit()
@@ -337,7 +341,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="database_initialized"
+            status="database_initialized",
         )
 
         # Phase 2: Implementation
@@ -346,7 +350,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="implementer-1",
             role="implementer",
-            status="database_initialized"
+            status="database_initialized",
         )
 
         # Phase 3: Testing
@@ -355,7 +359,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="tester-1",
             role="tester",
-            status="active"
+            status="active",
         )
 
         db_session.add_all([orchestrator, implementer, tester])
@@ -392,10 +396,11 @@ class TestTemplateManagerIntegration:
         template_mgr = get_template_manager()
 
         # Try to get orchestrator template
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         assert template is not None
         assert template.template_content is not None
@@ -403,10 +408,11 @@ class TestTemplateManagerIntegration:
 
     def test_template_variable_substitution(self, db_session, sample_project):
         """Test that template variables can be substituted"""
-        template = db_session.query(AgentTemplate).filter(
-            AgentTemplate.name == "orchestrator",
-            AgentTemplate.is_default == True
-        ).first()
+        template = (
+            db_session.query(AgentTemplate)
+            .filter(AgentTemplate.name == "orchestrator", AgentTemplate.is_default == True)
+            .first()
+        )
 
         content = template.template_content
 

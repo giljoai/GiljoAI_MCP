@@ -20,15 +20,16 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
+
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import (
+    MCPContextIndex,
     Product,
     Project,
     Task,
-    MCPContextIndex,
     VisionDocument,
 )
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
@@ -45,10 +46,7 @@ def event_loop():
 @pytest.fixture(scope="module")
 async def db_manager():
     """Create test database manager"""
-    db_manager = DatabaseManager(
-        PostgreSQLTestHelper.get_test_db_url(async_driver=False),
-        is_async=True
-    )
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
     await db_manager.create_tables_async()
     yield db_manager
     await db_manager.close_async()
@@ -72,9 +70,7 @@ async def test_product_with_relations(db_manager, tenant_key):
     async with db_manager.get_session_async() as db:
         # Create product
         product = Product(
-            name="Test Product for Deletion",
-            description="Has many related records",
-            tenant_key=tenant_key
+            name="Test Product for Deletion", description="Has many related records", tenant_key=tenant_key
         )
         db.add(product)
         await db.flush()  # Get product.id
@@ -86,7 +82,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             alias="ABC123",
             product_id=product.id,
             tenant_key=tenant_key,
-            status="active"
+            status="active",
         )
         project2 = Project(
             name="Project 2",
@@ -94,7 +90,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             alias="DEF456",
             product_id=product.id,
             tenant_key=tenant_key,
-            status="completed"
+            status="completed",
         )
         db.add_all([project1, project2])
         await db.flush()
@@ -106,7 +102,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             product_id=product.id,
             project_id=project1.id,
             tenant_key=tenant_key,
-            status="pending"
+            status="pending",
         )
         task2 = Task(
             title="Task 2",
@@ -114,7 +110,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             product_id=product.id,
             project_id=project2.id,
             tenant_key=tenant_key,
-            status="completed"
+            status="completed",
         )
         db.add_all([task1, task2])
         await db.flush()
@@ -127,7 +123,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             document_type="file",
             content="# Vision Document\n\nTest content",
             display_order=1,
-            chunked=True
+            chunked=True,
         )
         db.add(vision_doc)
         await db.flush()
@@ -140,7 +136,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             content="Chunk 1 content",
             keywords=["test", "chunk"],
             chunk_order=1,
-            token_count=50
+            token_count=50,
         )
         chunk2 = MCPContextIndex(
             product_id=product.id,
@@ -149,7 +145,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             content="Chunk 2 content",
             keywords=["test", "another"],
             chunk_order=2,
-            token_count=45
+            token_count=45,
         )
         db.add_all([chunk1, chunk2])
 
@@ -239,7 +235,7 @@ async def test_product_deletion_with_tasks(db_manager, tenant_key, test_product_
         try:
             await db.commit()
             deletion_succeeded = True
-        except Exception as e:
+        except Exception:
             deletion_succeeded = False
             await db.rollback()
 
@@ -279,7 +275,7 @@ async def test_product_deletion_with_context_chunks(db_manager, tenant_key, test
         try:
             await db.commit()
             deletion_succeeded = True
-        except Exception as e:
+        except Exception:
             deletion_succeeded = False
             await db.rollback()
 

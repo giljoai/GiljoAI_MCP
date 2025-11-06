@@ -5,16 +5,13 @@ Tests MCPContextIndex, MCPContextSummary, and MCPAgentJob models
 with focus on tenant isolation and data integrity.
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import tempfile
-import os
 
-from src.giljo_mcp.models import (
-    Base, Product, MCPContextIndex, MCPContextSummary, MCPAgentJob
-)
+from src.giljo_mcp.models import Base, MCPAgentJob, MCPContextIndex, MCPContextSummary, Product
 
 
 class TestMCPContextIndex:
@@ -37,7 +34,7 @@ class TestMCPContextIndex:
             id="test-product-id",
             tenant_key="test-tenant",
             name="Test Product",
-            description="Test product for context indexing"
+            description="Test product for context indexing",
         )
         db_session.add(product)
         db_session.commit()
@@ -51,7 +48,7 @@ class TestMCPContextIndex:
             content="This is test content for the vision document.",
             keywords=["test", "vision", "document"],
             token_count=150,
-            chunk_order=1
+            chunk_order=1,
         )
 
         db_session.add(context_index)
@@ -78,7 +75,7 @@ class TestMCPContextIndex:
             keywords=["architecture", "technical", "specifications"],
             token_count=200,
             chunk_order=2,
-            summary="Technical specs for system architecture"
+            summary="Technical specs for system architecture",
         )
 
         db_session.add(context_index)
@@ -96,7 +93,7 @@ class TestMCPContextIndex:
             content="Content for tenant A",
             keywords=["tenant-a"],
             token_count=100,
-            chunk_order=1
+            chunk_order=1,
         )
 
         # Create context for tenant B
@@ -106,24 +103,20 @@ class TestMCPContextIndex:
             content="Content for tenant B",
             keywords=["tenant-b"],
             token_count=120,
-            chunk_order=1
+            chunk_order=1,
         )
 
         db_session.add_all([context_a, context_b])
         db_session.commit()
 
         # Query for tenant A only
-        tenant_a_contexts = db_session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == "tenant-a"
-        ).all()
+        tenant_a_contexts = db_session.query(MCPContextIndex).filter(MCPContextIndex.tenant_key == "tenant-a").all()
 
         assert len(tenant_a_contexts) == 1
         assert tenant_a_contexts[0].content == "Content for tenant A"
 
         # Query for tenant B only
-        tenant_b_contexts = db_session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == "tenant-b"
-        ).all()
+        tenant_b_contexts = db_session.query(MCPContextIndex).filter(MCPContextIndex.tenant_key == "tenant-b").all()
 
         assert len(tenant_b_contexts) == 1
         assert tenant_b_contexts[0].content == "Content for tenant B"
@@ -136,7 +129,7 @@ class TestMCPContextIndex:
             content="Test content",
             keywords=["test"],
             token_count=50,
-            chunk_order=1
+            chunk_order=1,
         )
 
         db_session.add(context_index)
@@ -167,7 +160,7 @@ class TestMCPContextSummary:
             id="test-product-id",
             tenant_key="test-tenant",
             name="Test Product",
-            description="Test product for context summarization"
+            description="Test product for context summarization",
         )
         db_session.add(product)
         db_session.commit()
@@ -182,7 +175,7 @@ class TestMCPContextSummary:
             condensed_mission="Create summarized version of content",
             full_token_count=1000,
             condensed_token_count=300,
-            reduction_percent=70.0
+            reduction_percent=70.0,
         )
 
         db_session.add(context_summary)
@@ -205,8 +198,8 @@ class TestMCPContextSummary:
         # Test various reduction scenarios
         test_cases = [
             (1000, 300, 70.0),  # 70% reduction
-            (500, 250, 50.0),   # 50% reduction
-            (800, 200, 75.0),   # 75% reduction
+            (500, 250, 50.0),  # 50% reduction
+            (800, 200, 75.0),  # 75% reduction
             (1000, 1000, 0.0),  # No reduction
         ]
 
@@ -220,7 +213,7 @@ class TestMCPContextSummary:
                 condensed_mission=f"Condensed to {condensed_tokens} tokens",
                 full_token_count=full_tokens,
                 condensed_token_count=condensed_tokens,
-                reduction_percent=reduction_percent
+                reduction_percent=reduction_percent,
             )
 
             assert context_summary.reduction_percent == expected_percent
@@ -235,7 +228,7 @@ class TestMCPContextSummary:
             condensed_mission="Mission for tenant A",
             full_token_count=500,
             condensed_token_count=150,
-            reduction_percent=70.0
+            reduction_percent=70.0,
         )
 
         # Create summary for tenant B
@@ -246,24 +239,24 @@ class TestMCPContextSummary:
             condensed_mission="Mission for tenant B",
             full_token_count=600,
             condensed_token_count=180,
-            reduction_percent=70.0
+            reduction_percent=70.0,
         )
 
         db_session.add_all([summary_a, summary_b])
         db_session.commit()
 
         # Query for tenant A only
-        tenant_a_summaries = db_session.query(MCPContextSummary).filter(
-            MCPContextSummary.tenant_key == "tenant-a"
-        ).all()
+        tenant_a_summaries = (
+            db_session.query(MCPContextSummary).filter(MCPContextSummary.tenant_key == "tenant-a").all()
+        )
 
         assert len(tenant_a_summaries) == 1
         assert tenant_a_summaries[0].condensed_mission == "Mission for tenant A"
 
         # Query for tenant B only
-        tenant_b_summaries = db_session.query(MCPContextSummary).filter(
-            MCPContextSummary.tenant_key == "tenant-b"
-        ).all()
+        tenant_b_summaries = (
+            db_session.query(MCPContextSummary).filter(MCPContextSummary.tenant_key == "tenant-b").all()
+        )
 
         assert len(tenant_b_summaries) == 1
         assert tenant_b_summaries[0].condensed_mission == "Mission for tenant B"
@@ -293,8 +286,8 @@ class TestMCPAgentJob:
             context_chunks=["chunk-1", "chunk-2", "chunk-3"],
             messages=[
                 {"type": "info", "content": "Job created", "timestamp": "2025-01-01T00:00:00Z"},
-                {"type": "update", "content": "Job assigned", "timestamp": "2025-01-01T00:01:00Z"}
-            ]
+                {"type": "update", "content": "Job assigned", "timestamp": "2025-01-01T00:01:00Z"},
+            ],
         )
 
         db_session.add(agent_job)
@@ -317,10 +310,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_status_workflow(self, db_session):
         """Test job status transitions."""
         agent_job = MCPAgentJob(
-            tenant_key="test-tenant",
-            agent_type="analyzer",
-            mission="Analyze codebase structure",
-            status="pending"
+            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze codebase structure", status="pending"
         )
 
         db_session.add(agent_job)
@@ -353,36 +343,26 @@ class TestMCPAgentJob:
         """Test tenant isolation in agent jobs."""
         # Create job for tenant A
         job_a = MCPAgentJob(
-            tenant_key="tenant-a",
-            agent_type="implementer",
-            mission="Implement feature for tenant A",
-            status="pending"
+            tenant_key="tenant-a", agent_type="implementer", mission="Implement feature for tenant A", status="pending"
         )
 
         # Create job for tenant B
         job_b = MCPAgentJob(
-            tenant_key="tenant-b",
-            agent_type="tester",
-            mission="Test feature for tenant B",
-            status="active"
+            tenant_key="tenant-b", agent_type="tester", mission="Test feature for tenant B", status="active"
         )
 
         db_session.add_all([job_a, job_b])
         db_session.commit()
 
         # Query for tenant A only
-        tenant_a_jobs = db_session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == "tenant-a"
-        ).all()
+        tenant_a_jobs = db_session.query(MCPAgentJob).filter(MCPAgentJob.tenant_key == "tenant-a").all()
 
         assert len(tenant_a_jobs) == 1
         assert tenant_a_jobs[0].agent_type == "implementer"
         assert tenant_a_jobs[0].mission.endswith("tenant A")
 
         # Query for tenant B only
-        tenant_b_jobs = db_session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == "tenant-b"
-        ).all()
+        tenant_b_jobs = db_session.query(MCPAgentJob).filter(MCPAgentJob.tenant_key == "tenant-b").all()
 
         assert len(tenant_b_jobs) == 1
         assert tenant_b_jobs[0].agent_type == "tester"
@@ -391,10 +371,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_message_array(self, db_session):
         """Test agent job message array functionality."""
         agent_job = MCPAgentJob(
-            tenant_key="test-tenant",
-            agent_type="orchestrator",
-            mission="Test message handling",
-            status="active"
+            tenant_key="test-tenant", agent_type="orchestrator", mission="Test message handling", status="active"
         )
 
         db_session.add(agent_job)
@@ -407,7 +384,7 @@ class TestMCPAgentJob:
         messages = [
             {"type": "start", "content": "Job started", "timestamp": "2025-01-01T00:00:00Z"},
             {"type": "progress", "content": "50% complete", "timestamp": "2025-01-01T00:30:00Z"},
-            {"type": "complete", "content": "Job finished", "timestamp": "2025-01-01T01:00:00Z"}
+            {"type": "complete", "content": "Job finished", "timestamp": "2025-01-01T01:00:00Z"},
         ]
 
         agent_job.messages = messages
@@ -422,10 +399,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_context_chunks_array(self, db_session):
         """Test agent job context chunks array functionality."""
         agent_job = MCPAgentJob(
-            tenant_key="test-tenant",
-            agent_type="analyzer",
-            mission="Analyze with context",
-            status="pending"
+            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze with context", status="pending"
         )
 
         db_session.add(agent_job)
@@ -468,7 +442,7 @@ class TestProductHybridVisionStorage:
             description="Test file-based vision",
             vision_path="/path/to/vision.md",
             vision_type="file",
-            chunked=False
+            chunked=False,
         )
 
         # Test inline vision storage
@@ -479,7 +453,7 @@ class TestProductHybridVisionStorage:
             description="Test inline vision",
             vision_document="This is inline vision content",
             vision_type="inline",
-            chunked=True
+            chunked=True,
         )
 
         # Test no vision
@@ -489,7 +463,7 @@ class TestProductHybridVisionStorage:
             name="Product without Vision",
             description="Test no vision",
             vision_type="none",
-            chunked=False
+            chunked=False,
         )
 
         db_session.add_all([product_file, product_inline, product_none])
@@ -523,7 +497,7 @@ class TestProductHybridVisionStorage:
                 id=f"product-{vision_type}",
                 tenant_key="test-tenant",
                 name=f"Product {vision_type}",
-                vision_type=vision_type
+                vision_type=vision_type,
             )
             db_session.add(product)
 

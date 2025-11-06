@@ -6,9 +6,6 @@ Tests Handover 0047 - Async Vision Document Chunking.
 """
 
 import io
-import tempfile
-import uuid
-from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -18,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import MCPContextIndex, Product, VisionDocument
-from tests.fixtures.vision_document_fixtures import VisionDocumentTestData, test_product
+from tests.fixtures.vision_document_fixtures import VisionDocumentTestData
 
 
 @pytest_asyncio.fixture
@@ -53,14 +50,12 @@ class TestVisionUploadWithAutoChunk:
         test_product: Product,
     ):
         """Test uploading vision document with auto_chunk=true creates chunks"""
-        
+
         # Create test vision content
         content = VisionDocumentTestData.generate_markdown_content(5000)
-        
+
         # Create multipart form data
-        files = {
-            "vision_file": ("test_vision.md", io.BytesIO(content.encode()), "text/markdown")
-        }
+        files = {"vision_file": ("test_vision.md", io.BytesIO(content.encode()), "text/markdown")}
         data = {
             "product_id": test_product.id,
             "document_name": "Test Vision Upload",
@@ -78,7 +73,7 @@ class TestVisionUploadWithAutoChunk:
 
         # Verify HTTP 201 Created
         assert response.status_code == status.HTTP_201_CREATED
-        
+
         response_data = response.json()
         doc_id = response_data["id"]
 
@@ -95,9 +90,7 @@ class TestVisionUploadWithAutoChunk:
         assert doc.chunked_at is not None
 
         # Verify chunks created in mcp_context_index
-        stmt = select(MCPContextIndex).where(
-            MCPContextIndex.vision_document_id == doc_id
-        )
+        stmt = select(MCPContextIndex).where(MCPContextIndex.vision_document_id == doc_id)
         result = await db_session.execute(stmt)
         chunks = result.scalars().all()
 
@@ -122,12 +115,10 @@ class TestVisionUploadWithAutoChunk:
         test_product: Product,
     ):
         """Test uploading with auto_chunk=false does not create chunks"""
-        
+
         content = VisionDocumentTestData.generate_markdown_content(3000)
-        
-        files = {
-            "vision_file": ("no_chunk_vision.md", io.BytesIO(content.encode()), "text/markdown")
-        }
+
+        files = {"vision_file": ("no_chunk_vision.md", io.BytesIO(content.encode()), "text/markdown")}
         data = {
             "product_id": test_product.id,
             "document_name": "No Auto Chunk",
@@ -143,7 +134,7 @@ class TestVisionUploadWithAutoChunk:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        
+
         doc_id = response.json()["id"]
 
         # Verify document created but NOT chunked
@@ -157,9 +148,7 @@ class TestVisionUploadWithAutoChunk:
         assert doc.chunked_at is None
 
         # Verify no chunks in database
-        stmt = select(MCPContextIndex).where(
-            MCPContextIndex.vision_document_id == doc_id
-        )
+        stmt = select(MCPContextIndex).where(MCPContextIndex.vision_document_id == doc_id)
         result = await db_session.execute(stmt)
         chunks = result.scalars().all()
 
@@ -174,13 +163,11 @@ class TestVisionUploadWithAutoChunk:
         test_product: Product,
     ):
         """Test uploading large document creates multiple chunks"""
-        
+
         # Create 50K token document (should create multiple chunks)
         content = VisionDocumentTestData.generate_markdown_content(50000)
-        
-        files = {
-            "vision_file": ("large_vision.md", io.BytesIO(content.encode()), "text/markdown")
-        }
+
+        files = {"vision_file": ("large_vision.md", io.BytesIO(content.encode()), "text/markdown")}
         data = {
             "product_id": test_product.id,
             "document_name": "Large Vision Document",
@@ -196,7 +183,7 @@ class TestVisionUploadWithAutoChunk:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        
+
         doc_id = response.json()["id"]
 
         # Verify document
@@ -209,9 +196,11 @@ class TestVisionUploadWithAutoChunk:
         assert doc.total_tokens >= 40000  # Approximately 50K tokens
 
         # Verify chunks
-        stmt = select(MCPContextIndex).where(
-            MCPContextIndex.vision_document_id == doc_id
-        ).order_by(MCPContextIndex.chunk_order)
+        stmt = (
+            select(MCPContextIndex)
+            .where(MCPContextIndex.vision_document_id == doc_id)
+            .order_by(MCPContextIndex.chunk_order)
+        )
         result = await db_session.execute(stmt)
         chunks = result.scalars().all()
 
@@ -234,13 +223,11 @@ class TestVisionRechunkEndpoint:
         test_product: Product,
     ):
         """Test rechunking deletes old chunks and creates new ones"""
-        
+
         # First, upload a document with chunks
         content = VisionDocumentTestData.generate_markdown_content(5000)
-        
-        files = {
-            "vision_file": ("rechunk_test.md", io.BytesIO(content.encode()), "text/markdown")
-        }
+
+        files = {"vision_file": ("rechunk_test.md", io.BytesIO(content.encode()), "text/markdown")}
         data = {
             "product_id": test_product.id,
             "document_name": "Rechunk Test",
@@ -254,13 +241,11 @@ class TestVisionRechunkEndpoint:
             data=data,
             headers=auth_headers,
         )
-        
+
         doc_id = upload_response.json()["id"]
 
         # Verify initial chunks
-        stmt = select(MCPContextIndex).where(
-            MCPContextIndex.vision_document_id == doc_id
-        )
+        stmt = select(MCPContextIndex).where(MCPContextIndex.vision_document_id == doc_id)
         result = await db_session.execute(stmt)
         initial_chunks = result.scalars().all()
         initial_chunk_count = len(initial_chunks)
@@ -275,15 +260,13 @@ class TestVisionRechunkEndpoint:
         )
 
         assert rechunk_response.status_code == status.HTTP_200_OK
-        
+
         rechunk_data = rechunk_response.json()
         assert rechunk_data["success"] is True
         assert rechunk_data["old_chunks_deleted"] == initial_chunk_count
 
         # Verify new chunks created
-        stmt = select(MCPContextIndex).where(
-            MCPContextIndex.vision_document_id == doc_id
-        )
+        stmt = select(MCPContextIndex).where(MCPContextIndex.vision_document_id == doc_id)
         result = await db_session.execute(stmt)
         new_chunks = result.scalars().all()
         new_chunk_ids = {chunk.chunk_id for chunk in new_chunks}
@@ -299,7 +282,7 @@ class TestVisionRechunkEndpoint:
         auth_headers: dict,
     ):
         """Test rechunking non-existent document returns 404"""
-        
+
         response = await api_client.post(
             "/api/vision-documents/nonexistent-id/rechunk",
             headers=auth_headers,
@@ -320,11 +303,9 @@ class TestChunkingErrorHandling:
         test_product: Product,
     ):
         """Test that chunking failures rollback the entire transaction"""
-        
+
         # Upload empty file (should fail chunking)
-        files = {
-            "vision_file": ("empty.md", io.BytesIO(b""), "text/markdown")
-        }
+        files = {"vision_file": ("empty.md", io.BytesIO(b""), "text/markdown")}
         data = {
             "product_id": test_product.id,
             "document_name": "Empty File",
@@ -364,11 +345,10 @@ class TestChunkingErrorHandling:
         test_product: Product,
     ):
         """Test chunking handles file not found gracefully"""
-        
+
         # This test would require manipulating file system
         # to delete file after upload but before chunking
         # Skipping for now as it's complex to set up
-        pass
 
 
 class TestCrossPlatformPathHandling:
@@ -383,12 +363,10 @@ class TestCrossPlatformPathHandling:
         test_product: Product,
     ):
         """Test that uploaded files store paths with forward slashes"""
-        
+
         content = VisionDocumentTestData.generate_markdown_content(1000)
-        
-        files = {
-            "vision_file": ("path_test.md", io.BytesIO(content.encode()), "text/markdown")
-        }
+
+        files = {"vision_file": ("path_test.md", io.BytesIO(content.encode()), "text/markdown")}
         data = {
             "product_id": test_product.id,
             "document_name": "Path Test",
@@ -425,8 +403,7 @@ class TestMultiTenantIsolation:
         db_session: AsyncSession,
     ):
         """Test chunks are isolated by tenant_key"""
-        
+
         # This test requires creating two different tenants
         # and verifying they cannot access each other's chunks
         # Implementation depends on tenant creation logic
-        pass

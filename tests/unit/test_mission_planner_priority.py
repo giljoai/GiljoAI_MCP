@@ -15,13 +15,14 @@ Tests cover:
 Following TDD principles: Tests written BEFORE implementation.
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
-from src.giljo_mcp.mission_planner import MissionPlanner
+import pytest
+
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-from src.giljo_mcp.orchestration_types import RequirementAnalysis, AgentConfig
+from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.orchestration_types import AgentConfig, RequirementAnalysis
 
 
 class TestMissionPlannerPriority:
@@ -63,22 +64,20 @@ class TestMissionPlannerPriority:
                 "backend": ["FastAPI", "SQLAlchemy"],
                 "frontend": ["Vue 3", "Vuetify"],
                 "database": ["PostgreSQL 18"],
-                "infrastructure": ["Docker", "Kubernetes", "AWS"]
+                "infrastructure": ["Docker", "Kubernetes", "AWS"],
             },
             "architecture": {
                 "pattern": "Microservices with event-driven design",
                 "api_style": "RESTful with OpenAPI 3.0",
                 "design_patterns": ["Repository Pattern", "Factory Pattern", "Observer Pattern"],
-                "notes": "Multi-tenant architecture with strict data isolation. All services communicate via message queue."
+                "notes": "Multi-tenant architecture with strict data isolation. All services communicate via message queue.",
             },
-            "features": {
-                "core": ["User Authentication", "Multi-tenant Support", "Real-time Updates"]
-            },
+            "features": {"core": ["User Authentication", "Multi-tenant Support", "Real-time Updates"]},
             "test_config": {
                 "strategy": "Test-Driven Development (TDD) with pytest",
                 "frameworks": ["pytest", "pytest-asyncio", "pytest-cov"],
-                "coverage_target": 90
-            }
+                "coverage_target": 90,
+            },
         }
 
         return product
@@ -100,17 +99,9 @@ class TestMissionPlannerPriority:
 
         # Only Priority 1 critical fields
         product.config_data = {
-            "tech_stack": {
-                "languages": ["Python"],
-                "backend": ["FastAPI"],
-                "frontend": ["Vue 3"]
-            },
-            "architecture": {
-                "pattern": "Monolithic"
-            },
-            "features": {
-                "core": ["Basic CRUD"]
-            }
+            "tech_stack": {"languages": ["Python"], "backend": ["FastAPI"], "frontend": ["Vue 3"]},
+            "architecture": {"pattern": "Monolithic"},
+            "features": {"core": ["Basic CRUD"]},
         }
 
         return product
@@ -153,7 +144,7 @@ class TestMissionPlannerPriority:
             tech_stack=["Python", "FastAPI"],
             keywords=["api", "backend"],
             estimated_agents_needed=2,
-            feature_categories=["api"]
+            feature_categories=["api"],
         )
 
     @pytest.fixture
@@ -164,7 +155,7 @@ class TestMissionPlannerPriority:
             template_id="template_impl",
             template_content="You are an implementer",
             priority="high",
-            mission_scope="Implement features"
+            mission_scope="Implement features",
         )
 
     # Test 1: Default Priority Config Structure
@@ -213,7 +204,7 @@ class TestMissionPlannerPriority:
             "architecture.design_patterns",
             "architecture.notes",
             "test_config.frameworks",
-            "test_config.coverage_target"
+            "test_config.coverage_target",
         ]
 
         for field in expected_fields:
@@ -239,12 +230,7 @@ class TestMissionPlannerPriority:
     # Test 2: P1 Fields Always Included
     @pytest.mark.asyncio
     async def test_field_priority_in_mission(
-        self,
-        mission_planner,
-        sample_product_with_full_config,
-        sample_project,
-        sample_analysis,
-        sample_agent_config
+        self, mission_planner, sample_product_with_full_config, sample_project, sample_analysis, sample_agent_config
     ):
         """
         Test that Priority 1 fields are always included in mission content.
@@ -256,13 +242,9 @@ class TestMissionPlannerPriority:
         """
         vision_chunks = ["Test vision chunk"]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             mission = await mission_planner._generate_agent_mission(
-                sample_agent_config,
-                sample_analysis,
-                sample_product_with_full_config,
-                sample_project,
-                vision_chunks
+                sample_agent_config, sample_analysis, sample_product_with_full_config, sample_project, vision_chunks
             )
 
         # Verify mission was generated
@@ -273,10 +255,10 @@ class TestMissionPlannerPriority:
         # Note: Field labels are used in formatting (e.g., "Programming Languages" for "tech_stack.languages")
         p1_indicators = [
             "Programming Languages",  # tech_stack.languages
-            "Backend Stack",          # tech_stack.backend
-            "Frontend Stack",         # tech_stack.frontend
-            "Architecture Pattern",   # architecture.pattern
-            "Core Features"           # features.core
+            "Backend Stack",  # tech_stack.backend
+            "Frontend Stack",  # tech_stack.frontend
+            "Architecture Pattern",  # architecture.pattern
+            "Core Features",  # features.core
         ]
 
         content_lower = mission.content.lower()
@@ -289,16 +271,14 @@ class TestMissionPlannerPriority:
 
         # Verify token budget is respected
         token_budget = DEFAULT_FIELD_PRIORITY["token_budget"]
-        assert mission.token_count <= token_budget + 500, f"Mission exceeds reasonable token budget: {mission.token_count} > {token_budget + 500}"
+        assert mission.token_count <= token_budget + 500, (
+            f"Mission exceeds reasonable token budget: {mission.token_count} > {token_budget + 500}"
+        )
 
     # Test 3: P3 Fields Dropped Over Budget
     @pytest.mark.asyncio
     async def test_priority_3_fields_dropped_over_budget(
-        self,
-        mission_planner,
-        sample_project,
-        sample_analysis,
-        sample_agent_config
+        self, mission_planner, sample_project, sample_analysis, sample_agent_config
     ):
         """
         Test that Priority 3 fields are dropped when token budget is exceeded.
@@ -332,9 +312,22 @@ class TestMissionPlannerPriority:
                 # P2 field
                 "database": ["PostgreSQL 18"],
                 # P3 field - Very large to trigger budget
-                "infrastructure": ["Docker", "Kubernetes", "Terraform", "AWS ECS", "AWS RDS",
-                                  "AWS S3", "AWS Lambda", "CloudFormation", "ArgoCD",
-                                  "Prometheus", "Grafana", "Jaeger", "ELK Stack"] * 10
+                "infrastructure": [
+                    "Docker",
+                    "Kubernetes",
+                    "Terraform",
+                    "AWS ECS",
+                    "AWS RDS",
+                    "AWS S3",
+                    "AWS Lambda",
+                    "CloudFormation",
+                    "ArgoCD",
+                    "Prometheus",
+                    "Grafana",
+                    "Jaeger",
+                    "ELK Stack",
+                ]
+                * 10,
             },
             "architecture": {
                 # P1 field
@@ -342,9 +335,19 @@ class TestMissionPlannerPriority:
                 # P2 field
                 "api_style": "RESTful with OpenAPI 3.0 specification",
                 # P3 fields - Large
-                "design_patterns": ["Repository", "Factory", "Observer", "Strategy", "Adapter",
-                                   "Decorator", "Proxy", "Singleton", "Builder"] * 8,
-                "notes": "Detailed architectural notes. " * 100
+                "design_patterns": [
+                    "Repository",
+                    "Factory",
+                    "Observer",
+                    "Strategy",
+                    "Adapter",
+                    "Decorator",
+                    "Proxy",
+                    "Singleton",
+                    "Builder",
+                ]
+                * 8,
+                "notes": "Detailed architectural notes. " * 100,
             },
             "features": {
                 # P1 field
@@ -354,21 +357,26 @@ class TestMissionPlannerPriority:
                 # P2 field
                 "strategy": "Test-Driven Development",
                 # P3 fields - Large
-                "frameworks": ["pytest", "pytest-asyncio", "pytest-cov", "pytest-mock",
-                              "hypothesis", "faker", "factory-boy", "responses"] * 12,
-                "coverage_target": 90
-            }
+                "frameworks": [
+                    "pytest",
+                    "pytest-asyncio",
+                    "pytest-cov",
+                    "pytest-mock",
+                    "hypothesis",
+                    "faker",
+                    "factory-boy",
+                    "responses",
+                ]
+                * 12,
+                "coverage_target": 90,
+            },
         }
 
         vision_chunks = ["Test"]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             mission = await mission_planner._generate_agent_mission(
-                sample_agent_config,
-                sample_analysis,
-                product,
-                sample_project,
-                vision_chunks
+                sample_agent_config, sample_analysis, product, sample_project, vision_chunks
             )
 
         content = mission.content
@@ -390,22 +398,15 @@ class TestMissionPlannerPriority:
 
         # With very long vision (high base tokens), we expect some P3 fields to be skipped
         # At least 1 P3 field should be missing due to budget constraints
-        assert p3_fields_present < 4, \
-            f"Expected some P3 fields to be dropped, but {p3_fields_present}/4 are present"
+        assert p3_fields_present < 4, f"Expected some P3 fields to be dropped, but {p3_fields_present}/4 are present"
 
         # Verify token budget is respected (with some tolerance for P1 fields)
-        assert mission.token_count <= 2500, \
-            f"Mission token count {mission.token_count} exceeds reasonable limit"
+        assert mission.token_count <= 2500, f"Mission token count {mission.token_count} exceeds reasonable limit"
 
     # Test 4: Custom Priority Config
     @pytest.mark.asyncio
     async def test_custom_priority_config(
-        self,
-        mission_planner,
-        sample_product_with_full_config,
-        sample_project,
-        sample_analysis,
-        sample_agent_config
+        self, mission_planner, sample_product_with_full_config, sample_project, sample_analysis, sample_agent_config
     ):
         """
         Test that user custom priority configuration is respected.
@@ -436,8 +437,8 @@ class TestMissionPlannerPriority:
                 "architecture.design_patterns": 3,
                 "architecture.notes": 3,
                 "test_config.frameworks": 3,
-                "test_config.coverage_target": 3
-            }
+                "test_config.coverage_target": 3,
+            },
         }
 
         # Mock database query to return user with custom config
@@ -451,25 +452,27 @@ class TestMissionPlannerPriority:
 
         vision_chunks = ["Test chunk"]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             mission = await mission_planner._generate_agent_mission(
                 sample_agent_config,
                 sample_analysis,
                 sample_product_with_full_config,
                 sample_project,
                 vision_chunks,
-                user_id=user_id
+                user_id=user_id,
             )
 
         content = mission.content
 
         # Infrastructure should be present (promoted to P1 in custom config)
-        assert "docker" in content.lower() or "kubernetes" in content.lower() or "infrastructure" in content.lower(), \
+        assert "docker" in content.lower() or "kubernetes" in content.lower() or "infrastructure" in content.lower(), (
             "Custom P1 infrastructure field not found"
+        )
 
         # Custom token budget should be respected
-        assert mission.token_count <= custom_priority["token_budget"] + 500, \
+        assert mission.token_count <= custom_priority["token_budget"] + 500, (
             f"Mission exceeds custom token budget: {mission.token_count}"
+        )
 
     # Test 5: Get Field Value with Dot Notation
     def test_get_field_value(self, mission_planner):
@@ -483,16 +486,9 @@ class TestMissionPlannerPriority:
         - Invalid paths return None
         """
         config_data = {
-            "tech_stack": {
-                "languages": ["Python", "TypeScript"],
-                "backend": ["FastAPI"]
-            },
-            "architecture": {
-                "pattern": "Microservices"
-            },
-            "features": {
-                "core": ["Auth", "API"]
-            }
+            "tech_stack": {"languages": ["Python", "TypeScript"], "backend": ["FastAPI"]},
+            "architecture": {"pattern": "Microservices"},
+            "features": {"core": ["Auth", "API"]},
         }
 
         # Test valid paths
@@ -534,10 +530,7 @@ class TestMissionPlannerPriority:
         - Field labels are human-readable
         """
         # Test list formatting
-        languages_section = mission_planner._format_field(
-            "tech_stack.languages",
-            ["Python 3.11+", "TypeScript 5.0"]
-        )
+        languages_section = mission_planner._format_field("tech_stack.languages", ["Python 3.11+", "TypeScript 5.0"])
 
         assert "Programming Languages" in languages_section
         assert "- Python 3.11+" in languages_section
@@ -545,26 +538,21 @@ class TestMissionPlannerPriority:
 
         # Test string formatting
         pattern_section = mission_planner._format_field(
-            "architecture.pattern",
-            "Microservices with event-driven design"
+            "architecture.pattern", "Microservices with event-driven design"
         )
 
         assert "Architecture Pattern" in pattern_section
         assert "Microservices with event-driven design" in pattern_section
 
         # Test int/float formatting (coverage target)
-        coverage_section = mission_planner._format_field(
-            "test_config.coverage_target",
-            90
-        )
+        coverage_section = mission_planner._format_field("test_config.coverage_target", 90)
 
         assert "Coverage Target" in coverage_section
         assert "90%" in coverage_section
 
         # Test list with design patterns
         patterns_section = mission_planner._format_field(
-            "architecture.design_patterns",
-            ["Repository Pattern", "Factory Pattern"]
+            "architecture.design_patterns", ["Repository Pattern", "Factory Pattern"]
         )
 
         assert "Design Patterns" in patterns_section
@@ -579,11 +567,7 @@ class TestMissionPlannerPriority:
     # Test 7: Token Budget Enforcement
     @pytest.mark.asyncio
     async def test_token_budget_enforcement(
-        self,
-        mission_planner,
-        sample_project,
-        sample_analysis,
-        sample_agent_config
+        self, mission_planner, sample_project, sample_analysis, sample_agent_config
     ):
         """
         Test that token budget is strictly enforced.
@@ -601,34 +585,23 @@ class TestMissionPlannerPriority:
         small_product.vision_document = "Brief vision"
         small_product.chunked = False
         small_product.config_data = {
-            "tech_stack": {
-                "languages": ["Python"],
-                "backend": ["FastAPI"],
-                "frontend": ["Vue"]
-            },
-            "architecture": {
-                "pattern": "MVC"
-            },
-            "features": {
-                "core": ["CRUD"]
-            }
+            "tech_stack": {"languages": ["Python"], "backend": ["FastAPI"], "frontend": ["Vue"]},
+            "architecture": {"pattern": "MVC"},
+            "features": {"core": ["CRUD"]},
         }
 
         vision_chunks = ["Test"]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             small_mission = await mission_planner._generate_agent_mission(
-                sample_agent_config,
-                sample_analysis,
-                small_product,
-                sample_project,
-                vision_chunks
+                sample_agent_config, sample_analysis, small_product, sample_project, vision_chunks
             )
 
         # Small mission should be under budget
         token_budget = DEFAULT_FIELD_PRIORITY["token_budget"]
-        assert small_mission.token_count <= token_budget + 300, \
+        assert small_mission.token_count <= token_budget + 300, (
             f"Small mission over budget: {small_mission.token_count} > {token_budget + 300}"
+        )
 
         # Test with large config
         large_product = Mock(spec=Product)
@@ -643,36 +616,31 @@ class TestMissionPlannerPriority:
                 "backend": ["FastAPI", "Express", "Django", "Flask"],
                 "frontend": ["Vue", "React", "Angular"],
                 "database": ["PostgreSQL", "Redis", "MongoDB"],
-                "infrastructure": ["Docker", "Kubernetes", "Terraform", "AWS", "GCP"]
+                "infrastructure": ["Docker", "Kubernetes", "Terraform", "AWS", "GCP"],
             },
             "architecture": {
                 "pattern": "Microservices with event-driven design and CQRS",
                 "api_style": "RESTful + GraphQL + gRPC",
                 "design_patterns": ["Repository", "Factory", "Observer", "Strategy", "Adapter"],
-                "notes": "Complex multi-tenant architecture. " * 50
+                "notes": "Complex multi-tenant architecture. " * 50,
             },
-            "features": {
-                "core": ["Auth", "Multi-tenant", "Real-time", "Analytics", "Reporting"]
-            },
+            "features": {"core": ["Auth", "Multi-tenant", "Real-time", "Analytics", "Reporting"]},
             "test_config": {
                 "strategy": "TDD with comprehensive testing",
                 "frameworks": ["pytest", "jest", "cypress", "k6", "selenium"],
-                "coverage_target": 95
-            }
+                "coverage_target": 95,
+            },
         }
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             large_mission = await mission_planner._generate_agent_mission(
-                sample_agent_config,
-                sample_analysis,
-                large_product,
-                sample_project,
-                vision_chunks
+                sample_agent_config, sample_analysis, large_product, sample_project, vision_chunks
             )
 
         # Large mission should still respect budget (may exceed slightly due to P1 inclusion)
-        assert large_mission.token_count <= token_budget + 500, \
+        assert large_mission.token_count <= token_budget + 500, (
             f"Large mission significantly over budget: {large_mission.token_count} > {token_budget + 500}"
+        )
 
         # Verify token count is calculated
         assert large_mission.token_count > 0
@@ -681,12 +649,7 @@ class TestMissionPlannerPriority:
     # Test 8: Backward Compatibility
     @pytest.mark.asyncio
     async def test_backward_compatibility(
-        self,
-        mission_planner,
-        sample_product_no_config,
-        sample_project,
-        sample_analysis,
-        sample_agent_config
+        self, mission_planner, sample_product_no_config, sample_project, sample_analysis, sample_agent_config
     ):
         """
         Test backward compatibility with products lacking config_data.
@@ -699,13 +662,9 @@ class TestMissionPlannerPriority:
         """
         vision_chunks = ["Test vision"]
 
-        with patch.object(mission_planner, '_filter_vision_for_role', return_value=vision_chunks):
+        with patch.object(mission_planner, "_filter_vision_for_role", return_value=vision_chunks):
             mission = await mission_planner._generate_agent_mission(
-                sample_agent_config,
-                sample_analysis,
-                sample_product_no_config,
-                sample_project,
-                vision_chunks
+                sample_agent_config, sample_analysis, sample_product_no_config, sample_project, vision_chunks
             )
 
         # Verify mission was generated successfully
@@ -724,8 +683,9 @@ class TestMissionPlannerPriority:
         assert "Backend Stack" not in mission.content
 
         # Token count should be reasonable (smaller without config)
-        assert mission.token_count < 1500, \
+        assert mission.token_count < 1500, (
             f"Mission without config has unexpectedly high token count: {mission.token_count}"
+        )
 
     # Additional helper method tests
 
@@ -781,19 +741,13 @@ class TestMissionPlannerPriority:
         token_budget = 1500
 
         content, tokens = mission_planner._build_config_data_section(
-            sample_product_no_config,
-            priority_config,
-            token_budget
+            sample_product_no_config, priority_config, token_budget
         )
 
         assert content == ""
         assert tokens == 0
 
-    def test_build_config_data_section_respects_priority(
-        self,
-        mission_planner,
-        sample_product_with_full_config
-    ):
+    def test_build_config_data_section_respects_priority(self, mission_planner, sample_product_with_full_config):
         """
         Test _build_config_data_section() processes fields in priority order.
         """
@@ -801,9 +755,7 @@ class TestMissionPlannerPriority:
         token_budget = 10000  # Large budget to include all fields
 
         content, tokens = mission_planner._build_config_data_section(
-            sample_product_with_full_config,
-            priority_config,
-            token_budget
+            sample_product_with_full_config, priority_config, token_budget
         )
 
         # Should include config header
@@ -818,11 +770,7 @@ class TestMissionPlannerPriority:
 
     @pytest.mark.asyncio
     async def test_generate_missions_passes_user_id(
-        self,
-        mission_planner,
-        sample_product_with_full_config,
-        sample_project,
-        sample_analysis
+        self, mission_planner, sample_product_with_full_config, sample_project, sample_analysis
     ):
         """
         Test that generate_missions() passes user_id to _generate_agent_mission().
@@ -837,7 +785,7 @@ class TestMissionPlannerPriority:
                 template_id="t1",
                 template_content="Template",
                 priority="high",
-                mission_scope="Implement"
+                mission_scope="Implement",
             )
         ]
 
@@ -854,18 +802,14 @@ class TestMissionPlannerPriority:
         mission_planner.db_manager.session.query.return_value = mock_query
 
         # Mock context repository
-        with patch('src.giljo_mcp.mission_planner.ContextRepository') as MockContextRepo:
+        with patch("src.giljo_mcp.mission_planner.ContextRepository") as MockContextRepo:
             mock_repo = MockContextRepo.return_value
             mock_repo.search_chunks = Mock(return_value=[])
 
             # Mock _store_token_metrics to avoid database calls
-            with patch.object(mission_planner, '_store_token_metrics', new_callable=AsyncMock):
+            with patch.object(mission_planner, "_store_token_metrics", new_callable=AsyncMock):
                 missions = await mission_planner.generate_missions(
-                    sample_analysis,
-                    sample_product_with_full_config,
-                    sample_project,
-                    agent_configs,
-                    user_id=user_id
+                    sample_analysis, sample_product_with_full_config, sample_project, agent_configs, user_id=user_id
                 )
 
         # Verify mission was generated

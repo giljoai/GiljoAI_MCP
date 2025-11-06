@@ -44,11 +44,11 @@ class DatabaseInstaller:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.pg_host = settings.get('pg_host', 'localhost')
-        self.pg_port = settings.get('pg_port', 5432)
-        self.pg_password = settings.get('pg_password')
-        self.pg_user = settings.get('pg_user', 'postgres')
-        self.db_name = 'giljo_mcp'
+        self.pg_host = settings.get("pg_host", "localhost")
+        self.pg_port = settings.get("pg_port", 5432)
+        self.pg_password = settings.get("pg_password")
+        self.pg_user = settings.get("pg_user", "postgres")
+        self.db_name = "giljo_mcp"
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Generated credentials
@@ -62,14 +62,14 @@ class DatabaseInstaller:
 
     def setup(self) -> Dict[str, Any]:
         """Main database setup workflow"""
-        result = {'success': False, 'errors': [], 'warnings': []}
+        result = {"success": False, "errors": [], "warnings": []}
 
         try:
             # Check PostgreSQL availability
             self.logger.info("Checking PostgreSQL connection...")
             if not check_postgresql_connection(self.pg_host, self.pg_port):
-                result['errors'].append("Cannot connect to PostgreSQL")
-                result['postgresql_guide'] = self.get_postgresql_install_guide()
+                result["errors"].append("Cannot connect to PostgreSQL")
+                result["postgresql_guide"] = self.get_postgresql_install_guide()
                 return result
 
             # Check psycopg2 availability
@@ -80,28 +80,30 @@ class DatabaseInstaller:
             # Detect and validate PostgreSQL version
             self.logger.info("Detecting PostgreSQL version...")
             version_result = self.detect_postgresql_version()
-            if not version_result['success']:
-                result['warnings'].append(f"Could not detect PostgreSQL version: {version_result.get('error', 'Unknown')}")
+            if not version_result["success"]:
+                result["warnings"].append(
+                    f"Could not detect PostgreSQL version: {version_result.get('error', 'Unknown')}"
+                )
             else:
-                self.pg_version = version_result['version']
-                self.pg_version_string = version_result['version_string']
+                self.pg_version = version_result["version"]
+                self.pg_version_string = version_result["version_string"]
                 self.logger.info(f"Detected PostgreSQL {self.pg_version_string}")
 
                 # Validate version compatibility
                 if self.pg_version < self.MIN_PG_VERSION:
-                    result['errors'].append(
+                    result["errors"].append(
                         f"PostgreSQL {self.pg_version} is not supported. "
                         f"Minimum version: {self.MIN_PG_VERSION}. "
                         f"Please upgrade to PostgreSQL {self.RECOMMENDED_VERSION}."
                     )
                     return result
                 elif self.pg_version > self.MAX_PG_VERSION:
-                    result['warnings'].append(
+                    result["warnings"].append(
                         f"PostgreSQL {self.pg_version} is newer than tested version {self.MAX_PG_VERSION}. "
                         "Installation will proceed but compatibility is not guaranteed."
                     )
                 elif self.pg_version < self.RECOMMENDED_VERSION:
-                    result['warnings'].append(
+                    result["warnings"].append(
                         f"PostgreSQL {self.pg_version} is supported but version {self.RECOMMENDED_VERSION} "
                         "is recommended for best compatibility."
                     )
@@ -110,10 +112,10 @@ class DatabaseInstaller:
             self.logger.info("Attempting direct database creation...")
             direct_result = self.create_database_direct()
 
-            if direct_result['success']:
+            if direct_result["success"]:
                 self.logger.info("Database created successfully via direct connection")
                 result = direct_result
-                result['warnings'] = result.get('warnings', [])
+                result["warnings"] = result.get("warnings", [])
             else:
                 # Need elevation - generate fallback scripts
                 self.logger.info("Direct creation failed, generating fallback scripts...")
@@ -122,23 +124,23 @@ class DatabaseInstaller:
             return result
 
         except Exception as e:
-            result['errors'].append(str(e))
+            result["errors"].append(str(e))
             self.logger.error(f"Database setup failed: {e}", exc_info=True)
             return result
 
     def detect_postgresql_version(self) -> Dict[str, Any]:
         """Detect PostgreSQL version via connection"""
-        result = {'success': False}
+        result = {"success": False}
 
         try:
             # Try to connect and get version
             conn = psycopg2.connect(
                 host=self.pg_host,
                 port=self.pg_port,
-                database='postgres',
+                database="postgres",
                 user=self.pg_user,
                 password=self.pg_password,
-                connect_timeout=5
+                connect_timeout=5,
             )
 
             with conn.cursor() as cur:
@@ -154,39 +156,39 @@ class DatabaseInstaller:
 
             conn.close()
 
-            result['success'] = True
-            result['version'] = major_version
-            result['version_string'] = version_string
-            result['version_num'] = version_num
+            result["success"] = True
+            result["version"] = major_version
+            result["version_string"] = version_string
+            result["version_num"] = version_num
 
             return result
 
         except psycopg2.OperationalError as e:
-            result['error'] = f"Connection failed: {str(e)}"
+            result["error"] = f"Connection failed: {str(e)}"
             return result
         except Exception as e:
-            result['error'] = str(e)
+            result["error"] = str(e)
             return result
 
     def create_database_direct(self) -> Dict[str, Any]:
         """
         Create database with provided credentials and setup extensions
-        
+
         This method handles:
         1. Database and role creation
         2. Password generation for giljo_owner and giljo_user
         3. Privilege assignment following least-privilege principle
         4. Extension creation (pg_trgm for Handover 0017)
-        
+
         Security Model (Handover 0017 Fix):
         - giljo_owner: Database owner with CREATE privilege (for extensions/migrations)
         - giljo_user: Application user with table-level privileges only (no CREATE)
         - Extensions created during setup with superuser, not at application runtime
-        
+
         Returns:
             Dict with success status, credentials, and any errors/warnings
         """
-        result = {'success': False, 'errors': [], 'warnings': []}
+        result = {"success": False, "errors": [], "warnings": []}
 
         try:
             # Generate secure passwords
@@ -197,32 +199,23 @@ class DatabaseInstaller:
             conn = psycopg2.connect(
                 host=self.pg_host,
                 port=self.pg_port,
-                database='postgres',
+                database="postgres",
                 user=self.pg_user,
                 password=self.pg_password,
-                connect_timeout=10
+                connect_timeout=10,
             )
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
             with conn.cursor() as cur:
                 # Check if database exists
-                cur.execute(
-                    "SELECT 1 FROM pg_database WHERE datname = %s",
-                    (self.db_name,)
-                )
+                cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (self.db_name,))
                 db_exists = cur.fetchone() is not None
 
                 # Check if roles exist
-                cur.execute(
-                    "SELECT 1 FROM pg_roles WHERE rolname = %s",
-                    ('giljo_owner',)
-                )
+                cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", ("giljo_owner",))
                 owner_exists = cur.fetchone() is not None
 
-                cur.execute(
-                    "SELECT 1 FROM pg_roles WHERE rolname = %s",
-                    ('giljo_user',)
-                )
+                cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", ("giljo_user",))
                 user_exists = cur.fetchone() is not None
 
                 # Create or update roles
@@ -231,42 +224,45 @@ class DatabaseInstaller:
                 if owner_exists:
                     # Update password for existing owner role
                     self.logger.info("Updating password for existing giljo_owner role")
-                    cur.execute(sql.SQL(
-                        "ALTER ROLE {} WITH PASSWORD %s"
-                    ).format(sql.Identifier('giljo_owner')), [self.owner_password])
+                    cur.execute(
+                        sql.SQL("ALTER ROLE {} WITH PASSWORD %s").format(sql.Identifier("giljo_owner")),
+                        [self.owner_password],
+                    )
                 else:
                     # Create owner role
                     self.logger.info("Creating giljo_owner role")
-                    cur.execute(sql.SQL(
-                        "CREATE ROLE {} LOGIN PASSWORD %s"
-                    ).format(sql.Identifier('giljo_owner')), [self.owner_password])
+                    cur.execute(
+                        sql.SQL("CREATE ROLE {} LOGIN PASSWORD %s").format(sql.Identifier("giljo_owner")),
+                        [self.owner_password],
+                    )
 
                 if user_exists:
                     # Update password for existing user role
                     self.logger.info("Updating password for existing giljo_user role")
-                    cur.execute(sql.SQL(
-                        "ALTER ROLE {} WITH PASSWORD %s"
-                    ).format(sql.Identifier('giljo_user')), [self.user_password])
+                    cur.execute(
+                        sql.SQL("ALTER ROLE {} WITH PASSWORD %s").format(sql.Identifier("giljo_user")),
+                        [self.user_password],
+                    )
                 else:
                     # Create application user role
                     self.logger.info("Creating giljo_user role")
-                    cur.execute(sql.SQL(
-                        "CREATE ROLE {} LOGIN PASSWORD %s"
-                    ).format(sql.Identifier('giljo_user')), [self.user_password])
+                    cur.execute(
+                        sql.SQL("CREATE ROLE {} LOGIN PASSWORD %s").format(sql.Identifier("giljo_user")),
+                        [self.user_password],
+                    )
 
                 # Create database if needed
                 if not db_exists:
                     self.logger.info(f"Creating database {self.db_name}...")
-                    cur.execute(sql.SQL(
-                        "CREATE DATABASE {} OWNER {}"
-                    ).format(
-                        sql.Identifier(self.db_name),
-                        sql.Identifier('giljo_owner')
-                    ))
+                    cur.execute(
+                        sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                            sql.Identifier(self.db_name), sql.Identifier("giljo_owner")
+                        )
+                    )
                     self.logger.info("Database created successfully")
                 else:
                     self.logger.info(f"Database {self.db_name} already exists")
-                    result['warnings'].append(f"Database {self.db_name} already exists, using existing database")
+                    result["warnings"].append(f"Database {self.db_name} already exists, using existing database")
 
             conn.close()
 
@@ -277,27 +273,25 @@ class DatabaseInstaller:
                 port=self.pg_port,
                 database=self.db_name,
                 user=self.pg_user,
-                password=self.pg_password
+                password=self.pg_password,
             )
             conn_db.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
             with conn_db.cursor() as cur:
                 # Grant database-level permissions
-                cur.execute(sql.SQL(
-                    "GRANT CONNECT ON DATABASE {} TO {}"
-                ).format(
-                    sql.Identifier(self.db_name),
-                    sql.Identifier('giljo_user')
-                ))
+                cur.execute(
+                    sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
+                        sql.Identifier(self.db_name), sql.Identifier("giljo_user")
+                    )
+                )
 
                 # Grant CREATE privilege to owner for extension management (Handover 0017)
                 # Application user (giljo_user) does NOT get CREATE - security best practice
-                cur.execute(sql.SQL(
-                    "GRANT CREATE ON DATABASE {} TO {}"
-                ).format(
-                    sql.Identifier(self.db_name),
-                    sql.Identifier('giljo_owner')
-                ))
+                cur.execute(
+                    sql.SQL("GRANT CREATE ON DATABASE {} TO {}").format(
+                        sql.Identifier(self.db_name), sql.Identifier("giljo_owner")
+                    )
+                )
 
                 # ========================================================================
                 # HANDOVER 0017 FIX: PostgreSQL Extension Creation
@@ -345,41 +339,38 @@ class DatabaseInstaller:
             # Save credentials
             self.save_credentials()
 
-            result['success'] = True
-            result['credentials'] = {
-                'owner_password': self.owner_password,
-                'user_password': self.user_password
-            }
-            result['credentials_file'] = str(self.credentials_file)
-            result['database_existed'] = db_exists
+            result["success"] = True
+            result["credentials"] = {"owner_password": self.owner_password, "user_password": self.user_password}
+            result["credentials_file"] = str(self.credentials_file)
+            result["database_existed"] = db_exists
 
             return result
 
         except psycopg2.OperationalError as e:
             error_msg = str(e).lower()
             if "password authentication failed" in error_msg:
-                result['errors'].append("Invalid PostgreSQL admin password")
+                result["errors"].append("Invalid PostgreSQL admin password")
             elif "could not connect" in error_msg or "connection refused" in error_msg:
-                result['errors'].append("Cannot connect to PostgreSQL server")
+                result["errors"].append("Cannot connect to PostgreSQL server")
             elif "permission denied" in error_msg:
-                result['errors'].append("Insufficient privileges - try fallback script")
+                result["errors"].append("Insufficient privileges - try fallback script")
             else:
-                result['errors'].append(f"Database operation failed: {e}")
+                result["errors"].append(f"Database operation failed: {e}")
             return result
 
         except psycopg2.Error as e:
-            result['errors'].append(f"PostgreSQL error: {e}")
+            result["errors"].append(f"PostgreSQL error: {e}")
             self.logger.error(f"PostgreSQL error during database creation: {e}")
             return result
 
         except Exception as e:
-            result['errors'].append(str(e))
+            result["errors"].append(str(e))
             self.logger.error(f"Direct database creation failed: {e}", exc_info=True)
             return result
 
     def fallback_setup(self) -> Dict[str, Any]:
         """Generate fallback scripts for manual execution"""
-        result = {'success': False, 'errors': []}
+        result = {"success": False, "errors": []}
 
         try:
             # Generate secure passwords
@@ -403,31 +394,28 @@ class DatabaseInstaller:
             self.display_elevation_guide(script_path)
 
             # Wait for user confirmation
-            if not self.settings.get('batch'):
+            if not self.settings.get("batch"):
                 input("\nPress Enter after running the script...")
 
                 # Verify database was created
                 if self.verify_database_exists():
-                    result['success'] = True
-                    result['credentials'] = {
-                        'owner_password': self.owner_password,
-                        'user_password': self.user_password
-                    }
-                    result['credentials_file'] = str(self.credentials_file)
+                    result["success"] = True
+                    result["credentials"] = {"owner_password": self.owner_password, "user_password": self.user_password}
+                    result["credentials_file"] = str(self.credentials_file)
                     self.logger.info("Database verified after fallback script execution")
                 else:
-                    result['errors'].append("Database not found after script execution")
+                    result["errors"].append("Database not found after script execution")
             else:
                 # In batch mode, assume success but note manual step required
-                result['success'] = True
-                result['manual_step_required'] = True
-                result['script_path'] = str(script_path)
-                result['credentials_file'] = str(self.credentials_file)
+                result["success"] = True
+                result["manual_step_required"] = True
+                result["script_path"] = str(script_path)
+                result["credentials_file"] = str(self.credentials_file)
 
             return result
 
         except Exception as e:
-            result['errors'].append(str(e))
+            result["errors"].append(str(e))
             self.logger.error(f"Fallback setup failed: {e}")
             return result
 
@@ -605,7 +593,7 @@ Write-Host "You can now return to the installer and press Enter to continue." -F
 Write-Host ""
 '''
 
-        script_path.write_text(script_content, encoding='utf-8')
+        script_path.write_text(script_content, encoding="utf-8")
         self.logger.info(f"Generated Windows script: {script_path}")
         return script_path
 
@@ -761,16 +749,16 @@ echo "You can now return to the installer and press Enter to continue."
 echo ""
 '''
 
-        script_path.write_text(script_content, encoding='utf-8')
+        script_path.write_text(script_content, encoding="utf-8")
         script_path.chmod(0o755)
         self.logger.info(f"Generated Unix script: {script_path}")
         return script_path
 
     def display_elevation_guide(self, script_path: Path):
         """Display clear instructions for running elevation script"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Database Setup Required")
-        print("="*60)
+        print("=" * 60)
         print()
         print("Administrative privileges are needed to create the database.")
         print("A script has been generated with all necessary commands.")
@@ -815,8 +803,8 @@ echo ""
                     host=self.pg_host,
                     port=self.pg_port,
                     database=self.db_name,
-                    user='giljo_user',
-                    password=self.user_password
+                    user="giljo_user",
+                    password=self.user_password,
                 )
                 conn.close()
                 return True
@@ -838,14 +826,14 @@ echo ""
         Returns:
             Dict with success status and admin user info
         """
-        result = {'success': False, 'errors': []}
+        result = {"success": False, "errors": []}
 
         try:
             # Import bcrypt
             try:
                 import bcrypt
             except ImportError:
-                result['errors'].append("bcrypt not installed - cannot hash password")
+                result["errors"].append("bcrypt not installed - cannot hash password")
                 return result
 
             # Connect to giljo_mcp database
@@ -853,45 +841,41 @@ echo ""
                 host=self.pg_host,
                 port=self.pg_port,
                 database=self.db_name,
-                user='giljo_owner',
+                user="giljo_owner",
                 password=self.owner_password,
-                connect_timeout=10
+                connect_timeout=10,
             )
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
             with conn.cursor() as cur:
                 # Check if admin user already exists (idempotent)
-                cur.execute("SELECT 1 FROM users WHERE username = %s", ('admin',))
+                cur.execute("SELECT 1 FROM users WHERE username = %s", ("admin",))
                 if cur.fetchone():
                     self.logger.info("Admin user already exists, skipping creation")
-                    result['success'] = True
-                    result['already_exists'] = True
+                    result["success"] = True
+                    result["already_exists"] = True
                     return result
 
                 # Hash the default password 'admin'
-                password_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode('utf-8')
+                password_hash = bcrypt.hashpw(b"admin", bcrypt.gensalt()).decode("utf-8")
 
                 # Generate UUID for admin user
                 import uuid
+
                 admin_id = str(uuid.uuid4())
 
                 # Create admin user
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO users (
                         id, tenant_key, username, password_hash,
                         email, role, is_active, created_at
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, NOW()
                     )
-                """, (
-                    admin_id,
-                    'default',
-                    'admin',
-                    password_hash,
-                    'admin@localhost',
-                    'admin',
-                    True
-                ))
+                """,
+                    (admin_id, "default", "admin", password_hash, "admin@localhost", "admin", True),
+                )
 
                 # Update setup state to mark default password as active
                 cur.execute("""
@@ -903,38 +887,35 @@ echo ""
                 # If no setup_state exists, create one
                 if cur.rowcount == 0:
                     setup_id = str(uuid.uuid4())
-                    cur.execute("""
+                    cur.execute(
+                        """
                         INSERT INTO setup_state (
                             id, tenant_key, completed, default_password_active,
                             setup_version, created_at
                         ) VALUES (
                             %s, %s, %s, %s, %s, NOW()
                         )
-                    """, (
-                        setup_id,
-                        'default',
-                        False,
-                        True,
-                        '3.0.0'
-                    ))
+                    """,
+                        (setup_id, "default", False, True, "3.0.0"),
+                    )
 
             conn.close()
 
             # Display credentials in terminal
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("Default Admin Credentials:")
             print("  Username: admin")
             print("  Password: admin")
             print("\n  IMPORTANT: Change this password on first login!")
-            print("="*60 + "\n")
+            print("=" * 60 + "\n")
 
             self.logger.info("Default admin account created successfully")
-            result['success'] = True
-            result['username'] = 'admin'
+            result["success"] = True
+            result["username"] = "admin"
             return result
 
         except Exception as e:
-            result['errors'].append(f"Failed to create admin account: {str(e)}")
+            result["errors"].append(f"Failed to create admin account: {str(e)}")
             self.logger.error(f"Admin account creation failed: {e}", exc_info=True)
             return result
 
@@ -977,7 +958,7 @@ USER_URL=postgresql://giljo_user:{self.user_password}@{self.pg_host}:{self.pg_po
         """Generate a secure random password"""
         alphabet = string.ascii_letters + string.digits
         # Avoid special characters that might cause issues in connection strings
-        password = ''.join(secrets.choice(alphabet) for _ in range(length))
+        password = "".join(secrets.choice(alphabet) for _ in range(length))
         return password
 
     def get_postgresql_install_guide(self) -> str:
@@ -1036,7 +1017,6 @@ Arch:
 After installation, return here and run the installer again
 """
 
-
     async def create_database_async(self) -> Dict[str, Any]:
         """
         Async wrapper for create_database_direct.
@@ -1052,7 +1032,7 @@ After installation, return here and run the installer again
         Returns:
             Dict with success status and table count
         """
-        result = {'success': False, 'errors': [], 'warnings': []}
+        result = {"success": False, "errors": [], "warnings": []}
 
         try:
             # Import DatabaseManager to create tables
@@ -1071,12 +1051,12 @@ After installation, return here and run the installer again
             table_count = len(Base.metadata.tables)
             self.logger.info(f"Created {table_count} tables successfully")
 
-            result['success'] = True
-            result['tables_created'] = table_count
+            result["success"] = True
+            result["tables_created"] = table_count
             return result
 
         except Exception as e:
-            result['errors'].append(f"Table creation failed: {str(e)}")
+            result["errors"].append(f"Table creation failed: {str(e)}")
             self.logger.error(f"Failed to create tables: {e}", exc_info=True)
             return result
 
@@ -1090,7 +1070,7 @@ After installation, return here and run the installer again
 
     def run_migrations(self, alembic_ini_path: Optional[Path] = None) -> Dict[str, Any]:
         """Run Alembic migrations to initialize/update database schema"""
-        result = {'success': False, 'errors': [], 'warnings': []}
+        result = {"success": False, "errors": [], "warnings": []}
 
         try:
             # Try to import alembic
@@ -1098,7 +1078,7 @@ After installation, return here and run the installer again
                 from alembic import command
                 from alembic.config import Config
             except ImportError:
-                result['errors'].append("Alembic not installed - cannot run migrations")
+                result["errors"].append("Alembic not installed - cannot run migrations")
                 self.logger.warning("Alembic not available for migrations")
                 return result
 
@@ -1108,7 +1088,7 @@ After installation, return here and run the installer again
                 search_paths = [
                     Path.cwd() / "alembic.ini",
                     Path.cwd().parent / "alembic.ini",
-                    Path.cwd().parent.parent / "alembic.ini"
+                    Path.cwd().parent.parent / "alembic.ini",
                 ]
                 for path in search_paths:
                     if path.exists():
@@ -1116,9 +1096,9 @@ After installation, return here and run the installer again
                         break
 
             if alembic_ini_path is None or not alembic_ini_path.exists():
-                result['warnings'].append("alembic.ini not found - skipping migrations")
+                result["warnings"].append("alembic.ini not found - skipping migrations")
                 self.logger.warning("No alembic.ini found, skipping migrations")
-                result['success'] = True  # Not an error, just skip
+                result["success"] = True  # Not an error, just skip
                 return result
 
             self.logger.info(f"Running migrations using {alembic_ini_path}")
@@ -1135,11 +1115,11 @@ After installation, return here and run the installer again
             command.upgrade(alembic_cfg, "head")
 
             self.logger.info("Migrations completed successfully")
-            result['success'] = True
+            result["success"] = True
             return result
 
         except Exception as e:
-            result['errors'].append(f"Migration failed: {str(e)}")
+            result["errors"].append(f"Migration failed: {str(e)}")
             self.logger.error(f"Failed to run migrations: {e}", exc_info=True)
             return result
 
@@ -1159,12 +1139,7 @@ def check_postgresql_connection(host: str, port: int, timeout: int = 5) -> bool:
 def detect_postgresql_cli() -> Optional[str]:
     """Detect if psql is available in PATH"""
     try:
-        result = subprocess.run(
-            ['psql', '--version'],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["psql", "--version"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             return result.stdout.strip()
         return None

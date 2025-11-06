@@ -464,7 +464,7 @@ Get started with {self.source_path.name} in minutes:
 
 ---
 
-*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
+*Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}*
 """
 
     def _generate_symbol_doc(self, symbol: CodeSymbol) -> str:

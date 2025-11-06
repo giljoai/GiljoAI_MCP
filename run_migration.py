@@ -17,22 +17,14 @@ Password: 4010 (development)
 
 import argparse
 import sys
-from pathlib import Path
 
 import psycopg2
-from psycopg2 import sql
 
 
 def get_connection():
     """Create database connection."""
     try:
-        conn = psycopg2.connect(
-            host="localhost",
-            port=5432,
-            database="giljo_mcp",
-            user="postgres",
-            password="4010"
-        )
+        conn = psycopg2.connect(host="localhost", port=5432, database="giljo_mcp", user="postgres", password="4010")
         return conn
     except Exception as e:
         print(f"ERROR: Failed to connect to database: {e}")
@@ -307,20 +299,10 @@ def main():
         description="Database migration: Rename setup_state.completed to database_initialized"
     )
     parser.add_argument(
-        "--forward",
-        action="store_true",
-        help="Execute forward migration (rename to database_initialized)"
+        "--forward", action="store_true", help="Execute forward migration (rename to database_initialized)"
     )
-    parser.add_argument(
-        "--rollback",
-        action="store_true",
-        help="Execute rollback migration (rename back to completed)"
-    )
-    parser.add_argument(
-        "--verify",
-        action="store_true",
-        help="Verify current database state (no changes)"
-    )
+    parser.add_argument("--rollback", action="store_true", help="Execute rollback migration (rename back to completed)")
+    parser.add_argument("--verify", action="store_true", help="Verify current database state (no changes)")
 
     args = parser.parse_args()
 

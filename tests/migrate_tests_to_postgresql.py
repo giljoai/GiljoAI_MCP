@@ -26,33 +26,33 @@ class TestMigrator:
         # SQLite connection strings
         (
             r'["\']sqlite\+aiosqlite:///[^"\']*["\']',
-            'PostgreSQLTestHelper.get_test_db_url()',
+            "PostgreSQLTestHelper.get_test_db_url()",
             "Replace SQLite async connection string with PostgreSQL helper",
         ),
         (
             r'["\']sqlite:///[^"\']*["\']',
-            'PostgreSQLTestHelper.get_test_db_url(async_driver=False)',
+            "PostgreSQLTestHelper.get_test_db_url(async_driver=False)",
             "Replace SQLite sync connection string with PostgreSQL helper",
         ),
         (
             r'["\']sqlite\+aiosqlite:///:memory:["\']',
-            'PostgreSQLTestHelper.get_test_db_url()',
+            "PostgreSQLTestHelper.get_test_db_url()",
             "Replace SQLite in-memory with PostgreSQL test database",
         ),
         # Tempfile database creation
         (
-            r'temp_db\s*=\s*tempfile\.NamedTemporaryFile\([^)]*\)',
-            '# PostgreSQL test database used instead of temp file',
+            r"temp_db\s*=\s*tempfile\.NamedTemporaryFile\([^)]*\)",
+            "# PostgreSQL test database used instead of temp file",
             "Remove tempfile creation",
         ),
         (
-            r'temp_db\.close\(\)',
-            '# PostgreSQL test database managed by fixtures',
+            r"temp_db\.close\(\)",
+            "# PostgreSQL test database managed by fixtures",
             "Remove tempfile close",
         ),
         (
-            r'os\.unlink\(temp_db\.name\)',
-            '# PostgreSQL test database cleanup handled by fixtures',
+            r"os\.unlink\(temp_db\.name\)",
+            "# PostgreSQL test database cleanup handled by fixtures",
             "Remove file cleanup",
         ),
     ]
@@ -75,11 +75,7 @@ from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     def should_add_import(self, content: str) -> bool:
         """Check if PostgreSQLTestHelper import should be added."""
-        return (
-            "PostgreSQLTestHelper" not in content
-            and "sqlite" in content.lower()
-            and "test" in content.lower()
-        )
+        return "PostgreSQLTestHelper" not in content and "sqlite" in content.lower() and "test" in content.lower()
 
     def migrate_file(self, file_path: Path) -> Tuple[bool, List[str]]:
         """
@@ -129,7 +125,7 @@ from tests.helpers.test_db_helper import PostgreSQLTestHelper
             return False, []
 
         except Exception as e:
-            return False, [f"Error: {str(e)}"]
+            return False, [f"Error: {e!s}"]
 
     def migrate_all_tests(self, test_dir: Path):
         """

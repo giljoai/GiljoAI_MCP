@@ -6,10 +6,9 @@ Run this script manually to verify the download system works end-to-end.
 """
 
 import asyncio
-import io
 import sys
-import zipfile
 from pathlib import Path
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -18,11 +17,13 @@ import os
 
 from dotenv import load_dotenv
 
+
 load_dotenv()
+
+from sqlalchemy import select
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import AgentTemplate, User
-from sqlalchemy import select
 
 
 class DownloadsTester:
@@ -228,8 +229,8 @@ class DownloadsTester:
 
         try:
             # Test ZIP creation inline
-            import zipfile
             import io
+            import zipfile
 
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -356,7 +357,7 @@ class DownloadsTester:
         print(f"Total Tests: {total}")
         print(f"Passed: {passed}")
         print(f"Failed: {failed}")
-        print(f"Success Rate: {(passed/total*100):.1f}%")
+        print(f"Success Rate: {(passed / total * 100):.1f}%")
         print("")
 
         if failed > 0:

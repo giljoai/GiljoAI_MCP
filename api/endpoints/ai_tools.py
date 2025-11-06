@@ -5,9 +5,7 @@ Provides elegant copy-paste configuration system for connecting AI tools
 (Claude Code, CODEX, Gemini) to GiljoAI MCP server.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -25,8 +23,10 @@ router = APIRouter()
 
 # Pydantic Models
 
+
 class AIToolInfo(BaseModel):
     """Information about a supported AI tool."""
+
     id: str = Field(..., description="Tool identifier (e.g., 'claude', 'codex')")
     name: str = Field(..., description="Display name")
     config_format: str = Field(..., description="Configuration format (json/yaml)")
@@ -36,6 +36,7 @@ class AIToolInfo(BaseModel):
 
 class AIToolConfigResponse(BaseModel):
     """Response containing AI tool configuration."""
+
     tool: str = Field(..., description="Tool identifier")
     config_format: str = Field(..., description="Configuration format (json/yaml)")
     config_content: str = Field(..., description="Configuration content as string")
@@ -46,10 +47,12 @@ class AIToolConfigResponse(BaseModel):
 
 class SupportedToolsResponse(BaseModel):
     """Response listing all supported AI tools."""
+
     tools: List[AIToolInfo]
 
 
 # Configuration Templates
+
 
 def get_claude_code_config(server_url: str, api_key: str) -> str:
     """
@@ -81,7 +84,7 @@ def get_codex_config(server_url: str, api_key: str) -> str:
         Command string(s) for HTTP transport (export + add)
     """
     return (
-        f"export GILJO_API_KEY=\"{api_key}\"\n"
+        f'export GILJO_API_KEY="{api_key}"\n'
         f"codex mcp add --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp"
     )
 
@@ -100,7 +103,7 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     Returns:
         Command string for HTTP transport (single line)
     """
-    return f"gemini mcp add -t http -H \"X-API-Key: {api_key}\" giljo-mcp {server_url}/mcp"
+    return f'gemini mcp add -t http -H "X-API-Key: {api_key}" giljo-mcp {server_url}/mcp'
 
 
 def get_http_tool_instructions(tool_id: str) -> List[str]:
@@ -119,33 +122,28 @@ def get_http_tool_instructions(tool_id: str) -> List[str]:
             "Copy the command shown above",
             "Paste and run the command to configure Claude Code",
             "Verify connection with: claude mcp list",
-            "Start using GiljoAI tools in Claude Code conversations"
+            "Start using GiljoAI tools in Claude Code conversations",
         ]
-    elif tool_id == "codex":
+    if tool_id == "codex":
         return [
             "Open your terminal or command prompt",
             "Export your API key as GILJO_API_KEY (see command above)",
             "Run the codex mcp add command shown above",
             "Verify connection with: codex mcp list",
-            "Start using GiljoAI tools in Codex sessions"
+            "Start using GiljoAI tools in Codex sessions",
         ]
-    elif tool_id == "gemini":
+    if tool_id == "gemini":
         return [
             "Open your terminal or command prompt",
             "Run the gemini mcp add command shown above (note: order is <name> <url>)",
             "Verify connection with: gemini mcp list",
-            "Start using GiljoAI tools in Gemini sessions"
+            "Start using GiljoAI tools in Gemini sessions",
         ]
-    else:
-        return [
-            "Copy the command above",
-            "Run it in your terminal",
-            "Verify the connection",
-            "Start using GiljoAI tools"
-        ]
+    return ["Copy the command above", "Run it in your terminal", "Verify the connection", "Start using GiljoAI tools"]
 
 
 # API Endpoints
+
 
 @router.get("/supported", response_model=SupportedToolsResponse, tags=["ai-tools"])
 async def list_supported_tools():
@@ -161,22 +159,14 @@ async def list_supported_tools():
             name="Claude Code",
             config_format="command",
             file_location="Terminal/PowerShell",
-            supported=True
+            supported=True,
         ),
         AIToolInfo(
-            id="codex",
-            name="Codex CLI",
-            config_format="command",
-            file_location="Terminal/PowerShell",
-            supported=True
+            id="codex", name="Codex CLI", config_format="command", file_location="Terminal/PowerShell", supported=True
         ),
         AIToolInfo(
-            id="gemini",
-            name="Gemini CLI",
-            config_format="command",
-            file_location="Terminal/PowerShell",
-            supported=True
-        )
+            id="gemini", name="Gemini CLI", config_format="command", file_location="Terminal/PowerShell", supported=True
+        ),
     ]
 
     return SupportedToolsResponse(tools=tools)
@@ -186,7 +176,7 @@ async def list_supported_tools():
 async def generate_ai_tool_config(
     tool_name: str,
     current_user: Optional[User] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Generate configuration for a specific AI tool.
@@ -215,11 +205,11 @@ async def generate_ai_tool_config(
 
     # Build server URL from configuration
     # Use external_host if configured, otherwise use api.host
-    host = getattr(config.services, 'external_host', None) or config.services.api.host
+    host = getattr(config.services, "external_host", None) or config.services.api.host
     port = config.services.api.port
 
     # Use http (wss for production with SSL)
-    protocol = "https" if getattr(config.features, 'ssl_enabled', False) else "http"
+    protocol = "https" if getattr(config.features, "ssl_enabled", False) else "http"
     server_url = f"{protocol}://{host}:{port}"
 
     logger.info(f"Generating config for tool '{tool_id}' with server URL: {server_url}")
@@ -234,26 +224,26 @@ async def generate_ai_tool_config(
             "generator": get_claude_code_config,
             "format": "command",
             "file_location": "Terminal/PowerShell",
-            "filename": "giljo-claude-setup.md"
+            "filename": "giljo-claude-setup.md",
         },
         "codex": {
             "generator": get_codex_config,
             "format": "command",
             "file_location": "Terminal/PowerShell",
-            "filename": "giljo-codex-setup.md"
+            "filename": "giljo-codex-setup.md",
         },
         "gemini": {
             "generator": get_gemini_config,
             "format": "command",
             "file_location": "Terminal/PowerShell",
-            "filename": "giljo-gemini-setup.md"
-        }
+            "filename": "giljo-gemini-setup.md",
+        },
     }
 
     if tool_id not in config_generators:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tool '{tool_name}' is not supported. Supported tools: {', '.join(config_generators.keys())}"
+            detail=f"Tool '{tool_name}' is not supported. Supported tools: {', '.join(config_generators.keys())}",
         )
 
     tool_config = config_generators[tool_id]
@@ -272,7 +262,7 @@ async def generate_ai_tool_config(
         config_content=config_content,
         file_location=tool_config["file_location"],
         instructions=instructions,
-        download_filename=tool_config["filename"]
+        download_filename=tool_config["filename"],
     )
 
 
@@ -280,7 +270,7 @@ async def generate_ai_tool_config(
 async def download_setup_guide(
     tool_name: str,
     current_user: Optional[User] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Download complete setup guide as markdown file.
@@ -305,11 +295,9 @@ async def download_setup_guide(
     config_response = await generate_ai_tool_config(tool_name, current_user, db)
 
     # Build markdown guide
-    tool_display_name = {
-        "claude": "Claude Code",
-        "codex": "OpenAI CODEX",
-        "gemini": "Google Gemini"
-    }.get(config_response.tool, config_response.tool.title())
+    tool_display_name = {"claude": "Claude Code", "codex": "OpenAI CODEX", "gemini": "Google Gemini"}.get(
+        config_response.tool, config_response.tool.title()
+    )
 
     markdown = f"""# GiljoAI MCP Setup Guide for {tool_display_name}
 
@@ -356,7 +344,9 @@ Copy the configuration below and paste it into your config file:
         for i, instruction in enumerate(config_response.instructions, 1)
     )
 
-    markdown += instructions_text + """
+    markdown += (
+        instructions_text
+        + """
 
 
 ## Testing the Connection
@@ -406,11 +396,10 @@ For additional help:
 
 Generated by GiljoAI MCP Configuration Generator
 """
+    )
 
     return PlainTextResponse(
         content=markdown,
         media_type="text/markdown",
-        headers={
-            "Content-Disposition": f"attachment; filename={config_response.download_filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={config_response.download_filename}"},
     )

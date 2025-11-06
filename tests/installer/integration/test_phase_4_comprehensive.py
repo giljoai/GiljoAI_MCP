@@ -15,28 +15,23 @@ This test suite validates:
 Backend Integration Tester Agent - Phase 4 Deliverable
 """
 
-import asyncio
-import os
 import platform
-import shutil
-import socket
-import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, text, inspect as sa_inspect
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import create_engine
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import sessionmaker
 
 
 # ============================================================================
 # BUG #1: pg_trgm EXTENSION CREATION (CRITICAL)
 # ============================================================================
+
 
 class TestBug1PgTrgmExtension:
     """
@@ -60,8 +55,8 @@ class TestBug1PgTrgmExtension:
         4. Call create_database_direct()
         5. Verify "CREATE EXTENSION IF NOT EXISTS pg_trgm" was executed
         """
-        with patch('platform.system', return_value=platform_name):
-            with patch('installer.core.database.psycopg2') as mock_psycopg2:
+        with patch("platform.system", return_value=platform_name):
+            with patch("installer.core.database.psycopg2") as mock_psycopg2:
                 # Setup mock PostgreSQL connection
                 mock_conn = MagicMock()
                 mock_cur = MagicMock()
@@ -76,20 +71,16 @@ class TestBug1PgTrgmExtension:
                 # Import after patching
                 from installer.core.database import DatabaseInstaller
 
-                installer = DatabaseInstaller({
-                    'pg_host': 'localhost',
-                    'pg_port': 5432,
-                    'pg_user': 'postgres',
-                    'pg_password': 'test_password'
-                })
+                installer = DatabaseInstaller(
+                    {"pg_host": "localhost", "pg_port": 5432, "pg_user": "postgres", "pg_password": "test_password"}
+                )
 
                 # Execute database creation
                 result = installer.create_database_direct()
 
                 # Verify pg_trgm extension was created
                 extension_calls = [
-                    call_args for call_args in mock_cur.execute.call_args_list
-                    if 'pg_trgm' in str(call_args)
+                    call_args for call_args in mock_cur.execute.call_args_list if "pg_trgm" in str(call_args)
                 ]
 
                 assert len(extension_calls) > 0, (
@@ -98,12 +89,11 @@ class TestBug1PgTrgmExtension:
                 )
 
                 # Verify result indicates success
-                assert result['success'], f"Database creation should succeed on {platform_name}"
+                assert result["success"], f"Database creation should succeed on {platform_name}"
 
                 # Verify extensions_created includes pg_trgm
-                assert 'extensions_created' in result, "Result should include extensions_created"
+                assert "extensions_created" in result, "Result should include extensions_created"
                 # Note: In actual implementation, extensions_created is populated if successful
-
 
     def test_pg_trgm_extension_in_database_query(self):
         """
@@ -120,13 +110,11 @@ class TestBug1PgTrgmExtension:
         # This would connect to real PostgreSQL
         # For Phase 4, we verify the SQL is generated correctly
 
-        from installer.core.database import DatabaseInstaller
-
         # Verify the SQL command exists in the code
         installer_file = Path(__file__).parent.parent.parent.parent / "installer" / "core" / "database.py"
         installer_code = installer_file.read_text()
 
-        assert 'CREATE EXTENSION IF NOT EXISTS pg_trgm' in installer_code, (
+        assert "CREATE EXTENSION IF NOT EXISTS pg_trgm" in installer_code, (
             "pg_trgm extension creation SQL missing from DatabaseInstaller"
         )
 
@@ -134,6 +122,7 @@ class TestBug1PgTrgmExtension:
 # ============================================================================
 # BUG #2: SUCCESS MESSAGES (HANDOVER 0034)
 # ============================================================================
+
 
 class TestBug2SuccessMessages:
     """
@@ -157,23 +146,22 @@ class TestBug2SuccessMessages:
 
         # Check success summary (around line 1230-1280)
         success_summary_start = install_code.find("def _print_success_summary")
-        success_summary = install_code[success_summary_start:success_summary_start + 2000]
+        success_summary = install_code[success_summary_start : success_summary_start + 2000]
 
         # Should NOT contain admin/admin references
-        assert 'admin/admin' not in success_summary.lower(), (
+        assert "admin/admin" not in success_summary.lower(), (
             "Success summary should NOT mention admin/admin credentials"
         )
 
         # Should mention first admin creation
-        assert 'administrator account' in success_summary.lower(), (
+        assert "administrator account" in success_summary.lower(), (
             "Success summary should mention administrator account creation"
         )
 
         # Should mention it's first-run only
-        assert 'first-run' in success_summary.lower() or 'first run' in success_summary.lower(), (
+        assert "first-run" in success_summary.lower() or "first run" in success_summary.lower(), (
             "Success summary should clarify admin creation is first-run only"
         )
-
 
     def test_database_credentials_shown_not_admin_credentials(self):
         """
@@ -192,15 +180,15 @@ class TestBug2SuccessMessages:
         install_code = install_file.read_text()
 
         success_summary_start = install_code.find("def _print_success_summary")
-        success_summary = install_code[success_summary_start:success_summary_start + 2000]
+        success_summary = install_code[success_summary_start : success_summary_start + 2000]
 
         # Should mention database credentials
-        assert 'giljo_owner' in success_summary or 'giljo_user' in success_summary, (
+        assert "giljo_owner" in success_summary or "giljo_user" in success_summary, (
             "Success summary should mention database roles"
         )
 
         # Should NOT say "login with admin/admin"
-        assert 'login with admin' not in success_summary.lower(), (
+        assert "login with admin" not in success_summary.lower(), (
             "Success summary should NOT instruct users to login with admin"
         )
 
@@ -208,6 +196,7 @@ class TestBug2SuccessMessages:
 # ============================================================================
 # HANDOVER 0034 COMPLIANCE
 # ============================================================================
+
 
 class TestHandover0034FreshInstall:
     """
@@ -233,6 +222,7 @@ class TestHandover0034FreshInstall:
 
         # Import models after engine creation
         from src.giljo_mcp.models import Base, User
+
         Base.metadata.create_all(engine)
 
         # Query user count
@@ -242,13 +232,11 @@ class TestHandover0034FreshInstall:
         user_count = session.query(User).count()
 
         assert user_count == 0, (
-            f"Fresh install should have 0 users, found {user_count}. "
-            "Handover 0034 requires NO default admin account."
+            f"Fresh install should have 0 users, found {user_count}. Handover 0034 requires NO default admin account."
         )
 
         session.close()
         engine.dispose()
-
 
     @pytest.mark.asyncio
     async def test_fresh_install_setup_state_first_admin_created_false(self):
@@ -269,9 +257,9 @@ class TestHandover0034FreshInstall:
         # Create SetupState (as installer does)
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
-            database_initialized_at=datetime.now(timezone.utc)
+            database_initialized_at=datetime.now(timezone.utc),
             # first_admin_created defaults to False (not explicitly set)
         )
         session.add(setup_state)
@@ -289,7 +277,6 @@ class TestHandover0034FreshInstall:
         session.close()
         engine.dispose()
 
-
     def test_create_first_admin_endpoint_exists(self):
         """
         Verify /api/auth/create-first-admin endpoint is defined
@@ -303,14 +290,16 @@ class TestHandover0034FreshInstall:
         )
 
         # Verify it returns 201 Created
-        assert 'status_code=201' in auth_code[auth_code.find('/create-first-admin'):auth_code.find('/create-first-admin') + 500], (
-            "/create-first-admin should return 201 Created on success"
-        )
+        assert (
+            "status_code=201"
+            in auth_code[auth_code.find("/create-first-admin") : auth_code.find("/create-first-admin") + 500]
+        ), "/create-first-admin should return 201 Created on success"
 
 
 # ============================================================================
 # HANDOVER 0035 SECURITY ENHANCEMENTS
 # ============================================================================
+
 
 class TestHandover0035SecurityFields:
     """
@@ -330,13 +319,8 @@ class TestHandover0035SecurityFields:
         from src.giljo_mcp.models import SetupState
 
         # Check class attributes
-        assert hasattr(SetupState, 'first_admin_created'), (
-            "SetupState missing first_admin_created field"
-        )
-        assert hasattr(SetupState, 'first_admin_created_at'), (
-            "SetupState missing first_admin_created_at field"
-        )
-
+        assert hasattr(SetupState, "first_admin_created"), "SetupState missing first_admin_created field"
+        assert hasattr(SetupState, "first_admin_created_at"), "SetupState missing first_admin_created_at field"
 
     def test_setup_state_constraint_in_schema(self):
         """
@@ -350,13 +334,12 @@ class TestHandover0035SecurityFields:
 
         # Check table constraints
         table = SetupState.__table__
-        constraint_names = [c.name for c in table.constraints if hasattr(c, 'name')]
+        constraint_names = [c.name for c in table.constraints if hasattr(c, "name")]
 
         # Verify constraint exists
-        assert 'ck_first_admin_created_at_required' in constraint_names, (
+        assert "ck_first_admin_created_at_required" in constraint_names, (
             "CHECK constraint ck_first_admin_created_at_required missing from SetupState"
         )
-
 
     def test_setup_state_partial_index_in_schema(self):
         """
@@ -372,14 +355,13 @@ class TestHandover0035SecurityFields:
         index_names = [idx.name for idx in table.indexes]
 
         # Verify partial index exists
-        assert 'idx_setup_fresh_install' in index_names, (
-            "Partial index idx_setup_fresh_install missing from SetupState"
-        )
+        assert "idx_setup_fresh_install" in index_names, "Partial index idx_setup_fresh_install missing from SetupState"
 
 
 # ============================================================================
 # CROSS-PLATFORM COMPATIBILITY
 # ============================================================================
+
 
 class TestCrossPlatformCompatibility:
     """
@@ -388,16 +370,19 @@ class TestCrossPlatformCompatibility:
     Platforms: Windows, Linux, macOS
     """
 
-    @pytest.mark.parametrize("platform_name,handler_class", [
-        ("Windows", "WindowsPlatformHandler"),
-        ("Linux", "LinuxPlatformHandler"),
-        ("Darwin", "MacOSPlatformHandler"),
-    ])
+    @pytest.mark.parametrize(
+        "platform_name,handler_class",
+        [
+            ("Windows", "WindowsPlatformHandler"),
+            ("Linux", "LinuxPlatformHandler"),
+            ("Darwin", "MacOSPlatformHandler"),
+        ],
+    )
     def test_platform_handler_auto_detection(self, platform_name, handler_class):
         """
         Verify correct platform handler is instantiated for each OS
         """
-        with patch('platform.system', return_value=platform_name):
+        with patch("platform.system", return_value=platform_name):
             from installer.platforms import get_platform_handler
 
             handler = get_platform_handler()
@@ -405,7 +390,6 @@ class TestCrossPlatformCompatibility:
             assert handler.__class__.__name__ == handler_class, (
                 f"Expected {handler_class} for {platform_name}, got {handler.__class__.__name__}"
             )
-
 
     def test_venv_paths_cross_platform(self):
         """
@@ -415,9 +399,9 @@ class TestCrossPlatformCompatibility:
         Linux: venv/bin/python
         macOS: venv/bin/python
         """
-        from installer.platforms.windows import WindowsPlatformHandler
         from installer.platforms.linux import LinuxPlatformHandler
         from installer.platforms.macos import MacOSPlatformHandler
+        from installer.platforms.windows import WindowsPlatformHandler
 
         venv_dir = Path("/test/venv")
 
@@ -433,12 +417,14 @@ class TestCrossPlatformCompatibility:
         macos_handler = MacOSPlatformHandler()
         assert macos_handler.get_venv_python(venv_dir) == venv_dir / "bin" / "python"
 
-
-    @pytest.mark.parametrize("platform_name,expected_shell", [
-        ("Windows", True),
-        ("Linux", False),
-        ("Darwin", False),
-    ])
+    @pytest.mark.parametrize(
+        "platform_name,expected_shell",
+        [
+            ("Windows", True),
+            ("Linux", False),
+            ("Darwin", False),
+        ],
+    )
     def test_npm_shell_handling_cross_platform(self, platform_name, expected_shell):
         """
         Verify npm commands use correct shell flag
@@ -447,19 +433,19 @@ class TestCrossPlatformCompatibility:
         Linux: shell=False (direct execution)
         macOS: shell=False (direct execution)
         """
-        with patch('platform.system', return_value=platform_name):
+        with patch("platform.system", return_value=platform_name):
             from installer.platforms import get_platform_handler
 
             handler = get_platform_handler()
 
-            with patch('subprocess.run') as mock_run:
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
-                handler.run_npm_command(['npm', 'install'], cwd=Path("/tmp"))
+                handler.run_npm_command(["npm", "install"], cwd=Path("/tmp"))
 
                 # Verify shell parameter
                 call_kwargs = mock_run.call_args[1]
-                assert call_kwargs['shell'] == expected_shell, (
+                assert call_kwargs["shell"] == expected_shell, (
                     f"{platform_name} should use shell={expected_shell} for npm commands"
                 )
 
@@ -467,6 +453,7 @@ class TestCrossPlatformCompatibility:
 # ============================================================================
 # DATABASE CREATION
 # ============================================================================
+
 
 class TestDatabaseCreation:
     """
@@ -497,12 +484,10 @@ class TestDatabaseCreation:
         actual_count = len(tables)
 
         assert actual_count == expected_count, (
-            f"Expected {expected_count} tables, found {actual_count}. "
-            f"Tables: {sorted(tables)}"
+            f"Expected {expected_count} tables, found {actual_count}. Tables: {sorted(tables)}"
         )
 
         engine.dispose()
-
 
     def test_pg_trgm_extension_created(self):
         """
@@ -510,22 +495,18 @@ class TestDatabaseCreation:
 
         Location: installer/core/database.py:314-318
         """
-        from installer.core.database import DatabaseInstaller
 
         # Read source code
         installer_file = Path(__file__).parent.parent.parent.parent / "installer" / "core" / "database.py"
         code = installer_file.read_text()
 
         # Verify extension creation SQL exists
-        assert 'CREATE EXTENSION IF NOT EXISTS pg_trgm' in code, (
+        assert "CREATE EXTENSION IF NOT EXISTS pg_trgm" in code, (
             "pg_trgm extension creation missing from DatabaseInstaller"
         )
 
         # Verify success logging
-        assert 'Extension pg_trgm created successfully' in code, (
-            "pg_trgm extension creation not logged"
-        )
-
+        assert "Extension pg_trgm created successfully" in code, "pg_trgm extension creation not logged"
 
     @pytest.mark.asyncio
     async def test_setup_state_created_with_security_fields(self):
@@ -543,11 +524,11 @@ class TestDatabaseCreation:
         # Create SetupState
         setup_state = SetupState(
             id=str(uuid4()),
-            tenant_key='test_tenant',
+            tenant_key="test_tenant",
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),
             first_admin_created=False,
-            first_admin_created_at=None
+            first_admin_created_at=None,
         )
         session.add(setup_state)
         session.commit()
@@ -564,6 +545,7 @@ class TestDatabaseCreation:
 # ============================================================================
 # CONFIGURATION FILES
 # ============================================================================
+
 
 class TestConfigurationFiles:
     """
@@ -582,23 +564,23 @@ class TestConfigurationFiles:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            with patch('pathlib.Path.cwd', return_value=tmpdir_path):
+            with patch("pathlib.Path.cwd", return_value=tmpdir_path):
                 from installer.core.config import ConfigManager
 
                 settings = {
-                    'pg_host': 'localhost',
-                    'pg_port': 5432,
-                    'api_port': 7272,
-                    'dashboard_port': 7274,
-                    'install_dir': str(tmpdir_path),
-                    'bind': '0.0.0.0',
-                    'external_host': 'localhost'
+                    "pg_host": "localhost",
+                    "pg_port": 5432,
+                    "api_port": 7272,
+                    "dashboard_port": 7274,
+                    "install_dir": str(tmpdir_path),
+                    "bind": "0.0.0.0",
+                    "external_host": "localhost",
                 }
 
                 config_mgr = ConfigManager(settings)
                 result = config_mgr.generate_config_yaml()
 
-                assert result['success'], "config.yaml generation should succeed"
+                assert result["success"], "config.yaml generation should succeed"
 
                 # Verify file exists
                 config_file = tmpdir_path / "config.yaml"
@@ -606,9 +588,8 @@ class TestConfigurationFiles:
 
                 # Verify contents
                 content = config_file.read_text()
-                assert '0.0.0.0' in content, "Should bind to all interfaces"
-                assert 'database:' in content, "Should have database section"
-
+                assert "0.0.0.0" in content, "Should bind to all interfaces"
+                assert "database:" in content, "Should have database section"
 
     def test_env_file_with_real_passwords(self):
         """
@@ -620,25 +601,25 @@ class TestConfigurationFiles:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            with patch('pathlib.Path.cwd', return_value=tmpdir_path):
+            with patch("pathlib.Path.cwd", return_value=tmpdir_path):
                 from installer.core.config import ConfigManager
 
                 # Real database passwords from DatabaseInstaller
                 settings = {
-                    'pg_host': 'localhost',
-                    'pg_port': 5432,
-                    'api_port': 7272,
-                    'dashboard_port': 7274,
-                    'install_dir': str(tmpdir_path),
-                    'owner_password': 'real_owner_pass_12345',
-                    'user_password': 'real_user_pass_67890',
-                    'default_tenant_key': 'tk_test123456789'
+                    "pg_host": "localhost",
+                    "pg_port": 5432,
+                    "api_port": 7272,
+                    "dashboard_port": 7274,
+                    "install_dir": str(tmpdir_path),
+                    "owner_password": "real_owner_pass_12345",
+                    "user_password": "real_user_pass_67890",
+                    "default_tenant_key": "tk_test123456789",
                 }
 
                 config_mgr = ConfigManager(settings)
                 result = config_mgr.generate_env_file()
 
-                assert result['success'], ".env generation should succeed"
+                assert result["success"], ".env generation should succeed"
 
                 # Verify file exists
                 env_file = tmpdir_path / ".env"
@@ -646,22 +627,17 @@ class TestConfigurationFiles:
 
                 # Verify REAL passwords are in file
                 content = env_file.read_text()
-                assert 'real_owner_pass_12345' in content, (
-                    ".env should contain real owner password"
-                )
-                assert 'real_user_pass_67890' in content, (
-                    ".env should contain real user password"
-                )
+                assert "real_owner_pass_12345" in content, ".env should contain real owner password"
+                assert "real_user_pass_67890" in content, ".env should contain real user password"
 
                 # Verify no placeholder passwords
-                assert 'REPLACE_ME' not in content, (
-                    ".env should NOT contain placeholder passwords"
-                )
+                assert "REPLACE_ME" not in content, ".env should NOT contain placeholder passwords"
 
 
 # ============================================================================
 # EDGE CASES
 # ============================================================================
+
 
 class TestEdgeCases:
     """
@@ -680,13 +656,11 @@ class TestEdgeCases:
         assert not installer.check_custom_postgresql_path("/nonexistent/path")
 
         # Test valid path (mock)
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('pathlib.Path.is_dir', return_value=True):
-                with patch('pathlib.Path.resolve', return_value=Path("/mock/postgres/bin")):
-                    # Should still fail without psql executable
-                    result = installer.check_custom_postgresql_path("/mock/postgres/bin")
-                    # Implementation checks for psql existence
-
+        with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.resolve", return_value=Path("/mock/postgres/bin")):
+                # Should still fail without psql executable
+                result = installer.check_custom_postgresql_path("/mock/postgres/bin")
+                # Implementation checks for psql existence
 
     def test_missing_postgresql_shows_guide(self):
         """
@@ -699,6 +673,7 @@ class TestEdgeCases:
         # Capture output
         import io
         import sys
+
         old_stdout = sys.stdout
         sys.stdout = captured_output = io.StringIO()
 
@@ -718,7 +693,6 @@ class TestEdgeCases:
         finally:
             sys.stdout = old_stdout
 
-
     def test_port_conflict_detection(self):
         """
         Verify port conflict detection works
@@ -736,7 +710,6 @@ class TestEdgeCases:
 
         # Port 1 should be unavailable or protected
         # (test may vary by OS and permissions)
-
 
     def test_find_available_port(self):
         """
@@ -759,6 +732,7 @@ class TestEdgeCases:
 # TEST EXECUTION SUMMARY
 # ============================================================================
 
+
 def test_phase_4_test_suite_completeness():
     """
     Meta-test: Verify Phase 4 test suite is comprehensive
@@ -778,33 +752,29 @@ def test_phase_4_test_suite_completeness():
 
     current_module = sys.modules[__name__]
     test_classes = [
-        obj for name, obj in inspect.getmembers(current_module)
-        if inspect.isclass(obj) and name.startswith('Test')
+        obj for name, obj in inspect.getmembers(current_module) if inspect.isclass(obj) and name.startswith("Test")
     ]
 
     expected_classes = [
-        'TestBug1PgTrgmExtension',
-        'TestBug2SuccessMessages',
-        'TestHandover0034FreshInstall',
-        'TestHandover0035SecurityFields',
-        'TestCrossPlatformCompatibility',
-        'TestDatabaseCreation',
-        'TestConfigurationFiles',
-        'TestEdgeCases',
+        "TestBug1PgTrgmExtension",
+        "TestBug2SuccessMessages",
+        "TestHandover0034FreshInstall",
+        "TestHandover0035SecurityFields",
+        "TestCrossPlatformCompatibility",
+        "TestDatabaseCreation",
+        "TestConfigurationFiles",
+        "TestEdgeCases",
     ]
 
     actual_classes = [cls.__name__ for cls in test_classes]
 
     for expected in expected_classes:
-        assert expected in actual_classes, (
-            f"Missing test class: {expected}. "
-            "Phase 4 test suite must be comprehensive."
-        )
+        assert expected in actual_classes, f"Missing test class: {expected}. Phase 4 test suite must be comprehensive."
 
     assert len(actual_classes) >= len(expected_classes), (
         f"Expected at least {len(expected_classes)} test classes, found {len(actual_classes)}"
     )
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '--tb=short', '-k', 'test_'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short", "-k", "test_"])

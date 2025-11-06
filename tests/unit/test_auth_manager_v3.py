@@ -370,10 +370,13 @@ async def test_auth_manager_api_key_fallback_when_jwt_invalid(mock_config, mock_
     request.headers = {"Authorization": "Bearer invalid_token", "X-API-Key": test_user.api_key}
 
     # Mock JWT validation to fail, API key to succeed
-    with patch.object(auth_manager, "validate_jwt_token", return_value=None), patch.object(
-        auth_manager,
-        "validate_api_key",
-        return_value={"name": test_user.username, "active": True, "permissions": ["*"]},
+    with (
+        patch.object(auth_manager, "validate_jwt_token", return_value=None),
+        patch.object(
+            auth_manager,
+            "validate_api_key",
+            return_value={"name": test_user.username, "active": True, "permissions": ["*"]},
+        ),
     ):
         # Act
         result = await auth_manager.authenticate_request(request)

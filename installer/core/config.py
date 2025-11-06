@@ -73,43 +73,43 @@ class ConfigManager:
     def _read_latest_credentials(self) -> Optional[Dict[str, str]]:
         """
         Read the most recent database credentials file.
-        
+
         Returns:
             Dictionary with credential keys and values, or None if not found
         """
         try:
             credentials_dir = Path("installer/credentials")
-            
+
             if not credentials_dir.exists():
                 self.logger.warning(f"Credentials directory not found: {credentials_dir}")
                 return None
-            
+
             # Find all credential files
             credential_files = list(credentials_dir.glob("db_credentials_*.txt"))
-            
+
             if not credential_files:
                 self.logger.warning("No credential files found in installer/credentials/")
                 return None
-            
+
             # Get the most recent file (by modification time)
             latest_file = max(credential_files, key=lambda p: p.stat().st_mtime)
             self.logger.info(f"Reading credentials from: {latest_file}")
-            
+
             # Parse the credentials file
             credentials = {}
-            with open(latest_file, 'r') as f:
+            with open(latest_file, "r") as f:
                 for line in f:
                     line = line.strip()
                     # Skip comments and empty lines
-                    if not line or line.startswith('#'):
+                    if not line or line.startswith("#"):
                         continue
                     # Parse key=value pairs
-                    if '=' in line:
-                        key, value = line.split('=', 1)
+                    if "=" in line:
+                        key, value = line.split("=", 1)
                         credentials[key.strip()] = value.strip()
-            
+
             return credentials
-            
+
         except Exception as e:
             self.logger.error(f"Failed to read credentials file: {e}")
             return None
@@ -136,13 +136,13 @@ class ConfigManager:
             # Get database credentials - try multiple sources
             owner_password = None
             user_password = None
-            
+
             # Source 1: From settings (if passed from DatabaseInstaller)
             if "owner_password" in self.settings and "user_password" in self.settings:
                 owner_password = self.settings.get("owner_password")
                 user_password = self.settings.get("user_password")
                 self.logger.info("Using database passwords from settings")
-            
+
             # Source 2: Read from most recent credentials file
             if not owner_password or not user_password:
                 credentials = self._read_latest_credentials()
@@ -150,7 +150,7 @@ class ConfigManager:
                     owner_password = credentials.get("OWNER_PASSWORD")
                     user_password = credentials.get("USER_PASSWORD")
                     self.logger.info("Using database passwords from credentials file")
-            
+
             # Source 3: Raise error if password missing (production security)
             if not owner_password:
                 raise ValueError("Owner password is required - no defaults allowed for production security")
@@ -243,7 +243,7 @@ LOG_FILE=./logs/giljo_mcp.log
 GILJO_MCP_API_KEY=
 
 # Default tenant key (generated during installation for admin user)
-DEFAULT_TENANT_KEY={self.settings.get('default_tenant_key', 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd')}
+DEFAULT_TENANT_KEY={self.settings.get("default_tenant_key", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")}
 
 # Secret keys for session management
 GILJO_MCP_SECRET_KEY={self.generate_secret_key()}
@@ -395,8 +395,10 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                         "psql_executable": self.settings.get("postgresql_psql_path"),
                         "discovered_at": self.settings.get("postgresql_discovered_at"),
                         "custom_path": self.settings.get("postgresql_custom_path", False),
-                        "discovery_method": self.settings.get("postgresql_discovery_method", "auto")
-                    } if self.settings.get("postgresql_bin_path") else {}
+                        "discovery_method": self.settings.get("postgresql_discovery_method", "auto"),
+                    }
+                    if self.settings.get("postgresql_bin_path")
+                    else {},
                 },
                 "server": {
                     # v3.0: Always bind to 0.0.0.0 (all interfaces)
@@ -428,14 +430,12 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "authentication": True,  # Always enabled in v3.0
                     "auto_login_localhost": True,  # IP-based auto-login for 127.0.0.1
                     "firewall_configured": self.settings.get("configure_firewall", False),
-
                     # Core features
                     "vision_chunking": True,
                     "multi_tenant": True,
                     "websocket": True,
                     "auto_handoff": True,
                     "dynamic_discovery": True,
-
                     # Security features (optional)
                     "ssl_enabled": self.settings.get("features", {}).get("ssl", False),
                     "api_keys_enabled": self.settings.get("features", {}).get("api_keys", False),
@@ -581,7 +581,6 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
         }
 
         return security_config
-
 
     def generate_secret_key(self, length: int = 32) -> str:
         """Generate a secure random secret key"""

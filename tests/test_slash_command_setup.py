@@ -2,17 +2,17 @@
 Unit tests for slash command setup MCP tool (Handover 0093)
 Tests the setup_slash_commands MCP tool that returns markdown files for local installation
 """
+
 import pytest
 import yaml
-from typing import Any
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 from src.giljo_mcp.tools.slash_command_templates import (
-    GIL_IMPORT_PRODUCTAGENTS_MD,
-    GIL_IMPORT_PERSONALAGENTS_MD,
     GIL_HANDOVER_MD,
+    GIL_IMPORT_PERSONALAGENTS_MD,
+    GIL_IMPORT_PRODUCTAGENTS_MD,
     get_all_templates,
 )
+from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 @pytest.fixture
@@ -87,8 +87,9 @@ class TestSlashCommandTemplates:
             frontmatter = yaml.safe_load(parts[1])
 
             # Verify name matches
-            assert frontmatter["name"] == expected_names[filename], \
+            assert frontmatter["name"] == expected_names[filename], (
                 f"{filename} has incorrect name: {frontmatter['name']} (expected {expected_names[filename]})"
+            )
 
     def test_template_descriptions_not_empty(self):
         """Test that all templates have non-empty descriptions"""
@@ -141,15 +142,13 @@ class TestSlashCommandTemplates:
         content = GIL_HANDOVER_MD
 
         # Should mention succession/handover
-        assert "succession" in content.lower() or "handover" in content.lower(), \
-            "Missing succession/handover reference"
+        assert "succession" in content.lower() or "handover" in content.lower(), "Missing succession/handover reference"
 
         # Should mention context
         assert "context" in content.lower(), "Missing context reference"
 
         # Should mention MCP tool call
-        assert "create_successor_orchestrator" in content, \
-            "Missing create_successor_orchestrator tool reference"
+        assert "create_successor_orchestrator" in content, "Missing create_successor_orchestrator tool reference"
 
 
 class TestSetupSlashCommandsTool:
@@ -236,13 +235,8 @@ class TestMCPHttpExposure:
         """Test that setup_slash_commands appears in MCP tools/list"""
         response = await async_client.post(
             "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": 1
-            },
-            headers={"X-API-Key": auth_token}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1},
+            headers={"X-API-Key": auth_token},
         )
 
         assert response.status_code == 200
@@ -261,13 +255,8 @@ class TestMCPHttpExposure:
         """Test that setup_slash_commands has correct tool definition"""
         response = await async_client.post(
             "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "params": {},
-                "id": 1
-            },
-            headers={"X-API-Key": auth_token}
+            json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1},
+            headers={"X-API-Key": auth_token},
         )
 
         tools = response.json()["result"]["tools"]
@@ -296,13 +285,10 @@ class TestMCPHttpExposure:
             json={
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": "setup_slash_commands",
-                    "arguments": {}
-                },
-                "id": 2
+                "params": {"name": "setup_slash_commands", "arguments": {}},
+                "id": 2,
             },
-            headers={"X-API-Key": auth_token}
+            headers={"X-API-Key": auth_token},
         )
 
         assert response.status_code == 200

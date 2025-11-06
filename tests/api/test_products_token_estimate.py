@@ -14,7 +14,6 @@ Test Coverage:
 - Integration with user field_priority_config
 """
 
-import json
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
@@ -59,7 +58,7 @@ async def test_user(db_session: AsyncSession, test_tenant_key: str) -> User:
             "architecture.notes": 3,
             "test_config.frameworks": 3,
             "test_config.coverage_target": 3,
-        }
+        },
     }
 
     user = await UserFactory.create_user(
@@ -67,18 +66,14 @@ async def test_user(db_session: AsyncSession, test_tenant_key: str) -> User:
         username="test_token_user",
         tenant_key=test_tenant_key,
         role="developer",
-        field_priority_config=field_priority_config
+        field_priority_config=field_priority_config,
     )
 
     return user
 
 
 @pytest_asyncio.fixture
-async def test_product_active(
-    db_session: AsyncSession,
-    test_tenant_key: str,
-    test_user: User
-) -> Product:
+async def test_product_active(db_session: AsyncSession, test_tenant_key: str, test_user: User) -> Product:
     """
     Create active product with comprehensive config_data.
 
@@ -90,13 +85,13 @@ async def test_product_active(
             "backend": "FastAPI with async/await, SQLAlchemy ORM",  # ~50 chars = ~13 tokens
             "frontend": "Vue 3 Composition API, Vuetify 3, Pinia state management",  # ~70 chars = ~18 tokens
             "database": "PostgreSQL 18 with JSONB for flexible schemas",  # ~55 chars = ~14 tokens
-            "infrastructure": "Docker containers, Nginx reverse proxy, systemd services"  # ~75 chars = ~19 tokens
+            "infrastructure": "Docker containers, Nginx reverse proxy, systemd services",  # ~75 chars = ~19 tokens
         },
         "architecture": {
             "pattern": "Microservices with event-driven communication via WebSockets",  # ~70 chars = ~18 tokens
             "api_style": "RESTful API with OpenAPI 3.0 documentation, JWT authentication",  # ~75 chars = ~19 tokens
             "design_patterns": "Repository pattern, Factory pattern, Strategy pattern for platform handlers",  # ~95 chars = ~24 tokens
-            "notes": "Multi-tenant architecture with strict data isolation. All database queries filtered by tenant_key."  # ~110 chars = ~28 tokens
+            "notes": "Multi-tenant architecture with strict data isolation. All database queries filtered by tenant_key.",  # ~110 chars = ~28 tokens
         },
         "features": {
             "core": "AI agent orchestration, multi-tenant isolation, real-time WebSocket updates, vision document chunking"  # ~115 chars = ~29 tokens
@@ -104,8 +99,8 @@ async def test_product_active(
         "test_config": {
             "strategy": "TDD with pytest, 80% coverage target, integration tests for all API endpoints",  # ~90 chars = ~23 tokens
             "frameworks": "pytest, pytest-asyncio, httpx for async testing, factory pattern for test data",  # ~95 chars = ~24 tokens
-            "coverage_target": "80% minimum coverage with focus on critical paths and multi-tenant isolation"  # ~95 chars = ~24 tokens
-        }
+            "coverage_target": "80% minimum coverage with focus on critical paths and multi-tenant isolation",  # ~95 chars = ~24 tokens
+        },
     }
 
     product = Product(
@@ -114,7 +109,7 @@ async def test_product_active(
         name="Active Test Product",
         description="Product for token estimation testing",
         config_data=config_data,
-        is_active=True  # ACTIVE product
+        is_active=True,  # ACTIVE product
     )
 
     db_session.add(product)
@@ -125,10 +120,7 @@ async def test_product_active(
 
 
 @pytest_asyncio.fixture
-async def test_product_inactive(
-    db_session: AsyncSession,
-    test_tenant_key: str
-) -> Product:
+async def test_product_inactive(db_session: AsyncSession, test_tenant_key: str) -> Product:
     """Create inactive product (should not be counted as active)."""
     product = Product(
         id="test_product_inactive_001",
@@ -136,7 +128,7 @@ async def test_product_inactive(
         name="Inactive Test Product",
         description="Should not be considered active",
         config_data={"tech_stack": {"languages": "Python"}},
-        is_active=False  # INACTIVE
+        is_active=False,  # INACTIVE
     )
 
     db_session.add(product)
@@ -155,7 +147,7 @@ async def other_tenant_product(db_session: AsyncSession) -> Product:
         name="Other Tenant Product",
         description="Product from different tenant",
         config_data={"tech_stack": {"languages": "Python"}},
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(product)
@@ -166,11 +158,7 @@ async def other_tenant_product(db_session: AsyncSession) -> Product:
 
 
 @pytest.mark.asyncio
-async def test_token_estimate_success(
-    api_client: AsyncClient,
-    test_user: User,
-    test_product_active: Product
-):
+async def test_token_estimate_success(api_client: AsyncClient, test_user: User, test_product_active: Product):
     """
     Test successful token estimation with active product.
 
@@ -246,9 +234,7 @@ async def test_token_estimate_success(
 
 @pytest.mark.asyncio
 async def test_token_estimate_no_active_product(
-    api_client: AsyncClient,
-    test_user: User,
-    test_product_inactive: Product
+    api_client: AsyncClient, test_user: User, test_product_inactive: Product
 ):
     """
     Test token estimation when no active product exists.
@@ -278,10 +264,7 @@ async def test_token_estimate_no_active_product(
 
 @pytest.mark.asyncio
 async def test_token_estimate_missing_config_fields(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    test_tenant_key: str
+    api_client: AsyncClient, db_session: AsyncSession, test_user: User, test_tenant_key: str
 ):
     """
     Test token estimation with missing config_data fields.
@@ -300,7 +283,7 @@ async def test_token_estimate_missing_config_fields(
         "architecture": {
             "pattern": "Microservices"
             # Missing: api_style, design_patterns, notes
-        }
+        },
         # Missing: features, test_config
     }
 
@@ -309,7 +292,7 @@ async def test_token_estimate_missing_config_fields(
         tenant_key=test_tenant_key,
         name="Partial Config Product",
         config_data=partial_config,
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(product)
@@ -347,9 +330,7 @@ async def test_token_estimate_missing_config_fields(
 
 @pytest.mark.asyncio
 async def test_token_estimate_multi_tenant_isolation(
-    api_client: AsyncClient,
-    test_user: User,
-    other_tenant_product: Product
+    api_client: AsyncClient, test_user: User, other_tenant_product: Product
 ):
     """
     CRITICAL: Test multi-tenant isolation.
@@ -382,10 +363,7 @@ async def test_token_estimate_multi_tenant_isolation(
 
 @pytest.mark.asyncio
 async def test_token_estimate_calculation_accuracy(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    test_tenant_key: str
+    api_client: AsyncClient, db_session: AsyncSession, test_user: User, test_tenant_key: str
 ):
     """
     Test token calculation accuracy using character/4 formula.
@@ -400,7 +378,7 @@ async def test_token_estimate_calculation_accuracy(
         },
         "architecture": {
             "pattern": "ABCDEFGHIJKL"  # 12 chars = 3 tokens
-        }
+        },
     }
 
     product = Product(
@@ -408,7 +386,7 @@ async def test_token_estimate_calculation_accuracy(
         tenant_key=test_tenant_key,
         name="Known Token Product",
         config_data=known_config,
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(product)
@@ -454,10 +432,7 @@ async def test_token_estimate_calculation_accuracy(
 
 @pytest.mark.asyncio
 async def test_token_estimate_user_without_field_config(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    test_tenant_key: str,
-    test_product_active: Product
+    api_client: AsyncClient, db_session: AsyncSession, test_tenant_key: str, test_product_active: Product
 ):
     """
     Test token estimation for user without field_priority_config.
@@ -472,7 +447,7 @@ async def test_token_estimate_user_without_field_config(
         username="user_no_config",
         tenant_key=test_tenant_key,
         role="developer",
-        field_priority_config=None  # No custom config
+        field_priority_config=None,  # No custom config
     )
 
     from api.app import app
@@ -503,10 +478,7 @@ async def test_token_estimate_user_without_field_config(
 
 @pytest.mark.asyncio
 async def test_token_estimate_empty_config_data(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    test_tenant_key: str
+    api_client: AsyncClient, db_session: AsyncSession, test_user: User, test_tenant_key: str
 ):
     """
     Test token estimation with empty config_data.
@@ -518,7 +490,7 @@ async def test_token_estimate_empty_config_data(
         tenant_key=test_tenant_key,
         name="Empty Config Product",
         config_data={},  # Empty config
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(product)
@@ -554,10 +526,7 @@ async def test_token_estimate_empty_config_data(
 
 @pytest.mark.asyncio
 async def test_token_estimate_percentage_over_100(
-    api_client: AsyncClient,
-    db_session: AsyncSession,
-    test_user: User,
-    test_tenant_key: str
+    api_client: AsyncClient, db_session: AsyncSession, test_user: User, test_tenant_key: str
 ):
     """
     Test token estimation when usage exceeds budget.
@@ -578,7 +547,7 @@ async def test_token_estimate_percentage_over_100(
         tenant_key=test_tenant_key,
         name="Large Config Product",
         config_data=large_config,
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(product)

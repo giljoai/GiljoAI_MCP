@@ -4,17 +4,15 @@ GiljoAI MCP Comprehensive Test Scenarios
 Complete test suite for Phase 4 validation
 """
 
-import os
-import sys
 import json
-import time
-import subprocess
-import socket
-import psutil
+import os
 import shutil
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+import socket
+import subprocess
+import sys
+import time
 from datetime import datetime
+from pathlib import Path
 
 
 class TestScenarioRunner:
@@ -58,21 +56,24 @@ class TestScenarioRunner:
             shutil.rmtree(self.test_dir)
 
         # Copy project
-        shutil.copytree(self.root_dir, self.test_dir,
-                       ignore=shutil.ignore_patterns('__pycache__', '.git', 'venv'))
+        shutil.copytree(self.root_dir, self.test_dir, ignore=shutil.ignore_patterns("__pycache__", ".git", "venv"))
 
         # Run installer
         cmd = [
             sys.executable,
             str(self.test_dir / "installer" / "cli" / "install.py"),
-            "--mode", "localhost",
-            "--pg-host", "localhost",
-            "--pg-port", "5432",
-            "--pg-password", "4010",
-            "--batch"
+            "--mode",
+            "localhost",
+            "--pg-host",
+            "localhost",
+            "--pg-port",
+            "5432",
+            "--pg-password",
+            "4010",
+            "--batch",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=300)
 
         # Verify installation
         config_exists = (self.test_dir / "config.yaml").exists()
@@ -89,25 +90,31 @@ class TestScenarioRunner:
             shutil.rmtree(self.test_dir)
 
         # Copy project
-        shutil.copytree(self.root_dir, self.test_dir,
-                       ignore=shutil.ignore_patterns('__pycache__', '.git', 'venv'))
+        shutil.copytree(self.root_dir, self.test_dir, ignore=shutil.ignore_patterns("__pycache__", ".git", "venv"))
 
         # Run installer
         cmd = [
             sys.executable,
             str(self.test_dir / "installer" / "cli" / "install.py"),
-            "--mode", "server",
-            "--pg-host", "localhost",
-            "--pg-port", "5432",
-            "--pg-password", "4010",
-            "--bind", "0.0.0.0",
-            "--admin-username", "admin",
-            "--admin-password", "test123",
+            "--mode",
+            "server",
+            "--pg-host",
+            "localhost",
+            "--pg-port",
+            "5432",
+            "--pg-password",
+            "4010",
+            "--bind",
+            "0.0.0.0",
+            "--admin-username",
+            "admin",
+            "--admin-password",
+            "test123",
             "--generate-api-key",
-            "--batch"
+            "--batch",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=300)
 
         # Verify installation
         config_exists = (self.test_dir / "config.yaml").exists()
@@ -116,9 +123,10 @@ class TestScenarioRunner:
         # Check for server-specific configs
         if config_exists:
             import yaml
+
             with open(self.test_dir / "config.yaml") as f:
                 config = yaml.safe_load(f)
-                server_mode = config.get('mode') == 'server'
+                server_mode = config.get("mode") == "server"
                 return result.returncode == 0 and server_mode
 
         return False
@@ -139,14 +147,18 @@ class TestScenarioRunner:
         cmd = [
             sys.executable,
             str(self.test_dir / "installer" / "cli" / "install.py"),
-            "--mode", "localhost",
-            "--pg-host", "localhost",
-            "--pg-port", "5432",
-            "--pg-password", "4010",
-            "--batch"
+            "--mode",
+            "localhost",
+            "--pg-host",
+            "localhost",
+            "--pg-port",
+            "5432",
+            "--pg-password",
+            "4010",
+            "--batch",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=300)
 
         # Verify data preserved
         if has_data:
@@ -174,11 +186,7 @@ class TestScenarioRunner:
             return False
 
         # Start in background
-        process = subprocess.Popen(
-            [sys.executable, str(launcher_path)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        process = subprocess.Popen([sys.executable, str(launcher_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # Wait for startup
         time.sleep(10)
@@ -199,7 +207,7 @@ class TestScenarioRunner:
 
         for port in ports:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex(('127.0.0.1', port))
+            result = sock.connect_ex(("127.0.0.1", port))
             sock.close()
 
             if result != 0:
@@ -229,10 +237,11 @@ class TestScenarioRunner:
         # Run with option 1 (remove files, keep PostgreSQL)
         result = subprocess.run(
             [sys.executable, str(uninstall_path)],
+            check=False,
             input="1\nRESET\n",
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
         )
 
         os.chdir(self.root_dir)
@@ -262,7 +271,7 @@ class TestScenarioRunner:
 
         # Block a port
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(('127.0.0.1', 8000))
+        sock.bind(("127.0.0.1", 8000))
 
         try:
             # Try to start services
@@ -277,9 +286,7 @@ class TestScenarioRunner:
 
             # This should fail gracefully
             process = subprocess.Popen(
-                [sys.executable, str(launcher_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                [sys.executable, str(launcher_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
 
             time.sleep(5)
@@ -316,8 +323,8 @@ class TestScenarioRunner:
             config = yaml.safe_load(original)
 
         # Modify with bad settings
-        config['database']['host'] = 'nonexistent.host'
-        with open(config_file, 'w') as f:
+        config["database"]["host"] = "nonexistent.host"
+        with open(config_file, "w") as f:
             yaml.dump(config, f)
 
         try:
@@ -326,9 +333,7 @@ class TestScenarioRunner:
             # Try to start services
             launcher_path = self.test_dir / "start_giljo.py"
             process = subprocess.Popen(
-                [sys.executable, str(launcher_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                [sys.executable, str(launcher_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
 
             time.sleep(5)
@@ -343,7 +348,7 @@ class TestScenarioRunner:
 
         finally:
             # Restore original config
-            with open(config_file, 'w') as f:
+            with open(config_file, "w") as f:
                 f.write(original)
             os.chdir(self.root_dir)
 
@@ -366,11 +371,12 @@ class TestScenarioRunner:
         # Validate YAML syntax
         try:
             import yaml
+
             with open(config_file) as f:
                 config = yaml.safe_load(f)
 
             # Check required fields
-            required = ['mode', 'database', 'services']
+            required = ["mode", "database", "services"]
             for field in required:
                 if field not in config:
                     self.log(f"Missing required field: {field}", "ERROR")
@@ -398,12 +404,12 @@ class TestScenarioRunner:
         with open(env_file) as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     env_vars[key] = value
 
         # Check required variables
-        required = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']
+        required = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
         for var in required:
             if var not in env_vars:
                 self.log(f"Missing environment variable: {var}", "ERROR")
@@ -439,11 +445,7 @@ class TestScenarioRunner:
         start_time = time.time()
 
         launcher_path = self.test_dir / "start_giljo.py"
-        process = subprocess.Popen(
-            [sys.executable, str(launcher_path)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        process = subprocess.Popen([sys.executable, str(launcher_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # Wait for services
         services_up = False
@@ -470,37 +472,55 @@ class TestScenarioRunner:
         """Run all test scenarios"""
         self.start_time = time.time()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("   GiljoAI MCP Comprehensive Test Suite")
-        print("="*70)
+        print("=" * 70)
         print()
 
         # Define test categories
         test_categories = [
-            ("INSTALLATION", [
-                ("Clean Install - Localhost", self.test_clean_install_localhost),
-                ("Clean Install - Server", self.test_clean_install_server),
-                ("Upgrade Installation", self.test_upgrade_installation),
-            ]),
-            ("SERVICE LAUNCH", [
-                ("Service Launch", self.test_service_launch),
-            ]),
-            ("UNINSTALL", [
-                ("Development Uninstall", self.test_dev_uninstall),
-                ("Production Uninstall Check", self.test_production_uninstall),
-            ]),
-            ("ERROR RECOVERY", [
-                ("Port Conflict Recovery", self.test_port_conflict_recovery),
-                ("Database Connection Failure", self.test_database_connection_failure),
-            ]),
-            ("CONFIGURATION", [
-                ("Config Validation", self.test_config_validation),
-                ("Environment Variables", self.test_environment_variables),
-            ]),
-            ("PERFORMANCE", [
-                ("Installation Performance", self.test_installation_performance),
-                ("Startup Performance", self.test_startup_performance),
-            ])
+            (
+                "INSTALLATION",
+                [
+                    ("Clean Install - Localhost", self.test_clean_install_localhost),
+                    ("Clean Install - Server", self.test_clean_install_server),
+                    ("Upgrade Installation", self.test_upgrade_installation),
+                ],
+            ),
+            (
+                "SERVICE LAUNCH",
+                [
+                    ("Service Launch", self.test_service_launch),
+                ],
+            ),
+            (
+                "UNINSTALL",
+                [
+                    ("Development Uninstall", self.test_dev_uninstall),
+                    ("Production Uninstall Check", self.test_production_uninstall),
+                ],
+            ),
+            (
+                "ERROR RECOVERY",
+                [
+                    ("Port Conflict Recovery", self.test_port_conflict_recovery),
+                    ("Database Connection Failure", self.test_database_connection_failure),
+                ],
+            ),
+            (
+                "CONFIGURATION",
+                [
+                    ("Config Validation", self.test_config_validation),
+                    ("Environment Variables", self.test_environment_variables),
+                ],
+            ),
+            (
+                "PERFORMANCE",
+                [
+                    ("Installation Performance", self.test_installation_performance),
+                    ("Startup Performance", self.test_startup_performance),
+                ],
+            ),
         ]
 
         # Run tests by category
@@ -518,9 +538,9 @@ class TestScenarioRunner:
         """Display test results summary"""
         elapsed = time.time() - self.start_time
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("   Test Results Summary")
-        print("="*70)
+        print("=" * 70)
         print()
 
         passed = sum(1 for _, status, _ in self.results if status == "PASS")
@@ -529,7 +549,7 @@ class TestScenarioRunner:
         total = len(self.results)
 
         print(f"Total Tests: {total}")
-        print(f"Passed: {passed} ({passed/total*100:.1f}%)")
+        print(f"Passed: {passed} ({passed / total * 100:.1f}%)")
         print(f"Failed: {failed}")
         print(f"Errors: {errors}")
         print(f"Time: {elapsed:.1f} seconds")
@@ -543,25 +563,29 @@ class TestScenarioRunner:
                     if error:
                         print(f"    {error}")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         if failed == 0 and errors == 0:
             print("   ALL TESTS PASSED!")
         else:
             print("   TESTS FAILED - Review errors above")
-        print("="*70)
+        print("=" * 70)
 
         # Save results to file
         results_file = self.log_dir / f"test_results_{datetime.now():%Y%m%d_%H%M%S}.json"
-        with open(results_file, 'w') as f:
-            json.dump({
-                'timestamp': datetime.now().isoformat(),
-                'total': total,
-                'passed': passed,
-                'failed': failed,
-                'errors': errors,
-                'time': elapsed,
-                'results': [(n, s, e) for n, s, e in self.results]
-            }, f, indent=2)
+        with open(results_file, "w") as f:
+            json.dump(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "total": total,
+                    "passed": passed,
+                    "failed": failed,
+                    "errors": errors,
+                    "time": elapsed,
+                    "results": [(n, s, e) for n, s, e in self.results],
+                },
+                f,
+                indent=2,
+            )
 
         print(f"\nResults saved to: {results_file}")
 
@@ -580,7 +604,7 @@ def main():
             print(f"Unknown test: {test_name}")
             print("\nAvailable tests:")
             for attr in dir(runner):
-                if attr.startswith('test_'):
+                if attr.startswith("test_"):
                     print(f"  {attr}")
     else:
         # Run all tests

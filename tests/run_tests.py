@@ -73,7 +73,6 @@ class TestRunner:
             if not Path(test_file).exists():
                 continue
 
-
             try:
                 # Run individual test file
                 result = self.run_pytest_file(test_file)
@@ -105,7 +104,6 @@ class TestRunner:
         for test_file in integration_files:
             if not Path(test_file).exists():
                 continue
-
 
             try:
                 result = self.run_pytest_file(test_file)
@@ -143,7 +141,6 @@ class TestRunner:
             health_benchmark = self.benchmark_health_checks()
             results["benchmarks"]["health_checks"] = health_benchmark
             results["tests_run"] += 1
-
 
         except Exception:
             results["success"] = False

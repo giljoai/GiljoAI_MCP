@@ -22,7 +22,6 @@ from src.giljo_mcp.models import Agent, Message, Project, Task, Vision
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestDatabaseManager:
     """Test DatabaseManager functionality."""
 

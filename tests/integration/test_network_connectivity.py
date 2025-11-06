@@ -26,16 +26,17 @@ Usage:
 import asyncio
 import json
 import time
-from typing import List
 
-import pytest
 import httpx
+import pytest
 import websockets
 from websockets.exceptions import WebSocketException
+
 
 # Try to import network utilities
 try:
     import netifaces
+
     NETIFACES_AVAILABLE = True
 except ImportError:
     NETIFACES_AVAILABLE = False
@@ -58,9 +59,9 @@ class NetworkTestHelper:
                 addrs = netifaces.ifaddresses(interface)
                 if netifaces.AF_INET in addrs:
                     for addr_info in addrs[netifaces.AF_INET]:
-                        ip = addr_info['addr']
+                        ip = addr_info["addr"]
                         # Skip localhost
-                        if not ip.startswith('127.'):
+                        if not ip.startswith("127."):
                             return ip
         except Exception:
             pass
@@ -88,11 +89,7 @@ class NetworkTestHelper:
                     errors += 1
 
         if not latencies:
-            return {
-                "success": False,
-                "errors": errors,
-                "message": "No successful requests"
-            }
+            return {"success": False, "errors": errors, "message": "No successful requests"}
 
         return {
             "success": True,
@@ -102,7 +99,7 @@ class NetworkTestHelper:
             "min_ms": min(latencies),
             "max_ms": max(latencies),
             "avg_ms": sum(latencies) / len(latencies),
-            "median_ms": sorted(latencies)[len(latencies) // 2]
+            "median_ms": sorted(latencies)[len(latencies) // 2],
         }
 
 
@@ -117,7 +114,7 @@ class TestNetworkConnectivity:
             "mode": "server",
             "api_port": 7272,
             "websocket_port": 6003,
-            "local_ip": NetworkTestHelper.get_local_ip()
+            "local_ip": NetworkTestHelper.get_local_ip(),
         }
 
     @pytest.mark.asyncio
@@ -136,8 +133,7 @@ class TestNetworkConnectivity:
 
                 data = response.json()
                 assert "status" in data, "Health response missing 'status' field"
-                assert data["status"] in ["healthy", "degraded"], \
-                    f"Unexpected health status: {data['status']}"
+                assert data["status"] in ["healthy", "degraded"], f"Unexpected health status: {data['status']}"
 
             except httpx.ConnectError:
                 pytest.skip("API server not running on localhost")
@@ -163,8 +159,9 @@ class TestNetworkConnectivity:
             try:
                 response = await client.get(f"http://{local_ip}:{server_config['api_port']}/health")
 
-                assert response.status_code == 200, \
+                assert response.status_code == 200, (
                     f"API not accessible from LAN IP {local_ip}. Check firewall and server configuration."
+                )
 
                 data = response.json()
                 assert data["status"] in ["healthy", "degraded"]
@@ -227,8 +224,7 @@ class TestNetworkConnectivity:
                 response = await asyncio.wait_for(ws.recv(), timeout=2.0)
                 data = json.loads(response)
 
-                assert data.get("type") == "pong", \
-                    f"WebSocket accessible but ping/pong failed. Got: {data}"
+                assert data.get("type") == "pong", f"WebSocket accessible but ping/pong failed. Got: {data}"
 
         except (WebSocketException, ConnectionRefusedError) as e:
             pytest.fail(
@@ -258,7 +254,7 @@ class TestNetworkConnectivity:
         p95_latency = result["max_ms"]  # Approximation with small sample
 
         # Log results
-        print(f"\nNetwork Latency Results:")
+        print("\nNetwork Latency Results:")
         print(f"  Successful: {result['successful']}/{result['iterations']}")
         print(f"  Min: {result['min_ms']:.2f}ms")
         print(f"  Max: {result['max_ms']:.2f}ms")
@@ -266,8 +262,7 @@ class TestNetworkConnectivity:
         print(f"  Median: {result['median_ms']:.2f}ms")
 
         # Performance targets
-        assert avg_latency < 100.0, \
-            f"Average latency {avg_latency:.2f}ms exceeds target of 100ms"
+        assert avg_latency < 100.0, f"Average latency {avg_latency:.2f}ms exceeds target of 100ms"
 
         if avg_latency > 50.0:
             print(f"WARNING: Average latency {avg_latency:.2f}ms > 50ms (LAN target)")
@@ -296,21 +291,17 @@ class TestNetworkConnectivity:
             duration = time.perf_counter() - start
 
         # Analyze results
-        successful = sum(
-            1 for r in responses
-            if isinstance(r, httpx.Response) and r.status_code == 200
-        )
+        successful = sum(1 for r in responses if isinstance(r, httpx.Response) and r.status_code == 200)
         success_rate = successful / num_clients * 100
 
-        print(f"\nConcurrent Requests Test:")
+        print("\nConcurrent Requests Test:")
         print(f"  Clients: {num_clients}")
         print(f"  Successful: {successful}/{num_clients}")
         print(f"  Success Rate: {success_rate:.1f}%")
         print(f"  Total Duration: {duration * 1000:.2f}ms")
         print(f"  Avg per Request: {duration / num_clients * 1000:.2f}ms")
 
-        assert success_rate >= 90.0, \
-            f"Success rate {success_rate:.1f}% below target of 90%"
+        assert success_rate >= 90.0, f"Success rate {success_rate:.1f}% below target of 90%"
 
     @pytest.mark.asyncio
     async def test_api_endpoints_accessible_from_network(self, server_config):
@@ -338,18 +329,15 @@ class TestNetworkConnectivity:
             for endpoint, _ in endpoints:
                 try:
                     response = await client.get(f"{base_url}{endpoint}")
-                    results.append({
-                        "endpoint": endpoint,
-                        "status": response.status_code,
-                        "success": response.status_code in [200, 401]  # 401 ok if auth required
-                    })
+                    results.append(
+                        {
+                            "endpoint": endpoint,
+                            "status": response.status_code,
+                            "success": response.status_code in [200, 401],  # 401 ok if auth required
+                        }
+                    )
                 except Exception as e:
-                    results.append({
-                        "endpoint": endpoint,
-                        "status": None,
-                        "success": False,
-                        "error": str(e)
-                    })
+                    results.append({"endpoint": endpoint, "status": None, "success": False, "error": str(e)})
 
         # Log results
         print("\nEndpoint Accessibility Test:")
@@ -407,8 +395,7 @@ class TestNetworkConnectivity:
                 print(f"  Pongs Received: {pongs_received}")
                 print(f"  Stability Rate: {stability_rate:.1f}%")
 
-                assert stability_rate >= 80.0, \
-                    f"WebSocket stability {stability_rate:.1f}% below target of 80%"
+                assert stability_rate >= 80.0, f"WebSocket stability {stability_rate:.1f}% below target of 80%"
 
         except WebSocketException as e:
             pytest.fail(f"WebSocket connection failed during stability test: {e}")

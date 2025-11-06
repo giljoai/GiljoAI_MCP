@@ -10,9 +10,9 @@ Phase: TDD Red Phase (Tests should FAIL initially)
 """
 
 import json
-import pytest
 import socket
-from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -156,6 +156,7 @@ class TestNetworkDetectIPEdgeCases:
 
     def test_detect_ip_handles_no_network_interfaces(self, client, monkeypatch):
         """Test that endpoint handles systems with no network interfaces gracefully"""
+
         # Mock socket.gethostbyname_ex to return no IPs
         def mock_gethostbyname_ex(hostname):
             return (hostname, [], [])  # No aliases, no IPs
@@ -176,6 +177,7 @@ class TestNetworkDetectIPEdgeCases:
 
     def test_detect_ip_handles_only_localhost(self, client, monkeypatch):
         """Test behavior when only localhost (127.0.0.1) is available"""
+
         # Mock to return only localhost
         def mock_gethostbyname_ex(hostname):
             return (hostname, [], ["127.0.0.1"])
@@ -195,6 +197,7 @@ class TestNetworkDetectIPEdgeCases:
 
     def test_detect_ip_handles_multiple_interfaces(self, client, monkeypatch):
         """Test that endpoint handles multiple network interfaces correctly"""
+
         # Mock system with multiple IPs
         def mock_gethostbyname_ex(hostname):
             return (hostname, [], ["192.168.1.100", "10.0.0.50", "172.16.0.10"])

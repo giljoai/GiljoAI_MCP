@@ -5,10 +5,12 @@ Handover 0017: Provides agent job coordination and lifecycle management.
 Separate from user tasks - handles agent-to-agent job coordination for agentic orchestration.
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from ..models import Job
 from .base import BaseRepository
 
@@ -31,10 +33,15 @@ class AgentJobRepository:
         self.db = db_manager
         self.base_repo = BaseRepository(Job, db_manager)
 
-    def create_job(self, session: Session, tenant_key: str,
-                   agent_type: str, mission: str,
-                   spawned_by: Optional[str] = None,
-                   context_chunks: Optional[List[str]] = None) -> Job:
+    def create_job(
+        self,
+        session: Session,
+        tenant_key: str,
+        agent_type: str,
+        mission: str,
+        spawned_by: Optional[str] = None,
+        context_chunks: Optional[List[str]] = None,
+    ) -> Job:
         """
         Create a new agent job.
 
@@ -50,16 +57,16 @@ class AgentJobRepository:
             Created Job instance
         """
         return self.base_repo.create(
-            session, tenant_key,
+            session,
+            tenant_key,
             agent_type=agent_type,
             mission=mission,
             status="pending",
             spawned_by=spawned_by,
-            context_chunks=context_chunks or []
+            context_chunks=context_chunks or [],
         )
 
-    def get_job_by_job_id(self, session: Session, tenant_key: str,
-                          job_id: str) -> Optional[Job]:
+    def get_job_by_job_id(self, session: Session, tenant_key: str, job_id: str) -> Optional[Job]:
         """
         Get a job by its job_id.
 
@@ -71,15 +78,17 @@ class AgentJobRepository:
         Returns:
             Job instance or None if not found
         """
-        return session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.job_id == job_id
-        ).first()
+        return session.query(Job).filter(Job.tenant_key == tenant_key, Job.job_id == job_id).first()
 
-    def update_status(self, session: Session, tenant_key: str,
-                      job_id: str, status: str,
-                      started_at: Optional[datetime] = None,
-                      completed_at: Optional[datetime] = None) -> bool:
+    def update_status(
+        self,
+        session: Session,
+        tenant_key: str,
+        job_id: str,
+        status: str,
+        started_at: Optional[datetime] = None,
+        completed_at: Optional[datetime] = None,
+    ) -> bool:
         """
         Update job status with optional timestamps.
 
@@ -94,10 +103,7 @@ class AgentJobRepository:
         Returns:
             True if job was updated, False if not found
         """
-        job = session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.job_id == job_id
-        ).first()
+        job = session.query(Job).filter(Job.tenant_key == tenant_key, Job.job_id == job_id).first()
 
         if job:
             job.status = status
@@ -115,8 +121,7 @@ class AgentJobRepository:
             return True
         return False
 
-    def get_active_jobs(self, session: Session, tenant_key: str,
-                        agent_type: Optional[str] = None) -> List[Job]:
+    def get_active_jobs(self, session: Session, tenant_key: str, agent_type: Optional[str] = None) -> List[Job]:
         """
         Get all active jobs (pending or active status).
 
@@ -128,18 +133,14 @@ class AgentJobRepository:
         Returns:
             List of active Job instances
         """
-        query = session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.status.in_(["pending", "active"])
-        )
+        query = session.query(Job).filter(Job.tenant_key == tenant_key, Job.status.in_(["pending", "active"]))
 
         if agent_type:
             query = query.filter(Job.agent_type == agent_type)
 
         return query.order_by(Job.created_at).all()
 
-    def get_jobs_by_status(self, session: Session, tenant_key: str,
-                           status: str) -> List[Job]:
+    def get_jobs_by_status(self, session: Session, tenant_key: str, status: str) -> List[Job]:
         """
         Get all jobs with a specific status.
 
@@ -151,13 +152,14 @@ class AgentJobRepository:
         Returns:
             List of Job instances with the specified status
         """
-        return session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.status == status
-        ).order_by(Job.created_at.desc()).all()
+        return (
+            session.query(Job)
+            .filter(Job.tenant_key == tenant_key, Job.status == status)
+            .order_by(Job.created_at.desc())
+            .all()
+        )
 
-    def get_jobs_by_spawner(self, session: Session, tenant_key: str,
-                            spawned_by: str) -> List[Job]:
+    def get_jobs_by_spawner(self, session: Session, tenant_key: str, spawned_by: str) -> List[Job]:
         """
         Get all jobs spawned by a specific agent.
 
@@ -169,13 +171,14 @@ class AgentJobRepository:
         Returns:
             List of Job instances spawned by the agent
         """
-        return session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.spawned_by == spawned_by
-        ).order_by(Job.created_at.desc()).all()
+        return (
+            session.query(Job)
+            .filter(Job.tenant_key == tenant_key, Job.spawned_by == spawned_by)
+            .order_by(Job.created_at.desc())
+            .all()
+        )
 
-    def add_message(self, session: Session, tenant_key: str,
-                    job_id: str, message: Dict[str, Any]) -> bool:
+    def add_message(self, session: Session, tenant_key: str, job_id: str, message: Dict[str, Any]) -> bool:
         """
         Add message to job's message array.
 
@@ -188,18 +191,15 @@ class AgentJobRepository:
         Returns:
             True if message was added, False if job not found
         """
-        job = session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.job_id == job_id
-        ).first()
+        job = session.query(Job).filter(Job.tenant_key == tenant_key, Job.job_id == job_id).first()
 
         if job:
             # Ensure messages is a list
             messages = list(job.messages or [])
 
             # Add timestamp if not present
-            if 'timestamp' not in message:
-                message['timestamp'] = datetime.utcnow().isoformat()
+            if "timestamp" not in message:
+                message["timestamp"] = datetime.utcnow().isoformat()
 
             messages.append(message)
             job.messages = messages
@@ -207,8 +207,7 @@ class AgentJobRepository:
             return True
         return False
 
-    def acknowledge_job(self, session: Session, tenant_key: str,
-                        job_id: str) -> bool:
+    def acknowledge_job(self, session: Session, tenant_key: str, job_id: str) -> bool:
         """
         Mark job as acknowledged.
 
@@ -220,10 +219,7 @@ class AgentJobRepository:
         Returns:
             True if job was acknowledged, False if not found
         """
-        job = session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.job_id == job_id
-        ).first()
+        job = session.query(Job).filter(Job.tenant_key == tenant_key, Job.job_id == job_id).first()
 
         if job:
             job.acknowledged = True
@@ -231,8 +227,7 @@ class AgentJobRepository:
             return True
         return False
 
-    def add_context_chunk(self, session: Session, tenant_key: str,
-                          job_id: str, chunk_id: str) -> bool:
+    def add_context_chunk(self, session: Session, tenant_key: str, job_id: str, chunk_id: str) -> bool:
         """
         Add a context chunk ID to the job.
 
@@ -245,10 +240,7 @@ class AgentJobRepository:
         Returns:
             True if chunk was added, False if job not found
         """
-        job = session.query(Job).filter(
-            Job.tenant_key == tenant_key,
-            Job.job_id == job_id
-        ).first()
+        job = session.query(Job).filter(Job.tenant_key == tenant_key, Job.job_id == job_id).first()
 
         if job:
             context_chunks = list(job.context_chunks or [])
@@ -259,8 +251,7 @@ class AgentJobRepository:
             return True
         return False
 
-    def get_job_statistics(self, session: Session, tenant_key: str,
-                           agent_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_job_statistics(self, session: Session, tenant_key: str, agent_type: Optional[str] = None) -> Dict[str, Any]:
         """
         Get job statistics for a tenant.
 
@@ -272,20 +263,13 @@ class AgentJobRepository:
         Returns:
             Dictionary with job statistics
         """
-        query = session.query(Job).filter(
-            Job.tenant_key == tenant_key
-        )
+        query = session.query(Job).filter(Job.tenant_key == tenant_key)
 
         if agent_type:
             query = query.filter(Job.agent_type == agent_type)
 
         # Count by status
-        status_counts = session.query(
-            Job.status,
-            func.count(Job.id)
-        ).filter(
-            Job.tenant_key == tenant_key
-        )
+        status_counts = session.query(Job.status, func.count(Job.id)).filter(Job.tenant_key == tenant_key)
 
         if agent_type:
             status_counts = status_counts.filter(Job.agent_type == agent_type)
@@ -293,20 +277,20 @@ class AgentJobRepository:
         status_counts = status_counts.group_by(Job.status).all()
 
         # Count by agent type
-        type_counts = session.query(
-            Job.agent_type,
-            func.count(Job.id)
-        ).filter(
-            Job.tenant_key == tenant_key
-        ).group_by(Job.agent_type).all()
+        type_counts = (
+            session.query(Job.agent_type, func.count(Job.id))
+            .filter(Job.tenant_key == tenant_key)
+            .group_by(Job.agent_type)
+            .all()
+        )
 
         total_jobs = query.count()
 
         return {
-            'total_jobs': total_jobs,
-            'by_status': {status: count for status, count in status_counts},
-            'by_agent_type': {agent_type: count for agent_type, count in type_counts},
-            'active_jobs': len([s for s, c in status_counts if s in ['pending', 'active']]),
-            'completed_jobs': len([s for s, c in status_counts if s == 'completed']),
-            'failed_jobs': len([s for s, c in status_counts if s == 'failed'])
+            "total_jobs": total_jobs,
+            "by_status": {status: count for status, count in status_counts},
+            "by_agent_type": {agent_type: count for agent_type, count in type_counts},
+            "active_jobs": len([s for s, c in status_counts if s in ["pending", "active"]]),
+            "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
+            "failed_jobs": len([s for s, c in status_counts if s == "failed"]),
         }

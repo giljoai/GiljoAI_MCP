@@ -29,7 +29,7 @@ class TestCommandInjection:
         captured_calls = []
 
         def mock_run(cmd, *args, **kwargs):
-            captured_calls.append({"cmd": cmd, "shell": kwargs.get("shell", None)})
+            captured_calls.append({"cmd": cmd, "shell": kwargs.get("shell")})
             return MagicMock(returncode=0, stdout="uvx 0.1.0")
 
         monkeypatch.setattr(subprocess, "run", mock_run)
@@ -366,7 +366,10 @@ class TestInputSanitization:
             written_config = json.loads(written_content)
 
         # Special characters should be properly escaped
-        assert written_config["mcpServers"]["serena"]["env"]["SERENA_PROJECT_ROOT"] == config["mcpServers"]["serena"]["env"]["SERENA_PROJECT_ROOT"]
+        assert (
+            written_config["mcpServers"]["serena"]["env"]["SERENA_PROJECT_ROOT"]
+            == config["mcpServers"]["serena"]["env"]["SERENA_PROJECT_ROOT"]
+        )
 
 
 class TestAccessControl:

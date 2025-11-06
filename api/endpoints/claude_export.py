@@ -55,7 +55,7 @@ class ClaudeExportRequest(BaseModel):
 
         if not normalized.endswith(".claude/agents"):
             raise ValueError(
-                "Export path must end with '.claude/agents' " "(e.g., '/project/.claude/agents' or '~/.claude/agents')"
+                "Export path must end with '.claude/agents' (e.g., '/project/.claude/agents' or '~/.claude/agents')"
             )
         return v
 
@@ -329,7 +329,7 @@ async def export_template_to_claude_code(
     file_path.write_text(full_content, encoding="utf-8")
 
     logger.info(
-        f"[export_template_to_claude_code] Exported template {template.name} " f"to {file_path} for tenant {tenant_key}"
+        f"[export_template_to_claude_code] Exported template {template.name} to {file_path} for tenant {tenant_key}"
     )
 
     return str(file_path)
@@ -389,7 +389,7 @@ async def export_templates_to_claude_code(
     normalized_path = export_path.replace("\\", "/")
     if not normalized_path.endswith(".claude/agents"):
         raise ValueError(
-            "Export path must end with '.claude/agents' " "(e.g., '/project/.claude/agents' or '~/.claude/agents')"
+            "Export path must end with '.claude/agents' (e.g., '/project/.claude/agents' or '~/.claude/agents')"
         )
 
     # Expand home directory

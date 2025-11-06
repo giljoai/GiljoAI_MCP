@@ -68,7 +68,7 @@ Related:
     - src/giljo_mcp/models.py: Product.config_data schema
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
@@ -82,13 +82,11 @@ DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
         "tech_stack.frontend": 1,
         "architecture.pattern": 1,
         "features.core": 1,
-
         # Priority 2: High Priority
         # Important context for development decisions
         "tech_stack.database": 2,
         "architecture.api_style": 2,
         "test_config.strategy": 2,
-
         # Priority 3: Medium Priority
         # Additional context and best practices
         "tech_stack.infrastructure": 3,
@@ -96,7 +94,7 @@ DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
         "architecture.notes": 3,
         "test_config.frameworks": 3,
         "test_config.coverage_target": 3,
-    }
+    },
 }
 
 
@@ -116,9 +114,7 @@ def get_fields_by_priority(priority_level: int) -> list[str]:
         ['tech_stack.languages', 'tech_stack.backend', ...]
     """
     return [
-        field_path
-        for field_path, priority in DEFAULT_FIELD_PRIORITY["fields"].items()
-        if priority == priority_level
+        field_path for field_path, priority in DEFAULT_FIELD_PRIORITY["fields"].items() if priority == priority_level
     ]
 
 
@@ -153,8 +149,7 @@ def validate_field_priorities() -> bool:
     for field_path, priority in DEFAULT_FIELD_PRIORITY["fields"].items():
         if not isinstance(priority, int) or priority < 1 or priority > 3:
             raise ValueError(
-                f"Invalid priority {priority} for field '{field_path}'. "
-                f"Priority must be integer between 1 and 3."
+                f"Invalid priority {priority} for field '{field_path}'. Priority must be integer between 1 and 3."
             )
     return True
 

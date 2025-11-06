@@ -7,12 +7,13 @@ These tests run operations 100 times and calculate actual reliability percentage
 Target: >=95% reliability for database operations
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy import select
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Project, AgentInteraction, Product
+from src.giljo_mcp.models import Agent, AgentInteraction, Product, Project
 
 
 class TestDatabaseReliability:
@@ -30,7 +31,7 @@ class TestDatabaseReliability:
             product = Product(
                 tenant_key="reliability-test-tenant",
                 name="Reliability Test Product",
-                description="Product for reliability testing"
+                description="Product for reliability testing",
             )
             session.add(product)
             await session.commit()
@@ -45,7 +46,7 @@ class TestDatabaseReliability:
                 tenant_key="reliability-test-tenant",
                 product_id=test_product.id,
                 name="Reliability Test Project",
-                mission="Test database reliability"
+                mission="Test database reliability",
             )
             session.add(project)
             await session.commit()
@@ -68,7 +69,7 @@ class TestDatabaseReliability:
                         name=f"reliability-agent-{i}",
                         role="tester",
                         status="active",
-                        created_at=datetime.now(timezone.utc)
+                        created_at=datetime.now(timezone.utc),
                     )
                     session.add(agent)
                     await session.commit()
@@ -79,7 +80,7 @@ class TestDatabaseReliability:
 
         reliability = (success_count / 100) * 100
 
-        print(f"\n=== Agent Creation Reliability Test ===")
+        print("\n=== Agent Creation Reliability Test ===")
         print(f"Successes: {success_count}/100")
         print(f"Failures: {failure_count}/100")
         print(f"Reliability: {reliability}%")
@@ -109,7 +110,7 @@ class TestDatabaseReliability:
                 tenant_key=test_project.tenant_key,
                 name="orchestrator",
                 role="orchestrator",
-                status="active"
+                status="active",
             )
             session.add(parent)
             await session.commit()
@@ -127,7 +128,7 @@ class TestDatabaseReliability:
                         sub_agent_name=f"worker-{i}",
                         interaction_type="SPAWN",
                         mission="Test mission",
-                        start_time=datetime.now(timezone.utc)
+                        start_time=datetime.now(timezone.utc),
                     )
                     session.add(interaction)
                     await session.commit()
@@ -138,7 +139,7 @@ class TestDatabaseReliability:
 
         reliability = (success_count / 100) * 100
 
-        print(f"\n=== Interaction Logging Reliability Test ===")
+        print("\n=== Interaction Logging Reliability Test ===")
         print(f"Successes: {success_count}/100")
         print(f"Failures: {failure_count}/100")
         print(f"Reliability: {reliability}%")
@@ -149,8 +150,7 @@ class TestDatabaseReliability:
                 print(f"  - Iteration {error['iteration']}: {error['error']}")
 
         assert reliability >= 95.0, (
-            f"Interaction logging reliability {reliability}% is below target 95%. "
-            f"Failures: {failure_count}"
+            f"Interaction logging reliability {reliability}% is below target 95%. Failures: {failure_count}"
         )
 
     @pytest.mark.asyncio
@@ -169,7 +169,7 @@ class TestDatabaseReliability:
                         tenant_key=test_project.tenant_key,
                         name=f"transaction-test-{i}",
                         role="tester",
-                        status="active"
+                        status="active",
                     )
                     session.add(agent)
 
@@ -182,14 +182,12 @@ class TestDatabaseReliability:
 
         reliability = (success_count / 100) * 100
 
-        print(f"\n=== Transaction Commit Reliability Test ===")
+        print("\n=== Transaction Commit Reliability Test ===")
         print(f"Successes: {success_count}/100")
         print(f"Failures: {failure_count}/100")
         print(f"Reliability: {reliability}%")
 
-        assert reliability >= 95.0, (
-            f"Transaction commit reliability {reliability}% is below target 95%"
-        )
+        assert reliability >= 95.0, f"Transaction commit reliability {reliability}% is below target 95%"
 
     @pytest.mark.asyncio
     async def test_query_execution_reliability(self, db_manager, test_project):
@@ -206,7 +204,7 @@ class TestDatabaseReliability:
                     tenant_key=test_project.tenant_key,
                     name=f"query-test-agent-{i}",
                     role="tester",
-                    status="active"
+                    status="active",
                 )
                 session.add(agent)
             await session.commit()
@@ -227,14 +225,12 @@ class TestDatabaseReliability:
 
         reliability = (success_count / 100) * 100
 
-        print(f"\n=== Query Execution Reliability Test ===")
+        print("\n=== Query Execution Reliability Test ===")
         print(f"Successes: {success_count}/100")
         print(f"Failures: {failure_count}/100")
         print(f"Reliability: {reliability}%")
 
-        assert reliability >= 95.0, (
-            f"Query execution reliability {reliability}% is below target 95%"
-        )
+        assert reliability >= 95.0, f"Query execution reliability {reliability}% is below target 95%"
 
 
 class TestDatabaseConstraintReliability:
@@ -257,7 +253,7 @@ class TestDatabaseConstraintReliability:
                         sub_agent_name="test",
                         interaction_type="INVALID_TYPE",  # Should violate constraint
                         mission="Test",
-                        start_time=datetime.now(timezone.utc)
+                        start_time=datetime.now(timezone.utc),
                     )
                     session.add(interaction)
                     await session.commit()
@@ -274,14 +270,13 @@ class TestDatabaseConstraintReliability:
 
         enforcement_rate = (successful_rejections / 50) * 100
 
-        print(f"\n=== Constraint Enforcement Reliability Test ===")
+        print("\n=== Constraint Enforcement Reliability Test ===")
         print(f"Successful rejections: {successful_rejections}/50")
         print(f"Constraint violations: {constraint_violations}/50")
         print(f"Enforcement rate: {enforcement_rate}%")
 
         assert enforcement_rate == 100.0, (
-            f"Constraints should reject invalid data 100% of the time, "
-            f"but enforcement rate is {enforcement_rate}%"
+            f"Constraints should reject invalid data 100% of the time, but enforcement rate is {enforcement_rate}%"
         )
 
 

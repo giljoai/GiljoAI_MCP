@@ -14,8 +14,8 @@ Features:
 import logging
 from typing import Any, Dict, List, Optional
 
-from giljo_mcp.repositories.context_repository import ContextRepository
 from giljo_mcp.models import MCPContextIndex
+from giljo_mcp.repositories.context_repository import ContextRepository
 
 
 logger = logging.getLogger(__name__)
@@ -41,9 +41,7 @@ class ContextIndexer:
 
         logger.info("ContextIndexer initialized")
 
-    def store_chunk(
-        self, tenant_key: str, product_id: str, chunk: Dict[str, Any]
-    ) -> str:
+    def store_chunk(self, tenant_key: str, product_id: str, chunk: Dict[str, Any]) -> str:
         """
         Store a single chunk in the database.
 
@@ -64,20 +62,16 @@ class ContextIndexer:
                 keywords=chunk["keywords"],
                 token_count=chunk["tokens"],
                 chunk_order=chunk["chunk_number"],
-                summary=chunk.get("summary")
+                summary=chunk.get("summary"),
             )
 
             session.commit()
 
-            logger.debug(
-                f"Stored chunk {created_chunk.chunk_id} for product {product_id}"
-            )
+            logger.debug(f"Stored chunk {created_chunk.chunk_id} for product {product_id}")
 
             return created_chunk.chunk_id
 
-    def store_chunks(
-        self, tenant_key: str, product_id: str, chunks: List[Dict[str, Any]]
-    ) -> List[str]:
+    def store_chunks(self, tenant_key: str, product_id: str, chunks: List[Dict[str, Any]]) -> List[str]:
         """
         Store multiple chunks in batch.
 
@@ -104,22 +98,18 @@ class ContextIndexer:
                     keywords=chunk["keywords"],
                     token_count=chunk["tokens"],
                     chunk_order=chunk["chunk_number"],
-                    summary=chunk.get("summary")
+                    summary=chunk.get("summary"),
                 )
 
                 chunk_ids.append(created_chunk.chunk_id)
 
             session.commit()
 
-        logger.info(
-            f"Stored {len(chunk_ids)} chunks for product {product_id}"
-        )
+        logger.info(f"Stored {len(chunk_ids)} chunks for product {product_id}")
 
         return chunk_ids
 
-    def search_chunks(
-        self, tenant_key: str, product_id: str, query: str, limit: int = 10
-    ) -> List[MCPContextIndex]:
+    def search_chunks(self, tenant_key: str, product_id: str, query: str, limit: int = 10) -> List[MCPContextIndex]:
         """
         Search chunks by keywords using PostgreSQL full-text search.
 
@@ -134,22 +124,14 @@ class ContextIndexer:
         """
         with self.db_manager.get_session() as session:
             results = self.context_repo.search_chunks(
-                session=session,
-                tenant_key=tenant_key,
-                product_id=product_id,
-                query=query,
-                limit=limit
+                session=session, tenant_key=tenant_key, product_id=product_id, query=query, limit=limit
             )
 
-            logger.debug(
-                f"Search for '{query}' in product {product_id}: {len(results)} results"
-            )
+            logger.debug(f"Search for '{query}' in product {product_id}: {len(results)} results")
 
             return results
 
-    def get_chunks_by_product(
-        self, tenant_key: str, product_id: str
-    ) -> List[MCPContextIndex]:
+    def get_chunks_by_product(self, tenant_key: str, product_id: str) -> List[MCPContextIndex]:
         """
         Get all chunks for a product ordered by chunk_order.
 
@@ -162,20 +144,14 @@ class ContextIndexer:
         """
         with self.db_manager.get_session() as session:
             chunks = self.context_repo.get_chunks_by_product(
-                session=session,
-                tenant_key=tenant_key,
-                product_id=product_id
+                session=session, tenant_key=tenant_key, product_id=product_id
             )
 
-            logger.debug(
-                f"Retrieved {len(chunks)} chunks for product {product_id}"
-            )
+            logger.debug(f"Retrieved {len(chunks)} chunks for product {product_id}")
 
             return chunks
 
-    def get_chunk_by_id(
-        self, tenant_key: str, chunk_id: str
-    ) -> Optional[MCPContextIndex]:
+    def get_chunk_by_id(self, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
         """
         Get a specific chunk by chunk_id.
 
@@ -187,11 +163,7 @@ class ContextIndexer:
             MCPContextIndex instance or None if not found
         """
         with self.db_manager.get_session() as session:
-            chunk = self.context_repo.get_chunk_by_id(
-                session=session,
-                tenant_key=tenant_key,
-                chunk_id=chunk_id
-            )
+            chunk = self.context_repo.get_chunk_by_id(session=session, tenant_key=tenant_key, chunk_id=chunk_id)
 
             if chunk:
                 logger.debug(f"Retrieved chunk {chunk_id}")
@@ -200,9 +172,7 @@ class ContextIndexer:
 
             return chunk
 
-    def delete_chunks_by_product(
-        self, tenant_key: str, product_id: str
-    ) -> int:
+    def delete_chunks_by_product(self, tenant_key: str, product_id: str) -> int:
         """
         Delete all chunks for a product.
 
@@ -215,15 +185,11 @@ class ContextIndexer:
         """
         with self.db_manager.get_session() as session:
             count = self.context_repo.delete_chunks_by_product(
-                session=session,
-                tenant_key=tenant_key,
-                product_id=product_id
+                session=session, tenant_key=tenant_key, product_id=product_id
             )
 
             session.commit()
 
-            logger.info(
-                f"Deleted {count} chunks for product {product_id}"
-            )
+            logger.info(f"Deleted {count} chunks for product {product_id}")
 
             return count

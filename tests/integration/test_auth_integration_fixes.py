@@ -9,18 +9,17 @@ Tests for the 3 blocking issues:
 These tests follow TDD principles - written first to validate the fixes.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from pathlib import Path
 from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from api.middleware import AuthMiddleware
 from src.giljo_mcp.auth_legacy import AuthManager
-from src.giljo_mcp.models import User, Base
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Base, User
 
 
 @pytest.fixture
@@ -37,9 +36,7 @@ async def test_db():
         await conn.run_sync(Base.metadata.create_all)
 
     # Create session factory
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     yield async_session
 
@@ -94,6 +91,7 @@ def mock_config():
 # FIX #1: MIDDLEWARE PARAMETER MISMATCH TESTS
 # ============================================================================
 
+
 class TestMiddlewareParameterFix:
     """Tests for Fix #1: Middleware accepts auth_manager parameter"""
 
@@ -104,10 +102,7 @@ class TestMiddlewareParameterFix:
         # This should NOT raise an error
         # The middleware should accept auth_manager parameter (not db)
         try:
-            app.add_middleware(
-                AuthMiddleware,
-                auth_manager=lambda: auth_manager
-            )
+            app.add_middleware(AuthMiddleware, auth_manager=lambda: auth_manager)
             success = True
         except TypeError as e:
             success = False
@@ -124,17 +119,13 @@ class TestMiddlewareParameterFix:
         # Note: We're not testing rejection here, just documenting the change
         # Old code: app.add_middleware(AuthMiddleware, db=session)
         # New code: app.add_middleware(AuthMiddleware, auth_manager=lambda: auth)
-        pass
 
     def test_middleware_initialization_with_auth_manager(self, auth_manager):
         """Test middleware can initialize with auth_manager"""
         app = FastAPI()
 
         # Initialize middleware directly
-        middleware = AuthMiddleware(
-            app=app,
-            auth_manager=lambda: auth_manager
-        )
+        middleware = AuthMiddleware(app=app, auth_manager=lambda: auth_manager)
 
         assert middleware.get_auth_manager is not None
         assert callable(middleware.get_auth_manager)
@@ -150,10 +141,7 @@ class TestMiddlewareParameterFix:
             call_count += 1
             return auth_manager
 
-        middleware = AuthMiddleware(
-            app=app,
-            auth_manager=auth_callable
-        )
+        middleware = AuthMiddleware(app=app, auth_manager=auth_callable)
 
         # Get auth manager
         result = middleware.get_auth_manager()
@@ -166,15 +154,12 @@ class TestMiddlewareParameterFix:
 # FIX #2: DATABASE SESSION PER-REQUEST TESTS
 # ============================================================================
 
+
 class TestDatabaseSessionPerRequest:
     """Tests for Fix #2: DB session retrieved per-request from app state"""
 
     @pytest.mark.asyncio
-    async def test_auth_gets_db_session_from_app_state(
-        self,
-        auth_manager,
-        mock_db_manager
-    ):
+    async def test_auth_gets_db_session_from_app_state(self, auth_manager, mock_db_manager):
         """Test AuthManager gets db session from request.app.state"""
         # Create mock request
         request = Mock(spec=Request)
@@ -193,8 +178,7 @@ class TestDatabaseSessionPerRequest:
         mock_user.id = 1
 
         # Mock ensure_localhost_user to return our mock user
-        with patch('src.giljo_mcp.auth_legacy.ensure_localhost_user',
-                   return_value=mock_user):
+        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=mock_user):
             # Authenticate request
             result = await auth_manager.authenticate_request(request)
 
@@ -227,10 +211,7 @@ class TestDatabaseSessionPerRequest:
         assert "Database not configured" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_localhost_user_creation_with_session(
-        self,
-        test_db
-    ):
+    async def test_localhost_user_creation_with_session(self, test_db):
         """Test localhost user can be created with db session"""
         from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
 
@@ -268,15 +249,12 @@ class TestDatabaseSessionPerRequest:
 # FIX #3: REQUEST.STATE CONSISTENCY TESTS
 # ============================================================================
 
+
 class TestRequestStateConsistency:
     """Tests for Fix #3: request.state.user and user_id set consistently"""
 
     @pytest.mark.asyncio
-    async def test_auto_login_sets_user_and_user_id(
-        self,
-        auth_manager,
-        mock_db_manager
-    ):
+    async def test_auto_login_sets_user_and_user_id(self, auth_manager, mock_db_manager):
         """Test auto-login sets both user (object) and user_id (string)"""
         # Create mock request
         request = Mock(spec=Request)
@@ -295,8 +273,7 @@ class TestRequestStateConsistency:
         mock_user.id = 1
 
         # Mock ensure_localhost_user
-        with patch('src.giljo_mcp.auth_legacy.ensure_localhost_user',
-                   return_value=mock_user):
+        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=mock_user):
             result = await auth_manager.authenticate_request(request)
 
         # Verify both user_id and user_obj are present
@@ -305,12 +282,7 @@ class TestRequestStateConsistency:
         assert result.get("user_obj") is not None
 
     @pytest.mark.asyncio
-    async def test_jwt_auth_sets_user_and_user_id(
-        self,
-        auth_manager,
-        mock_db_manager,
-        test_db
-    ):
+    async def test_jwt_auth_sets_user_and_user_id(self, auth_manager, mock_db_manager, test_db):
         """Test JWT auth sets both user (object) and user_id (string)"""
         # Create test user in database
         async with test_db() as session:
@@ -332,11 +304,13 @@ class TestRequestStateConsistency:
 
         # Create mock request with JWT
         request = Mock(spec=Request)
-        request.headers.get = Mock(side_effect=lambda key, default="": {
-            "Authorization": f"Bearer {token}",
-            "X-Forwarded-For": None,
-            "X-Real-IP": None,
-        }.get(key, default))
+        request.headers.get = Mock(
+            side_effect=lambda key, default="": {
+                "Authorization": f"Bearer {token}",
+                "X-Forwarded-For": None,
+                "X-Real-IP": None,
+            }.get(key, default)
+        )
         request.client = Mock()
         request.client.host = "192.168.1.100"  # Network client
         request.app = Mock()
@@ -368,12 +342,7 @@ class TestRequestStateConsistency:
         # assert "user_id" in result
 
     @pytest.mark.asyncio
-    async def test_api_key_sets_user_and_user_id(
-        self,
-        auth_manager,
-        mock_db_manager,
-        test_db
-    ):
+    async def test_api_key_sets_user_and_user_id(self, auth_manager, mock_db_manager, test_db):
         """Test API key auth sets both user (object) and user_id (string)"""
         # Create test user
         async with test_db() as session:
@@ -395,12 +364,14 @@ class TestRequestStateConsistency:
 
         # Create mock request with API key
         request = Mock(spec=Request)
-        request.headers.get = Mock(side_effect=lambda key, default="": {
-            "X-API-Key": api_key,
-            "Authorization": "",
-            "X-Forwarded-For": None,
-            "X-Real-IP": None,
-        }.get(key, default))
+        request.headers.get = Mock(
+            side_effect=lambda key, default="": {
+                "X-API-Key": api_key,
+                "Authorization": "",
+                "X-Forwarded-For": None,
+                "X-Real-IP": None,
+            }.get(key, default)
+        )
         request.client = Mock()
         request.client.host = "192.168.1.100"  # Network client
         request.app = Mock()
@@ -433,11 +404,7 @@ class TestRequestStateConsistency:
         # assert "user_id" in result
 
     @pytest.mark.asyncio
-    async def test_middleware_sets_request_state_consistently(
-        self,
-        auth_manager,
-        mock_db_manager
-    ):
+    async def test_middleware_sets_request_state_consistently(self, auth_manager, mock_db_manager):
         """Test middleware sets request.state consistently"""
         # Create mock app
         app = FastAPI()
@@ -464,13 +431,9 @@ class TestRequestStateConsistency:
         mock_user.id = 1
 
         # Mock ensure_localhost_user
-        with patch('src.giljo_mcp.auth_legacy.ensure_localhost_user',
-                   return_value=mock_user):
+        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=mock_user):
             # Authenticate through middleware
-            middleware = AuthMiddleware(
-                app=app,
-                auth_manager=lambda: auth_manager
-            )
+            middleware = AuthMiddleware(app=app, auth_manager=lambda: auth_manager)
 
             # Mock call_next
             async def mock_call_next(req):
@@ -491,20 +454,17 @@ class TestRequestStateConsistency:
 # INTEGRATION TESTS - ALL FIXES TOGETHER
 # ============================================================================
 
+
 class TestIntegrationAllFixes:
     """Integration tests verifying all 3 fixes work together"""
 
     @pytest.mark.asyncio
-    async def test_complete_localhost_flow(
-        self,
-        auth_manager,
-        mock_db_manager,
-        test_db
-    ):
+    async def test_complete_localhost_flow(self, auth_manager, mock_db_manager, test_db):
         """Test complete localhost authentication flow with all fixes"""
         # Create localhost user
         async with test_db() as session:
             from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
+
             localhost_user = await ensure_localhost_user(session)
             await session.commit()
 
@@ -514,10 +474,7 @@ class TestIntegrationAllFixes:
         app.state.auth = auth_manager
 
         # Add middleware with auth_manager parameter (Fix #1)
-        middleware = AuthMiddleware(
-            app=app,
-            auth_manager=lambda: auth_manager
-        )
+        middleware = AuthMiddleware(app=app, auth_manager=lambda: auth_manager)
 
         # Create request
         request = Mock(spec=Request)
@@ -530,15 +487,14 @@ class TestIntegrationAllFixes:
         request.state = Mock()
 
         # Mock ensure_localhost_user to use our created user
-        with patch('src.giljo_mcp.auth_legacy.ensure_localhost_user',
-                   return_value=localhost_user):
+        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=localhost_user):
             # Mock call_next
             async def mock_call_next(req):
                 # Verify state is set correctly (Fix #3)
-                assert hasattr(req.state, 'authenticated')
-                assert hasattr(req.state, 'user_id')
+                assert hasattr(req.state, "authenticated")
+                assert hasattr(req.state, "user_id")
                 # Should have user object
-                assert hasattr(req.state, 'user')
+                assert hasattr(req.state, "user")
                 return Mock(status_code=200)
 
             # Dispatch request
@@ -549,12 +505,7 @@ class TestIntegrationAllFixes:
         assert request.state.authenticated is True
 
     @pytest.mark.asyncio
-    async def test_complete_network_jwt_flow(
-        self,
-        auth_manager,
-        mock_db_manager,
-        test_db
-    ):
+    async def test_complete_network_jwt_flow(self, auth_manager, mock_db_manager, test_db):
         """Test complete network JWT authentication flow with all fixes"""
         # Create test user
         async with test_db() as session:
@@ -580,21 +531,20 @@ class TestIntegrationAllFixes:
         app.state.auth = auth_manager
 
         # Add middleware (Fix #1)
-        middleware = AuthMiddleware(
-            app=app,
-            auth_manager=lambda: auth_manager
-        )
+        middleware = AuthMiddleware(app=app, auth_manager=lambda: auth_manager)
 
         # Create request
         request = Mock(spec=Request)
         request.app = app
         request.url = Mock()
         request.url.path = "/api/projects"
-        request.headers.get = Mock(side_effect=lambda key, default="": {
-            "Authorization": f"Bearer {token}",
-            "X-Forwarded-For": None,
-            "X-Real-IP": None,
-        }.get(key, default))
+        request.headers.get = Mock(
+            side_effect=lambda key, default="": {
+                "Authorization": f"Bearer {token}",
+                "X-Forwarded-For": None,
+                "X-Real-IP": None,
+            }.get(key, default)
+        )
         request.client = Mock()
         request.client.host = "192.168.1.100"  # Network
         request.state = Mock()
@@ -613,7 +563,7 @@ class TestIntegrationAllFixes:
         # Mock call_next
         async def mock_call_next(req):
             # Verify state (Fix #3)
-            assert hasattr(req.state, 'authenticated')
+            assert hasattr(req.state, "authenticated")
             return Mock(status_code=200)
 
         # Dispatch request

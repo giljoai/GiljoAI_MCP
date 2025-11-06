@@ -5,22 +5,21 @@ Tests the new project_path field added to Product model for agent export
 functionality, including validation, API endpoints, and database operations.
 """
 
-import asyncio
 import tempfile
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from pathlib import Path
-from typing import AsyncGenerator
 from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.testclient import TestClient
-from fastapi import HTTPException
 
-from src.giljo_mcp.models import Product, User
 from api.endpoints.products import validate_project_path
+from src.giljo_mcp.models import Product, User
 
 
 @pytest_asyncio.fixture
@@ -143,9 +142,7 @@ class TestProductProjectPathModel:
         await db_session.commit()
 
         # Query by project_path
-        result = await db_session.execute(
-            select(Product).where(Product.project_path == str(temp_project_dir))
-        )
+        result = await db_session.execute(select(Product).where(Product.project_path == str(temp_project_dir)))
         found_product = result.scalar_one_or_none()
 
         assert found_product is not None
@@ -319,16 +316,12 @@ class TestProjectPathValidationIntegration:
     async def test_validation_called_on_create(self, temp_project_dir: Path):
         """Test that validation is called during product creation"""
 
-        from api.endpoints.products import create_product
-
         # This would test the actual endpoint call with validation
         # Requires full API setup with dependencies
 
     @pytest.mark.asyncio
     async def test_validation_called_on_update(self, temp_project_dir: Path):
         """Test that validation is called during product update"""
-
-        from api.endpoints.products import update_product
 
         # This would test the actual endpoint call with validation
         # Requires full API setup with dependencies
@@ -337,10 +330,7 @@ class TestProjectPathValidationIntegration:
         """Test proper error handling when validation fails"""
 
         with patch("api.endpoints.products.validate_project_path") as mock_validate:
-            mock_validate.side_effect = HTTPException(
-                status_code=400,
-                detail="Project path validation failed"
-            )
+            mock_validate.side_effect = HTTPException(status_code=400, detail="Project path validation failed")
 
             # Test that HTTPException is properly propagated
             with pytest.raises(HTTPException) as exc_info:
@@ -357,22 +347,20 @@ class TestCrossPatformPaths:
 
         windows_path = r"C:\Users\TestUser\Projects\MyProject"
 
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.is_dir", return_value=True):
-                with patch("pathlib.Path.mkdir"):
-                    result = validate_project_path(windows_path)
-                    assert result is True
+        with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.mkdir"):
+                result = validate_project_path(windows_path)
+                assert result is True
 
     def test_unix_path_validation(self):
         """Test validation of Unix-style paths"""
 
         unix_path = "/home/user/projects/my-project"
 
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.is_dir", return_value=True):
-                with patch("pathlib.Path.mkdir"):
-                    result = validate_project_path(unix_path)
-                    assert result is True
+        with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.mkdir"):
+                result = validate_project_path(unix_path)
+                assert result is True
 
     def test_path_normalization(self):
         """Test that paths are properly normalized"""

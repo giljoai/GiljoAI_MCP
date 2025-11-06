@@ -7,12 +7,12 @@ password validation, and edge cases like self-demotion prevention.
 Follows TDD principles: Tests written first to define expected behavior.
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
-from passlib.hash import bcrypt
 from httpx import AsyncClient
-from uuid import uuid4
+from passlib.hash import bcrypt
 
 from src.giljo_mcp.models import User
 
@@ -53,9 +53,9 @@ async def test_create_user_as_admin(test_client: AsyncClient, admin_headers: dic
             "full_name": "New Developer",
             "password": "securepass123",
             "role": "developer",
-            "is_active": True
+            "is_active": True,
         },
-        cookies=admin_headers
+        cookies=admin_headers,
     )
 
     assert response.status_code == 201
@@ -75,12 +75,8 @@ async def test_create_user_as_non_admin(test_client: AsyncClient, authenticated_
     """Test non-admin cannot create users."""
     response = await test_client.post(
         "/api/users/",
-        json={
-            "username": "unauthorized",
-            "password": "pass123",
-            "role": "developer"
-        },
-        cookies=authenticated_headers
+        json={"username": "unauthorized", "password": "pass123", "role": "developer"},
+        cookies=authenticated_headers,
     )
 
     assert response.status_code == 403
@@ -96,9 +92,9 @@ async def test_create_user_duplicate_username(test_client: AsyncClient, admin_he
             "username": "testuser",  # Already exists
             "password": "pass123",
             "email": "different@example.com",
-            "role": "developer"
+            "role": "developer",
         },
-        cookies=admin_headers
+        cookies=admin_headers,
     )
 
     assert response.status_code == 400
@@ -114,9 +110,9 @@ async def test_create_user_duplicate_email(test_client: AsyncClient, admin_heade
             "username": "differentuser",
             "password": "pass123",
             "email": "test@example.com",  # Already exists
-            "role": "developer"
+            "role": "developer",
         },
-        cookies=admin_headers
+        cookies=admin_headers,
     )
 
     assert response.status_code == 400
@@ -132,9 +128,9 @@ async def test_create_user_invalid_role(test_client: AsyncClient, admin_headers:
             "username": "baduser",
             "password": "pass123",
             "email": "bad@example.com",
-            "role": "superadmin"  # Invalid role
+            "role": "superadmin",  # Invalid role
         },
-        cookies=admin_headers
+        cookies=admin_headers,
     )
 
     assert response.status_code == 422  # Pydantic validation error
@@ -198,7 +194,7 @@ async def test_get_user_different_tenant(test_client: AsyncClient, admin_headers
             email="other@example.com",
             role="developer",
             tenant_key="other_tenant",
-            is_active=True
+            is_active=True,
         )
         session.add(other_tenant_user)
         await session.commit()
@@ -218,12 +214,8 @@ async def test_update_user_as_admin(test_client: AsyncClient, admin_headers: dic
     """Test admin can update any user."""
     response = await test_client.put(
         f"/api/users/{test_user.id}",
-        json={
-            "email": "updated@example.com",
-            "full_name": "Updated Name",
-            "is_active": True
-        },
-        cookies=admin_headers
+        json={"email": "updated@example.com", "full_name": "Updated Name", "is_active": True},
+        cookies=admin_headers,
     )
 
     assert response.status_code == 200
@@ -237,11 +229,8 @@ async def test_update_user_self(test_client: AsyncClient, authenticated_headers:
     """Test user can update their own profile."""
     response = await test_client.put(
         f"/api/users/{test_user.id}",
-        json={
-            "email": "selfupdate@example.com",
-            "full_name": "Self Updated"
-        },
-        cookies=authenticated_headers
+        json={"email": "selfupdate@example.com", "full_name": "Self Updated"},
+        cookies=authenticated_headers,
     )
 
     assert response.status_code == 200
@@ -254,11 +243,7 @@ async def test_update_user_self(test_client: AsyncClient, authenticated_headers:
 async def test_update_user_other_as_non_admin(test_client: AsyncClient, authenticated_headers: dict, admin_user: User):
     """Test non-admin cannot update other users."""
     response = await test_client.put(
-        f"/api/users/{admin_user.id}",
-        json={
-            "email": "hacked@example.com"
-        },
-        cookies=authenticated_headers
+        f"/api/users/{admin_user.id}", json={"email": "hacked@example.com"}, cookies=authenticated_headers
     )
 
     assert response.status_code == 403
@@ -266,14 +251,16 @@ async def test_update_user_other_as_non_admin(test_client: AsyncClient, authenti
 
 
 @pytest.mark.asyncio
-async def test_update_user_duplicate_email(test_client: AsyncClient, admin_headers: dict, test_user: User, admin_user: User):
+async def test_update_user_duplicate_email(
+    test_client: AsyncClient, admin_headers: dict, test_user: User, admin_user: User
+):
     """Test updating user with duplicate email fails."""
     response = await test_client.put(
         f"/api/users/{test_user.id}",
         json={
             "email": "admin@example.com"  # admin's email
         },
-        cookies=admin_headers
+        cookies=admin_headers,
     )
 
     assert response.status_code == 400
@@ -318,13 +305,7 @@ async def test_delete_user_nonexistent(test_client: AsyncClient, admin_headers: 
 @pytest.mark.asyncio
 async def test_change_user_role_as_admin(test_client: AsyncClient, admin_headers: dict, test_user: User):
     """Test admin can change user roles."""
-    response = await test_client.put(
-        f"/api/users/{test_user.id}/role",
-        json={
-            "role": "admin"
-        },
-        cookies=admin_headers
-    )
+    response = await test_client.put(f"/api/users/{test_user.id}/role", json={"role": "admin"}, cookies=admin_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -336,11 +317,7 @@ async def test_change_user_role_as_admin(test_client: AsyncClient, admin_headers
 async def test_change_user_role_as_non_admin(test_client: AsyncClient, authenticated_headers: dict, test_user: User):
     """Test non-admin cannot change user roles."""
     response = await test_client.put(
-        f"/api/users/{test_user.id}/role",
-        json={
-            "role": "admin"
-        },
-        cookies=authenticated_headers
+        f"/api/users/{test_user.id}/role", json={"role": "admin"}, cookies=authenticated_headers
     )
 
     assert response.status_code == 403
@@ -355,7 +332,7 @@ async def test_change_user_role_invalid(test_client: AsyncClient, admin_headers:
         json={
             "role": "superadmin"  # Invalid
         },
-        cookies=admin_headers
+        cookies=admin_headers,
     )
 
     assert response.status_code == 422  # Pydantic validation error
@@ -365,11 +342,7 @@ async def test_change_user_role_invalid(test_client: AsyncClient, admin_headers:
 async def test_admin_cannot_demote_self(test_client: AsyncClient, admin_headers: dict, admin_user: User):
     """Test admin cannot demote themselves (prevent lockout)."""
     response = await test_client.put(
-        f"/api/users/{admin_user.id}/role",
-        json={
-            "role": "developer"
-        },
-        cookies=admin_headers
+        f"/api/users/{admin_user.id}/role", json={"role": "developer"}, cookies=admin_headers
     )
 
     assert response.status_code == 400
@@ -381,11 +354,8 @@ async def test_change_password(test_client: AsyncClient, authenticated_headers: 
     """Test user can change their own password."""
     response = await test_client.put(
         f"/api/users/{test_user.id}/password",
-        json={
-            "old_password": "testpassword123",
-            "new_password": "newsecurepass456"
-        },
-        cookies=authenticated_headers
+        json={"old_password": "testpassword123", "new_password": "newsecurepass456"},
+        cookies=authenticated_headers,
     )
 
     assert response.status_code == 200
@@ -394,11 +364,7 @@ async def test_change_password(test_client: AsyncClient, authenticated_headers: 
 
     # Verify new password works
     login_response = await test_client.post(
-        "/api/auth/login",
-        json={
-            "username": "testuser",
-            "password": "newsecurepass456"
-        }
+        "/api/auth/login", json={"username": "testuser", "password": "newsecurepass456"}
     )
     assert login_response.status_code == 200
 
@@ -408,11 +374,8 @@ async def test_change_password_wrong_old(test_client: AsyncClient, authenticated
     """Test password change fails with wrong old password."""
     response = await test_client.put(
         f"/api/users/{test_user.id}/password",
-        json={
-            "old_password": "wrongoldpass",
-            "new_password": "newsecurepass456"
-        },
-        cookies=authenticated_headers
+        json={"old_password": "wrongoldpass", "new_password": "newsecurepass456"},
+        cookies=authenticated_headers,
     )
 
     assert response.status_code == 400
@@ -424,11 +387,8 @@ async def test_change_password_other_user(test_client: AsyncClient, authenticate
     """Test user cannot change other users' passwords."""
     response = await test_client.put(
         f"/api/users/{admin_user.id}/password",
-        json={
-            "old_password": "adminpass123",
-            "new_password": "hacked123"
-        },
-        cookies=authenticated_headers
+        json={"old_password": "adminpass123", "new_password": "hacked123"},
+        cookies=authenticated_headers,
     )
 
     assert response.status_code == 403
@@ -439,11 +399,7 @@ async def test_change_password_other_user(test_client: AsyncClient, authenticate
 async def test_admin_can_change_other_password(test_client: AsyncClient, admin_headers: dict, test_user: User):
     """Test admin can change other users' passwords without old password."""
     response = await test_client.put(
-        f"/api/users/{test_user.id}/password",
-        json={
-            "new_password": "admin_reset_pass123"
-        },
-        cookies=admin_headers
+        f"/api/users/{test_user.id}/password", json={"new_password": "admin_reset_pass123"}, cookies=admin_headers
     )
 
     assert response.status_code == 200
@@ -452,11 +408,7 @@ async def test_admin_can_change_other_password(test_client: AsyncClient, admin_h
 
     # Verify new password works
     login_response = await test_client.post(
-        "/api/auth/login",
-        json={
-            "username": "testuser",
-            "password": "admin_reset_pass123"
-        }
+        "/api/auth/login", json={"username": "testuser", "password": "admin_reset_pass123"}
     )
     assert login_response.status_code == 200
 
@@ -476,7 +428,7 @@ async def test_multi_tenant_isolation_list(test_client: AsyncClient, admin_heade
             email="other1@example.com",
             role="developer",
             tenant_key="other_tenant",
-            is_active=True
+            is_active=True,
         )
         session.add(other_user)
         await session.commit()
@@ -527,16 +479,18 @@ async def test_require_authentication(test_client: AsyncClient):
 
 # Fixtures - same pattern as test_auth_endpoints.py
 
+
 @pytest_asyncio.fixture
 async def test_client():
     """Create async HTTP client for testing user endpoints with proper database dependency override."""
-    from httpx import AsyncClient, ASGITransport
-    from api.app import app
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.auth.dependencies import get_db_session
-    from tests.helpers.test_db_helper import PostgreSQLTestHelper
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from httpx import ASGITransport, AsyncClient
     from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+    from src.giljo_mcp.database import DatabaseManager
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     # Ensure test database exists
     await PostgreSQLTestHelper.ensure_test_database_exists()
@@ -563,10 +517,9 @@ async def test_client():
 
     # IMPORTANT: Mock client IP for tests
     # We need to mock the request.client to ensure tests use authentication
-    from functools import wraps
-    from fastapi import Request, Cookie, Header, Depends
     from typing import Optional
-    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from fastapi import Cookie, Depends, Header, Request
 
     import src.giljo_mcp.auth.dependencies
 
@@ -576,7 +529,7 @@ async def test_client():
         request: Request,
         access_token: Optional[str] = Cookie(None),
         x_api_key: Optional[str] = Header(None),
-        db: AsyncSession = Depends(override_get_db_session)  # Use our override directly
+        db: AsyncSession = Depends(override_get_db_session),  # Use our override directly
     ):
         # Mock the client to appear as non-localhost
         if request.client:
@@ -623,7 +576,7 @@ async def test_user(test_client):
             email="test@example.com",
             role="developer",
             tenant_key="default",
-            is_active=True
+            is_active=True,
         )
         session.add(user)
         await session.commit()
@@ -646,7 +599,7 @@ async def admin_user(test_client):
             email="admin@example.com",
             role="admin",
             tenant_key="default",
-            is_active=True
+            is_active=True,
         )
         session.add(user)
         await session.commit()
@@ -657,13 +610,7 @@ async def admin_user(test_client):
 @pytest_asyncio.fixture
 async def authenticated_headers(test_client: AsyncClient, test_user: User):
     """Get authenticated JWT cookie for testing protected endpoints."""
-    response = await test_client.post(
-        "/api/auth/login",
-        json={
-            "username": "testuser",
-            "password": "testpassword123"
-        }
-    )
+    response = await test_client.post("/api/auth/login", json={"username": "testuser", "password": "testpassword123"})
     assert response.status_code == 200
     return response.cookies
 
@@ -671,12 +618,6 @@ async def authenticated_headers(test_client: AsyncClient, test_user: User):
 @pytest_asyncio.fixture
 async def admin_headers(test_client: AsyncClient, admin_user: User):
     """Get admin JWT cookie for testing admin endpoints."""
-    response = await test_client.post(
-        "/api/auth/login",
-        json={
-            "username": "admin",
-            "password": "adminpass123"
-        }
-    )
+    response = await test_client.post("/api/auth/login", json={"username": "admin", "password": "adminpass123"})
     assert response.status_code == 200
     return response.cookies

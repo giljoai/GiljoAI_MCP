@@ -19,23 +19,24 @@ Test Coverage:
 """
 
 import sys
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.app import create_app
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import MCPAgentJob, User
 
 
 # Test Fixtures
+
 
 @pytest_asyncio.fixture
 async def api_client() -> AsyncGenerator[AsyncClient, None]:
@@ -59,7 +60,7 @@ async def admin_user(db_session: AsyncSession) -> User:
         password_hash=auth_manager.hash_password("test_password"),
         role="admin",
         tenant_key="test_tenant",
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(user)
@@ -82,7 +83,7 @@ async def regular_user(db_session: AsyncSession) -> User:
         password_hash=auth_manager.hash_password("test_password"),
         role="user",
         tenant_key="test_tenant",
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(user)
@@ -105,7 +106,7 @@ async def other_tenant_user(db_session: AsyncSession) -> User:
         password_hash=auth_manager.hash_password("test_password"),
         role="admin",
         tenant_key="other_tenant",
-        is_active=True
+        is_active=True,
     )
 
     db_session.add(user)
@@ -117,19 +118,21 @@ async def other_tenant_user(db_session: AsyncSession) -> User:
 
 def override_current_user(user: User):
     """Override dependency to inject test user."""
+
     async def _get_current_user():
         return user
+
     return _get_current_user
 
 
 @pytest_asyncio.fixture
 async def authenticated_client(
-    api_client: AsyncClient,
-    admin_user: User
+    api_client: AsyncClient, admin_user: User
 ) -> AsyncGenerator[tuple[AsyncClient, User], None]:
     """Create authenticated client with admin user."""
     # Override authentication dependency
     from api.app import app
+
     app.dependency_overrides[get_current_active_user] = override_current_user(admin_user)
 
     yield api_client, admin_user
@@ -139,10 +142,7 @@ async def authenticated_client(
 
 
 @pytest_asyncio.fixture
-async def test_job(
-    db_session: AsyncSession,
-    admin_user: User
-) -> MCPAgentJob:
+async def test_job(db_session: AsyncSession, admin_user: User) -> MCPAgentJob:
     """Create test job for testing."""
     job = MCPAgentJob(
         tenant_key=admin_user.tenant_key,
@@ -152,7 +152,7 @@ async def test_job(
         spawned_by=None,
         context_chunks=["chunk_1", "chunk_2"],
         messages=[],
-        acknowledged=False
+        acknowledged=False,
     )
 
     db_session.add(job)
@@ -164,10 +164,9 @@ async def test_job(
 
 # Test: Job CRUD Operations
 
+
 @pytest.mark.asyncio
-async def test_create_job_success(
-    authenticated_client: tuple[AsyncClient, User]
-):
+async def test_create_job_success(authenticated_client: tuple[AsyncClient, User]):
     """Test successful job creation with valid data."""
     client, user = authenticated_client
 
@@ -176,8 +175,8 @@ async def test_create_job_success(
         json={
             "agent_type": "implementer",
             "mission": "Implement user authentication",
-            "context_chunks": ["chunk_1", "chunk_2"]
-        }
+            "context_chunks": ["chunk_1", "chunk_2"],
+        },
     )
 
     assert response.status_code == 201
@@ -187,19 +186,12 @@ async def test_create_job_success(
 
 
 @pytest.mark.asyncio
-async def test_create_job_missing_required_fields(
-    authenticated_client: tuple[AsyncClient, User]
-):
+async def test_create_job_missing_required_fields(authenticated_client: tuple[AsyncClient, User]):
     """Test job creation fails with missing required fields."""
     client, user = authenticated_client
 
     # Missing agent_type
-    response = await client.post(
-        "/api/agent-jobs",
-        json={
-            "mission": "Test mission"
-        }
-    )
+    response = await client.post("/api/agent-jobs", json={"mission": "Test mission"})
 
     assert response.status_code == 422
     error_detail = response.json()["detail"]
@@ -207,22 +199,14 @@ async def test_create_job_missing_required_fields(
 
 
 @pytest.mark.asyncio
-async def test_create_job_admin_only(
-    api_client: AsyncClient,
-    regular_user: User
-):
+async def test_create_job_admin_only(api_client: AsyncClient, regular_user: User):
     """Test only admins can create jobs."""
     # Override with regular user
     from api.app import app
+
     app.dependency_overrides[get_current_active_user] = override_current_user(regular_user)
 
-    response = await api_client.post(
-        "/api/agent-jobs",
-        json={
-            "agent_type": "implementer",
-            "mission": "Test mission"
-        }
-    )
+    response = await api_client.post("/api/agent-jobs", json={"agent_type": "implementer", "mission": "Test mission"})
 
     assert response.status_code == 403
     assert "Admin access required" in response.json()["detail"]
@@ -231,10 +215,7 @@ async def test_create_job_admin_only(
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_success(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_list_jobs_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test listing jobs with filters."""
     client, user = authenticated_client
 
@@ -254,10 +235,7 @@ async def test_list_jobs_success(
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_status(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_list_jobs_filter_by_status(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test filtering jobs by status."""
     client, user = authenticated_client
 
@@ -273,10 +251,7 @@ async def test_list_jobs_filter_by_status(
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_agent_type(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_list_jobs_filter_by_agent_type(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test filtering jobs by agent type."""
     client, user = authenticated_client
 
@@ -290,10 +265,7 @@ async def test_list_jobs_filter_by_agent_type(
 
 
 @pytest.mark.asyncio
-async def test_get_job_success(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_get_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test getting job details."""
     client, user = authenticated_client
 
@@ -308,9 +280,7 @@ async def test_get_job_success(
 
 
 @pytest.mark.asyncio
-async def test_get_job_not_found(
-    authenticated_client: tuple[AsyncClient, User]
-):
+async def test_get_job_not_found(authenticated_client: tuple[AsyncClient, User]):
     """Test getting non-existent job returns 404."""
     client, user = authenticated_client
 
@@ -321,17 +291,11 @@ async def test_get_job_not_found(
 
 
 @pytest.mark.asyncio
-async def test_update_job_success(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_update_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test updating job status."""
     client, user = authenticated_client
 
-    response = await client.patch(
-        f"/api/agent-jobs/{test_job.job_id}",
-        json={"status": "active"}
-    )
+    response = await client.patch(f"/api/agent-jobs/{test_job.job_id}", json={"status": "active"})
 
     assert response.status_code == 200
     data = response.json()
@@ -340,10 +304,7 @@ async def test_update_job_success(
 
 
 @pytest.mark.asyncio
-async def test_delete_job_admin_only(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_delete_job_admin_only(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test only admins can delete jobs."""
     client, user = authenticated_client
 
@@ -354,12 +315,10 @@ async def test_delete_job_admin_only(
 
 # Test: Multi-Tenant Isolation
 
+
 @pytest.mark.asyncio
 async def test_multi_tenant_isolation_list_jobs(
-    api_client: AsyncClient,
-    other_tenant_user: User,
-    test_job: MCPAgentJob,
-    db_session: AsyncSession
+    api_client: AsyncClient, other_tenant_user: User, test_job: MCPAgentJob, db_session: AsyncSession
 ):
     """Test jobs are isolated by tenant_key in list endpoint."""
     # Create job for other tenant
@@ -368,13 +327,14 @@ async def test_multi_tenant_isolation_list_jobs(
         agent_type="tester",
         mission="Other tenant job",
         status="pending",
-        messages=[]
+        messages=[],
     )
     db_session.add(other_job)
     await db_session.commit()
 
     # Override with other tenant user
     from api.app import app
+
     app.dependency_overrides[get_current_active_user] = override_current_user(other_tenant_user)
 
     response = await api_client.get("/api/agent-jobs")
@@ -391,14 +351,11 @@ async def test_multi_tenant_isolation_list_jobs(
 
 
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation_get_job(
-    api_client: AsyncClient,
-    other_tenant_user: User,
-    test_job: MCPAgentJob
-):
+async def test_multi_tenant_isolation_get_job(api_client: AsyncClient, other_tenant_user: User, test_job: MCPAgentJob):
     """Test cannot access job from different tenant."""
     # Override with other tenant user
     from api.app import app
+
     app.dependency_overrides[get_current_active_user] = override_current_user(other_tenant_user)
 
     response = await api_client.get(f"/api/agent-jobs/{test_job.job_id}")
@@ -411,11 +368,9 @@ async def test_multi_tenant_isolation_get_job(
 
 # Test: Job Status Management
 
+
 @pytest.mark.asyncio
-async def test_acknowledge_job_success(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_acknowledge_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test acknowledging a job (pending -> active)."""
     client, user = authenticated_client
 
@@ -430,10 +385,7 @@ async def test_acknowledge_job_success(
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_idempotent(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_acknowledge_job_idempotent(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test acknowledging already acknowledged job is idempotent."""
     client, user = authenticated_client
 
@@ -448,10 +400,7 @@ async def test_acknowledge_job_idempotent(
 
 
 @pytest.mark.asyncio
-async def test_complete_job_success(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_complete_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test completing a job (active -> completed)."""
     client, user = authenticated_client
 
@@ -460,13 +409,7 @@ async def test_complete_job_success(
 
     # Then complete it
     response = await client.post(
-        f"/api/agent-jobs/{test_job.job_id}/complete",
-        json={
-            "result": {
-                "files_modified": 3,
-                "tests_passed": True
-            }
-        }
+        f"/api/agent-jobs/{test_job.job_id}/complete", json={"result": {"files_modified": 3, "tests_passed": True}}
     )
 
     assert response.status_code == 200
@@ -479,38 +422,26 @@ async def test_complete_job_success(
 
 @pytest.mark.asyncio
 async def test_complete_job_invalid_status_transition(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
+    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob
 ):
     """Test completing job from invalid status fails."""
     client, user = authenticated_client
 
     # Try to complete job in pending status (should be active first)
-    response = await client.post(
-        f"/api/agent-jobs/{test_job.job_id}/complete",
-        json={"result": {}}
-    )
+    response = await client.post(f"/api/agent-jobs/{test_job.job_id}/complete", json={"result": {}})
 
     assert response.status_code == 400
     assert "Invalid status transition" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_fail_job_success(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_fail_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test failing a job."""
     client, user = authenticated_client
 
     response = await client.post(
         f"/api/agent-jobs/{test_job.job_id}/fail",
-        json={
-            "error": {
-                "type": "DatabaseError",
-                "message": "Connection timeout"
-            }
-        }
+        json={"error": {"type": "DatabaseError", "message": "Connection timeout"}},
     )
 
     assert response.status_code == 200
@@ -523,11 +454,9 @@ async def test_fail_job_success(
 
 # Test: Agent Messaging
 
+
 @pytest.mark.asyncio
-async def test_send_message_to_job(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_send_message_to_job(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test sending message to a job."""
     client, user = authenticated_client
 
@@ -536,11 +465,8 @@ async def test_send_message_to_job(
         json={
             "role": "agent",
             "type": "status",
-            "content": {
-                "progress": 50,
-                "current_task": "Implementing authentication"
-            }
-        }
+            "content": {"progress": 50, "current_task": "Implementing authentication"},
+        },
     )
 
     assert response.status_code == 201
@@ -551,21 +477,14 @@ async def test_send_message_to_job(
 
 @pytest.mark.asyncio
 async def test_get_job_messages(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob,
-    db_session: AsyncSession
+    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob, db_session: AsyncSession
 ):
     """Test getting messages for a job."""
     client, user = authenticated_client
 
     # Add message to job
     test_job.messages = [
-        {
-            "role": "system",
-            "type": "status",
-            "content": {"message": "Job started"},
-            "timestamp": "2025-10-19T10:00:00Z"
-        }
+        {"role": "system", "type": "status", "content": {"message": "Job started"}, "timestamp": "2025-10-19T10:00:00Z"}
     ]
     await db_session.commit()
 
@@ -579,9 +498,7 @@ async def test_get_job_messages(
 
 @pytest.mark.asyncio
 async def test_acknowledge_message(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob,
-    db_session: AsyncSession
+    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob, db_session: AsyncSession
 ):
     """Test acknowledging a message."""
     client, user = authenticated_client
@@ -593,14 +510,12 @@ async def test_acknowledge_message(
             "type": "request",
             "content": {"action": "approve"},
             "timestamp": "2025-10-19T10:00:00Z",
-            "acknowledged": False
+            "acknowledged": False,
         }
     ]
     await db_session.commit()
 
-    response = await client.post(
-        f"/api/agent-jobs/{test_job.job_id}/messages/0/acknowledge"
-    )
+    response = await client.post(f"/api/agent-jobs/{test_job.job_id}/messages/0/acknowledge")
 
     assert response.status_code == 200
     data = response.json()
@@ -609,11 +524,9 @@ async def test_acknowledge_message(
 
 # Test: Job Coordination
 
+
 @pytest.mark.asyncio
-async def test_spawn_children_jobs(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_spawn_children_jobs(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test spawning child jobs."""
     client, user = authenticated_client
 
@@ -621,18 +534,10 @@ async def test_spawn_children_jobs(
         f"/api/agent-jobs/{test_job.job_id}/spawn-children",
         json={
             "children": [
-                {
-                    "agent_type": "implementer",
-                    "mission": "Implement frontend",
-                    "context_chunks": ["chunk_1"]
-                },
-                {
-                    "agent_type": "tester",
-                    "mission": "Write tests",
-                    "context_chunks": ["chunk_2"]
-                }
+                {"agent_type": "implementer", "mission": "Implement frontend", "context_chunks": ["chunk_1"]},
+                {"agent_type": "tester", "mission": "Write tests", "context_chunks": ["chunk_2"]},
             ]
-        }
+        },
     )
 
     assert response.status_code == 201
@@ -644,9 +549,7 @@ async def test_spawn_children_jobs(
 
 @pytest.mark.asyncio
 async def test_get_job_hierarchy(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob,
-    db_session: AsyncSession
+    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob, db_session: AsyncSession
 ):
     """Test getting job hierarchy (parent + children)."""
     client, user = authenticated_client
@@ -658,7 +561,7 @@ async def test_get_job_hierarchy(
         mission="Child job 1",
         status="pending",
         spawned_by=test_job.job_id,
-        messages=[]
+        messages=[],
     )
     child2 = MCPAgentJob(
         tenant_key=test_job.tenant_key,
@@ -666,7 +569,7 @@ async def test_get_job_hierarchy(
         mission="Child job 2",
         status="pending",
         spawned_by=test_job.job_id,
-        messages=[]
+        messages=[],
     )
 
     db_session.add_all([child1, child2])
@@ -682,10 +585,7 @@ async def test_get_job_hierarchy(
 
 
 @pytest.mark.asyncio
-async def test_get_hierarchy_no_children(
-    authenticated_client: tuple[AsyncClient, User],
-    test_job: MCPAgentJob
-):
+async def test_get_hierarchy_no_children(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
     """Test hierarchy endpoint with job that has no children."""
     client, user = authenticated_client
 
@@ -700,10 +600,9 @@ async def test_get_hierarchy_no_children(
 
 # Test: Error Handling
 
+
 @pytest.mark.asyncio
-async def test_job_not_found_returns_404(
-    authenticated_client: tuple[AsyncClient, User]
-):
+async def test_job_not_found_returns_404(authenticated_client: tuple[AsyncClient, User]):
     """Test all endpoints return 404 for non-existent jobs."""
     client, user = authenticated_client
 
@@ -734,9 +633,7 @@ async def test_job_not_found_returns_404(
 
 @pytest.mark.asyncio
 async def test_invalid_status_transition_returns_400(
-    authenticated_client: tuple[AsyncClient, User],
-    db_session: AsyncSession,
-    admin_user: User
+    authenticated_client: tuple[AsyncClient, User], db_session: AsyncSession, admin_user: User
 ):
     """Test invalid status transitions return 400."""
     client, user = authenticated_client
@@ -747,7 +644,7 @@ async def test_invalid_status_transition_returns_400(
         agent_type="implementer",
         mission="Completed job",
         status="completed",
-        messages=[]
+        messages=[],
     )
     db_session.add(completed_job)
     await db_session.commit()
@@ -762,22 +659,16 @@ async def test_invalid_status_transition_returns_400(
 
 # Test: Complete Workflows
 
+
 @pytest.mark.asyncio
-async def test_complete_job_workflow(
-    authenticated_client: tuple[AsyncClient, User],
-    db_session: AsyncSession
-):
+async def test_complete_job_workflow(authenticated_client: tuple[AsyncClient, User], db_session: AsyncSession):
     """Test complete job workflow: create → acknowledge → update → complete."""
     client, user = authenticated_client
 
     # Step 1: Create job
     create_response = await client.post(
         "/api/agent-jobs",
-        json={
-            "agent_type": "implementer",
-            "mission": "Implement feature X",
-            "context_chunks": ["chunk_1"]
-        }
+        json={"agent_type": "implementer", "mission": "Implement feature X", "context_chunks": ["chunk_1"]},
     )
     assert create_response.status_code == 201
     job_id = create_response.json()["job_id"]
@@ -789,22 +680,12 @@ async def test_complete_job_workflow(
 
     # Step 3: Send progress message
     msg_response = await client.post(
-        f"/api/agent-jobs/{job_id}/messages",
-        json={
-            "role": "agent",
-            "type": "status",
-            "content": {"progress": 75}
-        }
+        f"/api/agent-jobs/{job_id}/messages", json={"role": "agent", "type": "status", "content": {"progress": 75}}
     )
     assert msg_response.status_code == 201
 
     # Step 4: Complete job
-    complete_response = await client.post(
-        f"/api/agent-jobs/{job_id}/complete",
-        json={
-            "result": {"success": True}
-        }
-    )
+    complete_response = await client.post(f"/api/agent-jobs/{job_id}/complete", json={"result": {"success": True}})
     assert complete_response.status_code == 200
     assert complete_response.json()["status"] == "completed"
 
@@ -819,19 +700,13 @@ async def test_complete_job_workflow(
 
 
 @pytest.mark.asyncio
-async def test_job_spawn_hierarchy_workflow(
-    authenticated_client: tuple[AsyncClient, User]
-):
+async def test_job_spawn_hierarchy_workflow(authenticated_client: tuple[AsyncClient, User]):
     """Test job spawning and hierarchy workflow."""
     client, user = authenticated_client
 
     # Step 1: Create parent job
     parent_response = await client.post(
-        "/api/agent-jobs",
-        json={
-            "agent_type": "orchestrator",
-            "mission": "Coordinate implementation"
-        }
+        "/api/agent-jobs", json={"agent_type": "orchestrator", "mission": "Coordinate implementation"}
     )
     assert parent_response.status_code == 201
     parent_job_id = parent_response.json()["job_id"]
@@ -841,20 +716,11 @@ async def test_job_spawn_hierarchy_workflow(
         f"/api/agent-jobs/{parent_job_id}/spawn-children",
         json={
             "children": [
-                {
-                    "agent_type": "implementer",
-                    "mission": "Backend implementation"
-                },
-                {
-                    "agent_type": "implementer",
-                    "mission": "Frontend implementation"
-                },
-                {
-                    "agent_type": "tester",
-                    "mission": "Integration tests"
-                }
+                {"agent_type": "implementer", "mission": "Backend implementation"},
+                {"agent_type": "implementer", "mission": "Frontend implementation"},
+                {"agent_type": "tester", "mission": "Integration tests"},
             ]
-        }
+        },
     )
     assert spawn_response.status_code == 201
     child_job_ids = spawn_response.json()["child_job_ids"]
@@ -872,10 +738,7 @@ async def test_job_spawn_hierarchy_workflow(
         # Acknowledge
         await client.post(f"/api/agent-jobs/{child_id}/acknowledge")
         # Complete
-        await client.post(
-            f"/api/agent-jobs/{child_id}/complete",
-            json={"result": {"success": True}}
-        )
+        await client.post(f"/api/agent-jobs/{child_id}/complete", json={"result": {"success": True}})
 
     # Step 5: Verify all children completed
     for child_id in child_job_ids:

@@ -12,22 +12,22 @@ Tests cover:
 - Multi-tenant isolation
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
+from passlib.hash import bcrypt
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from src.giljo_mcp.models import User, APIKey
 from src.giljo_mcp.api_key_utils import (
     generate_api_key,
-    hash_api_key,
-    verify_api_key,
     get_key_prefix,
+    hash_api_key,
     validate_api_key_format,
+    verify_api_key,
 )
-from passlib.hash import bcrypt
+from src.giljo_mcp.models import APIKey, User
 
 
 @pytest.mark.asyncio
@@ -193,9 +193,7 @@ class TestUserModel:
         await db_session.commit()
 
         # Query for tenant_1 only
-        result = await db_session.execute(
-            select(User).filter(User.tenant_key == "tenant_1")
-        )
+        result = await db_session.execute(select(User).filter(User.tenant_key == "tenant_1"))
         tenant1_users = result.scalars().all()
 
         assert len(tenant1_users) == 1
@@ -404,7 +402,7 @@ class TestUserAPIKeyRelationship:
             api_key_record = APIKey(
                 tenant_key=user.tenant_key,
                 user_id=user.id,
-                name=f"API Key {i+1}",
+                name=f"API Key {i + 1}",
                 key_hash=hash_api_key(api_key),
                 key_prefix=get_key_prefix(api_key),
             )
@@ -413,11 +411,7 @@ class TestUserAPIKeyRelationship:
         await db_session.commit()
 
         # Reload user with eager loading of api_keys
-        result = await db_session.execute(
-            select(User)
-            .filter(User.id == user.id)
-            .options(selectinload(User.api_keys))
-        )
+        result = await db_session.execute(select(User).filter(User.id == user.id).options(selectinload(User.api_keys)))
         user = result.scalar_one()
 
         # Access relationship
@@ -442,7 +436,7 @@ class TestUserAPIKeyRelationship:
             api_key_record = APIKey(
                 tenant_key=user.tenant_key,
                 user_id=user.id,
-                name=f"Cascade Key {i+1}",
+                name=f"Cascade Key {i + 1}",
                 key_hash=hash_api_key(api_key),
                 key_prefix=get_key_prefix(api_key),
             )
@@ -459,9 +453,7 @@ class TestUserAPIKeyRelationship:
         await db_session.commit()
 
         # Verify API keys were deleted (CASCADE)
-        result = await db_session.execute(
-            select(APIKey).filter(APIKey.id.in_(key_ids))
-        )
+        result = await db_session.execute(select(APIKey).filter(APIKey.id.in_(key_ids)))
         remaining_keys = result.scalars().all()
 
         assert len(remaining_keys) == 0
@@ -553,9 +545,7 @@ class TestMultiTenantIsolation:
         await db_session.commit()
 
         # Query with tenant_key filter (CRITICAL for multi-tenant)
-        result = await db_session.execute(
-            select(User).filter(User.tenant_key == "tenant_alpha")
-        )
+        result = await db_session.execute(select(User).filter(User.tenant_key == "tenant_alpha"))
         alpha_users = result.scalars().all()
 
         assert len(alpha_users) == 1
@@ -600,9 +590,7 @@ class TestMultiTenantIsolation:
         await db_session.commit()
 
         # Query with tenant_key filter (CRITICAL for multi-tenant)
-        result = await db_session.execute(
-            select(APIKey).filter(APIKey.tenant_key == "tenant_x")
-        )
+        result = await db_session.execute(select(APIKey).filter(APIKey.tenant_key == "tenant_x"))
         tenant_x_keys = result.scalars().all()
 
         assert len(tenant_x_keys) == 1

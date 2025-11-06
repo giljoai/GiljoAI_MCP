@@ -17,7 +17,6 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 def test_multi_tenant_isolation_demo():
     """Demonstrate complete isolation between 10 tenants."""
 

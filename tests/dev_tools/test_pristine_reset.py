@@ -6,10 +6,11 @@ a fresh GitHub download by removing all generated files, configurations,
 database, and build artifacts.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
 import shutil
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 @pytest.fixture
@@ -68,11 +69,9 @@ def mock_project_root_pristine(tmp_path):
 class TestPristineResetFullExecution:
     """Test complete pristine reset execution."""
 
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showinfo')
-    def test_pristine_reset_deletes_all_components(
-        self, mock_showinfo, mock_askyesno, mock_project_root_pristine
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    @patch("tkinter.messagebox.showinfo")
+    def test_pristine_reset_deletes_all_components(self, mock_showinfo, mock_askyesno, mock_project_root_pristine):
         """
         Test that pristine reset successfully deletes all target components.
 
@@ -133,7 +132,7 @@ class TestPristineResetFullExecution:
         # Should show success message
         assert mock_showinfo.call_count >= 1
 
-    @patch('tkinter.messagebox.askyesno')
+    @patch("tkinter.messagebox.askyesno")
     def test_pristine_reset_requires_confirmation(self, mock_askyesno):
         """
         Test that pristine reset requires user confirmation.
@@ -148,19 +147,16 @@ class TestPristineResetFullExecution:
         # Expected: confirmation dialog should be shown
         # Should not proceed if user cancels
         result = mock_askyesno(
-            "Confirm Pristine Reset",
-            "This will DELETE everything to simulate a fresh GitHub download"
+            "Confirm Pristine Reset", "This will DELETE everything to simulate a fresh GitHub download"
         )
 
         assert result is False
         mock_askyesno.assert_called_once()
 
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showinfo')
-    @patch('psycopg2.connect')
-    def test_pristine_reset_includes_database_deletion(
-        self, mock_connect, mock_showinfo, mock_askyesno
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    @patch("tkinter.messagebox.showinfo")
+    @patch("psycopg2.connect")
+    def test_pristine_reset_includes_database_deletion(self, mock_connect, mock_showinfo, mock_askyesno):
         """
         Test that pristine reset deletes the PostgreSQL database.
 
@@ -193,8 +189,8 @@ class TestPristineResetFullExecution:
 class TestPristineResetPartialFailures:
     """Test pristine reset with partial failures and error handling."""
 
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showwarning')
+    @patch("tkinter.messagebox.askyesno")
+    @patch("tkinter.messagebox.showwarning")
     def test_pristine_reset_continues_after_partial_failure(
         self, mock_showwarning, mock_askyesno, mock_project_root_pristine
     ):
@@ -241,17 +237,12 @@ class TestPristineResetPartialFailures:
 
         # Should show warning with error details
         if errors:
-            mock_showwarning(
-                "Pristine Reset Partial Success",
-                f"Completed with {len(errors)} errors"
-            )
+            mock_showwarning("Pristine Reset Partial Success", f"Completed with {len(errors)} errors")
             assert mock_showwarning.call_count >= 1
 
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showinfo')
-    def test_pristine_reset_error_message_includes_details(
-        self, mock_showinfo, mock_askyesno
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    @patch("tkinter.messagebox.showinfo")
+    def test_pristine_reset_error_message_includes_details(self, mock_showinfo, mock_askyesno):
         """
         Test that error messages include specific failure details.
 
@@ -284,10 +275,8 @@ class TestPristineResetPartialFailures:
 class TestPristineResetFrontendArtifacts:
     """Test pristine reset deletes frontend build artifacts."""
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_deletes_frontend_dist(
-        self, mock_askyesno, mock_project_root_pristine
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_deletes_frontend_dist(self, mock_askyesno, mock_project_root_pristine):
         """
         Test that pristine reset deletes frontend/dist directory.
 
@@ -308,10 +297,8 @@ class TestPristineResetFrontendArtifacts:
         assert not dist_dir.exists()
         assert not (dist_dir / "index.html").exists()
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_deletes_vite_cache(
-        self, mock_askyesno, mock_project_root_pristine
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_deletes_vite_cache(self, mock_askyesno, mock_project_root_pristine):
         """
         Test that pristine reset deletes Vite cache.
 
@@ -330,10 +317,8 @@ class TestPristineResetFrontendArtifacts:
 
         assert not vite_cache.exists()
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_handles_missing_frontend_artifacts(
-        self, mock_askyesno, tmp_path
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_handles_missing_frontend_artifacts(self, mock_askyesno, tmp_path):
         """
         Test that pristine reset handles missing frontend artifacts gracefully.
 
@@ -364,10 +349,8 @@ class TestPristineResetFrontendArtifacts:
 class TestPristineResetSessionMemories:
     """Test pristine reset deletes session memories."""
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_deletes_session_memories(
-        self, mock_askyesno, mock_project_root_pristine
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_deletes_session_memories(self, mock_askyesno, mock_project_root_pristine):
         """
         Test that pristine reset deletes docs/sessions directory.
 
@@ -387,10 +370,8 @@ class TestPristineResetSessionMemories:
         assert not sessions_dir.exists()
         assert not (sessions_dir / "session_001.md").exists()
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_handles_missing_sessions_dir(
-        self, mock_askyesno, tmp_path
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_handles_missing_sessions_dir(self, mock_askyesno, tmp_path):
         """
         Test that pristine reset handles missing sessions directory.
 
@@ -412,11 +393,9 @@ class TestPristineResetSessionMemories:
 class TestPristineResetVerification:
     """Test pristine reset triggers verification."""
 
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showinfo')
-    def test_pristine_reset_calls_verification_after_reset(
-        self, mock_showinfo, mock_askyesno
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    @patch("tkinter.messagebox.showinfo")
+    def test_pristine_reset_calls_verification_after_reset(self, mock_showinfo, mock_askyesno):
         """
         Test that pristine reset calls display_fresh_state_report after completion.
 
@@ -441,10 +420,8 @@ class TestPristineResetVerification:
 
         assert verification_called
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_verification_shows_clean_state(
-        self, mock_askyesno, tmp_path
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_verification_shows_clean_state(self, mock_askyesno, tmp_path):
         """
         Test that verification after pristine reset shows clean state.
 
@@ -533,7 +510,7 @@ class TestPristineResetUIIntegration:
 class TestPristineResetProgressMessages:
     """Test pristine reset progress messages."""
 
-    @patch('tkinter.messagebox.askyesno')
+    @patch("tkinter.messagebox.askyesno")
     def test_pristine_reset_shows_step_progress(self, mock_askyesno):
         """
         Test that pristine reset shows progress for each step.
@@ -562,7 +539,7 @@ class TestPristineResetProgressMessages:
             assert "Step" in step
             assert "/6:" in step
 
-    @patch('tkinter.messagebox.askyesno')
+    @patch("tkinter.messagebox.askyesno")
     def test_pristine_reset_shows_verification_message(self, mock_askyesno):
         """
         Test that pristine reset shows verification message after completion.
@@ -582,10 +559,8 @@ class TestPristineResetProgressMessages:
 class TestPristineResetCrossPlatform:
     """Test pristine reset cross-platform compatibility."""
 
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_uses_pathlib_for_all_paths(
-        self, mock_askyesno, mock_project_root_pristine
-    ):
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_uses_pathlib_for_all_paths(self, mock_askyesno, mock_project_root_pristine):
         """
         Test that pristine reset uses pathlib.Path for all path operations.
 
@@ -607,11 +582,9 @@ class TestPristineResetCrossPlatform:
         for path in paths:
             assert isinstance(path, Path)
 
-    @patch('platform.system')
-    @patch('tkinter.messagebox.askyesno')
-    def test_pristine_reset_venv_deletion_windows(
-        self, mock_askyesno, mock_system
-    ):
+    @patch("platform.system")
+    @patch("tkinter.messagebox.askyesno")
+    def test_pristine_reset_venv_deletion_windows(self, mock_askyesno, mock_system):
         """
         Test that pristine reset uses aggressive venv deletion on Windows.
 
@@ -627,13 +600,13 @@ class TestPristineResetCrossPlatform:
         venv_deletion_method = "_aggressive_delete_venv"
 
         assert "aggressive" in venv_deletion_method
-        assert "Windows" == mock_system.return_value
+        assert mock_system.return_value == "Windows"
 
 
 class TestPristineResetConfirmationDialog:
     """Test pristine reset confirmation dialog content."""
 
-    @patch('tkinter.messagebox.askyesno')
+    @patch("tkinter.messagebox.askyesno")
     def test_confirmation_dialog_lists_all_categories(self, mock_askyesno):
         """
         Test that confirmation dialog lists all categories of deletions.
@@ -674,7 +647,7 @@ class TestPristineResetConfirmationDialog:
         assert "Frontend Artifacts:" in dialog_message
         assert "CANNOT be undone" in dialog_message
 
-    @patch('tkinter.messagebox.askyesno')
+    @patch("tkinter.messagebox.askyesno")
     def test_confirmation_dialog_shows_warning_icon(self, mock_askyesno):
         """
         Test that confirmation dialog uses warning icon.
@@ -682,11 +655,7 @@ class TestPristineResetConfirmationDialog:
         Verifies:
         - Dialog icon is "warning"
         """
-        result = mock_askyesno(
-            "Confirm Pristine Reset",
-            "This will DELETE everything",
-            icon="warning"
-        )
+        result = mock_askyesno("Confirm Pristine Reset", "This will DELETE everything", icon="warning")
 
         # Verify warning icon used
         call_kwargs = mock_askyesno.call_args[1]

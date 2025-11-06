@@ -132,7 +132,10 @@ async def _get_product_config_with_session(
 
 
 async def update_product_config(
-    project_id: str, config_updates: dict[str, Any], merge: bool = True, session=None  # Optional session for testing
+    project_id: str,
+    config_updates: dict[str, Any],
+    merge: bool = True,
+    session=None,  # Optional session for testing
 ) -> dict[str, Any]:
     """
     Update product configuration with validation.

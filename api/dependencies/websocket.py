@@ -8,10 +8,12 @@ Handover 0086A: Production-Grade Stage Project Architecture
 Created: 2025-11-02
 """
 
-from typing import Optional, Dict, Any
-from datetime import datetime, timezone
-from fastapi import Depends, Request
 import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
+from fastapi import Depends, Request
+
 
 # Note: Import will be updated when websocket_manager.py is refactored
 # For now, importing from existing location
@@ -49,10 +51,7 @@ async def get_websocket_manager(request: Request) -> Optional[WebSocketManager]:
     if ws_manager is None:
         logger.debug(
             "WebSocket manager not available in app state",
-            extra={
-                "endpoint": request.url.path,
-                "method": request.method
-            }
+            extra={"endpoint": request.url.path, "method": request.method},
         )
 
     return ws_manager
@@ -85,7 +84,7 @@ class WebSocketDependency:
         event_type: str,
         data: Dict[str, Any],
         schema_version: str = "1.0",
-        exclude_client: Optional[str] = None
+        exclude_client: Optional[str] = None,
     ) -> int:
         """
         Broadcast event to all clients in a tenant.
@@ -126,10 +125,7 @@ class WebSocketDependency:
         if not self.manager:
             self.logger.warning(
                 "WebSocket manager not available for broadcast",
-                extra={
-                    "tenant_key": tenant_key,
-                    "event_type": event_type
-                }
+                extra={"tenant_key": tenant_key, "event_type": event_type},
             )
             return 0
 
@@ -138,7 +134,7 @@ class WebSocketDependency:
             "type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "schema_version": schema_version,
-            "data": data
+            "data": data,
         }
 
         # Track successful sends
@@ -166,12 +162,7 @@ class WebSocketDependency:
                 failed_count += 1
                 self.logger.warning(
                     f"Failed to send WebSocket message to client {client_id}: {e}",
-                    extra={
-                        "tenant_key": tenant_key,
-                        "event_type": event_type,
-                        "client_id": client_id,
-                        "error": str(e)
-                    }
+                    extra={"tenant_key": tenant_key, "event_type": event_type, "client_id": client_id, "error": str(e)},
                 )
 
         # Log broadcast summary
@@ -182,19 +173,14 @@ class WebSocketDependency:
                 "event_type": event_type,
                 "sent_count": sent_count,
                 "failed_count": failed_count,
-                "exclude_client": exclude_client
-            }
+                "exclude_client": exclude_client,
+            },
         )
 
         return sent_count
 
     async def send_to_project(
-        self,
-        tenant_key: str,
-        project_id: str,
-        event_type: str,
-        data: Dict[str, Any],
-        schema_version: str = "1.0"
+        self, tenant_key: str, project_id: str, event_type: str, data: Dict[str, Any], schema_version: str = "1.0"
     ) -> int:
         """
         Broadcast event to all clients watching a specific project.
@@ -213,16 +199,10 @@ class WebSocketDependency:
             Number of clients that received the message
         """
         # Ensure project_id is in data
-        data_with_project = {
-            **data,
-            "project_id": project_id
-        }
+        data_with_project = {**data, "project_id": project_id}
 
         return await self.broadcast_to_tenant(
-            tenant_key=tenant_key,
-            event_type=event_type,
-            data=data_with_project,
-            schema_version=schema_version
+            tenant_key=tenant_key, event_type=event_type, data=data_with_project, schema_version=schema_version
         )
 
     def is_available(self) -> bool:
@@ -236,7 +216,7 @@ class WebSocketDependency:
 
 
 async def get_websocket_dependency(
-    manager: Optional[WebSocketManager] = Depends(get_websocket_manager)
+    manager: Optional[WebSocketManager] = Depends(get_websocket_manager),
 ) -> WebSocketDependency:
     """
     FastAPI dependency that provides WebSocketDependency instance.
@@ -262,8 +242,4 @@ async def get_websocket_dependency(
 
 
 # Create __init__.py for the dependencies module
-__all__ = [
-    "get_websocket_manager",
-    "get_websocket_dependency",
-    "WebSocketDependency"
-]
+__all__ = ["WebSocketDependency", "get_websocket_dependency", "get_websocket_manager"]

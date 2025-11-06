@@ -13,11 +13,11 @@ Test Coverage:
 - Failed succession handling
 """
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from datetime import datetime
+from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -156,9 +156,7 @@ def test_should_trigger_succession_manual_request(
     orchestrator_job.context_used = 75000
 
     # Manual request should trigger even below threshold
-    assert succession_manager.should_trigger_succession(
-        orchestrator_job, manual_request=True
-    ) is True
+    assert succession_manager.should_trigger_succession(orchestrator_job, manual_request=True) is True
 
 
 # ============================================================================
@@ -173,9 +171,7 @@ def test_create_successor_increments_instance_number(
 ):
     """Test successor gets incremented instance number."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify instance number incremented
     assert successor.instance_number == orchestrator_job.instance_number + 1
@@ -189,9 +185,7 @@ def test_create_successor_preserves_tenant_key(
 ):
     """Test successor preserves tenant isolation."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify tenant key matches
     assert successor.tenant_key == orchestrator_job.tenant_key
@@ -208,9 +202,7 @@ def test_create_successor_preserves_project_id(
     session.commit()
 
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify project ID matches
     assert successor.project_id == orchestrator_job.project_id
@@ -223,9 +215,7 @@ def test_create_successor_sets_spawned_by(
 ):
     """Test successor tracks parent via spawned_by."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify spawned_by linkage
     assert successor.spawned_by == orchestrator_job.job_id
@@ -238,9 +228,7 @@ def test_create_successor_status_waiting(
 ):
     """Test successor created in waiting status."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify status is waiting (for manual launch)
     assert successor.status == "waiting"
@@ -257,9 +245,7 @@ def test_create_successor_fresh_context(
     session.commit()
 
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify fresh context
     assert successor.context_used == 0
@@ -273,9 +259,7 @@ def test_create_successor_unique_job_id(
 ):
     """Test successor gets unique job ID."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Verify unique job IDs
     assert successor.job_id != orchestrator_job.job_id
@@ -289,21 +273,15 @@ def test_create_successor_multiple_instances(
 ):
     """Test creating multiple successive instances."""
     # Create first successor (instance 2)
-    successor1 = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor1 = succession_manager.create_successor(orchestrator_job, reason="context_limit")
     assert successor1.instance_number == 2
 
     # Create second successor (instance 3)
-    successor2 = succession_manager.create_successor(
-        successor1, reason="context_limit"
-    )
+    successor2 = succession_manager.create_successor(successor1, reason="context_limit")
     assert successor2.instance_number == 3
 
     # Create third successor (instance 4)
-    successor3 = succession_manager.create_successor(
-        successor2, reason="context_limit"
-    )
+    successor3 = succession_manager.create_successor(successor2, reason="context_limit")
     assert successor3.instance_number == 4
 
 
@@ -364,9 +342,7 @@ def test_generate_handover_summary_compression_target(
 ):
     """Test handover summary meets compression target (<10K tokens)."""
     # Add significant message history
-    orchestrator_job.messages = [
-        {"type": "message", "content": f"Message {i}"} for i in range(100)
-    ]
+    orchestrator_job.messages = [{"type": "message", "content": f"Message {i}"} for i in range(100)]
     session.commit()
 
     # Generate handover summary
@@ -374,6 +350,7 @@ def test_generate_handover_summary_compression_target(
 
     # Estimate token count (rough approximation: 1 token ≈ 4 chars)
     import json
+
     summary_str = json.dumps(summary)
     estimated_tokens = len(summary_str) / 4
 
@@ -413,9 +390,7 @@ def test_complete_handover_marks_status_complete(
 ):
     """Test complete_handover marks orchestrator as complete."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Generate handover summary
     handover_summary = succession_manager.generate_handover_summary(orchestrator_job)
@@ -437,9 +412,7 @@ def test_complete_handover_sets_handover_to_field(
 ):
     """Test complete_handover sets handover_to field."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Generate handover summary
     handover_summary = succession_manager.generate_handover_summary(orchestrator_job)
@@ -461,9 +434,7 @@ def test_complete_handover_stores_summary(
 ):
     """Test complete_handover stores handover summary."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Generate handover summary
     handover_summary = succession_manager.generate_handover_summary(orchestrator_job)
@@ -487,9 +458,7 @@ def test_complete_handover_sets_completed_at(
 ):
     """Test complete_handover sets completed_at timestamp."""
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Generate handover summary
     handover_summary = succession_manager.generate_handover_summary(orchestrator_job)
@@ -512,17 +481,13 @@ def test_complete_handover_sets_succession_reason(
 ):
     """Test complete_handover stores succession reason."""
     # Create successor with specific reason
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="manual"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="manual")
 
     # Generate handover summary
     handover_summary = succession_manager.generate_handover_summary(orchestrator_job)
 
     # Complete handover
-    succession_manager.complete_handover(
-        orchestrator_job, successor, handover_summary, reason="manual"
-    )
+    succession_manager.complete_handover(orchestrator_job, successor, handover_summary, reason="manual")
 
     # Refresh from database
     session.refresh(orchestrator_job)
@@ -849,16 +814,14 @@ async def test_failed_succession_creates_blocked_status(
         manager = OrchestratorSuccessionManager(session, tenant_key)
 
         # Simulate succession failure by mocking create_successor to raise exception
-        with patch.object(
-            manager, "create_successor", side_effect=Exception("Database error")
-        ):
+        with patch.object(manager, "create_successor", side_effect=Exception("Database error")):
             try:
                 manager.create_successor(orch, reason="context_limit")
                 assert False, "Should have raised exception"
             except Exception as e:
                 # Mark orchestrator as blocked
                 orch.status = "blocked"
-                orch.block_reason = f"Successor creation failed: {str(e)}"
+                orch.block_reason = f"Successor creation failed: {e!s}"
                 session.commit()
                 session.refresh(orch)
 
@@ -886,9 +849,7 @@ def test_succession_with_different_reasons(
 
         # Complete handover with reason
         summary = succession_manager.generate_handover_summary(orchestrator_job)
-        succession_manager.complete_handover(
-            orchestrator_job, successor, summary, reason=reason
-        )
+        succession_manager.complete_handover(orchestrator_job, successor, summary, reason=reason)
 
         session.refresh(orchestrator_job)
 
@@ -915,9 +876,7 @@ def test_handover_context_refs_transferred(
     summary = succession_manager.generate_handover_summary(orchestrator_job)
 
     # Create successor
-    successor = succession_manager.create_successor(
-        orchestrator_job, reason="context_limit"
-    )
+    successor = succession_manager.create_successor(orchestrator_job, reason="context_limit")
 
     # Complete handover
     succession_manager.complete_handover(orchestrator_job, successor, summary)

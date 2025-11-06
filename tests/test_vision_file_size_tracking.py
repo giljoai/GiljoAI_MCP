@@ -12,15 +12,12 @@ Feature Requirements:
 5. Display aggregate stats in product details dialog
 """
 
-import pytest
-from datetime import datetime, timezone
-from pathlib import Path
-import hashlib
 from uuid import uuid4
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import VisionDocument, Product
+import pytest
+from sqlalchemy import select
+
+from src.giljo_mcp.models import Product, VisionDocument
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
 
@@ -43,7 +40,7 @@ def test_product_file_size(db_session, test_tenant_key):
         id="test_product_file_size",
         tenant_key=test_tenant_key,
         name="Test Product for File Size",
-        description="Product for testing file size tracking"
+        description="Product for testing file size tracking",
     )
     db_session.add(product)
     db_session.commit()
@@ -88,13 +85,13 @@ class TestVisionDocumentFileSizeModel:
             document_name="Test Document",
             vision_document="Test content",
             storage_type="inline",
-            file_size=12  # bytes
+            file_size=12,  # bytes
         )
         db_session.add(doc)
         db_session.commit()
 
         # Verify file_size field exists and is stored correctly
-        assert hasattr(doc, 'file_size')
+        assert hasattr(doc, "file_size")
         assert doc.file_size == 12
 
     def test_file_size_can_be_null(self, db_session, test_tenant_key, test_product_file_size):
@@ -106,7 +103,7 @@ class TestVisionDocumentFileSizeModel:
             document_name="Test Document",
             vision_document="Test content",
             storage_type="inline",
-            file_size=None
+            file_size=None,
         )
         db_session.add(doc)
         db_session.commit()
@@ -121,7 +118,7 @@ class TestVisionDocumentFileSizeModel:
             product_id=test_product_file_size.id,
             document_name="Test Document",
             vision_document="Test content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.add(doc)
         db_session.commit()
@@ -133,9 +130,11 @@ class TestVisionDocumentFileSizeModel:
 class TestVisionDocumentRepositoryFileSize:
     """Test VisionDocumentRepository file size handling"""
 
-    def test_create_with_file_size(self, db_session, vision_repo, test_tenant_key, test_product_file_size, sample_vision_content_small):
+    def test_create_with_file_size(
+        self, db_session, vision_repo, test_tenant_key, test_product_file_size, sample_vision_content_small
+    ):
         """Test creating vision document with file_size specified"""
-        file_size = len(sample_vision_content_small.encode('utf-8'))
+        file_size = len(sample_vision_content_small.encode("utf-8"))
 
         doc = vision_repo.create(
             session=db_session,
@@ -145,16 +144,18 @@ class TestVisionDocumentRepositoryFileSize:
             content=sample_vision_content_small,
             document_type="vision",
             storage_type="inline",
-            file_size=file_size
+            file_size=file_size,
         )
 
         assert doc is not None
         assert doc.file_size == file_size
         assert doc.file_size > 0
 
-    def test_create_with_large_file_size(self, db_session, vision_repo, test_tenant_key, test_product_file_size, sample_vision_content_large):
+    def test_create_with_large_file_size(
+        self, db_session, vision_repo, test_tenant_key, test_product_file_size, sample_vision_content_large
+    ):
         """Test creating vision document with larger file_size"""
-        file_size = len(sample_vision_content_large.encode('utf-8'))
+        file_size = len(sample_vision_content_large.encode("utf-8"))
 
         doc = vision_repo.create(
             session=db_session,
@@ -164,7 +165,7 @@ class TestVisionDocumentRepositoryFileSize:
             content=sample_vision_content_large,
             document_type="architecture",
             storage_type="inline",
-            file_size=file_size
+            file_size=file_size,
         )
 
         assert doc is not None
@@ -181,7 +182,7 @@ class TestVisionDocumentRepositoryFileSize:
             document_name="Doc 1",
             content="Small content",
             storage_type="inline",
-            file_size=100
+            file_size=100,
         )
 
         doc2 = vision_repo.create(
@@ -191,14 +192,12 @@ class TestVisionDocumentRepositoryFileSize:
             document_name="Doc 2",
             content="Larger content here",
             storage_type="inline",
-            file_size=500
+            file_size=500,
         )
 
         # List documents
         docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product_file_size.id
+            session=db_session, tenant_key=test_tenant_key, product_id=test_product_file_size.id
         )
 
         assert len(docs) >= 2
@@ -216,13 +215,13 @@ class TestVisionDocumentAPIFileSize:
 
     def test_vision_document_response_schema_includes_file_size(self):
         """Test that VisionDocumentResponse schema includes file_size field"""
+
         from api.schemas.vision_document import VisionDocumentResponse
-        from pydantic import BaseModel
 
         # Check schema has file_size field
-        assert hasattr(VisionDocumentResponse, 'model_fields')
+        assert hasattr(VisionDocumentResponse, "model_fields")
         fields = VisionDocumentResponse.model_fields
-        assert 'file_size' in fields
+        assert "file_size" in fields
 
 
 class TestFileSizeCalculation:
@@ -231,15 +230,15 @@ class TestFileSizeCalculation:
     def test_calculate_file_size_from_string(self, sample_vision_content_small):
         """Test calculating file size from string content"""
         content = sample_vision_content_small
-        expected_size = len(content.encode('utf-8'))
+        expected_size = len(content.encode("utf-8"))
 
         assert expected_size > 0
-        assert expected_size == len(content.encode('utf-8'))
+        assert expected_size == len(content.encode("utf-8"))
 
     def test_calculate_file_size_unicode(self):
         """Test calculating file size with unicode characters"""
         content = "Hello 世界 🌍"  # Mixed ASCII, Chinese, emoji
-        size = len(content.encode('utf-8'))
+        size = len(content.encode("utf-8"))
 
         # Unicode characters take more than 1 byte
         assert size > len(content)  # More bytes than characters
@@ -247,7 +246,7 @@ class TestFileSizeCalculation:
     def test_calculate_file_size_empty_string(self):
         """Test calculating file size for empty content"""
         content = ""
-        size = len(content.encode('utf-8'))
+        size = len(content.encode("utf-8"))
         assert size == 0
 
     def test_calculate_file_size_from_file(self, tmp_path, sample_vision_content_large):
@@ -258,7 +257,7 @@ class TestFileSizeCalculation:
 
         # Get file size
         file_size = vision_file.stat().st_size
-        expected_size = len(sample_vision_content_large.encode('utf-8'))
+        expected_size = len(sample_vision_content_large.encode("utf-8"))
 
         assert file_size == expected_size
         assert file_size > 1000  # Should be > 1KB
@@ -276,12 +275,14 @@ class TestFileSizeEdgeCases:
             document_name="Empty Document",
             content="",
             storage_type="inline",
-            file_size=0
+            file_size=0,
         )
 
         assert doc.file_size == 0
 
-    def test_file_size_null_for_inline_without_file(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
+    def test_file_size_null_for_inline_without_file(
+        self, db_session, vision_repo, test_tenant_key, test_product_file_size
+    ):
         """Test that inline content without original file can have NULL file_size"""
         doc = vision_repo.create(
             session=db_session,
@@ -290,7 +291,7 @@ class TestFileSizeEdgeCases:
             document_name="Inline Document",
             content="Direct input content",
             storage_type="inline",
-            file_size=None  # No original file
+            file_size=None,  # No original file
         )
 
         assert doc.file_size is None
@@ -306,7 +307,7 @@ class TestFileSizeEdgeCases:
             document_name="Large Document",
             content="Large content...",
             storage_type="file",
-            file_size=large_size
+            file_size=large_size,
         )
 
         assert doc.file_size == large_size
@@ -325,7 +326,7 @@ class TestAggregateFileSizeStats:
             document_name="Doc A",
             content="Content A",
             storage_type="inline",
-            file_size=1000
+            file_size=1000,
         )
 
         vision_repo.create(
@@ -335,7 +336,7 @@ class TestAggregateFileSizeStats:
             document_name="Doc B",
             content="Content B",
             storage_type="inline",
-            file_size=2000
+            file_size=2000,
         )
 
         vision_repo.create(
@@ -345,14 +346,12 @@ class TestAggregateFileSizeStats:
             document_name="Doc C",
             content="Content C",
             storage_type="inline",
-            file_size=3000
+            file_size=3000,
         )
 
         # List and calculate total
         docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product_file_size.id
+            session=db_session, tenant_key=test_tenant_key, product_id=test_product_file_size.id
         )
 
         total_size = sum(doc.file_size or 0 for doc in docs)
@@ -368,7 +367,7 @@ class TestAggregateFileSizeStats:
             document_name="Doc A",
             content="Content A",
             storage_type="inline",
-            file_size=1000
+            file_size=1000,
         )
 
         vision_repo.create(
@@ -378,14 +377,13 @@ class TestAggregateFileSizeStats:
             document_name="Doc B",
             content="Content B",
             storage_type="inline",
-            file_size=2000
+            file_size=2000,
         )
 
         # Manually set chunk_count for testing
         result = db_session.execute(
             select(VisionDocument).filter(
-                VisionDocument.product_id == test_product_file_size.id,
-                VisionDocument.tenant_key == test_tenant_key
+                VisionDocument.product_id == test_product_file_size.id, VisionDocument.tenant_key == test_tenant_key
             )
         )
         docs = result.scalars().all()
@@ -399,7 +397,9 @@ class TestAggregateFileSizeStats:
             total_chunks = sum(doc.chunk_count for doc in docs)
             assert total_chunks == 13
 
-    def test_aggregate_stats_with_null_file_sizes(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
+    def test_aggregate_stats_with_null_file_sizes(
+        self, db_session, vision_repo, test_tenant_key, test_product_file_size
+    ):
         """Test that aggregate stats handle NULL file_size correctly"""
         # Create documents with mixed NULL and valid file_size
         vision_repo.create(
@@ -409,7 +409,7 @@ class TestAggregateFileSizeStats:
             document_name="Doc with size",
             content="Content",
             storage_type="inline",
-            file_size=1000
+            file_size=1000,
         )
 
         vision_repo.create(
@@ -419,14 +419,12 @@ class TestAggregateFileSizeStats:
             document_name="Doc without size",
             content="Content",
             storage_type="inline",
-            file_size=None
+            file_size=None,
         )
 
         # List and calculate total (should treat NULL as 0)
         docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product_file_size.id
+            session=db_session, tenant_key=test_tenant_key, product_id=test_product_file_size.id
         )
 
         total_size = sum(doc.file_size or 0 for doc in docs)
@@ -443,10 +441,7 @@ class TestMultiTenantFileSizeIsolation:
 
         # Create product for tenant2
         product2 = Product(
-            id="test_product_tenant2",
-            tenant_key=tenant2,
-            name="Tenant 2 Product",
-            description="Product for tenant 2"
+            id="test_product_tenant2", tenant_key=tenant2, name="Tenant 2 Product", description="Product for tenant 2"
         )
         db_session.add(product2)
         db_session.commit()
@@ -459,7 +454,7 @@ class TestMultiTenantFileSizeIsolation:
             document_name="Tenant 1 Doc",
             content="Content 1",
             storage_type="inline",
-            file_size=1000
+            file_size=1000,
         )
 
         doc2 = vision_repo.create(
@@ -469,14 +464,12 @@ class TestMultiTenantFileSizeIsolation:
             document_name="Tenant 2 Doc",
             content="Content 2",
             storage_type="inline",
-            file_size=2000
+            file_size=2000,
         )
 
         # Verify tenant1 can only see their documents
         tenant1_docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=tenant1,
-            product_id=test_product_file_size.id
+            session=db_session, tenant_key=tenant1, product_id=test_product_file_size.id
         )
 
         tenant1_sizes = [doc.file_size for doc in tenant1_docs]
@@ -484,11 +477,7 @@ class TestMultiTenantFileSizeIsolation:
         assert 2000 not in tenant1_sizes
 
         # Verify tenant2 can only see their documents
-        tenant2_docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=tenant2,
-            product_id=product2.id
-        )
+        tenant2_docs = vision_repo.list_by_product(session=db_session, tenant_key=tenant2, product_id=product2.id)
 
         tenant2_sizes = [doc.file_size for doc in tenant2_docs]
         assert 2000 in tenant2_sizes

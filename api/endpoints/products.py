@@ -2,25 +2,26 @@
 Product management API endpoints with vision document upload support
 """
 
+import json
+import logging
 import os
 import uuid
-import aiofiles
-import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import json
 
+import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from api.dependencies import get_tenant_key
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-from src.giljo_mcp.models import Product, Project, Task, VisionDocument, MCPContextIndex, User
+from src.giljo_mcp.models import Product, Project, Task, User, VisionDocument
 from src.giljo_mcp.tools.chunking import EnhancedChunker
+
 
 # Handover 0046 Issue #4: Update router prefix to /v1/products for consistency
 router = APIRouter(prefix="/v1/products", tags=["Products"])
@@ -30,7 +31,9 @@ router = APIRouter(prefix="/v1/products", tags=["Products"])
 class ProductCreate(BaseModel):
     name: str = Field(..., description="Product name")
     description: Optional[str] = Field(None, description="Product description")
-    project_path: Optional[str] = Field(None, description="File system path to product folder (required for agent export)")
+    project_path: Optional[str] = Field(
+        None, description="File system path to product folder (required for agent export)"
+    )
 
 
 class ProductUpdate(BaseModel):
@@ -62,7 +65,9 @@ class ProductResponse(BaseModel):
     is_active: bool = Field(False, description="Whether this product is currently active")
 
     # Handover 0084: Project path for agent export
-    project_path: Optional[str] = Field(None, description="File system path to product folder (required for agent export)")
+    project_path: Optional[str] = Field(
+        None, description="File system path to product folder (required for agent export)"
+    )
 
 
 # Handover 0050: Enhanced response models for single active product architecture
@@ -162,7 +167,7 @@ async def get_active_product_info(db, tenant_key: str) -> Optional[Dict[str, Any
 
     Used by the refresh-active endpoint and activation responses.
     """
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
 
     active_result = await db.execute(
         select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True)  # noqa: E712
@@ -232,16 +237,10 @@ def validate_project_path(project_path: str) -> bool:
 
         # Check if path exists and is a directory
         if not path.exists():
-            raise HTTPException(
-                status_code=400,
-                detail=f"Project path does not exist: {path}"
-            )
+            raise HTTPException(status_code=400, detail=f"Project path does not exist: {path}")
 
         if not path.is_dir():
-            raise HTTPException(
-                status_code=400,
-                detail=f"Project path is not a directory: {path}"
-            )
+            raise HTTPException(status_code=400, detail=f"Project path is not a directory: {path}")
 
         # Check if path is writable (for .claude/agents creation)
         try:
@@ -249,20 +248,15 @@ def validate_project_path(project_path: str) -> bool:
             test_dir.mkdir(exist_ok=True)
             test_dir.rmdir()
         except (PermissionError, OSError):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Project path is not writable: {path}"
-            )
+            raise HTTPException(status_code=400, detail=f"Project path is not writable: {path}")
 
         return True
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid project path: {e}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid project path: {e}")
+
 
 @router.post("/", response_model=ProductResponse)
 async def create_product(
@@ -292,7 +286,7 @@ async def create_product(
                 if not isinstance(config_dict, dict):
                     raise HTTPException(status_code=400, detail="config_data must be a JSON object")
             except json.JSONDecodeError as e:
-                raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {e!s}")
 
         # Create product in database
         product = Product(
@@ -350,7 +344,7 @@ async def create_product(
             except Exception as e:
                 # Log chunking error but don't fail product creation
                 product.meta_data = {
-                    "vision_error": f"Failed to chunk document: {str(e)}",
+                    "vision_error": f"Failed to chunk document: {e!s}",
                     "vision_filename": vision_file.filename,
                 }
 
@@ -410,7 +404,6 @@ async def create_product(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 @router.get("/", response_model=List[ProductResponse])
 async def list_products(
     limit: int = Query(100, description="Maximum number of results"),
@@ -431,7 +424,7 @@ async def list_products(
             # Apply optional is_active filter + EXCLUDE deleted products
             where_clauses = [
                 Product.tenant_key == tenant_key,
-                Product.deleted_at.is_(None)  # Exclude soft-deleted products
+                Product.deleted_at.is_(None),  # Exclude soft-deleted products
             ]
             if is_active is not None:
                 where_clauses.append(Product.is_active == is_active)
@@ -480,7 +473,9 @@ async def list_products(
                         has_vision=bool(product.vision_path),
                         # Updated metrics for new UI
                         unfinished_projects=len(projects) - completed_projects,  # For backwards compatibility
-                        unresolved_tasks=sum(1 for t in tasks if t.status != "completed"),  # For backwards compatibility
+                        unresolved_tasks=sum(
+                            1 for t in tasks if t.status != "completed"
+                        ),  # For backwards compatibility
                         vision_documents_count=vision_doc_count,
                         # Handover 0042: Include config_data in response
                         config_data=product.config_data,
@@ -501,10 +496,10 @@ async def list_products(
 # IMPORTANT: Specific string routes MUST come before generic /{product_id} route
 # to prevent FastAPI from treating strings as UUID parameters
 
+
 @router.get("/deleted", response_model=list[DeletedProductResponse])
 async def list_deleted_products(
-    tenant_key: str = Depends(get_tenant_key),
-    current_user: User = Depends(get_current_active_user)
+    tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
 ):
     """
     List deleted products with recovery window (10 days).
@@ -514,9 +509,9 @@ async def list_deleted_products(
     - Purge date
     - Related entity counts
     """
-    from api.app import state
     from sqlalchemy import func
-    import logging
+
+    from api.app import state
 
     logger = logging.getLogger(__name__)
 
@@ -526,10 +521,11 @@ async def list_deleted_products(
     try:
         async with state.db_manager.get_session_async() as db:
             # Query deleted products (deleted_at IS NOT NULL)
-            stmt = select(Product).where(
-                Product.tenant_key == tenant_key,
-                Product.deleted_at.isnot(None)
-            ).order_by(Product.deleted_at.desc())
+            stmt = (
+                select(Product)
+                .where(Product.tenant_key == tenant_key, Product.deleted_at.isnot(None))
+                .order_by(Product.deleted_at.desc())
+            )
 
             result = await db.execute(stmt)
             deleted_products_raw = result.scalars().all()
@@ -572,7 +568,9 @@ async def list_deleted_products(
                     )
                 )
 
-            logger.info(f"Retrieved {len(deleted_products)} deleted products for tenant (user: {current_user.username})")
+            logger.info(
+                f"Retrieved {len(deleted_products)} deleted products for tenant (user: {current_user.username})"
+            )
 
             return deleted_products
 
@@ -600,8 +598,9 @@ async def refresh_active_product(
 
     Performance: <10ms (database query)
     """
-    from api.app import state
     from sqlalchemy import func
+
+    from api.app import state
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -673,8 +672,9 @@ async def get_active_product_token_estimate(current_user: User = Depends(get_cur
             "percentage_used": 39.25
         }
     """
-    from api.app import state
     from math import ceil
+
+    from api.app import state
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -688,7 +688,7 @@ async def get_active_product_token_estimate(current_user: User = Depends(get_cur
 
             if not product:
                 raise HTTPException(
-                    status_code=404, detail=f"No active product found for tenant. Please activate a product first."
+                    status_code=404, detail="No active product found for tenant. Please activate a product first."
                 )
 
             # Get user's field priority config (or use default)
@@ -819,7 +819,6 @@ async def activate_product(
     - Returns the activated product with optional info about the previously active product.
     """
     from api.app import state
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -829,9 +828,7 @@ async def activate_product(
     try:
         async with state.db_manager.get_session_async() as db:
             # Fetch target product and validate ownership
-            result = await db.execute(
-                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-            )
+            result = await db.execute(select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key))
             product = result.scalar_one_or_none()
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
@@ -843,9 +840,7 @@ async def activate_product(
 
             # If different product is active, deactivate it first
             if current_active_info and current_active_info["id"] != product.id:
-                current_active_result = await db.execute(
-                    select(Product).where(Product.id == current_active_info["id"])
-                )
+                current_active_result = await db.execute(select(Product).where(Product.id == current_active_info["id"]))
                 current_active = current_active_result.scalar_one_or_none()
                 if current_active:
                     current_active.is_active = False
@@ -853,8 +848,7 @@ async def activate_product(
                     # CASCADE: Auto-pause all active projects from the old product
                     # This maintains single source of truth when switching products
                     old_projects_stmt = select(Project).where(
-                        Project.product_id == current_active.id,
-                        Project.status == "active"
+                        Project.product_id == current_active.id, Project.status == "active"
                     )
                     old_projects_result = await db.execute(old_projects_stmt)
                     old_active_projects = old_projects_result.scalars().all()
@@ -876,9 +870,7 @@ async def activate_product(
             await db.commit()
             await db.refresh(product)
 
-            logger.info(
-                f"Product '{product.name}' activated by {current_user.username} (tenant={tenant_key})"
-            )
+            logger.info(f"Product '{product.name}' activated by {current_user.username} (tenant={tenant_key})")
 
             return ProductActivationResponse(
                 id=product.id,
@@ -915,7 +907,6 @@ async def deactivate_product(
 ):
     """Deactivate a product for the current tenant (resulting in no active product)."""
     from api.app import state
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -925,9 +916,7 @@ async def deactivate_product(
     try:
         async with state.db_manager.get_session_async() as db:
             # Fetch product and validate ownership
-            result = await db.execute(
-                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-            )
+            result = await db.execute(select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key))
             product = result.scalar_one_or_none()
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
@@ -938,10 +927,7 @@ async def deactivate_product(
 
             # CASCADE: Auto-deactivate all active projects under this product
             # This maintains single source of truth - inactive product cannot have active projects
-            projects_stmt = select(Project).where(
-                Project.product_id == product_id,
-                Project.status == "active"
-            )
+            projects_stmt = select(Project).where(Project.product_id == product_id, Project.status == "active")
             projects_result = await db.execute(projects_stmt)
             active_projects = projects_result.scalars().all()
 
@@ -949,16 +935,18 @@ async def deactivate_product(
             for proj in active_projects:
                 proj.status = "inactive"
                 deactivated_project_names.append(proj.name)
-                logger.info(
-                    f"Auto-deactivated project '{proj.name}' (parent product '{product.name}' deactivated)"
-                )
+                logger.info(f"Auto-deactivated project '{proj.name}' (parent product '{product.name}' deactivated)")
 
             await db.commit()
             await db.refresh(product)
 
             logger.info(
                 f"Product '{product.name}' deactivated by {current_user.username} (tenant={tenant_key})"
-                + (f" - {len(deactivated_project_names)} project(s) auto-deactivated" if deactivated_project_names else "")
+                + (
+                    f" - {len(deactivated_project_names)} project(s) auto-deactivated"
+                    if deactivated_project_names
+                    else ""
+                )
             )
 
             return ProductResponse(
@@ -986,6 +974,7 @@ async def deactivate_product(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/{product_id}/cascade-impact", response_model=CascadeImpact)
 async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get cascade impact for deleting a product
@@ -997,8 +986,9 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
 
     This allows the frontend to show a confirmation dialog with full impact details.
     """
-    from api.app import state
     from sqlalchemy import func
+
+    from api.app import state
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -1070,9 +1060,9 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
 
     Physical deletion occurs after 10 days via purge_expired_deleted_products().
     """
-    from api.app import state
     from sqlalchemy import func
-    import logging
+
+    from api.app import state
 
     logger = logging.getLogger(__name__)
 
@@ -1105,10 +1095,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
 
             # PHASE 3: Count remaining non-deleted products
             remaining_count_result = await db.execute(
-                select(func.count(Product.id)).where(
-                    Product.tenant_key == tenant_key,
-                    Product.deleted_at.is_(None)
-                )
+                select(func.count(Product.id)).where(Product.tenant_key == tenant_key, Product.deleted_at.is_(None))
             )
             remaining_count = remaining_count_result.scalar() or 0
 
@@ -1117,10 +1104,10 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
             if was_active and remaining_count > 0:
                 # Get oldest non-deleted product (by created_at)
                 oldest_result = await db.execute(
-                    select(Product).where(
-                        Product.tenant_key == tenant_key,
-                        Product.deleted_at.is_(None)
-                    ).order_by(Product.created_at.asc()).limit(1)
+                    select(Product)
+                    .where(Product.tenant_key == tenant_key, Product.deleted_at.is_(None))
+                    .order_by(Product.created_at.asc())
+                    .limit(1)
                 )
                 oldest_product = oldest_result.scalar_one_or_none()
 
@@ -1156,9 +1143,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
 
 @router.post("/{product_id}/restore", response_model=ProductResponse)
 async def restore_product(
-    product_id: str,
-    tenant_key: str = Depends(get_tenant_key),
-    current_user: User = Depends(get_current_active_user)
+    product_id: str, tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
 ):
     """
     Restore a soft-deleted product.
@@ -1166,9 +1151,9 @@ async def restore_product(
     Clears deleted_at timestamp and reactivates the product as inactive (safe default).
     User must manually activate the product after restoration.
     """
+    from sqlalchemy import func, select
+
     from api.app import state
-    from sqlalchemy import select, func
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -1178,10 +1163,7 @@ async def restore_product(
     try:
         async with state.db_manager.get_session_async() as db:
             # Fetch product and verify tenant ownership
-            stmt = select(Product).where(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
+            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
@@ -1206,9 +1188,7 @@ async def restore_product(
             )
             project_count = project_count_result.scalar() or 0
 
-            task_count_result = await db.execute(
-                select(func.count(Task.id)).where(Task.product_id == product.id)
-            )
+            task_count_result = await db.execute(select(func.count(Task.id)).where(Task.product_id == product.id))
             task_count = task_count_result.scalar() or 0
 
             vision_docs_result = await db.execute(
@@ -1217,15 +1197,11 @@ async def restore_product(
             vision_documents_count = vision_docs_result.scalar() or 0
 
             # Calculate unfinished/unresolved counts (optional for response)
-            projects_result = await db.execute(
-                select(Project).where(Project.product_id == product.id)
-            )
+            projects_result = await db.execute(select(Project).where(Project.product_id == product.id))
             projects = projects_result.scalars().all()
             unfinished_projects = sum(1 for p in projects if p.status != "completed")
 
-            tasks_result = await db.execute(
-                select(Task).where(Task.product_id == product.id)
-            )
+            tasks_result = await db.execute(select(Task).where(Task.product_id == product.id))
             tasks = tasks_result.scalars().all()
             unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
 
@@ -1362,7 +1338,7 @@ async def get_vision_chunks(product_id: str, tenant_key: str = Depends(get_tenan
                 raise HTTPException(status_code=404, detail="Vision document file not found")
 
             # Read and chunk the document
-            async with aiofiles.open(product.vision_path, "r", encoding="utf-8") as f:
+            async with aiofiles.open(product.vision_path, encoding="utf-8") as f:
                 content = await f.read()
 
             chunker = EnhancedChunker()
@@ -1392,7 +1368,6 @@ async def get_vision_chunks(product_id: str, tenant_key: str = Depends(get_tenan
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 # ============================================================================
 # GENERIC ROUTES - MUST BE LAST
 # ============================================================================
@@ -1400,6 +1375,7 @@ async def get_vision_chunks(product_id: str, tenant_key: str = Depends(get_tenan
 # PUT /{product_id} and GET /{product_id} must come AFTER all specific
 # sub-routes like POST /{product_id}/activate to prevent route conflicts.
 # ============================================================================
+
 
 @router.put("/{product_id}", response_model=ProductResponse)
 async def update_product(
@@ -1446,7 +1422,7 @@ async def update_product(
                         raise HTTPException(status_code=400, detail="config_data must be a JSON object")
                     product.config_data = config_dict
                 except json.JSONDecodeError as e:
-                    raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
+                    raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {e!s}")
 
             await db.commit()
             await db.refresh(product)
@@ -1495,7 +1471,6 @@ async def update_product(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 def _get_nested_value(data: dict, path: str) -> Any:

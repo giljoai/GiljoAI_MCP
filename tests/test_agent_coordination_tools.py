@@ -12,11 +12,11 @@ Following TDD principles - testing production-grade code.
 """
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -24,7 +24,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
 from src.giljo_mcp.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob
 from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -121,9 +120,7 @@ class TestGetPendingJobs:
         assert result["count"] == 0
         assert result["jobs"] == []
 
-    def test_get_pending_jobs_filters_by_agent_type(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_get_pending_jobs_filters_by_agent_type(self, coordination_tools, job_manager, tenant_key):
         """Test that get_pending_jobs filters by agent_type."""
         # Create jobs for different agent types
         job_impl = job_manager.create_job(
@@ -146,9 +143,7 @@ class TestGetPendingJobs:
         assert result["jobs"][0]["job_id"] == job_impl.job_id
         assert result["jobs"][0]["agent_type"] == "implementer"
 
-    def test_get_pending_jobs_tenant_isolation(
-        self, coordination_tools, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_get_pending_jobs_tenant_isolation(self, coordination_tools, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Test multi-tenant isolation."""
         # Create jobs for two different tenants
         job_tenant1 = job_manager.create_job(
@@ -175,9 +170,7 @@ class TestGetPendingJobs:
         job_ids = [job["job_id"] for job in result["jobs"]]
         assert job_tenant2.job_id not in job_ids
 
-    def test_get_pending_jobs_validation_empty_agent_type(
-        self, coordination_tools, tenant_key
-    ):
+    def test_get_pending_jobs_validation_empty_agent_type(self, coordination_tools, tenant_key):
         """Test validation for empty agent_type."""
         get_pending_jobs = coordination_tools["get_pending_jobs"]
         result = get_pending_jobs(agent_type="", tenant_key=tenant_key)
@@ -223,9 +216,7 @@ class TestAcknowledgeJob:
         assert result["job"]["started_at"] is not None
         assert "next_instructions" in result
 
-    def test_acknowledge_job_idempotent(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_acknowledge_job_idempotent(self, coordination_tools, job_manager, tenant_key):
         """Test that acknowledging same job twice is idempotent."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -252,9 +243,7 @@ class TestAcknowledgeJob:
         assert result2["status"] == "success"
         assert result2["job"]["status"] == "active"
 
-    def test_acknowledge_job_tenant_isolation(
-        self, coordination_tools, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_acknowledge_job_tenant_isolation(self, coordination_tools, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Test tenant isolation in job acknowledgment."""
         # Create job for tenant 1
         job = job_manager.create_job(
@@ -275,9 +264,7 @@ class TestAcknowledgeJob:
         assert result["status"] == "error"
         assert "not found" in result["error"].lower()
 
-    def test_acknowledge_job_validation_empty_job_id(
-        self, coordination_tools, tenant_key
-    ):
+    def test_acknowledge_job_validation_empty_job_id(self, coordination_tools, tenant_key):
         """Test validation for empty job_id."""
         acknowledge_job = coordination_tools["acknowledge_job"]
         result = acknowledge_job(
@@ -289,9 +276,7 @@ class TestAcknowledgeJob:
         assert result["status"] == "error"
         assert "job_id cannot be empty" in result["error"]
 
-    def test_acknowledge_job_validation_empty_agent_id(
-        self, coordination_tools, tenant_key
-    ):
+    def test_acknowledge_job_validation_empty_agent_id(self, coordination_tools, tenant_key):
         """Test validation for empty agent_id."""
         acknowledge_job = coordination_tools["acknowledge_job"]
         result = acknowledge_job(
@@ -319,9 +304,7 @@ class TestAcknowledgeJob:
 class TestReportProgress:
     """Test report_progress coordination tool."""
 
-    def test_report_progress_success(
-        self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key
-    ):
+    def test_report_progress_success(self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key):
         """Test successful progress reporting."""
         # Create and acknowledge job
         job = job_manager.create_job(
@@ -369,9 +352,7 @@ class TestReportProgress:
             "schemas/user.py",
         ]
 
-    def test_report_progress_context_warning_25k(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_progress_context_warning_25k(self, coordination_tools, job_manager, tenant_key):
         """Test warning at 25K tokens (83%)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -393,9 +374,7 @@ class TestReportProgress:
         assert len(result["warnings"]) > 0
         assert any("83%" in w for w in result["warnings"])
 
-    def test_report_progress_context_warning_28k(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_progress_context_warning_28k(self, coordination_tools, job_manager, tenant_key):
         """Test warning at 28K tokens (93%)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -417,9 +396,7 @@ class TestReportProgress:
         assert len(result["warnings"]) > 0
         assert any("93%" in w for w in result["warnings"])
 
-    def test_report_progress_context_critical_29k(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_progress_context_critical_29k(self, coordination_tools, job_manager, tenant_key):
         """Test critical warning at 29K tokens (97%)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -442,9 +419,7 @@ class TestReportProgress:
         assert any("CRITICAL" in w for w in result["warnings"])
         assert any("97%" in w for w in result["warnings"])
 
-    def test_report_progress_validation_empty_job_id(
-        self, coordination_tools, tenant_key
-    ):
+    def test_report_progress_validation_empty_job_id(self, coordination_tools, tenant_key):
         """Test validation for empty job_id."""
         report_progress = coordination_tools["report_progress"]
         result = report_progress(
@@ -458,9 +433,7 @@ class TestReportProgress:
         assert result["status"] == "error"
         assert "job_id cannot be empty" in result["error"]
 
-    def test_report_progress_validation_empty_completed_todo(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_progress_validation_empty_completed_todo(self, coordination_tools, job_manager, tenant_key):
         """Test validation for empty completed_todo."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -480,9 +453,7 @@ class TestReportProgress:
         assert result["status"] == "error"
         assert "completed_todo cannot be empty" in result["error"]
 
-    def test_report_progress_validation_negative_context(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_progress_validation_negative_context(self, coordination_tools, job_manager, tenant_key):
         """Test validation for negative context_used."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -506,9 +477,7 @@ class TestReportProgress:
 class TestGetNextInstruction:
     """Test get_next_instruction coordination tool."""
 
-    def test_get_next_instruction_no_messages(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_get_next_instruction_no_messages(self, coordination_tools, job_manager, tenant_key):
         """Test get_next_instruction with no messages."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -669,9 +638,7 @@ class TestCompleteJob:
         assert result["status"] == "success"
         assert "Job completed successfully" in result["message"]
 
-    def test_complete_job_with_next_job(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_complete_job_with_next_job(self, coordination_tools, job_manager, tenant_key):
         """Test job completion provides next job info."""
         # Create two jobs
         job1 = job_manager.create_job(
@@ -700,9 +667,7 @@ class TestCompleteJob:
         assert result["next_job"]["job_id"] == job2.job_id
         assert result["next_job"]["mission"] == "Implement feature 2"
 
-    def test_complete_job_validation_empty_job_id(
-        self, coordination_tools, tenant_key
-    ):
+    def test_complete_job_validation_empty_job_id(self, coordination_tools, tenant_key):
         """Test validation for empty job_id."""
         complete_job = coordination_tools["complete_job"]
         result = complete_job(
@@ -714,9 +679,7 @@ class TestCompleteJob:
         assert result["status"] == "error"
         assert "job_id cannot be empty" in result["error"]
 
-    def test_complete_job_validation_missing_summary(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_complete_job_validation_missing_summary(self, coordination_tools, job_manager, tenant_key):
         """Test validation for result without summary."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -735,9 +698,7 @@ class TestCompleteJob:
         assert result["status"] == "error"
         assert "summary" in result["error"].lower()
 
-    def test_complete_job_tenant_isolation(
-        self, coordination_tools, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_complete_job_tenant_isolation(self, coordination_tools, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Test tenant isolation in job completion."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -761,9 +722,7 @@ class TestCompleteJob:
 class TestReportError:
     """Test report_error coordination tool."""
 
-    def test_report_error_success(
-        self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key
-    ):
+    def test_report_error_success(self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key):
         """Test successful error reporting."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -801,9 +760,7 @@ class TestReportError:
         assert len(msg_result["messages"]) > 0
         assert msg_result["messages"][0]["priority"] == 2  # High priority
 
-    def test_report_error_all_error_types(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_error_all_error_types(self, coordination_tools, job_manager, tenant_key):
         """Test all valid error types."""
         error_types = [
             "build_failure",
@@ -837,9 +794,7 @@ class TestReportError:
             assert result["status"] == "success", f"Failed for {error_type}"
             assert "recovery_instructions" in result
 
-    def test_report_error_validation_invalid_error_type(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_report_error_validation_invalid_error_type(self, coordination_tools, job_manager, tenant_key):
         """Test validation for invalid error_type."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -864,9 +819,7 @@ class TestReportError:
 class TestSendMessage:
     """Test send_message coordination tool."""
 
-    def test_send_message_success(
-        self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key
-    ):
+    def test_send_message_success(self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key):
         """Test successful message sending."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -901,9 +854,7 @@ class TestSendMessage:
         assert len(msg_result["messages"]) > 0
         assert msg_result["messages"][0]["content"] == "Please review the implementation"
 
-    def test_send_message_priority_levels(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_send_message_priority_levels(self, coordination_tools, job_manager, tenant_key):
         """Test all priority levels."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -924,9 +875,7 @@ class TestSendMessage:
 
             assert result["status"] == "success", f"Failed for priority {priority}"
 
-    def test_send_message_validation_invalid_priority(
-        self, coordination_tools, job_manager, tenant_key
-    ):
+    def test_send_message_validation_invalid_priority(self, coordination_tools, job_manager, tenant_key):
         """Test validation for invalid priority."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
@@ -950,9 +899,7 @@ class TestSendMessage:
 class TestMultiTenantIsolation:
     """Comprehensive multi-tenant isolation tests (CRITICAL)."""
 
-    def test_zero_cross_tenant_job_access(
-        self, coordination_tools, job_manager, tenant_key, other_tenant_key
-    ):
+    def test_zero_cross_tenant_job_access(self, coordination_tools, job_manager, tenant_key, other_tenant_key):
         """Test that no tool can access jobs from other tenants."""
         # Create jobs for different tenants
         job_t1 = job_manager.create_job(

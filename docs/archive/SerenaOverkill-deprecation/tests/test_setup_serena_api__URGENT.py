@@ -14,10 +14,7 @@ error handling, and transactional behavior verification.
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 
 
 class TestSerenaDetectionEndpoint:
@@ -25,6 +22,7 @@ class TestSerenaDetectionEndpoint:
 
     def test_detect_serena_not_installed(self, api_client, monkeypatch):
         """Test detection when Serena not installed."""
+
         # Mock subprocess to simulate uvx not found
         def mock_run(*args, **kwargs):
             raise FileNotFoundError("uvx not found")
@@ -42,11 +40,12 @@ class TestSerenaDetectionEndpoint:
 
     def test_detect_serena_installed(self, api_client, monkeypatch):
         """Test detection when Serena installed."""
+
         # Mock successful uvx and serena checks
         def mock_run(cmd, *args, **kwargs):
             if "uvx" in cmd and "--version" in cmd:
                 return MagicMock(returncode=0, stdout="uvx 0.1.0")
-            elif "uvx" in cmd and "serena" in cmd:
+            if "uvx" in cmd and "serena" in cmd:
                 return MagicMock(returncode=0, stdout="Serena MCP v1.2.3")
             return MagicMock(returncode=1)
 
@@ -67,7 +66,7 @@ class TestSerenaDetectionEndpoint:
         def mock_run(cmd, *args, **kwargs):
             if "uvx" in cmd and "--version" in cmd:
                 return MagicMock(returncode=0, stdout="uvx 0.1.0")
-            elif "uvx" in cmd and "serena" in cmd:
+            if "uvx" in cmd and "serena" in cmd:
                 return MagicMock(returncode=1, stderr="Package not found")
             return MagicMock(returncode=1)
 
@@ -112,7 +111,7 @@ class TestSerenaDetectionEndpoint:
             def mock_run(cmd, *args, **kwargs):
                 if "uvx" in cmd and "--version" in cmd:
                     return MagicMock(returncode=0, stdout="uvx 0.1.0")
-                elif "uvx" in cmd and "serena" in cmd:
+                if "uvx" in cmd and "serena" in cmd:
                     return MagicMock(returncode=0, stdout=output)
                 return MagicMock(returncode=1)
 
@@ -129,11 +128,12 @@ class TestSerenaAttachmentEndpoint:
 
     def test_attach_serena_success(self, api_client, temp_config_path, temp_claude_json, monkeypatch):
         """Test successful Serena attachment."""
+
         # Mock detection as success
         def mock_run(cmd, *args, **kwargs):
             if "uvx" in cmd and "--version" in cmd:
                 return MagicMock(returncode=0, stdout="uvx 0.1.0")
-            elif "uvx" in cmd and "serena" in cmd:
+            if "uvx" in cmd and "serena" in cmd:
                 return MagicMock(returncode=0, stdout="Serena MCP v1.2.3")
             return MagicMock(returncode=1)
 
@@ -181,6 +181,7 @@ class TestSerenaAttachmentEndpoint:
 
     def test_attach_serena_config_write_failure(self, api_client, temp_claude_json, monkeypatch):
         """Test rollback when config write fails."""
+
         # Mock successful detection
         def mock_run(cmd, *args, **kwargs):
             if "uvx" in cmd:
@@ -194,7 +195,7 @@ class TestSerenaAttachmentEndpoint:
 
         def mock_open(*args, **kwargs):
             if "config.yaml" in str(args[0]) and "w" in str(args[1] if len(args) > 1 else kwargs.get("mode", "")):
-                raise IOError("Permission denied")
+                raise OSError("Permission denied")
             return original_open(*args, **kwargs)
 
         monkeypatch.setattr("builtins.open", mock_open)
@@ -206,6 +207,7 @@ class TestSerenaAttachmentEndpoint:
 
     def test_attach_serena_claude_json_write_failure(self, api_client, temp_config_path, monkeypatch):
         """Test rollback when .claude.json write fails."""
+
         # Mock successful detection
         def mock_run(cmd, *args, **kwargs):
             return MagicMock(returncode=0, stdout="OK")
@@ -223,7 +225,7 @@ class TestSerenaAttachmentEndpoint:
 
         def mock_open(*args, **kwargs):
             if ".claude.json" in str(args[0]) and "w" in str(args[1] if len(args) > 1 else kwargs.get("mode", "")):
-                raise IOError("Permission denied")
+                raise OSError("Permission denied")
             return original_open(*args, **kwargs)
 
         monkeypatch.setattr("builtins.open", mock_open)
@@ -240,6 +242,7 @@ class TestSerenaAttachmentEndpoint:
 
     def test_attach_serena_idempotent(self, api_client, temp_claude_json, monkeypatch):
         """Test calling attach twice is safe."""
+
         # Mock successful detection
         def mock_run(cmd, *args, **kwargs):
             return MagicMock(returncode=0, stdout="Serena v1.0.0")
@@ -378,7 +381,7 @@ class TestSerenaDetachmentEndpoint:
 
         def mock_open(*args, **kwargs):
             if "config.yaml" in str(args[0]) and "w" in str(args[1] if len(args) > 1 else kwargs.get("mode", "")):
-                raise IOError("Write failed")
+                raise OSError("Write failed")
             return original_open(*args, **kwargs)
 
         monkeypatch.setattr("builtins.open", mock_open)

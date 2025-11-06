@@ -4,12 +4,13 @@ Test template manager with Serena enabled in config.yaml.
 This test temporarily modifies config.yaml to test the enabled flow.
 """
 
+import shutil
 import sys
 from pathlib import Path
-import shutil
 
 import pytest
 import yaml
+
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -93,8 +94,9 @@ class TestSerenaEnabledFlow:
         with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
-        from src.giljo_mcp.services.config_service import ConfigService
         from unittest.mock import patch
+
+        from src.giljo_mcp.services.config_service import ConfigService
 
         config_service = ConfigService(config_path=config_path)
 

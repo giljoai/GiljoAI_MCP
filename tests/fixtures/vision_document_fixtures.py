@@ -3,11 +3,10 @@ Test fixtures for vision document chunking tests.
 Provides realistic test data, mocks, and utilities for testing async vision document operations.
 """
 
-import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncGenerator, Dict, List
+from typing import Dict, List
 
 import pytest
 import pytest_asyncio
@@ -49,7 +48,7 @@ class VisionDocumentTestData:
                 "to understand the system and generate appropriate code. " * 3
             )
             content += "\n\n"
-            content += "### Subsection {}.2\n\n".format(section_count)
+            content += f"### Subsection {section_count}.2\n\n"
             content += "- Bullet point 1: Important detail\n"
             content += "- Bullet point 2: Another critical aspect\n"
             content += "- Bullet point 3: Implementation consideration\n"
@@ -109,9 +108,7 @@ async def test_product(db_session: AsyncSession, tenant_manager) -> Product:
 
 
 @pytest_asyncio.fixture
-async def vision_document_with_file(
-    db_session: AsyncSession, test_product: Product, tmp_path: Path
-) -> VisionDocument:
+async def vision_document_with_file(db_session: AsyncSession, test_product: Product, tmp_path: Path) -> VisionDocument:
     """
     Create vision document with file storage for testing.
 
@@ -158,9 +155,7 @@ async def vision_document_with_file(
 
 
 @pytest_asyncio.fixture
-async def vision_document_with_inline_content(
-    db_session: AsyncSession, test_product: Product
-) -> VisionDocument:
+async def vision_document_with_inline_content(db_session: AsyncSession, test_product: Product) -> VisionDocument:
     """
     Create vision document with inline content for testing.
 

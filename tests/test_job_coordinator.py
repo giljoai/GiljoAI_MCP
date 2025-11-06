@@ -5,11 +5,8 @@ Tests job spawning, coordination, dependency chains, aggregation, and multi-tena
 Follows Test-Driven Development principles - tests written BEFORE implementation.
 """
 
-import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
-from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -62,6 +59,7 @@ def comm_queue():
 def job_coordinator(db_manager, job_manager, comm_queue):
     """Create JobCoordinator instance for testing."""
     from src.giljo_mcp.job_coordinator import JobCoordinator
+
     return JobCoordinator(db_manager, job_manager, comm_queue)
 
 
@@ -81,7 +79,7 @@ def sample_parent_job():
         acknowledged=True,
         started_at=datetime.now(timezone.utc),
         completed_at=None,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -103,7 +101,7 @@ def sample_child_jobs():
             acknowledged=True,
             started_at=base_time,
             completed_at=base_time + timedelta(seconds=30),
-            created_at=base_time
+            created_at=base_time,
         ),
         MCPAgentJob(
             id=3,
@@ -118,7 +116,7 @@ def sample_child_jobs():
             acknowledged=True,
             started_at=base_time,
             completed_at=base_time + timedelta(seconds=45),
-            created_at=base_time
+            created_at=base_time,
         ),
         MCPAgentJob(
             id=4,
@@ -133,8 +131,8 @@ def sample_child_jobs():
             acknowledged=True,
             started_at=base_time,
             completed_at=None,
-            created_at=base_time
-        )
+            created_at=base_time,
+        ),
     ]
 
 
@@ -148,28 +146,15 @@ class TestJobSpawning:
         parent_job_id = "parent-job-001"
 
         child_specs = [
-            {
-                "agent_type": "analyzer",
-                "mission": "Analyze codebase",
-                "context_chunks": ["chunk-1"]
-            },
-            {
-                "agent_type": "implementer",
-                "mission": "Implement feature",
-                "context_chunks": ["chunk-2"]
-            }
+            {"agent_type": "analyzer", "mission": "Analyze codebase", "context_chunks": ["chunk-1"]},
+            {"agent_type": "implementer", "mission": "Implement feature", "context_chunks": ["chunk-2"]},
         ]
 
         # Mock create_job_batch to return job IDs
-        job_manager.create_job_batch.return_value = {
-            "job_ids": ["child-001", "child-002"],
-            "count": 2
-        }
+        job_manager.create_job_batch.return_value = {"job_ids": ["child-001", "child-002"], "count": 2}
 
         result = await job_coordinator.spawn_child_jobs(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            child_specs=child_specs
+            tenant_key=tenant_key, parent_job_id=parent_job_id, child_specs=child_specs
         )
 
         # Verify job_manager.create_job_batch was called correctly
@@ -194,24 +179,12 @@ class TestJobSpawning:
         tenant_key = "test-tenant-123"
         parent_job_id = "parent-job-001"
 
-        child_specs = [
-            {
-                "agent_type": "analyzer",
-                "mission": "Analyze codebase",
-                "notify_on_complete": True
-            }
-        ]
+        child_specs = [{"agent_type": "analyzer", "mission": "Analyze codebase", "notify_on_complete": True}]
 
-        job_manager.create_job_batch.return_value = {
-            "job_ids": ["child-001"],
-            "count": 1
-        }
+        job_manager.create_job_batch.return_value = {"job_ids": ["child-001"], "count": 1}
 
         result = await job_coordinator.spawn_child_jobs(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            child_specs=child_specs,
-            send_notifications=True
+            tenant_key=tenant_key, parent_job_id=parent_job_id, child_specs=child_specs, send_notifications=True
         )
 
         assert result["success"] is True
@@ -231,10 +204,7 @@ class TestJobSpawning:
 
         with pytest.raises(ValueError, match="Parent job not found"):
             await job_coordinator.spawn_child_jobs(
-                tenant_key=tenant_key,
-                parent_job_id=parent_job_id,
-                child_specs=child_specs,
-                validate_parent=True
+                tenant_key=tenant_key, parent_job_id=parent_job_id, child_specs=child_specs, validate_parent=True
             )
 
     @pytest.mark.asyncio
@@ -246,18 +216,16 @@ class TestJobSpawning:
         parallel_specs = [
             {"agent_type": "analyzer", "mission": "Analyze module A"},
             {"agent_type": "analyzer", "mission": "Analyze module B"},
-            {"agent_type": "analyzer", "mission": "Analyze module C"}
+            {"agent_type": "analyzer", "mission": "Analyze module C"},
         ]
 
         job_manager.create_job_batch.return_value = {
             "job_ids": ["parallel-001", "parallel-002", "parallel-003"],
-            "count": 3
+            "count": 3,
         }
 
         result = await job_coordinator.spawn_parallel_jobs(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            job_specs=parallel_specs
+            tenant_key=tenant_key, parent_job_id=parent_job_id, job_specs=parallel_specs
         )
 
         assert result["success"] is True
@@ -268,9 +236,7 @@ class TestJobSpawning:
     async def test_spawn_child_jobs_empty_specs(self, job_coordinator):
         """Test spawning with empty child specs list."""
         result = await job_coordinator.spawn_child_jobs(
-            tenant_key="test-tenant-123",
-            parent_job_id="parent-001",
-            child_specs=[]
+            tenant_key="test-tenant-123", parent_job_id="parent-001", child_specs=[]
         )
 
         assert result["success"] is True
@@ -290,15 +256,13 @@ class TestJobCoordination:
         # Create completed child jobs
         completed_jobs = [
             Mock(job_id="child-001", status="completed", agent_type="analyzer"),
-            Mock(job_id="child-002", status="completed", agent_type="implementer")
+            Mock(job_id="child-002", status="completed", agent_type="implementer"),
         ]
 
         job_manager.get_jobs_by_spawner.return_value = completed_jobs
 
         result = await job_coordinator.wait_for_children(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            timeout=30.0
+            tenant_key=tenant_key, parent_job_id=parent_job_id, timeout=30.0
         )
 
         assert result["all_complete"] is True
@@ -313,9 +277,7 @@ class TestJobCoordination:
         parent_job_id = "parent-job-001"
 
         # Jobs that never complete
-        active_jobs = [
-            Mock(job_id="child-001", status="active", agent_type="analyzer")
-        ]
+        active_jobs = [Mock(job_id="child-001", status="active", agent_type="analyzer")]
 
         job_manager.get_jobs_by_spawner.return_value = active_jobs
 
@@ -323,7 +285,7 @@ class TestJobCoordination:
             tenant_key=tenant_key,
             parent_job_id=parent_job_id,
             timeout=0.1,  # Very short timeout
-            poll_interval=0.05
+            poll_interval=0.05,
         )
 
         assert result["all_complete"] is False
@@ -339,7 +301,7 @@ class TestJobCoordination:
         mixed_jobs = [
             Mock(job_id="child-001", status="completed", agent_type="analyzer"),
             Mock(job_id="child-002", status="failed", agent_type="implementer"),
-            Mock(job_id="child-003", status="active", agent_type="tester")
+            Mock(job_id="child-003", status="active", agent_type="tester"),
         ]
 
         # First call returns mixed, second call has active job completed
@@ -348,15 +310,12 @@ class TestJobCoordination:
             [
                 Mock(job_id="child-001", status="completed", agent_type="analyzer"),
                 Mock(job_id="child-002", status="failed", agent_type="implementer"),
-                Mock(job_id="child-003", status="completed", agent_type="tester")
-            ]
+                Mock(job_id="child-003", status="completed", agent_type="tester"),
+            ],
         ]
 
         result = await job_coordinator.wait_for_children(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            timeout=5.0,
-            poll_interval=0.1
+            tenant_key=tenant_key, parent_job_id=parent_job_id, timeout=5.0, poll_interval=0.1
         )
 
         assert result["all_complete"] is True
@@ -371,16 +330,12 @@ class TestJobCoordination:
 
         # Add results to messages
         for job in sample_child_jobs:
-            job.messages = [
-                {"type": "result", "data": {"output": f"Result from {job.job_id}"}}
-            ]
+            job.messages = [{"type": "result", "data": {"output": f"Result from {job.job_id}"}}]
 
         job_manager.get_jobs_by_spawner.return_value = sample_child_jobs
 
         result = await job_coordinator.aggregate_child_results(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            strategy="collect"
+            tenant_key=tenant_key, parent_job_id=parent_job_id, strategy="collect"
         )
 
         assert result["strategy"] == "collect"
@@ -396,16 +351,12 @@ class TestJobCoordination:
 
         # Add results to messages
         for job in sample_child_jobs:
-            job.messages = [
-                {"type": "result", "data": {"key": f"value_{job.job_id}"}}
-            ]
+            job.messages = [{"type": "result", "data": {"key": f"value_{job.job_id}"}}]
 
         job_manager.get_jobs_by_spawner.return_value = sample_child_jobs
 
         result = await job_coordinator.aggregate_child_results(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            strategy="merge"
+            tenant_key=tenant_key, parent_job_id=parent_job_id, strategy="merge"
         )
 
         assert result["strategy"] == "merge"
@@ -419,9 +370,7 @@ class TestJobCoordination:
         job_manager.get_jobs_by_spawner.return_value = []
 
         result = await job_coordinator.aggregate_child_results(
-            tenant_key="test-tenant-123",
-            parent_job_id="parent-job-001",
-            strategy="collect"
+            tenant_key="test-tenant-123", parent_job_id="parent-job-001", strategy="collect"
         )
 
         assert result["results"] == []
@@ -440,20 +389,15 @@ class TestJobDependencies:
         chain_specs = [
             {"agent_type": "analyzer", "mission": "Analyze first"},
             {"agent_type": "implementer", "mission": "Implement second"},
-            {"agent_type": "tester", "mission": "Test third"}
+            {"agent_type": "tester", "mission": "Test third"},
         ]
 
         # Mock job creation to return job IDs sequentially
         created_job_ids = ["chain-001", "chain-002", "chain-003"]
-        job_manager.create_job_batch.return_value = {
-            "job_ids": created_job_ids,
-            "count": 3
-        }
+        job_manager.create_job_batch.return_value = {"job_ids": created_job_ids, "count": 3}
 
         result = await job_coordinator.create_job_chain(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            chain_specs=chain_specs
+            tenant_key=tenant_key, parent_job_id=parent_job_id, chain_specs=chain_specs
         )
 
         assert result["success"] is True
@@ -472,32 +416,19 @@ class TestJobDependencies:
             job_id="chain-001",
             status="completed",
             messages=[
-                {
-                    "type": "chain_metadata",
-                    "chain_id": chain_id,
-                    "next_job_id": "chain-002",
-                    "position": 1,
-                    "total": 3
-                }
-            ]
+                {"type": "chain_metadata", "chain_id": chain_id, "next_job_id": "chain-002", "position": 1, "total": 3}
+            ],
         )
 
         job_manager.get_job.return_value = current_job
         job_manager.update_job_status.return_value = True
 
-        result = await job_coordinator.execute_next_in_chain(
-            tenant_key=tenant_key,
-            current_job_id="chain-001"
-        )
+        result = await job_coordinator.execute_next_in_chain(tenant_key=tenant_key, current_job_id="chain-001")
 
         assert result["success"] is True
         assert result["next_job_id"] == "chain-002"
         # Should have updated next job to active status
-        job_manager.update_job_status.assert_called_with(
-            tenant_key=tenant_key,
-            job_id="chain-002",
-            status="active"
-        )
+        job_manager.update_job_status.assert_called_with(tenant_key=tenant_key, job_id="chain-002", status="active")
 
     @pytest.mark.asyncio
     async def test_execute_next_in_chain_completion(self, job_coordinator, job_manager):
@@ -514,17 +445,14 @@ class TestJobDependencies:
                     "chain_id": "chain-abc-123",
                     "next_job_id": None,  # No next job
                     "position": 3,
-                    "total": 3
+                    "total": 3,
                 }
-            ]
+            ],
         )
 
         job_manager.get_job.return_value = last_job
 
-        result = await job_coordinator.execute_next_in_chain(
-            tenant_key=tenant_key,
-            current_job_id="chain-003"
-        )
+        result = await job_coordinator.execute_next_in_chain(tenant_key=tenant_key, current_job_id="chain-003")
 
         assert result["success"] is True
         assert result["chain_complete"] is True
@@ -559,10 +487,7 @@ class TestJobStatusAggregation:
 
         job_manager.get_jobs_by_spawner.side_effect = get_jobs_by_spawner_side_effect
 
-        result = await job_coordinator.get_job_tree_status(
-            tenant_key=tenant_key,
-            root_job_id=root_job_id
-        )
+        result = await job_coordinator.get_job_tree_status(tenant_key=tenant_key, root_job_id=root_job_id)
 
         assert result["root_job_id"] == root_job_id
         assert result["total_jobs"] == 4  # 1 parent + 3 children
@@ -579,27 +504,21 @@ class TestJobStatusAggregation:
         root_job = Mock(job_id="root-001", status="active", spawned_by=None)
         level1_jobs = [
             Mock(job_id="l1-001", status="completed", spawned_by="root-001"),
-            Mock(job_id="l1-002", status="active", spawned_by="root-001")
+            Mock(job_id="l1-002", status="active", spawned_by="root-001"),
         ]
-        level2_jobs = [
-            Mock(job_id="l2-001", status="completed", spawned_by="l1-002")
-        ]
+        level2_jobs = [Mock(job_id="l2-001", status="completed", spawned_by="l1-002")]
 
         def get_jobs_by_spawner_side_effect(tenant_key, spawner_id):
             if spawner_id == "root-001":
                 return level1_jobs
-            elif spawner_id == "l1-002":
+            if spawner_id == "l1-002":
                 return level2_jobs
             return []
 
         job_manager.get_job.return_value = root_job
         job_manager.get_jobs_by_spawner.side_effect = get_jobs_by_spawner_side_effect
 
-        result = await job_coordinator.get_job_tree_status(
-            tenant_key=tenant_key,
-            root_job_id="root-001",
-            max_depth=3
-        )
+        result = await job_coordinator.get_job_tree_status(tenant_key=tenant_key, root_job_id="root-001", max_depth=3)
 
         assert result["total_jobs"] == 4  # root + 2 level1 + 1 level2
         assert result["tree_depth"] >= 2
@@ -612,10 +531,7 @@ class TestJobStatusAggregation:
 
         job_manager.get_jobs_by_spawner.return_value = sample_child_jobs
 
-        result = await job_coordinator.get_coordination_metrics(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id
-        )
+        result = await job_coordinator.get_coordination_metrics(tenant_key=tenant_key, parent_job_id=parent_job_id)
 
         assert result["total_children"] == 3
         assert result["completed"] == 2
@@ -632,8 +548,7 @@ class TestJobStatusAggregation:
         job_manager.get_jobs_by_spawner.return_value = []
 
         result = await job_coordinator.get_coordination_metrics(
-            tenant_key="test-tenant-123",
-            parent_job_id="parent-job-001"
+            tenant_key="test-tenant-123", parent_job_id="parent-job-001"
         )
 
         assert result["total_children"] == 0
@@ -650,19 +565,12 @@ class TestMultiTenantIsolation:
         tenant_key = "tenant-A"
         parent_job_id = "parent-001"
 
-        child_specs = [
-            {"agent_type": "analyzer", "mission": "Analyze"}
-        ]
+        child_specs = [{"agent_type": "analyzer", "mission": "Analyze"}]
 
-        job_manager.create_job_batch.return_value = {
-            "job_ids": ["child-001"],
-            "count": 1
-        }
+        job_manager.create_job_batch.return_value = {"job_ids": ["child-001"], "count": 1}
 
         await job_coordinator.spawn_child_jobs(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            child_specs=child_specs
+            tenant_key=tenant_key, parent_job_id=parent_job_id, child_specs=child_specs
         )
 
         # Verify tenant_key is passed correctly
@@ -676,15 +584,9 @@ class TestMultiTenantIsolation:
         tenant_key = "tenant-A"
         parent_job_id = "parent-001"
 
-        job_manager.get_jobs_by_spawner.return_value = [
-            Mock(job_id="child-001", status="completed")
-        ]
+        job_manager.get_jobs_by_spawner.return_value = [Mock(job_id="child-001", status="completed")]
 
-        await job_coordinator.wait_for_children(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            timeout=0.1
-        )
+        await job_coordinator.wait_for_children(tenant_key=tenant_key, parent_job_id=parent_job_id, timeout=0.1)
 
         # Verify tenant_key is used in query
         job_manager.get_jobs_by_spawner.assert_called()
@@ -699,18 +601,11 @@ class TestMultiTenantIsolation:
 
         # Mock children all from same tenant
         job_manager.get_jobs_by_spawner.return_value = [
-            Mock(
-                job_id="child-001",
-                tenant_key=tenant_key,
-                status="completed",
-                messages=[]
-            )
+            Mock(job_id="child-001", tenant_key=tenant_key, status="completed", messages=[])
         ]
 
         await job_coordinator.aggregate_child_results(
-            tenant_key=tenant_key,
-            parent_job_id=parent_job_id,
-            strategy="collect"
+            tenant_key=tenant_key, parent_job_id=parent_job_id, strategy="collect"
         )
 
         # Verify tenant_key passed to get_jobs_by_spawner
@@ -730,27 +625,21 @@ class TestEdgeCases:
                 parent_job_id="parent-001",
                 child_specs=[
                     {"agent_type": "analyzer"}  # Missing mission
-                ]
+                ],
             )
 
     @pytest.mark.asyncio
     async def test_wait_for_children_negative_timeout(self, job_coordinator):
         """Test wait_for_children with negative timeout."""
         with pytest.raises(ValueError, match="Timeout must be positive"):
-            await job_coordinator.wait_for_children(
-                tenant_key="test-tenant",
-                parent_job_id="parent-001",
-                timeout=-1.0
-            )
+            await job_coordinator.wait_for_children(tenant_key="test-tenant", parent_job_id="parent-001", timeout=-1.0)
 
     @pytest.mark.asyncio
     async def test_aggregate_with_invalid_strategy(self, job_coordinator):
         """Test aggregation with invalid strategy."""
         with pytest.raises(ValueError, match="Invalid aggregation strategy"):
             await job_coordinator.aggregate_child_results(
-                tenant_key="test-tenant",
-                parent_job_id="parent-001",
-                strategy="invalid_strategy"
+                tenant_key="test-tenant", parent_job_id="parent-001", strategy="invalid_strategy"
             )
 
     @pytest.mark.asyncio
@@ -763,7 +652,7 @@ class TestEdgeCases:
         def get_job_side_effect(tenant_key, job_id):
             if job_id == "root":
                 return root_job
-            elif job_id == "child":
+            if job_id == "child":
                 return child_job
             return None
 
@@ -780,7 +669,7 @@ class TestEdgeCases:
         result = await job_coordinator.get_job_tree_status(
             tenant_key="test-tenant",
             root_job_id="root",
-            max_depth=0  # Limit depth to 0 - only root
+            max_depth=0,  # Limit depth to 0 - only root
         )
 
         assert result["total_jobs"] == 1  # Only root since max_depth=0

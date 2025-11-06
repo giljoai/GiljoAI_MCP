@@ -608,7 +608,7 @@ async def update_project(
 
             if update.description is not None:
                 project.description = update.description
-                logger.info(f"Updated description")
+                logger.info("Updated description")
 
             if update.mission is not None:
                 project.mission = update.mission

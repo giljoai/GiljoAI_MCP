@@ -96,6 +96,37 @@
             />
           </div>
 
+          <!-- Health Indicator (after progress, before current task) -->
+          <div
+            v-if="showHealthIndicator"
+            class="health-indicator mb-3"
+            role="status"
+            :aria-label="`Agent health: ${healthConfig.label}. ${healthConfig.tooltip}`"
+          >
+            <v-chip
+              :color="healthConfig.color"
+              size="x-small"
+              :prepend-icon="healthConfig.icon"
+              :class="['health-chip', { 'pulse-warning': agent.health_state === 'critical' }]"
+              tabindex="0"
+            >
+              <span class="text-caption">{{ healthConfig.label }}</span>
+            </v-chip>
+
+            <!-- Tooltip for details -->
+            <v-tooltip activator="parent" location="bottom">
+              <div class="text-caption">
+                <div class="font-weight-bold mb-1">{{ healthConfig.tooltip }}</div>
+                <div v-if="agent.health_issue_description" class="mt-1">
+                  {{ agent.health_issue_description }}
+                </div>
+                <div v-if="agent.recommended_action" class="mt-1 text-grey-lighten-1">
+                  → {{ agent.recommended_action }}
+                </div>
+              </div>
+            </v-tooltip>
+          </div>
+
           <!-- Current Task -->
           <div v-if="agent.current_task" class="current-task">
             <div class="text-caption text-grey mb-1">Current Task:</div>
@@ -392,6 +423,64 @@ const cardAriaLabel = computed(() => {
   const status = statusConfig.value.label
   return `${type} agent - ${status}`
 })
+
+/**
+ * Health Indicator Logic (Handover 0106)
+ * Only show health indicator when:
+ * 1. Mode is 'jobs' (not 'launch')
+ * 2. Agent is active/waiting/working (not completed/failed)
+ * 3. Health state is not 'healthy'
+ */
+const showHealthIndicator = computed(() => {
+  // Skip if mode is launch (cards not yet spawned)
+  if (props.mode === 'launch') {
+    return false
+  }
+
+  // Skip if job is in terminal state
+  if (['complete', 'failed', 'cancelled'].includes(props.agent.status)) {
+    return false
+  }
+
+  // Skip if healthy or no health data
+  if (!props.agent.health_state || props.agent.health_state === 'healthy') {
+    return false
+  }
+
+  return true
+})
+
+/**
+ * Health Configuration
+ * Maps health state to UI config (color, icon, label, tooltip)
+ */
+const healthConfig = computed(() => {
+  const state = props.agent.health_state
+  const minutes = props.agent.minutes_since_update || 0
+
+  const configs = {
+    warning: {
+      color: 'warning',
+      icon: 'mdi-clock-alert',
+      label: 'Slow response',
+      tooltip: `No activity for ${minutes.toFixed(1)} minutes`
+    },
+    critical: {
+      color: 'error',
+      icon: 'mdi-alert-circle',
+      label: 'Not responding',
+      tooltip: `Agent silent for ${minutes.toFixed(1)} minutes`
+    },
+    timeout: {
+      color: 'grey-darken-1',
+      icon: 'mdi-clock-remove',
+      label: 'Timed out',
+      tooltip: `No response for ${minutes.toFixed(1)} minutes - may need restart`
+    }
+  }
+
+  return configs[state] || configs.warning
+})
 </script>
 
 <style scoped lang="scss">
@@ -531,6 +620,28 @@ const cardAriaLabel = computed(() => {
 .orchestrator-tools {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding-top: 12px;
+}
+
+/* Health Indicator Styles (Handover 0106) */
+.health-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.health-chip {
+  font-size: 11px;
+  height: 20px;
+  cursor: help; /* Show it's interactive (tooltip) */
+}
+
+/* Subtle pulse animation for critical state */
+.health-chip.pulse-warning {
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* Status-specific styling */

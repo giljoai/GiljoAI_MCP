@@ -11,10 +11,10 @@ Components checked:
 - PostgreSQL roles (giljo_user, giljo_owner)
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
-import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 
 @pytest.fixture
@@ -36,20 +36,16 @@ def mock_project_root(tmp_path):
 @pytest.fixture
 def mock_control_panel(mock_project_root):
     """Create a mock control panel instance for testing."""
-    with patch('dev_tools.control_panel.Tk'):
+    with patch("dev_tools.control_panel.Tk"):
         # Import after patching Tk to avoid GUI initialization
-        from dev_tools.control_panel import GiljoDevControlPanel
 
         panel = Mock()
         panel.project_root = mock_project_root
         panel.logger = Mock()
         panel.update_status_message = Mock()
-        panel.get_db_credentials = Mock(return_value={
-            'host': 'localhost',
-            'port': 5432,
-            'user': 'postgres',
-            'password': '4010'
-        })
+        panel.get_db_credentials = Mock(
+            return_value={"host": "localhost", "port": 5432, "user": "postgres", "password": "4010"}
+        )
 
         return panel
 
@@ -72,27 +68,27 @@ class TestVerifyFreshStateCleanSystem:
         mock_control_panel.project_root = project_root
 
         # Simulate psycopg2 not installed
-        with patch('dev_tools.control_panel.psycopg2', None):
+        with patch("dev_tools.control_panel.psycopg2", None):
             # Import verify_fresh_state logic
             checks = {}
-            checks['venv'] = not (project_root / "venv").exists()
-            checks['config.yaml'] = not (project_root / "config.yaml").exists()
-            checks['.env'] = not (project_root / ".env").exists()
-            checks['install_config.yaml'] = not (project_root / "install_config.yaml").exists()
-            checks['database'] = None  # Cannot verify without psycopg2
-            checks['roles'] = None
+            checks["venv"] = not (project_root / "venv").exists()
+            checks["config.yaml"] = not (project_root / "config.yaml").exists()
+            checks[".env"] = not (project_root / ".env").exists()
+            checks["install_config.yaml"] = not (project_root / "install_config.yaml").exists()
+            checks["database"] = None  # Cannot verify without psycopg2
+            checks["roles"] = None
 
         # Assert all file checks are True (clean)
-        assert checks['venv'] is True
-        assert checks['config.yaml'] is True
-        assert checks['.env'] is True
-        assert checks['install_config.yaml'] is True
+        assert checks["venv"] is True
+        assert checks["config.yaml"] is True
+        assert checks[".env"] is True
+        assert checks["install_config.yaml"] is True
 
         # Assert database checks are None (cannot verify)
-        assert checks['database'] is None
-        assert checks['roles'] is None
+        assert checks["database"] is None
+        assert checks["roles"] is None
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_verify_all_components_clean_with_database(self, mock_connect, mock_control_panel, tmp_path):
         """
         Test verification when all components are deleted including database.
@@ -121,40 +117,40 @@ class TestVerifyFreshStateCleanSystem:
 
         # Run verification logic
         checks = {}
-        checks['venv'] = not (project_root / "venv").exists()
-        checks['config.yaml'] = not (project_root / "config.yaml").exists()
-        checks['.env'] = not (project_root / ".env").exists()
-        checks['install_config.yaml'] = not (project_root / "install_config.yaml").exists()
+        checks["venv"] = not (project_root / "venv").exists()
+        checks["config.yaml"] = not (project_root / "config.yaml").exists()
+        checks[".env"] = not (project_root / ".env").exists()
+        checks["install_config.yaml"] = not (project_root / "install_config.yaml").exists()
 
         # Database checks
         credentials = mock_control_panel.get_db_credentials()
         conn = mock_connect(
-            host=credentials['host'],
-            port=credentials['port'],
-            database='postgres',
-            user=credentials['user'],
-            password=credentials['password'],
-            connect_timeout=5
+            host=credentials["host"],
+            port=credentials["port"],
+            database="postgres",
+            user=credentials["user"],
+            password=credentials["password"],
+            connect_timeout=5,
         )
 
         with conn.cursor() as cur:
             # Check database
             cur.execute("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'")
-            checks['database'] = cur.fetchone() is None
+            checks["database"] = cur.fetchone() is None
 
             # Check roles
             cur.execute("SELECT 1 FROM pg_roles WHERE rolname IN ('giljo_user', 'giljo_owner')")
-            checks['roles'] = cur.fetchone() is None
+            checks["roles"] = cur.fetchone() is None
 
         conn.close()
 
         # Assert all checks are True (clean)
-        assert checks['venv'] is True
-        assert checks['config.yaml'] is True
-        assert checks['.env'] is True
-        assert checks['install_config.yaml'] is True
-        assert checks['database'] is True
-        assert checks['roles'] is True
+        assert checks["venv"] is True
+        assert checks["config.yaml"] is True
+        assert checks[".env"] is True
+        assert checks["install_config.yaml"] is True
+        assert checks["database"] is True
+        assert checks["roles"] is True
 
 
 class TestVerifyFreshStateDirtySystem:
@@ -164,18 +160,18 @@ class TestVerifyFreshStateDirtySystem:
         """Test verification when venv still exists (NOT clean)."""
         # venv exists in mock_project_root by default
         checks = {}
-        checks['venv'] = not (mock_project_root / "venv").exists()
-        checks['config.yaml'] = not (mock_project_root / "config.yaml").exists()
-        checks['.env'] = not (mock_project_root / ".env").exists()
-        checks['install_config.yaml'] = not (mock_project_root / "install_config.yaml").exists()
+        checks["venv"] = not (mock_project_root / "venv").exists()
+        checks["config.yaml"] = not (mock_project_root / "config.yaml").exists()
+        checks[".env"] = not (mock_project_root / ".env").exists()
+        checks["install_config.yaml"] = not (mock_project_root / "install_config.yaml").exists()
 
         # Assert venv check is False (NOT clean)
-        assert checks['venv'] is False
+        assert checks["venv"] is False
 
         # Other checks also False (files exist)
-        assert checks['config.yaml'] is False
-        assert checks['.env'] is False
-        assert checks['install_config.yaml'] is False
+        assert checks["config.yaml"] is False
+        assert checks[".env"] is False
+        assert checks["install_config.yaml"] is False
 
     def test_verify_with_config_files_present(self, mock_control_panel, tmp_path):
         """Test verification when config files still exist (NOT clean)."""
@@ -186,18 +182,18 @@ class TestVerifyFreshStateDirtySystem:
 
         # config.yaml, .env, install_config.yaml still exist
         checks = {}
-        checks['venv'] = not (project_root / "venv").exists()
-        checks['config.yaml'] = not (project_root / "config.yaml").exists()
-        checks['.env'] = not (project_root / ".env").exists()
-        checks['install_config.yaml'] = not (project_root / "install_config.yaml").exists()
+        checks["venv"] = not (project_root / "venv").exists()
+        checks["config.yaml"] = not (project_root / "config.yaml").exists()
+        checks[".env"] = not (project_root / ".env").exists()
+        checks["install_config.yaml"] = not (project_root / "install_config.yaml").exists()
 
         # venv is clean, but config files are not
-        assert checks['venv'] is True
-        assert checks['config.yaml'] is False
-        assert checks['.env'] is False
-        assert checks['install_config.yaml'] is False
+        assert checks["venv"] is True
+        assert checks["config.yaml"] is False
+        assert checks[".env"] is False
+        assert checks["install_config.yaml"] is False
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_verify_with_database_present(self, mock_connect, mock_control_panel, tmp_path):
         """Test verification when database still exists (NOT clean)."""
         project_root = tmp_path
@@ -223,43 +219,43 @@ class TestVerifyFreshStateDirtySystem:
 
         # Run verification
         checks = {}
-        checks['venv'] = not (project_root / "venv").exists()
-        checks['config.yaml'] = not (project_root / "config.yaml").exists()
-        checks['.env'] = not (project_root / ".env").exists()
-        checks['install_config.yaml'] = not (project_root / "install_config.yaml").exists()
+        checks["venv"] = not (project_root / "venv").exists()
+        checks["config.yaml"] = not (project_root / "config.yaml").exists()
+        checks[".env"] = not (project_root / ".env").exists()
+        checks["install_config.yaml"] = not (project_root / "install_config.yaml").exists()
 
         credentials = mock_control_panel.get_db_credentials()
         conn = mock_connect(
-            host=credentials['host'],
-            port=credentials['port'],
-            database='postgres',
-            user=credentials['user'],
-            password=credentials['password'],
-            connect_timeout=5
+            host=credentials["host"],
+            port=credentials["port"],
+            database="postgres",
+            user=credentials["user"],
+            password=credentials["password"],
+            connect_timeout=5,
         )
 
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'")
-            checks['database'] = cur.fetchone() is None
+            checks["database"] = cur.fetchone() is None
 
             cur.execute("SELECT 1 FROM pg_roles WHERE rolname IN ('giljo_user', 'giljo_owner')")
-            checks['roles'] = cur.fetchone() is None
+            checks["roles"] = cur.fetchone() is None
 
         conn.close()
 
         # File checks are clean
-        assert checks['venv'] is True
-        assert checks['config.yaml'] is True
-        assert checks['.env'] is True
-        assert checks['install_config.yaml'] is True
+        assert checks["venv"] is True
+        assert checks["config.yaml"] is True
+        assert checks[".env"] is True
+        assert checks["install_config.yaml"] is True
 
         # Database is NOT clean
-        assert checks['database'] is False
+        assert checks["database"] is False
 
         # Roles are clean
-        assert checks['roles'] is True
+        assert checks["roles"] is True
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_verify_with_roles_present(self, mock_connect, mock_control_panel, tmp_path):
         """Test verification when PostgreSQL roles still exist (NOT clean)."""
         project_root = tmp_path
@@ -284,43 +280,43 @@ class TestVerifyFreshStateDirtySystem:
 
         # Run verification
         checks = {}
-        checks['venv'] = not (project_root / "venv").exists()
-        checks['config.yaml'] = not (project_root / "config.yaml").exists()
-        checks['.env'] = not (project_root / ".env").exists()
-        checks['install_config.yaml'] = not (project_root / "install_config.yaml").exists()
+        checks["venv"] = not (project_root / "venv").exists()
+        checks["config.yaml"] = not (project_root / "config.yaml").exists()
+        checks[".env"] = not (project_root / ".env").exists()
+        checks["install_config.yaml"] = not (project_root / "install_config.yaml").exists()
 
         credentials = mock_control_panel.get_db_credentials()
         conn = mock_connect(
-            host=credentials['host'],
-            port=credentials['port'],
-            database='postgres',
-            user=credentials['user'],
-            password=credentials['password'],
-            connect_timeout=5
+            host=credentials["host"],
+            port=credentials["port"],
+            database="postgres",
+            user=credentials["user"],
+            password=credentials["password"],
+            connect_timeout=5,
         )
 
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'")
-            checks['database'] = cur.fetchone() is None
+            checks["database"] = cur.fetchone() is None
 
             cur.execute("SELECT 1 FROM pg_roles WHERE rolname IN ('giljo_user', 'giljo_owner')")
-            checks['roles'] = cur.fetchone() is None
+            checks["roles"] = cur.fetchone() is None
 
         conn.close()
 
         # File checks are clean
-        assert checks['venv'] is True
-        assert checks['config.yaml'] is True
+        assert checks["venv"] is True
+        assert checks["config.yaml"] is True
 
         # Database is clean, but roles are NOT
-        assert checks['database'] is True
-        assert checks['roles'] is False
+        assert checks["database"] is True
+        assert checks["roles"] is False
 
 
 class TestVerifyFreshStateErrorHandling:
     """Test error handling in verify_fresh_state()."""
 
-    @patch('psycopg2.connect')
+    @patch("psycopg2.connect")
     def test_verify_database_connection_failure(self, mock_connect, mock_control_panel, tmp_path):
         """Test handling when database connection fails."""
         project_root = tmp_path
@@ -331,37 +327,37 @@ class TestVerifyFreshStateErrorHandling:
 
         # Run verification with error handling
         checks = {}
-        checks['venv'] = not (project_root / "venv").exists()
-        checks['config.yaml'] = not (project_root / "config.yaml").exists()
-        checks['.env'] = not (project_root / ".env").exists()
-        checks['install_config.yaml'] = not (project_root / "install_config.yaml").exists()
+        checks["venv"] = not (project_root / "venv").exists()
+        checks["config.yaml"] = not (project_root / "config.yaml").exists()
+        checks[".env"] = not (project_root / ".env").exists()
+        checks["install_config.yaml"] = not (project_root / "install_config.yaml").exists()
 
         try:
             credentials = mock_control_panel.get_db_credentials()
             conn = mock_connect(
-                host=credentials['host'],
-                port=credentials['port'],
-                database='postgres',
-                user=credentials['user'],
-                password=credentials['password'],
-                connect_timeout=5
+                host=credentials["host"],
+                port=credentials["port"],
+                database="postgres",
+                user=credentials["user"],
+                password=credentials["password"],
+                connect_timeout=5,
             )
             # This won't be reached due to exception
-            checks['database'] = True
-            checks['roles'] = True
+            checks["database"] = True
+            checks["roles"] = True
         except Exception as e:
             # Expected behavior: catch exception and set to None
             mock_control_panel.logger.warning(f"Could not verify database state: {e}")
-            checks['database'] = None
-            checks['roles'] = None
+            checks["database"] = None
+            checks["roles"] = None
 
         # File checks should still work
-        assert checks['venv'] is False  # Exists
-        assert checks['config.yaml'] is False
+        assert checks["venv"] is False  # Exists
+        assert checks["config.yaml"] is False
 
         # Database checks should be None (failed to verify)
-        assert checks['database'] is None
-        assert checks['roles'] is None
+        assert checks["database"] is None
+        assert checks["roles"] is None
 
         # Verify warning was logged
         mock_control_panel.logger.warning.assert_called_once()
@@ -369,40 +365,40 @@ class TestVerifyFreshStateErrorHandling:
     def test_verify_without_psycopg2(self, mock_control_panel, mock_project_root):
         """Test verification when psycopg2 is not installed."""
         # Simulate psycopg2 not available
-        with patch('dev_tools.control_panel.psycopg2', None):
+        with patch("dev_tools.control_panel.psycopg2", None):
             checks = {}
-            checks['venv'] = not (mock_project_root / "venv").exists()
-            checks['config.yaml'] = not (mock_project_root / "config.yaml").exists()
-            checks['.env'] = not (mock_project_root / ".env").exists()
-            checks['install_config.yaml'] = not (mock_project_root / "install_config.yaml").exists()
+            checks["venv"] = not (mock_project_root / "venv").exists()
+            checks["config.yaml"] = not (mock_project_root / "config.yaml").exists()
+            checks[".env"] = not (mock_project_root / ".env").exists()
+            checks["install_config.yaml"] = not (mock_project_root / "install_config.yaml").exists()
 
             # psycopg2 is None, so database checks are None
-            checks['database'] = None
-            checks['roles'] = None
+            checks["database"] = None
+            checks["roles"] = None
 
         # File checks should work
-        assert checks['venv'] is False  # Exists
-        assert checks['config.yaml'] is False
+        assert checks["venv"] is False  # Exists
+        assert checks["config.yaml"] is False
 
         # Database checks should be None
-        assert checks['database'] is None
-        assert checks['roles'] is None
+        assert checks["database"] is None
+        assert checks["roles"] is None
 
 
 class TestDisplayFreshStateReport:
     """Test display_fresh_state_report() GUI output."""
 
-    @patch('tkinter.messagebox.showinfo')
+    @patch("tkinter.messagebox.showinfo")
     def test_display_report_all_clean(self, mock_messagebox, mock_control_panel):
         """Test report display when system is completely clean."""
         # Mock verify_fresh_state to return all clean
         checks = {
-            'venv': True,
-            'config.yaml': True,
-            '.env': True,
-            'install_config.yaml': True,
-            'database': True,
-            'roles': True
+            "venv": True,
+            "config.yaml": True,
+            ".env": True,
+            "install_config.yaml": True,
+            "database": True,
+            "roles": True,
         }
 
         # Build expected report
@@ -422,17 +418,17 @@ class TestDisplayFreshStateReport:
         assert "✓ System is in fresh download state!" in call_args[0]
         assert "Fresh State Report" in call_args
 
-    @patch('tkinter.messagebox.showinfo')
+    @patch("tkinter.messagebox.showinfo")
     def test_display_report_partially_clean(self, mock_messagebox, mock_control_panel):
         """Test report display when some components need cleanup."""
         # Mock verify_fresh_state with mixed results
         checks = {
-            'venv': False,  # NOT clean
-            'config.yaml': False,  # NOT clean
-            '.env': True,  # Clean
-            'install_config.yaml': True,  # Clean
-            'database': True,  # Clean
-            'roles': True  # Clean
+            "venv": False,  # NOT clean
+            "config.yaml": False,  # NOT clean
+            ".env": True,  # Clean
+            "install_config.yaml": True,  # Clean
+            "database": True,  # Clean
+            "roles": True,  # Clean
         }
 
         # Build expected report
@@ -460,17 +456,17 @@ class TestDisplayFreshStateReport:
         assert "- venv" in call_args[0]
         assert "- config.yaml" in call_args[0]
 
-    @patch('tkinter.messagebox.showinfo')
+    @patch("tkinter.messagebox.showinfo")
     def test_display_report_with_cannot_verify(self, mock_messagebox, mock_control_panel):
         """Test report display when some checks cannot be verified."""
         # Mock verify_fresh_state with None values
         checks = {
-            'venv': True,
-            'config.yaml': True,
-            '.env': True,
-            'install_config.yaml': True,
-            'database': None,  # Cannot verify
-            'roles': None  # Cannot verify
+            "venv": True,
+            "config.yaml": True,
+            ".env": True,
+            "install_config.yaml": True,
+            "database": None,  # Cannot verify
+            "roles": None,  # Cannot verify
         }
 
         # Build expected report
@@ -500,16 +496,16 @@ class TestDisplayFreshStateReport:
         assert "- database" in call_args[0]
         assert "- roles" in call_args[0]
 
-    @patch('tkinter.messagebox.showinfo')
+    @patch("tkinter.messagebox.showinfo")
     def test_display_report_updates_status_message(self, mock_messagebox, mock_control_panel):
         """Test that report display updates status messages."""
         checks = {
-            'venv': True,
-            'config.yaml': True,
-            '.env': True,
-            'install_config.yaml': True,
-            'database': True,
-            'roles': True
+            "venv": True,
+            "config.yaml": True,
+            ".env": True,
+            "install_config.yaml": True,
+            "database": True,
+            "roles": True,
         }
 
         # Simulate update_status_message calls
@@ -581,23 +577,16 @@ class TestVerificationCompleteness:
 
     def test_checks_all_required_components(self):
         """Test that verification checks all components from requirements."""
-        required_components = {
-            'venv',
-            'config.yaml',
-            '.env',
-            'install_config.yaml',
-            'database',
-            'roles'
-        }
+        required_components = {"venv", "config.yaml", ".env", "install_config.yaml", "database", "roles"}
 
         # Mock verify_fresh_state return
         checks = {
-            'venv': True,
-            'config.yaml': True,
-            '.env': True,
-            'install_config.yaml': True,
-            'database': True,
-            'roles': True
+            "venv": True,
+            "config.yaml": True,
+            ".env": True,
+            "install_config.yaml": True,
+            "database": True,
+            "roles": True,
         }
 
         # Verify all required components are checked
@@ -612,16 +601,16 @@ class TestVerificationCompleteness:
         # - __pycache__/ (Python cache, not installation artifact)
 
         checks = {
-            'venv': True,
-            'config.yaml': True,
-            '.env': True,
-            'install_config.yaml': True,
-            'database': True,
-            'roles': True
+            "venv": True,
+            "config.yaml": True,
+            ".env": True,
+            "install_config.yaml": True,
+            "database": True,
+            "roles": True,
         }
 
         # Verify we're not checking extra things
-        assert 'data' not in checks
-        assert 'logs' not in checks
-        assert 'node_modules' not in checks
-        assert '__pycache__' not in checks
+        assert "data" not in checks
+        assert "logs" not in checks
+        assert "node_modules" not in checks
+        assert "__pycache__" not in checks

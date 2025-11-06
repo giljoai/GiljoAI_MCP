@@ -10,7 +10,8 @@ Provides request/response models for:
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -23,11 +24,12 @@ class VisionDocumentCreate(BaseModel):
     - Inline content (content) → storage_type="inline"
     - Both (hybrid) → storage_type="hybrid"
     """
+
     product_id: str = Field(..., description="Product ID this document belongs to")
     document_name: str = Field(..., min_length=1, max_length=255, description="User-friendly document name")
     document_type: str = Field(
         "vision",
-        description="Document category: vision, architecture, features, setup, api, testing, deployment, custom"
+        description="Document category: vision, architecture, features, setup, api, testing, deployment, custom",
     )
     content: Optional[str] = Field(None, description="Inline document content (for inline or hybrid storage)")
     storage_type: str = Field("inline", description="Storage mode: file, inline, hybrid")
@@ -47,6 +49,7 @@ class VisionDocumentUpdate(BaseModel):
     - Resets chunked flag to False
     - Triggers re-chunking if auto_rechunk=True
     """
+
     content: str = Field(..., description="New document content")
     auto_rechunk: bool = Field(True, description="Automatically re-chunk after update")
 
@@ -62,6 +65,7 @@ class VisionDocumentResponse(BaseModel):
     - POST /vision-documents/
     - PUT /vision-documents/{document_id}
     """
+
     id: str = Field(..., description="Vision document ID")
     tenant_key: str = Field(..., description="Tenant key (multi-tenant isolation)")
     product_id: str = Field(..., description="Product ID")
@@ -95,14 +99,15 @@ class RechunkRequest(BaseModel):
     - Chunks content using EnhancedChunker
     - Updates vision document metadata (chunked=True, chunk_count, total_tokens)
     """
+
     # No fields - just a trigger endpoint
-    pass
 
 
 class RechunkResponse(BaseModel):
     """
     Response from re-chunking operation.
     """
+
     success: bool = Field(..., description="Whether re-chunking succeeded")
     document_id: str = Field(..., description="Document ID that was re-chunked")
     document_name: str = Field(..., description="Document name")
@@ -121,6 +126,7 @@ class DeleteResponse(BaseModel):
     - Deletes vision document
     - Cascades to delete all chunks (via MCPContextIndex.vision_document_id)
     """
+
     success: bool = Field(..., description="Whether deletion succeeded")
     document_id: str = Field(..., description="Deleted document ID")
     document_name: str = Field(..., description="Deleted document name")

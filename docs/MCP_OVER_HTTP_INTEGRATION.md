@@ -2,6 +2,20 @@
 
 **Document Version**: 1.0.0
 **Status**: Production Ready
+
+---
+
+## Appendix: Download Token Refactor (0102)
+
+MCP-over-HTTP integration now leverages the 0102 single-token download system:
+
+- Token-first flow: Generate token (pending) → stage content at `temp/{tenant_key}/{token}/` → mark ready → return URL.
+- Lifecycle: `staging_status` (pending|ready|failed), metrics `download_count`, `last_downloaded_at`.
+- Endpoints:
+  - `POST /api/download/generate-token` (auth) – accepts `content_type` in query or JSON body (compatibility)
+  - `GET /api/download/temp/{token}/{filename}` (public) – token is the auth
+- Security: filename validation prevents traversal; background cleanup removes expired/failed/abandoned tokens and staged files.
+- Client impact: slash-commands ZIP contains only `gil_handover.md`; agent templates compiled per tenant at request time.
 **Last Updated**: January 18, 2025
 
 ---

@@ -19,7 +19,6 @@ from src.giljo_mcp.models import Agent, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class Colors:
     GREEN = "\033[92m"
     RED = "\033[91m"

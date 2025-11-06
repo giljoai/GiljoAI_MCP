@@ -9,27 +9,27 @@ Date: 2025-10-01
 
 import os
 import socket
-import subprocess
 import sys
 import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 import yaml
 
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from installer.core.config_generator import ConfigGenerator
+from setup import GiljoSetup, check_port
+
 from api.run_api import (
-    load_config_port,
     check_port_available,
     find_available_port,
     get_port_from_sources,
+    load_config_port,
 )
-from installer.core.config_generator import ConfigGenerator
-from setup import GiljoSetup, check_port
 
 
 class TestPortConfiguration:
@@ -81,27 +81,22 @@ class TestPortConfiguration:
 
     def test_load_config_port_default(self):
         """Test load_config_port returns default when no config exists"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('api.run_api.Path') as mock_path:
-                mock_path.return_value.parent.parent = Path(tmpdir)
-                mock_path.return_value.exists.return_value = False
+        with tempfile.TemporaryDirectory() as tmpdir, patch("api.run_api.Path") as mock_path:
+            mock_path.return_value.parent.parent = Path(tmpdir)
+            mock_path.return_value.exists.return_value = False
 
-                port = load_config_port()
-                assert port == 7272  # Default unified port
+            port = load_config_port()
+            assert port == 7272  # Default unified port
 
     def test_load_config_port_unified_structure(self):
         """Test load_config_port with new unified structure (server.port)"""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
-            config = {
-                "server": {
-                    "port": 8888
-                }
-            }
+            config = {"server": {"port": 8888}}
             with open(config_path, "w") as f:
                 yaml.dump(config, f)
 
-            with patch('api.run_api.Path') as mock_path:
+            with patch("api.run_api.Path") as mock_path:
                 mock_path.return_value.parent.parent = Path(tmpdir)
                 mock_path.return_value.exists.return_value = True
                 mock_path.return_value.__truediv__.return_value = config_path
@@ -113,17 +108,11 @@ class TestPortConfiguration:
         """Test load_config_port falls back to old structure (server.ports.api)"""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.yaml"
-            config = {
-                "server": {
-                    "ports": {
-                        "api": 9999
-                    }
-                }
-            }
+            config = {"server": {"ports": {"api": 9999}}}
             with open(config_path, "w") as f:
                 yaml.dump(config, f)
 
-            with patch('api.run_api.Path') as mock_path:
+            with patch("api.run_api.Path") as mock_path:
                 mock_path.return_value.parent.parent = Path(tmpdir)
                 mock_path.return_value.exists.return_value = True
                 mock_path.return_value.__truediv__.return_value = config_path
@@ -207,10 +196,7 @@ class TestDatabaseConfiguration:
         dirty_config = {
             "# Comment": None,
             "valid_key": "valid_value",
-            "nested": {
-                "# Nested comment": None,
-                "nested_key": "nested_value"
-            }
+            "nested": {"# Nested comment": None, "nested_key": "nested_value"},
         }
 
         clean = generator._clean_config(dirty_config)
@@ -242,7 +228,7 @@ class TestDatabaseConfiguration:
             config_path = Path(tmpdir) / "config.yaml"
             assert config_path.exists()
 
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
 
             assert config["database"]["database_type"] == "postgresql"
@@ -304,7 +290,7 @@ class TestEggInfoCleanup:
             egg_path.mkdir(parents=True)
 
             # Mock shutil.rmtree to raise exception
-            with patch('shutil.rmtree', side_effect=PermissionError("Access denied")):
+            with patch("shutil.rmtree", side_effect=PermissionError("Access denied")):
                 result = setup.cleanup_egg_info()
 
                 # Should still return True (non-fatal error)
@@ -451,7 +437,7 @@ class TestErrorRecovery:
             with open(config_path, "w") as f:
                 f.write("invalid: yaml: content: ][{")
 
-            with patch('api.run_api.Path') as mock_path:
+            with patch("api.run_api.Path") as mock_path:
                 mock_path.return_value.parent.parent = Path(tmpdir)
                 mock_path.return_value.exists.return_value = True
                 mock_path.return_value.__truediv__.return_value = config_path
@@ -462,14 +448,13 @@ class TestErrorRecovery:
 
     def test_missing_config_file_handling(self):
         """Test handling of missing config.yaml"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('api.run_api.Path') as mock_path:
-                mock_path.return_value.parent.parent = Path(tmpdir)
-                mock_path.return_value.exists.return_value = False
+        with tempfile.TemporaryDirectory() as tmpdir, patch("api.run_api.Path") as mock_path:
+            mock_path.return_value.parent.parent = Path(tmpdir)
+            mock_path.return_value.exists.return_value = False
 
-                # Should return default
-                port = load_config_port()
-                assert port == 7272
+            # Should return default
+            port = load_config_port()
+            assert port == 7272
 
 
 class TestPerformanceMetrics:

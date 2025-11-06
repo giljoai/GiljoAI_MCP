@@ -19,7 +19,7 @@ Components:
 # Import AuthManager from the legacy auth module (renamed from auth.py to auth_legacy.py)
 from giljo_mcp.auth_legacy import AuthManager
 
-from .auto_login import AutoLoginMiddleware, LOCALHOST_IPS
+from .auto_login import LOCALHOST_IPS, AutoLoginMiddleware
 from .dependencies import (
     get_current_active_user,
     get_current_user,

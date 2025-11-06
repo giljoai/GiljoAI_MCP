@@ -11,6 +11,7 @@ Tests:
 
 import pytest
 from sqlalchemy import inspect, text
+
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product
 
@@ -36,54 +37,53 @@ class TestMigrationStructure:
     def test_config_data_column_exists(self, db_engine):
         """Test config_data column exists in products table"""
         inspector = inspect(db_engine)
-        columns = [col['name'] for col in inspector.get_columns('products')]
+        columns = [col["name"] for col in inspector.get_columns("products")]
 
-        assert 'config_data' in columns, "config_data column not found"
+        assert "config_data" in columns, "config_data column not found"
 
     def test_config_data_column_type(self, db_engine):
         """Test config_data column is JSONB type"""
         inspector = inspect(db_engine)
-        columns = {col['name']: col for col in inspector.get_columns('products')}
+        columns = {col["name"]: col for col in inspector.get_columns("products")}
 
-        config_data_col = columns.get('config_data')
+        config_data_col = columns.get("config_data")
         assert config_data_col is not None
 
         # Check if it's a JSON/JSONB type
-        col_type = str(config_data_col['type']).upper()
-        assert 'JSON' in col_type, f"Expected JSON type, got {col_type}"
+        col_type = str(config_data_col["type"]).upper()
+        assert "JSON" in col_type, f"Expected JSON type, got {col_type}"
 
     def test_config_data_column_nullable(self, db_engine):
         """Test config_data column is nullable"""
         inspector = inspect(db_engine)
-        columns = {col['name']: col for col in inspector.get_columns('products')}
+        columns = {col["name"]: col for col in inspector.get_columns("products")}
 
-        config_data_col = columns.get('config_data')
+        config_data_col = columns.get("config_data")
         assert config_data_col is not None
-        assert config_data_col['nullable'] is True
+        assert config_data_col["nullable"] is True
 
     def test_gin_index_exists(self, db_engine):
         """Test GIN index exists for config_data column"""
         inspector = inspect(db_engine)
-        indexes = inspector.get_indexes('products')
+        indexes = inspector.get_indexes("products")
 
-        gin_index = next(
-            (idx for idx in indexes if idx.get('name') == 'idx_product_config_data_gin'),
-            None
-        )
+        gin_index = next((idx for idx in indexes if idx.get("name") == "idx_product_config_data_gin"), None)
 
         # GIN index might not be reported by SQLAlchemy inspector on all systems
         # So we'll check directly in database
         with db_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                 SELECT indexname, indexdef
                 FROM pg_indexes
                 WHERE tablename = 'products'
                 AND indexname = 'idx_product_config_data_gin'
-            """))
+            """)
+            )
 
             index_row = result.fetchone()
             if index_row:
-                assert 'gin' in index_row[1].lower(), "Index should use GIN method"
+                assert "gin" in index_row[1].lower(), "Index should use GIN method"
 
 
 class TestDataIntegrity:
@@ -95,7 +95,7 @@ class TestDataIntegrity:
         product = Product(
             tenant_key="test-migration",
             name="Migration Test Product",
-            config_data={}  # Explicitly empty
+            config_data={},  # Explicitly empty
         )
 
         db_session.add(product)
@@ -116,14 +116,10 @@ class TestDataIntegrity:
         test_config = {
             "architecture": "Test Architecture",
             "serena_mcp_enabled": True,
-            "tech_stack": ["Python", "PostgreSQL"]
+            "tech_stack": ["Python", "PostgreSQL"],
         }
 
-        product = Product(
-            tenant_key="test-migration",
-            name="Config Data Test Product",
-            config_data=test_config
-        )
+        product = Product(tenant_key="test-migration", name="Config Data Test Product", config_data=test_config)
 
         db_session.add(product)
         db_session.commit()
@@ -135,9 +131,7 @@ class TestDataIntegrity:
         db = get_db_manager()
         with db.get_session() as new_session:
             # Reload product
-            reloaded_product = new_session.query(Product).filter(
-                Product.id == product_id
-            ).first()
+            reloaded_product = new_session.query(Product).filter(Product.id == product_id).first()
 
             assert reloaded_product is not None
             assert reloaded_product.config_data is not None
@@ -154,10 +148,7 @@ class TestDataIntegrity:
         product = Product(
             tenant_key="test-migration",
             name="Update Test Product",
-            config_data={
-                "architecture": "Original",
-                "serena_mcp_enabled": False
-            }
+            config_data={"architecture": "Original", "serena_mcp_enabled": False},
         )
 
         db_session.add(product)
@@ -165,11 +156,7 @@ class TestDataIntegrity:
         db_session.refresh(product)
 
         # Update config_data
-        product.config_data = {
-            "architecture": "Updated",
-            "serena_mcp_enabled": True,
-            "tech_stack": ["New Tech"]
-        }
+        product.config_data = {"architecture": "Updated", "serena_mcp_enabled": True, "tech_stack": ["New Tech"]}
 
         db_session.commit()
         db_session.refresh(product)
@@ -190,11 +177,7 @@ class TestDataIntegrity:
         product = Product(
             tenant_key="test-migration",
             name="Partial Update Test",
-            config_data={
-                "architecture": "FastAPI",
-                "tech_stack": ["Python"],
-                "serena_mcp_enabled": True
-            }
+            config_data={"architecture": "FastAPI", "tech_stack": ["Python"], "serena_mcp_enabled": True},
         )
 
         db_session.add(product)
@@ -204,7 +187,7 @@ class TestDataIntegrity:
         # Partial update
         updates = {
             "tech_stack": ["Python", "PostgreSQL"],  # Update existing
-            "test_commands": ["pytest"]  # Add new
+            "test_commands": ["pytest"],  # Add new
         }
 
         product.config_data = merge_config_updates(product.config_data, updates)
@@ -231,13 +214,13 @@ class TestJSONBQuerying:
         product1 = Product(
             tenant_key="test-query",
             name="FastAPI Product",
-            config_data={"architecture": "FastAPI", "serena_mcp_enabled": True}
+            config_data={"architecture": "FastAPI", "serena_mcp_enabled": True},
         )
 
         product2 = Product(
             tenant_key="test-query",
             name="Django Product",
-            config_data={"architecture": "Django", "serena_mcp_enabled": True}
+            config_data={"architecture": "Django", "serena_mcp_enabled": True},
         )
 
         db_session.add_all([product1, product2])
@@ -245,12 +228,14 @@ class TestJSONBQuerying:
 
         # Query using JSONB operators (PostgreSQL-specific)
         with db_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                 SELECT name, config_data->>'architecture' as arch
                 FROM products
                 WHERE config_data->>'architecture' = 'FastAPI'
                 AND tenant_key = 'test-query'
-            """))
+            """)
+            )
 
             rows = result.fetchall()
             assert len(rows) == 1
@@ -267,13 +252,13 @@ class TestJSONBQuerying:
         product_enabled = Product(
             tenant_key="test-query",
             name="Serena Enabled",
-            config_data={"architecture": "Test", "serena_mcp_enabled": True}
+            config_data={"architecture": "Test", "serena_mcp_enabled": True},
         )
 
         product_disabled = Product(
             tenant_key="test-query",
             name="Serena Disabled",
-            config_data={"architecture": "Test", "serena_mcp_enabled": False}
+            config_data={"architecture": "Test", "serena_mcp_enabled": False},
         )
 
         db_session.add_all([product_enabled, product_disabled])
@@ -281,12 +266,14 @@ class TestJSONBQuerying:
 
         # Query for serena-enabled products
         with db_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                 SELECT name
                 FROM products
                 WHERE (config_data->>'serena_mcp_enabled')::boolean = true
                 AND tenant_key = 'test-query'
-            """))
+            """)
+            )
 
             rows = result.fetchall()
             assert len(rows) == 1
@@ -305,8 +292,8 @@ class TestJSONBQuerying:
             config_data={
                 "architecture": "Test",
                 "tech_stack": ["Python", "PostgreSQL", "FastAPI"],
-                "serena_mcp_enabled": True
-            }
+                "serena_mcp_enabled": True,
+            },
         )
 
         db_session.add(product)
@@ -314,12 +301,14 @@ class TestJSONBQuerying:
 
         # Query for products with Python in tech_stack
         with db_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                 SELECT name
                 FROM products
                 WHERE config_data->'tech_stack' @> '["Python"]'::jsonb
                 AND tenant_key = 'test-query'
-            """))
+            """)
+            )
 
             rows = result.fetchall()
             assert len(rows) == 1
@@ -337,11 +326,13 @@ class TestIndexPerformance:
         """Test that GIN index is used for JSONB queries"""
         # Check query plan to ensure index is used
         with db_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                 EXPLAIN (FORMAT JSON)
                 SELECT * FROM products
                 WHERE config_data @> '{"serena_mcp_enabled": true}'::jsonb
-            """))
+            """)
+            )
 
             plan = result.fetchone()[0]
 
@@ -363,9 +354,9 @@ class TestMigrationRollback:
         # We verify the column exists (so rollback would have something to remove)
         db = get_db_manager()
         inspector = inspect(db.engine)
-        columns = [col['name'] for col in inspector.get_columns('products')]
+        columns = [col["name"] for col in inspector.get_columns("products")]
 
-        assert 'config_data' in columns
+        assert "config_data" in columns
 
         # Note: Actual rollback testing should be done in a separate test database
         # to avoid breaking the development environment
@@ -373,10 +364,10 @@ class TestMigrationRollback:
     def test_existing_columns_preserved(self, db_engine):
         """Test that existing product columns are preserved"""
         inspector = inspect(db_engine)
-        columns = [col['name'] for col in inspector.get_columns('products')]
+        columns = [col["name"] for col in inspector.get_columns("products")]
 
         # Verify core columns exist
-        core_columns = ['id', 'tenant_key', 'name', 'description', 'vision_path', 'created_at', 'updated_at']
+        core_columns = ["id", "tenant_key", "name", "description", "vision_path", "created_at", "updated_at"]
 
         for col in core_columns:
             assert col in columns, f"Core column {col} should be preserved"

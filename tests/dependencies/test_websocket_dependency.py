@@ -9,15 +9,14 @@ Created: 2025-11-02
 Coverage Target: 95%+
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
 
 from api.dependencies.websocket import (
-    get_websocket_manager,
-    get_websocket_dependency,
     WebSocketDependency,
+    get_websocket_dependency,
+    get_websocket_manager,
 )
 
 
@@ -169,9 +168,7 @@ async def test_broadcast_to_tenant_success(mock_websocket_manager):
 
     # Act
     sent_count = await ws_dep.broadcast_to_tenant(
-        tenant_key="tenant_abc",
-        event_type="test:event",
-        data={"message": "Hello tenant_abc"}
+        tenant_key="tenant_abc", event_type="test:event", data={"message": "Hello tenant_abc"}
     )
 
     # Assert
@@ -205,9 +202,7 @@ async def test_broadcast_to_tenant_multi_tenant_isolation(mock_websocket_manager
 
     # Act
     sent_count = await ws_dep.broadcast_to_tenant(
-        tenant_key="tenant_xyz",
-        event_type="sensitive:data",
-        data={"secret": "tenant_xyz_only"}
+        tenant_key="tenant_xyz", event_type="sensitive:data", data={"secret": "tenant_xyz_only"}
     )
 
     # Assert
@@ -234,10 +229,7 @@ async def test_broadcast_to_tenant_exclude_client(mock_websocket_manager):
 
     # Act
     sent_count = await ws_dep.broadcast_to_tenant(
-        tenant_key="tenant_abc",
-        event_type="test:event",
-        data={"message": "Broadcast"},
-        exclude_client="client_1"
+        tenant_key="tenant_abc", event_type="test:event", data={"message": "Broadcast"}, exclude_client="client_1"
     )
 
     # Assert
@@ -267,11 +259,7 @@ async def test_broadcast_to_tenant_validation_empty_tenant_key():
 
     # Act & Assert
     with pytest.raises(ValueError, match="tenant_key cannot be empty"):
-        await ws_dep.broadcast_to_tenant(
-            tenant_key="",
-            event_type="test:event",
-            data={}
-        )
+        await ws_dep.broadcast_to_tenant(tenant_key="", event_type="test:event", data={})
 
 
 @pytest.mark.asyncio
@@ -286,11 +274,7 @@ async def test_broadcast_to_tenant_validation_empty_event_type():
 
     # Act & Assert
     with pytest.raises(ValueError, match="event_type cannot be empty"):
-        await ws_dep.broadcast_to_tenant(
-            tenant_key="tenant_abc",
-            event_type="",
-            data={}
-        )
+        await ws_dep.broadcast_to_tenant(tenant_key="tenant_abc", event_type="", data={})
 
 
 @pytest.mark.asyncio
@@ -308,9 +292,7 @@ async def test_broadcast_to_tenant_graceful_degradation_no_manager(caplog):
 
     # Act
     sent_count = await ws_dep.broadcast_to_tenant(
-        tenant_key="tenant_abc",
-        event_type="test:event",
-        data={"message": "test"}
+        tenant_key="tenant_abc", event_type="test:event", data={"message": "test"}
     )
 
     # Assert
@@ -334,9 +316,7 @@ async def test_broadcast_to_tenant_partial_failure(mock_websocket_manager, caplo
 
     # Act
     sent_count = await ws_dep.broadcast_to_tenant(
-        tenant_key="tenant_abc",
-        event_type="test:event",
-        data={"message": "test"}
+        tenant_key="tenant_abc", event_type="test:event", data={"message": "test"}
     )
 
     # Assert
@@ -368,10 +348,7 @@ async def test_send_to_project(mock_websocket_manager):
 
     # Act
     sent_count = await ws_dep.send_to_project(
-        tenant_key="tenant_abc",
-        project_id="proj_123",
-        event_type="agent:created",
-        data={"agent_type": "orchestrator"}
+        tenant_key="tenant_abc", project_id="proj_123", event_type="agent:created", data={"agent_type": "orchestrator"}
     )
 
     # Assert

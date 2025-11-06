@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from .database import DatabaseManager
 from .models import Job
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,8 +112,7 @@ class AgentJobManager:
             session.refresh(job)
 
         logger.info(
-            f"Created job {job.job_id} for tenant {tenant_key}, "
-            f"agent_type={agent_type}, spawned_by={spawned_by}"
+            f"Created job {job.job_id} for tenant {tenant_key}, agent_type={agent_type}, spawned_by={spawned_by}"
         )
 
         return job
@@ -302,11 +302,13 @@ class AgentJobManager:
 
             # Add result as message
             if result:
-                result_msg = self._create_message({
-                    "role": "system",
-                    "type": "completion",
-                    "content": result,
-                })
+                result_msg = self._create_message(
+                    {
+                        "role": "system",
+                        "type": "completion",
+                        "content": result,
+                    }
+                )
                 job.messages = job.messages + [result_msg]
 
             # Handover 0072: Sync task status to completed
@@ -354,11 +356,13 @@ class AgentJobManager:
 
             # Add error as message
             if error:
-                error_msg = self._create_message({
-                    "role": "system",
-                    "type": "error",
-                    "content": error,
-                })
+                error_msg = self._create_message(
+                    {
+                        "role": "system",
+                        "type": "error",
+                        "content": error,
+                    }
+                )
                 job.messages = job.messages + [error_msg]
 
             # Handover 0072: Sync task status to blocked
@@ -506,10 +510,14 @@ class AgentJobManager:
                 return None
 
             # Get child jobs spawned by this parent
-            children_stmt = select(Job).where(
-                Job.tenant_key == tenant_key,
-                Job.spawned_by == job_id,
-            ).order_by(Job.created_at)
+            children_stmt = (
+                select(Job)
+                .where(
+                    Job.tenant_key == tenant_key,
+                    Job.spawned_by == job_id,
+                )
+                .order_by(Job.created_at)
+            )
 
             children = session.execute(children_stmt).scalars().all()
 
@@ -623,29 +631,20 @@ class AgentJobManager:
 
         try:
             # Find tasks linked to this agent job
-            task_query = select(Task).where(
-                and_(
-                    Task.agent_job_id == job.job_id,
-                    Task.tenant_key == job.tenant_key
-                )
-            )
+            task_query = select(Task).where(and_(Task.agent_job_id == job.job_id, Task.tenant_key == job.tenant_key))
             task_result = session.execute(task_query)
             task = task_result.scalar_one_or_none()
 
             if task:
                 # Update task status
                 task.status = task_status
-                
+
                 if task_status == "completed":
                     task.completed_at = datetime.now(timezone.utc)
-                    logger.info(
-                        f"Task {task.id} marked completed (agent job {job.job_id} finished)"
-                    )
+                    logger.info(f"Task {task.id} marked completed (agent job {job.job_id} finished)")
                 elif task_status == "blocked":
-                    logger.info(
-                        f"Task {task.id} marked blocked (agent job {job.job_id} failed)"
-                    )
-                
+                    logger.info(f"Task {task.id} marked blocked (agent job {job.job_id} failed)")
+
                 # Note: We don't commit here - caller is responsible for commit
             else:
                 # No task linked to this job - that's fine

@@ -11,11 +11,13 @@ Tests cover:
 - WebSocket broadcasts
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
+
+import pytest
 from sqlalchemy import select
-from src.giljo_mcp.models import Project, Agent, Message, Task, Product
+
 from api.endpoints.projects import purge_expired_deleted_projects
+from src.giljo_mcp.models import Agent, Message, Product, Project, Task
 
 
 @pytest.mark.asyncio
@@ -30,7 +32,7 @@ class TestProjectSoftDelete:
             mission="Test mission",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
-            status="inactive"
+            status="inactive",
         )
         db_session.add(project)
         await db_session.commit()
@@ -58,7 +60,7 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc)
+            deleted_at=datetime.now(timezone.utc),
         )
         db_session.add(project)
         await db_session.commit()
@@ -86,7 +88,7 @@ class TestProjectSoftDelete:
             tenant_key=tenant1,
             product_id=product1.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc)
+            deleted_at=datetime.now(timezone.utc),
         )
         project2 = Project(
             name="Tenant 2 Deleted",
@@ -94,16 +96,13 @@ class TestProjectSoftDelete:
             tenant_key=tenant2,
             product_id=product2.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc)
+            deleted_at=datetime.now(timezone.utc),
         )
         db_session.add_all([project1, project2])
         await db_session.commit()
 
         # Query deleted projects for tenant1
-        stmt = select(Project).where(
-            Project.tenant_key == tenant1,
-            Project.deleted_at.isnot(None)
-        )
+        stmt = select(Project).where(Project.tenant_key == tenant1, Project.deleted_at.isnot(None))
         result = await db_session.execute(stmt)
         tenant1_projects = result.scalars().all()
 
@@ -121,7 +120,7 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc)
+            deleted_at=datetime.now(timezone.utc),
         )
         db_session.add(project)
         await db_session.commit()
@@ -148,7 +147,7 @@ class TestProjectSoftDelete:
             mission="Test",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.commit()
@@ -159,8 +158,8 @@ class TestProjectSoftDelete:
 
     async def test_purge_expired_projects(self, db_session, test_tenant_key, test_product):
         """Test purging of projects deleted more than 10 days ago."""
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         # Create old deleted project (11 days ago)
         old_deleted = Project(
@@ -169,7 +168,7 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc) - timedelta(days=11)
+            deleted_at=datetime.now(timezone.utc) - timedelta(days=11),
         )
 
         # Create recent deleted project (5 days ago)
@@ -179,7 +178,7 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc) - timedelta(days=5)
+            deleted_at=datetime.now(timezone.utc) - timedelta(days=5),
         )
 
         db_session.add_all([old_deleted, recent_deleted])
@@ -214,8 +213,8 @@ class TestProjectSoftDelete:
 
     async def test_purge_cascade_deletes_children(self, db_session, test_tenant_key, test_product):
         """Test that purging a project cascades to agents, tasks, and messages."""
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         # Create expired deleted project
         project = Project(
@@ -224,29 +223,15 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc) - timedelta(days=11)
+            deleted_at=datetime.now(timezone.utc) - timedelta(days=11),
         )
         db_session.add(project)
         await db_session.commit()
 
         # Create child records
-        agent = Agent(
-            name="Test Agent",
-            role="tester",
-            tenant_key=test_tenant_key,
-            project_id=project.id
-        )
-        task = Task(
-            title="Test Task",
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            project_id=project.id
-        )
-        message = Message(
-            content="Test message",
-            tenant_key=test_tenant_key,
-            project_id=project.id
-        )
+        agent = Agent(name="Test Agent", role="tester", tenant_key=test_tenant_key, project_id=project.id)
+        task = Task(title="Test Task", tenant_key=test_tenant_key, product_id=test_product.id, project_id=project.id)
+        message = Message(content="Test message", tenant_key=test_tenant_key, project_id=project.id)
         db_session.add_all([agent, task, message])
         await db_session.commit()
 
@@ -290,18 +275,10 @@ class TestProjectSoftDelete:
         """Test that normal project listing excludes deleted projects."""
         # Create active, inactive, and deleted projects
         active = Project(
-            name="Active",
-            mission="Test",
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            status="active"
+            name="Active", mission="Test", tenant_key=test_tenant_key, product_id=test_product.id, status="active"
         )
         inactive = Project(
-            name="Inactive",
-            mission="Test",
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            status="inactive"
+            name="Inactive", mission="Test", tenant_key=test_tenant_key, product_id=test_product.id, status="inactive"
         )
         deleted = Project(
             name="Deleted",
@@ -309,19 +286,16 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc)
+            deleted_at=datetime.now(timezone.utc),
         )
         db_session.add_all([active, inactive, deleted])
         await db_session.commit()
 
         # Query non-deleted projects
         from sqlalchemy import or_
+
         stmt = select(Project).where(
-            Project.tenant_key == test_tenant_key,
-            or_(
-                Project.status != "deleted",
-                Project.deleted_at.is_(None)
-            )
+            Project.tenant_key == test_tenant_key, or_(Project.status != "deleted", Project.deleted_at.is_(None))
         )
         result = await db_session.execute(stmt)
         projects = result.scalars().all()
@@ -343,7 +317,7 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=deleted_at
+            deleted_at=deleted_at,
         )
 
         # Calculate purge date and days remaining
@@ -365,7 +339,7 @@ class TestProjectSoftDelete:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
-            deleted_at=deleted_at
+            deleted_at=deleted_at,
         )
 
         # Calculate days remaining
@@ -394,7 +368,7 @@ class TestProjectSoftDelete:
             tenant_key=tenant1,
             product_id=product1.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc)
+            deleted_at=datetime.now(timezone.utc),
         )
         db_session.add(project)
         await db_session.commit()
@@ -405,8 +379,8 @@ class TestProjectSoftDelete:
 
     async def test_purge_respects_tenant_boundaries(self, db_session):
         """Test that purge doesn't affect other tenants."""
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         tenant1 = "tenant-001"
         tenant2 = "tenant-002"
@@ -424,7 +398,7 @@ class TestProjectSoftDelete:
             tenant_key=tenant1,
             product_id=product1.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc) - timedelta(days=11)
+            deleted_at=datetime.now(timezone.utc) - timedelta(days=11),
         )
         project2 = Project(
             name="Tenant 2 Old",
@@ -432,7 +406,7 @@ class TestProjectSoftDelete:
             tenant_key=tenant2,
             product_id=product2.id,
             status="deleted",
-            deleted_at=datetime.now(timezone.utc) - timedelta(days=11)
+            deleted_at=datetime.now(timezone.utc) - timedelta(days=11),
         )
         db_session.add_all([project1, project2])
         await db_session.commit()
@@ -463,6 +437,7 @@ class TestProjectSoftDelete:
 
 # Fixtures
 
+
 @pytest.fixture
 def test_tenant_key():
     """Provide a test tenant key."""
@@ -472,10 +447,7 @@ def test_tenant_key():
 @pytest.fixture
 async def test_product(db_session, test_tenant_key):
     """Create a test product."""
-    product = Product(
-        name="Test Product Handover 0070",
-        tenant_key=test_tenant_key
-    )
+    product = Product(name="Test Product Handover 0070", tenant_key=test_tenant_key)
     db_session.add(product)
     await db_session.commit()
     await db_session.refresh(product)

@@ -7,13 +7,14 @@ manual workflow tracking system (AgentInteraction logging).
 Target: >=95% reliability for complete workflows
 """
 
-import pytest
 from datetime import datetime, timezone
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Project, AgentInteraction, Product
-from src.giljo_mcp.tools.agent import _ensure_agent
+import pytest
 from sqlalchemy import select
+
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Agent, AgentInteraction, Product, Project
+from src.giljo_mcp.tools.agent import _ensure_agent
 
 
 class TestWorkflowReliability:
@@ -31,7 +32,7 @@ class TestWorkflowReliability:
             product = Product(
                 tenant_key="workflow-test-tenant",
                 name="Workflow Test Product",
-                description="Product for workflow reliability testing"
+                description="Product for workflow reliability testing",
             )
             session.add(product)
             await session.commit()
@@ -46,7 +47,7 @@ class TestWorkflowReliability:
                 tenant_key="workflow-test-tenant",
                 product_id=test_product.id,
                 name="Workflow Test Project",
-                mission="Test workflow reliability"
+                mission="Test workflow reliability",
             )
             session.add(project)
             await session.commit()
@@ -69,7 +70,7 @@ class TestWorkflowReliability:
                 tenant_key=test_project.tenant_key,
                 name="orchestrator",
                 role="orchestrator",
-                status="active"
+                status="active",
             )
             session.add(parent)
             await session.commit()
@@ -88,7 +89,7 @@ class TestWorkflowReliability:
                         sub_agent_name=f"workflow-worker-{i}",
                         interaction_type="SPAWN",
                         mission="Complete workflow test",
-                        start_time=datetime.now(timezone.utc)
+                        start_time=datetime.now(timezone.utc),
                     )
                     session.add(interaction)
                     await session.commit()
@@ -103,11 +104,7 @@ class TestWorkflowReliability:
 
                     if not interaction:
                         complete_failures += 1
-                        errors.append({
-                            "iteration": i,
-                            "phase": "complete",
-                            "error": "Interaction not found"
-                        })
+                        errors.append({"iteration": i, "phase": "complete", "error": "Interaction not found"})
                         failure_count += 1
                         continue
 
@@ -131,15 +128,11 @@ class TestWorkflowReliability:
                     complete_failures += 1
                     phase = "complete"
 
-                errors.append({
-                    "iteration": i,
-                    "phase": phase,
-                    "error": str(e)
-                })
+                errors.append({"iteration": i, "phase": phase, "error": str(e)})
 
         reliability = (success_count / 100) * 100
 
-        print(f"\n=== Full Lifecycle Reliability Test ===")
+        print("\n=== Full Lifecycle Reliability Test ===")
         print(f"Complete cycles: {success_count}/100")
         print(f"Failed cycles: {failure_count}/100")
         print(f"  - Spawn failures: {spawn_failures}")
@@ -170,7 +163,7 @@ class TestWorkflowReliability:
                 tenant_key=test_project.tenant_key,
                 name="orchestrator",
                 role="orchestrator",
-                status="active"
+                status="active",
             )
             session.add(parent)
             await session.commit()
@@ -188,7 +181,7 @@ class TestWorkflowReliability:
                         sub_agent_name=f"error-worker-{i}",
                         interaction_type="SPAWN",
                         mission="Fail spectacularly",
-                        start_time=datetime.now(timezone.utc)
+                        start_time=datetime.now(timezone.utc),
                     )
                     session.add(interaction)
                     await session.commit()
@@ -217,14 +210,12 @@ class TestWorkflowReliability:
 
         reliability = (success_count / 50) * 100
 
-        print(f"\n=== Error State Tracking Reliability Test ===")
+        print("\n=== Error State Tracking Reliability Test ===")
         print(f"Successful error logs: {success_count}/50")
         print(f"Failed error logs: {failure_count}/50")
         print(f"Reliability: {reliability}%")
 
-        assert reliability >= 95.0, (
-            f"Error tracking reliability {reliability}% is below target 95%"
-        )
+        assert reliability >= 95.0, f"Error tracking reliability {reliability}% is below target 95%"
 
     @pytest.mark.asyncio
     async def test_token_usage_tracking_reliability(self, db_manager, test_project):
@@ -241,7 +232,7 @@ class TestWorkflowReliability:
                 name="orchestrator",
                 role="orchestrator",
                 status="active",
-                context_used=0
+                context_used=0,
             )
             session.add(parent)
             await session.commit()
@@ -261,7 +252,7 @@ class TestWorkflowReliability:
                         sub_agent_name=f"token-worker-{i}",
                         interaction_type="SPAWN",
                         mission="Track tokens",
-                        start_time=datetime.now(timezone.utc)
+                        start_time=datetime.now(timezone.utc),
                     )
                     session.add(interaction)
                     await session.commit()
@@ -301,20 +292,18 @@ class TestWorkflowReliability:
                         token_tracking_failures += 1
                         failure_count += 1
 
-            except Exception as e:
+            except Exception:
                 failure_count += 1
 
         reliability = (success_count / 50) * 100
 
-        print(f"\n=== Token Usage Tracking Reliability Test ===")
+        print("\n=== Token Usage Tracking Reliability Test ===")
         print(f"Successful token updates: {success_count}/50")
         print(f"Token tracking failures: {token_tracking_failures}/50")
         print(f"Other failures: {failure_count - token_tracking_failures}/50")
         print(f"Reliability: {reliability}%")
 
-        assert reliability >= 95.0, (
-            f"Token tracking reliability {reliability}% is below target 95%"
-        )
+        assert reliability >= 95.0, f"Token tracking reliability {reliability}% is below target 95%"
 
     @pytest.mark.asyncio
     async def test_ensure_agent_idempotency_reliability(self, db_manager, test_project):
@@ -330,14 +319,14 @@ class TestWorkflowReliability:
                         project_id=str(test_project.id),
                         agent_name=f"idempotent-agent-{i}",
                         mission="Test idempotency",
-                        session=session
+                        session=session,
                     )
 
                     result2 = await _ensure_agent(
                         project_id=str(test_project.id),
                         agent_name=f"idempotent-agent-{i}",
                         mission="Test idempotency",
-                        session=session
+                        session=session,
                     )
 
                     # Both should succeed
@@ -351,19 +340,17 @@ class TestWorkflowReliability:
 
                     success_count += 1
 
-            except Exception as e:
+            except Exception:
                 failure_count += 1
 
         reliability = (success_count / 50) * 100
 
-        print(f"\n=== Ensure Agent Idempotency Reliability Test ===")
+        print("\n=== Ensure Agent Idempotency Reliability Test ===")
         print(f"Successful idempotent calls: {success_count}/50")
         print(f"Failures: {failure_count}/50")
         print(f"Reliability: {reliability}%")
 
-        assert reliability >= 95.0, (
-            f"Idempotency reliability {reliability}% is below target 95%"
-        )
+        assert reliability >= 95.0, f"Idempotency reliability {reliability}% is below target 95%"
 
 
 if __name__ == "__main__":

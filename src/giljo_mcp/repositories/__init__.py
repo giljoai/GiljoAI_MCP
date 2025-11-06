@@ -7,14 +7,10 @@ Handover 0043 Phase 2: Added VisionDocumentRepository for multi-vision document 
 All repositories enforce multi-tenant isolation at the database level.
 """
 
+from .agent_job_repository import AgentJobRepository
 from .base import BaseRepository
 from .context_repository import ContextRepository
-from .agent_job_repository import AgentJobRepository
 from .vision_document_repository import VisionDocumentRepository
 
-__all__ = [
-    "BaseRepository",
-    "ContextRepository",
-    "AgentJobRepository",
-    "VisionDocumentRepository"
-]
+
+__all__ = ["AgentJobRepository", "BaseRepository", "ContextRepository", "VisionDocumentRepository"]

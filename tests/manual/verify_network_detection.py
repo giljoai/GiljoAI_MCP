@@ -9,13 +9,13 @@ This script demonstrates the behavior of get_network_ip() in various scenarios:
 """
 
 import sys
-import tempfile
 from pathlib import Path
+
 
 # Add parent directory to path to import startup module
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from startup import get_network_ip, print_header, print_success, print_info
+from startup import get_network_ip, print_header, print_info, print_success
 
 
 def test_with_config():
@@ -75,8 +75,17 @@ def test_adapter_filtering():
         interface_stats = psutil.net_if_stats()
 
         virtual_patterns = [
-            "docker", "veth", "br-", "vmnet", "vboxnet", "virbr",
-            "tun", "tap", "vEthernet", "Hyper-V", "WSL"
+            "docker",
+            "veth",
+            "br-",
+            "vmnet",
+            "vboxnet",
+            "virbr",
+            "tun",
+            "tap",
+            "vEthernet",
+            "Hyper-V",
+            "WSL",
         ]
 
         print_info("Network adapters detected:")

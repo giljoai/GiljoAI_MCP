@@ -7,8 +7,10 @@ Multi-tenant isolation enforced via tenant_key.
 TDD Approach: Tests written first, then implementation.
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+
 from giljo_mcp.context_management.indexer import ContextIndexer
 from giljo_mcp.models import MCPContextIndex
 
@@ -31,7 +33,7 @@ class TestContextIndexer:
     @pytest.fixture
     def mock_context_repo(self):
         """Create mock context repository."""
-        with patch('giljo_mcp.context_management.indexer.ContextRepository') as mock_repo_class:
+        with patch("giljo_mcp.context_management.indexer.ContextRepository") as mock_repo_class:
             mock_repo = Mock()
             mock_repo_class.return_value = mock_repo
             yield mock_repo
@@ -55,7 +57,7 @@ class TestContextIndexer:
             "tokens": 50,
             "keywords": ["test", "chunk"],
             "summary": "Test summary",
-            "chunk_number": 1
+            "chunk_number": 1,
         }
 
         # Mock repository create_chunk
@@ -82,22 +84,19 @@ class TestContextIndexer:
                 "tokens": 50,
                 "keywords": ["chunk", "one"],
                 "summary": "Summary 1",
-                "chunk_number": 1
+                "chunk_number": 1,
             },
             {
                 "content": "Chunk 2 content",
                 "tokens": 45,
                 "keywords": ["chunk", "two"],
                 "summary": "Summary 2",
-                "chunk_number": 2
-            }
+                "chunk_number": 2,
+            },
         ]
 
         # Mock repository create_chunk to return different chunk IDs
-        mock_chunks = [
-            Mock(spec=MCPContextIndex, chunk_id="chunk-1"),
-            Mock(spec=MCPContextIndex, chunk_id="chunk-2")
-        ]
+        mock_chunks = [Mock(spec=MCPContextIndex, chunk_id="chunk-1"), Mock(spec=MCPContextIndex, chunk_id="chunk-2")]
         mock_context_repo.create_chunk.side_effect = mock_chunks
 
         result = indexer.store_chunks(tenant_key, product_id, chunks)
@@ -131,7 +130,7 @@ class TestContextIndexer:
         # Mock repository search_chunks
         mock_chunks = [
             Mock(spec=MCPContextIndex, chunk_id="chunk-1", content="Database setup"),
-            Mock(spec=MCPContextIndex, chunk_id="chunk-2", content="Database config")
+            Mock(spec=MCPContextIndex, chunk_id="chunk-2", content="Database config"),
         ]
         mock_context_repo.search_chunks.return_value = mock_chunks
 
@@ -140,8 +139,8 @@ class TestContextIndexer:
         # Verify repository was called with correct parameters
         mock_context_repo.search_chunks.assert_called_once()
         call_args = mock_context_repo.search_chunks.call_args
-        assert call_args[1]['query'] == query
-        assert call_args[1]['limit'] == 10
+        assert call_args[1]["query"] == query
+        assert call_args[1]["limit"] == 10
 
         # Verify result
         assert len(result) == 2
@@ -170,7 +169,7 @@ class TestContextIndexer:
         mock_chunks = [
             Mock(spec=MCPContextIndex, chunk_id="chunk-1", chunk_order=1),
             Mock(spec=MCPContextIndex, chunk_id="chunk-2", chunk_order=2),
-            Mock(spec=MCPContextIndex, chunk_id="chunk-3", chunk_order=3)
+            Mock(spec=MCPContextIndex, chunk_id="chunk-3", chunk_order=3),
         ]
         mock_context_repo.get_chunks_by_product.return_value = mock_chunks
 
@@ -235,20 +234,14 @@ class TestContextIndexer:
         product_id = "prod-456"
 
         # Test store_chunk
-        chunk = {
-            "content": "Test",
-            "tokens": 10,
-            "keywords": [],
-            "summary": "Test",
-            "chunk_number": 1
-        }
+        chunk = {"content": "Test", "tokens": 10, "keywords": [], "summary": "Test", "chunk_number": 1}
         mock_context_repo.create_chunk.return_value = Mock(chunk_id="test")
         indexer.store_chunk(tenant_key, product_id, chunk)
 
         # Verify tenant_key was passed
         call_args = mock_context_repo.create_chunk.call_args
         # tenant_key should be in keyword args
-        assert call_args[1]['tenant_key'] == tenant_key
+        assert call_args[1]["tenant_key"] == tenant_key
 
     def test_chunk_metadata_preserved(self, indexer, mock_context_repo):
         """Test that all chunk metadata is preserved during storage."""
@@ -259,7 +252,7 @@ class TestContextIndexer:
             "tokens": 75,
             "keywords": ["full", "content", "metadata"],
             "summary": "Full summary text",
-            "chunk_number": 3
+            "chunk_number": 3,
         }
 
         mock_chunk = Mock(spec=MCPContextIndex, chunk_id="chunk-meta")
@@ -269,11 +262,11 @@ class TestContextIndexer:
 
         # Verify all metadata was passed to repository
         call_args = mock_context_repo.create_chunk.call_args
-        assert call_args[1]['content'] == chunk['content']
-        assert call_args[1]['token_count'] == chunk['tokens']
-        assert call_args[1]['keywords'] == chunk['keywords']
-        assert call_args[1]['summary'] == chunk['summary']
-        assert call_args[1]['chunk_order'] == chunk['chunk_number']
+        assert call_args[1]["content"] == chunk["content"]
+        assert call_args[1]["token_count"] == chunk["tokens"]
+        assert call_args[1]["keywords"] == chunk["keywords"]
+        assert call_args[1]["summary"] == chunk["summary"]
+        assert call_args[1]["chunk_order"] == chunk["chunk_number"]
 
 
 class TestContextIndexerIntegration:
@@ -288,4 +281,3 @@ class TestContextIndexerIntegration:
         """Test complete workflow: store, search, retrieve, delete."""
         # This would test with real database
         # Skipped for unit tests
-        pass

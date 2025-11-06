@@ -10,9 +10,6 @@ Provides request/response models for:
 from datetime import datetime
 from typing import Optional
 
-from datetime import datetime
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -22,9 +19,12 @@ class TaskCreate(BaseModel):
 
     Product and project are optional to allow unscoped tasks.
     """
+
     title: str = Field(..., min_length=1, max_length=255, description="Task title")
     description: Optional[str] = Field(None, description="Task description")
-    status: Optional[str] = Field(None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted")
+    status: Optional[str] = Field(
+        None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted"
+    )
     priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
     category: Optional[str] = Field(None, max_length=100, description="Task category")
     product_id: Optional[str] = Field(None, description="Product ID for isolation")
@@ -44,9 +44,12 @@ class TaskUpdate(BaseModel):
     Users can update their own tasks or tasks assigned to them.
     Admins can update any task in their tenant.
     """
+
     title: Optional[str] = Field(None, min_length=1, max_length=255, description="Task title")
     description: Optional[str] = Field(None, description="Task description")
-    status: Optional[str] = Field(None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted")
+    status: Optional[str] = Field(
+        None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted"
+    )
     priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
     category: Optional[str] = Field(None, max_length=100, description="Task category")
     # Handover 0076: Removed assigned_to_user_id field
@@ -69,20 +72,12 @@ class TaskConversionRequest(BaseModel):
     - individual: Convert each subtask to separate project
     - grouped: Group subtasks by category into projects
     """
+
     project_name: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=255,
-        description="Name for new project (defaults to task title)"
+        None, min_length=1, max_length=255, description="Name for new project (defaults to task title)"
     )
-    strategy: str = Field(
-        "single",
-        description="Conversion strategy: single | individual | grouped"
-    )
-    include_subtasks: bool = Field(
-        True,
-        description="Include subtasks in conversion"
-    )
+    strategy: str = Field("single", description="Conversion strategy: single | individual | grouped")
+    include_subtasks: bool = Field(True, description="Include subtasks in conversion")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -91,6 +86,7 @@ class ProjectConversionResponse(BaseModel):
     """
     Schema for conversion response after creating project from task.
     """
+
     project_id: str = Field(..., description="ID of created project")
     project_name: str = Field(..., description="Name of created project")
     original_task_id: str = Field(..., description="ID of original task")
@@ -109,6 +105,7 @@ class TaskResponse(BaseModel):
     - User assignment (assigned_to_user_id)
     - Conversion tracking (converted_to_project_id)
     """
+
     id: str = Field(..., description="Task ID")
     title: str = Field(..., description="Task title")
     description: Optional[str] = Field(None, description="Task description")
@@ -116,7 +113,9 @@ class TaskResponse(BaseModel):
     status: str = Field(..., description="Task status")
     priority: str = Field(..., description="Task priority")
     product_id: Optional[str] = Field(None, description="Product ID for isolation")
-    project_id: Optional[str] = Field(None, description="Associated project ID (nullable for unassigned tasks - Handover 0072)")
+    project_id: Optional[str] = Field(
+        None, description="Associated project ID (nullable for unassigned tasks - Handover 0072)"
+    )
 
     # Handover 0072: Agent job integration
     agent_job_id: Optional[str] = Field(None, description="Linked agent job ID for execution tracking")
@@ -141,4 +140,5 @@ class TaskResponse(BaseModel):
 
 class StatusUpdate(BaseModel):
     """Schema for status-only updates."""
+
     status: str = Field(..., description="New task status")

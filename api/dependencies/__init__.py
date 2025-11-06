@@ -8,18 +8,15 @@ Created: 2025-11-02
 """
 
 # Import WebSocket dependencies from this module
-from .websocket import (
-    get_websocket_manager,
-    get_websocket_dependency,
-    WebSocketDependency
-)
-
 # Import legacy dependencies from the sibling dependencies.py file
 # Use importlib to load the .py file directly (avoiding package/module conflict)
 import importlib.util
 import os
 
-_deps_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dependencies.py')
+from .websocket import WebSocketDependency, get_websocket_dependency, get_websocket_manager
+
+
+_deps_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dependencies.py")
 _spec = importlib.util.spec_from_file_location("_legacy_dependencies", _deps_file)
 _legacy_module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_legacy_module)
@@ -35,5 +32,5 @@ __all__ = [
     # WebSocket dependencies
     "get_websocket_manager",
     "get_websocket_dependency",
-    "WebSocketDependency"
+    "WebSocketDependency",
 ]

@@ -23,7 +23,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List
+
 
 # Try to import psutil for advanced process management
 try:
@@ -54,19 +55,18 @@ class ServiceRestarter:
 
         if PSUTIL_AVAILABLE:
             # Use psutil for reliable process detection
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
                 try:
-                    cmdline = proc.info.get('cmdline')
-                    if cmdline and 'start_giljo.py' in ' '.join(cmdline):
-                        pids.append(proc.info['pid'])
+                    cmdline = proc.info.get("cmdline")
+                    if cmdline and "start_giljo.py" in " ".join(cmdline):
+                        pids.append(proc.info["pid"])
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
+        # Fall back to platform-specific commands
+        elif self.system == "Windows":
+            pids = self._find_processes_windows()
         else:
-            # Fall back to platform-specific commands
-            if self.system == "Windows":
-                pids = self._find_processes_windows()
-            else:
-                pids = self._find_processes_unix()
+            pids = self._find_processes_unix()
 
         return pids
 
@@ -77,6 +77,7 @@ class ServiceRestarter:
             # Run tasklist with verbose output
             result = subprocess.run(
                 ["tasklist", "/V", "/FO", "CSV"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -84,12 +85,12 @@ class ServiceRestarter:
 
             if result.returncode == 0:
                 # Parse CSV output to find python processes running start_giljo.py
-                for line in result.stdout.split('\n'):
-                    if 'python' in line.lower() and 'start_giljo.py' in line:
+                for line in result.stdout.split("\n"):
+                    if "python" in line.lower() and "start_giljo.py" in line:
                         # Extract PID (second column in CSV)
                         parts = line.split('","')
                         if len(parts) > 1:
-                            pid_str = parts[1].replace('"', '').strip()
+                            pid_str = parts[1].replace('"', "").strip()
                             try:
                                 pids.append(int(pid_str))
                             except ValueError:
@@ -106,14 +107,15 @@ class ServiceRestarter:
             # Use ps to find python processes
             result = subprocess.run(
                 ["ps", "aux"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
             )
 
             if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if 'python' in line and 'start_giljo.py' in line:
+                for line in result.stdout.split("\n"):
+                    if "python" in line and "start_giljo.py" in line:
                         # PID is second column
                         parts = line.split()
                         if len(parts) > 1:
@@ -148,12 +150,11 @@ class ServiceRestarter:
                 return True
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
                 return False
+        # Fall back to platform-specific kill
+        elif self.system == "Windows":
+            return self._kill_process_windows(pid, force)
         else:
-            # Fall back to platform-specific kill
-            if self.system == "Windows":
-                return self._kill_process_windows(pid, force)
-            else:
-                return self._kill_process_unix(pid, force)
+            return self._kill_process_unix(pid, force)
 
     def _kill_process_windows(self, pid: int, force: bool) -> bool:
         """Kill process on Windows using taskkill."""
@@ -162,7 +163,7 @@ class ServiceRestarter:
             if force:
                 args.append("/F")  # Force kill
 
-            result = subprocess.run(args, capture_output=True, timeout=10)
+            result = subprocess.run(args, check=False, capture_output=True, timeout=10)
             return result.returncode == 0
         except Exception:
             return False
@@ -305,6 +306,7 @@ def main():
     except Exception as e:
         print(f"\nFatal error during restart: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

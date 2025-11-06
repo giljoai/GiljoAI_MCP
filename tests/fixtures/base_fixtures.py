@@ -11,12 +11,11 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.enums import AgentRole, AgentStatus, ProjectStatus, ProjectType
+from src.giljo_mcp.enums import AgentStatus, ProjectStatus
 from src.giljo_mcp.models import Agent, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
 

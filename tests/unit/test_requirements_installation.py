@@ -12,7 +12,7 @@ Tests cover:
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -41,7 +41,7 @@ class TestRequirementsDetection:
     def test_requirements_missing(self):
         """Test detection when packages are missing."""
         with pytest.raises(ImportError):
-            import nonexistent_package_12345
+            pass
 
 
 class TestRequirementsInstallation:
@@ -140,16 +140,12 @@ class TestErrorHandling:
         """Test handling when some packages fail to install."""
         # First call succeeds, second fails
         mock_run.side_effect = [
-            subprocess.CompletedProcess(
-                args=[], returncode=0, stdout="Package 1 installed", stderr=""
-            ),
-            subprocess.CalledProcessError(
-                returncode=1, cmd=[], stderr="Package 2 failed"
-            ),
+            subprocess.CompletedProcess(args=[], returncode=0, stdout="Package 1 installed", stderr=""),
+            subprocess.CalledProcessError(returncode=1, cmd=[], stderr="Package 2 failed"),
         ]
 
         # First package installs successfully
-        result1 = subprocess.run(["pip", "install", "package1"])
+        result1 = subprocess.run(["pip", "install", "package1"], check=False)
         assert result1.returncode == 0
 
         # Second package fails
@@ -159,12 +155,10 @@ class TestErrorHandling:
     @patch("subprocess.run")
     def test_timeout_handling(self, mock_run):
         """Test handling of installation timeout."""
-        mock_run.side_effect = subprocess.TimeoutExpired(
-            cmd=["pip", "install"], timeout=300
-        )
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["pip", "install"], timeout=300)
 
         with pytest.raises(subprocess.TimeoutExpired):
-            subprocess.run(["pip", "install", "-r", "requirements.txt"], timeout=300)
+            subprocess.run(["pip", "install", "-r", "requirements.txt"], check=False, timeout=300)
 
     def test_permission_error_handling(self):
         """Test handling of permission errors during installation."""
@@ -186,15 +180,13 @@ class TestCrossPlatformCompatibility:
     def test_windows_installation(self, mock_run, mock_platform):
         """Test installation on Windows."""
         mock_platform.return_value = "Windows"
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
 
         import platform
 
         if platform.system() == "Windows":
             # Should use sys.executable which works on Windows
-            subprocess.run([sys.executable, "-m", "pip", "install", "package"])
+            subprocess.run([sys.executable, "-m", "pip", "install", "package"], check=False)
             assert mock_run.called
 
     @patch("platform.system")
@@ -202,14 +194,12 @@ class TestCrossPlatformCompatibility:
     def test_linux_installation(self, mock_run, mock_platform):
         """Test installation on Linux."""
         mock_platform.return_value = "Linux"
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
 
         import platform
 
         if platform.system() == "Linux":
-            subprocess.run([sys.executable, "-m", "pip", "install", "package"])
+            subprocess.run([sys.executable, "-m", "pip", "install", "package"], check=False)
             assert mock_run.called
 
     def test_requirements_path_cross_platform(self):
@@ -254,9 +244,7 @@ class TestIntegrationWithStartup:
         mock_import.side_effect = ImportError("No module named 'fastapi'")
 
         # Mock successful installation
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
 
         # Simulate the startup flow:
         # 1. Check dependencies (Python, PostgreSQL, pip) - should pass
@@ -267,7 +255,7 @@ class TestIntegrationWithStartup:
             mock_import("fastapi")
         except ImportError:
             # Should install requirements here
-            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
             assert mock_run.called
 
     def test_skip_install_if_already_present(self):
@@ -275,6 +263,7 @@ class TestIntegrationWithStartup:
         # Try to import a package that should be installed
         try:
             import pyyaml  # noqa: F401
+
             already_installed = True
         except ImportError:
             already_installed = False
@@ -291,9 +280,7 @@ class TestReturnValues:
     def test_returns_true_on_success(self, mock_import, mock_run):
         """Test that function returns True on successful installation."""
         mock_import.return_value = MagicMock()
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
 
         # Mock successful flow
         def install_requirements_mock():
@@ -301,7 +288,7 @@ class TestReturnValues:
                 mock_import("fastapi")
                 return True
             except ImportError:
-                subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+                subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
                 return True
 
         result = install_requirements_mock()
@@ -310,9 +297,7 @@ class TestReturnValues:
     @patch("subprocess.run")
     def test_returns_false_on_failure(self, mock_run):
         """Test that function returns False on installation failure."""
-        mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1, cmd=[], stderr="Install failed"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd=[], stderr="Install failed")
 
         # Mock failure flow
         def install_requirements_mock():

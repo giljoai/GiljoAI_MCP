@@ -37,7 +37,7 @@ def detect_mcp_server() -> Optional[Dict[str, str]]:
             return {
                 "path": str(location),
                 "type": "local",
-                "python": str(location / "venv" / ("Scripts" if sys.platform == "win32" else "bin") / "python")
+                "python": str(location / "venv" / ("Scripts" if sys.platform == "win32" else "bin") / "python"),
             }
 
     return None
@@ -45,9 +45,9 @@ def detect_mcp_server() -> Optional[Dict[str, str]]:
 
 def get_server_config() -> Dict[str, any]:
     """Get MCP server configuration from user"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("   GiljoAI MCP Project Connection Setup")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Try to detect existing installation
     detected = detect_mcp_server()
@@ -55,12 +55,8 @@ def get_server_config() -> Dict[str, any]:
     if detected:
         print(f"✓ Found GiljoAI MCP installation at: {detected['path']}")
         use_detected = input("\nUse this installation? (y/n) [y]: ").lower()
-        if use_detected != 'n':
-            return {
-                "type": "local",
-                "path": detected["path"],
-                "python": detected["python"]
-            }
+        if use_detected != "n":
+            return {"type": "local", "path": detected["path"], "python": detected["python"]}
 
     # Manual configuration
     print("\nConfigure MCP Server Connection:")
@@ -80,12 +76,7 @@ def get_server_config() -> Dict[str, any]:
 
         auth_choice = input("Select authentication (1/2) [1]: ").strip()
 
-        config = {
-            "type": "network",
-            "host": host,
-            "port": port,
-            "url": f"http://{host}:{port}"
-        }
+        config = {"type": "network", "host": host, "port": port, "url": f"http://{host}:{port}"}
 
         if auth_choice == "2":
             api_key = input("Enter API key: ").strip()
@@ -93,26 +84,21 @@ def get_server_config() -> Dict[str, any]:
 
         return config
 
-    else:
-        # Local installation
-        default_path = detected["path"] if detected else ""
-        install_path = input(f"GiljoAI MCP installation path [{default_path}]: ").strip()
+    # Local installation
+    default_path = detected["path"] if detected else ""
+    install_path = input(f"GiljoAI MCP installation path [{default_path}]: ").strip()
 
-        if not install_path and detected:
-            install_path = detected["path"]
+    if not install_path and detected:
+        install_path = detected["path"]
 
-        if not Path(install_path).exists():
-            print(f"\n⚠ Warning: Path '{install_path}' does not exist!")
-            print("Make sure to install GiljoAI MCP server first.")
+    if not Path(install_path).exists():
+        print(f"\n⚠ Warning: Path '{install_path}' does not exist!")
+        print("Make sure to install GiljoAI MCP server first.")
 
-        venv_path = Path(install_path) / "venv"
-        python_exe = venv_path / ("Scripts" if sys.platform == "win32" else "bin") / "python"
+    venv_path = Path(install_path) / "venv"
+    python_exe = venv_path / ("Scripts" if sys.platform == "win32" else "bin") / "python"
 
-        return {
-            "type": "local",
-            "path": install_path,
-            "python": str(python_exe)
-        }
+    return {"type": "local", "path": install_path, "python": str(python_exe)}
 
 
 def create_mcp_config(config: Dict[str, any]) -> None:
@@ -124,33 +110,28 @@ def create_mcp_config(config: Dict[str, any]) -> None:
         giljo_server = {
             "command": config["python"],
             "args": ["-m", "giljo_mcp"],
-            "env": {
-                "GILJO_MCP_HOME": config["path"],
-                "GILJO_MCP_MODE": "local"
-            },
-            "description": "GiljoAI MCP Orchestrator - Local Installation"
+            "env": {"GILJO_MCP_HOME": config["path"], "GILJO_MCP_MODE": "local"},
+            "description": "GiljoAI MCP Orchestrator - Local Installation",
         }
     else:
         # Network server - use proxy connection
         giljo_server = {
             "type": "http",
             "url": config["url"],
-            "description": "GiljoAI MCP Orchestrator - Network Server"
+            "description": "GiljoAI MCP Orchestrator - Network Server",
         }
 
         if config.get("api_key"):
-            giljo_server["headers"] = {
-                "Authorization": f"Bearer {config['api_key']}"
-            }
+            giljo_server["headers"] = {"Authorization": f"Bearer {config['api_key']}"}
 
     # Check for existing configuration
     config_file = Path.cwd() / ".mcp.json"
 
     if config_file.exists():
-        print(f"\n📋 Found existing .mcp.json file")
+        print("\n📋 Found existing .mcp.json file")
 
         try:
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 existing_config = json.load(f)
 
             # Check if there are existing MCP servers
@@ -163,9 +144,9 @@ def create_mcp_config(config: Dict[str, any]) -> None:
 
                 # Check if giljo-orchestrator already exists
                 if "giljo-orchestrator" in existing_servers:
-                    print(f"\n⚠ 'giljo-orchestrator' already configured")
+                    print("\n⚠ 'giljo-orchestrator' already configured")
                     update = input("Update existing configuration? (y/n) [y]: ").lower()
-                    if update == 'n':
+                    if update == "n":
                         print("Configuration unchanged.")
                         return
 
@@ -186,11 +167,9 @@ def create_mcp_config(config: Dict[str, any]) -> None:
             if "giljoAI" not in existing_config["projectSettings"]:
                 existing_config["projectSettings"]["giljoAI"] = {}
 
-            existing_config["projectSettings"]["giljoAI"].update({
-                "autoConnect": True,
-                "projectName": Path.cwd().name,
-                "orchestratorConfig": config
-            })
+            existing_config["projectSettings"]["giljoAI"].update(
+                {"autoConnect": True, "projectName": Path.cwd().name, "orchestratorConfig": config}
+            )
 
             final_config = existing_config
             action = "updated"
@@ -199,25 +178,20 @@ def create_mcp_config(config: Dict[str, any]) -> None:
             print(f"\n❌ Error: Existing .mcp.json is not valid JSON: {e}")
             backup = input("Create backup and write new config? (y/n) [y]: ").lower()
 
-            if backup != 'n':
+            if backup != "n":
                 # Backup the corrupted file
-                backup_file = config_file.with_suffix('.mcp.json.backup')
+                backup_file = config_file.with_suffix(".mcp.json.backup")
                 import shutil
+
                 shutil.copy(config_file, backup_file)
                 print(f"✓ Backup created: {backup_file}")
 
                 # Create new config
                 final_config = {
-                    "mcpServers": {
-                        "giljo-orchestrator": giljo_server
-                    },
+                    "mcpServers": {"giljo-orchestrator": giljo_server},
                     "projectSettings": {
-                        "giljoAI": {
-                            "autoConnect": True,
-                            "projectName": Path.cwd().name,
-                            "orchestratorConfig": config
-                        }
-                    }
+                        "giljoAI": {"autoConnect": True, "projectName": Path.cwd().name, "orchestratorConfig": config}
+                    },
                 }
                 action = "created"
             else:
@@ -231,22 +205,16 @@ def create_mcp_config(config: Dict[str, any]) -> None:
     else:
         # No existing file, create new
         final_config = {
-            "mcpServers": {
-                "giljo-orchestrator": giljo_server
-            },
+            "mcpServers": {"giljo-orchestrator": giljo_server},
             "projectSettings": {
-                "giljoAI": {
-                    "autoConnect": True,
-                    "projectName": Path.cwd().name,
-                    "orchestratorConfig": config
-                }
-            }
+                "giljoAI": {"autoConnect": True, "projectName": Path.cwd().name, "orchestratorConfig": config}
+            },
         }
         action = "created"
 
     # Write the configuration
     try:
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             json.dump(final_config, f, indent=2)
 
         print(f"\n✓ Successfully {action} .mcp.json configuration")
@@ -280,19 +248,19 @@ def create_env_file(config: Dict[str, any]) -> None:
     env_content.append(f"GILJO_PROJECT_NAME={Path.cwd().name}")
     env_content.append("")
 
-    with open(env_file, 'w') as f:
-        f.write('\n'.join(env_content))
+    with open(env_file, "w") as f:
+        f.write("\n".join(env_content))
 
-    print(f"✓ Created .env.giljo configuration")
+    print("✓ Created .env.giljo configuration")
 
     # Update .gitignore if it exists
     gitignore = Path.cwd() / ".gitignore"
     if gitignore.exists():
-        with open(gitignore, 'r') as f:
+        with open(gitignore) as f:
             content = f.read()
 
         if ".env.giljo" not in content:
-            with open(gitignore, 'a') as f:
+            with open(gitignore, "a") as f:
                 f.write("\n# GiljoAI MCP\n.env.giljo\n")
             print("✓ Updated .gitignore")
 
@@ -311,18 +279,19 @@ def verify_connection(config: Dict[str, any]) -> bool:
         # Try to import giljo_mcp
         try:
             import subprocess
+
             result = subprocess.run(
                 [config["python"], "-c", "import giljo_mcp; print('OK')"],
+                check=False,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             if result.returncode == 0 and "OK" in result.stdout:
                 print("✓ Local MCP server is accessible")
                 return True
-            else:
-                print(f"❌ Could not verify MCP server: {result.stderr}")
-                return False
+            print(f"❌ Could not verify MCP server: {result.stderr}")
+            return False
         except Exception as e:
             print(f"❌ Connection test failed: {e}")
             return False
@@ -330,16 +299,17 @@ def verify_connection(config: Dict[str, any]) -> bool:
     else:
         # Network server - try to connect
         try:
-            import urllib.request
             import urllib.error
+            import urllib.request
 
             # Validate URL format to prevent SSRF attacks
-            if not config['url'].startswith(('http://', 'https://')):
+            if not config["url"].startswith(("http://", "https://")):
                 raise ValueError("Invalid URL format")
 
             # Sanitize and validate the URL components
             from urllib.parse import urlparse
-            parsed = urlparse(config['url'])
+
+            parsed = urlparse(config["url"])
             if not parsed.hostname:
                 raise ValueError("Invalid hostname in URL")
 
@@ -380,9 +350,9 @@ def main():
         connected = verify_connection(config)
 
         # Print summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   Setup Complete!")
-        print("="*60)
+        print("=" * 60)
 
         if connected:
             print("\n✅ Your project is now connected to GiljoAI MCP")

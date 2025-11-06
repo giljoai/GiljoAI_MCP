@@ -22,7 +22,6 @@ from src.giljo_mcp.models import Agent, Configuration, Job, Message, Project, Se
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 

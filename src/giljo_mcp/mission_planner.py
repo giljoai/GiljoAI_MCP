@@ -411,11 +411,7 @@ Success Criteria:
             }
         """
         if not user_id:
-            return {
-                "field_priority_config": None,
-                "token_budget": 2000,
-                "serena_enabled": False
-            }
+            return {"field_priority_config": None, "token_budget": 2000, "serena_enabled": False}
 
         try:
             if self.db_manager.is_async:
@@ -436,21 +432,14 @@ Success Criteria:
                 return {
                     "field_priority_config": user.field_priority_config,
                     "token_budget": token_budget,
-                    "serena_enabled": serena_enabled
+                    "serena_enabled": serena_enabled,
                 }
         except Exception as e:
             logger.warning(f"Failed to fetch user configuration: {e}")
 
-        return {
-            "field_priority_config": None,
-            "token_budget": 2000,
-            "serena_enabled": False
-        }
+        return {"field_priority_config": None, "token_budget": 2000, "serena_enabled": False}
 
-
-    async def _fetch_serena_codebase_context(
-        self, project_id: str, tenant_key: str
-    ) -> str:
+    async def _fetch_serena_codebase_context(self, project_id: str, tenant_key: str) -> str:
         """
         Fetch codebase context from Serena MCP tool.
 
@@ -478,10 +467,7 @@ Success Criteria:
             # For now, return empty string (graceful degradation)
             logger.info(
                 "Serena integration requested but not yet implemented",
-                extra={
-                    "project_id": project_id,
-                    "tenant_key": tenant_key
-                }
+                extra={"project_id": project_id, "tenant_key": tenant_key},
             )
             return ""
 
@@ -499,11 +485,8 @@ Success Criteria:
         except Exception as e:
             logger.warning(
                 f"Failed to fetch Serena context: {e}",
-                extra={
-                    "project_id": project_id,
-                    "tenant_key": tenant_key
-                },
-                exc_info=True
+                extra={"project_id": project_id, "tenant_key": tenant_key},
+                exc_info=True,
             )
             return ""
 
@@ -588,7 +571,7 @@ Success Criteria:
         return result
 
     async def _build_context_with_priorities(
-        self, product: Product, project: Project, field_priorities: dict = None, user_id: Optional[str] = None
+        self, product: Product, project: Project, field_priorities: dict = None, user_id: Optional[str] = None, include_serena: bool = False
     ) -> str:
         """
         Build context respecting user's field priorities for 70% token reduction.
@@ -604,6 +587,7 @@ Success Criteria:
                              Higher values = more important. 0 = exclude.
                              Example: {"product_vision": 10, "codebase_summary": 4}
             user_id: User ID for logging and audit trail (optional)
+            include_serena: Whether to fetch and include Serena codebase context (MANDATORY if enabled in config.yaml)
 
         Returns:
             Formatted context string with priority-based detail levels.
@@ -654,85 +638,62 @@ Success Criteria:
         total_tokens = 0
         tokens_before_reduction = 0  # Track original size for metrics
 
-        # === Product Vision Section ===
-        # Vision document is typically the largest field, so abbreviation has huge impact
-        vision_priority = field_priorities.get("product_vision", 0)
-        if vision_priority > 0:
-            vision_detail = self._get_detail_level(vision_priority)
-            vision_text = product.vision_document or ""
+        # === MANDATORY: Product Name (ALWAYS included - non-negotiable) ===
+        product_name_section = f"## Product\n**Name**: {product.name}"
+        if product.description:
+            product_name_section += f"\n**Description**: {product.description}"
+        context_sections.append(product_name_section)
+        name_tokens = self._count_tokens(product_name_section)
+        total_tokens += name_tokens
+        tokens_before_reduction += name_tokens
 
-            if vision_detail == "full":
-                # Use complete vision document
-                formatted_vision = f"## Product Vision\n{vision_text}"
-            elif vision_detail == "moderate":
-                # Take first 75% of vision document
-                lines = vision_text.split("\n")
-                cutoff = int(len(lines) * 0.75)
-                abbreviated = "\n".join(lines[:cutoff])
-                formatted_vision = f"## Product Vision\n{abbreviated}"
-            elif vision_detail == "abbreviated":
-                # Take first 50% of vision document
-                lines = vision_text.split("\n")
-                cutoff = int(len(lines) * 0.50)
-                abbreviated = "\n".join(lines[:cutoff])
-                formatted_vision = f"## Product Vision\n{abbreviated}"
-            else:  # minimal
-                # Extract only first paragraph (key overview)
-                paragraphs = vision_text.split("\n\n")
-                minimal = paragraphs[0] if paragraphs else vision_text[:500]
-                formatted_vision = f"## Product Vision\n{minimal}"
+        logger.debug(
+            f"Product name/description: {name_tokens} tokens (MANDATORY)",
+            extra={
+                "field": "product_name",
+                "priority": "MANDATORY",
+                "tokens": name_tokens,
+            },
+        )
 
-            if formatted_vision:
-                context_sections.append(formatted_vision)
-                vision_tokens = self._count_tokens(formatted_vision)
-                total_tokens += vision_tokens
-                tokens_before_reduction += self._count_tokens(f"## Product Vision\n{vision_text}")
+        # === MANDATORY: Product Vision (ALWAYS included - non-negotiable) ===
+        # Vision document is foundational context that orchestrator needs
+        vision_text = product.vision_document or ""
+        if vision_text:
+            formatted_vision = f"## Product Vision\n{vision_text}"
+            context_sections.append(formatted_vision)
+            vision_tokens = self._count_tokens(formatted_vision)
+            total_tokens += vision_tokens
+            tokens_before_reduction += vision_tokens
 
-                logger.debug(
-                    f"Product vision: {vision_tokens} tokens (priority={vision_priority}, detail={vision_detail})",
-                    extra={
-                        "field": "product_vision",
-                        "priority": vision_priority,
-                        "detail_level": vision_detail,
-                        "tokens": vision_tokens,
-                    },
-                )
+            logger.debug(
+                f"Product vision: {vision_tokens} tokens (MANDATORY - full content)",
+                extra={
+                    "field": "product_vision",
+                    "priority": "MANDATORY",
+                    "detail_level": "full",
+                    "tokens": vision_tokens,
+                },
+            )
 
-        # === Project Description Section ===
-        desc_priority = field_priorities.get("project_description", 0)
-        if desc_priority > 0:
-            desc_detail = self._get_detail_level(desc_priority)
-            desc_text = project.description or ""
+        # === MANDATORY: Project Description (ALWAYS included - non-negotiable) ===
+        desc_text = project.description or ""
+        if desc_text:
+            formatted_desc = f"## Project Description\n{desc_text}"
+            context_sections.append(formatted_desc)
+            desc_tokens = self._count_tokens(formatted_desc)
+            total_tokens += desc_tokens
+            tokens_before_reduction += desc_tokens
 
-            if desc_detail == "full" or desc_detail == "moderate":
-                # Project descriptions are typically short, so full/moderate are the same
-                formatted_desc = f"## Project Description\n{desc_text}"
-            elif desc_detail == "abbreviated":
-                # Take first half of description
-                sentences = desc_text.split(". ")
-                cutoff = max(1, len(sentences) // 2)
-                abbreviated = ". ".join(sentences[:cutoff]) + "."
-                formatted_desc = f"## Project Description\n{abbreviated}"
-            else:  # minimal
-                # Take only first sentence
-                first_sentence = desc_text.split(". ")[0] + "." if desc_text else ""
-                formatted_desc = f"## Project Description\n{first_sentence}"
-
-            if formatted_desc:
-                context_sections.append(formatted_desc)
-                desc_tokens = self._count_tokens(formatted_desc)
-                total_tokens += desc_tokens
-                tokens_before_reduction += self._count_tokens(f"## Project Description\n{desc_text}")
-
-                logger.debug(
-                    f"Project description: {desc_tokens} tokens (priority={desc_priority}, detail={desc_detail})",
-                    extra={
-                        "field": "project_description",
-                        "priority": desc_priority,
-                        "detail_level": desc_detail,
-                        "tokens": desc_tokens,
-                    },
-                )
+            logger.debug(
+                f"Project description: {desc_tokens} tokens (MANDATORY - full content)",
+                extra={
+                    "field": "project_description",
+                    "priority": "MANDATORY",
+                    "detail_level": "full",
+                    "tokens": desc_tokens,
+                },
+            )
 
         # === Codebase Summary Section ===
         # Use specialized abbreviation methods that preserve structure
@@ -821,6 +782,37 @@ Success Criteria:
                         },
                     )
 
+        # === MANDATORY: Serena Codebase Context (if enabled) ===
+        # Serena integration is controlled by user toggle in My Settings → Integrations
+        # When enabled, provides intelligent codebase symbols/structure overview
+        if include_serena:
+            serena_context = await self._fetch_serena_codebase_context(
+                project_id=str(project.id),
+                tenant_key=product.tenant_key
+            )
+            if serena_context:
+                formatted_serena = f"## Codebase Context (Serena)\n{serena_context}"
+                context_sections.append(formatted_serena)
+                serena_tokens = self._count_tokens(formatted_serena)
+                total_tokens += serena_tokens
+
+                logger.debug(
+                    f"Serena codebase context: {serena_tokens} tokens (MANDATORY when enabled)",
+                    extra={
+                        "field": "serena_context",
+                        "priority": "MANDATORY",
+                        "tokens": serena_tokens,
+                    },
+                )
+            else:
+                logger.info(
+                    "Serena enabled but no context returned (graceful degradation)",
+                    extra={
+                        "project_id": str(project.id),
+                        "operation": "build_context_with_priorities",
+                    },
+                )
+
         # === Token Reduction Metrics ===
         # Calculate and log token reduction percentage for analytics
         reduction_pct = 0.0
@@ -838,6 +830,7 @@ Success Criteria:
                 "priorities": field_priorities,
                 "user_id": user_id,
                 "sections_included": len(context_sections),
+                "serena_enabled": include_serena,
                 "operation": "build_context_with_priorities",
             },
         )
@@ -1079,10 +1072,7 @@ Complexity: {analysis.complexity}
 """
             logger.debug(
                 f"Added Serena context to {agent_config.role} mission: {serena_tokens} tokens",
-                extra={
-                    "agent_role": agent_config.role,
-                    "serena_tokens": serena_tokens
-                }
+                extra={"agent_role": agent_config.role, "serena_tokens": serena_tokens},
             )
 
         # Add success criteria
@@ -1188,16 +1178,28 @@ Complexity: {analysis.complexity}
         # Calculate original token count
         original_tokens = self._count_tokens(product.vision_document or "")
 
-        # Handover 0086B Task 3.2: Fetch user configuration including Serena toggle
-        user_config = await self._get_user_configuration(user_id)
-        serena_enabled = user_config.get("serena_enabled", False)
+        # Handover 0086B Task 3.2: Fetch Serena toggle from config.yaml (system-wide setting)
+        # IMPORTANT: Serena toggle is in My Settings → Integrations and stored in config.yaml
+        # NOT in user.field_priority_config (that was old implementation)
+        serena_enabled = False
+        try:
+            from pathlib import Path
+            import yaml
+
+            config_path = Path.cwd() / "config.yaml"
+            if config_path.exists():
+                with open(config_path, encoding="utf-8") as f:
+                    config_data = yaml.safe_load(f) or {}
+                serena_enabled = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+        except Exception as e:
+            logger.warning(f"Failed to read Serena config: {e}")
+            serena_enabled = False
 
         # Fetch Serena codebase context if enabled
         serena_context = ""
         if serena_enabled:
             serena_context = await self._fetch_serena_codebase_context(
-                project_id=str(project.id),
-                tenant_key=product.tenant_key
+                project_id=str(project.id), tenant_key=product.tenant_key
             )
             if serena_context:
                 serena_tokens = self._count_tokens(serena_context)
@@ -1207,25 +1209,18 @@ Complexity: {analysis.complexity}
                         "project_id": str(project.id),
                         "tenant_key": product.tenant_key,
                         "user_id": user_id,
-                        "serena_tokens": serena_tokens
-                    }
+                        "serena_tokens": serena_tokens,
+                    },
                 )
             else:
                 logger.info(
                     "Serena enabled but no context returned (graceful degradation)",
-                    extra={
-                        "project_id": str(project.id),
-                        "tenant_key": product.tenant_key,
-                        "user_id": user_id
-                    }
+                    extra={"project_id": str(project.id), "tenant_key": product.tenant_key, "user_id": user_id},
                 )
         else:
             logger.debug(
                 "Serena integration disabled by user configuration",
-                extra={
-                    "project_id": str(project.id),
-                    "user_id": user_id
-                }
+                extra={"project_id": str(project.id), "user_id": user_id},
             )
 
         # Generate mission for each agent (Handover 0048: pass user_id for field priority)

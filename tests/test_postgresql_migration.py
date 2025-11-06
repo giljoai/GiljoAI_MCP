@@ -10,7 +10,7 @@ These tests verify that:
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import Agent, Project
+from src.giljo_mcp.models import Project
 
 
 @pytest.mark.asyncio
@@ -49,9 +49,7 @@ async def test_transaction_isolation(db_session):
 async def test_isolation_verification(db_session):
     """Verify that previous test's data was rolled back."""
     # Try to find the project from the previous test
-    result = await db_session.execute(
-        select(Project).where(Project.tenant_key == "test_tenant_isolation_key")
-    )
+    result = await db_session.execute(select(Project).where(Project.tenant_key == "test_tenant_isolation_key"))
     project = result.scalar_one_or_none()
 
     # It should not exist because the previous test's transaction was rolled back

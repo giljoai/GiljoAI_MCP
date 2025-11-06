@@ -15,7 +15,7 @@ def run_tests():
     test_files = [
         "tests/integration/test_wizard_flow_comprehensive.py",
         "tests/integration/test_user_management_flow.py",
-        "tests/integration/test_api_key_manager.py"
+        "tests/integration/test_api_key_manager.py",
     ]
 
     print("=" * 80)
@@ -35,15 +35,18 @@ def run_tests():
         # Run pytest with verbose output
         result = subprocess.run(
             [
-                sys.executable, "-m", "pytest",
+                sys.executable,
+                "-m",
+                "pytest",
                 test_file,
                 "-v",
                 "--tb=short",
                 "--color=yes",
                 "-x",  # Stop on first failure
             ],
+            check=False,
             capture_output=False,
-            cwd=Path(__file__).parent.parent.parent
+            cwd=Path(__file__).parent.parent.parent,
         )
 
         if result.returncode != 0:

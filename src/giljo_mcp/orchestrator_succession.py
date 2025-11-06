@@ -19,13 +19,13 @@ Valid succession reasons:
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from .models import MCPAgentJob
+
 
 logger = logging.getLogger(__name__)
 
@@ -137,9 +137,7 @@ class OrchestratorSuccessionManager:
 
         # Avoid division by zero
         if budget == 0:
-            logger.warning(
-                f"Orchestrator {orchestrator.job_id} has zero context budget"
-            )
+            logger.warning(f"Orchestrator {orchestrator.job_id} has zero context budget")
             return False
 
         usage_percentage = used / budget
@@ -178,10 +176,7 @@ class OrchestratorSuccessionManager:
         """
         # Validate reason
         if reason not in self.VALID_REASONS:
-            raise ValueError(
-                f"Invalid succession reason: {reason}. "
-                f"Must be one of: {', '.join(self.VALID_REASONS)}"
-            )
+            raise ValueError(f"Invalid succession reason: {reason}. Must be one of: {', '.join(self.VALID_REASONS)}")
 
         # Verify tenant isolation
         if orchestrator.tenant_key != self.tenant_key:
@@ -338,18 +333,13 @@ class OrchestratorSuccessionManager:
         """
         # Validate reason
         if reason not in self.VALID_REASONS:
-            raise ValueError(
-                f"Invalid succession reason: {reason}. "
-                f"Must be one of: {', '.join(self.VALID_REASONS)}"
-            )
+            raise ValueError(f"Invalid succession reason: {reason}. Must be one of: {', '.join(self.VALID_REASONS)}")
 
         # Update orchestrator job
         orchestrator.status = "complete"
         orchestrator.handover_to = successor.job_id
         orchestrator.handover_summary = handover_summary
-        orchestrator.handover_context_refs = handover_summary.get(
-            "critical_context_refs", []
-        )
+        orchestrator.handover_context_refs = handover_summary.get("critical_context_refs", [])
         orchestrator.succession_reason = reason
         orchestrator.completed_at = datetime.now(timezone.utc)
 
@@ -400,9 +390,7 @@ class OrchestratorSuccessionManager:
             return "0% complete - project starting"
 
         # Look for status messages
-        status_messages = [
-            msg for msg in messages if msg.get("type") in ["status", "progress"]
-        ]
+        status_messages = [msg for msg in messages if msg.get("type") in ["status", "progress"]]
 
         if status_messages:
             # Try to extract percentage from latest status
@@ -425,10 +413,9 @@ class OrchestratorSuccessionManager:
         message_count = len(messages)
         if message_count < 10:
             return "Early phase"
-        elif message_count < 50:
+        if message_count < 50:
             return "In progress"
-        else:
-            return "Advanced phase"
+        return "Advanced phase"
 
     def _extract_active_agents(self, messages: list[dict]) -> list[dict]:
         """
@@ -441,11 +428,7 @@ class OrchestratorSuccessionManager:
             List of active agent dicts
         """
         # Look for agent-related messages
-        agent_messages = [
-            msg
-            for msg in messages
-            if msg.get("type") in ["agent_spawn", "agent_status", "agent_update"]
-        ]
+        agent_messages = [msg for msg in messages if msg.get("type") in ["agent_spawn", "agent_status", "agent_update"]]
 
         # Extract unique agents (simplified - can be enhanced)
         active_agents = []

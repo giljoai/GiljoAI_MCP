@@ -27,7 +27,7 @@ import time
 import webbrowser
 from pathlib import Path
 from tkinter import BooleanVar, Tk, messagebox, ttk
-from typing import Any, Optional, List
+from typing import Any, List, Optional
 
 
 try:
@@ -429,9 +429,7 @@ class GiljoDevControlPanel:
 
         if system == "Windows":
             # Windows: Use CREATE_NEW_CONSOLE flag
-            return subprocess.Popen(
-                command, cwd=work_dir, creationflags=subprocess.CREATE_NEW_CONSOLE
-            )
+            return subprocess.Popen(command, cwd=work_dir, creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         if system == "Linux":
             # Linux: Try terminal emulators in order of preference
@@ -453,9 +451,7 @@ class GiljoDevControlPanel:
                         continue
 
             # No terminal emulator found
-            raise FileNotFoundError(
-                "No suitable terminal emulator found. Install gnome-terminal, konsole, or xterm."
-            )
+            raise FileNotFoundError("No suitable terminal emulator found. Install gnome-terminal, konsole, or xterm.")
 
         if system == "Darwin":
             # macOS: Use osascript with Terminal.app
@@ -505,8 +501,7 @@ class GiljoDevControlPanel:
 
         raise FileNotFoundError(
             "Could not locate the Python interpreter inside the project virtual environment.\n"
-            "Expected one of:\n"
-            + "\n".join(str(path) for path in candidates)
+            "Expected one of:\n" + "\n".join(str(path) for path in candidates)
         )
 
     def _is_port_available(self, port: int) -> bool:
@@ -574,13 +569,7 @@ class GiljoDevControlPanel:
         except (psutil.AccessDenied, AttributeError):
             # Fallback to Windows netstat command
             try:
-                result = subprocess.run(
-                    ["netstat", "-ano"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
+                result = subprocess.run(["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5)
 
                 for line in result.stdout.splitlines():
                     if ":72" in line and "LISTENING" in line:
@@ -644,11 +633,7 @@ class GiljoDevControlPanel:
                     if system == "Windows":
                         # Find PIDs using the port
                         result = subprocess.run(
-                            ["netstat", "-ano"],
-                            check=False,
-                            capture_output=True,
-                            text=True,
-                            timeout=5
+                            ["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5
                         )
 
                         pids_to_kill = set()
@@ -664,10 +649,7 @@ class GiljoDevControlPanel:
                         for pid in pids_to_kill:
                             try:
                                 subprocess.run(
-                                    ["taskkill", "/F", "/PID", pid],
-                                    check=False,
-                                    capture_output=True,
-                                    timeout=5
+                                    ["taskkill", "/F", "/PID", pid], check=False, capture_output=True, timeout=5
                                 )
                                 pids_killed_this_round.add(pid)
                             except Exception:
@@ -677,23 +659,14 @@ class GiljoDevControlPanel:
                         # Use lsof to find and kill processes
                         try:
                             result = subprocess.run(
-                                ["lsof", "-ti", f":{port}"],
-                                check=False,
-                                capture_output=True,
-                                text=True,
-                                timeout=5
+                                ["lsof", "-ti", f":{port}"], check=False, capture_output=True, text=True, timeout=5
                             )
 
                             pids = result.stdout.strip().split()
                             for pid in pids:
                                 if pid:
                                     try:
-                                        subprocess.run(
-                                            ["kill", "-9", pid],
-                                            check=False,
-                                            capture_output=True,
-                                            timeout=5
-                                        )
+                                        subprocess.run(["kill", "-9", pid], check=False, capture_output=True, timeout=5)
                                         pids_killed_this_round.add(pid)
                                     except Exception:
                                         pass
@@ -701,10 +674,7 @@ class GiljoDevControlPanel:
                             # lsof not available, try fuser
                             try:
                                 subprocess.run(
-                                    ["fuser", "-k", f"{port}/tcp"],
-                                    check=False,
-                                    capture_output=True,
-                                    timeout=5
+                                    ["fuser", "-k", f"{port}/tcp"], check=False, capture_output=True, timeout=5
                                 )
                             except FileNotFoundError:
                                 pass
@@ -749,20 +719,19 @@ class GiljoDevControlPanel:
         # Build comprehensive report
         report = f"Backend Port {port}:\n"
         if port_available:
-            report += f"✓ Available (no process)\n"
+            report += "✓ Available (no process)\n"
+        elif pid:
+            report += f"✗ IN USE by PID {pid}\n"
         else:
-            if pid:
-                report += f"✗ IN USE by PID {pid}\n"
-            else:
-                report += f"✗ IN USE (PID unknown - need admin privileges)\n"
+            report += "✗ IN USE (PID unknown - need admin privileges)\n"
 
         # Add scan of all GiljoAI ports
-        report += f"\n--- All GiljoAI Ports (7200-7299) ---\n"
+        report += "\n--- All GiljoAI Ports (7200-7299) ---\n"
         if all_giljo_ports:
             report += f"Found {len(all_giljo_ports)} process(es):\n\n"
             for p, proc_pid in sorted(all_giljo_ports.items()):
                 report += f"Port {p}: PID {proc_pid}\n"
-            report += f"\nUse 'Stop All Services' to kill these processes."
+            report += "\nUse 'Stop All Services' to kill these processes."
         else:
             report += "✓ No processes found on 7200-7299"
 
@@ -785,20 +754,19 @@ class GiljoDevControlPanel:
         # Build comprehensive report
         report = f"Frontend Port {port}:\n"
         if port_available:
-            report += f"✓ Available (no process)\n"
+            report += "✓ Available (no process)\n"
+        elif pid:
+            report += f"✗ IN USE by PID {pid}\n"
         else:
-            if pid:
-                report += f"✗ IN USE by PID {pid}\n"
-            else:
-                report += f"✗ IN USE (PID unknown - need admin privileges)\n"
+            report += "✗ IN USE (PID unknown - need admin privileges)\n"
 
         # Add scan of all GiljoAI ports
-        report += f"\n--- All GiljoAI Ports (7200-7299) ---\n"
+        report += "\n--- All GiljoAI Ports (7200-7299) ---\n"
         if all_giljo_ports:
             report += f"Found {len(all_giljo_ports)} process(es):\n\n"
             for p, proc_pid in sorted(all_giljo_ports.items()):
                 report += f"Port {p}: PID {proc_pid}\n"
-            report += f"\nUse 'Stop All Services' to kill these processes."
+            report += "\nUse 'Stop All Services' to kill these processes."
         else:
             report += "✓ No processes found on 7200-7299"
 
@@ -910,7 +878,7 @@ class GiljoDevControlPanel:
                         "Port In Use",
                         f"Port {frontend_port} is in use by process {existing_pid}.\n\n"
                         "Kill the existing process and start frontend?",
-                        icon="warning"
+                        icon="warning",
                     )
 
                     if response:
@@ -923,7 +891,7 @@ class GiljoDevControlPanel:
                             messagebox.showerror(
                                 "Port Still In Use",
                                 f"Port {frontend_port} is still in use after killing process.\n\n"
-                                "Please manually stop the process before starting frontend."
+                                "Please manually stop the process before starting frontend.",
                             )
                             self.update_status_message("Port 7274 still in use - cannot start frontend")
                             return
@@ -937,7 +905,7 @@ class GiljoDevControlPanel:
                         "Port In Use",
                         f"Port {frontend_port} is already in use.\n\n"
                         "Please stop the existing process using port 7274 before starting the frontend.\n\n"
-                        "You can use 'Stop Frontend' button or manually kill the process."
+                        "You can use 'Stop Frontend' button or manually kill the process.",
                     )
                     self.update_status_message(f"Port {frontend_port} is in use - cannot start frontend")
                     return
@@ -952,17 +920,18 @@ class GiljoDevControlPanel:
             # Build command with strict port enforcement
             npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
             command = [
-                npm_cmd, "run", "dev",
+                npm_cmd,
+                "run",
+                "dev",
                 "--",
-                "--port", str(frontend_port),
-                "--strictPort"  # Fail if port unavailable (no fallback)
+                "--port",
+                str(frontend_port),
+                "--strictPort",  # Fail if port unavailable (no fallback)
             ]
 
             # Launch in terminal window with verbose output
             self.frontend_process = self._launch_in_terminal(
-                command=command,
-                title=f"GiljoAI Frontend Dev Server (Port {frontend_port})",
-                cwd=frontend_dir
+                command=command, title=f"GiljoAI Frontend Dev Server (Port {frontend_port})", cwd=frontend_dir
             )
 
             time.sleep(2)  # Wait for startup
@@ -1075,16 +1044,16 @@ class GiljoDevControlPanel:
                     self.update_status_message(f"WARNING: {len(remaining)} port(s) still in use!")
                     messagebox.showwarning(
                         "Incomplete Shutdown",
-                        f"Some processes could not be killed:\n\n"
-                        + "\n".join(f"Port {p}: PID {pid}" for p, pid in remaining.items()) +
-                        "\n\nThese may be system-protected or auto-restarting."
+                        "Some processes could not be killed:\n\n"
+                        + "\n".join(f"Port {p}: PID {pid}" for p, pid in remaining.items())
+                        + "\n\nThese may be system-protected or auto-restarting.",
                     )
                 else:
                     self.update_status_message("All services stopped (triple-nuclear)")
                     messagebox.showinfo(
                         "Success",
                         f"All services stopped!\n\nKilled {len(giljo_ports)} process(es) on ports:\n"
-                        + ", ".join(map(str, ports_found))
+                        + ", ".join(map(str, ports_found)),
                     )
             else:
                 self.update_status_message("No services running on 72xxx ports")
@@ -1381,7 +1350,7 @@ class GiljoDevControlPanel:
                 f"- {apikey_count} API keys\n"
                 "- giljo_user role\n"
                 "- giljo_owner role\n"
-                "- All projects, agents, tasks, and data"
+                "- All projects, agents, tasks, and data",
             )
             return True
 
@@ -1410,6 +1379,7 @@ class GiljoDevControlPanel:
             apikey_count = 0
 
             import tempfile
+
             audit_sql = """
 -- Audit User/ApiKey counts
 DO $$
@@ -1427,28 +1397,29 @@ BEGIN
 END $$;
 """
 
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".sql", delete=False) as f:
                 f.write(audit_sql)
                 audit_file = f.name
 
             try:
                 env = os.environ.copy()
-                env['PGPASSWORD'] = '4010'
+                env["PGPASSWORD"] = "4010"
 
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
-                    ['psql', '-U', 'postgres', '-h', 'localhost', '-p', '5432', '-d', 'giljo_mcp', '-f', audit_file],
+                    ["psql", "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "giljo_mcp", "-f", audit_file],
                     check=False,
                     capture_output=True,
                     text=True,
                     env=env,
-                    timeout=10
+                    timeout=10,
                 )
 
                 # Parse NOTICE output for counts
-                if audit_result.returncode == 0 and 'Deleting' in audit_result.stderr:
+                if audit_result.returncode == 0 and "Deleting" in audit_result.stderr:
                     import re
-                    match = re.search(r'Deleting (\d+) users and (\d+) API keys', audit_result.stderr)
+
+                    match = re.search(r"Deleting (\d+) users and (\d+) API keys", audit_result.stderr)
                     if match:
                         user_count = int(match.group(1))
                         apikey_count = int(match.group(2))
@@ -1506,10 +1477,11 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
                 result = subprocess.run(
                     ["psql", "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
-                    check=False, capture_output=True,
+                    check=False,
+                    capture_output=True,
                     text=True,
                     env=env,
-                    timeout=30
+                    timeout=30,
                 )
 
                 # Clean up temp file
@@ -1529,7 +1501,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                         f"- {apikey_count} API keys\n"
                         "- giljo_user role\n"
                         "- giljo_owner role\n"
-                        "- All projects, agents, tasks, and data"
+                        "- All projects, agents, tasks, and data",
                     )
                 else:
                     raise Exception(f"psql.exe failed: {result.stderr}")
@@ -1545,7 +1517,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 "Error",
                 "psql.exe not found!\n\n"
                 "PostgreSQL command-line tools not in PATH.\n"
-                "Please install psycopg2: pip install psycopg2"
+                "Please install psycopg2: pip install psycopg2",
             )
         except Exception as e:
             self.update_status_message(f"psql.exe deletion failed: {e}")
@@ -1579,6 +1551,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Format the timestamp
             mod_time = latest_backup.stat().st_mtime
             from datetime import datetime
+
             backup_time = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
 
             self.backup_label.config(text=backup_time)
@@ -1605,6 +1578,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             # Create timestamped backup filename
             from datetime import datetime
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_file = backup_dir / f"giljo_mcp_{timestamp}.dump"
             metadata_file = backup_dir / f"giljo_mcp_{timestamp}.md"
@@ -1619,12 +1593,15 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             command = [
                 "pg_dump",
-                "-h", credentials["host"],
-                "-p", str(credentials["port"]),
-                "-U", credentials["user"],
+                "-h",
+                credentials["host"],
+                "-p",
+                str(credentials["port"]),
+                "-U",
+                credentials["user"],
                 "-Fc",  # Custom format (compressed)
                 "-v",  # Verbose
-                "giljo_mcp"
+                "giljo_mcp",
             ]
 
             self.update_status_message("Running pg_dump (this may take a moment)...")
@@ -1636,7 +1613,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 capture_output=True,
                 text=True,
                 env=env,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             if result.returncode != 0:
@@ -1645,13 +1622,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Write dump output to file
             with open(backup_file, "wb") as f:
                 # Re-run pg_dump to get binary output
-                result = subprocess.run(
-                    command,
-                    check=False,
-                    capture_output=True,
-                    env=env,
-                    timeout=300
-                )
+                result = subprocess.run(command, check=False, capture_output=True, env=env, timeout=300)
                 if result.returncode != 0:
                     raise Exception(f"pg_dump failed: {result.stderr.decode()}")
                 f.write(result.stdout)
@@ -1718,7 +1689,7 @@ pg_restore -l {backup_file.name} | head -20
                 f"Backup File: {backup_file.name}\n"
                 f"Size: {size_mb:.2f} MB\n"
                 f"Location: docs/archive/database_backups/\n\n"
-                f"Metadata file created: {metadata_file.name}"
+                f"Metadata file created: {metadata_file.name}",
             )
 
         except FileNotFoundError as e:
@@ -1728,7 +1699,7 @@ pg_restore -l {backup_file.name} | head -20
                 "pg_dump not found!\n\n"
                 "PostgreSQL command-line tools must be in PATH.\n"
                 "Make sure PostgreSQL is properly installed.\n\n"
-                f"Details: {e}"
+                f"Details: {e}",
             )
 
         except subprocess.TimeoutExpired:
@@ -1737,7 +1708,7 @@ pg_restore -l {backup_file.name} | head -20
                 "Error",
                 "Backup timeout!\n\n"
                 "The database backup took too long (> 5 minutes).\n"
-                "This may indicate a very large database or system issues."
+                "This may indicate a very large database or system issues.",
             )
 
         except Exception as e:
@@ -1749,7 +1720,7 @@ pg_restore -l {backup_file.name} | head -20
                 "1. PostgreSQL is running\n"
                 "2. giljo_mcp database exists\n"
                 "3. You have permission to read the database\n"
-                "4. pg_dump is in your PATH"
+                "4. pg_dump is in your PATH",
             )
 
     def verify_fresh_state(self) -> dict[str, bool]:
@@ -1788,7 +1759,7 @@ pg_restore -l {backup_file.name} | head -20
                     database="postgres",
                     user=credentials["user"],
                     password=credentials["password"],
-                    connect_timeout=5
+                    connect_timeout=5,
                 )
 
                 with conn.cursor() as cur:
@@ -1901,8 +1872,7 @@ pg_restore -l {backup_file.name} | head -20
         # Reset admin user in database
         if psycopg2 is None:
             messagebox.showerror(
-                "Missing Dependency",
-                "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
+                "Missing Dependency", "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
             )
             return
 
@@ -1924,11 +1894,14 @@ pg_restore -l {backup_file.name} | head -20
                 # This is the bcrypt hash for 'admin' - same hash used in install.py
                 admin_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5oPfL0fJLKZ9S"
 
-                cur.execute("""
+                cur.execute(
+                    """
                     UPDATE users
                     SET password_hash = %s
                     WHERE username = 'admin'
-                """, (admin_hash,))
+                """,
+                    (admin_hash,),
+                )
 
                 # Step 2: Reset setup_state to default_password_active=True
                 self.update_status_message("Setting default_password_active = True...")
@@ -1950,7 +1923,7 @@ pg_restore -l {backup_file.name} | head -20
                 "2. Login with admin/admin\n"
                 "3. Change password (forced)\n"
                 "4. Complete setup wizard\n\n"
-                "No reinstallation needed!"
+                "No reinstallation needed!",
             )
 
         except Exception as e:
@@ -1961,7 +1934,7 @@ pg_restore -l {backup_file.name} | head -20
                 "Make sure:\n"
                 "1. PostgreSQL is running\n"
                 "2. giljo_mcp database exists\n"
-                "3. Backend services are stopped"
+                "3. Backend services are stopped",
             )
 
     def reset_to_pristine(self):
@@ -2000,7 +1973,7 @@ pg_restore -l {backup_file.name} | head -20
             "- All npm dependencies (frontend/node_modules/)\n\n"
             "⚠ This action CANNOT be undone!\n\n"
             "Continue?",
-            icon="warning"
+            icon="warning",
         )
 
         if not confirm:
@@ -2035,6 +2008,7 @@ pg_restore -l {backup_file.name} | head -20
                                     errors.append(f"{desc}: Failed to delete")
                             else:
                                 import shutil
+
                                 shutil.rmtree(target)
                                 deleted.append(desc)
                         else:
@@ -2070,6 +2044,7 @@ pg_restore -l {backup_file.name} | head -20
             logs_dir = self.project_root / "logs"
             if logs_dir.exists():
                 import shutil
+
                 shutil.rmtree(logs_dir, ignore_errors=True)
                 deleted.append("Logs directory")
 
@@ -2083,6 +2058,7 @@ pg_restore -l {backup_file.name} | head -20
             data_dir = self.project_root / "data"
             if data_dir.exists():
                 import shutil
+
                 shutil.rmtree(data_dir, ignore_errors=True)
                 deleted.append("Data directory")
 
@@ -2096,6 +2072,7 @@ pg_restore -l {backup_file.name} | head -20
             sessions_dir = self.project_root / "docs" / "sessions"
             if sessions_dir.exists():
                 import shutil
+
                 shutil.rmtree(sessions_dir, ignore_errors=True)
                 deleted.append("Session memories")
 
@@ -2114,6 +2091,7 @@ pg_restore -l {backup_file.name} | head -20
             for target, desc in frontend_targets:
                 if target.exists():
                     import shutil
+
                     shutil.rmtree(target, ignore_errors=True)
                     deleted.append(desc)
 
@@ -2130,28 +2108,28 @@ pg_restore -l {backup_file.name} | head -20
             messagebox.showwarning(
                 "Pristine Reset Partial Success",
                 f"Pristine reset completed with errors:\n\n"
-                f"Deleted ({len(deleted)} items):\n" + "\n".join(f"✓ {d}" for d in deleted[:5]) +
-                (f"\n  ... and {len(deleted) - 5} more" if len(deleted) > 5 else "") +
-                f"\n\nErrors ({len(errors)}):\n{error_msg[:200]}" +
-                ("..." if len(error_msg) > 200 else "") +
-                "\n\nYou may need to manually delete remaining items."
+                f"Deleted ({len(deleted)} items):\n"
+                + "\n".join(f"✓ {d}" for d in deleted[:5])
+                + (f"\n  ... and {len(deleted) - 5} more" if len(deleted) > 5 else "")
+                + f"\n\nErrors ({len(errors)}):\n{error_msg[:200]}"
+                + ("..." if len(error_msg) > 200 else "")
+                + "\n\nYou may need to manually delete remaining items.",
             )
         else:
             messagebox.showinfo(
                 "Pristine Reset Complete",
                 f"System reset to pristine state!\n\n"
-                f"Deleted {len(deleted)} components:\n" +
-                "\n".join(f"✓ {d}" for d in deleted[:8]) +
-                (f"\n  ... and {len(deleted) - 8} more" if len(deleted) > 8 else "") +
-                "\n\nYou can now run install.bat to set up from scratch.\n\n"
-                "This simulates a fresh GitHub download."
+                f"Deleted {len(deleted)} components:\n"
+                + "\n".join(f"✓ {d}" for d in deleted[:8])
+                + (f"\n  ... and {len(deleted) - 8} more" if len(deleted) > 8 else "")
+                + "\n\nYou can now run install.bat to set up from scratch.\n\n"
+                "This simulates a fresh GitHub download.",
             )
 
         # Display fresh state verification
         self.display_fresh_state_report()
 
         self.update_status_message("Pristine reset complete")
-
 
     def _aggressive_delete_venv(self, venv_path: Path) -> bool:
         """
@@ -2176,9 +2154,7 @@ pg_restore -l {backup_file.name} | head -20
             try:
                 self.update_status_message("Deleting venv (using Windows rmdir)...")
                 result = subprocess.run(
-                    ["cmd", "/c", "rmdir", "/s", "/q", str(venv_path)],
-                    check=False, capture_output=True,
-                    timeout=30
+                    ["cmd", "/c", "rmdir", "/s", "/q", str(venv_path)], check=False, capture_output=True, timeout=30
                 )
                 if result.returncode == 0:
                     return True
@@ -2216,9 +2192,7 @@ pg_restore -l {backup_file.name} | head -20
 
                 # Try Windows rmdir on renamed directory
                 result = subprocess.run(
-                    ["cmd", "/c", "rmdir", "/s", "/q", str(temp_name)],
-                    check=False, capture_output=True,
-                    timeout=30
+                    ["cmd", "/c", "rmdir", "/s", "/q", str(temp_name)], check=False, capture_output=True, timeout=30
                 )
                 if result.returncode == 0:
                     return True

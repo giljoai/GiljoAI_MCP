@@ -5,11 +5,11 @@ Tests the automatic authentication of localhost clients (127.0.0.1, ::1)
 versus requiring authentication for network clients.
 """
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
-from src.giljo_mcp.auth.auto_login import AutoLoginMiddleware, LOCALHOST_IPS
+from src.giljo_mcp.auth.auto_login import LOCALHOST_IPS, AutoLoginMiddleware
 
 
 @pytest.mark.asyncio

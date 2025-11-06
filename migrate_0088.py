@@ -20,6 +20,7 @@ import os
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -27,11 +28,9 @@ sys.path.insert(0, str(project_root))
 import asyncpg
 from dotenv import load_dotenv
 
+
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -42,11 +41,11 @@ async def run_migration():
     load_dotenv()
 
     # Get database connection details
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'giljo_mcp')
-    db_user = os.getenv('DB_USER', 'postgres')
-    db_password = os.getenv('DB_PASSWORD')
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "giljo_mcp")
+    db_user = os.getenv("DB_USER", "postgres")
+    db_password = os.getenv("DB_PASSWORD")
 
     if not db_password:
         logger.error("❌ DB_PASSWORD not set in environment or .env file")
@@ -61,11 +60,7 @@ async def run_migration():
         # Connect to database
         logger.info(f"📡 Connecting to PostgreSQL at {db_host}:{db_port}/{db_name}...")
         conn = await asyncpg.connect(
-            host=db_host,
-            port=int(db_port),
-            database=db_name,
-            user=db_user,
-            password=db_password
+            host=db_host, port=int(db_port), database=db_name, user=db_user, password=db_password
         )
         logger.info("✅ Connected successfully")
         logger.info("")
@@ -233,7 +228,7 @@ def main():
         sys.exit(1)
 
     # Check if .env exists
-    env_file = Path(__file__).parent / '.env'
+    env_file = Path(__file__).parent / ".env"
     if not env_file.exists():
         logger.warning("⚠️  .env file not found")
         logger.warning("   Migration will use default values")
@@ -252,5 +247,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

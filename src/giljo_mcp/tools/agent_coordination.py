@@ -14,11 +14,12 @@ Production-grade features:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ..agent_communication_queue import AgentCommunicationQueue
 from ..agent_job_manager import AgentJobManager
 from ..database import DatabaseManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +188,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # HANDOVER 0045 Phase 3: SYNC linked Agent record
             try:
                 from sqlalchemy import select
+
                 from ..models import Agent
 
                 with db_manager.get_session() as session:
@@ -203,7 +205,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 logger.warning(f"[acknowledge_job] Failed to sync Agent record: {e}")
                 # Non-critical - continue without sync
 
-            logger.info(f"[acknowledge_job] Job {job_id} acknowledged by {agent_id} " f"for tenant {tenant_key}")
+            logger.info(f"[acknowledge_job] Job {job_id} acknowledged by {agent_id} for tenant {tenant_key}")
 
             return {
                 "status": "success",
@@ -525,6 +527,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # HANDOVER 0045 Phase 3: SYNC linked Agent record
             try:
                 from sqlalchemy import select
+
                 from ..models import Agent
 
                 with db_manager.get_session() as session:
@@ -675,6 +678,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # HANDOVER 0045 Phase 3: SYNC linked Agent record
             try:
                 from sqlalchemy import select
+
                 from ..models import Agent
 
                 with db_manager.get_session() as session:
@@ -706,8 +710,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 )
 
             logger.error(
-                f"[report_error] Job {job_id} failed with {error_type} "
-                f"for tenant {tenant_key}: {error_message[:100]}"
+                f"[report_error] Job {job_id} failed with {error_type} for tenant {tenant_key}: {error_message[:100]}"
             )
 
             # Generate recovery instructions based on error type
@@ -829,8 +832,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                     return result
 
             logger.info(
-                f"[send_message] Message sent to {to_agent} for job {job_id}, "
-                f"tenant={tenant_key}, priority={priority}"
+                f"[send_message] Message sent to {to_agent} for job {job_id}, tenant={tenant_key}, priority={priority}"
             )
 
             return {

@@ -18,7 +18,6 @@ from src.giljo_mcp.database import DatabaseManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 class TestAPIComprehensive:
     """Comprehensive test suite for all API endpoints"""
 

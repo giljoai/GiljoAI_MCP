@@ -8,15 +8,17 @@ Tests follow TDD methodology - these tests define expected behavior.
 """
 
 import asyncio
-import pytest
-from httpx import AsyncClient, ASGITransport
-import yaml
 from pathlib import Path
+
+import pytest
+import yaml
+from httpx import ASGITransport, AsyncClient
 
 
 def get_test_client():
     """Create an AsyncClient for testing the API."""
     from api.app import app
+
     transport = ASGITransport(app=app)
     return AsyncClient(transport=transport, base_url="http://test")
 
@@ -120,7 +122,7 @@ async def test_config_endpoint_matches_config_yaml_structure():
     config_path = Path.cwd() / "config.yaml"
 
     if config_path.exists():
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             file_config = yaml.safe_load(f)
 
         async with get_test_client() as client:
@@ -202,6 +204,7 @@ async def test_config_endpoint_concurrent_requests():
 
     The endpoint should handle concurrent requests without deadlocks.
     """
+
     async def make_request(client):
         return await client.get("/api/v1/config", timeout=5.0, follow_redirects=True)
 
@@ -255,5 +258,6 @@ async def test_config_endpoint_returns_valid_json():
 
         # All values should be proper JSON types, not stringified
         for key, value in config.items():
-            assert not isinstance(value, str) or not value.startswith("{"), \
+            assert not isinstance(value, str) or not value.startswith("{"), (
                 f"Section {key} appears to be stringified JSON: {value[:50]}"
+            )

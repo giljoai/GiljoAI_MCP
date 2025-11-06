@@ -11,24 +11,21 @@ Tests validate the findings from system-architect analysis:
 This test suite provides evidence for Handover 0012 Phase 2 validation.
 """
 
-import json
-import pytest
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any
 
-from src.giljo_mcp.tools.claude_code_integration import (
-    get_claude_code_agent_type,
-    generate_agent_spawn_instructions,
-    generate_orchestrator_prompt,
-    CLAUDE_CODE_AGENT_TYPES,
-)
+import pytest
+from sqlalchemy import select
+
+from src.giljo_mcp.models import Agent, AgentInteraction
 from src.giljo_mcp.tools.agent import (
     _ensure_agent,
-    _decommission_agent,
 )
-from src.giljo_mcp.models import Agent, AgentInteraction, Project
-from sqlalchemy import select
+from src.giljo_mcp.tools.claude_code_integration import (
+    CLAUDE_CODE_AGENT_TYPES,
+    generate_agent_spawn_instructions,
+    generate_orchestrator_prompt,
+    get_claude_code_agent_type,
+)
 
 
 class TestPromptGeneration:
@@ -87,16 +84,13 @@ class TestPromptGeneration:
             "ux-designer",
             "network-security-engineer",
             "documentation-manager",
-            "general-purpose"
+            "general-purpose",
         }
         assert expected_types.issubset(unique_types)
 
     def test_generate_agent_spawn_instructions_project_not_found(self):
         """Test error handling when project doesn't exist"""
-        result = generate_agent_spawn_instructions(
-            project_id="nonexistent-project",
-            tenant_key="nonexistent-tenant"
-        )
+        result = generate_agent_spawn_instructions(project_id="nonexistent-project", tenant_key="nonexistent-tenant")
 
         assert "error" in result
         assert "not found" in result["error"].lower()
@@ -127,10 +121,7 @@ class TestPromptGeneration:
         await db_session.commit()
 
         # Generate instructions (synchronous function)
-        result = generate_agent_spawn_instructions(
-            project_id=str(test_project.id),
-            tenant_key=test_project.tenant_key
-        )
+        result = generate_agent_spawn_instructions(project_id=str(test_project.id), tenant_key=test_project.tenant_key)
 
         # Validate structure
         assert result["project_id"] == str(test_project.id)
@@ -150,10 +141,7 @@ class TestPromptGeneration:
     @pytest.mark.asyncio
     async def test_generate_agent_spawn_instructions_no_agents(self, db_session, test_project):
         """Test generation with no active agents"""
-        result = generate_agent_spawn_instructions(
-            project_id=str(test_project.id),
-            tenant_key=test_project.tenant_key
-        )
+        result = generate_agent_spawn_instructions(project_id=str(test_project.id), tenant_key=test_project.tenant_key)
 
         assert result["total_agents"] == 0
         assert result["agents"] == []
@@ -176,10 +164,7 @@ class TestPromptGeneration:
         await db_session.commit()
 
         # Generate prompt
-        prompt = generate_orchestrator_prompt(
-            project_id=str(test_project.id),
-            tenant_key=test_project.tenant_key
-        )
+        prompt = generate_orchestrator_prompt(project_id=str(test_project.id), tenant_key=test_project.tenant_key)
 
         # Validate prompt structure (for manual use)
         assert isinstance(prompt, str)
@@ -214,15 +199,12 @@ class TestPromptGeneration:
             role="database",
             status="active",
             mission="Test mission",
-            meta_data={"context_budget": 75000}
+            meta_data={"context_budget": 75000},
         )
         db_session.add(agent)
         await db_session.commit()
 
-        prompt = generate_orchestrator_prompt(
-            project_id=str(test_project.id),
-            tenant_key=test_project.tenant_key
-        )
+        prompt = generate_orchestrator_prompt(project_id=str(test_project.id), tenant_key=test_project.tenant_key)
 
         assert "75000" in prompt
         assert "Context Budget" in prompt
@@ -241,10 +223,7 @@ class TestPromptGeneration:
         db_session.add(agent)
         await db_session.commit()
 
-        prompt = generate_orchestrator_prompt(
-            project_id=str(test_project.id),
-            tenant_key=test_project.tenant_key
-        )
+        prompt = generate_orchestrator_prompt(project_id=str(test_project.id), tenant_key=test_project.tenant_key)
 
         assert "50000" in prompt  # Default budget
 
@@ -261,46 +240,43 @@ class TestAgentTrackingInfrastructure:
         from src.giljo_mcp.models import AgentInteraction
 
         # Check model has required fields
-        assert hasattr(AgentInteraction, 'id')
-        assert hasattr(AgentInteraction, 'tenant_key')
-        assert hasattr(AgentInteraction, 'project_id')
-        assert hasattr(AgentInteraction, 'parent_agent_id')
-        assert hasattr(AgentInteraction, 'sub_agent_name')
-        assert hasattr(AgentInteraction, 'interaction_type')
-        assert hasattr(AgentInteraction, 'mission')
-        assert hasattr(AgentInteraction, 'start_time')
-        assert hasattr(AgentInteraction, 'end_time')
-        assert hasattr(AgentInteraction, 'duration_seconds')
-        assert hasattr(AgentInteraction, 'tokens_used')
-        assert hasattr(AgentInteraction, 'result')
-        assert hasattr(AgentInteraction, 'error_message')
+        assert hasattr(AgentInteraction, "id")
+        assert hasattr(AgentInteraction, "tenant_key")
+        assert hasattr(AgentInteraction, "project_id")
+        assert hasattr(AgentInteraction, "parent_agent_id")
+        assert hasattr(AgentInteraction, "sub_agent_name")
+        assert hasattr(AgentInteraction, "interaction_type")
+        assert hasattr(AgentInteraction, "mission")
+        assert hasattr(AgentInteraction, "start_time")
+        assert hasattr(AgentInteraction, "end_time")
+        assert hasattr(AgentInteraction, "duration_seconds")
+        assert hasattr(AgentInteraction, "tokens_used")
+        assert hasattr(AgentInteraction, "result")
+        assert hasattr(AgentInteraction, "error_message")
 
     @pytest.mark.asyncio
     async def test_spawn_and_log_sub_agent_creates_interaction(self, db_session, test_project):
         """Test spawn_and_log_sub_agent creates AgentInteraction record"""
         # VALIDATION: Manual tracking workflow works
 
-        from src.giljo_mcp.tools.agent import _ensure_agent
-
         # Create parent agent
         parent_result = await _ensure_agent(
-            project_id=str(test_project.id),
-            agent_name="orchestrator",
-            mission="Coordinate project",
-            session=db_session
+            project_id=str(test_project.id), agent_name="orchestrator", mission="Coordinate project", session=db_session
         )
         assert parent_result["success"]
         parent_agent_id = parent_result["agent_id"]
 
         # Import the spawn function
         from src.giljo_mcp.database import DatabaseManager
+
         db_manager = DatabaseManager()
 
         # Use MCP tool to log sub-agent spawn
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.agent import register_agent_tools
             from fastmcp import FastMCP
+
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.agent import register_agent_tools
 
             mcp = FastMCP("test-server")
             tenant_manager = TenantManager()
@@ -321,7 +297,7 @@ class TestAgentTrackingInfrastructure:
                 parent_agent_name="orchestrator",
                 sub_agent_name="database-expert",
                 mission="Design schema",
-                meta_data={"test": "data"}
+                meta_data={"test": "data"},
             )
 
             assert result["success"]
@@ -330,9 +306,7 @@ class TestAgentTrackingInfrastructure:
             assert "interaction_id" in result
 
             # Verify interaction record was created
-            interaction_query = select(AgentInteraction).where(
-                AgentInteraction.id == result["interaction_id"]
-            )
+            interaction_query = select(AgentInteraction).where(AgentInteraction.id == result["interaction_id"])
             interaction_result = await session.execute(interaction_query)
             interaction = interaction_result.scalar_one_or_none()
 
@@ -350,12 +324,14 @@ class TestAgentTrackingInfrastructure:
         # VALIDATION: Completion tracking works
 
         from src.giljo_mcp.database import DatabaseManager
+
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.agent import register_agent_tools
             from fastmcp import FastMCP
+
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.agent import register_agent_tools
 
             mcp = FastMCP("test-server")
             tenant_manager = TenantManager()
@@ -367,7 +343,7 @@ class TestAgentTrackingInfrastructure:
                 project_id=str(test_project.id),
                 parent_agent_name="orchestrator",
                 sub_agent_name="tester",
-                mission="Run integration tests"
+                mission="Run integration tests",
             )
 
             interaction_id = spawn_result["interaction_id"]
@@ -375,9 +351,7 @@ class TestAgentTrackingInfrastructure:
             # Now complete it
             complete_tool = mcp._tools["log_sub_agent_completion"]
             complete_result = await complete_tool(
-                interaction_id=interaction_id,
-                result="All tests passed",
-                tokens_used=15000
+                interaction_id=interaction_id, result="All tests passed", tokens_used=15000
             )
 
             assert complete_result["success"]
@@ -385,9 +359,7 @@ class TestAgentTrackingInfrastructure:
             assert complete_result["tokens_used"] == 15000
 
             # Verify interaction was updated
-            interaction_query = select(AgentInteraction).where(
-                AgentInteraction.id == interaction_id
-            )
+            interaction_query = select(AgentInteraction).where(AgentInteraction.id == interaction_id)
             interaction_result = await session.execute(interaction_query)
             interaction = interaction_result.scalar_one_or_none()
 
@@ -401,12 +373,14 @@ class TestAgentTrackingInfrastructure:
     async def test_log_sub_agent_error(self, db_session, test_project):
         """Test logging sub-agent errors"""
         from src.giljo_mcp.database import DatabaseManager
+
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.agent import register_agent_tools
             from fastmcp import FastMCP
+
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.agent import register_agent_tools
 
             mcp = FastMCP("test-server")
             tenant_manager = TenantManager()
@@ -417,25 +391,21 @@ class TestAgentTrackingInfrastructure:
                 project_id=str(test_project.id),
                 parent_agent_name="orchestrator",
                 sub_agent_name="buggy-agent",
-                mission="Fail spectacularly"
+                mission="Fail spectacularly",
             )
 
             interaction_id = spawn_result["interaction_id"]
 
             # Log error
             error_result = await mcp._tools["log_sub_agent_completion"](
-                interaction_id=interaction_id,
-                error_message="Database connection failed",
-                tokens_used=5000
+                interaction_id=interaction_id, error_message="Database connection failed", tokens_used=5000
             )
 
             assert error_result["success"]
             assert error_result["status"] == "error"
 
             # Verify error was logged
-            interaction_query = select(AgentInteraction).where(
-                AgentInteraction.id == interaction_id
-            )
+            interaction_query = select(AgentInteraction).where(AgentInteraction.id == interaction_id)
             interaction_result = await session.execute(interaction_query)
             interaction = interaction_result.scalar_one_or_none()
 
@@ -453,6 +423,7 @@ class TestAutomationGapValidation:
 
         try:
             from src.giljo_mcp.tools.claude_code_integration import TaskTool
+
             pytest.fail("TaskTool class should NOT exist - automation gap not confirmed")
         except ImportError:
             pass  # Expected - class doesn't exist
@@ -465,6 +436,7 @@ class TestAutomationGapValidation:
 
         try:
             from src.giljo_mcp.tools.claude_code_integration import ClaudeCodeClient
+
             pytest.fail("ClaudeCodeClient should NOT exist - automation gap not confirmed")
         except ImportError:
             pass  # Expected - class doesn't exist
@@ -477,6 +449,7 @@ class TestAutomationGapValidation:
 
         try:
             from src.giljo_mcp.tools.claude_code_integration import spawn_claude_code_agent
+
             pytest.fail("spawn_claude_code_agent should NOT exist - automation gap not confirmed")
         except ImportError:
             pass  # Expected - function doesn't exist
@@ -487,7 +460,9 @@ class TestAutomationGapValidation:
         """NEGATIVE TEST: Verify no subprocess spawning in claude_code_integration.py"""
         # VALIDATION: No process management for Claude Code
 
-        integration_file = Path(__file__).parent.parent.parent / "src" / "giljo_mcp" / "tools" / "claude_code_integration.py"
+        integration_file = (
+            Path(__file__).parent.parent.parent / "src" / "giljo_mcp" / "tools" / "claude_code_integration.py"
+        )
         content = integration_file.read_text()
 
         # Verify no subprocess imports or calls
@@ -520,10 +495,7 @@ class TestAutomationGapValidation:
         """POSITIVE TEST: Confirm system supports MANUAL workflow only"""
         # VALIDATION: Manual workflow infrastructure exists, automation doesn't
 
-        from src.giljo_mcp.tools.claude_code_integration import (
-            generate_orchestrator_prompt,
-            get_claude_code_agent_type
-        )
+        from src.giljo_mcp.tools.claude_code_integration import generate_orchestrator_prompt, get_claude_code_agent_type
 
         # These functions exist (manual workflow)
         assert callable(generate_orchestrator_prompt)
@@ -553,10 +525,7 @@ class TestManualWorkflowDocumentation:
         db_session.add(agent)
         await db_session.commit()
 
-        prompt = generate_orchestrator_prompt(
-            project_id=str(test_project.id),
-            tenant_key=test_project.tenant_key
-        )
+        prompt = generate_orchestrator_prompt(project_id=str(test_project.id), tenant_key=test_project.tenant_key)
 
         # Verify prompt contains instructions for MANUAL workflow
         assert "Read full agent details from MCP" in prompt
@@ -577,7 +546,7 @@ class TestManualWorkflowDocumentation:
         from src.giljo_mcp.tools import agent
 
         # These functions exist but have no automatic trigger
-        assert hasattr(agent, 'register_agent_tools')
+        assert hasattr(agent, "register_agent_tools")
 
         # No scheduler, no event loop, no automatic invocation
         source = Path(__file__).parent.parent.parent / "src" / "giljo_mcp" / "tools" / "agent.py"
@@ -598,12 +567,14 @@ class TestContextBudgetTracking:
         # VALIDATION: Manual tracking works correctly
 
         from src.giljo_mcp.database import DatabaseManager
+
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.agent import register_agent_tools
             from fastmcp import FastMCP
+
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.agent import register_agent_tools
 
             mcp = FastMCP("test-server")
             tenant_manager = TenantManager()
@@ -616,7 +587,7 @@ class TestContextBudgetTracking:
                 name="orchestrator",
                 role="orchestrator",
                 status="active",
-                context_used=0
+                context_used=0,
             )
             session.add(parent)
             await session.commit()
@@ -627,7 +598,7 @@ class TestContextBudgetTracking:
                 project_id=str(test_project.id),
                 parent_agent_name="orchestrator",
                 sub_agent_name="worker",
-                mission="Do work"
+                mission="Do work",
             )
 
             # Get parent agent's initial context
@@ -636,9 +607,7 @@ class TestContextBudgetTracking:
 
             # Complete with token usage
             await mcp._tools["log_sub_agent_completion"](
-                interaction_id=spawn_result["interaction_id"],
-                tokens_used=20000,
-                result="Work completed"
+                interaction_id=spawn_result["interaction_id"], tokens_used=20000, result="Work completed"
             )
 
             # Verify parent agent context was updated
@@ -649,12 +618,14 @@ class TestContextBudgetTracking:
     async def test_project_context_budget_updated(self, db_session, test_project):
         """Test that project-level context budget is updated"""
         from src.giljo_mcp.database import DatabaseManager
+
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.agent import register_agent_tools
             from fastmcp import FastMCP
+
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.agent import register_agent_tools
 
             mcp = FastMCP("test-server")
             tenant_manager = TenantManager()
@@ -666,7 +637,7 @@ class TestContextBudgetTracking:
                 tenant_key=test_project.tenant_key,
                 name="orchestrator",
                 role="orchestrator",
-                status="active"
+                status="active",
             )
             session.add(parent)
             await session.commit()
@@ -678,13 +649,11 @@ class TestContextBudgetTracking:
                 project_id=str(test_project.id),
                 parent_agent_name="orchestrator",
                 sub_agent_name="worker",
-                mission="Do work"
+                mission="Do work",
             )
 
             await mcp._tools["log_sub_agent_completion"](
-                interaction_id=spawn_result["interaction_id"],
-                tokens_used=15000,
-                result="Done"
+                interaction_id=spawn_result["interaction_id"], tokens_used=15000, result="Done"
             )
 
             # Refresh project and verify context updated

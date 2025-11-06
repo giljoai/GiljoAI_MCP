@@ -2,16 +2,15 @@
 Unit tests for slash command handlers (Handover 0080a)
 Tests the /gil_handover slash command functionality
 """
+
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import Mock, AsyncMock, patch
 from sqlalchemy import select
 
 from src.giljo_mcp.models import MCPAgentJob, Project
 from src.giljo_mcp.slash_commands.handover import (
-    handle_gil_handover,
-    _get_active_orchestrator,
     _generate_launch_prompt,
+    _get_active_orchestrator,
+    handle_gil_handover,
 )
 
 
@@ -53,9 +52,7 @@ class TestHandleGilHandover:
     """Tests for handle_gil_handover slash command handler"""
 
     @pytest.mark.asyncio
-    async def test_creates_successor_orchestrator(
-        self, db_session, test_tenant, mock_orchestrator
-    ):
+    async def test_creates_successor_orchestrator(self, db_session, test_tenant, mock_orchestrator):
         """Test /gil_handover creates successor orchestrator"""
         result = await handle_gil_handover(
             db_session=db_session,
@@ -70,9 +67,7 @@ class TestHandleGilHandover:
         assert "Instance 2" in result["message"]
 
         # Verify successor was created
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id == result["successor_id"]
-        )
+        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == result["successor_id"])
         successor_result = db_session.execute(stmt)
         successor = successor_result.scalar_one()
 
@@ -107,9 +102,7 @@ class TestHandleGilHandover:
         assert "not an orchestrator" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_rejects_already_handed_over(
-        self, db_session, test_tenant, mock_orchestrator
-    ):
+    async def test_rejects_already_handed_over(self, db_session, test_tenant, mock_orchestrator):
         """Test /gil_handover rejects orchestrator that already handed over"""
         # Mark orchestrator as handed over
         mock_orchestrator.status = "complete"
@@ -127,9 +120,7 @@ class TestHandleGilHandover:
         assert "already been handed over" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_generates_launch_prompt(
-        self, db_session, test_tenant, mock_orchestrator
-    ):
+    async def test_generates_launch_prompt(self, db_session, test_tenant, mock_orchestrator):
         """Test launch prompt generation"""
         result = await handle_gil_handover(
             db_session=db_session,
@@ -188,13 +179,9 @@ class TestGetActiveOrchestrator:
     """Tests for _get_active_orchestrator helper"""
 
     @pytest.mark.asyncio
-    async def test_finds_active_orchestrator(
-        self, db_session, test_tenant, mock_orchestrator
-    ):
+    async def test_finds_active_orchestrator(self, db_session, test_tenant, mock_orchestrator):
         """Test finding active orchestrator by project"""
-        orchestrator = await _get_active_orchestrator(
-            db_session, test_tenant.tenant_key, mock_orchestrator.project_id
-        )
+        orchestrator = await _get_active_orchestrator(db_session, test_tenant.tenant_key, mock_orchestrator.project_id)
 
         assert orchestrator is not None
         assert orchestrator.job_id == mock_orchestrator.job_id
@@ -202,9 +189,7 @@ class TestGetActiveOrchestrator:
     @pytest.mark.asyncio
     async def test_returns_none_when_not_found(self, db_session, test_tenant):
         """Test returns None when no active orchestrator"""
-        orchestrator = await _get_active_orchestrator(
-            db_session, test_tenant.tenant_key, "nonexistent-project-id"
-        )
+        orchestrator = await _get_active_orchestrator(db_session, test_tenant.tenant_key, "nonexistent-project-id")
 
         assert orchestrator is None
 

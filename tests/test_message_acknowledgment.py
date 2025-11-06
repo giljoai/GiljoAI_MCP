@@ -20,7 +20,6 @@ from src.giljo_mcp.models import Agent, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-
 async def test_message_acknowledgment():
     """Test the message acknowledgment system"""
 

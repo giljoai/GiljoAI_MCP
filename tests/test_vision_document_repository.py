@@ -5,13 +5,12 @@ Test-driven development: These tests define expected behavior BEFORE implementat
 Tests should initially FAIL until implementation is complete.
 """
 
-import pytest
-from datetime import datetime, timezone
-from pathlib import Path
 import hashlib
-from sqlalchemy.orm import Session
+from pathlib import Path
 
-from src.giljo_mcp.models import VisionDocument, Product
+import pytest
+
+from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
 
@@ -28,7 +27,7 @@ def test_product(db_session, test_tenant_key):
         id="test_product_001",
         tenant_key=test_tenant_key,
         name="Test Product",
-        description="Product for vision document testing"
+        description="Product for vision document testing",
     )
     db_session.add(product)
     db_session.commit()
@@ -56,7 +55,9 @@ Microservices-based architecture with FastAPI backend and Vue.js frontend.
 class TestVisionDocumentRepositoryCreation:
     """Test vision document creation operations"""
 
-    def test_create_inline_vision_document(self, db_session, vision_repo, test_tenant_key, test_product, sample_vision_content):
+    def test_create_inline_vision_document(
+        self, db_session, vision_repo, test_tenant_key, test_product, sample_vision_content
+    ):
         """Test creating vision document with inline content"""
         doc = vision_repo.create(
             session=db_session,
@@ -65,7 +66,7 @@ class TestVisionDocumentRepositoryCreation:
             document_name="Product Vision",
             content=sample_vision_content,
             document_type="vision",
-            storage_type="inline"
+            storage_type="inline",
         )
 
         assert doc is not None
@@ -81,7 +82,9 @@ class TestVisionDocumentRepositoryCreation:
         assert doc.chunked is False
         assert doc.chunk_count == 0
 
-    def test_create_file_based_vision_document(self, db_session, vision_repo, test_tenant_key, test_product, sample_vision_content, tmp_path):
+    def test_create_file_based_vision_document(
+        self, db_session, vision_repo, test_tenant_key, test_product, sample_vision_content, tmp_path
+    ):
         """Test creating vision document with file path"""
         # Create test file
         vision_file = tmp_path / "vision.md"
@@ -95,7 +98,7 @@ class TestVisionDocumentRepositoryCreation:
             content=sample_vision_content,
             document_type="architecture",
             storage_type="file",
-            file_path=str(vision_file)
+            file_path=str(vision_file),
         )
 
         assert doc is not None
@@ -104,7 +107,9 @@ class TestVisionDocumentRepositoryCreation:
         assert doc.storage_type == "file"
         assert doc.document_type == "architecture"
 
-    def test_create_sets_content_hash(self, db_session, vision_repo, test_tenant_key, test_product, sample_vision_content):
+    def test_create_sets_content_hash(
+        self, db_session, vision_repo, test_tenant_key, test_product, sample_vision_content
+    ):
         """Test that content hash is automatically set on creation"""
         doc = vision_repo.create(
             session=db_session,
@@ -112,10 +117,10 @@ class TestVisionDocumentRepositoryCreation:
             product_id=test_product.id,
             document_name="Test Doc",
             content=sample_vision_content,
-            storage_type="inline"
+            storage_type="inline",
         )
 
-        expected_hash = hashlib.sha256(sample_vision_content.encode('utf-8')).hexdigest()
+        expected_hash = hashlib.sha256(sample_vision_content.encode("utf-8")).hexdigest()
         assert doc.content_hash == expected_hash
 
     def test_create_unique_document_name_per_product(self, db_session, vision_repo, test_tenant_key, test_product):
@@ -127,7 +132,7 @@ class TestVisionDocumentRepositoryCreation:
             product_id=test_product.id,
             document_name="Unique Name",
             content="Content 1",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
@@ -139,7 +144,7 @@ class TestVisionDocumentRepositoryCreation:
                 product_id=test_product.id,
                 document_name="Unique Name",
                 content="Content 2",
-                storage_type="inline"
+                storage_type="inline",
             )
             db_session.commit()
 
@@ -155,7 +160,7 @@ class TestVisionDocumentRepositoryRetrieval:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Test content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
@@ -172,7 +177,7 @@ class TestVisionDocumentRepositoryRetrieval:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Test content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
@@ -190,7 +195,7 @@ class TestVisionDocumentRepositoryRetrieval:
             document_name="Vision",
             content="Vision content",
             storage_type="inline",
-            display_order=1
+            display_order=1,
         )
         doc2 = vision_repo.create(
             session=db_session,
@@ -199,7 +204,7 @@ class TestVisionDocumentRepositoryRetrieval:
             document_name="Architecture",
             content="Architecture content",
             storage_type="inline",
-            display_order=2
+            display_order=2,
         )
         doc3 = vision_repo.create(
             session=db_session,
@@ -208,16 +213,13 @@ class TestVisionDocumentRepositoryRetrieval:
             document_name="Inactive Doc",
             content="Inactive content",
             storage_type="inline",
-            is_active=False
+            is_active=False,
         )
         db_session.commit()
 
         # List all active documents
         docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            active_only=True
+            session=db_session, tenant_key=test_tenant_key, product_id=test_product.id, active_only=True
         )
 
         assert len(docs) == 2
@@ -226,10 +228,7 @@ class TestVisionDocumentRepositoryRetrieval:
 
         # List all documents including inactive
         all_docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            product_id=test_product.id,
-            active_only=False
+            session=db_session, tenant_key=test_tenant_key, product_id=test_product.id, active_only=False
         )
 
         assert len(all_docs) == 3
@@ -246,7 +245,7 @@ class TestVisionDocumentRepositoryUpdate:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Original content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
@@ -255,10 +254,7 @@ class TestVisionDocumentRepositoryUpdate:
         # Update content
         new_content = "Updated content with new information"
         updated_doc = vision_repo.update_content(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            document_id=doc.id,
-            new_content=new_content
+            session=db_session, tenant_key=test_tenant_key, document_id=doc.id, new_content=new_content
         )
 
         assert updated_doc.vision_document == new_content
@@ -273,7 +269,7 @@ class TestVisionDocumentRepositoryUpdate:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Original content",
-            storage_type="inline"
+            storage_type="inline",
         )
 
         # Mark as chunked
@@ -284,10 +280,7 @@ class TestVisionDocumentRepositoryUpdate:
 
         # Update content should reset chunked flag
         vision_repo.update_content(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            document_id=doc.id,
-            new_content="New content"
+            session=db_session, tenant_key=test_tenant_key, document_id=doc.id, new_content="New content"
         )
 
         assert doc.chunked is False
@@ -301,16 +294,11 @@ class TestVisionDocumentRepositoryUpdate:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Test content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
-        vision_repo.mark_chunked(
-            session=db_session,
-            document_id=doc.id,
-            chunk_count=10,
-            total_tokens=2500
-        )
+        vision_repo.mark_chunked(session=db_session, document_id=doc.id, chunk_count=10, total_tokens=2500)
         db_session.commit()
 
         assert doc.chunked is True
@@ -330,17 +318,13 @@ class TestVisionDocumentRepositoryDeletion:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Test content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
         doc_id = doc.id
 
         # Delete document
-        result = vision_repo.delete(
-            session=db_session,
-            tenant_key=test_tenant_key,
-            document_id=doc_id
-        )
+        result = vision_repo.delete(session=db_session, tenant_key=test_tenant_key, document_id=doc_id)
 
         assert result["success"] is True
         assert result["document_id"] == doc_id
@@ -357,16 +341,12 @@ class TestVisionDocumentRepositoryDeletion:
             product_id=test_product.id,
             document_name="Test Doc",
             content="Test content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
         # Attempt delete with wrong tenant
-        result = vision_repo.delete(
-            session=db_session,
-            tenant_key="wrong_tenant",
-            document_id=doc.id
-        )
+        result = vision_repo.delete(session=db_session, tenant_key="wrong_tenant", document_id=doc.id)
 
         assert result["success"] is False
         assert "not found" in result["message"].lower()
@@ -384,7 +364,7 @@ class TestVisionDocumentRepositoryTenantIsolation:
             product_id=test_product.id,
             document_name="Tenant 1 Doc",
             content="Tenant 1 content",
-            storage_type="inline"
+            storage_type="inline",
         )
         doc2 = vision_repo.create(
             session=db_session,
@@ -392,15 +372,13 @@ class TestVisionDocumentRepositoryTenantIsolation:
             product_id=test_product.id,
             document_name="Tenant 2 Doc",
             content="Tenant 2 content",
-            storage_type="inline"
+            storage_type="inline",
         )
         db_session.commit()
 
         # List documents for tenant_1
         tenant1_docs = vision_repo.list_by_product(
-            session=db_session,
-            tenant_key="tenant_1",
-            product_id=test_product.id
+            session=db_session, tenant_key="tenant_1", product_id=test_product.id
         )
 
         # Should only see tenant_1 documents
@@ -426,7 +404,7 @@ class TestVisionDocumentRepositoryCrossplatformPaths:
             document_name="File Doc",
             content="Test content",
             storage_type="file",
-            file_path=str(vision_file)  # Convert Path to string for storage
+            file_path=str(vision_file),  # Convert Path to string for storage
         )
 
         assert doc.vision_path == str(vision_file)

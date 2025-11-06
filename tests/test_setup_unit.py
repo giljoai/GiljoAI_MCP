@@ -9,8 +9,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
 class TestPlatformDetection(unittest.TestCase):

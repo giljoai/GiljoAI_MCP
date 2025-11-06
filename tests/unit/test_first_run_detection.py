@@ -7,11 +7,12 @@ the setup wizard should be displayed based on the presence of an admin user.
 Following TDD principles - these tests are written before implementation.
 """
 
+from datetime import datetime, timezone
+from unittest.mock import MagicMock
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
 from sqlalchemy import select
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 pytestmark = pytest.mark.asyncio
@@ -20,8 +21,9 @@ pytestmark = pytest.mark.asyncio
 @pytest_asyncio.fixture
 async def admin_user(db_session):
     """Create an admin user for testing"""
-    from src.giljo_mcp.models import User
     import uuid
+
+    from src.giljo_mcp.models import User
 
     user = User(
         id=str(uuid.uuid4()),
@@ -31,7 +33,7 @@ async def admin_user(db_session):
         role="admin",
         tenant_key="default",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db_session.add(user)
@@ -44,8 +46,9 @@ async def admin_user(db_session):
 @pytest_asyncio.fixture
 async def regular_user(db_session):
     """Create a regular (non-admin) user for testing"""
-    from src.giljo_mcp.models import User
     import uuid
+
+    from src.giljo_mcp.models import User
 
     user = User(
         id=str(uuid.uuid4()),
@@ -55,7 +58,7 @@ async def regular_user(db_session):
         role="user",
         tenant_key="default",
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db_session.add(user)
@@ -131,8 +134,9 @@ class TestFirstRunDetection:
 
         Expected: first_run = False (inactive admin still counts as setup completed)
         """
-        from src.giljo_mcp.models import User
         import uuid
+
+        from src.giljo_mcp.models import User
 
         # Create inactive admin user
         user = User(
@@ -143,7 +147,7 @@ class TestFirstRunDetection:
             role="admin",
             tenant_key="default",
             is_active=False,  # Inactive
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add(user)
@@ -166,8 +170,9 @@ class TestFirstRunDetection:
 
         Expected: first_run = False
         """
-        from src.giljo_mcp.models import User
         import uuid
+
+        from src.giljo_mcp.models import User
 
         # Create second admin user
         user2 = User(
@@ -178,7 +183,7 @@ class TestFirstRunDetection:
             role="admin",
             tenant_key="default",
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add(user2)
@@ -205,8 +210,8 @@ class TestFirstRunAPIEndpoint:
 
         Expected: {"first_run": true}
         """
-        from fastapi import Request
         from api.endpoints.setup import check_first_run
+        from fastapi import Request
 
         # Create mock request with db_manager in app state
         mock_app = MagicMock()
@@ -236,8 +241,8 @@ class TestFirstRunAPIEndpoint:
 
         Expected: {"first_run": false}
         """
-        from fastapi import Request
         from api.endpoints.setup import check_first_run
+        from fastapi import Request
 
         # Create mock request with db_manager in app state
         mock_app = MagicMock()
@@ -267,8 +272,8 @@ class TestFirstRunAPIEndpoint:
 
         Expected: {"first_run": false} (safe default on error)
         """
-        from fastapi import Request
         from api.endpoints.setup import check_first_run
+        from fastapi import Request
 
         # Create mock request that raises an error
         mock_app = MagicMock()
@@ -300,8 +305,8 @@ class TestFirstRunAPIEndpoint:
 
         Expected: Uses cached value instead of querying database
         """
-        from fastapi import Request
         from api.endpoints.setup import check_first_run
+        from fastapi import Request
 
         # Create mock request with cached first_run state
         mock_app = MagicMock()
@@ -322,8 +327,8 @@ class TestFirstRunAPIEndpoint:
 
         Expected: Queries database when app.state.first_run is None
         """
-        from fastapi import Request
         from api.endpoints.setup import check_first_run
+        from fastapi import Request
 
         # Create mock request without cached first_run state
         mock_app = MagicMock()
@@ -522,8 +527,9 @@ class TestFirstRunEdgeCases:
 
         Expected: first_run = True (system user doesn't count as admin)
         """
-        from src.giljo_mcp.models import User
         import uuid
+
+        from src.giljo_mcp.models import User
 
         # Create system user (localhost auto-login user)
         user = User(
@@ -535,7 +541,7 @@ class TestFirstRunEdgeCases:
             tenant_key="default",
             is_active=True,
             is_system_user=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         db_session.add(user)
@@ -558,8 +564,9 @@ class TestFirstRunEdgeCases:
 
         Expected: Uses LIMIT 1 for optimal performance
         """
-        from src.giljo_mcp.models import User
         import time
+
+        from src.giljo_mcp.models import User
 
         # Measure query performance
         start = time.perf_counter()

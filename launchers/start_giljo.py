@@ -4,15 +4,16 @@ GiljoAI MCP Universal Launcher
 Starts all services with proper dependency ordering
 """
 
-import sys
 import os
-import time
-import subprocess
+import signal
 import socket
+import subprocess
+import sys
+import time
 import webbrowser
 from pathlib import Path
+
 import yaml
-import signal
 
 
 class GiljoLauncher:
@@ -34,13 +35,13 @@ class GiljoLauncher:
     def check_port(self, port: int) -> bool:
         """Check if a port is available"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', port))
+        result = sock.connect_ex(("127.0.0.1", port))
         sock.close()
         return result != 0
 
     def validate_installation(self) -> bool:
         """Verify installation is complete"""
-        required_files = ['.env', 'config.yaml']
+        required_files = [".env", "config.yaml"]
         for file in required_files:
             if not Path(file).exists():
                 print(f"Error: Missing {file} - installation incomplete")
@@ -48,9 +49,9 @@ class GiljoLauncher:
 
         # Check ports
         ports = {
-            'API': self.config['services'].get('api_port', 8000),
-            'WebSocket': self.config['services'].get('websocket_port', 7273),
-            'Dashboard': self.config['services'].get('dashboard_port', 7274)
+            "API": self.config["services"].get("api_port", 8000),
+            "WebSocket": self.config["services"].get("websocket_port", 7273),
+            "Dashboard": self.config["services"].get("dashboard_port", 7274),
         }
 
         for service, port in ports.items():
@@ -64,49 +65,37 @@ class GiljoLauncher:
         """Start a single service"""
         print(f"Starting {name}...")
         env = os.environ.copy()
-        env['PYTHONPATH'] = str(Path.cwd())
+        env["PYTHONPATH"] = str(Path.cwd())
 
-        proc = subprocess.Popen(
-            command,
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        proc = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.processes.append(proc)
         return proc
 
     def start_all_services(self):
         """Start all services in order"""
-        print("="*60)
+        print("=" * 60)
         print("   Starting GiljoAI MCP Services")
-        print("="*60)
+        print("=" * 60)
         print()
 
         # Start API server
-        api_port = self.config['services'].get('api_port', 8000)
-        self.start_service("API Server", [
-            sys.executable, "-m", "uvicorn",
-            "api.main:app",
-            "--host", "127.0.0.1",
-            "--port", str(api_port)
-        ])
+        api_port = self.config["services"].get("api_port", 8000)
+        self.start_service(
+            "API Server",
+            [sys.executable, "-m", "uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", str(api_port)],
+        )
         time.sleep(2)  # Wait for startup
 
         # Start WebSocket server
-        ws_port = self.config['services'].get('websocket_port', 7273)
-        self.start_service("WebSocket Server", [
-            sys.executable, "-m", "giljo_mcp.websocket",
-            "--port", str(ws_port)
-        ])
+        ws_port = self.config["services"].get("websocket_port", 7273)
+        self.start_service("WebSocket Server", [sys.executable, "-m", "giljo_mcp.websocket", "--port", str(ws_port)])
         time.sleep(1)
 
         # Start Dashboard
-        dashboard_port = self.config['services'].get('dashboard_port', 7274)
-        self.start_service("Dashboard", [
-            sys.executable, "-m", "http.server",
-            str(dashboard_port),
-            "--directory", "frontend"
-        ])
+        dashboard_port = self.config["services"].get("dashboard_port", 7274)
+        self.start_service(
+            "Dashboard", [sys.executable, "-m", "http.server", str(dashboard_port), "--directory", "frontend"]
+        )
 
         print()
         print("All services started successfully!")
@@ -118,15 +107,15 @@ class GiljoLauncher:
         print()
 
         # Open browser if configured
-        if self.config.get('features', {}).get('auto_start_browser', True):
+        if self.config.get("features", {}).get("auto_start_browser", True):
             time.sleep(2)
             webbrowser.open(f"http://localhost:{dashboard_port}")
 
     def shutdown(self, signum=None, frame=None):
         """Gracefully shut down all services"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   Shutting down services...")
-        print("="*60)
+        print("=" * 60)
 
         for proc in self.processes:
             if proc.poll() is None:
@@ -164,7 +153,7 @@ class GiljoLauncher:
                 # Check if any process died
                 for proc in self.processes:
                     if proc.poll() is not None:
-                        print(f"Warning: A service has stopped unexpectedly")
+                        print("Warning: A service has stopped unexpectedly")
                         self.shutdown()
 
         except KeyboardInterrupt:

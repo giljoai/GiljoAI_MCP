@@ -36,7 +36,7 @@ def sync_db_manager():
     sync_connection_string = connection_string.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
 
     db_mgr = DatabaseManager(sync_connection_string, is_async=False)
-    yield db_mgr
+    return db_mgr
 
 
 # Sync session fixture for validation tests

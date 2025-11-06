@@ -6,15 +6,19 @@ Revision ID: 20251027_single_proj
 Revises: 20251027_single_active
 Create Date: 2025-10-27 18:00:00.000000
 """
-from typing import Sequence, Union
+
+from collections.abc import Sequence
+from typing import Union
+
 from alembic import op
-import sqlalchemy as sa
 from sqlalchemy import text
 
-revision: str = '20251027_single_proj'
-down_revision: Union[str, None] = '20251027_single_active'
+
+revision: str = "20251027_single_proj"
+down_revision: Union[str, None] = "20251027_single_active"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
 
 def upgrade() -> None:
     """Add single active project enforcement"""
@@ -69,21 +73,20 @@ def upgrade() -> None:
 
     # Create index
     op.create_index(
-        'idx_project_single_active_per_product',
-        'projects',
-        ['product_id'],
+        "idx_project_single_active_per_product",
+        "projects",
+        ["product_id"],
         unique=True,
-        postgresql_where=text("status = 'active'")
+        postgresql_where=text("status = 'active'"),
     )
 
     print("[Handover 0050b Migration] Migration complete - single active project enforcement enabled\n")
+
 
 def downgrade() -> None:
     """Remove constraint"""
     print("\n[Handover 0050b Migration] Removing constraint...")
     op.drop_index(
-        'idx_project_single_active_per_product',
-        table_name='projects',
-        postgresql_where=text("status = 'active'")
+        "idx_project_single_active_per_product", table_name="projects", postgresql_where=text("status = 'active'")
     )
     print("[Handover 0050b Migration] Downgrade complete\n")
