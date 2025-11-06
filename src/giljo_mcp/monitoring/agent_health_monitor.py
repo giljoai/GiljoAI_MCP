@@ -89,7 +89,7 @@ class AgentHealthMonitor:
         """Execute one complete health check cycle."""
         logger.debug("Starting health check cycle")
 
-        async with self.db.get_session() as session:
+        async with self.db.get_session_async() as session:
             # Get all tenants
             tenants = await self._get_all_tenants(session)
 
@@ -307,8 +307,11 @@ class AgentHealthMonitor:
             }
         )
 
-        # Get job from database
-        job = await session.get(MCPAgentJob, health_status.job_id)
+        # Get job from database (query by job_id UUID, not integer id)
+        result = await session.execute(
+            select(MCPAgentJob).where(MCPAgentJob.job_id == health_status.job_id)
+        )
+        job = result.scalar_one_or_none()
         if not job:
             logger.error(f"Job {health_status.job_id} not found in database")
             return
@@ -377,7 +380,8 @@ class AgentHealthMonitor:
         candidates = [
             job.created_at,
             job.started_at,
-            job.updated_at,
+            job.last_progress_at,
+            job.last_message_check_at,
             self._get_last_progress_time(job)
         ]
 
