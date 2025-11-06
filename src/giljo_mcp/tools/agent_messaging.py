@@ -275,6 +275,9 @@ async def read_mcp_messages(
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
+            # Import MCPAgentJob for activity tracking (Handover 0107)
+            from ..models import MCPAgentJob
+
             # Get job with tenant isolation
             stmt = select(Job).where(Job.job_id == job_id, Job.tenant_key == tenant_key)
             result = await session.execute(stmt)
@@ -282,6 +285,21 @@ async def read_mcp_messages(
 
             if not job:
                 raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+
+            # Handover 0107: Update last_message_check_at timestamp for health monitoring
+            try:
+                agent_job_stmt = select(MCPAgentJob).where(
+                    MCPAgentJob.job_id == job_id,
+                    MCPAgentJob.tenant_key == tenant_key
+                )
+                agent_job_result = await session.execute(agent_job_stmt)
+                agent_job = agent_job_result.scalar_one_or_none()
+
+                if agent_job:
+                    agent_job.last_message_check_at = datetime.now(timezone.utc)
+            except Exception as update_error:
+                logger.warning(f"Failed to update last_message_check_at for job {job_id}: {update_error}")
+                # Non-critical - continue with message retrieval
 
             # Get messages
             all_messages = job.messages or []

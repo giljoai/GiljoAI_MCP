@@ -653,3 +653,255 @@ class AgentJobManager:
         except Exception as e:
             logger.error(f"Failed to sync task status for job {job.job_id}: {e}")
             # Don't raise - status sync is best-effort, don't fail the job operation
+
+
+# Handover 0107: Job Cancellation Functions
+
+
+async def request_job_cancellation(
+    tenant_key: str,
+    job_id: str,
+    reason: str,
+) -> dict:
+    """
+    Request graceful cancellation of an agent job (Handover 0107).
+
+    Sets job status to "cancelling" and sends a high-priority cancel message
+    to the agent, allowing it to clean up gracefully.
+
+    Args:
+        tenant_key: Tenant key for isolation
+        job_id: Job ID to cancel
+        reason: Reason for cancellation (logged for audit trail)
+
+    Returns:
+        dict: {
+            "success": bool,
+            "job_id": str,
+            "status": str,
+            "message": str
+        }
+
+    Raises:
+        ValueError: If job not found or invalid parameters
+    """
+    try:
+        if not tenant_key or not tenant_key.strip():
+            raise ValueError("tenant_key cannot be empty")
+
+        if not job_id or not job_id.strip():
+            raise ValueError("job_id cannot be empty")
+
+        if not reason or not reason.strip():
+            raise ValueError("reason cannot be empty")
+
+        # Import required modules
+        from api.websocket import websocket_manager
+
+        from .database import DatabaseManager
+        from .models import MCPAgentJob
+
+        db_manager = DatabaseManager()
+
+        async with db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            stmt = select(MCPAgentJob).where(
+                MCPAgentJob.tenant_key == tenant_key,
+                MCPAgentJob.job_id == job_id,
+            )
+            result = await session.execute(stmt)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+
+            # Check if job is already in terminal state
+            if job.status in ("complete", "failed"):
+                return {
+                    "success": False,
+                    "job_id": job_id,
+                    "status": job.status,
+                    "message": f"Cannot cancel job in terminal state '{job.status}'",
+                }
+
+            # Set status to "cancelling"
+            old_status = job.status
+            job.status = "cancelling"
+
+            # Send cancel message via messages array
+            cancel_message = {
+                "id": str(datetime.now(timezone.utc).timestamp()),
+                "type": "cancel",
+                "priority": "critical",
+                "reason": reason,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "pending",
+            }
+
+            if job.messages is None:
+                job.messages = []
+            job.messages.append(cancel_message)
+
+            # Commit changes
+            await session.commit()
+            await session.refresh(job)
+
+            # Broadcast WebSocket event
+            try:
+                await websocket_manager.broadcast(
+                    {
+                        "type": "job:status_changed",
+                        "job_id": job_id,
+                        "tenant_key": tenant_key,
+                        "old_status": old_status,
+                        "new_status": "cancelling",
+                        "reason": reason,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            except Exception as ws_error:
+                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                # Non-critical - continue without WebSocket broadcast
+
+            logger.info(
+                f"[request_job_cancellation] Job {job_id} cancellation requested: {reason}, tenant={tenant_key}"
+            )
+
+            return {
+                "success": True,
+                "job_id": job_id,
+                "status": "cancelling",
+                "message": f"Cancellation requested: {reason}",
+            }
+
+    except ValueError:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        logger.error(f"[request_job_cancellation] Error requesting cancellation: {e}", exc_info=True)
+        raise ValueError(f"Failed to request job cancellation: {e!s}")
+
+
+async def force_fail_job(
+    tenant_key: str,
+    job_id: str,
+    reason: str,
+) -> dict:
+    """
+    Force-fail an agent job without waiting for graceful shutdown (Handover 0107).
+
+    Immediately marks job as failed. Use this when agent is unresponsive
+    or cancellation request has timed out.
+
+    Args:
+        tenant_key: Tenant key for isolation
+        job_id: Job ID to force-fail
+        reason: Reason for forced failure (logged for audit trail)
+
+    Returns:
+        dict: {
+            "success": bool,
+            "job_id": str,
+            "status": str,
+            "message": str
+        }
+
+    Raises:
+        ValueError: If job not found or invalid parameters
+    """
+    try:
+        if not tenant_key or not tenant_key.strip():
+            raise ValueError("tenant_key cannot be empty")
+
+        if not job_id or not job_id.strip():
+            raise ValueError("job_id cannot be empty")
+
+        if not reason or not reason.strip():
+            raise ValueError("reason cannot be empty")
+
+        # Import required modules
+        from api.websocket import websocket_manager
+
+        from .database import DatabaseManager
+        from .models import MCPAgentJob
+
+        db_manager = DatabaseManager()
+
+        async with db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            stmt = select(MCPAgentJob).where(
+                MCPAgentJob.tenant_key == tenant_key,
+                MCPAgentJob.job_id == job_id,
+            )
+            result = await session.execute(stmt)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+
+            # Check if job is already failed
+            if job.status == "failed":
+                return {
+                    "success": False,
+                    "job_id": job_id,
+                    "status": "failed",
+                    "message": "Job is already failed",
+                }
+
+            # Mark job as failed
+            old_status = job.status
+            job.status = "failed"
+            job.completed_at = datetime.now(timezone.utc)
+
+            # Add forced failure message
+            failure_message = {
+                "id": str(datetime.now(timezone.utc).timestamp()),
+                "type": "forced_failure",
+                "reason": reason,
+                "forced_by": "system",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if job.messages is None:
+                job.messages = []
+            job.messages.append(failure_message)
+
+            # Commit changes
+            await session.commit()
+            await session.refresh(job)
+
+            # Broadcast WebSocket event
+            try:
+                await websocket_manager.broadcast(
+                    {
+                        "type": "job:status_changed",
+                        "job_id": job_id,
+                        "tenant_key": tenant_key,
+                        "old_status": old_status,
+                        "new_status": "failed",
+                        "reason": reason,
+                        "forced": True,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            except Exception as ws_error:
+                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                # Non-critical - continue without WebSocket broadcast
+
+            logger.warning(
+                f"[force_fail_job] Job {job_id} force-failed: {reason}, tenant={tenant_key}"
+            )
+
+            return {
+                "success": True,
+                "job_id": job_id,
+                "status": "failed",
+                "message": f"Job force-failed: {reason}",
+            }
+
+    except ValueError:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        logger.error(f"[force_fail_job] Error force-failing job: {e}", exc_info=True)
+        raise ValueError(f"Failed to force-fail job: {e!s}")

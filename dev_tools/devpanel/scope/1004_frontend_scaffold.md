@@ -15,7 +15,7 @@ Out of Scope
 Deliverables
 - Navigable panel with placeholder content per section reading real JSON.
 - Keyboard navigation for search and list focus.
-- Localhost‑only banner showing dev gating status.
+- Localhost-only banner showing dev gating status.
 
 Acceptance Criteria
 - Loads without console errors, handles 403/404 (gating) gracefully.
@@ -26,9 +26,8 @@ Primary Data Sources
 - `docs/index.md` and tech stack docs for placeholders.
 
 Implementation Notes
-- Use FlexSearch in browser for fast client‑side search.
+- Use FlexSearch in browser for fast client-side search.
 - Prefer composables for data fetching and state.
 
 Estimate / Owner
 - 1–1.5 days; Frontend.
-

@@ -1,7 +1,7 @@
 # 1008 – Tech Stack and Deprecations
 
 Objective
-- Generate an authoritative tech stack view with versions and known deprecations, cross‑checked against `pyproject.toml`, `requirements.txt`, and code references.
+- Generate an authoritative tech stack view with versions and known deprecations, cross-checked against `pyproject.toml`, `requirements.txt`, and code references.
 
 In Scope
 - Collate runtime framework versions (FastAPI, SQLAlchemy, Pydantic, WebSocket libs, Vue/Vite).
@@ -23,4 +23,3 @@ Primary Data Sources
 
 Estimate / Owner
 - 0.5–1 day; Backend.
-

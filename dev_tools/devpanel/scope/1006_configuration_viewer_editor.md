@@ -1,16 +1,16 @@
 # 1006 – Configuration Viewer and Controlled Editor
 
 Objective
-- Expose non‑sensitive configuration for viewing and (optionally) editing specific whitelisted fields through the Developer Panel.
+- Expose non-sensitive configuration for viewing and (optionally) editing specific whitelisted fields through the Developer Panel.
 
 In Scope
-- Read‑only view of `.env` (redacted) and `config.yaml` (safe keys only).
+- Read-only view of `.env` (redacted) and `config.yaml` (safe keys only).
 - Editable fields: whitelisted paths (e.g., `installation.version`, feature flags) with audit logging.
 - Validation and change preview before commit.
 
 Out of Scope
 - Secrets management or dynamic DB URL changes.
-- Tenant‑wide destructive actions.
+- Tenant-wide destructive actions.
 
 Deliverables
 - `GET /api/v1/developer/config` (redacted view).
@@ -27,9 +27,8 @@ Primary Data Sources
 - `.env.example`, `config.yaml.example`, `src/giljo_mcp/config_manager.py`
 
 Implementation Notes
-- Use YAML round‑trip (ruamel.yaml) to preserve comments where possible.
+- Use YAML round-trip (ruamel.yaml) to preserve comments where possible.
 - Record audit entries in a local file under `logs/devpanel_audit.log`.
 
 Estimate / Owner
 - 1–1.5 days; Backend.
-
