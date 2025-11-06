@@ -167,14 +167,15 @@ class TestTemplateSeederDualField:
         templates = result.scalars().all()
 
         # Required MCP tools that MUST be in system_instructions
+        # Note: Tool names use underscores (_) not dashes (-)
         required_tools = [
-            "mcp__giljo-mcp__get_pending_jobs",
-            "mcp__giljo-mcp__acknowledge_job",
-            "mcp__giljo-mcp__report_progress",
-            "mcp__giljo-mcp__get_next_instruction",
-            "mcp__giljo-mcp__complete_job",
-            "mcp__giljo-mcp__report_error",
-            "mcp__giljo-mcp__update_job_status",
+            "mcp__giljo_mcp__get_pending_jobs",
+            "mcp__giljo_mcp__acknowledge_job",
+            "mcp__giljo_mcp__report_progress",
+            "mcp__giljo_mcp__get_next_instruction",
+            "mcp__giljo_mcp__complete_job",
+            "mcp__giljo_mcp__report_error",
+            "mcp__giljo_mcp__update_job_status",
         ]
 
         # Verify all templates have all required MCP tools
@@ -321,7 +322,6 @@ class TestTemplateSeederDualField:
         assert tenant1_ids.isdisjoint(tenant2_ids), "Template IDs should be unique across tenants"
 
 
-@pytest.mark.asyncio
 class TestMCPCoordinationSection:
     """Test MCP coordination section generation."""
 
@@ -329,14 +329,15 @@ class TestMCPCoordinationSection:
         """Verify MCP section contains all required tools."""
         mcp_section = _get_mcp_coordination_section()
 
+        # Note: Tool names use underscores (_) not dashes (-)
         required_tools = [
-            "mcp__giljo-mcp__get_pending_jobs",
-            "mcp__giljo-mcp__acknowledge_job",
-            "mcp__giljo-mcp__report_progress",
-            "mcp__giljo-mcp__get_next_instruction",
-            "mcp__giljo-mcp__complete_job",
-            "mcp__giljo-mcp__report_error",
-            "mcp__giljo-mcp__update_job_status",
+            "mcp__giljo_mcp__get_pending_jobs",
+            "mcp__giljo_mcp__acknowledge_job",
+            "mcp__giljo_mcp__report_progress",
+            "mcp__giljo_mcp__get_next_instruction",
+            "mcp__giljo_mcp__complete_job",
+            "mcp__giljo_mcp__report_error",
+            "mcp__giljo_mcp__update_job_status",
         ]
 
         for tool in required_tools:
@@ -367,7 +368,6 @@ class TestMCPCoordinationSection:
         assert "completed" in mcp_section.lower()
 
 
-@pytest.mark.asyncio
 class TestDefaultTemplatesV103:
     """Test default template definitions."""
 

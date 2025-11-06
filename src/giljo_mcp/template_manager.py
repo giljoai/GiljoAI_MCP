@@ -6,13 +6,10 @@ Single source of truth for all template operations
 
 import logging
 import re
-from datetime import datetime, timezone
 from typing import Any, Optional, Union
 
-from sqlalchemy import select
-
 from .database import DatabaseManager
-from .models import AgentTemplate, TemplateAugmentation
+from .models import TemplateAugmentation
 from .services.config_service import ConfigService
 from .template_cache import TemplateCache
 
@@ -134,6 +131,21 @@ class UnifiedTemplateManager:
     """
     Unified manager for all template operations.
     Handles both database-backed and legacy templates.
+
+    Handover 0106: Dual-Field Template System
+    - system_instructions: Protected MCP coordination (non-editable by users)
+    - user_instructions: Editable role-specific guidance
+    - template_content: DEPRECATED (v3.0 compatibility only)
+
+    Template Resolution:
+    1. Fetch template from cache/database
+    2. Merge system_instructions + user_instructions (dual-field)
+    3. Apply Serena augmentation if enabled
+    4. Process variables and return final content
+
+    Backward Compatibility:
+    - Falls back to template_content if system_instructions not available
+    - Supports legacy templates (no database) via _legacy_templates
     """
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None, redis_client=None):
@@ -610,21 +622,21 @@ SUCCESS CRITERIA:
 
             # Try cache → database cascade → legacy fallback
             template_content = None
+            template_obj = None
+
             if self.cache and use_cache:
                 # Use three-layer cache (memory → Redis → database cascade)
-                template = await self.cache.get_template(role, tenant_key, product_id)
-                if template:
-                    template_content = template.template_content
+                template_obj = await self.cache.get_template(role, tenant_key, product_id)
+                if template_obj:
+                    # Handover 0106: Merge system_instructions + user_instructions
+                    template_content = self._merge_instructions(template_obj)
                     logger.debug(
-                        f"Template resolved from cache/database: {role} "
-                        f"(tenant={tenant_key}, product={product_id})"
+                        f"Template resolved from cache/database: {role} (tenant={tenant_key}, product={product_id})"
                     )
 
             # Fallback to legacy templates if not in database
             if not template_content:
-                template_content = self._legacy_templates.get(
-                    role.lower(), f"No template available for role: {role}"
-                )
+                template_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
                 logger.debug(f"Using legacy fallback template for role: {role}")
 
             # Add Serena augmentation if enabled
@@ -638,14 +650,10 @@ SUCCESS CRITERIA:
         except Exception:
             logger.exception(f"Failed to get template for role '{role}'")
             # Return fallback template
-            fallback = self._legacy_templates.get(
-                role.lower(), f"Error loading template for role: {role}"
-            )
+            fallback = self._legacy_templates.get(role.lower(), f"Error loading template for role: {role}")
             return process_template(fallback, variables, augmentations)
 
-    async def invalidate_cache(
-        self, role: str, tenant_key: str, product_id: Optional[str] = None
-    ) -> None:
+    async def invalidate_cache(self, role: str, tenant_key: str, product_id: Optional[str] = None) -> None:
         """
         Invalidate cached template across all layers.
 
@@ -658,10 +666,7 @@ SUCCESS CRITERIA:
         """
         if self.cache:
             await self.cache.invalidate(role, tenant_key, product_id)
-            logger.info(
-                f"Template cache invalidated: role={role}, tenant={tenant_key}, "
-                f"product={product_id}"
-            )
+            logger.info(f"Template cache invalidated: role={role}, tenant={tenant_key}, product={product_id}")
 
     async def invalidate_all_cache(self, tenant_key: Optional[str] = None) -> None:
         """
@@ -689,6 +694,34 @@ SUCCESS CRITERIA:
             "hits": 0,
             "misses": 0,
         }
+
+    def _merge_instructions(self, template) -> str:
+        """
+        Merge system_instructions + user_instructions (Handover 0106).
+
+        Priority:
+        1. Use system_instructions + user_instructions if available (v3.1+)
+        2. Fallback to template_content if system_instructions empty (v3.0 compatibility)
+
+        Args:
+            template: AgentTemplate object from database
+
+        Returns:
+            Merged template content (system first, then user)
+        """
+        # Check if we have system_instructions (Handover 0106 dual-field system)
+        if hasattr(template, "system_instructions") and template.system_instructions:
+            # System instructions available - use dual-field merge
+            merged = template.system_instructions
+
+            # Append user instructions if available
+            if hasattr(template, "user_instructions") and template.user_instructions:
+                merged += "\n\n" + template.user_instructions
+
+            return merged
+
+        # Fallback to legacy template_content (backward compatibility with v3.0)
+        return template.template_content or ""
 
     def _create_serena_augmentation(self, role: str) -> dict:
         """
