@@ -1,12 +1,12 @@
 # 1009 – Security, Gating, and Removal
 
 Objective
-- Ensure the Developer Panel is strictly dev‑only, gated, auditable, and easy to remove.
+- Ensure the Developer Panel is strictly dev-only, gated, auditable, and easy to remove.
 
 Controls
 - Route Gate: Only mount `/developer` when `ENABLE_DEVPANEL=true`.
 - Network Gate: Enforce localhost (127.0.0.1) access and deny external origins.
-- Auth Gate: Require authenticated session or a dev‑only API key (if configured).
+- Auth Gate: Require authenticated session or a dev-only API key (if configured).
 - Edit Gate: Config editing only when `ALLOW_DEVPANEL_EDIT=true` + role check.
 
 Auditing
@@ -24,4 +24,3 @@ Pen Test Checklist
 
 Estimate / Owner
 - 0.5–1 day; Backend + DevOps.
-

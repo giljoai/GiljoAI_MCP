@@ -657,17 +657,6 @@ def create_app() -> FastAPI:
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(setup_security.router, prefix="/api/setup", tags=["setup-security"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
-
-    if os.getenv("ENABLE_DEVPANEL", "false").lower() == "true":
-        try:
-            from .endpoints import developer_panel
-
-            app.include_router(developer_panel.router)
-            logger.info("Developer Panel routes enabled (localhost-only)")
-        except Exception as dev_exc:
-            logger.error(f"Failed to include Developer Panel routes: {dev_exc}", exc_info=True)
-    else:
-        logger.info("Developer Panel disabled (set ENABLE_DEVPANEL=true to enable)")
     app.include_router(network.router, prefix="/api/network", tags=["network"])
 
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)

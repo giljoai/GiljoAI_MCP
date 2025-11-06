@@ -16,4 +16,3 @@ Acceptance Criteria
 
 Estimate / Owner
 - 0.5–1 day; Docs + QA.
-

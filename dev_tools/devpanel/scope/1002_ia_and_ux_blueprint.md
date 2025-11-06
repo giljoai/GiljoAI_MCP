@@ -1,11 +1,11 @@
 # 1002 – Information Architecture (IA) and UX Blueprint
 
 Objective
-- Define the navigation, taxonomy, search model, and core interactions for a left‑nav Developer Panel with expandable menus and a global search bar, designed like an interactive manual.
+- Define the navigation, taxonomy, search model, and core interactions for a left-nav Developer Panel with expandable menus and a global search bar, designed like an interactive manual.
 
 Navigation (Left Pane)
 - Overview
-- Architecture (multi‑view)
+- Architecture (multi-view)
 - APIs (searchable catalog)
 - MCP Tools (searchable index)
 - Agents & Templates
@@ -26,12 +26,12 @@ Screens & States
 - Localhost banner + gating indicator.
 
 Deliverables
-- Wireframes (low‑fi) for each section (upload as `/uploads/devpanel/wireframes/*.png`).
+- Wireframes (low-fi) for each section (upload as `/uploads/devpanel/wireframes/*.png`).
 - Navigation schema (JSON) mirroring the final menu layout.
 - Search schema (JSON) with entity fields and ranking.
 
 Acceptance Criteria
-- Stakeholder sign‑off on menu taxonomy and page states.
+- Stakeholder sign-off on menu taxonomy and page states.
 - Search schema covers ≥ 90% of planned entities.
 
 Primary Data Sources
@@ -40,4 +40,3 @@ Primary Data Sources
 
 Estimate / Owner
 - 0.5–1 day; Product + UX + Frontend.
-

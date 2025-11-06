@@ -96,7 +96,7 @@
             />
           </div>
 
-          <!-- Health Indicator (after progress, before current task) -->
+          <!-- Health Indicator (Handover 0107: Last Update Time) -->
           <div
             v-if="showHealthIndicator"
             class="health-indicator mb-3"
@@ -126,6 +126,22 @@
               </div>
             </v-tooltip>
           </div>
+
+          <!-- Stale Warning Alert (Handover 0107) -->
+          <v-alert
+            v-if="isStale"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            <div class="d-flex align-center">
+              <v-icon size="small" class="mr-2">mdi-clock-alert</v-icon>
+              <span class="text-caption">
+                No update for {{ minutesSinceLastUpdate }}m - Agent may be stuck
+              </span>
+            </div>
+          </v-alert>
 
           <!-- Current Task -->
           <div v-if="agent.current_task" class="current-task">
@@ -170,6 +186,49 @@
 
     <!-- Action Button -->
     <v-card-actions class="pa-4 pt-0">
+      <!-- Cancel Controls (Handover 0107) -->
+      <div v-if="canCancel && mode === 'jobs'" class="cancel-controls mb-2" style="width: 100%;">
+        <!-- Graceful Cancel Button -->
+        <v-btn
+          v-if="agent.status !== 'cancelling'"
+          color="warning"
+          variant="outlined"
+          size="small"
+          block
+          @click="requestCancel"
+          class="mb-2"
+        >
+          <v-icon start>mdi-stop-circle-outline</v-icon>
+          Cancel Job
+        </v-btn>
+
+        <!-- Cancelling State Chip -->
+        <v-chip
+          v-if="agent.status === 'cancelling'"
+          color="warning"
+          variant="flat"
+          block
+          class="mb-2"
+          style="width: 100%; justify-content: center; height: 36px;"
+        >
+          <v-icon start>mdi-progress-clock</v-icon>
+          <span class="text-caption">Cancelling... (agent will stop on next check-in)</span>
+        </v-chip>
+
+        <!-- Force Stop Button (after 5 min cancelling) -->
+        <v-btn
+          v-if="agent.status === 'cancelling' && showForceStop"
+          color="error"
+          variant="outlined"
+          size="small"
+          block
+          @click="forceStop"
+        >
+          <v-icon start>mdi-alert-octagon</v-icon>
+          Force Stop
+        </v-btn>
+      </div>
+
       <!-- Custom Actions Slot (for orchestrator special buttons) -->
       <slot name="actions">
         <!-- Default Action Buttons -->
@@ -250,8 +309,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { getAgentColor, darkenColor, lightenColor } from '@/config/agentColors'
+import { useWebSocket } from '@/composables/useWebSocket'
+import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 import LaunchPromptIcons from './LaunchPromptIcons.vue'
 
 /**
@@ -480,6 +542,137 @@ const healthConfig = computed(() => {
   }
 
   return configs[state] || configs.warning
+})
+
+/**
+ * Handover 0107: Agent Monitoring Computed Properties
+ */
+
+// Calculate minutes since last progress update
+const minutesSinceLastUpdate = computed(() => {
+  if (!props.agent.last_progress_at) return null
+  const lastUpdate = new Date(props.agent.last_progress_at)
+  const now = new Date()
+  return Math.floor((now - lastUpdate) / 60000)
+})
+
+// Check if agent is stale (no update > 10 minutes while active)
+const isStale = computed(() => {
+  return (
+    minutesSinceLastUpdate.value !== null &&
+    minutesSinceLastUpdate.value > 10 &&
+    ['active', 'working'].includes(props.agent.status)
+  )
+})
+
+// Check if cancel controls should be shown
+const canCancel = computed(() => {
+  return ['active', 'working', 'cancelling'].includes(props.agent.status)
+})
+
+// Calculate minutes since cancellation request
+const minutesCancelling = computed(() => {
+  if (props.agent.status !== 'cancelling' || !props.agent.cancelled_at) return 0
+  const cancelledTime = new Date(props.agent.cancelled_at)
+  const now = new Date()
+  return Math.floor((now - cancelledTime) / 60000)
+})
+
+// Show force stop button after 5 minutes of cancelling
+const showForceStop = computed(() => {
+  return minutesCancelling.value > 5
+})
+
+/**
+ * Initialize composables
+ */
+const { on, off } = useWebSocket()
+const { showToast } = useToast()
+
+/**
+ * Methods for Handover 0107: Agent Cancellation
+ */
+
+// Request graceful cancellation
+const requestCancel = async () => {
+  const confirmed = confirm(
+    'Cancel Agent Job?\n\n' +
+    'The agent will stop work on its next check-in (usually within 5 minutes).\n\n' +
+    'Do you want to continue?'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await api.post(`/jobs/${props.agent.id}/cancel`, {
+      reason: 'User requested cancellation'
+    })
+
+    showToast('Cancel request sent - agent will stop soon', 'info')
+  } catch (error) {
+    console.error('Failed to cancel job:', error)
+    showToast(
+      error.response?.data?.detail || 'Failed to cancel job',
+      'error'
+    )
+  }
+}
+
+// Force stop unresponsive agent
+const forceStop = async () => {
+  const confirmed = confirm(
+    'Force Stop Agent?\n\n' +
+    'The agent is not responding to the cancel request.\n' +
+    'This will immediately mark the job as failed.\n\n' +
+    'WARNING: This does NOT terminate the external terminal process.\n' +
+    'You must manually close the agent terminal.\n\n' +
+    'Continue with force stop?'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await api.post(`/jobs/${props.agent.id}/force-fail`, {
+      reason: 'Unresponsive to cancel request'
+    })
+
+    showToast('Agent force stopped', 'success')
+  } catch (error) {
+    console.error('Failed to force stop:', error)
+    showToast(
+      error.response?.data?.detail || 'Failed to force stop',
+      'error'
+    )
+  }
+}
+
+/**
+ * Lifecycle hooks for WebSocket event listeners
+ */
+onMounted(() => {
+  // Listen for stale warnings from background monitor
+  on('job:stale_warning', (data) => {
+    if (data.job_id === props.agent.id) {
+      // Force component update to refresh health display
+      // Note: This is handled automatically by Vue reactivity
+      // when agent data is updated by parent component
+    }
+  })
+
+  // Listen for progress updates
+  on('job:progress_update', (data) => {
+    if (data.job_id === props.agent.id) {
+      // Update last_progress_at timestamp
+      // Note: Parent component should update the agent prop
+      // This listener is for real-time UI refresh triggers
+    }
+  })
+})
+
+onBeforeUnmount(() => {
+  // Cleanup WebSocket listeners
+  off('job:stale_warning')
+  off('job:progress_update')
 })
 </script>
 

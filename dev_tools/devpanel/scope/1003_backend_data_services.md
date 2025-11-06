@@ -1,7 +1,7 @@
 # 1003 – Backend Data Services for Developer Panel
 
 Objective
-- Expose read‑only Developer Panel backend endpoints that serve inventories, schemas, and graphs produced in 1001 for frontend consumption.
+- Expose read-only Developer Panel backend endpoints that serve inventories, schemas, and graphs produced in 1001 for frontend consumption.
 
 In Scope
 - New `api/endpoints/developer_panel.py` with `/api/v1/developer/*` routes.
@@ -36,9 +36,8 @@ Primary Data Sources
 - Config: `.env.example` for new `ENABLE_DEVPANEL` variable.
 
 Implementation Notes
-- Use `lru_cache` or in‑memory cache; refresh triggers on file mtime.
+- Use `lru_cache` or in-memory cache; refresh triggers on file mtime.
 - Consider background refresh task (interval 60–120s) gated by env.
 
 Estimate / Owner
 - 1–1.5 days; Backend.
-

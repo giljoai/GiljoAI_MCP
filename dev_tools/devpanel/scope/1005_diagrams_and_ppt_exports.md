@@ -1,10 +1,10 @@
 # 1005 – Diagrams and PowerPoint Exports
 
 Objective
-- Provide “PowerPoint‑style” visualizations for architecture views, installation flow, API/MCP catalogs, and DB schema – viewable in the panel and exportable as `.pptx`.
+- Provide “PowerPoint-style” visualizations for architecture views, installation flow, API/MCP catalogs, and DB schema – viewable in the panel and exportable as `.pptx`.
 
 Diagram Views
-- Architecture: High‑level containers, components, data flows.
+- Architecture: High-level containers, components, data flows.
 - Agent Orchestration: From `handovers/start_to_finish_agent_FLOW.md` into a sequence/flow diagram.
 - WebSocket Events: From `handovers/0106d_websocket_event_catalog.md`.
 - API Topology: Group endpoints by domain and relationships.
@@ -28,8 +28,7 @@ Primary Data Sources
 
 Implementation Notes
 - Normalize all diagrams to an intermediate JSON schema to allow multiple renderers and PPT export from one source of truth.
-- Consider server‑side PNG/SVG generation for print quality; embed images into PPT.
+- Consider server-side PNG/SVG generation for print quality; embed images into PPT.
 
 Estimate / Owner
-- 1.5–2 days; Full‑stack.
-
+- 1.5–2 days; Full-stack.

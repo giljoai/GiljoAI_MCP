@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+PYTHON_CMD="${PYTHON:-}"
+if [[ -z "$PYTHON_CMD" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD=python3
+  elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD=python
+  else
+    echo "[DevPanel] Python interpreter not found. Install Python 3." >&2
+    exit 1
+  fi
+fi
+
+cd "$REPO_ROOT"
+
+echo "[DevPanel] Generating inventories (Phase 1001)..."
+"$PYTHON_CMD" dev_tools/devpanel/scripts/devpanel_index.py --out temp/devpanel/index || {
+  echo "[DevPanel] Inventory generation failed." >&2
+  exit 1
+}
+
+echo "[DevPanel] Launching backend on http://127.0.0.1:8283 ..."
+ENABLE_DEVPANEL=true "$PYTHON_CMD" dev_tools/devpanel/run_backend.py &
+BACKEND_PID=$!
+
+cleanup() {
+  if kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
+    echo "[DevPanel] Stopping backend (pid $BACKEND_PID)"
+    kill "$BACKEND_PID" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+FRONTEND_HTML="$REPO_ROOT/dev_tools/devpanel/frontend/index.html"
+if [[ -f "$FRONTEND_HTML" ]]; then
+  echo "[DevPanel] Opening frontend: $FRONTEND_HTML"
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$FRONTEND_HTML" >/dev/null 2>&1 || true
+  elif command -v open >/dev/null 2>&1; then
+    open "$FRONTEND_HTML" >/dev/null 2>&1 || true
+  else
+    echo "[DevPanel] No known opener (xdg-open/open). Open manually." >&2
+  fi
+else
+  echo "[DevPanel] Frontend HTML not found at $FRONTEND_HTML" >&2
+fi
+
+echo "[DevPanel] Backend running (PID $BACKEND_PID). Press Ctrl+C to stop."
+wait "$BACKEND_PID"

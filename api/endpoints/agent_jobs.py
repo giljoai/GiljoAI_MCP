@@ -21,6 +21,11 @@ Kanban Board API endpoints for Handover 0066: Agent Kanban Dashboard:
 - GET /api/agent-jobs/{job_id}/message-thread - Get message thread
 - POST /api/agent-jobs/{job_id}/send-message - Send developer message
 
+Job Cancellation & Health Monitoring endpoints for Handover 0107:
+- POST /api/agent-jobs/{job_id}/cancel - Cancel job gracefully
+- POST /api/agent-jobs/{job_id}/force-fail - Force fail unresponsive job
+- GET /api/agent-jobs/{job_id}/health - Get job health metrics
+
 All endpoints enforce role-based access control and multi-tenant isolation.
 """
 
@@ -39,12 +44,17 @@ from api.dependencies.websocket import WebSocketDependency, get_websocket_depend
 # Handover 0086B: Production-grade WebSocket dependency injection
 from api.schemas.agent_job import (
     JobAcknowledgeResponse,
+    JobCancellationRequest,
+    JobCancellationResponse,
     JobCompleteRequest,
     JobCompleteResponse,
     JobCreateRequest,
     JobCreateResponse,
     JobFailRequest,
     JobFailResponse,
+    JobForceFailRequest,
+    JobForceFailResponse,
+    JobHealthResponse,
     JobHierarchyResponse,
     JobListResponse,
     JobResponse,
@@ -1362,3 +1372,218 @@ async def trigger_succession(
         raise HTTPException(status_code=status_code, detail=result.get("message"))
 
     return SuccessionTriggerResponse(**result)
+
+
+# ============================================================================
+# Job Cancellation & Health Monitoring Endpoints (Handover 0107)
+# ============================================================================
+
+
+@router.post("/{job_id}/cancel", response_model=JobCancellationResponse)
+async def cancel_job(
+    job_id: str,
+    cancellation_request: JobCancellationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> JobCancellationResponse:
+    """
+    Cancel a job gracefully (Handover 0107).
+
+    Sets job status to 'cancelled' and records cancellation reason.
+    This is a graceful cancellation that allows agents to detect and respond.
+
+    Args:
+        job_id: Job ID to cancel
+        cancellation_request: Cancellation request with reason
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        JobCancellationResponse with cancellation details
+
+    Raises:
+        404: Job not found
+        400: Invalid status transition
+        403: User not authorized to access job
+    """
+    logger.debug(f"User {current_user.username} cancelling job {job_id}")
+
+    # Query job with tenant isolation
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    # Validate status - cannot cancel completed or failed jobs
+    if job.status in ("complete", "failed"):
+        logger.warning(f"Cannot cancel job {job_id} with status '{job.status}'")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot cancel job with status '{job.status}'"
+        )
+
+    # Update job status
+    from datetime import datetime, timezone
+
+    job.status = "blocked"  # Use 'blocked' as closest existing status for cancellation
+    job.block_reason = f"Cancelled: {cancellation_request.reason}"
+    cancelled_at = datetime.now(timezone.utc)
+
+    # Add cancellation message
+    cancellation_msg = {
+        "role": "system",
+        "type": "cancellation",
+        "content": cancellation_request.reason,
+        "timestamp": cancelled_at.isoformat(),
+    }
+    job.messages = (job.messages or []) + [cancellation_msg]
+
+    await db.commit()
+    await db.refresh(job)
+
+    logger.info(f"Cancelled job {job_id} for tenant {current_user.tenant_key}, reason: {cancellation_request.reason}")
+
+    return JobCancellationResponse(
+        job_id=job.job_id, status=job.status, message="Job cancelled successfully", cancelled_at=cancelled_at
+    )
+
+
+@router.post("/{job_id}/force-fail", response_model=JobForceFailResponse)
+async def force_fail_job(
+    job_id: str,
+    force_fail_request: JobForceFailRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> JobForceFailResponse:
+    """
+    Force fail a job (Handover 0107).
+
+    Immediately transitions job to 'failed' status with reason.
+    Use this for unresponsive agents or critical failures.
+
+    Args:
+        job_id: Job ID to force fail
+        force_fail_request: Force fail request with reason
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        JobForceFailResponse with failure details and updated job
+
+    Raises:
+        404: Job not found
+        403: User not authorized to access job
+    """
+    logger.debug(f"User {current_user.username} force failing job {job_id}")
+
+    # Query job with tenant isolation
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    # Update job status to failed
+    from datetime import datetime, timezone
+
+    job.status = "failed"
+    job.completed_at = datetime.now(timezone.utc)
+
+    # Add force fail message
+    force_fail_msg = {
+        "role": "system",
+        "type": "error",
+        "content": f"Force failed: {force_fail_request.reason}",
+        "timestamp": job.completed_at.isoformat(),
+    }
+    job.messages = (job.messages or []) + [force_fail_msg]
+
+    await db.commit()
+    await db.refresh(job)
+
+    logger.warning(
+        f"Force failed job {job_id} for tenant {current_user.tenant_key}, reason: {force_fail_request.reason}"
+    )
+
+    return JobForceFailResponse(
+        job_id=job.job_id, status=job.status, message="Job force failed successfully", job=job_to_response(job)
+    )
+
+
+@router.get("/{job_id}/health", response_model=JobHealthResponse)
+async def get_job_health(
+    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
+) -> JobHealthResponse:
+    """
+    Get job health metrics (Handover 0107).
+
+    Returns health information including last progress time and staleness detection.
+    A job is considered stale if no progress has been made in > 10 minutes.
+
+    Args:
+        job_id: Job ID to check health
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        JobHealthResponse with health metrics
+
+    Raises:
+        404: Job not found
+        403: User not authorized to access job
+    """
+    logger.debug(f"User {current_user.username} checking health for job {job_id}")
+
+    # Query job with tenant isolation
+    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    # Calculate health metrics
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+
+    # Determine last progress timestamp (most recent of started_at or last_health_check)
+    last_progress_at = None
+    if job.started_at:
+        last_progress_at = job.started_at
+    if job.last_health_check and (not last_progress_at or job.last_health_check > last_progress_at):
+        last_progress_at = job.last_health_check
+
+    # Calculate minutes since progress
+    minutes_since_progress = None
+    if last_progress_at:
+        delta = now - last_progress_at
+        minutes_since_progress = int(delta.total_seconds() / 60)
+
+    # Determine if job is stale (> 10 minutes without progress)
+    is_stale = False
+    if minutes_since_progress is not None and minutes_since_progress > 10:
+        is_stale = True
+
+    # Format timestamps as ISO strings
+    last_progress_str = last_progress_at.isoformat() if last_progress_at else None
+    last_message_check_str = job.last_health_check.isoformat() if job.last_health_check else None
+
+    logger.info(
+        f"Health check for job {job_id}: status={job.status}, "
+        f"minutes_since_progress={minutes_since_progress}, is_stale={is_stale}"
+    )
+
+    return JobHealthResponse(
+        job_id=job.job_id,
+        status=job.status,
+        last_progress_at=last_progress_str,
+        last_message_check_at=last_message_check_str,
+        minutes_since_progress=minutes_since_progress,
+        is_stale=is_stale,
+    )

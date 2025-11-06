@@ -1,0 +1,286 @@
+# Agent Monitoring & Graceful Cancellation - User Guide
+
+**Version**: 3.1.1
+**Date**: 2025-11-06
+**Handover**: 0107
+
+## Overview
+
+GiljoAI MCP provides comprehensive agent monitoring and graceful cancellation capabilities for agents running in external terminals (Claude Code, Codex CLI, Gemini CLI). This guide explains how to monitor agent health, interpret status indicators, and gracefully cancel agents when needed.
+
+## Key Features
+
+- **Passive Health Monitoring**: Automatic detection of unresponsive agents
+- **Graceful Cancellation**: Request agents stop work cleanly
+- **Real-Time Status**: Live updates on agent activity and progress
+- **Force Stop**: Manual intervention when agents become unresponsive
+
+---
+
+## Understanding Agent Health Indicators
+
+### Health Status Colors
+
+Agents display health indicators based on their recent activity:
+
+| **Status** | **Color** | **Meaning** | **Action Needed** |
+|-----------|----------|-------------|-------------------|
+| **Active** | Green | Agent checking in regularly (<10 min) | None - agent is healthy |
+| **Stale** | Orange/Warning | No check-in for 10+ minutes | Monitor - agent may be stuck |
+| **Cancelling** | Yellow | Cancel request sent | Wait for agent to stop (usually <5 min) |
+| **Inactive** | Grey | Agent not currently working | None - normal state |
+
+### Last Activity Timestamp
+
+Each agent card shows "last update" time:
+- **"2m ago"**: Agent is actively working
+- **"15m ago"**: Agent may be stuck on a long task or unresponsive
+
+---
+
+## How Agents Report Progress
+
+Agents follow a **contextual check-in protocol**:
+
+### When Agents Check In
+
+✅ After completing a todo item
+✅ After finishing a major phase/operation
+✅ Before starting a long-running task (>5 minutes)
+✅ When waiting for user input
+
+❌ **NOT** on a fixed timer (every 2 minutes)
+
+### Why Contextual Check-Ins?
+
+- More natural workflow breaks
+- More responsive (agents may check in <2 min)
+- Aligns with how agents actually work
+- Most tasks complete in <5 minutes
+
+---
+
+## Cancelling Agents Gracefully
+
+### When to Cancel an Agent
+
+- Agent is working on the wrong task
+- You need to stop the project temporarily
+- Agent is taking too long on a task
+- You want to reassign work to a different agent
+
+### How to Cancel an Agent
+
+1. **Locate the agent card** in the dashboard
+2. **Click "Cancel Job" button** (yellow warning button)
+3. **Confirm cancellation** in the dialog
+4. **Wait for graceful stop** (usually <5 minutes)
+
+### What Happens During Cancellation
+
+1. **Status changes to "cancelling"** (yellow indicator)
+2. **Cancel message queued** for the agent
+3. **Agent receives message** on next check-in
+4. **Agent stops work cleanly** (saves progress, cleans up)
+5. **Job marked as complete** with "cancelled" status
+
+**Typical Timeline**: 30 seconds to 5 minutes (depends on task completion)
+
+---
+
+## When to Use Force Stop
+
+### Normal Cancellation First
+
+Always try graceful cancellation first. It allows the agent to:
+- Save current progress
+- Clean up temporary files
+- Report partial results
+- Close connections properly
+
+### Force Stop Scenarios
+
+Use force stop **ONLY** when:
+- Agent hasn't responded to cancel request for 5+ minutes
+- Agent appears completely unresponsive
+- Cancel status shows for 10+ minutes with no change
+
+### How to Force Stop
+
+1. **Wait for "Force Stop" button** to appear (after 5+ min in cancelling state)
+2. **Click "Force Stop" button** (red error button)
+3. **Confirm force stop** in the warning dialog
+4. **Job immediately marked as failed**
+
+**Warning**: Force stop does NOT actually terminate the external terminal. You must manually close the Claude Code/Codex/Gemini terminal window.
+
+---
+
+## Interpreting Stale Warnings
+
+### What is a Stale Agent?
+
+An agent that hasn't checked in for **10+ minutes**.
+
+### Stale Warning Appearance
+
+```
+⚠️ No update for 15m - Agent may be stuck
+```
+
+- Orange alert banner on agent card
+- "15m ago" timestamp
+- Warning icon
+
+### Why Agents Go Stale
+
+**Legitimate Reasons**:
+- Working on a long-running task (database migration, large test suite)
+- Performing deep analysis (reviewing 100+ files)
+- Waiting for external process (build, deployment)
+
+**Problem Scenarios**:
+- Agent crashed or terminal closed
+- Agent encountered an error and stopped
+- Network connectivity issue
+- Agent stuck in infinite loop
+
+### How to Respond to Stale Warnings
+
+1. **Check agent terminal** (if accessible) - is it still running?
+2. **Wait 5 more minutes** - task may complete soon
+3. **Request cancellation** if agent appears stuck
+4. **Force stop** if no response after 5+ minutes
+
+---
+
+## Best Practices
+
+### Monitoring Active Projects
+
+- **Check dashboard regularly** during active work
+- **Watch for stale warnings** on long-running tasks
+- **Verify check-in frequency** matches expected task duration
+
+### Cancelling Work
+
+- **Use graceful cancel first** - always preferred
+- **Allow 5 minutes** for agent to respond
+- **Force stop only as last resort**
+- **Close terminal manually** after force stop
+
+### Avoiding Stale Agents
+
+- **Break down large tasks** into smaller milestones
+- **Monitor long-running operations** proactively
+- **Test agent templates** before production use
+- **Ensure stable network connection** for agents
+
+---
+
+## Frequently Asked Questions
+
+### Q: Why doesn't force stop actually kill the agent process?
+
+**A**: Agents run in external terminals (Claude Code, Codex, Gemini) outside GiljoAI MCP's control. Force stop updates the database status but cannot terminate the external process. You must manually close the terminal.
+
+### Q: What if an agent never checks in?
+
+**A**: Agent may have failed to acknowledge the job. Check:
+1. Agent terminal is running
+2. MCP connection is active (health check)
+3. Agent credentials are correct
+4. No errors in agent terminal
+
+### Q: Can I cancel multiple agents at once?
+
+**A**: No, cancellation is per-agent. Each agent must receive its own cancel message and respond individually.
+
+### Q: What happens to partial work when cancelled?
+
+**A**: Depends on agent implementation. Well-designed agents report partial results in the cancellation response, including files modified and work completed before stopping.
+
+### Q: How do I know if a cancel request was successful?
+
+**A**: Agent status changes to "completed" (or "failed" if force stopped). The agent card moves to the appropriate column in the Kanban view.
+
+---
+
+## Troubleshooting
+
+### Agent Stuck in "Cancelling" State
+
+**Symptoms**: Status shows "cancelling" for 10+ minutes
+
+**Solutions**:
+1. Check agent terminal - is it frozen?
+2. Use force stop button
+3. Manually close terminal
+4. Verify database status updated
+
+### Stale Warnings Don't Appear
+
+**Symptoms**: Agent unresponsive but no warning
+
+**Possible Causes**:
+- Background monitor not running
+- Agent never checked in (no baseline timestamp)
+- Less than 10 minutes since last check-in
+
+**Solutions**:
+- Check system logs for monitor task
+- Verify agent acknowledged job successfully
+- Wait for 10-minute threshold
+
+### Agent Continues Working After Cancel
+
+**Symptoms**: Agent terminal shows activity after cancellation
+
+**Explanation**: Agent hasn't checked for messages yet. Wait for next check-in (usually <5 min).
+
+**If Persistent**:
+- Agent may have a bug in message checking
+- Manually close terminal
+- Report issue to agent template developer
+
+---
+
+## Technical Details
+
+### Background Monitoring
+
+- **Runs every 5 minutes** in background task
+- **Checks `last_progress_at` timestamps**
+- **Broadcasts stale warnings** via WebSocket
+- **Does NOT auto-fail agents** (user decides)
+
+### Database Fields
+
+- **`last_progress_at`**: Timestamp of most recent progress report
+- **`last_message_check_at`**: Timestamp of most recent message check
+- **`status`**: Includes new "cancelling" state
+
+### WebSocket Events
+
+- **`job:progress_update`**: Agent reported progress
+- **`job:stale_warning`**: Agent detected as stale (10+ min)
+- **`job:status_changed`**: Status changed (including to "cancelling")
+- **`job:completed`**: Job finished (including cancelled jobs)
+
+---
+
+## Related Documentation
+
+- **Developer Guide**: [docs/developer_guides/agent_monitoring_developer_guide.md](../developer_guides/agent_monitoring_developer_guide.md)
+- **Handover Document**: [handovers/completed/0107_agent_monitoring_and_graceful_cancellation-C.md](../../handovers/completed/0107_agent_monitoring_and_graceful_cancellation-C.md)
+- **Agent Template System**: [docs/guides/agent_template_management.md](../guides/agent_template_management.md)
+
+---
+
+## Support
+
+For issues or questions:
+1. Check agent terminal logs for errors
+2. Review system logs in `logs/` directory
+3. Consult developer guide for implementation details
+4. Report persistent issues with agent template details

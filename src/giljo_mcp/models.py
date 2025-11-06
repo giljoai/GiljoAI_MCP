@@ -2066,7 +2066,8 @@ class MCPAgentJob(Base):
     )
     mission = Column(Text, nullable=False, comment="Agent mission/instructions")
 
-    # Handover 0073: Expanded status states (waiting, preparing, working, review, complete, failed, blocked)
+    # Handover 0073: Expanded status states (waiting, preparing, working, review, complete, failed, blocked, cancelling)
+    # Handover 0107: Added 'cancelling' state for graceful cancellation
     status = Column(String(50), default="waiting", nullable=False)
 
     spawned_by = Column(String(36), nullable=True, comment="Agent ID that spawned this job")
@@ -2139,6 +2140,18 @@ class MCPAgentJob(Base):
         comment="Consecutive health check failures"
     )
 
+    # Handover 0107: Agent activity tracking fields
+    last_progress_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of last progress update from agent (Handover 0107)"
+    )
+    last_message_check_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of last message queue check by agent (Handover 0107)"
+    )
+
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
 
@@ -2153,7 +2166,7 @@ class MCPAgentJob(Base):
         Index("idx_agent_jobs_instance", "project_id", "agent_type", "instance_number"),
         Index("idx_agent_jobs_handover", "handover_to"),
         CheckConstraint(
-            "status IN ('waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked')",
+            "status IN ('waiting', 'preparing', 'active', 'working', 'review', 'complete', 'failed', 'blocked', 'cancelling')",
             name="ck_mcp_agent_job_status",
         ),
         CheckConstraint("progress >= 0 AND progress <= 100", name="ck_mcp_agent_job_progress_range"),
