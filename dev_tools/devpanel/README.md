@@ -14,8 +14,8 @@ Contents
 Usage Notes
 - Keep this folder on a dev-only branch or local workspace. The main product remains untouched.
 - Scripts here import project modules directly; run them from the repo root so `src/` and `api/` stay importable.
-- The backend requires FastAPI, uvicorn, and project deps. Activate your project venv (`pip install -e .[dev]`) before running.
-- Start backend: `python dev_tools/devpanel/run_backend.py` (listens on `http://127.0.0.1:8283`).
+- The quick-start scripts create/use an isolated virtual environment under `dev_tools/devpanel/.venv`; no need to touch your main project venv.
+- Start backend manually (if needed): `python dev_tools/devpanel/run_backend.py` (listens on `http://127.0.0.1:8283`).
 - Generate inventories before hitting endpoints: `python dev_tools/devpanel/scripts/devpanel_index.py --out temp/devpanel/index`.
 - Prototype UI: open `dev_tools/devpanel/frontend/index.html` in your browser (uses fetch against `http://127.0.0.1:8283`).
 - Build your own UI (Vue/Vite, static site, etc.) under this folder and point it at the backend.
