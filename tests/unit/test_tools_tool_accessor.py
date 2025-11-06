@@ -405,10 +405,11 @@ class TestToolAccessor:
         """Test setup_slash_commands returns download URL"""
         accessor = ToolAccessor(self.db_manager, self.tenant_manager)
 
-        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
-             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
-             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
-
+        with (
+            patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class,
+            patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class,
+            patch("giljo_mcp.config_manager.get_config") as mock_get_config,
+        ):
             # Setup mocks
             mock_token_manager = AsyncMock()
             mock_token_manager.generate_token = AsyncMock(return_value="test-token-uuid")
@@ -476,10 +477,11 @@ class TestToolAccessor:
         """Test gil_import_productagents returns download URL"""
         accessor = ToolAccessor(self.db_manager, self.tenant_manager)
 
-        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
-             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
-             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
-
+        with (
+            patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class,
+            patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class,
+            patch("giljo_mcp.config_manager.get_config") as mock_get_config,
+        ):
             # Setup mocks
             mock_token_manager = AsyncMock()
             mock_token_manager.generate_token = AsyncMock(return_value="test-token-uuid")
@@ -535,10 +537,11 @@ class TestToolAccessor:
         """Test gil_import_personalagents returns download URL"""
         accessor = ToolAccessor(self.db_manager, self.tenant_manager)
 
-        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
-             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
-             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
-
+        with (
+            patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class,
+            patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class,
+            patch("giljo_mcp.config_manager.get_config") as mock_get_config,
+        ):
             # Setup mocks
             mock_token_manager = AsyncMock()
             mock_token_manager.generate_token = AsyncMock(return_value="test-token-uuid")
@@ -595,10 +598,11 @@ class TestToolAccessor:
         """Test that all download methods generate correctly formatted URLs"""
         accessor = ToolAccessor(self.db_manager, self.tenant_manager)
 
-        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
-             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
-             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
-
+        with (
+            patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class,
+            patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class,
+            patch("giljo_mcp.config_manager.get_config") as mock_get_config,
+        ):
             # Setup mocks
             mock_token_manager = AsyncMock()
             mock_token_manager.generate_token = AsyncMock(return_value="abc123def456")
@@ -618,7 +622,9 @@ class TestToolAccessor:
             # Test setup_slash_commands URL format
             result1 = await accessor.setup_slash_commands(_api_key="test-api-key")
             assert result1["success"] is True
-            assert result1["download_url"] == "http://192.168.1.100:9000/api/download/temp/abc123def456/slash_commands.zip"
+            assert (
+                result1["download_url"] == "http://192.168.1.100:9000/api/download/temp/abc123def456/slash_commands.zip"
+            )
 
             # Reset mock
             mock_token_manager.generate_token = AsyncMock(return_value="xyz789uvw123")
@@ -626,7 +632,10 @@ class TestToolAccessor:
             # Test gil_import_productagents URL format
             result2 = await accessor.gil_import_productagents(_api_key="test-api-key")
             assert result2["success"] is True
-            assert result2["download_url"] == "http://192.168.1.100:9000/api/download/temp/xyz789uvw123/agent_templates.zip"
+            assert (
+                result2["download_url"]
+                == "http://192.168.1.100:9000/api/download/temp/xyz789uvw123/agent_templates.zip"
+            )
 
             # Reset mock
             mock_token_manager.generate_token = AsyncMock(return_value="pqr456stu789")
@@ -634,4 +643,171 @@ class TestToolAccessor:
             # Test gil_import_personalagents URL format
             result3 = await accessor.gil_import_personalagents(_api_key="test-api-key")
             assert result3["success"] is True
-            assert result3["download_url"] == "http://192.168.1.100:9000/api/download/temp/pqr456stu789/agent_templates.zip"
+            assert (
+                result3["download_url"]
+                == "http://192.168.1.100:9000/api/download/temp/pqr456stu789/agent_templates.zip"
+            )
+
+    # Context Discovery Tests (Bug Fix #4)
+
+    @pytest.mark.asyncio
+    async def test_discover_context_with_active_project(self):
+        """Test discover_context returns real project data with active project"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        # Create a project (already created in setup_method)
+        result = await accessor.discover_context()
+
+        assert result["success"] is True
+        assert "context" in result
+        assert "project" in result["context"]
+        assert result["context"]["project"]["id"] == str(self.project.id)
+        assert result["context"]["project"]["name"] == self.project.name
+        assert result["context"]["project"]["description"] == self.project.description
+        assert "mission" in result["context"]["project"]
+        assert "status" in result["context"]["project"]
+
+    @pytest.mark.asyncio
+    async def test_discover_context_with_product(self):
+        """Test discover_context includes product data when product exists"""
+        from src.giljo_mcp.models import Product
+        import uuid
+
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        # Create a product and link it to the project
+        async with self.db_manager.get_session_async() as session:
+            product = Product(
+                id=str(uuid.uuid4()),
+                tenant_key=self.project.tenant_key,
+                name="Test Product",
+                description="Test product description",
+                config_data={"tech_stack": {"backend": "FastAPI", "database": "PostgreSQL"}},
+            )
+            session.add(product)
+            await session.flush()
+            product_id = product.id
+
+            # Update the project in the same session
+            await session.merge(self.project)
+            project = await session.get(type(self.project), self.project.id)
+            project.product_id = product_id
+            await session.commit()
+
+        result = await accessor.discover_context()
+
+        assert result["success"] is True
+        assert "context" in result
+        assert "product" in result["context"]
+        assert result["context"]["product"]["id"] == product_id
+        assert result["context"]["product"]["name"] == "Test Product"
+        assert result["context"]["product"]["context"] is not None
+
+    @pytest.mark.asyncio
+    async def test_discover_context_no_active_project(self):
+        """Test discover_context returns error when no active project"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        # Mark project as inactive
+        async with self.db_manager.get_session_async() as session:
+            project = await session.get(type(self.project), self.project.id)
+            project.status = "inactive"
+            await session.commit()
+
+        result = await accessor.discover_context()
+
+        assert result["success"] is False
+        assert "error" in result
+        assert "No active project" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_discover_context_with_project_id(self):
+        """Test discover_context with explicit project_id parameter"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.discover_context(project_id=str(self.project.id))
+
+        assert result["success"] is True
+        assert result["context"]["project"]["id"] == str(self.project.id)
+
+    @pytest.mark.asyncio
+    async def test_discover_context_invalid_project_id(self):
+        """Test discover_context with invalid project_id"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.discover_context(project_id="invalid-project-id")
+
+        assert result["success"] is False
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_get_file_context_returns_placeholder(self):
+        """Test get_file_context returns appropriate placeholder message"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.get_file_context("src/main.py")
+
+        assert result["success"] is True
+        assert "file_path" in result
+        assert result["file_path"] == "src/main.py"
+        # Placeholder should provide helpful message
+        assert "context" in result
+        assert isinstance(result["context"], dict)
+
+    @pytest.mark.asyncio
+    async def test_get_file_context_with_different_paths(self):
+        """Test get_file_context with various file paths"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        paths = [
+            "src/app.py",
+            "tests/test_app.py",
+            "docs/README.md",
+            "F:\\GiljoAI_MCP\\src\\models.py",
+        ]
+
+        for path in paths:
+            result = await accessor.get_file_context(path)
+
+            assert result["success"] is True
+            assert result["file_path"] == path
+            assert "context" in result
+
+    @pytest.mark.asyncio
+    async def test_search_context_returns_placeholder(self):
+        """Test search_context returns appropriate placeholder message"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.search_context("database models")
+
+        assert result["success"] is True
+        assert "results" in result
+        assert isinstance(result["results"], list)
+        assert "query" in result
+        assert result["query"] == "database models"
+
+    @pytest.mark.asyncio
+    async def test_search_context_with_file_types(self):
+        """Test search_context with file type filters"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.search_context(
+            "async def", file_types=["*.py"]
+        )
+
+        assert result["success"] is True
+        assert "results" in result
+        assert "query" in result
+        assert result["query"] == "async def"
+
+    @pytest.mark.asyncio
+    async def test_search_context_multiple_file_types(self):
+        """Test search_context with multiple file type filters"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.search_context(
+            "import", file_types=["*.py", "*.ts", "*.js"]
+        )
+
+        assert result["success"] is True
+        assert isinstance(result["results"], list)
