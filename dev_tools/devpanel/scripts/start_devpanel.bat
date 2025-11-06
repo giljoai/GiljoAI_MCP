@@ -34,12 +34,17 @@ if not exist "%SETUP_SENTINEL%" (
     echo [DevPanel] Installing project dependencies into isolated venv...
     call "%VENV_PY%" -m pip install --upgrade pip
     call "%VENV_PY%" -m pip install -e .[dev]
+    call "%VENV_PY%" -m pip install -r requirements.txt
+    if exist dev-requirements.txt call "%VENV_PY%" -m pip install -r dev-requirements.txt
     if errorlevel 1 (
         echo [DevPanel] Dependency installation failed.
         exit /b 1
     )
     echo setup>"%SETUP_SENTINEL%"
 )
+
+echo [DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles)...
+call "%VENV_PY%" -m pip install watchdog rich aiohttp tiktoken aiofiles >nul 2>&1
 
 echo [DevPanel] Generating inventories (Phase 1001)...
 call "%VENV_PY%" dev_tools\devpanel\scripts\devpanel_index.py --out temp\devpanel\index
@@ -52,13 +57,11 @@ echo [DevPanel] Launching backend on http://127.0.0.1:8283 ...
 set "ENABLE_DEVPANEL=true"
 start "DevPanel Backend" cmd /k call "%VENV_PY%" dev_tools\devpanel\run_backend.py
 
-set "FRONTEND_HTML=%REPO_ROOT%\dev_tools\devpanel\frontend\index.html"
-if exist "%FRONTEND_HTML%" (
-    echo [DevPanel] Opening frontend: %FRONTEND_HTML%
-    start "" "%FRONTEND_HTML%"
-) else (
-    echo [DevPanel] Frontend HTML not found at %FRONTEND_HTML%
-)
+echo [DevPanel] Launching frontend server on http://127.0.0.1:5173 ...
+start "DevPanel Frontend" cmd /k call "%VENV_PY%" dev_tools\devpanel\scripts\start_frontend_server.py
+
+timeout 2 >nul
+start "" "http://127.0.0.1:5173/index.html"
 
 echo [DevPanel] Ready. Close this window when finished.
 popd >nul 2>&1
