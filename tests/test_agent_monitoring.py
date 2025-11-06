@@ -19,10 +19,37 @@ import pytest_asyncio
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.agent_job_manager import report_progress, receive_messages, get_stale_jobs
+from src.giljo_mcp.tools.agent_status import report_progress
+from src.giljo_mcp.tools.agent_messaging import read_mcp_messages
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import MCPAgentJob
+from sqlalchemy import select
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+
+# Helper function for testing - detects stale jobs
+async def get_stale_jobs(tenant_key: str, threshold_minutes: int = 10):
+    """
+    Test helper: Find jobs with no progress updates for > threshold_minutes.
+    """
+    from datetime import timedelta
+
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=True), is_async=True)
+
+    async with db_manager.get_session_async() as session:
+        threshold_time = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+
+        stmt = select(MCPAgentJob).where(
+            MCPAgentJob.tenant_key == tenant_key,
+            MCPAgentJob.status.in_(["active", "working"]),
+            MCPAgentJob.last_progress_at <= threshold_time
+        )
+
+        result = await session.execute(stmt)
+        stale_jobs = result.scalars().all()
+
+        await db_manager.close_async()
+        return stale_jobs
 
 
 @pytest_asyncio.fixture
@@ -77,17 +104,20 @@ class TestProgressTracking:
         # Report progress
         await report_progress(
             job_id=test_job.job_id,
-            progress=50,
-            current_task="Implementing feature X",
-            tenant_key=test_job.tenant_key
+            tenant_key=test_job.tenant_key,
+            progress={
+                "task": "Implementing feature X",
+                "percent": 50
+            }
         )
 
         # Refresh and verify timestamp updated
         await db_session.refresh(test_job)
         assert test_job.last_progress_at is not None
         assert test_job.last_progress_at > datetime.now(timezone.utc) - timedelta(seconds=5)
-        assert test_job.progress == 50
-        assert test_job.current_task == "Implementing feature X"
+        # Progress is stored in job_metadata, not direct field
+        assert test_job.job_metadata is not None
+        assert test_job.job_metadata["latest_progress"]["percent"] == 50
 
     @pytest.mark.asyncio
     async def test_report_progress_updates_on_subsequent_calls(self, db_session, test_job):
@@ -95,9 +125,8 @@ class TestProgressTracking:
         # First call
         await report_progress(
             job_id=test_job.job_id,
-            progress=25,
-            current_task="Task 1",
-            tenant_key=test_job.tenant_key
+            tenant_key=test_job.tenant_key,
+            progress={"task": "Task 1", "percent": 25}
         )
         await db_session.refresh(test_job)
         first_timestamp = test_job.last_progress_at
@@ -109,17 +138,16 @@ class TestProgressTracking:
         # Second call
         await report_progress(
             job_id=test_job.job_id,
-            progress=75,
-            current_task="Task 2",
-            tenant_key=test_job.tenant_key
+            tenant_key=test_job.tenant_key,
+            progress={"task": "Task 2", "percent": 75}
         )
         await db_session.refresh(test_job)
         second_timestamp = test_job.last_progress_at
 
         # Verify timestamp advanced
         assert second_timestamp > first_timestamp
-        assert test_job.progress == 75
-        assert test_job.current_task == "Task 2"
+        assert test_job.job_metadata["latest_progress"]["percent"] == 75
+        assert test_job.job_metadata["latest_progress"]["task"] == "Task 2"
 
 
 class TestMessageChecking:
@@ -133,7 +161,7 @@ class TestMessageChecking:
         assert initial_check_at is None
 
         # Receive messages (empty array is fine for this test)
-        await receive_messages(
+        await read_mcp_messages(
             job_id=test_job.job_id,
             tenant_key=test_job.tenant_key
         )
@@ -147,7 +175,7 @@ class TestMessageChecking:
     async def test_receive_messages_updates_on_subsequent_calls(self, db_session, test_job):
         """Test that receive_messages updates timestamp on subsequent calls."""
         # First call
-        await receive_messages(
+        await read_mcp_messages(
             job_id=test_job.job_id,
             tenant_key=test_job.tenant_key
         )
@@ -159,7 +187,7 @@ class TestMessageChecking:
         await asyncio.sleep(0.1)
 
         # Second call
-        await receive_messages(
+        await read_mcp_messages(
             job_id=test_job.job_id,
             tenant_key=test_job.tenant_key
         )
