@@ -64,7 +64,7 @@ class WebSocketManager:
         # Check authorization
         auth_context = self.auth_contexts.get(client_id, {})
         if not check_subscription_permission(auth_context, entity_type, entity_id, tenant_key):
-            logger.warning(f"Unauthorized subscription attempt by {client_id} " f"for {entity_type}:{entity_id}")
+            logger.warning(f"Unauthorized subscription attempt by {client_id} for {entity_type}:{entity_id}")
             raise HTTPException(status_code=403, detail="Not authorized to subscribe to this entity")
 
         entity_key = f"{entity_type}:{entity_id}"
@@ -141,7 +141,7 @@ class WebSocketManager:
         event_type: str,
         data: dict[str, Any],
         schema_version: str = "1.0",
-        exclude_client: Optional[str] = None
+        exclude_client: Optional[str] = None,
     ) -> int:
         """
         Broadcast event to all connected clients in a specific tenant.
@@ -189,7 +189,7 @@ class WebSocketManager:
             "type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "schema_version": schema_version,
-            "data": data
+            "data": data,
         }
 
         # Track successful sends and failures
@@ -221,12 +221,7 @@ class WebSocketManager:
                 failed_count += 1
                 logger.warning(
                     f"Failed to send WebSocket message to client {client_id}: {e}",
-                    extra={
-                        "tenant_key": tenant_key,
-                        "event_type": event_type,
-                        "client_id": client_id,
-                        "error": str(e)
-                    }
+                    extra={"tenant_key": tenant_key, "event_type": event_type, "client_id": client_id, "error": str(e)},
                 )
                 # Mark for disconnection
                 disconnected_clients.append(client_id)
@@ -244,8 +239,8 @@ class WebSocketManager:
                 "sent_count": sent_count,
                 "failed_count": failed_count,
                 "total_clients": len(self.active_connections),
-                "exclude_client": exclude_client
-            }
+                "exclude_client": exclude_client,
+            },
         )
 
         return sent_count
@@ -1104,8 +1099,7 @@ class WebSocketManager:
             self.disconnect(client_id)
 
         logger.debug(
-            f"Broadcast status_update - job {job_id}: {status} "
-            f"(progress: {progress_percentage}%, task: {current_task})"
+            f"Broadcast status_update - job {job_id}: {status} (progress: {progress_percentage}%, task: {current_task})"
         )
 
     async def broadcast_artifact_created(
@@ -1164,3 +1158,106 @@ class WebSocketManager:
             self.disconnect(client_id)
 
         logger.info(f"Broadcast artifact_created - {artifact_type}: {artifact_path} (job: {job_id})")
+
+    # Agent Health Monitoring Events (Handover 0106)
+
+    async def broadcast_health_alert(
+        self,
+        tenant_key: str,
+        job_id: str,
+        agent_type: str,
+        health_status: Any,
+    ):
+        """
+        Broadcast agent health alert.
+
+        Event type: 'agent:health_alert'
+
+        Args:
+            tenant_key: Tenant key for isolation
+            job_id: Job ID experiencing health issues
+            agent_type: Type of agent
+            health_status: AgentHealthStatus object with health details
+        """
+        message_data = {
+            "job_id": job_id,
+            "agent_type": agent_type,
+            "health_state": health_status.health_state,
+            "issue_description": health_status.issue_description,
+            "minutes_since_update": health_status.minutes_since_update,
+            "recommended_action": health_status.recommended_action,
+        }
+
+        message = {
+            "type": "agent:health_alert",
+            "data": message_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting health_alert to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.warning(
+            f"Broadcast health_alert - job {job_id}: {health_status.health_state} "
+            f"({health_status.minutes_since_update:.1f}m since update)"
+        )
+
+    async def broadcast_agent_auto_failed(
+        self,
+        tenant_key: str,
+        job_id: str,
+        agent_type: str,
+        reason: str,
+    ):
+        """
+        Broadcast agent auto-fail event.
+
+        Event type: 'agent:auto_failed'
+
+        Args:
+            tenant_key: Tenant key for isolation
+            job_id: Job ID that was auto-failed
+            agent_type: Type of agent
+            reason: Reason for auto-fail
+        """
+        message_data = {
+            "job_id": job_id,
+            "agent_type": agent_type,
+            "reason": reason,
+            "auto_failed": True,
+        }
+
+        message = {
+            "type": "agent:auto_failed",
+            "data": message_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting auto_failed to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.error(f"Broadcast auto_failed - job {job_id}: {reason}")
