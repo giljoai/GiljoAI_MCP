@@ -98,6 +98,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         # Get MCP coordination section to append to all templates
         mcp_section = _get_mcp_coordination_section()
 
+        # Get Check-In Protocol section (Handover 0107)
+        check_in_section = _get_check_in_protocol_section()
+
         # Use new comprehensive templates (Handover 0103)
         default_templates = _get_default_templates_v103()
 
@@ -107,8 +110,8 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
 
         for template_def in default_templates:
             # Handover 0106: Dual-field system (system_instructions + user_instructions)
-            # Get MCP coordination section (same for all templates)
-            system_instructions = mcp_section
+            # Get MCP coordination section + Check-In Protocol (same for all templates)
+            system_instructions = f"{mcp_section}\n\n{check_in_section}"
 
             # Get role-specific user instructions
             user_instructions = template_def["template_content"]
@@ -828,4 +831,98 @@ As an orchestrator, you have access to comprehensive MCP tools for project orche
 
 **Critical**: At 90%+ context usage, call `create_successor_orchestrator()` to avoid overflow.
 Successor will receive compressed handover summary (<10K tokens).
+"""
+
+
+def _get_check_in_protocol_section() -> str:
+    """
+    Generate the Check-In Protocol section for agent monitoring (Handover 0107).
+
+    This section provides instructions for contextual check-ins and graceful
+    cancellation handling. Added in v3.1.1 for agent monitoring and health tracking.
+
+    Returns:
+        str - Check-In Protocol section in markdown format
+
+    Note:
+        This protocol enables passive agent monitoring and graceful cancellation
+        without requiring timer-based interruptions.
+    """
+    return """## CHECK-IN PROTOCOL (Handover 0107)
+
+After completing each milestone, perform check-in routine:
+
+### Contextual Check-In Points
+
+✅ After completing a todo item
+✅ After finishing a major phase/operation
+✅ Before starting a long-running task (>5 minutes)
+✅ When waiting for user input
+
+❌ NOT timer-based (every 2 minutes)
+✅ Natural break points in workflow
+
+### Check-In Routine
+
+1. **Report Progress**:
+   ```python
+   report_progress(
+     job_id="{job_id}",
+     tenant_key="{tenant_key}",
+     progress={
+       "task": "Current task description",
+       "percent": 45,
+       "todos_completed": 3,
+       "todos_remaining": 5,
+       "context_tokens_estimate": 12000
+     }
+   )
+   ```
+
+2. **Check for Commands**:
+   ```python
+   messages = receive_messages(
+     agent_id="{agent_id}",
+     limit=10,
+     tenant_key="{tenant_key}"
+   )
+   ```
+
+3. **Handle Commands**:
+   ```python
+   for message in messages:
+       if message.type == "cancel":
+           # Stop work gracefully
+           cleanup()
+           complete_job(
+             job_id="{job_id}",
+             result={"status": "cancelled", "reason": message.reason},
+             tenant_key="{tenant_key}"
+           )
+           exit()  # Stop agent
+
+       elif message.type == "pause":
+           # Wait for resume message
+           while True:
+               messages = receive_messages(
+                 agent_id="{agent_id}",
+                 limit=10,
+                 tenant_key="{tenant_key}"
+               )
+               if any(m.type == "resume" for m in messages):
+                   break
+               sleep(30)  # Check every 30 seconds
+   ```
+
+**Why Contextual > Timer**: Natural workflow breaks, more responsive, aligns with how agents work.
+
+### Health Monitoring
+
+Your check-ins enable passive health monitoring:
+- System tracks `last_progress_at` timestamp
+- Stale warnings appear if no check-in for 10+ minutes
+- User can request graceful cancellation via UI
+- You receive cancel message on next check-in
+
+**Best Practice**: Check in after each significant task completion. Most tasks complete <5 minutes, ensuring regular updates without interrupting work.
 """

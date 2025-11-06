@@ -188,6 +188,116 @@ async def set_agent_status(
         raise ValueError(f"Failed to update agent status: {e!s}")
 
 
+async def report_progress(
+    job_id: str,
+    tenant_key: str,
+    progress: dict,
+) -> Dict[str, Any]:
+    """
+    MCP tool for agents to report progress updates (Handover 0107).
+
+    Updates the last_progress_at timestamp for health monitoring and stores
+    latest progress information in job metadata.
+
+    Args:
+        job_id: Agent job ID to update
+        tenant_key: Tenant identifier for multi-tenant isolation
+        progress: Progress data dict (step, details, percentage, etc.)
+
+    Returns:
+        dict: {
+            "success": bool,
+            "job_id": str,
+            "timestamp": str (ISO format),
+            "message": str
+        }
+
+    Raises:
+        ValueError: If invalid parameters or job doesn't exist
+
+    Security:
+        - Multi-tenant isolation enforced via tenant_key filtering
+        - Only jobs belonging to the specified tenant can be updated
+    """
+    try:
+        # Validate input parameters
+        if not job_id or not job_id.strip():
+            raise ValueError("job_id cannot be empty")
+
+        if not tenant_key or not tenant_key.strip():
+            raise ValueError("tenant_key cannot be empty")
+
+        if not progress or not isinstance(progress, dict):
+            raise ValueError("progress must be a non-empty dictionary")
+
+        # Import database manager and websocket manager
+        from api.websocket import websocket_manager
+
+        from ..database import DatabaseManager
+        from ..models import MCPAgentJob
+
+        db_manager = DatabaseManager()
+
+        async with db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            stmt = select(MCPAgentJob).where(
+                MCPAgentJob.job_id == job_id,
+                MCPAgentJob.tenant_key == tenant_key
+            )
+            result = await session.execute(stmt)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+
+            # Update last_progress_at timestamp
+            now = datetime.now(timezone.utc)
+            job.last_progress_at = now
+
+            # Store progress in job_metadata
+            if job.job_metadata is None:
+                job.job_metadata = {}
+            job.job_metadata["latest_progress"] = progress
+            job.job_metadata["latest_progress_timestamp"] = now.isoformat()
+
+            # Commit changes
+            await session.commit()
+            await session.refresh(job)
+
+            # Broadcast WebSocket event
+            try:
+                await websocket_manager.broadcast(
+                    {
+                        "type": "job:progress_update",
+                        "job_id": job_id,
+                        "tenant_key": tenant_key,
+                        "progress": progress,
+                        "timestamp": now.isoformat(),
+                    }
+                )
+            except Exception as ws_error:
+                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                # Non-critical - continue without WebSocket broadcast
+
+            logger.info(
+                f"[report_progress] Job {job_id} progress updated, tenant={tenant_key}"
+            )
+
+            return {
+                "success": True,
+                "job_id": job_id,
+                "timestamp": now.isoformat(),
+                "message": "Progress reported successfully",
+            }
+
+    except ValueError:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        logger.error(f"[report_progress] Error reporting progress: {e}", exc_info=True)
+        raise ValueError(f"Failed to report progress: {e!s}")
+
+
 def register_agent_status_tools(server, db_manager, tenant_manager=None):
     """
     Register agent status tools with MCP server.
@@ -252,6 +362,45 @@ def register_agent_status_tools(server, db_manager, tenant_manager=None):
             reason=reason,
             current_task=current_task,
             estimated_completion=estimated_completion,
+        )
+
+    @server.tool()
+    async def report_progress_tool(
+        job_id: str,
+        tenant_key: str,
+        progress: dict,
+    ) -> Dict[str, Any]:
+        """
+        Report progress update for agent job (Handover 0107).
+
+        Agents use this tool to report progress updates, which updates the
+        last_progress_at timestamp for health monitoring and stores the
+        latest progress information.
+
+        Args:
+            job_id: Agent job ID
+            tenant_key: Tenant identifier for multi-tenant isolation
+            progress: Progress data dict (should contain keys like: step, details, percentage, etc.)
+
+        Returns:
+            Progress update result with job_id and timestamp
+
+        Examples:
+            Report progress:
+            >>> report_progress_tool(
+            ...     job_id="abc-123",
+            ...     tenant_key="tenant-xyz",
+            ...     progress={
+            ...         "step": "database_setup",
+            ...         "details": "Creating tables",
+            ...         "percentage": 45
+            ...     }
+            ... )
+        """
+        return await report_progress(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            progress=progress,
         )
 
     logger.info("[agent_status] Registered agent status tools for MCP orchestration")

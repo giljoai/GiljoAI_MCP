@@ -334,3 +334,67 @@ class SendMessageResponse(BaseModel):
     status: str = Field(..., description="Message status (pending)")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+# Job Cancellation Schemas (Handover 0107)
+
+
+class JobCancellationRequest(BaseModel):
+    """
+    Schema for cancelling a job (POST /api/v1/jobs/{job_id}/cancel).
+    """
+
+    reason: str = Field(default="User requested cancellation", description="Reason for cancellation")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobCancellationResponse(BaseModel):
+    """
+    Schema for job cancellation response.
+    """
+
+    job_id: str = Field(..., description="Cancelled job ID")
+    status: str = Field(..., description="New status (cancelled)")
+    message: str = Field(..., description="Success message")
+    cancelled_at: Optional[datetime] = Field(None, description="Cancellation timestamp")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobForceFailRequest(BaseModel):
+    """
+    Schema for force failing a job (POST /api/v1/jobs/{job_id}/force-fail).
+    """
+
+    reason: str = Field(default="Agent unresponsive", description="Reason for force fail")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobForceFailResponse(BaseModel):
+    """
+    Schema for job force fail response.
+    """
+
+    job_id: str = Field(..., description="Force failed job ID")
+    status: str = Field(..., description="New status (failed)")
+    message: str = Field(..., description="Success message")
+    job: JobResponse = Field(..., description="Updated job details")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobHealthResponse(BaseModel):
+    """
+    Schema for job health check response (GET /api/v1/jobs/{job_id}/health).
+    """
+
+    job_id: str = Field(..., description="Job ID")
+    status: str = Field(..., description="Job status")
+    last_progress_at: Optional[str] = Field(None, description="Last progress timestamp (ISO format)")
+    last_message_check_at: Optional[str] = Field(None, description="Last message check timestamp (ISO format)")
+    minutes_since_progress: Optional[int] = Field(None, description="Minutes since last progress")
+    is_stale: bool = Field(..., description="Whether job is stale (> 10 minutes without progress)")
+
+    model_config = ConfigDict(from_attributes=True)
