@@ -263,7 +263,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     agent_type=agent_type,
                     mission=mission,  # STORED HERE, not in prompt
                     spawned_by=parent_job_id,
-                    status="pending",
+                    status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
                     metadata={
                         "created_via": "thin_client_spawn",
                         "created_at": datetime.now(timezone.utc).isoformat(),

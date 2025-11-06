@@ -99,7 +99,7 @@ class AgentJobManager:
             tenant_key=tenant_key,
             agent_type=agent_type,
             mission=mission,
-            status="pending",
+            status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
             spawned_by=spawned_by,
             context_chunks=context_chunks or [],
             messages=[],
@@ -159,7 +159,7 @@ class AgentJobManager:
                     tenant_key=tenant_key,
                     agent_type=spec["agent_type"],
                     mission=spec["mission"],
-                    status="pending",
+                    status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
                     spawned_by=spec.get("spawned_by"),
                     context_chunks=spec.get("context_chunks", []),
                     messages=[],
@@ -208,7 +208,7 @@ class AgentJobManager:
                 return job
 
             # Validate status transition
-            if job.status != "pending":
+            if job.status != "waiting":
                 self._validate_status_transition(job.status, "active")
 
             # Update job
@@ -423,7 +423,7 @@ class AgentJobManager:
         with self.db_manager.get_session() as session:
             stmt = select(Job).where(
                 Job.tenant_key == tenant_key,
-                Job.status == "pending",
+                Job.status == "waiting",
             )
 
             if agent_type:
