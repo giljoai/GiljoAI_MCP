@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SOURCE_MD = REPO_ROOT / "handovers" / "start_to_finish_agent_FLOW.md"
-OUTPUT_JSON = REPO_ROOT / "dev_tools" / "devpanel" / "frontend" / "data" / "start_to_finish_flow.json"
+OUTPUT_JSON = REPO_ROOT / "dev_tools" / "devpanel" / "frontend" / "start_to_finish_flow.json"
 
 
 def parse_steps(markdown: str) -> list[dict[str, str]]:

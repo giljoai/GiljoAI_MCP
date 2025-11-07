@@ -709,7 +709,6 @@
         errors: {},
         searchQuery: '',
       };
-      let startFlowPromise = null;
 
       const statusBanner = document.getElementById('status-banner');
       const badgeContainer = document.getElementById('badge-container');
@@ -998,11 +997,11 @@
         }
 
         const curatedHTML = ['installation', 'tasks'].map((key) => renderCuratedFlow(key)).join('');
-        const startFlowSection = `<details open id="start-flow-wrapper"><summary>start_to_finish_agent_FLOW.md</summary><div class="collapsible-content"><div class="start-flow" id="start-flow-graph"></div><div class="flow-details" id="start-flow-details">Select a step to view details.</div></div></details>`;
+        const startFlowLink = `<div class="flow-wrapper" style="padding:12px;border:1px dashed rgba(148,163,184,0.35);border-radius:14px;margin-top:12px;"><p>Need the full start-to-finish diagram? <a href="flows.html" style="color:var(--heading-color);">Open visualization →</a></p></div>`;
 
-        const jumpNav = `<div class="flow-nav"><label for="flow-jump">Jump to flow:</label><select id="flow-jump"><option value="">Select…</option><option value="flow-installation-wrapper">Installation Flow</option><option value="flow-tasks-wrapper">Task Creation Flow</option><option value="start-flow-wrapper">Start-to-Finish Flow</option></select></div>`;
+        const jumpNav = `<div class="flow-nav"><label for="flow-jump">Jump to flow:</label><select id="flow-jump"><option value="">Select…</option><option value="flow-installation-wrapper">Installation Flow</option><option value="flow-tasks-wrapper">Task Creation Flow</option></select></div>`;
 
-        contentEl.innerHTML = `<div class="flow-wrapper">${jumpNav}${outlineHTML}${curatedHTML}${startFlowSection}</div>`;
+        contentEl.innerHTML = `<div class="flow-wrapper">${jumpNav}${outlineHTML}${curatedHTML}${startFlowLink}</div>`;
 
         const flowJump = document.getElementById('flow-jump');
         if (flowJump) {
@@ -1041,48 +1040,6 @@
           </div></details>`;
       }
 
-      function ensureStartFlowData() {
-        if (!startFlowPromise) {
-          startFlowPromise = fetch('./data/start_to_finish_flow.json')
-            .then((res) => (res.ok ? res.json() : null))
-            .catch(() => null);
-        }
-        return startFlowPromise;
-      }
-
-      function renderStartFlowGraph(data) {
-        const container = document.getElementById('start-flow-graph');
-        const detailsEl = document.getElementById('start-flow-details');
-        if (!container) return;
-        container.innerHTML = '';
-        if (!data || !data.nodes) {
-          if (detailsEl) detailsEl.textContent = 'Unable to load flow data.';
-          return;
-        }
-        (data.nodes || []).forEach((node, index) => {
-          const btn = document.createElement('button');
-          btn.className = 'start-node';
-          const label = (node.data?.label || '').split('\n').join('<br>');
-          btn.innerHTML = `<span>${label}</span>`;
-          btn.addEventListener('click', () => {
-            const details = node.data?.details || [];
-            if (detailsEl) {
-              detailsEl.innerHTML = `<strong>${node.data?.label || 'Step'}</strong><ul class="list-column">${details.length ? details.map((item) => `<li>${item}</li>`).join('') : '<li class="muted">No notes recorded.</li>'}</ul>`;
-            }
-          });
-          btn.setAttribute('tabindex', '0');
-          container.appendChild(btn);
-          if (index < (data.nodes.length - 1)) {
-            const connector = document.createElement('div');
-            connector.className = 'start-connector';
-            container.appendChild(connector);
-          }
-          if (index === 0 && detailsEl) {
-            const details = node.data?.details || [];
-            detailsEl.innerHTML = `<strong>${node.data?.label || 'Step'}</strong><ul class="list-column">${details.length ? details.map((item) => `<li>${item}</li>`).join('') : '<li class="muted">No notes recorded.</li>'}</ul>`;
-          }
-        });
-      }
 
       function renderTechStack() {
         const tech = state.inventories.techStack;
