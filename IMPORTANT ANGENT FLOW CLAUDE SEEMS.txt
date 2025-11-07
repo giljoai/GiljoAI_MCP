@@ -22,3 +22,7 @@ During staging,  The orchestrator should get one prompt thing prompt that tells 
   be given is where to fetch their job and their temporary agent ID for this project All other behaviors or rules
   should already be in the agent template and we have already built this as well .  for B1 I need a deep dive code
   reveiw that this is how it works.
+
+
+         STEP #
+Name of step goes here
