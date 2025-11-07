@@ -13,7 +13,16 @@ import { API_CONFIG } from '@/config/api'
 
 class SetupService {
   constructor() {
-    this.baseURL = API_CONFIG.REST_API.baseURL
+    // IMPORTANT: Don't cache baseURL at construction time
+    // Read it dynamically from window.API_BASE_URL or API_CONFIG at call time
+  }
+
+  /**
+   * Get the current API base URL (runtime-aware)
+   * @returns {string}
+   */
+  getBaseURL() {
+    return window.API_BASE_URL || API_CONFIG.REST_API.baseURL
   }
 
   /**
@@ -22,7 +31,7 @@ class SetupService {
    */
   async checkEnhancedStatus() {
     try {
-      const response = await fetch(`${this.baseURL}/api/setup/status`, {
+      const response = await fetch(`${this.getBaseURL()}/api/setup/status`, {
         method: 'GET',
         cache: 'no-cache'
       })
@@ -77,7 +86,7 @@ class SetupService {
    * @returns {Promise<{success: boolean, database: string, host: string}>}
    */
   async testDatabaseConnection() {
-    const response = await fetch(`${this.baseURL}/api/v1/config/health/database`)
+    const response = await fetch(`${this.getBaseURL()}/api/v1/config/health/database`)
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
@@ -95,7 +104,7 @@ class SetupService {
    * @returns {Promise<{success: boolean, status: string, message: string, postgresql_version?: number, database_exists?: boolean}>}
    */
   async testPostgresConnection(dbConfig) {
-    const response = await fetch(`${this.baseURL}/api/setup/database/test-connection`, {
+    const response = await fetch(`${this.getBaseURL()}/api/setup/database/test-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dbConfig),
@@ -120,7 +129,7 @@ class SetupService {
    * @returns {Promise<{success: boolean, status: string, message: string, credentials_file?: string, warnings?: Array}>}
    */
   async setupPostgresDatabase(dbConfig) {
-    const response = await fetch(`${this.baseURL}/api/setup/database/setup`, {
+    const response = await fetch(`${this.getBaseURL()}/api/setup/database/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dbConfig),
@@ -139,7 +148,7 @@ class SetupService {
    * @returns {Promise<{tools: Array}>}
    */
   async detectTools() {
-    const response = await fetch(`${this.baseURL}/api/setup/detect-tools`)
+    const response = await fetch(`${this.getBaseURL()}/api/setup/detect-tools`)
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
@@ -156,7 +165,7 @@ class SetupService {
    * @returns {Promise<{success: boolean, status: string, message: string}>}
    */
   async testMcpConnection(tool) {
-    const response = await fetch(`${this.baseURL}/api/setup/test-mcp-connection`, {
+    const response = await fetch(`${this.getBaseURL()}/api/setup/test-mcp-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tool }),
@@ -194,7 +203,7 @@ class SetupService {
 
     console.log('[SETUP_SERVICE] Sending payload:', payload)
 
-    const response = await fetch(`${this.baseURL}/api/setup/complete`, {
+    const response = await fetch(`${this.getBaseURL()}/api/setup/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -221,7 +230,7 @@ class SetupService {
    * @returns {Promise<{success: boolean, status: string, message: string}>}
    */
   async restartServices() {
-    const response = await fetch(`${this.baseURL}/api/setup/restart-services`, {
+    const response = await fetch(`${this.getBaseURL()}/api/setup/restart-services`, {
       method: 'POST',
     })
 
@@ -242,7 +251,7 @@ class SetupService {
   async waitForBackend(maxAttempts = 30, intervalMs = 1000) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const response = await fetch(`${this.baseURL}/health`, {
+        const response = await fetch(`${this.getBaseURL()}/health`, {
           method: 'GET',
           cache: 'no-cache',
         })
@@ -277,7 +286,7 @@ class SetupService {
    * @returns {Promise<{success: boolean, status: string, message: string, database?: string, host?: string, port?: number, postgresql_version?: number, schema_migrated?: boolean, tables_count?: number, errors?: Array, error?: string}>}
    */
   async verifyDatabaseSetup() {
-    const response = await fetch(`${this.baseURL}/api/setup/database/verify`)
+    const response = await fetch(`${this.getBaseURL()}/api/setup/database/verify`)
 
     if (!response.ok) {
       const error = await response.json()
@@ -292,7 +301,7 @@ class SetupService {
    * @returns {Promise<{primary_ip: string, hostname: string, local_ips: Array<string>}>}
    */
   async detectIp() {
-    const response = await fetch(`${this.baseURL}/api/network/detect-ip`)
+    const response = await fetch(`${this.getBaseURL()}/api/network/detect-ip`)
 
     if (!response.ok) {
       throw new Error('IP detection failed')

@@ -74,6 +74,16 @@
     <!-- Vue app container -->
     <div id="app"></div>
 
+    <!-- Runtime API configuration (before Vue loads) -->
+    <script>
+      // Set API base URL based on current hostname
+      // This runs BEFORE Vite/Vue loads, so it's available to all code
+      const currentHost = window.location.hostname;
+      const apiPort = 7272;
+      window.API_BASE_URL = `http://${currentHost}:${apiPort}`;
+      console.log('[Config] Runtime API URL:', window.API_BASE_URL);
+    </script>
+
     <script type="module" src="/src/main.js"></script>
     <script>
       console.log('[SPLASH] Script initialized');
