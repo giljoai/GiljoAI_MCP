@@ -350,14 +350,38 @@
 
             <v-textarea
               v-model="projectData.mission"
-              label="Orchestrator Mission (Optional)"
-              hint="AI-generated mission will be created by the orchestrator after project activation. Leave empty for new projects."
-              persistent-hint
-              rows="3"
+              label="Orchestrator Generated Mission"
+              readonly
+              variant="outlined"
+              rows="4"
               class="mb-3"
-              aria-label="Orchestrator mission"
-              :disabled="!editingProject"
-            ></v-textarea>
+              hint="Auto-generated during staging. Clear to regenerate on next staging."
+              persistent-hint
+              :placeholder="projectData.mission ? '' : 'Mission will be generated when you stage this project'"
+              aria-label="Orchestrator generated mission"
+            >
+              <template #append>
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn 
+                      icon="mdi-dots-vertical" 
+                      v-bind="props" 
+                      size="small"
+                      variant="text"
+                      aria-label="Mission actions"
+                    />
+                  </template>
+                  <v-list>
+                    <v-list-item @click="viewFullMission" :disabled="!projectData.mission">
+                      <v-list-item-title>View Full Mission</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="clearMission" :disabled="!projectData.mission">
+                      <v-list-item-title>Clear Mission</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </template>
+            </v-textarea>
 
             <v-text-field
               v-model.number="projectData.context_budget"
@@ -472,6 +496,37 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Mission Viewer Dialog -->
+    <v-dialog v-model="showMissionDialog" max-width="800" persistent retain-focus>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <span>Full Mission Text</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showMissionDialog = false"
+            aria-label="Close dialog"
+          />
+        </v-card-title>
+
+        <v-card-text>
+          <v-sheet
+            class="pa-4 rounded border"
+            color="grey-lighten-5"
+            style="max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 0.875rem; line-height: 1.5;"
+          >
+            {{ projectData.mission || 'No mission text available' }}
+          </v-sheet>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="showMissionDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -500,6 +555,7 @@ const filterStatus = ref('all')
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDeletedDialog = ref(false)
+const showMissionDialog = ref(false)
 const formValid = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
@@ -676,6 +732,17 @@ function isWorking(project) {
     return launched && sameId
   } catch (e) {
     return false
+  }
+}
+
+// Mission helper methods
+function viewFullMission() {
+  showMissionDialog.value = true
+}
+
+function clearMission() {
+  if (confirm('Clear the mission? It will be regenerated on next staging.')) {
+    projectData.value.mission = ''
   }
 }
 

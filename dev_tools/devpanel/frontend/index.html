@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <title>Developer Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
     <style>
       :root {
         color-scheme: dark;
@@ -65,20 +64,53 @@
         gap: 16px;
       }
 
-      .flow-graph {
-        height: 420px;
-        background: var(--bg-800);
-        border: 1px solid rgba(148, 163, 184, 0.15);
-        border-radius: 14px;
-        margin-bottom: 10px;
-      }
-
       .flow-details {
         background: var(--bg-700);
         border-radius: 12px;
         border: 1px solid rgba(148, 163, 184, 0.12);
         padding: 12px;
         color: var(--text-secondary);
+      }
+
+      .start-flow {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 6px 0;
+      }
+
+      .start-node {
+        background: var(--bg-800);
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        border-radius: 14px;
+        padding: 12px 16px;
+        min-width: 160px;
+        color: var(--text-primary);
+        cursor: pointer;
+        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.35);
+      }
+
+      .start-node:focus,
+      .start-node:hover {
+        border-color: var(--heading-color);
+      }
+
+      .start-connector {
+        width: 2px;
+        height: 24px;
+        background: rgba(56, 189, 248, 0.3);
+        margin: 0 auto;
+      }
+
+      .start-connector::after {
+        content: '';
+        display: block;
+        width: 0;
+        height: 0;
+        margin: 0 auto;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid rgba(56, 189, 248, 0.3);
       }
 
       .flow-diagram header {
@@ -948,7 +980,9 @@
         const flows = state.inventories.flows;
         let outlineHTML = '';
         if (flows?.success) {
-          const timelineBlocks = Object.entries(flows.flows).map(([filename, flow]) => {
+          const timelineBlocks = Object.entries(flows.flows)
+            .filter(([filename]) => !filename.includes('start_to_finish_agent_FLOW'))
+            .map(([filename, flow]) => {
             const sections = (flow.sections || []).map((section) => `<div class="timeline-item">
                   <h4>${section.title}</h4>
                   <small>Level ${section.level}</small>
@@ -964,7 +998,7 @@
         }
 
         const curatedHTML = ['installation', 'tasks'].map((key) => renderCuratedFlow(key)).join('');
-        const startFlowSection = `<details open id="start-flow-wrapper"><summary>start_to_finish_agent_FLOW.md</summary><div class="collapsible-content"><div class="flow-graph" id="start-flow-graph"></div><div class="flow-details" id="start-flow-details">Select a step to view details.</div></div></details>`;
+        const startFlowSection = `<details open id="start-flow-wrapper"><summary>start_to_finish_agent_FLOW.md</summary><div class="collapsible-content"><div class="start-flow" id="start-flow-graph"></div><div class="flow-details" id="start-flow-details">Select a step to view details.</div></div></details>`;
 
         const jumpNav = `<div class="flow-nav"><label for="flow-jump">Jump to flow:</label><select id="flow-jump"><option value="">Select…</option><option value="flow-installation-wrapper">Installation Flow</option><option value="flow-tasks-wrapper">Task Creation Flow</option><option value="start-flow-wrapper">Start-to-Finish Flow</option></select></div>`;
 
@@ -1019,26 +1053,33 @@
       function renderStartFlowGraph(data) {
         const container = document.getElementById('start-flow-graph');
         const detailsEl = document.getElementById('start-flow-details');
-        if (!container || !window.cytoscape) return;
+        if (!container) return;
         container.innerHTML = '';
-        if (!data) {
+        if (!data || !data.nodes) {
           if (detailsEl) detailsEl.textContent = 'Unable to load flow data.';
           return;
         }
-        const cy = window.cytoscape({
-          container,
-          elements: [...(data.nodes || []), ...(data.edges || [])],
-          style: [
-            { selector: 'node', style: { 'background-color': '#38bdf8', label: 'data(label)', color: '#0f172a', 'text-wrap': 'wrap', 'text-max-width': 150, 'font-size': 12, 'text-valign': 'center', 'text-halign': 'center', 'border-width': 2, 'border-color': '#0f172a' } },
-            { selector: 'edge', style: { width: 2, 'line-color': '#64748b', 'target-arrow-color': '#64748b', 'target-arrow-shape': 'triangle' } }
-          ],
-          layout: { name: 'breadthfirst', directed: true, padding: 20 }
-        });
-        cy.on('tap', 'node', (event) => {
-          const nodeData = event.target.data();
-          const details = nodeData.details || [];
-          if (detailsEl) {
-            detailsEl.innerHTML = `<strong>${nodeData.label}</strong><ul class="list-column">${details.length ? details.map((item) => `<li>${item}</li>`).join('') : '<li class="muted">No notes recorded.</li>'}</ul>`;
+        (data.nodes || []).forEach((node, index) => {
+          const btn = document.createElement('button');
+          btn.className = 'start-node';
+          const label = (node.data?.label || '').split('\n').join('<br>');
+          btn.innerHTML = `<span>${label}</span>`;
+          btn.addEventListener('click', () => {
+            const details = node.data?.details || [];
+            if (detailsEl) {
+              detailsEl.innerHTML = `<strong>${node.data?.label || 'Step'}</strong><ul class="list-column">${details.length ? details.map((item) => `<li>${item}</li>`).join('') : '<li class="muted">No notes recorded.</li>'}</ul>`;
+            }
+          });
+          btn.setAttribute('tabindex', '0');
+          container.appendChild(btn);
+          if (index < (data.nodes.length - 1)) {
+            const connector = document.createElement('div');
+            connector.className = 'start-connector';
+            container.appendChild(connector);
+          }
+          if (index === 0 && detailsEl) {
+            const details = node.data?.details || [];
+            detailsEl.innerHTML = `<strong>${node.data?.label || 'Step'}</strong><ul class="list-column">${details.length ? details.map((item) => `<li>${item}</li>`).join('') : '<li class="muted">No notes recorded.</li>'}</ul>`;
           }
         });
       }
