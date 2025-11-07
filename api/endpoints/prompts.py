@@ -500,3 +500,101 @@ async def generate_staging_prompt(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin staging prompt: {e!s}"
         )
+
+
+
+@router.get("/execution/{orchestrator_job_id}")
+async def get_execution_prompt(
+    orchestrator_job_id: str,
+    claude_code_mode: bool = Query(False, description="True for Claude Code subagent mode, False for multi-terminal"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Generate execution phase prompt for orchestrator (Handover 0109).
+
+    This endpoint generates ready-to-paste prompts for the execution phase,
+    AFTER the orchestrator has completed staging and created the mission plan.
+
+    Two modes are supported:
+    - Multi-Terminal Mode (default): User launches specialist agents in separate terminals
+    - Claude Code Mode: Orchestrator spawns agents as Claude Code subagents using @ mentions
+
+    Process:
+    1. Fetch orchestrator job and validate (must be orchestrator type)
+    2. Fetch project and count specialist agents
+    3. Generate execution prompt based on mode
+    4. Return prompt with metadata for UI display
+
+    Args:
+        orchestrator_job_id: Orchestrator job UUID
+        claude_code_mode: True for Claude Code subagent mode, False for multi-terminal
+        current_user: Authenticated user (for multi-tenant isolation)
+        db: Database session
+
+    Returns:
+        JSON response with:
+            - success: True if generation succeeded
+            - orchestrator_job_id: Orchestrator UUID
+            - project_id: Project UUID
+            - project_name: Project name
+            - claude_code_mode: Mode used
+            - prompt: Ready-to-paste execution prompt
+            - agent_count: Number of specialist agents
+            - estimated_tokens: Token estimate for prompt
+
+    Raises:
+        HTTPException 404: Orchestrator job not found or not accessible
+        HTTPException 400: Job is not an orchestrator type
+        HTTPException 403: Multi-tenant isolation violation
+        HTTPException 500: Prompt generation error
+    """
+    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+    try:
+        # Initialize thin client generator
+        generator = ThinClientPromptGenerator(db, current_user.tenant_key)
+
+        # Generate execution prompt
+        result = await generator.generate_execution_prompt(
+            orchestrator_job_id=orchestrator_job_id,
+            claude_code_mode=claude_code_mode
+        )
+
+        # Add success flag for frontend
+        result["success"] = True
+
+        logger.info(
+            f"[EXECUTION PROMPT] Generated for orchestrator={orchestrator_job_id}, "
+            f"mode={'claude-code' if claude_code_mode else 'multi-terminal'}, "
+            f"user={current_user.username}, "
+            f"agents={result['agent_count']}"
+        )
+
+        return result
+
+    except ValueError as e:
+        # Orchestrator not found or validation error
+        error_msg = str(e)
+
+        # Check if it's a wrong agent type error
+        if "not found" in error_msg.lower():
+            logger.warning(f"[EXECUTION PROMPT] Orchestrator not found: {orchestrator_job_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Orchestrator job {orchestrator_job_id} not found or not accessible"
+            )
+        else:
+            logger.warning(f"[EXECUTION PROMPT] Validation error: {error_msg}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
+            )
+
+    except Exception as e:
+        # Unexpected error during generation
+        logger.exception(f"[EXECUTION PROMPT] Generation failed for orchestrator={orchestrator_job_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate execution prompt: {e!s}"
+        )
