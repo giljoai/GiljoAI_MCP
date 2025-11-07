@@ -2,9 +2,21 @@
 
 **Version**: 3.1.1
 **Date**: 2025-11-06
+**Last Updated**: 2025-01-05 (Harmonized)
 **Handover**: 0107
+**Harmonization Status**: ✅ Aligned with codebase
 
-## Overview
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - Complete user journey with agent coordination
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical agent flow
+
+**Supported AI Tools**:
+- Claude Code, Codex CLI, Gemini CLI (all with native MCP support)
+
+---
 
 GiljoAI MCP provides comprehensive agent monitoring and graceful cancellation capabilities for agents running in external terminals (Claude Code, Codex CLI, Gemini CLI). This guide explains how to monitor agent health, interpret status indicators, and gracefully cancel agents when needed.
 

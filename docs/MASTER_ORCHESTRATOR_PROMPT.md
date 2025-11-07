@@ -4,8 +4,27 @@
 
 **Handover**: 0079
 **Date**: 2025-10-31
-**Status**: Production Ready (Legacy)
+**Last Updated**: 2025-01-05 (Harmonized)
+**Status**: Production Ready (Legacy - see 0088 Thin Client Migration)
 **Priority**: MISSION CRITICAL
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey with "Stage Project" button explanation
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical flow verification (line 1016: Stage Project button calls `/activate` endpoint)
+- **[STAGE_PROJECT_FEATURE.md](STAGE_PROJECT_FEATURE.md)** - Current thin-client implementation (Handover 0088)
+
+**Important Terminology**:
+- UI displays **"Stage Project"** button
+- Backend endpoint: `POST /api/v1/projects/{id}/activate` (not `/stage`)
+- See start_to_finish_agent_FLOW.md line 1016: CRITICAL DISCOVERY section
+
+**Agent Job Lifecycle**:
+- Initial status: **"waiting"** (not "pending")
+- Full lifecycle: waiting → active → working → complete/failed/blocked
 
 ---
 

@@ -3,8 +3,31 @@
 **Status**: Production-Grade Implementation Complete
 **Version**: 3.0+
 **Handovers**: 0086A (Phases 1-2), 0086B (Phases 3-6)
+**Last Updated**: 2025-01-05 (Harmonized)
 **Migration Notice (0088 – Completed)**: Stage Project now uses a thin‑client design that returns a ~10‑line identity prompt and fetches missions via MCP tools. This page reflects the 0086 baseline with 0088 changes noted. See guides/thin_client_migration_guide.md.
 **Business Impact**: Enables commercial product launch with 70% token reduction
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey explaining "Stage Project" button and project launch flow
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification (line 1016: UI button vs backend endpoint)
+
+**Important Terminology** (harmonized):
+- **UI Label**: "Stage Project" button (displayed to users)
+- **Backend Endpoint**: `POST /api/v1/projects/{id}/activate` (actual API call)
+- **Clarification**: See start_to_finish_agent_FLOW.md line 1016-1125 for detailed explanation
+
+**Agent Job Status** (verified):
+- Initial state: **"waiting"** (not "pending")
+- Full lifecycle: waiting → active → working → complete/failed/blocked
+- Source: Verified in codebase, documented in start_to_finish_agent_FLOW.md lines 1119, 1276, 1361
+
+**Project Model Fields** (verified in `models.py`):
+- `Project.description`: Human-written project scope/intent (Text, nullable=False)
+- `Project.mission`: AI-generated orchestrator summary after context analysis (Text, nullable=False)
 
 ---
 

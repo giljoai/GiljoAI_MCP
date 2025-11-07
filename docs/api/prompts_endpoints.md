@@ -1,8 +1,23 @@
 # Prompts API Endpoints
 
-Document Version: 1.0 | Status: Production (Thin Client)
+**Document Version**: 1.0
+**Status**: Production (Thin Client)
+**Last Updated**: 2025-01-05 (Harmonized)
+**Related Handovers**: 0088 (Thin Client), 0079 (Legacy Fat Prompt)
+**Harmonization Status**: ✅ Aligned with codebase
 
-Related Handovers: 0088 (Thin Client), 0079 (Legacy Fat Prompt)
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey with orchestrator startup
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical flow verification
+- **[thin_client_migration_guide.md](../guides/thin_client_migration_guide.md)** - Migration guide
+
+**Important Notes** (harmonized):
+- Agent job initial status: **"waiting"** (not "pending")
+- Agent templates: orchestrator, implementer, tester, analyzer, reviewer, documenter
+- Stage Project UI button calls: `POST /api/v1/projects/{id}/activate`
 
 ---
 

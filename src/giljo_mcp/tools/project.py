@@ -315,15 +315,38 @@ Project: {project.name}"""
     @mcp.tool()
     async def update_project_mission(project_id: str, mission: str, user_id: Optional[str] = None) -> dict[str, Any]:
         """
-        Update the mission field after orchestrator analysis
+        PERSIST orchestrator-created mission plan to Project.mission field.
+
+        PURPOSE: Save the OUTPUT of orchestrator's mission planning (PROJECT STAGING step).
+        This is called AFTER the orchestrator has analyzed Project.description and created an execution plan.
+
+        CRITICAL DISTINCTIONS:
+        - Project.description = User-written requirements (INPUT - already exists, DO NOT MODIFY)
+        - Project.mission = Orchestrator-generated plan (OUTPUT - THIS TOOL WRITES HERE)
+
+        WHEN TO USE:
+        - Called by orchestrator after creating mission plan (thin prompt Step 4)
+        - The 'mission' parameter should be the orchestrator's GENERATED execution strategy
+        - DO NOT pass user requirements here (those belong in Project.description)
+
+        WHAT HAPPENS:
+        - Updates Project.mission database field
+        - Triggers WebSocket broadcast: 'project:mission_updated'
+        - UI LaunchTab displays mission in "Orchestrator Created Mission" window
 
         Args:
             project_id: UUID of the project
-            mission: Updated mission statement
+            mission: Orchestrator-generated mission plan (YOUR OUTPUT after analysis)
             user_id: Optional user ID for field priority configuration (Handover 0086A Task 2.1)
 
         Returns:
-            Update confirmation
+            {
+                'success': True,
+                'message': 'Mission updated successfully',
+                'project_id': 'uuid',
+                'old_mission': '...',  # Previous mission (if any)
+                'new_mission': '...'   # Your newly created mission
+            }
         """
         try:
             # Log user_id propagation for debugging (Handover 0086A Task 2.1)

@@ -43,8 +43,8 @@ if not exist "%SETUP_SENTINEL%" (
     echo setup>"%SETUP_SENTINEL%"
 )
 
-echo [DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles)...
-call "%VENV_PY%" -m pip install watchdog rich aiohttp tiktoken aiofiles >nul 2>&1
+echo [DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles, packaging)...
+call "%VENV_PY%" -m pip install watchdog rich aiohttp tiktoken aiofiles packaging >nul 2>&1
 
 echo [DevPanel] Generating inventories (Phase 1001)...
 call "%VENV_PY%" dev_tools\devpanel\scripts\devpanel_index.py --out temp\devpanel\index

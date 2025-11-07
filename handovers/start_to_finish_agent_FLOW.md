@@ -1,17 +1,68 @@
 ---
-**Document Type:** Technical Verification & Agent Flow Documentation  
-**Last Updated:** 2025-01-05  
-**Related Documents:** [Simple_Vision.md](./Simple_Vision.md) (product vision & user journey)  
-**Harmonization Status:** ✅ Aligned with codebase (Handovers 0088, 0102, 0073)  
+**Document Type:** Technical Verification & Agent Flow Documentation
+**Last Updated:** 2025-11-06
+**Related Documents:** [Simple_Vision.md](./Simple_Vision.md) (product vision & user journey)
+**Harmonization Status:** ✅ Aligned with codebase (Handovers 0088, 0102, 0073, 0105d)
 ---
 
 # Start-to-Finish Agent Flow Verification
 
-**Date**: 2025-11-05
+**Date**: 2025-11-06
 **Purpose**: Document and verify complete agent orchestration flow from installation to execution
 **Status**: ✅ Verified & Harmonized
 
 **User Journey Context**: This document provides the technical verification layer for the product vision described in [Simple_Vision.md](./Simple_Vision.md). While Simple_Vision focuses on the *what* and *why* from a user's perspective, this document verifies the *how* through code inspection, database schemas, and API endpoint verification.
+
+---
+
+## Terminology & Naming Conventions
+
+**CRITICAL**: This section defines the official naming conventions used throughout GiljoAI MCP. These terms distinguish **user input** from **AI-generated output** to prevent confusion and ensure agents use the correct database fields and MCP tools.
+
+### Database Field Definitions
+
+| Field | Type | Description | Filled By | Example |
+|-------|------|-------------|-----------|---------|
+| `Product.description` | User Input | User-written product description explaining what the product does | **Human** (via UI form) | "Multi-tenant server orchestrating AI agents for software development" |
+| `Project.description` | User Input | User-written project requirements/objectives | **Human** (via UI form or Task conversion) | "Add authentication system with JWT tokens" |
+| `Project.mission` | AI Output | Orchestrator-generated condensed mission plan (70% token reduction) | **Orchestrator** (during STAGE PROJECT, Step 3) | "Implement JWT auth with RS256, protect 8 endpoints, add rate limiting..." |
+| `MCPAgentJob.mission` | AI Output | Individual agent's job assignment (portion of Project.mission) | **Orchestrator** (via spawn_agent_job tool) | "backend-tester: Test authentication endpoints with invalid tokens..." |
+| `Task.description` | User Input | Todo item or idea description (NOT related to projects) | **Human** (via Tasks UI) | "Research Redis caching strategies" |
+
+### Key Distinctions
+
+**User Writes = "description"**
+**AI Generates = "mission"**
+
+- **Product.description** ← Human defines product scope
+- **Project.description** ← Human defines project goals
+- **Project.mission** ← Orchestrator breaks down project into execution plan
+- **Agent job mission** ← Orchestrator assigns specific work to agents
+
+### MCP Tool Parameter Naming
+
+**Correct Usage**:
+- `update_project_mission(project_id, mission)` ← Updates AI-generated Project.mission
+- `spawn_agent_job(agent_type, mission, ...)` ← Creates MCPAgentJob with agent's mission
+- `get_orchestrator_instructions(orchestrator_id)` ← Returns condensed mission for execution
+
+**What NOT to do**:
+- ❌ Don't call `update_project_mission()` with user input (that's Project.description)
+- ❌ Don't confuse Task.description with Project.mission
+- ❌ Don't use "mission" parameter when accepting user requirements
+
+### Task to Project Conversion
+
+When converting a Task to a Project:
+```python
+Project(
+    name=task.title,
+    description=task.description,  # ← User input goes to description
+    mission="",                     # ← Leave empty for orchestrator to generate
+)
+```
+
+**Fixed in Handover 0105d** - Previously incorrectly populated mission field during conversion.
 
 ---
 
@@ -129,6 +180,8 @@ PHASE 4: PROJECT ORCHESTRATION
                   │                ├──► [B]Nvigation via Jobs link on left navbar
                   │                │      ├─► Clicking links navigate to Launch TAB if the custom project link
                   │                │      ├─► [A/B]Shows orchestrator card with its  AGENT ID and [Stage Project] Button
+                  │                │      │    └─► ⚠️ UI displays "Stage Project" button, but backend endpoint is `/activate`
+                  │                │      │        (See line 1016: CRITICAL DISCOVERY section for terminology details)
                   │                │      ├─► [A/B]Shows 'Project Desicription' window. Content Human Written content form database
                   │                │      ├─► [A/B]Shows 'Orchestrator Created Mission' Empty at start
                   │                │      └─► [A/B]Shows 'Agent Team' Empty at start
@@ -136,14 +189,22 @@ PHASE 4: PROJECT ORCHESTRATION
                   │                ├──► [11] Click "Stage Project" Button
                   │                │            └─► 🔄 [INVESTIGATING] POST /api/v1/projects/{id}/stage
                   │                │                │
-                  │                │                ├──► [A] Orchestrator gets instructions from the clip board pasted instructions by the user created by [STAGE PROJECT] button
-                  │                │                │      └─► MCP tool: get_orchestrator_instructions()
-                  │                │                │           ├─► Checks for Serena MCP toggle status and advanced Serena Settings
-                  │                │                │           ├─► Retrieves vision_documents for context (this should be pre chunked in the database and waiting)
-                  │                │                │           ├─► Retrieves product name, product description from database
-                  │                │                │           ├─► Retrieves 'project description' human written ask for the project to be executed
-                  │                │                │           ├─► Retreives all other project context BASED ON USERS context priorities settings in 'My Settings'
-                  │                │                │           └─► Procesesses all input into a mission 'Orchestrator Created Mission' window, appears live for user when done
+                  │                │                ├──► [A] User clicks "Stage Project" → Thin prompt generated and copied to clipboard
+                  │                │                │      └─► User pastes thin prompt into AI coding tool terminal
+                  │                │                │      └─► Orchestrator startup sequence (Handover 0105):
+                  │                │                │           ├─► Step 1: Verify MCP connection via health_check()
+                  │                │                │           ├─► Step 2: Fetch mission via get_orchestrator_instructions()
+                  │                │                │           │    ├─► Checks for Serena MCP toggle status and advanced Serena Settings
+                  │                │                │           │    ├─► Retrieves vision_documents for context (pre-chunked in database)
+                  │                │                │           │    ├─► Retrieves product name, description from database
+                  │                │                │           │    ├─► Retrieves 'project description' (human-written project requirements)
+                  │                │                │           │    ├─► Retrieves all other context BASED ON user's field priorities in 'My Settings'
+                  │                │                │           │    └─► Returns condensed mission (70% token reduction applied)
+                  │                │                │           ├─► Step 3: PERSIST mission via update_project_mission()
+                  │                │                │           │    └─► Saves mission to Project.mission field in database
+                  │                │                │           ├─► Step 4: WebSocket broadcast fires (project:mission_updated)
+                  │                │                │           │    └─► 'Orchestrator Created Mission' window updates live in UI
+                  │                │                │           └─► Step 5: Execute mission and coordinate agents
                   │                │                │
                   │                │                ├──► [B] Orchestrator selects agents
                   │                │                │      ├─► Query active templates from Agent Template Manager
@@ -157,15 +218,30 @@ PHASE 4: PROJECT ORCHESTRATION
                   │                │                │      └─► Assign tasks to specific agent roles
                   │                │                │
                   │                │                └──► [D] Store instructions on MCP server
-                  │                │                       └─► Create MCPAgentJob records (status=pending)
+                  │                │                       └─► Create MCPAgentJob records (status=waiting)
                   │                │                       └─► Each job has: agent_type, mission, tenant_key
                   │
                   └──► [12] UI Shows "Start Implementation" (or similar, name may have changed)
-                             ├──► Presing "Start Implementation" navigates to 2nd Tab on project custom link 'Implementation'
-                             ├──► Button appears with orchestrator launch prompt (primariy for claude who can use native subagents)
-                             ├──► Button also appears on all agent cards in 'Implementation' TAB as launch prompts for coding CLI tools that do not have native subagents (requires unique terminal windows with CLI coding agent running)
-                             ├──► User copies prompt to clipboard for orchestrator only for claude and launches
-                             └──► User copies prompt to clipboard for all other agents individuallyand lauches them in their own terminal window for non subagent capabtle cli coding tools (can be used this way with claude as well / legacy mode)
+                             ├──► Pressing "Start Implementation" navigates to 2nd Tab on project custom link 'Implementation'
+                             ├──► [NEW - Handover 0105] Claude Code Subagent Toggle appears at top of Implementation tab
+                             │    ├─► Toggle switch with orange robot icon: "Using Claude Code subagents"
+                             │    ├─► Default state: OFF (multi-terminal mode)
+                             │    ├─► Toggle OFF: All agent buttons active (yellow with rocket icon)
+                             │    │    └─► Hint: "Normal mode - All agents launch as independent MCP instances"
+                             │    └─► Toggle ON: Only orchestrator button active, others grayed out (pause icon)
+                             │         └─► Hint: "Claude Code subagent mode - Launch only orchestrators"
+                             │
+                             ├──► [TOGGLE OFF] Multi-Terminal Mode (Default):
+                             │    ├─► All agent "Launch Agent" buttons active
+                             │    ├─► User copies each agent prompt individually
+                             │    └─► User pastes in separate terminal windows (one per agent)
+                             │
+                             └──► [TOGGLE ON] Claude Code Single-Terminal Mode:
+                                  ├─► Only orchestrator "Launch Agent" button active
+                                  ├─► All other agent buttons disabled (grey, "Claude Code Mode" text)
+                                  ├─► Tooltip on disabled: "Claude spawns this agent automatically"
+                                  ├─► User copies orchestrator prompt only
+                                  └─► User pastes in single Claude Code terminal (Claude spawns subagents via MCP)
 
 
 PHASE 5: AGENT EXECUTION
@@ -181,13 +257,13 @@ PHASE 5: AGENT EXECUTION
                   │          └─► User copies orchestrator prompt to clipboard
                   │          └─► User pastes prompt into terminal with AI coding tool (Claude/Codex/Gemini)
                   │          └─► Agent reads prompt with complete project context from [LAUNCH TAB] staging
-                  │          └─► 🔄 [INVESTIGATING] MCP tool: get_pending_jobs()
+                  │          └─► ✅ MCP tool: get_pending_jobs()
                   │                └─► Query for agent_type='orchestrator'
-                  │                └─► Retrieve pending MCPAgentJob records created during staging
+                  │                └─► Retrieve MCPAgentJob records with status="waiting" (initial state)
                   │
                   ├──► [14] Orchestrator Claims Job & Begins Coordination
-                  │          └─► 🔄 [INVESTIGATING] MCP tool: acknowledge_job()
-                  │                └─► Update job status: pending → active
+                  │          └─► ✅ MCP tool: acknowledge_job()
+                  │                └─► Update job status: waiting → active → working
                   │                └─► Store agent_id for tracking
                   │                └─► UI updates: Orchestrator card shows "In Progress"
                   │
@@ -201,9 +277,9 @@ PHASE 5: AGENT EXECUTION
                   │                │      └─► UI shows: Agent cards update to "Spawned by Orchestrator"
                   │                │
                   │                └─► [CODEX/GEMINI FLOW] Manual Multi-Terminal Spawning
-                  │                       ├─► 🔄 [INVESTIGATING] MCP tool: spawn_agent_job()
-                  │                       │     └─► Create new MCPAgentJob (status=pending)
-                  │                       │     └─► Set agent_type (implementer, tester, documenter, etc.)
+                  │                       ├─► ✅ MCP tool: spawn_agent_job()
+                  │                       │     └─► Create new MCPAgentJob (status="waiting")
+                  │                       │     └─► Set agent_type (implementer, tester, documenter, reviewer, analyzer)
                   │                       │     └─► Set spawned_by=orchestrator_job_id
                   │                       │
                   │                       └─► UI shows: Agent cards with individual launch prompts
@@ -246,6 +322,7 @@ PHASE 5: AGENT EXECUTION
                              ├─► UI updates: Message center shows orchestrator communications
                              ├─► Reports consolidated team status to user
                              └─► Initiates project closeout workflow when all agents complete
+                                  └─► **Handover 0073**: Git commit, push, documentation, agent decommissioning
 
 
 COMMUNICATION LAYER (Throughout Execution)

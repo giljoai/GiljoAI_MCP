@@ -1,8 +1,25 @@
 # MCP Tool Integration Guide
 
-**Last Updated:** 2025-10-09  
+**Last Updated:** 2025-01-05 (Harmonized)  
 **Version:** 3.0  
 **Audience:** Developers integrating AI development tools
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey with MCP integration setup
+- **[MCP_OVER_HTTP_INTEGRATION.md](../MCP_OVER_HTTP_INTEGRATION.md)** - Technical MCP-over-HTTP details
+
+**Supported AI Tools** (native MCP support):
+- **Claude Code** - via `claude-code mcp add` command
+- **Codex CLI** - via `codex mcp add` command
+- **Gemini CLI** - via `gemini mcp add` command
+
+**Agent Template Export** (Handover 0102):
+- 15-minute token TTL for secure downloads
+- See Simple_Vision.md for complete export workflow
 
 ---
 

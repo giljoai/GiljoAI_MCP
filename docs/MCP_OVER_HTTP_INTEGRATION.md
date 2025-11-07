@@ -1,7 +1,26 @@
 # MCP-over-HTTP Integration Guide
 
 **Document Version**: 1.0.0
+**Last Updated**: 2025-01-05 (Harmonized)
 **Status**: Production Ready
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey including MCP integration setup
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
+
+**Supported AI Tools** (native MCP support):
+- **Claude Code** - via `claude-code mcp add` command
+- **Codex CLI** - via `codex mcp add` command  
+- **Gemini CLI** - via `gemini mcp add` command
+
+**Agent Template Export** (Handover 0102):
+- 15-minute token TTL for secure downloads
+- Download token system for slash commands and agent templates
+- See Simple_Vision.md for complete export workflow
 
 ---
 

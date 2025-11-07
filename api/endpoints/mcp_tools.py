@@ -65,6 +65,7 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "get_project": state.tool_accessor.get_project,
             "switch_project": state.tool_accessor.switch_project,
             "close_project": state.tool_accessor.close_project,
+            "update_project_mission": state.tool_accessor.update_project_mission,
             # Agent tools
             "spawn_agent": state.tool_accessor.spawn_agent,
             "list_agents": state.tool_accessor.list_agents,

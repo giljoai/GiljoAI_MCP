@@ -2,14 +2,31 @@
 
 **Version**: 1.0
 **Date**: 2025-10-19
+**Last Updated**: 2025-01-05 (Harmonized)
 **Base URL**: `http://localhost:7272/api/agent-jobs`
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey & agent job lifecycle explanation
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification of job flow
+
+**Agent Job Status Lifecycle** (verified in codebase):
+- Initial state: **"waiting"** (not "pending")
+- Full lifecycle: **waiting → active → working → complete/failed/blocked**
+- Source: Verified in start_to_finish_agent_FLOW.md lines 1119, 1276, 1361
+
+**Current Agent Templates** (6 default templates):
+- orchestrator, implementer, tester, analyzer, reviewer, documenter
+- Source: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
+
+⚠️ **Documentation Note**: Some code examples in this document may show `status="pending"` from earlier documentation. The correct initial status in the codebase is `status="waiting"`. When implementing, always use "waiting" as the initial job status.
+
+---
 
 ## Table of Contents
-
-1. [Overview](#overview)
-2. [Authentication](#authentication)
-3. [Endpoint Summary](#endpoint-summary)
-4. [Request/Response Examples](#requestresponse-examples)
 5. [Error Handling](#error-handling)
 6. [WebSocket Events](#websocket-events)
 7. [Rate Limiting](#rate-limiting)
@@ -26,7 +43,7 @@ The Agent Jobs API provides comprehensive job management for multi-agent orchest
 ### Capabilities
 
 - Create and manage agent jobs
-- Track job lifecycle (pending → active → completed/failed)
+- Track job lifecycle (waiting → active → working → completed/failed/blocked)
 - Coordinate parent-child job hierarchies
 - Send messages between agents
 - Query jobs with flexible filtering

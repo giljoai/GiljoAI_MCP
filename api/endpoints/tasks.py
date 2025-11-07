@@ -429,7 +429,8 @@ async def convert_task_to_project(
     project_name = conversion_request.project_name or task.title
     project = Project(
         name=project_name,
-        mission=task.description or f"Project created from task: {task.title}",
+        description=task.description or f"Project created from task: {task.title}",
+        mission="",  # Leave empty - orchestrator will generate mission during staging
         product_id=active_product.id,
         tenant_key=current_user.tenant_key,
         status="active",
