@@ -2,7 +2,30 @@
 
 **Document Version**: 10_21_2025
 **Status**: Single Source of Truth
-**Last Updated**: October 21, 2025
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey including installation workflow
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification (Phase 1: Installation & Setup)
+
+**Installation Key Points** (verified):
+1. PostgreSQL database setup and table creation
+2. **Alembic migrations** applied (including migration `6adac1467121` for agent template columns)
+3. **First user creation** triggers automatic seeding of 6 default agent templates per tenant
+4. API server configuration and launch
+
+**Installation Sequence** (harmonized):
+- Database tables created → Migrations applied → First user created → Templates seeded → API started
+- See start_to_finish_agent_FLOW.md (Phase 1) for complete technical verification
+
+**Agent Template Seeding**:
+- Triggered by first user creation (auth.py:910)
+- Seeds 6 default templates: orchestrator, implementer, tester, analyzer, reviewer, documenter
+- Source: `template_seeder.py::_get_default_templates_v103()`
 
 ---
 

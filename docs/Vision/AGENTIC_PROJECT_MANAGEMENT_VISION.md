@@ -1,10 +1,22 @@
 # GiljoAI MCP - Agentic Project Management Vision
 ## From Manual Workflows to Sophisticated Multi-Agent Orchestration
 
-**Document Version**: 1.0.0
+**Document Version**: 1.1.0
 **Created**: 2025-10-14
+**Last Updated**: 2025-01-05
 **Status**: Strategic Vision Document
 **Based On**: Handover 0012 Findings & AKE-MCP Proven Patterns
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & product vision (harmonized)
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical flow verification (code-verified)
+
+**Current Agent Templates** (as of 2025-01-05):
+- orchestrator, implementer, tester, analyzer, reviewer, documenter (seeded via `template_seeder.py`)
 
 ---
 

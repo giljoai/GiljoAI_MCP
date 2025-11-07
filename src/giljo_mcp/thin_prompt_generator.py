@@ -239,17 +239,30 @@ MCP CONNECTION:
 - Tool Prefix: mcp__giljo-mcp__
 - Auth Status: {auth_note}
 
+YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
+You are STAGING the project by creating a mission plan. You will NOT execute the work yourself.
+Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work to specialist agents.
+
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
-2. Fetch mission: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
-3. Execute mission (70% token reduction applied)
-4. Coordinate agents via MCP tools
+2. Fetch context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+   └─► Returns: Project.description (user requirements), Product context, Agent templates
+3. CREATE MISSION: Analyze requirements → Generate execution plan (70% token reduction)
+4. PERSIST MISSION: mcp__giljo-mcp__update_project_mission('{project_id}', your_created_mission)
+   └─► Saves to Project.mission field for UI display
+5. SPAWN AGENTS: Use spawn_agent_job() to create specialist agent jobs with their missions
+   └─► Agents will EXECUTE the work (not you)
+
+CRITICAL DISTINCTIONS:
+- Project.description = User-written requirements (READ THIS for context)
+- Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 3)
+- Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
 
 CONNECTION TROUBLESHOOTING:
 If MCP fails: Check server running at {mcp_url}/health
 Logs: ~/.giljo_mcp/logs/mcp_adapter.log
 
-Begin by verifying MCP connection, then fetch your mission.
+Begin by verifying MCP connection, then fetch context and CREATE the mission plan.
 """
 
     async def _get_user_field_priorities(self, user_id: str) -> Dict[str, int]:

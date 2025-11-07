@@ -1,9 +1,18 @@
 # Multi-Agent Coordination Patterns
 ## Orchestrating Teams of Specialized AI Agents
 
-**Document Version**: 1.0.0
+**Document Version**: 1.1.0
 **Created**: 2025-10-14
+**Last Updated**: 2025-01-05
 **Status**: Architecture Pattern Document
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & product vision
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification & flow
 
 ---
 
@@ -36,21 +45,37 @@ This document defines the coordination patterns that enable GiljoAI MCP to orche
 
 ### 1. Specialized Roles, Shared Goals
 
-Each agent has a specific role but works toward the shared project vision:
+Each agent has a specific role but works toward the shared project vision.
+
+**🎯 Current Default Templates** (as of 2025-01-05):
+The system ships with **6 default agent templates** seeded during first user creation:
+- **orchestrator**: Project planning, agent coordination, context summarization
+- **implementer**: Code implementation, refactoring, bug fixes
+- **tester**: Test strategy, implementation, validation, quality assurance
+- **analyzer**: Investigation, documentation research, external resources
+- **reviewer**: Code review, standards compliance, best practices
+- **documenter**: Documentation, comments, API docs, user guides
+
+**Source**: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
+
+**Extensible Architecture** - Additional agent types can be defined:
 
 ```python
-AGENT_SPECIALIZATIONS = {
+POTENTIAL_AGENT_SPECIALIZATIONS = {
+    # Core 6 (default templates)
     "orchestrator": "Project planning, agent coordination, context summarization",
+    "implementer": "Code implementation, refactoring, bug fixes",
+    "tester": "Test strategy, implementation, validation, quality assurance",
+    "analyzer": "Investigation, documentation research, external resources",
+    "reviewer": "Code review, standards compliance, best practices",
+    "documenter": "Documentation, comments, API docs, user guides",
+
+    # Extensible (user-created templates)
     "architect": "System design, component relationships, technical decisions",
     "database": "Schema design, migrations, query optimization, data modeling",
     "backend": "API development, business logic, integration, security",
     "frontend": "UI components, user experience, state management, routing",
-    "tester": "Test strategy, implementation, validation, quality assurance",
-    "researcher": "Investigation, documentation research, external resources",
-    "implementor": "Code implementation, refactoring, bug fixes",
-    "reviewer": "Code review, standards compliance, best practices",
     "devops": "Deployment, CI/CD, infrastructure, monitoring",
-    "documentor": "Documentation, comments, API docs, user guides",
     "security": "Security analysis, vulnerability assessment, compliance"
 }
 ```
@@ -523,7 +548,7 @@ class MessageQueue:
             "acknowledged_by": [],  # JSONB array
             "requires_response": message.get("requires_response", False),
             "priority": message.get("priority", "normal"),
-            "status": "pending"
+            "status": "waiting"  # Initial state: waiting → active → working → complete
         }
 
         await self.db.insert("agent_messages", message_record)

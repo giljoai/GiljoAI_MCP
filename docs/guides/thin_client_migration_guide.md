@@ -2,9 +2,27 @@
 
 **Author**: GiljoAI Development Team
 **Date**: 2025-11-02
+**Last Updated**: 2025-01-05 (Harmonized)
 **Version**: v3.1
 **Handover**: 0088 - Thin Client Stage Project Architecture Fix
 **Status**: Completed — Thin client is the default
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey explaining project launch flow
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
+- **[STAGE_PROJECT_FEATURE.md](../STAGE_PROJECT_FEATURE.md)** - Stage Project feature documentation
+
+**Key Terminology** (harmonized):
+- UI button: **"Stage Project"**
+- Backend endpoint: `POST /api/v1/projects/{id}/activate`
+- Initial job status: **"waiting"** (not "pending")
+
+**Agent Templates** (6 default):
+- orchestrator, implementer, tester, analyzer, reviewer, documenter
 
 ---
 

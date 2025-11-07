@@ -2,7 +2,28 @@
 
 **Location**: `src/giljo_mcp/template_manager.py` (lines 146-550)
 **Status**: Production-ready agent templates for multi-agent orchestration
-**Last Updated**: October 2024
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey & agent template explanation
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
+
+**Current Default Agent Templates** (verified):
+- **6 templates seeded per tenant**: orchestrator, implementer, tester, analyzer, reviewer, documenter
+- **Seeding trigger**: First user creation (auth.py:910)
+- **Source**: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
+- **Colors**: Each template has unique background_color for UI display
+  - orchestrator: #D4A574, implementer: #3498DB, tester: #FFC300
+  - analyzer: #E74C3C, reviewer: #9B59B6, documenter: #27AE60
+
+**Agent Template Export** (Handover 0102):
+- 15-minute token TTL for secure downloads
+- Supports Claude Code, Codex CLI, Gemini CLI
+- See Simple_Vision.md for complete export workflow
 
 ---
 

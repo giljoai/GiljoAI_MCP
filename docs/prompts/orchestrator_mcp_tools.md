@@ -1,5 +1,25 @@
 # Orchestrator MCP Tool Instructions (Handover 0090)
 
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & orchestrator role
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Complete agent flow verification
+
+**Current Agent Templates** (6 default):
+- orchestrator, implementer, tester, analyzer, reviewer, documenter
+- Source: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
+
+**Agent Job Status** (verified):
+- Initial: **"waiting"** (not "pending")
+- Lifecycle: waiting → active → working → complete/failed/blocked
+
+---
+
 ## MCP Tool Catalog for Orchestrators
 
 You have access to comprehensive MCP tools for project orchestration. Use these tools in sequence to manage the full project lifecycle.

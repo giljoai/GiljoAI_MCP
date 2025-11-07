@@ -25,6 +25,21 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set
+from importlib import metadata
+from urllib import request, parse
+
+try:
+    from packaging.requirements import Requirement
+    from packaging.version import parse as parse_version
+except ModuleNotFoundError:  # fallback for offline environments
+    class Requirement:  # type: ignore
+        def __init__(self, requirement: str):
+            self.name = requirement.split("[")[0].split("==")[0].split(">=")[0].strip()
+
+    def parse_version(version: str):  # type: ignore
+        from distutils.version import LooseVersion
+
+        return LooseVersion(version)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -235,7 +250,7 @@ def build_agent_template_catalog() -> Dict[str, Any]:
         return {"success": False, "error": str(exc)}
 
 
-def build_tech_stack() -> Dict[str, Any]:
+def build_tech_stack(skip_upgrade_checks: bool = False) -> Dict[str, Any]:
     result: Dict[str, Any] = {"success": True}
 
     try:
@@ -249,11 +264,17 @@ def build_tech_stack() -> Dict[str, Any]:
             with pyproject_path.open("rb") as fh:
                 data = tomllib.load(fh)
             project = data.get("project", {})
+            dependencies = project.get("dependencies", [])
+            optional = project.get("optional-dependencies", {})
             result["python"] = {
                 "name": project.get("name"),
                 "version": project.get("version"),
-                "dependencies": project.get("dependencies", []),
-                "optional_dependencies": project.get("optional-dependencies", {}),
+                "dependencies": dependencies,
+                "optional_dependencies": optional,
+                "dependency_info": _analyze_python_dependencies(dependencies, skip_upgrade_checks),
+                "optional_dependency_info": {
+                    group: _analyze_python_dependencies(reqs, skip_upgrade_checks) for group, reqs in optional.items()
+                },
             }
         else:
             result["python"] = {"error": "pyproject.toml not found"}
@@ -272,6 +293,9 @@ def build_tech_stack() -> Dict[str, Any]:
                 "version": pkg.get("version"),
                 "dependencies": pkg.get("dependencies", {}),
                 "devDependencies": pkg.get("devDependencies", {}),
+                "dev_dependency_info": _analyze_npm_dependencies(pkg.get("devDependencies", {}), skip_upgrade_checks),
+                "dependency_info": _analyze_npm_dependencies(pkg.get("dependencies", {}), skip_upgrade_checks),
+                "dev_dependency_info": _analyze_npm_dependencies(pkg.get("devDependencies", {})),
             }
         except Exception as exc:
             result["frontend"] = {"error": str(exc)}
@@ -293,6 +317,97 @@ def build_tech_stack() -> Dict[str, Any]:
         result["deprecations"] = deprecations
 
     return result
+
+
+def _normalize_package_name(req_str: str) -> str:
+    try:
+        requirement = Requirement(req_str)
+        return requirement.name
+    except Exception:
+        cleaned = req_str.split("[")[0]
+        for sep in ("==", ">=", "<=", "~=", ">", "<"):
+            if sep in cleaned:
+                cleaned = cleaned.split(sep)[0]
+                break
+        return cleaned.strip()
+
+
+def _get_installed_version(name: str) -> Optional[str]:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def _get_latest_pypi_version(name: str, skip: bool = False) -> Optional[str]:
+    if skip:
+        return None
+    try:
+        url = f"https://pypi.org/pypi/{parse.quote(name)}/json"
+        with request.urlopen(url, timeout=5) as resp:
+            data = json.load(resp)
+            return data.get("info", {}).get("version")
+    except Exception:
+        return None
+
+
+def _analyze_python_dependencies(requirements: List[str], skip_upgrade_checks: bool) -> List[Dict[str, Any]]:
+    info: List[Dict[str, Any]] = []
+    for req_str in requirements:
+        name = _normalize_package_name(req_str)
+        installed = _get_installed_version(name)
+        latest = _get_latest_pypi_version(name, skip_upgrade_checks)
+        upgrade = False
+        if installed and latest:
+            try:
+                upgrade = parse_version(latest) > parse_version(installed)
+            except Exception:
+                upgrade = False
+        info.append(
+            {
+                "requirement": req_str,
+                "name": name,
+                "installed_version": installed,
+                "latest_version": latest,
+                "upgrade_available": upgrade,
+            }
+        )
+    return info
+
+
+def _get_latest_npm_version(name: str, skip: bool = False) -> Optional[str]:
+    if skip:
+        return None
+    try:
+        encoded = parse.quote(name, safe="@/")
+        url = f"https://registry.npmjs.org/{encoded}/latest"
+        with request.urlopen(url, timeout=5) as resp:
+            data = json.load(resp)
+            return data.get("version")
+    except Exception:
+        return None
+
+
+def _analyze_npm_dependencies(deps: Dict[str, str], skip_upgrade_checks: bool) -> List[Dict[str, Any]]:
+    info: List[Dict[str, Any]] = []
+    for name, declared in deps.items():
+        latest = _get_latest_npm_version(name, skip_upgrade_checks)
+        upgrade = False
+        if latest:
+            stripped_declared = declared.lstrip("^~>=<")
+            try:
+                upgrade = parse_version(latest) > parse_version(stripped_declared)
+            except Exception:
+                upgrade = False
+        info.append(
+            {
+                "name": name,
+                "declared_version": declared,
+                "latest_version": latest,
+                "upgrade_available": upgrade,
+            }
+        )
+    return info
 
 
 def build_search_index_seed(
@@ -353,7 +468,7 @@ def build_search_index_seed(
     return {"success": True, "count": len(entries), "entries": entries}
 
 
-def run(output_dir: Path) -> int:
+def run(output_dir: Path, skip_upgrade_checks: bool = False) -> int:
     ensure_paths(output_dir)
 
     api_catalog = build_api_catalog()
@@ -368,7 +483,7 @@ def run(output_dir: Path) -> int:
     agent_templates = build_agent_template_catalog()
     safe_json_dump(agent_templates, output_dir / "agent_template_catalog.json")
 
-    tech_stack = build_tech_stack()
+    tech_stack = build_tech_stack(skip_upgrade_checks=skip_upgrade_checks)
     safe_json_dump(tech_stack, output_dir / "tech_stack.json")
 
     dependency_index = build_import_graph()
@@ -387,11 +502,11 @@ def run(output_dir: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build Developer Panel inventories (Phase 1001)")
     parser.add_argument("--out", default=str(OUT_DIR_DEFAULT), help="Output directory for JSON inventories")
+    parser.add_argument("--skip-upgrade-checks", action="store_true", help="Skip remote version lookups for tech stack")
     args = parser.parse_args()
     output_dir = Path(args.out).resolve()
-    return run(output_dir)
+    return run(output_dir, skip_upgrade_checks=args.skip_upgrade_checks)
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

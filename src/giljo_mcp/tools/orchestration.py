@@ -216,29 +216,48 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         parent_job_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Spawn agent job with THIN CLIENT prompt (Handover 0088 Amendment B).
+        Create specialist agent job for EXECUTION (orchestrator assigns work during STAGING).
 
-        CRITICAL CHANGES:
-        - Mission stored in database (MCPAgentJob.mission field)
-        - Returned prompt is ~10 lines with identity only
+        PURPOSE: Orchestrator delegates work to specialist agents who will EXECUTE tasks.
+        This tool is called during PROJECT STAGING to create agent jobs. The agents will DO THE WORK.
+
+        ORCHESTRATOR'S WORKFLOW:
+        1. CREATE mission plan (analyzed from Project.description)
+        2. BREAK DOWN mission into agent-specific work items
+        3. SPAWN agents using this tool (delegates execution to specialists)
+        4. Each agent receives portion of overall mission as their job
+
+        AGENT'S ROLE (after spawning):
+        - Agent calls get_agent_mission() to fetch their job (MCPAgentJob.mission)
+        - Agent EXECUTES their assigned work (writes code, runs tests, etc.)
+        - Agent reports progress back via MCP tools
+
+        CRITICAL DISTINCTIONS:
+        - Orchestrator STAGES (plans & coordinates) during initial setup
+        - Specialist agents EXECUTE (do the actual work) after being spawned
+        - This tool creates the bridge: orchestrator assigns work → agent executes it
+
+        THIN CLIENT ARCHITECTURE:
+        - Mission stored in MCPAgentJob.mission database field
+        - Returned prompt is ~10 lines (agent identity only)
         - Agent calls get_agent_mission() to fetch full mission
-        - WebSocket broadcast for UI update (agent appears in grid)
+        - WebSocket broadcast updates UI (agent appears in grid)
 
         Args:
-            agent_type: Type of agent (backend, frontend, orchestrator, etc.)
-            agent_name: Human-readable name
-            mission: Agent-specific mission (STORED, not embedded)
+            agent_type: Type of agent (backend-tester, frontend-dev, etc.)
+            agent_name: Human-readable name for the agent
+            mission: Agent's specific job assignment (portion of overall Project.mission)
             project_id: Project UUID
             tenant_key: Tenant isolation key
-            parent_job_id: Optional parent orchestrator ID
+            parent_job_id: Optional parent orchestrator ID (for tracking)
 
         Returns:
             {
                 'success': True,
                 'agent_job_id': 'uuid',
-                'agent_prompt': '~10 line thin prompt',
+                'agent_prompt': '~10 line thin prompt for agent to paste',
                 'prompt_tokens': 50,
-                'mission_stored': True,
+                'mission_stored': True,  # Mission saved to MCPAgentJob.mission
                 'mission_tokens': 2000,
                 'thin_client': True
             }
@@ -816,17 +835,26 @@ The agent templates are now being updated...
     @mcp.tool()
     async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
         """
-        Fetch orchestrator-specific mission and instructions (Handover 0088).
+        Fetch context for orchestrator to CREATE mission plan (Handover 0088).
 
-        CRITICAL: This enables thin client architecture for 70% token reduction.
-        Orchestrator calls this on startup to get its condensed mission.
+        PURPOSE: PROJECT STAGING (NOT EXECUTION)
+        This provides INPUT CONTEXT for the orchestrator to analyze and create a mission plan.
+        The orchestrator will READ this data and GENERATE a mission (not execute work itself).
 
-        Process:
-        1. Fetch orchestrator job from database
-        2. Get associated project and product
-        3. Apply field priorities to vision content
-        4. Return condensed mission (70% token reduction)
-        5. Broadcast WebSocket event for UI update
+        RETURNS (for orchestrator to analyze):
+        - Project.description: User-written requirements (INPUT - what needs to be done)
+        - Product context: Product vision and architecture (INPUT - system context)
+        - Agent templates: Available specialists (INPUT - who can do the work)
+        - Condensed content: 70% token reduction via field priorities
+
+        ORCHESTRATOR'S JOB:
+        1. READ returned Project.description (user requirements)
+        2. ANALYZE requirements and break down into work items
+        3. CREATE mission plan (condensed execution strategy)
+        4. PERSIST mission via update_project_mission() tool
+        5. SPAWN specialist agents who will EXECUTE the work
+
+        CRITICAL: The orchestrator is STAGING, not EXECUTING. It coordinates specialist agents.
 
         Args:
             orchestrator_id: Orchestrator job UUID
@@ -837,10 +865,12 @@ The agent templates are now being updated...
                 'orchestrator_id': 'uuid',
                 'project_id': 'uuid',
                 'project_name': 'My Project',
-                'mission': 'Condensed mission with priority fields only',
+                'project_description': 'User-written requirements (INPUT for analysis)',
+                'product_context': 'Product vision and architecture (INPUT)',
+                'mission': 'Condensed content with priority fields (context for planning)',
                 'context_budget': 150000,
                 'context_used': 0,
-                'agent_templates': [...],
+                'agent_templates': [...],  # Available specialists (INPUT)
                 'field_priorities': {...},
                 'token_reduction_applied': True,
                 'estimated_tokens': 6000

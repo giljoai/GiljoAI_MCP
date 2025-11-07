@@ -2,7 +2,26 @@
 
 **Document Version**: 10_13_2025  
 **Status**: Single Source of Truth  
-**Last Updated**: October 13, 2025
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey & agent template explanation
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification of template seeding flow
+
+**Current Default Agent Templates** (verified in codebase):
+- **6 templates seeded per tenant**: orchestrator, implementer, tester, analyzer, reviewer, documenter
+- **Seeding trigger**: First user creation (auth.py:910 calls seed_tenant_templates())
+- **Source**: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
+- **Migration**: `6adac1467121` adds cli_tool, background_color columns to AgentTemplate table
+
+**Agent Template Export** (Handover 0102):
+- 15-minute token TTL for secure downloads
+- Supports Claude Code, Codex CLI, Gemini CLI
+- See Simple_Vision.md for complete export workflow
 
 ---
 

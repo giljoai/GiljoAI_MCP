@@ -1,10 +1,26 @@
 # Multi-Tool Agent Orchestration
 ## Revolutionary Cross-Platform AI Agent Coordination
 
-**Document Version**: 1.0.0
+**Document Version**: 1.1.0
 **Created**: 2025-10-24
+**Last Updated**: 2025-01-05
 **Status**: Architecture Vision Document
 **Innovation Level**: Industry First
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & product vision
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
+
+**Supported AI Tools**:
+- Claude Code (native MCP support)
+- Codex CLI (native MCP support)
+- Gemini CLI (native MCP support)
+
+**Agent Template Export**: Handover 0102 (15-minute token TTL for secure downloads)
 
 ---
 
@@ -744,11 +760,12 @@ documenter          → codex   (docs)
 ```python
 @mcp.tool()
 async def get_pending_jobs(agent_type: str, tenant_key: str):
+    """Get jobs in 'waiting' state (initial status before activation)"""
     # SECURITY: Filter by tenant_key
     jobs = await db.query(AgentJob).filter_by(
         tenant_key=tenant_key,
         agent_type=agent_type,
-        status="pending"
+        status="waiting"  # Initial state: waiting → active → working → complete/failed/blocked
     ).all()
     return jobs  # Only this tenant's jobs
 ```

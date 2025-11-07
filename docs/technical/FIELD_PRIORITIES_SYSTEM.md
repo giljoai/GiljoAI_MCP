@@ -4,6 +4,21 @@
 **Component**: Mission Generation & Token Optimization
 **Location**: `F:\GiljoAI_MCP\src\giljo_mcp\mission_planner.py`
 **Status**: Production-Grade
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey with token reduction explanation
+- **[TOKEN_REDUCTION_ARCHITECTURE.md](../Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - Complete token reduction strategy
+- **[STAGE_PROJECT_FEATURE.md](../STAGE_PROJECT_FEATURE.md)** - Production implementation
+
+**Token Reduction Achievement** (Handover 0088):
+- **70% token reduction** verified and documented
+- Field priorities enable user control over mission token budgets
+- See Simple_Vision.md for complete explanation
 
 ---
 
