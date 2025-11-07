@@ -410,14 +410,20 @@ class ToolAccessor:
                 await session.commit()
 
                 # Broadcast mission update via WebSocket HTTP bridge
+                logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated for project {project_id}")
                 if project:
                     try:
                         import httpx
+                        
+                        logger.info(f"[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge")
 
                         # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
                         async with httpx.AsyncClient() as client:
-                            await client.post(
-                                "http://localhost:7272/api/v1/ws-bridge/emit",
+                            bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                            logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url}")
+                            
+                            response = await client.post(
+                                bridge_url,
                                 json={
                                     "event_type": "project:mission_updated",
                                     "tenant_key": project.tenant_key,
@@ -432,9 +438,10 @@ class ToolAccessor:
                                 },
                                 timeout=5.0,
                             )
+                            logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response: {response.status_code}")
                             logger.info(f"[WEBSOCKET] Broadcasted mission_updated for project {project_id} via HTTP bridge")
                     except Exception as ws_error:
-                        logger.warning(f"[WEBSOCKET] Failed to broadcast mission_updated via HTTP bridge: {ws_error}")
+                        logger.error(f"[WEBSOCKET ERROR] Failed to broadcast mission_updated via HTTP bridge: {ws_error}", exc_info=True)
 
                 return {"success": True, "message": "Mission updated successfully"}
 
@@ -1673,13 +1680,19 @@ Begin by fetching your mission.
                 mission_tokens = len(mission) // 4  # ~2000 tokens
 
                 # Broadcast agent creation via WebSocket HTTP bridge
+                logger.info(f"[WEBSOCKET DEBUG] About to broadcast agent:created for {agent_name} ({agent_type})")
                 try:
                     import httpx
+                    
+                    logger.info(f"[WEBSOCKET DEBUG] httpx imported for agent creation broadcast")
 
                     # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
                     async with httpx.AsyncClient() as client:
-                        await client.post(
-                            "http://localhost:7272/api/v1/ws-bridge/emit",
+                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                        logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url} for agent:created")
+                        
+                        response = await client.post(
+                            bridge_url,
                             json={
                                 "event_type": "agent:created",
                                 "tenant_key": tenant_key,
@@ -1698,9 +1711,10 @@ Begin by fetching your mission.
                             },
                             timeout=5.0,
                         )
+                        logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response for agent:created: {response.status_code}")
                         logger.info(f"[WEBSOCKET] Broadcasted agent:created for {agent_name} ({agent_type}) via HTTP bridge")
                 except Exception as ws_error:
-                    logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created via HTTP bridge: {ws_error}")
+                    logger.error(f"[WEBSOCKET ERROR] Failed to broadcast agent:created via HTTP bridge: {ws_error}", exc_info=True)
 
                 return {
                     "success": True,
