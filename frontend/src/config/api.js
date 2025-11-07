@@ -3,9 +3,10 @@
 import configService from '@/services/configService'
 
 // Initial fallback configuration (used before backend config is fetched)
+// CRITICAL: Use window.API_BASE_URL first (set in index.html) for production mode
 const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
 const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
-const DEFAULT_BASE_URL = import.meta.env.DEV ? '' : `http://${API_HOST}:${API_PORT}`
+const DEFAULT_BASE_URL = window.API_BASE_URL || (import.meta.env.DEV ? '' : `http://${API_HOST}:${API_PORT}`)
 
 // Configuration object that will be updated after fetching from backend
 let runtimeConfig = null
@@ -56,6 +57,15 @@ export async function initializeApiConfig() {
  */
 export function getRuntimeConfig() {
   return runtimeConfig
+}
+
+/**
+ * Get the current API base URL (runtime-aware)
+ * Always use this instead of API_CONFIG.REST_API.baseURL for fetch() calls
+ * @returns {string} Current API base URL
+ */
+export function getApiBaseURL() {
+  return window.API_BASE_URL || API_CONFIG.REST_API.baseURL
 }
 
 export const API_CONFIG = {
