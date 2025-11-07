@@ -48,6 +48,16 @@ class ProjectUpdate(BaseModel):
     status: Optional[str] = None
 
 
+class AgentSimple(BaseModel):
+    """Simple agent schema for project response"""
+    id: str  # job_id
+    job_id: str
+    agent_type: str
+    agent_name: Optional[str] = None
+    status: str
+    thin_client: bool = True
+
+
 class ProjectResponse(BaseModel):
     id: str
     alias: str
@@ -63,6 +73,7 @@ class ProjectResponse(BaseModel):
     context_used: int
     agent_count: int
     message_count: int
+    agents: List[AgentSimple] = []
 
 
 # Handover 0062: Project Summary Response Models
@@ -517,7 +528,7 @@ async def get_project(
     """Get project details by ID"""
     from sqlalchemy import or_, select
 
-    from src.giljo_mcp.models import Agent, Message, Project
+    from src.giljo_mcp.models import Agent, MCPAgentJob, Message, Project
 
     try:
         # Query project directly from database (like get_project_by_alias)
@@ -533,7 +544,27 @@ async def get_project(
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # Get agent and message counts
+        # Get agent jobs (MCP agents spawned for this project)
+        agent_jobs_stmt = select(MCPAgentJob).where(
+            MCPAgentJob.project_id == project.id,
+            MCPAgentJob.tenant_key == current_user.tenant_key
+        ).order_by(MCPAgentJob.created_at.asc())
+        agent_jobs_result = await db.execute(agent_jobs_stmt)
+        agent_jobs = agent_jobs_result.scalars().all()
+
+        # Build agent list
+        agents_list = []
+        for job in agent_jobs:
+            agents_list.append(AgentSimple(
+                id=job.job_id,
+                job_id=job.job_id,
+                agent_type=job.agent_type,
+                agent_name=job.agent_name,
+                status=job.status,
+                thin_client=job.thin_client if hasattr(job, 'thin_client') else True
+            ))
+
+        # Get legacy agent count (from old Agent table)
         agent_stmt = select(Agent).where(Agent.project_id == project.id)
         agent_result = await db.execute(agent_stmt)
         agent_count = len(agent_result.scalars().all())
@@ -555,8 +586,9 @@ async def get_project(
             completed_at=project.completed_at,
             context_budget=project.context_budget,
             context_used=project.context_used,
-            agent_count=agent_count,
+            agent_count=len(agents_list) + agent_count,  # Total from both tables
             message_count=message_count,
+            agents=agents_list,
         )
 
     except HTTPException:

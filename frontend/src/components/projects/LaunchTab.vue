@@ -2,56 +2,72 @@
   <div class="launch-tab">
     <!-- 3-Column Layout -->
     <v-row class="launch-columns mb-6">
-      <!-- Left Column: Orchestrator Card -->
+      <!-- Left Column: Action Buttons Panel -->
       <v-col cols="12" md="3" class="mb-4 mb-md-0">
-        <AgentCardEnhanced
-          :agent="orchestratorAgent"
-          mode="launch"
-          :is-orchestrator="true"
-        >
-          <template #actions>
-            <!-- Stage Project Button (Initial State) -->
-            <v-btn
-              v-if="!isStaging && !readyToLaunch"
-              block
-              color="primary"
-              variant="elevated"
-              size="large"
-              :loading="loadingStageProject"
-              @click="handleStageProject"
-              class="mb-2"
-            >
-              Stage Project
-            </v-btn>
+        <v-card elevation="2" class="action-panel pa-4">
+          <!-- Stage Project Button (Initial State) -->
+          <v-btn
+            v-if="!isStaging && !readyToLaunch"
+            block
+            color="primary"
+            variant="elevated"
+            size="x-large"
+            :loading="loadingStageProject"
+            @click="handleStageProject"
+            class="mb-3"
+          >
+            <v-icon start>mdi-play-circle</v-icon>
+            Stage Project
+          </v-btn>
 
-            <!-- Launch jobs Button (Ready State) -->
-            <v-btn
-              v-if="readyToLaunch"
-              block
-              color="yellow-darken-2"
-              variant="elevated"
-              size="large"
-              @click="handleLaunchJobs"
-              class="mb-2 launch-button"
-            >
-              <v-icon start>mdi-rocket-launch</v-icon>
-              Launch jobs
-            </v-btn>
+          <!-- Launch Jobs Button (Ready State) -->
+          <v-btn
+            v-if="readyToLaunch"
+            block
+            color="yellow-darken-2"
+            variant="elevated"
+            size="x-large"
+            @click="handleLaunchJobs"
+            class="mb-3 launch-button"
+          >
+            <v-icon start>mdi-rocket-launch</v-icon>
+            Launch Jobs
+          </v-btn>
 
-            <!-- Cancel Button (Always visible during staging) -->
-            <v-btn
-              v-if="isStaging || readyToLaunch"
-              block
-              color="error"
-              variant="outlined"
-              size="large"
-              @click="showCancelDialog = true"
-            >
-              <v-icon start>mdi-close-circle</v-icon>
-              Cancel
-            </v-btn>
-          </template>
-        </AgentCardEnhanced>
+          <!-- Cancel Button (Visible during staging or when ready) -->
+          <v-btn
+            v-if="isStaging || readyToLaunch"
+            block
+            color="error"
+            variant="outlined"
+            size="large"
+            @click="showCancelDialog = true"
+          >
+            <v-icon start>mdi-close-circle</v-icon>
+            Cancel Staging
+          </v-btn>
+
+          <!-- Info Text -->
+          <v-alert
+            v-if="!isStaging && !readyToLaunch"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-4"
+          >
+            Click to generate mission and spawn agents
+          </v-alert>
+
+          <v-alert
+            v-if="readyToLaunch"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mt-4"
+          >
+            Ready to launch! Review mission and agents below.
+          </v-alert>
+        </v-card>
       </v-col>
 
       <!-- Middle Column: Project Description Panel -->
@@ -401,31 +417,6 @@ const missionText = ref('')
 
 // Track agent IDs to prevent duplicates (RACE CONDITION FIX - Task 4.2)
 const agentIds = ref(new Set())
-
-// Orchestrator agent from props (real data from API)
-const orchestratorAgent = computed(() => {
-  if (!props.orchestrator) {
-    // Fallback if no orchestrator provided
-    return {
-      agent_id: 'loading',
-      agent_type: 'orchestrator',
-      job_id: 'loading',
-      mission: 'Loading orchestrator...',
-      status: 'waiting'
-    }
-  }
-  
-  // Use real orchestrator data from API
-  return {
-    agent_id: props.orchestrator.job_id,  // Full 36-digit UUID
-    agent_type: props.orchestrator.agent_type,
-    job_id: props.orchestrator.job_id,  // Full 36-digit UUID
-    mission: props.orchestrator.mission,
-    status: props.orchestrator.status,
-    progress: props.orchestrator.progress,
-    agent_name: props.orchestrator.agent_name
-  }
-})
 
 const agents = ref([])
 const stagingInProgress = ref(false)
@@ -827,6 +818,29 @@ function handleEditAgentMission(agent) {
  * Lifecycle Hooks - WebSocket Listener Registration (Handover 0086)
  */
 onMounted(() => {
+  // Initialize from props if data exists (page refresh scenario)
+  // This handles the case where user refreshes the page after staging
+  if (props.project.mission) {
+    console.log('[LaunchTab] Loading existing mission from props on mount')
+    missionText.value = props.project.mission
+    stagingInProgress.value = false
+    readyToLaunch.value = true
+  }
+
+  // Load agents from props if they exist
+  if (props.project.agents && Array.isArray(props.project.agents) && props.project.agents.length > 0) {
+    console.log('[LaunchTab] Loading existing agents from props on mount:', props.project.agents.length)
+    agents.value = props.project.agents
+
+    // Populate agent IDs set to prevent duplicates
+    props.project.agents.forEach(agent => {
+      const agentId = agent.id || agent.job_id
+      if (agentId) {
+        agentIds.value.add(agentId)
+      }
+    })
+  }
+
   // Register WebSocket event listeners
   on('project:mission_updated', handleMissionUpdate)
   on('orchestrator:instructions_fetched', handleMissionUpdate) // Amendment A: Thin client support

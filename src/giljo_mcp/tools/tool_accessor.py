@@ -401,7 +401,40 @@ class ToolAccessor:
                 if result.rowcount == 0:
                     return {"success": False, "error": "Project not found"}
 
+                # Get project for tenant_key
+                project_result = await session.execute(
+                    select(Project).where(Project.id == project_id)
+                )
+                project = project_result.scalar_one_or_none()
+
                 await session.commit()
+
+                # Broadcast mission update via WebSocket HTTP bridge
+                if project:
+                    try:
+                        import httpx
+
+                        # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
+                        async with httpx.AsyncClient() as client:
+                            await client.post(
+                                "http://localhost:7272/api/v1/ws-bridge/emit",
+                                json={
+                                    "event_type": "project:mission_updated",
+                                    "tenant_key": project.tenant_key,
+                                    "data": {
+                                        "project_id": project_id,
+                                        "mission": mission,
+                                        "token_estimate": len(mission) // 4,
+                                        "user_config_applied": False,
+                                        "generated_by": "orchestrator",
+                                        "timestamp": datetime.utcnow().isoformat(),
+                                    },
+                                },
+                                timeout=5.0,
+                            )
+                            logger.info(f"[WEBSOCKET] Broadcasted mission_updated for project {project_id} via HTTP bridge")
+                    except Exception as ws_error:
+                        logger.warning(f"[WEBSOCKET] Failed to broadcast mission_updated via HTTP bridge: {ws_error}")
 
                 return {"success": True, "message": "Mission updated successfully"}
 
@@ -1602,6 +1635,7 @@ class ToolAccessor:
                     project_id=project_id,
                     tenant_key=tenant_key,
                     agent_type=agent_type,
+                    agent_name=agent_name,
                     mission=mission,  # STORED HERE, not in prompt
                     spawned_by=parent_job_id,
                     status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
@@ -1637,6 +1671,36 @@ Begin by fetching your mission.
                 # Calculate token estimates
                 prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
                 mission_tokens = len(mission) // 4  # ~2000 tokens
+
+                # Broadcast agent creation via WebSocket HTTP bridge
+                try:
+                    import httpx
+
+                    # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            "http://localhost:7272/api/v1/ws-bridge/emit",
+                            json={
+                                "event_type": "agent:created",
+                                "tenant_key": tenant_key,
+                                "data": {
+                                    "project_id": project_id,
+                                    "agent_id": agent_job_id,
+                                    "agent_job_id": agent_job_id,
+                                    "agent_type": agent_type,
+                                    "agent_name": agent_name,
+                                    "status": "waiting",
+                                    "thin_client": True,
+                                    "prompt_tokens": prompt_tokens,
+                                    "mission_tokens": mission_tokens,
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                },
+                            },
+                            timeout=5.0,
+                        )
+                        logger.info(f"[WEBSOCKET] Broadcasted agent:created for {agent_name} ({agent_type}) via HTTP bridge")
+                except Exception as ws_error:
+                    logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created via HTTP bridge: {ws_error}")
 
                 return {
                     "success": True,
