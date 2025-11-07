@@ -185,7 +185,7 @@ class TemplateResponse(BaseModel):
             usage_count=template.usage_count,
             avg_generation_ms=template.avg_generation_ms,
             created_by=template.created_by,
-            preferred_tool=template.preferred_tool or "claude"
+            preferred_tool=getattr(template, "preferred_tool", template.cli_tool or template.tool or "claude")
         )
 
 
