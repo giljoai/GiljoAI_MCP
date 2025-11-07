@@ -445,6 +445,14 @@ class Project(Base):
     status = Column(
         String(50), default="inactive"
     )  # inactive, active, completed, cancelled, deleted (Handover 0071: removed paused/archived)
+
+    # Handover 0108: Staging workflow status tracking
+    staging_status = Column(
+        String(50),
+        nullable=True,
+        comment="Staging workflow status: null, staging, staged, cancelled, launching, active"
+    )
+
     context_budget = Column(Integer, default=150000)
     context_used = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
