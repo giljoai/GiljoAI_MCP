@@ -127,6 +127,7 @@ class APIState:
         self.tenant_manager: Optional[TenantManager] = None
         self.tool_accessor: Optional[ToolAccessor] = None
         self.websocket_manager: Optional[WebSocketManager] = None
+        self.event_bus = None  # EventBus instance (Handover 0111 Issue #1)
         self.connections: dict[str, WebSocket] = {}
         self.heartbeat_task: Optional[asyncio.Task] = None
         self.cleanup_task: Optional[asyncio.Task] = None
@@ -261,6 +262,25 @@ async def lifespan(app: FastAPI):
         logger.info("WebSocket heartbeat started (interval: 30s)")
     except Exception as e:
         logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
+
+    # Initialize event bus and WebSocket listener (Handover 0111 Issue #1)
+    try:
+        logger.info("Initializing event bus...")
+        from api.event_bus import EventBus
+        from api.websocket_event_listener import WebSocketEventListener
+
+        state.event_bus = EventBus()
+        logger.info("Event bus initialized successfully")
+
+        # Register WebSocket event listener
+        logger.info("Registering WebSocket event listener...")
+        ws_listener = WebSocketEventListener(state.event_bus, state.websocket_manager)
+        await ws_listener.start()
+        logger.info("WebSocket event listener registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize event bus: {e}", exc_info=True)
+        raise
+
 
     # Start download token cleanup task (Handover 0100)
     async def cleanup_expired_download_tokens():

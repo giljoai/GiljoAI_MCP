@@ -116,52 +116,87 @@ class ThinClientPromptGenerator:
         if not project:
             raise ValueError(f"Project {project_id} not found")
 
-        # Store project mission as placeholder
-        # IMPORTANT: The REAL condensed mission (with 70% token reduction) is generated
-        # by the MCP tool get_orchestrator_instructions() when the orchestrator calls it.
-        # This placeholder ensures the job exists in the database for MCP lookup.
-        placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
-
-        # If instance_number not provided, calculate next in sequence
-        if instance_number is None or instance_number == 1:
-            instance_stmt = select(func.coalesce(func.max(MCPAgentJob.instance_number), 0)).where(
-                and_(
-                    MCPAgentJob.tenant_key == self.tenant_key,
-                    MCPAgentJob.project_id == project_id,
-                    MCPAgentJob.agent_type == "orchestrator"
-                )
+        # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
+        # This prevents duplicate orchestrator creation on every "Stage Project" button click
+        existing_orch_stmt = select(MCPAgentJob).where(
+            and_(
+                MCPAgentJob.project_id == project_id,
+                MCPAgentJob.agent_type == "orchestrator",
+                MCPAgentJob.tenant_key == self.tenant_key,
+                MCPAgentJob.status.in_(["waiting", "active", "pending"])  # Active statuses only
             )
-            instance_result = await self.db.execute(instance_stmt)
-            instance_number = instance_result.scalar() + 1
+        ).order_by(MCPAgentJob.created_at.desc())  # Get most recent if multiple exist
 
-        # Generate orchestrator_id (full UUID for consistency)
-        orchestrator_id = str(uuid4())
+        existing_orch_result = await self.db.execute(existing_orch_stmt)
+        existing_orchestrator = existing_orch_result.scalars().first()  # Use first() to handle edge case of multiple active orchestrators
 
-        # Create orchestrator job with metadata (Handover 0088)
-        orchestrator = MCPAgentJob(
-            tenant_key=self.tenant_key,
-            project_id=project_id,
-            job_id=orchestrator_id,
-            agent_name=f"Orchestrator #{instance_number}",
-            agent_type="orchestrator",
-            status="waiting",
-            mission=placeholder_mission,  # Placeholder - real mission from MCP tool
-            instance_number=instance_number,
-            context_budget=project.context_budget,
-            context_used=0,
-            tool_type=tool,
-            # Handover 0088: Store thin client data in metadata column
-            job_metadata={
-                "field_priorities": field_priorities or {},
-                "user_id": user_id,
-                "tool": tool,
-                "created_via": "thin_client_generator"
-            } if field_priorities or user_id else {}
-        )
+        if existing_orchestrator:
+            # Reuse existing active orchestrator (no database write)
+            orchestrator_id = existing_orchestrator.job_id
+            instance_number = existing_orchestrator.instance_number
 
-        self.db.add(orchestrator)
-        await self.db.commit()
-        await self.db.refresh(orchestrator)
+            logger.info(
+                f"[ThinPromptGenerator] Reusing existing orchestrator {orchestrator_id} "
+                f"(instance #{instance_number}) for project {project_id}"
+            )
+        else:
+            # No active orchestrator exists - create new one
+            logger.info(
+                f"[ThinPromptGenerator] Creating NEW orchestrator for project {project_id} "
+                f"(no active orchestrator found)"
+            )
+
+            # Store project mission as placeholder
+            # IMPORTANT: The REAL condensed mission (with 70% token reduction) is generated
+            # by the MCP tool get_orchestrator_instructions() when the orchestrator calls it.
+            # This placeholder ensures the job exists in the database for MCP lookup.
+            placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
+
+            # If instance_number not provided, calculate next in sequence
+            if instance_number is None or instance_number == 1:
+                instance_stmt = select(func.coalesce(func.max(MCPAgentJob.instance_number), 0)).where(
+                    and_(
+                        MCPAgentJob.tenant_key == self.tenant_key,
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.agent_type == "orchestrator"
+                    )
+                )
+                instance_result = await self.db.execute(instance_stmt)
+                instance_number = instance_result.scalar() + 1
+
+            # Generate orchestrator_id (full UUID for consistency)
+            orchestrator_id = str(uuid4())
+
+            # Create orchestrator job with metadata (Handover 0088)
+            orchestrator = MCPAgentJob(
+                tenant_key=self.tenant_key,
+                project_id=project_id,
+                job_id=orchestrator_id,
+                agent_name=f"Orchestrator #{instance_number}",
+                agent_type="orchestrator",
+                status="waiting",
+                mission=placeholder_mission,  # Placeholder - real mission from MCP tool
+                instance_number=instance_number,
+                context_budget=project.context_budget,
+                context_used=0,
+                tool_type=tool,
+                # Handover 0088: Store thin client data in metadata column
+                job_metadata={
+                    "field_priorities": field_priorities or {},
+                    "user_id": user_id,
+                    "tool": tool,
+                    "created_via": "thin_client_generator"
+                } if field_priorities or user_id else {}
+            )
+
+            self.db.add(orchestrator)
+            await self.db.commit()
+            await self.db.refresh(orchestrator)
+
+            logger.info(
+                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} "
+                f"(instance #{instance_number})"
+            )
 
         # Generate thin prompt
         thin_prompt = self._build_thin_prompt(
