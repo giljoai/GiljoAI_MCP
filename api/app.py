@@ -130,10 +130,11 @@ class APIState:
         self.connections: dict[str, WebSocket] = {}
         self.heartbeat_task: Optional[asyncio.Task] = None
         self.cleanup_task: Optional[asyncio.Task] = None
+        self.metrics_sync_task: Optional[asyncio.Task] = None
         self.health_monitor = None
         self.health_monitor_task: Optional[asyncio.Task] = None
-        self.api_call_count: int = 0
-        self.mcp_call_count: int = 0
+        self.api_call_count: dict[str, int] = {}
+        self.mcp_call_count: dict[str, int] = {}
 
 
 state = APIState()
@@ -291,6 +292,57 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to start download token cleanup task: {e}", exc_info=True)
 
+    # Start API metrics sync task
+    async def sync_api_metrics_to_db():
+        """Background task to sync API metrics to the database every 5 minutes."""
+        from src.giljo_mcp.models import ApiMetrics
+        from sqlalchemy import select
+        from sqlalchemy.dialects.postgresql import insert
+
+        while True:
+            await asyncio.sleep(300)  # 5 minutes
+            if state.db_manager:
+                async with state.db_manager.get_session_async() as session:
+                    try:
+                        # Get a copy of the current counters and reset them
+                        api_counts = state.api_call_count.copy()
+                        mcp_counts = state.mcp_call_count.copy()
+                        state.api_call_count.clear()
+                        state.mcp_call_count.clear()
+
+                        for tenant_key, api_count in api_counts.items():
+                            mcp_count = mcp_counts.get(tenant_key, 0)
+
+                            stmt = insert(ApiMetrics).values(
+                                tenant_key=tenant_key,
+                                date=datetime.now(timezone.utc),
+                                total_api_calls=api_count,
+                                total_mcp_calls=mcp_count
+                            ).on_conflict_do_update(
+                                index_elements=['tenant_key'],
+                                set_=dict(
+                                    total_api_calls=ApiMetrics.total_api_calls + api_count,
+                                    total_mcp_calls=ApiMetrics.total_mcp_calls + mcp_count,
+                                    date=datetime.now(timezone.utc)
+                                )
+                            )
+                            await session.execute(stmt)
+                        await session.commit()
+                        logger.info(f"Synced API metrics for {len(api_counts)} tenants.")
+                    except Exception as e:
+                        logger.error(f"Error during API metrics sync: {e}", exc_info=True)
+                        # If sync fails, restore the counters
+                        state.api_call_count.update(api_counts)
+                        state.mcp_call_count.update(mcp_counts)
+
+    try:
+        logger.info("Starting API metrics sync task...")
+        metrics_sync_task = asyncio.create_task(sync_api_metrics_to_db())
+        state.metrics_sync_task = metrics_sync_task
+        logger.info("API metrics sync task started (runs every 5 minutes)")
+    except Exception as e:
+        logger.error(f"Failed to start API metrics sync task: {e}", exc_info=True)
+
     # Start agent health monitoring service (Handover 0107)
     try:
         logger.info("Initializing agent health monitoring...")
@@ -419,6 +471,12 @@ async def lifespan(app: FastAPI):
             state.cleanup_task.cancel()
             try:
                 await state.cleanup_task
+            except asyncio.CancelledError:
+                pass
+        if state.metrics_sync_task:
+            state.metrics_sync_task.cancel()
+            try:
+                await state.metrics_sync_task
             except asyncio.CancelledError:
                 pass
         logger.info("Background tasks canceled")
@@ -661,7 +719,9 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
     app.include_router(agent_jobs.router, prefix="/api/agent-jobs", tags=["agent-jobs"])
     app.include_router(orchestration.router, prefix="/api/orchestrator", tags=["orchestration"])
+    app.include_router(orchestration.router, prefix="/api/v1/orchestration", tags=["orchestration"])  # Handover 0109
     app.include_router(prompts.router, prefix="/api/prompts", tags=["prompts"])
+    app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])  # Handover 0109
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
