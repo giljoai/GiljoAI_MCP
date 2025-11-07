@@ -9,6 +9,7 @@ Contents
 - `backend/` – standalone FastAPI service that serves inventories from `temp/devpanel/index/`.
 - `run_backend.py` – convenience launcher for the standalone backend (uvicorn reload).
 - `frontend/` – static HTML prototype that consumes the backend (open in a browser via `file://` or a simple static server).
+- `frontend/flows.html` – dedicated flow-diagram page (Cytoscape) with deep links from the main panel.
 - `scripts/start_devpanel.(bat|sh)` – one-click helpers for Windows/Linux to rebuild inventories, launch the backend, and open the prototype UI.
 
 Usage Notes

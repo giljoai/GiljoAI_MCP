@@ -397,6 +397,10 @@ export const api = {
   prompts: {
     estimateTokens: (data) => apiClient.post('/api/prompts/estimate-tokens', data),
     staging: (projectId, params) => apiClient.get(`/api/prompts/staging/${projectId}`, { params }),
+    execution: (orchestratorJobId, claudeCodeMode) =>
+      apiClient.get(`/api/v1/prompts/execution/${orchestratorJobId}`, {
+        params: { claude_code_mode: claudeCodeMode }
+      }),
   },
 
   // Downloads (Natural Language Instructions via MCP Tools)

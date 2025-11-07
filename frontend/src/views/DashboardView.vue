@@ -102,6 +102,36 @@
           </v-card-text>
         </v-card>
       </v-col>
+
+      <v-col cols="12" sm="6" md="3">
+        <v-card elevation="2">
+          <v-card-text class="text-center">
+            <v-icon size="48" color="purple">mdi-account-multiple</v-icon>
+            <div class="text-h6 mt-2">Agents Spawned</div>
+            <div class="text-h4">{{ stats.total_agents_spawned }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" sm="6" md="3">
+        <v-card elevation="2">
+          <v-card-text class="text-center">
+            <v-icon size="48" color="deep-purple">mdi-check-all</v-icon>
+            <div class="text-h6 mt-2">Jobs Done</div>
+            <div class="text-h4">{{ stats.total_jobs_completed }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" sm="6" md="3">
+        <v-card elevation="2">
+          <v-card-text class="text-center">
+            <v-icon size="48" color="teal">mdi-flag-checkered</v-icon>
+            <div class="text-h6 mt-2">Projects Finished</div>
+            <div class="text-h4">{{ stats.projects_finished }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
     </v-row>
 
 
@@ -369,8 +399,11 @@ const serverPort = ref(7272)
 
 // Stats
 const stats = computed(() => ({
-  projects: projectStore.projects?.length || 0,
-  tasks: taskStore.tasks?.length || 0,
+  projects: systemStats.value.total_projects || 0,
+  tasks: systemStats.value.total_tasks || 0,
+  total_agents_spawned: systemStats.value.total_agents_spawned || 0,
+  total_jobs_completed: systemStats.value.total_jobs_completed || 0,
+  projects_finished: systemStats.value.projects_finished || 0,
 }))
 
 const apiCallCount = ref(0)
@@ -582,6 +615,25 @@ const navigateToSetup = () => {
   router.push('/setup/database')
 }
 
+const systemStats = ref({
+  total_projects: 0,
+  active_projects: 0,
+  completed_projects: 0,
+  total_agents: 0,
+  active_agents: 0,
+  total_messages: 0,
+  pending_messages: 0,
+  total_tasks: 0,
+  completed_tasks: 0,
+  average_context_usage: 0,
+  peak_context_usage: 0,
+  database_size_mb: 0,
+  uptime_seconds: 0,
+  total_agents_spawned: 0,
+  total_jobs_completed: 0,
+  projects_finished: 0,
+})
+
 const refreshData = async () => {
   // Check setup status first
   await checkSetupStatus()
@@ -591,6 +643,9 @@ const refreshData = async () => {
     await Promise.all([
       projectStore.fetchProjects(),
       taskStore.fetchTasks(),
+      api.get('/api/v1/stats/system').then(response => {
+        systemStats.value = response.data
+      })
     ])
   }
 }

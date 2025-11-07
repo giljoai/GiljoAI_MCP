@@ -99,3 +99,53 @@ The dashboard currently provides a high-level overview of project and task count
 -   **Frontend**: The changes to the dashboard view component can be reverted via `git checkout`.
 
 The changes are isolated and can be easily reverted without affecting other application functionality.
+
+---
+
+## 9. Development Log
+
+### Phase 1: Initial Dashboard Metrics (API & MCP Calls)
+
+1.  **Project Documentation**: Created this handover document to outline the project scope, plan, and impact analysis.
+
+2.  **Backend Implementation**:
+    *   **`api/app.py`**: Added `api_call_count` and `mcp_call_count` to the `APIState` class and registered the new `APIMetricsMiddleware`.
+    *   **`api/middleware.py`**: Created the `APIMetricsMiddleware` to increment the global counters on each request.
+    *   **`api/endpoints/statistics.py`**: Added the `GET /api/v1/stats/call-counts` endpoint to expose the new metrics.
+
+3.  **Frontend Implementation (`frontend/src/views/DashboardView.vue`)**:
+    *   Located the `DashboardView.vue` component.
+    *   Added `apiCallCount` and `mcpCallCount` reactive variables.
+    *   Implemented the `fetchCallCounts` function to retrieve the metrics.
+    *   Used `setInterval` in the `onMounted` hook to refresh the data every 5 seconds and cleared it in `onUnmounted`.
+    *   Added two new `v-card` elements to the template to display the API and MCP call counts.
+
+### Phase 2: Enhanced Tenant-Specific Metrics
+
+Following the initial implementation, the scope was expanded to include more detailed, tenant-specific metrics with a persistent storage mechanism.
+
+1.  **Hybrid Metrics Strategy**: Agreed on a hybrid approach for API/MCP call counts to ensure both real-time accuracy and data persistence. This involves using in-memory counters for live data and a background task to periodically sync data to the database.
+
+2.  **Database Modifications**:
+    *   **`src/giljo_mcp/models.py`**: Added a new `ApiMetrics` table model to store daily, tenant-specific call counts.
+    *   **Troubleshooting**: Encountered and resolved an Alembic migration failure (`Target database is not up to date`). This was caused by a discrepancy between the SQLAlchemy models and the database schema for the `mcp_agent_jobs` table.
+    *   **Model Correction**: Corrected the `job_metadata` column in the `MCPAgentJob` model from `JSON` to `JSONB` to align with the database and support GIN indexes.
+    *   **Migration Generation**: Successfully generated and applied the database migration to create the `api_metrics` table.
+
+3.  **Backend Refactoring (Tenant-Aware Metrics)**:
+    *   **`api/app.py`**:
+        *   Modified `api_call_count` and `mcp_call_count` in `APIState` from integers to dictionaries to hold per-tenant counts.
+        *   Implemented the `sync_api_metrics_to_db` background task to run every 5 minutes, which upserts the in-memory counts to the `api_metrics` table and then clears the in-memory counters.
+    *   **`api/middleware.py`**:
+        *   Updated `APIMetricsMiddleware` to retrieve the `tenant_key` from the request state and increment the count for the specific tenant in the new dictionary structure.
+    *   **`api/endpoints/statistics.py`**:
+        *   Modified the `GET /call-counts` endpoint to be tenant-aware. It now calculates the total count by summing the persisted value from the `api_metrics` table and the current in-memory value for the requesting tenant.
+        *   Updated the `SystemStatsResponse` model to include `total_agents_spawned`, `total_jobs_completed`, and `projects_finished`.
+        *   Modified the `get_system_statistics` endpoint to be fully tenant-aware, filtering all its database queries by the user's `tenant_key`.
+        *   Added new queries to this endpoint to count total agents spawned and completed jobs for the tenant.
+
+4.  **Frontend Enhancements (`frontend/src/views/DashboardView.vue`)**:
+    *   Created a new `systemStats` reactive variable to hold the results from the `/api/v1/stats/system` endpoint.
+    *   Updated the `refreshData` function to call this endpoint.
+    *   Modified the main `stats` computed property to derive its values from the new `systemStats` object.
+    *   Added three new `v-card` elements to the template to display "Agents Spawned", "Jobs Done", and "Projects Finished".

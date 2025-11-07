@@ -2123,7 +2123,7 @@ class MCPAgentJob(Base):
 
     # Handover 0088: Thin client architecture metadata
     job_metadata = Column(
-        JSON,
+        JSONB,
         default=dict,
         nullable=False,
         comment="JSONB metadata for thin client architecture (Handover 0088). Stores field_priorities, user_id, tool, etc.",
@@ -2284,3 +2284,17 @@ class DownloadToken(Base):
     def is_valid(self) -> bool:
         """Check if token is valid (not expired and staging ready)."""
         return (not self.is_expired) and (self.staging_status == "ready")
+
+class ApiMetrics(Base):
+    """API Metrics model - tracks API and MCP call counts per tenant."""
+
+    __tablename__ = "api_metrics"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, unique=True, index=True)
+    date = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    total_api_calls = Column(Integer, default=0)
+    total_mcp_calls = Column(Integer, default=0)
+
+    __table_args__ = (Index("idx_api_metrics_tenant_date", "tenant_key", "date"),)
+
