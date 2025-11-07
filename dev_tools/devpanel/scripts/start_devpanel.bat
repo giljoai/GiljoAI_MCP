@@ -32,8 +32,8 @@ if not exist "%VENV_PY%" (
 
 if not exist "%SETUP_SENTINEL%" (
     echo [DevPanel] Installing project dependencies into isolated venv...
-    call "%VENV_PY%" -m pip install --upgrade pip
-    call "%VENV_PY%" -m pip install -e .[dev]
+call "%VENV_PY%" -m pip install --upgrade pip
+call "%VENV_PY%" -m pip install -e .[dev]
     call "%VENV_PY%" -m pip install -r requirements.txt
     if exist dev-requirements.txt call "%VENV_PY%" -m pip install -r dev-requirements.txt
     if errorlevel 1 (
@@ -45,6 +45,9 @@ if not exist "%SETUP_SENTINEL%" (
 
 echo [DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles, packaging)...
 call "%VENV_PY%" -m pip install watchdog rich aiohttp tiktoken aiofiles packaging >nul 2>&1
+
+echo [DevPanel] Building flow data (start_to_finish_agent_FLOW)...
+call "%VENV_PY%" dev_tools\devpanel\scripts\build_flow_data.py >nul 2>&1
 
 echo [DevPanel] Generating inventories (Phase 1001)...
 call "%VENV_PY%" dev_tools\devpanel\scripts\devpanel_index.py --out temp\devpanel\index

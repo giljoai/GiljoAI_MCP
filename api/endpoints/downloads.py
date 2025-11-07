@@ -469,7 +469,7 @@ async def download_install_script(
 @router.post("/generate-token", status_code=status.HTTP_201_CREATED)
 async def generate_download_token(
     request: Request,
-    content_type: str | None = Query(None, regex="^(slash_commands|agent_templates)$"),
+    content_type: str | None = Query(None, pattern="^(slash_commands|agent_templates)$"),
     db: AsyncSession = Depends(get_db_session),
     body: dict | None = Body(None),
 ) -> dict:
