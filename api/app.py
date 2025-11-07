@@ -698,8 +698,6 @@ def create_app() -> FastAPI:
     # Rate limiting configuration
     # Development: Higher limit or disabled via environment variable
     # Production: Standard 60 requests per minute
-    import os
-
     rate_limit = int(os.getenv("API_RATE_LIMIT", "300"))  # Default 300 for development
     if os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true":
         logger.info("[Rate Limit] Rate limiting disabled via environment variable")
