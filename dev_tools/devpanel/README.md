@@ -10,6 +10,7 @@ Contents
 - `run_backend.py` – convenience launcher for the standalone backend (uvicorn reload).
 - `frontend/` – static HTML prototype that consumes the backend (open in a browser via `file://` or a simple static server).
 - `frontend/flows.html` – dedicated flow-diagram page (Cytoscape) with deep links from the main panel.
+- `frontend/flow-editor/` – React + Vite micro-app for editing flows with React Flow (build via `npm install && npm run build`).
 - `scripts/start_devpanel.(bat|sh)` – one-click helpers for Windows/Linux to rebuild inventories, launch the backend, and open the prototype UI.
 
 Usage Notes
@@ -20,6 +21,11 @@ Usage Notes
 - Generate inventories before hitting endpoints: `python dev_tools/devpanel/scripts/devpanel_index.py --out temp/devpanel/index`.
 - Prototype UI: open `dev_tools/devpanel/frontend/index.html` in your browser (uses fetch against `http://127.0.0.1:8283`).
 - Build your own UI (Vue/Vite, static site, etc.) under this folder and point it at the backend.
+- Flow Editor:
+  - JSON data lives under `dev_tools/devpanel/flows/` (auto-created by `scripts/build_flow_data.py`).
+  - Start the backend with `ENABLE_DEVPANEL=true` and `ALLOW_DEVPANEL_EDIT=true` for autosave.
+  - Install/build once: `cd dev_tools/devpanel/frontend/flow-editor && npm install && npm run build`.
+  - Launch from the DevPanel link or open `dev_tools/devpanel/frontend/flow-editor/dist/index.html`.
 - Quick start:
   - Windows: `dev_tools\devpanel\scripts\start_devpanel.bat`
   - Linux/macOS: `bash dev_tools/devpanel/scripts/start_devpanel.sh`

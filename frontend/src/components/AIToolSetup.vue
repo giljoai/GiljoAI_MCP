@@ -197,7 +197,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { API_CONFIG } from '@/config/api'
+import { getApiBaseURL } from '@/config/api'
 import api from '@/services/api'
 import {
   generateClaudeCodeConfig,
@@ -260,7 +260,7 @@ async function generateConfig() {
   try {
     // Step 1: Generate API key for this tool
     const keyName = generateApiKeyName(selectedTool.value)
-    const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/auth/api-keys`, {
+    const apiKeyResponse = await fetch(`${getApiBaseURL()}/api/auth/api-keys`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -380,7 +380,7 @@ async function downloadMarkdownGuide() {
 
   try {
     const response = await fetch(
-      `${API_CONFIG.REST_API.baseURL}/api/ai-tools/config-generator/${selectedTool.value}/markdown`
+      `${getApiBaseURL()}/api/ai-tools/config-generator/${selectedTool.value}/markdown`
     )
 
     if (!response.ok) {
