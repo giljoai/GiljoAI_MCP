@@ -5,7 +5,7 @@ Statistics and monitoring API endpoints
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 
@@ -28,6 +28,9 @@ class SystemStatsResponse(BaseModel):
     peak_context_usage: int
     database_size_mb: float
     uptime_seconds: float
+    total_agents_spawned: int
+    total_jobs_completed: int
+    projects_finished: int
 
 
 class ProjectStatsResponse(BaseModel):
@@ -104,63 +107,89 @@ startup_time = datetime.now(timezone.utc)
 
 
 @router.get("/call-counts", response_model=CallCountsResponse)
-async def get_call_counts():
+async def get_call_counts(request: Request):
     """Get total API and MCP call counts."""
     from api.app import state
+    from src.giljo_mcp.models import ApiMetrics
+    from sqlalchemy import select
+
+    tenant_key = getattr(request.state, "tenant_key", "default")
+    if not tenant_key:
+        raise HTTPException(status_code=400, detail="Tenant key not found in request state")
+
+    db_api_calls = 0
+    db_mcp_calls = 0
+
+    if state.db_manager:
+        async with state.db_manager.get_session_async() as session:
+            stmt = select(ApiMetrics).where(ApiMetrics.tenant_key == tenant_key)
+            result = await session.execute(stmt)
+            metrics = result.scalar_one_or_none()
+            if metrics:
+                db_api_calls = metrics.total_api_calls
+                db_mcp_calls = metrics.total_mcp_calls
+
+    in_memory_api_calls = state.api_call_count.get(tenant_key, 0)
+    in_memory_mcp_calls = state.mcp_call_count.get(tenant_key, 0)
 
     return CallCountsResponse(
-        total_api_calls=state.api_call_count,
-        total_mcp_calls=state.mcp_call_count,
+        total_api_calls=db_api_calls + in_memory_api_calls,
+        total_mcp_calls=db_mcp_calls + in_memory_mcp_calls,
     )
 
 
 @router.get("/system", response_model=SystemStatsResponse)
-async def get_system_statistics():
+async def get_system_statistics(request: Request):
     """Get overall system statistics"""
     from api.app import state
+    from src.giljo_mcp.models import Agent, MCPAgentJob, Message, Project, Task
+
+    tenant_key = getattr(request.state, "tenant_key", None)
+    if not tenant_key:
+        raise HTTPException(status_code=400, detail="Tenant key not found in request state")
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.models import Agent, Message, Project, Task
-
             # Get project stats
-            total_projects = await session.scalar(select(func.count(Project.id)))
-            active_projects = await session.scalar(select(func.count(Project.id)).where(Project.status == "active"))
+            total_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key))
+            active_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "active"))
             completed_projects = await session.scalar(
-                select(func.count(Project.id)).where(Project.status == "completed")
+                select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "completed")
             )
 
             # Get agent stats
-            total_agents = await session.scalar(select(func.count(Agent.id)))
-            active_agents = await session.scalar(select(func.count(Agent.id)).where(Agent.status == "active"))
+            total_agents = await session.scalar(select(func.count(Agent.id)).where(Agent.tenant_key == tenant_key))
+            active_agents = await session.scalar(select(func.count(Agent.id)).where(Agent.tenant_key == tenant_key, Agent.status == "active"))
 
             # Get message stats
-            total_messages = await session.scalar(select(func.count(Message.id)))
-            pending_messages = await session.scalar(select(func.count(Message.id)).where(Message.status == "pending"))
+            total_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key))
+            pending_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key, Message.status == "pending"))
 
             # Get task stats
-            total_tasks = await session.scalar(select(func.count(Task.id)))
-            completed_tasks = await session.scalar(select(func.count(Task.id)).where(Task.status == "completed"))
+            total_tasks = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key))
+            completed_tasks = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key, Task.status == "completed"))
 
             # Get context usage stats
-            avg_context = await session.scalar(select(func.avg(Project.context_used))) or 0
-            peak_context = await session.scalar(select(func.max(Project.context_used))) or 0
+            avg_context = await session.scalar(select(func.avg(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
+            peak_context = await session.scalar(select(func.max(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
 
             # Get database size (approximate)
-            # PostgreSQL database size would require querying pg_database_size()
-            # For now, we use 0 as placeholder (can be enhanced with PostgreSQL-specific query)
             db_size = 0
 
             # Calculate uptime
             uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
 
+            # New metrics
+            total_agents_spawned = await session.scalar(select(func.count(Agent.id)).where(Agent.tenant_key == tenant_key))
+            total_jobs_completed = await session.scalar(select(func.count(MCPAgentJob.job_id)).where(MCPAgentJob.tenant_key == tenant_key, MCPAgentJob.status == "complete"))
+
             return SystemStatsResponse(
                 total_projects=total_projects or 0,
                 active_projects=active_projects or 0,
-                completed_projects=completed_projects or 0,
+                projects_finished=completed_projects or 0,
                 total_agents=total_agents or 0,
                 active_agents=active_agents or 0,
                 total_messages=total_messages or 0,
@@ -171,6 +200,8 @@ async def get_system_statistics():
                 peak_context_usage=peak_context,
                 database_size_mb=db_size,
                 uptime_seconds=uptime,
+                total_agents_spawned=total_agents_spawned or 0,
+                total_jobs_completed=total_jobs_completed or 0,
             )
 
     except Exception as e:
