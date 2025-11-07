@@ -316,31 +316,28 @@ Begin by fetching your mission.
                 prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
                 mission_tokens = len(mission) // 4  # ~2000 tokens
 
-                # Broadcast WebSocket event for UI update
+                # Broadcast agent creation via EventBus (Handover 0111 Issue #1)
                 try:
                     from api.app import state
 
-                    ws_manager = getattr(state, "websocket_manager", None)
+                    event_bus = getattr(state, "event_bus", None)
 
-                    if ws_manager:
-                        await ws_manager.broadcast_to_tenant(
-                            tenant_key=tenant_key,
-                            event_type="agent:created",
-                            data={
-                                "agent_id": agent_job_id,
-                                "agent_job_id": agent_job_id,
-                                "agent_type": agent_type,
-                                "agent_name": agent_name,
-                                "project_id": project_id,
-                                "status": "pending",
-                                "thin_client": True,
-                                "prompt_tokens": prompt_tokens,
-                                "mission_tokens": mission_tokens,
-                            },
-                        )
-                        logger.info(f"[WEBSOCKET] Agent spawned: {agent_name} ({agent_type})")
-                except Exception as ws_error:
-                    logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
+                    if event_bus:
+                        await event_bus.publish("agent:created", {
+                            "tenant_key": tenant_key,
+                            "project_id": project_id,
+                            "agent_id": agent_job_id,
+                            "agent_job_id": agent_job_id,
+                            "agent_type": agent_type,
+                            "agent_name": agent_name,
+                            "status": "pending",
+                            "thin_client": True,
+                            "prompt_tokens": prompt_tokens,
+                            "mission_tokens": mission_tokens,
+                        })
+                        logger.info(f"[EVENT BUS] Agent spawned: {agent_name} ({agent_type})")
+                except Exception as event_error:
+                    logger.warning(f"[EVENT BUS] Failed to publish agent:created: {event_error}")
 
                 return {
                     "success": True,
