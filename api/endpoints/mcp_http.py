@@ -196,6 +196,18 @@ async def handle_tools_list(
                 "required": ["project_id"],
             },
         },
+        {
+            "name": "update_project_mission",
+            "description": "PERSIST orchestrator-created mission plan to Project.mission field",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "UUID of the project"},
+                    "mission": {"type": "string", "description": "Orchestrator-generated mission plan"},
+                },
+                "required": ["project_id", "mission"],
+            },
+        },
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
@@ -700,6 +712,7 @@ async def handle_tools_call(
         "get_project": state.tool_accessor.get_project,
         "switch_project": state.tool_accessor.switch_project,
         "close_project": state.tool_accessor.close_project,
+        "update_project_mission": state.tool_accessor.update_project_mission,
         # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
         "health_check": state.tool_accessor.health_check,
