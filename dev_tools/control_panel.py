@@ -167,6 +167,7 @@ class GiljoDevControlPanel:
         row = 1
         row = self.build_service_section(main_frame, row)
         row = self.build_database_section(main_frame, row)
+        row = self.build_project_reset_section(main_frame, row)
         row = self.build_reset_section(main_frame, row)
         row = self.build_cache_section(main_frame, row)
         row = self.build_frontend_section(main_frame, row)
@@ -265,6 +266,47 @@ class GiljoDevControlPanel:
 
         # Check for last backup on startup
         self.check_last_backup()
+
+        return row + 1
+
+    def build_project_reset_section(self, parent: ttk.Frame, row: int) -> int:
+        """Build project reset section - clear AI-generated staging data only."""
+        section = ttk.LabelFrame(parent, text="Clear Project to Initial State", padding="10")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+
+        ttk.Label(
+            section,
+            text="Remove AI-generated staging data (mission, agents, jobs) but keep project name/description",
+            wraplength=600,
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+
+        # Project UUID input
+        ttk.Label(section, text="Project UUID:").grid(row=1, column=0, sticky="w", padx=5)
+        self.project_uuid_entry = ttk.Entry(section, width=40)
+        self.project_uuid_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+
+        # Clear button
+        ttk.Button(
+            section,
+            text="Clear Project",
+            command=self.clear_project_staging,
+            width=20,
+        ).grid(row=1, column=2, padx=5, pady=5)
+
+        # Description label
+        ttk.Label(
+            section,
+            text="Clears: mission, spawned agents (waiting/preparing), agent jobs, messages",
+            font=("Arial", 8),
+            foreground="blue",
+        ).grid(row=2, column=0, columnspan=3, sticky="w", padx=5)
+
+        ttk.Label(
+            section,
+            text="Keeps: project name, description, status, metadata (human-entered data)",
+            font=("Arial", 8),
+            foreground="green",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", padx=5)
 
         return row + 1
 
@@ -2342,6 +2384,167 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             self.update_status_message(f"Error during hard reload: {e}")
             messagebox.showerror("Error", f"Failed to perform hard reload:\n\n{e}")
+
+    def clear_project_staging(self):
+        """
+        Clear AI-generated staging data for a project.
+
+        Removes:
+        - AI-generated mission
+        - Spawned agents (status='waiting' or 'preparing')
+        - Agent jobs
+        - Messages
+
+        Keeps:
+        - Project name
+        - Project description
+        - Project status
+        - Metadata (human-entered data)
+        """
+        if psycopg2 is None:
+            messagebox.showerror(
+                "Missing Dependency", "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
+            )
+            return
+
+        # Get project UUID from entry field
+        project_uuid = self.project_uuid_entry.get().strip()
+
+        if not project_uuid:
+            messagebox.showwarning("Missing UUID", "Please enter a project UUID")
+            return
+
+        # Validate UUID format (basic check)
+        if len(project_uuid) != 36 or project_uuid.count("-") != 4:
+            messagebox.showwarning(
+                "Invalid UUID",
+                "Invalid UUID format. Expected format:\nce9015f5-d521-449c-9a89-66a9055436c8"
+            )
+            return
+
+        # Confirmation dialog
+        confirm = messagebox.askyesno(
+            "Confirm Clear Project",
+            f"Clear AI-generated staging data for project?\n\n"
+            f"UUID: {project_uuid}\n\n"
+            "This will remove:\n"
+            "✗ AI-generated mission\n"
+            "✗ Spawned agents (waiting/preparing)\n"
+            "✗ Agent jobs\n"
+            "✗ Messages\n\n"
+            "This will keep:\n"
+            "✓ Project name\n"
+            "✓ Project description\n"
+            "✓ Project status\n"
+            "✓ Metadata\n\n"
+            "Continue?",
+            icon="question",
+        )
+
+        if not confirm:
+            return
+
+        self.update_status_message(f"Clearing project {project_uuid[:8]}...")
+
+        try:
+            credentials = self.get_db_credentials()
+            conn = psycopg2.connect(
+                host=credentials["host"],
+                port=credentials["port"],
+                user=credentials["user"],
+                password=credentials["password"],
+                database="giljo_mcp",
+                connect_timeout=5,
+            )
+            conn.autocommit = False  # Use transaction
+
+            with conn.cursor() as cur:
+                # Step 1: Verify project exists
+                self.update_status_message("Verifying project exists...")
+                cur.execute("SELECT id, name, description FROM projects WHERE id = %s", (project_uuid,))
+                project_row = cur.fetchone()
+
+                if not project_row:
+                    conn.close()
+                    messagebox.showerror("Project Not Found", f"No project found with UUID:\n{project_uuid}")
+                    self.update_status_message("Project not found")
+                    return
+
+                project_name = project_row[1] if project_row[1] else "Unnamed Project"
+                project_description = project_row[2] if project_row[2] else ""
+
+                # Step 2: Count agents to delete (waiting/preparing)
+                self.update_status_message("Counting agents to delete...")
+                cur.execute("""
+                    SELECT COUNT(*) FROM mcp_agent_jobs
+                    WHERE project_id = %s
+                    AND status IN ('waiting', 'preparing')
+                """, (project_uuid,))
+                agent_count = cur.fetchone()[0]
+
+                # Step 3: Count messages to delete
+                cur.execute("SELECT COUNT(*) FROM messages WHERE project_id = %s", (project_uuid,))
+                message_count = cur.fetchone()[0]
+
+                # Step 4: Delete messages
+                self.update_status_message(f"Deleting {message_count} messages...")
+                cur.execute("DELETE FROM messages WHERE project_id = %s", (project_uuid,))
+
+                # Step 5: Delete spawned agents (waiting/preparing only)
+                self.update_status_message(f"Deleting {agent_count} spawned agents...")
+                cur.execute("""
+                    DELETE FROM mcp_agent_jobs
+                    WHERE project_id = %s
+                    AND status IN ('waiting', 'preparing')
+                """, (project_uuid,))
+
+                # Step 6: Clear AI-generated mission (but keep project name/description)
+                self.update_status_message("Clearing AI mission...")
+                cur.execute("""
+                    UPDATE projects
+                    SET mission = '',
+                        staging_status = NULL,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (project_uuid,))
+
+                # Commit transaction
+                conn.commit()
+
+            conn.close()
+
+            self.update_status_message("Project cleared successfully")
+            messagebox.showinfo(
+                "Success",
+                f"Project cleared successfully!\n\n"
+                f"Project: {project_name}\n"
+                f"UUID: {project_uuid}\n\n"
+                f"Removed:\n"
+                f"✗ {agent_count} spawned agent(s)\n"
+                f"✗ {message_count} message(s)\n"
+                f"✗ AI-generated mission\n\n"
+                f"Kept:\n"
+                f"✓ Project name: {project_name}\n"
+                f"✓ Description: {project_description[:50]}{'...' if len(project_description) > 50 else ''}\n"
+                f"✓ Status and metadata"
+            )
+
+            # Clear the UUID entry field
+            self.project_uuid_entry.delete(0, 'end')
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+                conn.close()
+            self.update_status_message(f"Clear project failed: {e}")
+            messagebox.showerror(
+                "Error",
+                f"Failed to clear project:\n\n{e}\n\n"
+                "Make sure:\n"
+                "1. PostgreSQL is running\n"
+                "2. giljo_mcp database exists\n"
+                "3. UUID is correct"
+            )
 
     def run(self):
         """Run the control panel application."""
