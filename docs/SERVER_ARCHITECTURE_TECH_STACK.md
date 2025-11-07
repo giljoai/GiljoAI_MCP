@@ -2,7 +2,20 @@
 
 **Document Version**: 10_21_2025
 **Status**: Single Source of Truth
-**Last Updated**: October 21, 2025
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey & product vision
+- **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification & agent flow
+- **[Vision Documents](Vision/)** - Complete vision & architecture documentation
+
+**Agent Templates** (verified in codebase):
+- 6 default templates: orchestrator, implementer, tester, analyzer, reviewer, documenter
+- Source: `src/giljo_mcp/template_seeder.py::_get_default_templates_v103()`
 
 ---
 

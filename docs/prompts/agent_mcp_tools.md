@@ -1,5 +1,23 @@
 # Agent MCP Tool Instructions (Handover 0090)
 
+**Last Updated**: 2025-01-05 (Harmonized)
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & agent roles
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Agent execution verification
+
+**Agent Types** (6 default templates):
+- orchestrator, implementer, tester, analyzer, reviewer, documenter
+
+**Job Status Lifecycle**:
+- Initial: **"waiting"** → acknowledge → **"active"** → working → **"complete"**/**"failed"**/**"blocked"**
+
+---
+
 ## MCP Tool Catalog for Agents
 
 You are a specialized agent working within a multi-agent orchestration system. Use these tools to coordinate with your orchestrator and complete your mission.

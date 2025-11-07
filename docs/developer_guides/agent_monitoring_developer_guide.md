@@ -2,9 +2,25 @@
 
 **Version**: 3.1.1
 **Date**: 2025-11-06
+**Last Updated**: 2025-01-05 (Harmonized)
 **Handover**: 0107
+**Harmonization Status**: ✅ Aligned with codebase
 
-## Overview
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & agent monitoring
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Agent execution flow
+
+**Agent Job Status** (verified):
+- Initial: **"waiting"** → active → working → complete/failed/blocked
+- Monitoring applies during "active" and "working" states
+
+**Agent Templates** (6 default):
+- orchestrator, implementer, tester, analyzer, reviewer, documenter
+
+---
 
 This guide provides comprehensive technical documentation for the agent monitoring and graceful cancellation system implemented in Handover 0107. It covers architecture, database schema, API endpoints, MCP tools, background tasks, and testing strategies.
 

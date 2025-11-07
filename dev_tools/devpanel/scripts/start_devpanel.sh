@@ -42,8 +42,8 @@ if [[ ! -f "$SETUP_SENTINEL" ]]; then
   echo "setup" > "$SETUP_SENTINEL"
 fi
 
-echo "[DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles)..."
-"$VENV_PY" -m pip install watchdog rich aiohttp tiktoken aiofiles >/dev/null 2>&1
+echo "[DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles, packaging)..."
+"$VENV_PY" -m pip install watchdog rich aiohttp tiktoken aiofiles packaging >/dev/null 2>&1
 
 cd "$REPO_ROOT"
 

@@ -1,8 +1,21 @@
 # GiljoAI MCP - Complete Vision Document
 **Product Name**: GiljoAI Agent Orchestration MCP Server
 **Short Name**: GiljoAI_MCP
-**Last Updated**: 2025-10-14
+**Last Updated**: 2025-01-05
 **Status**: Living Document
+**Harmonization Status**: ✅ Aligned with codebase
+
+---
+
+## Quick Links to Harmonized Documents
+
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & product vision (harmonized with codebase)
+- **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification & agent flow (code-verified)
+
+**Key Handover References**:
+- Handover 0088: 70% token reduction architecture
+- Handover 0102: Agent template export system (15-minute token TTL)
+- Handover 0073: Project closeout workflow
 
 ---
 
@@ -92,10 +105,16 @@ GiljoAI MCP is evolving from a multi-tenant task management system into a **soph
 
 **Orchestrator Intelligence**:
 - Orchestrator reads full context once, creates condensed missions for each agent
-- 70% token reduction through intelligent summarization
+- 70% token reduction through intelligent summarization (Handover 0088)
 - Each agent gets exactly what they need, nothing more
 - Role-based hierarchical context loading filters irrelevant information
 - Implementation patterns in [Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)
+
+**Project Description vs Mission** (Database Schema):
+- `Project.description`: Human-written project scope/intent (Text field, nullable=False)
+- `Project.mission`: AI-generated orchestrator summary after context analysis (Text field, nullable=False)
+- Mission is created by orchestrator after analyzing product vision, context, and user-defined project description
+- Source: `src/giljo_mcp/models.py` (Project model, lines 415-550)
 
 **Multi-Agent Coordination**:
 - Message queue with acknowledgment tracking prevents communication loss

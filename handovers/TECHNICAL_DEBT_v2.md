@@ -1757,6 +1757,23 @@ need to be able to update models for agent tempalte manager for all coding tools
   Note: These advanced parameters are stored in config.yaml but not yet implemented in _fetch_serena_codebase_context(). That
   method currently returns placeholder/empty string (line 442).
 
+
+## Developer panel
+Local host based,
+See all non modifiable fields such as agent tempaltes to tune it manually.
+See a visualization of the architecture in various views like this, F:\GiljoAI_MCP\handovers\start_to_finish_agent_FLOW.md but graphically well represented. 
+INdex of all MCP commands with search fields and descriptions
+Index of all api's with search fields and descriptions
+Cataloge of agents and their functions
+Database architecture
+Intallation flow visualized like a ppt slide
+search for a function, see its cascading dependancies
+A depenancy catalog
+A tech stack document
+with versions and known depreciations
+Show it at x.x.x.x\developer 
+will be removed after shipping as a branch perhaps
+
 ---
 
 **Last Updated**: 2025-11-05
