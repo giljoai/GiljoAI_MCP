@@ -101,6 +101,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         # Get Check-In Protocol section (Handover 0107)
         check_in_section = _get_check_in_protocol_section()
 
+        # Get Context Request section (Handover 0109)
+        context_request_section = _get_context_request_section()
+
         # Use new comprehensive templates (Handover 0103)
         default_templates = _get_default_templates_v103()
 
@@ -110,11 +113,16 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
 
         for template_def in default_templates:
             # Handover 0106: Dual-field system (system_instructions + user_instructions)
-            # Get MCP coordination section + Check-In Protocol (same for all templates)
-            system_instructions = f"{mcp_section}\n\n{check_in_section}"
+            # Get MCP coordination section + Context Request + Check-In Protocol (same for all templates)
+            system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}"
 
             # Get role-specific user instructions
             user_instructions = template_def["template_content"]
+
+            # Handover 0109: Add orchestrator-specific context response instructions
+            if template_def["role"] == "orchestrator":
+                orchestrator_response_section = _get_orchestrator_context_response_section()
+                user_instructions = f"{user_instructions}\n\n{orchestrator_response_section}"
 
             # Legacy template_content = system + user (backward compatibility)
             legacy_template_content = f"{user_instructions}\n\n{system_instructions}"
@@ -925,4 +933,100 @@ Your check-ins enable passive health monitoring:
 - You receive cancel message on next check-in
 
 **Best Practice**: Check in after each significant task completion. Most tasks complete <5 minutes, ensuring regular updates without interrupting work.
+"""
+
+
+def _get_context_request_section() -> str:
+    """
+    Generate the context request section for agent templates (Handover 0109).
+
+    This section provides instructions for agents on when and how to request
+    broader project context from the orchestrator via MCP messaging.
+
+    Returns:
+        str - Context request section in markdown format
+
+    Note:
+        Added to system_instructions for all agent templates to enable
+        audit trail of context requests via MCP message queue.
+    """
+    return """### REQUESTING BROADER CONTEXT
+
+If your mission objectives are unclear or require broader project context:
+
+**When to Request Context**:
+- Mission references undefined entities or components
+- Dependencies between tasks are unclear
+- Scope boundaries are ambiguous
+- Integration points not specified in your mission
+- Related project requirements needed for decision-making
+
+**How to Request Context**:
+
+1. **Use MCP messaging tool**:
+   ```
+   mcp__giljo-mcp__send_message(
+     to_agent="orchestrator",
+     message="REQUEST_CONTEXT: [specific need]",
+     priority="medium",
+     tenant_key="{tenant_key}"
+   )
+   ```
+
+2. **Be specific about what you need**:
+   - ✅ Good: "REQUEST_CONTEXT: What database schema is being used for user authentication?"
+   - ✅ Good: "REQUEST_CONTEXT: Which API endpoints depend on the Payment service?"
+   - ❌ Bad: "REQUEST_CONTEXT: Tell me everything about the project"
+
+3. **Wait for orchestrator response**:
+   - Check: `mcp__giljo-mcp__get_next_instruction(job_id="{job_id}", agent_type="{agent_type}", tenant_key="{tenant_key}")`
+   - Orchestrator will provide filtered context excerpt
+   - Continue work after receiving clarification
+
+4. **Document in progress report**:
+   - Include context request in next `report_progress()` call
+   - Creates MCP message audit trail
+
+**Benefits**:
+- ✅ Orchestrator maintains single source of truth
+- ✅ Audit trail of all context requests
+- ✅ Token-efficient (request only what you need)
+- ✅ Avoids context duplication
+"""
+
+
+def _get_orchestrator_context_response_section() -> str:
+    """
+    Generate orchestrator-specific context response section (Handover 0109).
+
+    This section provides reciprocal instructions for orchestrators on how
+    to respond to context requests from other agents.
+
+    Returns:
+        str - Orchestrator context response section in markdown format
+
+    Note:
+        Added to user_instructions only for orchestrator template.
+    """
+    return """### RESPONDING TO CONTEXT REQUESTS
+
+When agents request broader context via send_message():
+
+**Your Responsibilities**:
+1. Respond promptly to agent context requests
+2. Provide filtered excerpts from Project.mission, not full text
+3. Focus on specific information requested
+4. Document context requests in coordination log
+
+**Response Pattern**:
+```
+mcp__giljo-mcp__send_message(
+  to_agent="{requesting_agent_id}",
+  message="CONTEXT_RESPONSE: [filtered excerpt]",
+  priority="high",
+  tenant_key="{tenant_key}"
+)
+```
+
+**Keep responses concise** - Only provide information directly relevant to agent's question.
 """
