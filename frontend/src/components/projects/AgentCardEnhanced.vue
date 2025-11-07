@@ -270,12 +270,26 @@
         </span>
       </v-tooltip>
 
+      <!-- Orchestrator: Copy Execution Prompt (Handover 0109) -->
+      <v-btn
+        v-if="isOrchestrator && (agent.status === 'waiting' || agent.status === 'working')"
+        variant="outlined"
+        color="primary"
+        block
+        class="mt-2"
+        @click="$emit('copy-execution-prompt', agent)"
+      >
+        <v-icon start>mdi-play-circle</v-icon>
+        Copy Execution Prompt
+      </v-btn>
+
       <!-- Orchestrator: Hand Over (Handover 0080a) -->
       <v-btn
-        v-else-if="isOrchestrator && agent.status === 'working'"
+        v-if="isOrchestrator && agent.status === 'working'"
         variant="outlined"
         color="warning"
         block
+        class="mt-2"
         @click="$emit('hand-over', agent)"
       >
         <v-icon start>mdi-hand-wave</v-icon>
@@ -388,7 +402,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project'])
+defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'copy-execution-prompt'])
 
 /**
  * Agent color configuration

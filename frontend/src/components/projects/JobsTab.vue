@@ -91,6 +91,7 @@
                 @view-error="handleViewError"
                 @hand-over="handleHandOver"
                 @closeout-project="handleCloseoutProject"
+                @copy-execution-prompt="showExecutionPrompt"
                 class="jobs-tab__agent-card"
                 role="listitem"
               />
@@ -148,6 +149,88 @@
         </div>
       </v-col>
     </v-row>
+
+    <!-- Execution Prompt Dialog (Handover 0109) -->
+    <v-dialog
+      v-model="executionPromptDialog"
+      max-width="800"
+      persistent
+      scrollable
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between">
+          <span>Orchestrator Execution Prompt</span>
+          <v-btn
+            icon
+            size="small"
+            variant="text"
+            :disabled="loadingExecutionPrompt"
+            @click="closeExecutionPromptDialog"
+            aria-label="Close dialog"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-subtitle>
+          <v-chip
+            :color="usingClaudeCodeSubagents ? 'orange' : 'primary'"
+            size="small"
+            class="mt-2"
+          >
+            <v-icon start size="small">
+              {{ usingClaudeCodeSubagents ? 'mdi-robot' : 'mdi-application-variable' }}
+            </v-icon>
+            {{ usingClaudeCodeSubagents ? 'Claude Code Subagent Mode' : 'Multi-Terminal Mode' }}
+          </v-chip>
+        </v-card-subtitle>
+
+        <v-card-text class="pa-4">
+          <!-- Loading State -->
+          <div v-if="loadingExecutionPrompt" class="text-center py-8">
+            <v-progress-circular
+              indeterminate
+              color="primary"
+              size="48"
+              class="mb-4"
+            />
+            <div class="text-body-2 text-grey">Generating execution prompt...</div>
+          </div>
+
+          <!-- Prompt Display -->
+          <v-textarea
+            v-else
+            v-model="executionPromptText"
+            readonly
+            auto-grow
+            variant="outlined"
+            rows="15"
+            class="execution-prompt-textarea"
+            aria-label="Execution prompt text"
+          />
+        </v-card-text>
+
+        <v-card-actions class="pa-4 pt-0">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            :disabled="loadingExecutionPrompt"
+            @click="closeExecutionPromptDialog"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :disabled="loadingExecutionPrompt"
+            @click="copyExecutionPrompt"
+          >
+            <v-icon start>mdi-content-copy</v-icon>
+            Copy to Clipboard
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -156,6 +239,8 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import AgentCardEnhanced from './AgentCardEnhanced.vue'
 import MessageStream from './MessageStream.vue'
 import MessageInput from './MessageInput.vue'
+import { api } from '@/services/api'
+import { useToast } from '@/composables/useToast'
 
 /**
  * JobsTab Component
@@ -255,6 +340,11 @@ const emit = defineEmits([
 ])
 
 /**
+ * Composables
+ */
+const { showToast } = useToast()
+
+/**
  * Component refs
  */
 const agentsScrollContainer = ref(null)
@@ -265,6 +355,13 @@ const showRightScroll = ref(false)
  * Claude Code Subagent Mode Toggle (Handover 0105)
  */
 const usingClaudeCodeSubagents = ref(false)
+
+/**
+ * Execution Prompt Dialog State (Handover 0109)
+ */
+const executionPromptDialog = ref(false)
+const executionPromptText = ref('')
+const loadingExecutionPrompt = ref(false)
 
 /**
  * Agent sorting priority map
@@ -391,6 +488,77 @@ function handleHandOver(agent) {
 function handleSendMessage(message, recipient) {
   console.log('[JobsTab] Send message:', { message, recipient })
   emit('send-message', message, recipient)
+}
+
+/**
+ * Show execution prompt dialog (Handover 0109)
+ */
+async function showExecutionPrompt(agent) {
+  try {
+    // Open dialog first with loading state
+    executionPromptDialog.value = true
+    loadingExecutionPrompt.value = true
+    executionPromptText.value = ''
+
+    console.log('[JobsTab] Fetching execution prompt for orchestrator:', agent.job_id)
+
+    const response = await api.prompts.execution(
+      agent.job_id,
+      usingClaudeCodeSubagents.value
+    )
+
+    executionPromptText.value = response.data.prompt
+  } catch (error) {
+    console.error('[JobsTab] Error fetching execution prompt:', error)
+
+    // Close dialog on error
+    executionPromptDialog.value = false
+
+    // Show user-friendly error
+    const errorMessage = error.response?.data?.detail || 'Failed to generate execution prompt'
+    showToast({
+      message: errorMessage,
+      type: 'error',
+      duration: 5000
+    })
+  } finally {
+    loadingExecutionPrompt.value = false
+  }
+}
+
+/**
+ * Copy execution prompt to clipboard
+ */
+async function copyExecutionPrompt() {
+  try {
+    await navigator.clipboard.writeText(executionPromptText.value)
+    console.log('[JobsTab] Execution prompt copied to clipboard')
+
+    // Close dialog after successful copy
+    executionPromptDialog.value = false
+
+    // Show success feedback
+    showToast({
+      message: 'Execution prompt copied to clipboard!',
+      type: 'success',
+      duration: 3000
+    })
+  } catch (error) {
+    console.error('[JobsTab] Error copying to clipboard:', error)
+    showToast({
+      message: 'Failed to copy to clipboard',
+      type: 'error',
+      duration: 3000
+    })
+  }
+}
+
+/**
+ * Close execution prompt dialog
+ */
+function closeExecutionPromptDialog() {
+  executionPromptDialog.value = false
+  executionPromptText.value = ''
 }
 
 /**
@@ -656,6 +824,17 @@ onBeforeUnmount(() => {
 
   &__message-input {
     flex-shrink: 0;
+  }
+}
+
+/* Execution Prompt Dialog (Handover 0109) */
+.execution-prompt-textarea {
+  font-family: 'Courier New', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+
+  :deep(textarea) {
+    font-family: inherit;
   }
 }
 
