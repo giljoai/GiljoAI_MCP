@@ -585,6 +585,41 @@ const handleAgentCreated = (data) => {
 }
 
 /**
+ * Handle staging cancellation from WebSocket event
+ * Called when staging is cancelled (via UI or external action)
+ *
+ * PRODUCTION-GRADE: Multi-tenant isolation (Handover 0108)
+ * - Validates tenant key and project ID
+ * - Shows success notification with agent count
+ * - Resets UI to initial state
+ */
+const handleStagingCancelled = (data) => {
+  console.log('[LaunchTab] Received project:staging_cancelled event:', data)
+
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    console.warn('[LaunchTab] Staging cancellation rejected: tenant mismatch')
+    return
+  }
+
+  // Project isolation check
+  if (data.project_id !== projectId.value) {
+    console.log('[LaunchTab] Staging cancellation ignored: different project')
+    return
+  }
+
+  // Reset UI to initial state
+  resetStagingState()
+
+  // Show success notification with agent count
+  const agentCount = data.agents_deleted || 0
+  toastMessage.value = `Staging cancelled: ${agentCount} agent${agentCount !== 1 ? 's' : ''} deleted`
+  showToast.value = true
+
+  console.log('[LaunchTab] Staging area reset. Agents deleted:', agentCount)
+}
+
+/**
  * Production-grade clipboard copy function
  * Works on both HTTPS and HTTP (10.1.0.164:7272)
  *
@@ -708,12 +743,45 @@ function handleLaunchJobs() {
 
 /**
  * Handle Cancel button (with confirmation)
- * PRODUCTION-GRADE: Reset all states including errors (Task 4.4)
+ * PRODUCTION-GRADE: API call with error handling (Handover 0108)
+ * - Calls staging cancellation API endpoint
+ * - Shows success/error notifications
+ * - Resets all UI state on success
+ * - WebSocket handler updates UI in real-time
  */
-function handleCancelStaging() {
+async function handleCancelStaging() {
   showCancelDialog.value = false
 
-  // Reset state
+  try {
+    // Call staging cancellation API endpoint (Handover 0108)
+    const response = await api.projects.cancelStaging(projectId.value)
+    const result = response.data
+
+    // Show success notification with agent count
+    toastMessage.value = `Staging cancelled: ${result.agents_deleted} agent${result.agents_deleted !== 1 ? 's' : ''} deleted`
+    showToast.value = true
+
+    // Reset UI state
+    resetStagingState()
+
+    emit('cancel-staging')
+
+  } catch (error) {
+    console.error('[LaunchTab] Failed to cancel staging:', error)
+
+    // Show error notification
+    const errorMsg = error.response?.data?.detail || error.message || 'Failed to cancel staging'
+    toastMessage.value = `Failed to cancel staging: ${errorMsg}`
+    showToast.value = true
+  }
+}
+
+/**
+ * Reset staging state (shared by cancel and WebSocket handler)
+ * PRODUCTION-GRADE: Complete state reset
+ */
+function resetStagingState() {
+  // Reset mission and agents
   missionText.value = ''
   agents.value = []
   stagingInProgress.value = false
@@ -729,8 +797,6 @@ function handleCancelStaging() {
 
   // Clear agent tracking Set
   agentIds.value.clear()
-
-  emit('cancel-staging')
 }
 
 
@@ -765,6 +831,7 @@ onMounted(() => {
   on('project:mission_updated', handleMissionUpdate)
   on('orchestrator:instructions_fetched', handleMissionUpdate) // Amendment A: Thin client support
   on('agent:created', handleAgentCreated)
+  on('project:staging_cancelled', handleStagingCancelled) // Handover 0108: Staging cancellation
 
   console.log('[LaunchTab] WebSocket listeners registered for project:', projectId.value)
   console.log('[LaunchTab] Current tenant key:', currentTenantKey.value)
@@ -775,6 +842,7 @@ onUnmounted(() => {
   off('project:mission_updated', handleMissionUpdate)
   off('orchestrator:instructions_fetched', handleMissionUpdate) // Amendment A: Thin client support
   off('agent:created', handleAgentCreated)
+  off('project:staging_cancelled', handleStagingCancelled) // Handover 0108: Staging cancellation
 
   // Clear agent tracking Set (RACE CONDITION FIX - Task 4.2)
   agentIds.value.clear()

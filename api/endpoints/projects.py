@@ -1181,6 +1181,191 @@ async def cancel_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Handover 0108: Staging Cancellation Response
+class StagingCancellationResponse(BaseModel):
+    """Response model for staging cancellation (Handover 0108)."""
+
+    success: bool = Field(..., description="Whether staging cancellation succeeded")
+    agents_deleted: int = Field(..., description="Number of agents deleted/soft-deleted")
+    agents_protected: int = Field(..., description="Number of agents protected (already launched)")
+    staging_status: Optional[str] = Field(None, description="Updated staging_status (should be None)")
+    message: str = Field(..., description="Human-readable result message")
+    rollback_timestamp: Optional[str] = Field(None, description="ISO timestamp of rollback")
+
+
+@router.post("/{project_id}/cancel-staging", response_model=StagingCancellationResponse)
+async def cancel_project_staging(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Cancel project staging and rollback database (Handover 0108).
+
+    This endpoint is called when a user cancels staging after the orchestrator
+    has created the mission and spawned agents. It performs a transactional
+    rollback of the staging operation.
+
+    Operations:
+    1. Validate project exists (with tenant isolation)
+    2. Get orchestrator job for project
+    3. Call rollback_project_staging() from staging_rollback module
+    4. Update project.staging_status = None
+    5. Broadcast WebSocket event
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user (dependency injection)
+        db: Database session (dependency injection)
+
+    Returns:
+        StagingCancellationResponse with deletion statistics
+
+    Raises:
+        404: Project not found
+        400: No orchestrator found or invalid staging state
+        500: Database error or rollback failure
+
+    Multi-tenant isolation: Enforced via current_user.tenant_key
+    Transaction safety: Atomic rollback with session.commit()
+    """
+    import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import MCPAgentJob, Project
+    from src.giljo_mcp.staging_rollback import rollback_project_staging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    logger.info(
+        f"[Handover 0108] Staging cancellation requested for project {project_id} "
+        f"by user {current_user.username} (tenant: {current_user.tenant_key})"
+    )
+
+    try:
+        async with state.db_manager.get_session_async() as session:
+            # Step 1: Validate project exists and user has access (tenant isolation)
+            project_stmt = select(Project).where(
+                Project.id == project_id, Project.tenant_key == current_user.tenant_key
+            )
+            project_result = await session.execute(project_stmt)
+            project = project_result.scalar_one_or_none()
+
+            if not project:
+                logger.warning(f"[Handover 0108] Project {project_id} not found for tenant {current_user.tenant_key}")
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            # Step 2: Get orchestrator job for project (latest instance for succession support)
+            orch_stmt = (
+                select(MCPAgentJob)
+                .where(
+                    MCPAgentJob.project_id == project_id,
+                    MCPAgentJob.agent_type == "orchestrator",
+                    MCPAgentJob.tenant_key == current_user.tenant_key,
+                )
+                .order_by(MCPAgentJob.instance_number.desc())
+            )
+            orch_result = await session.execute(orch_stmt)
+            orchestrator = orch_result.scalars().first()
+
+            if not orchestrator:
+                logger.error(f"[Handover 0108] No orchestrator found for project {project_id}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No orchestrator found for this project. Cannot cancel staging.",
+                )
+
+            logger.info(
+                f"[Handover 0108] Found orchestrator {orchestrator.job_id} "
+                f"(instance {orchestrator.instance_number}, status: {orchestrator.status})"
+            )
+
+            # Step 3: Call rollback_project_staging() from staging_rollback module
+            # This performs the atomic database rollback with soft delete
+            rollback_result = await rollback_project_staging(
+                tenant_key=current_user.tenant_key,
+                project_id=project_id,
+                orchestrator_job_id=orchestrator.job_id,
+                reason=f"User {current_user.username} canceled staging via UI",
+                hard_delete=False,  # Use soft delete (status='failed' with metadata)
+            )
+
+            if not rollback_result.get("success"):
+                error_msg = rollback_result.get("error", "Unknown error during rollback")
+                logger.error(f"[Handover 0108] Staging rollback failed: {error_msg}")
+                raise HTTPException(status_code=500, detail=f"Staging rollback failed: {error_msg}")
+
+            agents_deleted = rollback_result.get("agents_deleted", 0)
+            agents_protected = rollback_result.get("agents_protected", 0)
+            rollback_timestamp = rollback_result.get("rollback_timestamp")
+
+            logger.info(
+                f"[Handover 0108] Rollback successful: {agents_deleted} agents deleted, "
+                f"{agents_protected} agents protected"
+            )
+
+            # Step 4: Update project.staging_status = None
+            # This clears the staging flag and returns project to normal state
+            project.staging_status = None
+            await session.flush()
+
+            # Commit transaction (includes rollback changes + project update)
+            await session.commit()
+
+            logger.info(f"[Handover 0108] Project {project_id} staging_status cleared (committed)")
+
+        # Step 5: Broadcast WebSocket event (after commit)
+        if state.websocket_manager:
+            try:
+                await state.websocket_manager.broadcast_project_update(
+                    project_id=project_id,
+                    update_type="staging_cancelled",
+                    project_data={
+                        "staging_status": None,
+                        "agents_deleted": agents_deleted,
+                        "agents_protected": agents_protected,
+                        "rollback_timestamp": rollback_timestamp,
+                        "message": f"Staging canceled: {agents_deleted} agents removed, {agents_protected} protected",
+                    },
+                )
+                logger.info(f"[Handover 0108] WebSocket event broadcast for project {project_id}")
+            except Exception as ws_error:
+                # Non-fatal: log and continue
+                logger.warning(f"[Handover 0108] Failed to broadcast WebSocket event: {ws_error}")
+
+        # Build success response
+        response = StagingCancellationResponse(
+            success=True,
+            agents_deleted=agents_deleted,
+            agents_protected=agents_protected,
+            staging_status=None,
+            message=(
+                f"Staging canceled successfully. Removed {agents_deleted} spawned agent(s), "
+                f"protected {agents_protected} active agent(s)."
+            ),
+            rollback_timestamp=rollback_timestamp,
+        )
+
+        logger.info(
+            f"[Handover 0108] Staging cancellation completed for project {project_id}: "
+            f"deleted={agents_deleted}, protected={agents_protected}"
+        )
+
+        return response
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (404, 400, 500)
+        raise
+    except Exception as e:
+        logger.error(f"[Handover 0108] Unexpected error during staging cancellation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to cancel staging: {str(e)}")
+
+
 @router.post("/{project_id}/restore-completed", response_model=ProjectResponse)
 async def restore_completed_project(
     project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)

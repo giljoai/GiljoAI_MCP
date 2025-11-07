@@ -180,6 +180,8 @@ export const api = {
     // Handover 0062: Project launch and summary
     summary: (id) => apiClient.get(`/api/v1/projects/${id}/summary`),
     launch: (id) => apiClient.post(`/api/v1/projects/${id}/launch`),
+    // Handover 0108: Staging cancellation
+    cancelStaging: (id) => apiClient.post(`/api/v1/projects/${id}/cancel-staging`),
   },
 
   // Agents
