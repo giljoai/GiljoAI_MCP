@@ -82,6 +82,26 @@
           </v-card-text>
         </v-card>
       </v-col>
+
+      <v-col cols="12" sm="6" md="3">
+        <v-card elevation="2">
+          <v-card-text class="text-center">
+            <v-icon size="48" color="success">mdi-api</v-icon>
+            <div class="text-h6 mt-2">API Calls</div>
+            <div class="text-h4">{{ apiCallCount }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" sm="6" md="3">
+        <v-card elevation="2">
+          <v-card-text class="text-center">
+            <v-icon size="48" color="warning">mdi-lan</v-icon>
+            <div class="text-h6 mt-2">MCP Calls</div>
+            <div class="text-h4">{{ mcpCallCount }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
     </v-row>
 
 
@@ -352,6 +372,23 @@ const stats = computed(() => ({
   projects: projectStore.projects?.length || 0,
   tasks: taskStore.tasks?.length || 0,
 }))
+
+const apiCallCount = ref(0)
+const mcpCallCount = ref(0)
+
+let fetchInterval = null
+
+const fetchCallCounts = async () => {
+  try {
+    const response = await api.get('/api/v1/stats/call-counts')
+    if (response.data) {
+      apiCallCount.value = response.data.total_api_calls
+      mcpCallCount.value = response.data.total_mcp_calls
+    }
+  } catch (error) {
+    console.error('Failed to fetch call counts:', error)
+  }
+}
 
 
 
@@ -668,13 +705,18 @@ onMounted(async () => {
 
   await refreshData()
 
+  // Fetch call counts and set up interval
+  fetchCallCounts()
+  fetchInterval = setInterval(fetchCallCounts, 5000)
+
   // Set up WebSocket listeners for real-time updates
   const unsubscribe = websocketService.onMessage('stats:update', handleRealtimeUpdate)
 
-
-
   onUnmounted(() => {
     unsubscribe()
+    if (fetchInterval) {
+      clearInterval(fetchInterval)
+    }
   })
 })
 </script>

@@ -94,8 +94,24 @@ class TimeSeriesResponse(BaseModel):
     data_points: list[TimeSeriesDataPoint]
 
 
+class CallCountsResponse(BaseModel):
+    total_api_calls: int
+    total_mcp_calls: int
+
+
 # Store startup time
 startup_time = datetime.now(timezone.utc)
+
+
+@router.get("/call-counts", response_model=CallCountsResponse)
+async def get_call_counts():
+    """Get total API and MCP call counts."""
+    from api.app import state
+
+    return CallCountsResponse(
+        total_api_calls=state.api_call_count,
+        total_mcp_calls=state.mcp_call_count,
+    )
 
 
 @router.get("/system", response_model=SystemStatsResponse)
