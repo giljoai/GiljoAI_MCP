@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>Developer Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
     <style>
       :root {
         color-scheme: dark;
@@ -62,6 +63,22 @@
         box-shadow: 0 14px 28px rgba(15, 23, 42, 0.32);
         display: grid;
         gap: 16px;
+      }
+
+      .flow-graph {
+        height: 420px;
+        background: var(--bg-800);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 14px;
+        margin-bottom: 10px;
+      }
+
+      .flow-details {
+        background: var(--bg-700);
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        padding: 12px;
+        color: var(--text-secondary);
       }
 
       .flow-diagram header {
@@ -328,7 +345,42 @@
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       }
 
+      details {
+        background: var(--bg-800);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 14px;
+        box-shadow: 0 14px 24px rgba(15, 23, 42, 0.28);
+        padding: 0;
+      }
+
+      details + details {
+        margin-top: 12px;
+      }
+
+      summary {
+        padding: 14px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--heading-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      summary::marker {
+        display: none;
+      }
+
+      details[open] summary {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .collapsible-content {
+        padding: 16px;
+      }
+
       .card {
+        overflow-wrap: anywhere;
         background: var(--bg-800);
         border-radius: 16px;
         border: 1px solid rgba(148, 163, 184, 0.12);
@@ -493,8 +545,9 @@
 
       .section-heading {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 6px;
       }
 
       .section-heading h3 {
@@ -624,6 +677,7 @@
         errors: {},
         searchQuery: '',
       };
+      let startFlowPromise = null;
 
       const statusBanner = document.getElementById('status-banner');
       const badgeContainer = document.getElementById('badge-container');
@@ -641,7 +695,7 @@
               return `<li><button data-section="${section.id}"><span>${section.label}</span><small>${section.endpoint}</small></button></li>`;
             })
             .join('');
-          return `<div class="nav-group"><h3>${group.title}</h3><ul>${entries}</ul></div>`;
+          return `<div class="nav-group"><h3>${group.title}</h3><ul>${entries}</ul></div></details>`;
         })
         .join('');
 
@@ -904,16 +958,17 @@
                 <div class="timeline">${sections}</div>
               </article>`;
           }).join('');
-          outlineHTML = `<div class="section-block">${timelineBlocks}</div>`;
+          outlineHTML = `<details open><summary>Outline Flows</summary><div class="collapsible-content">${timelineBlocks}</div></details>`;
         } else {
           outlineHTML = renderError(state.errors.flows || 'Flow inventory unavailable.');
         }
 
         const curatedHTML = ['installation', 'tasks'].map((key) => renderCuratedFlow(key)).join('');
+        const startFlowSection = `<details open id="start-flow-wrapper"><summary>start_to_finish_agent_FLOW.md</summary><div class="collapsible-content"><div class="flow-graph" id="start-flow-graph"></div><div class="flow-details" id="start-flow-details">Select a step to view details.</div></div></details>`;
 
-        const jumpNav = `<div class="flow-nav"><label for="flow-jump">Jump to flow:</label><select id="flow-jump"><option value="">Select…</option><option value="flow-installation">Installation Flow</option><option value="flow-tasks">Task Creation Flow</option></select></div>`;
+        const jumpNav = `<div class="flow-nav"><label for="flow-jump">Jump to flow:</label><select id="flow-jump"><option value="">Select…</option><option value="flow-installation-wrapper">Installation Flow</option><option value="flow-tasks-wrapper">Task Creation Flow</option><option value="start-flow-wrapper">Start-to-Finish Flow</option></select></div>`;
 
-        contentEl.innerHTML = `<div class="flow-wrapper">${jumpNav}${outlineHTML}${curatedHTML}</div>`;
+        contentEl.innerHTML = `<div class="flow-wrapper">${jumpNav}${outlineHTML}${curatedHTML}${startFlowSection}</div>`;
 
         const flowJump = document.getElementById('flow-jump');
         if (flowJump) {
@@ -944,12 +999,48 @@
 
         const references = flow.references?.map((ref) => `<span class="chip">${ref}</span>`).join('') || '';
 
-        return `<section class="flow-diagram" id="flow-${key}">
+        return `<details open class="flow-diagram" id="flow-${key}-wrapper"><summary>${flow.title}</summary><div class="collapsible-content">
             <header><h4>${flow.title}</h4><span>${flow.summary}</span></header>
             <div class="flow-lanes">${lanes}</div>
             ${references ? `<div class="list-inline">${references}</div>` : ''}
             ${flow.cliFlags ? `<div class="detail-box" style="margin-top:8px;"><strong>${flow.title.split(' ')[0]} CLI Flags</strong><ul class="list-column">${flow.cliFlags.map((flag) => `<li><code>${flag.flag}</code> – ${flag.description}</li>`).join('')}</ul></div>` : ''}
-          </section>`;
+          </div></details>`;
+      }
+
+      function ensureStartFlowData() {
+        if (!startFlowPromise) {
+          startFlowPromise = fetch('./data/start_to_finish_flow.json')
+            .then((res) => (res.ok ? res.json() : null))
+            .catch(() => null);
+        }
+        return startFlowPromise;
+      }
+
+      function renderStartFlowGraph(data) {
+        const container = document.getElementById('start-flow-graph');
+        const detailsEl = document.getElementById('start-flow-details');
+        if (!container || !window.cytoscape) return;
+        container.innerHTML = '';
+        if (!data) {
+          if (detailsEl) detailsEl.textContent = 'Unable to load flow data.';
+          return;
+        }
+        const cy = window.cytoscape({
+          container,
+          elements: [...(data.nodes || []), ...(data.edges || [])],
+          style: [
+            { selector: 'node', style: { 'background-color': '#38bdf8', label: 'data(label)', color: '#0f172a', 'text-wrap': 'wrap', 'text-max-width': 150, 'font-size': 12, 'text-valign': 'center', 'text-halign': 'center', 'border-width': 2, 'border-color': '#0f172a' } },
+            { selector: 'edge', style: { width: 2, 'line-color': '#64748b', 'target-arrow-color': '#64748b', 'target-arrow-shape': 'triangle' } }
+          ],
+          layout: { name: 'breadthfirst', directed: true, padding: 20 }
+        });
+        cy.on('tap', 'node', (event) => {
+          const nodeData = event.target.data();
+          const details = nodeData.details || [];
+          if (detailsEl) {
+            detailsEl.innerHTML = `<strong>${nodeData.label}</strong><ul class="list-column">${details.length ? details.map((item) => `<li>${item}</li>`).join('') : '<li class="muted">No notes recorded.</li>'}</ul>`;
+          }
+        });
       }
 
       function renderTechStack() {
@@ -1029,7 +1120,7 @@
                 <div class="list-inline">${route.tags.map((tag) => `<span class="chip">${tag}</span>`).join('')}</div>
               </div>`)
             .join('');
-          return `<section class="section-block"><div class="section-heading"><h3>${tag}</h3><span>${routes.length} routes</span></div><div class="card-grid">${rows}</div></section>`;
+          return `<details open><summary>${tag} <span class="muted">${routes.length} routes</span></summary><div class="collapsible-content"><div class="card-grid">${rows}</div></div></details>`;
         }).join('');
 
         contentEl.innerHTML = groups;
@@ -1048,7 +1139,7 @@
               <p>${tool.description || 'No description provided.'}</p>
               ${tool.arguments ? `<ul class="list-column">${Object.entries(tool.arguments).map(([key, desc]) => `<li><strong>${key}</strong> – ${desc}</li>`).join('')}</ul>` : ''}
             </div>`).join('');
-          return `<section class="section-block"><div class="section-heading"><h3>${category}</h3><span>${tools.length} tools</span></div><div class="card-grid">${items}</div></section>`;
+          return `<details open><summary>${category} <span class="muted">${tools.length} tools</span></summary><div class="collapsible-content"><div class="card-grid">${items}</div></div></details>`;
         }).join('');
 
         contentEl.innerHTML = categories;
@@ -1064,8 +1155,9 @@
         const cards = templates.templates.map((tpl) => {
           const rules = (tpl.behavioral_rules || []).map((rule) => `<li>${rule}</li>`).join('');
           const success = (tpl.success_criteria || []).map((item) => `<li>${item}</li>`).join('');
-          return `<article class="card">
-              <div class="section-heading"><h3>${tpl.name}</h3><span>${tpl.role}</span></div>
+          return `<details><summary>${tpl.name} <span class="muted">${tpl.role}</span></summary>
+              <div class="collapsible-content">
+              <div class="card">
               <p>${tpl.description || 'No description provided.'}</p>
               <div class="detail-grid">
                 <div class="detail-box"><strong>Defaults</strong><div class="list-column">
@@ -1080,7 +1172,9 @@
                 <div class="detail-box"><strong>Behavioral Rules</strong><ul class="list-column">${rules || '<span class="muted">No rules defined.</span>'}</ul></div>
                 <div class="detail-box"><strong>Success Criteria</strong><ul class="list-column">${success || '<span class="muted">No criteria defined.</span>'}</ul></div>
               </div>
-            </article>`;
+            </div>
+            </div>
+            </details>`;
         }).join('');
 
         contentEl.innerHTML = `<div class="section-block">${cards}</div>`;
@@ -1103,8 +1197,9 @@
           const idx = table.indexes?.length
             ? table.indexes.map((index) => `<li>${index.name} – ${index.columns.join(', ')}</li>`).join('')
             : '<span class="muted">None</span>';
-          return `<article class="card">
-              <div class="section-heading"><h3>${tableName}</h3><span>${table.columns.length} columns</span></div>
+          return `<details><summary>${tableName} <span class="muted">${table.columns.length} columns</span></summary>
+              <div class="collapsible-content">
+              <div class="card">
               <table class="table">
                 <thead><tr><th>Name</th><th>Type</th><th>Key</th><th>Nullable</th></tr></thead>
                 <tbody>${columns}</tbody>
@@ -1113,7 +1208,9 @@
                 <div class="detail-box"><strong>Foreign Keys</strong><div class="list-column">${fks}</div></div>
                 <div class="detail-box"><strong>Indexes</strong><div class="list-column">${idx}</div></div>
               </div>
-            </article>`;
+            </div>
+            </div>
+            </details>`;
         }).join('');
 
         contentEl.innerHTML = `<div class="section-block">${tables}</div>`;
