@@ -400,7 +400,7 @@ Questions? Let me know!
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import api from '@/services/api'
-import { API_CONFIG } from '@/config/api'
+import { getApiBaseURL } from '@/config/api'
 
 // State
 const downloading = ref({
@@ -424,7 +424,7 @@ const manualConfigJson = computed(() => {
         command: 'python',
         args: ['-m', 'giljo_mcp'],
         env: {
-          GILJO_SERVER_URL: API_CONFIG.REST_API.baseURL,
+          GILJO_SERVER_URL: getApiBaseURL(),
           GILJO_API_KEY: '<your-api-key-here>',
         },
       },
@@ -443,7 +443,7 @@ async function downloadScript(platform) {
     const endpoint =
       platform === 'windows' ? '/api/mcp-installer/windows' : '/api/mcp-installer/unix'
 
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseURL()}${endpoint}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
@@ -495,7 +495,7 @@ async function generateShareLinks() {
   generatingLinks.value = true
 
   try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/mcp-installer/share-link`, {
+    const response = await fetch(`${getApiBaseURL()}/api/mcp-installer/share-link`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

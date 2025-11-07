@@ -793,7 +793,7 @@ import { useTheme } from 'vuetify'
 import CodexMarkIcon from '@/components/icons/CodexMarkIcon.vue'
 import { useRouter } from 'vue-router'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
-import { API_CONFIG } from '@/config/api'
+import { getApiBaseURL } from '@/config/api'
 import api from '@/services/api'
 
 // Router
@@ -837,7 +837,7 @@ const agentTemplatesDownloadFeedback = ref(null)
 async function loadNetworkSettings() {
   try {
     // Load from /api/v1/config endpoint only
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
+    const response = await fetch(`${getApiBaseURL()}/api/v1/config`, {
       credentials: 'include',
       timeout: 5000,
     })
@@ -914,7 +914,7 @@ function removeOrigin(index) {
 async function saveNetworkSettings() {
   try {
     // Save CORS origins back to config
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
+    const response = await fetch(`${getApiBaseURL()}/api/v1/config`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -940,7 +940,7 @@ async function saveNetworkSettings() {
 async function loadDatabaseSettings() {
   try {
     // Fetch database config from API
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database`, {
+    const response = await fetch(`${getApiBaseURL()}/api/v1/config/database`, {
       credentials: 'include',
     })
     const config = await response.json()
