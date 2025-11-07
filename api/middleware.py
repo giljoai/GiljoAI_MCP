@@ -242,3 +242,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
 
         return response
+
+
+class APIMetricsMiddleware(BaseHTTPMiddleware):
+    """API metrics middleware - counts total API and MCP calls."""
+
+    async def dispatch(self, request: Request, call_next):
+        """Increment API and MCP call counters."""
+        request.app.state.api_state.api_call_count += 1
+        if request.url.path.startswith("/mcp"):
+            request.app.state.api_state.mcp_call_count += 1
+        response = await call_next(request)
+        return response

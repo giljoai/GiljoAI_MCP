@@ -100,7 +100,12 @@ try:
         users,
         vision_documents,
     )
-    from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
+    from .middleware import (
+        APIMetricsMiddleware,
+        AuthMiddleware,
+        RateLimitMiddleware,
+        SecurityHeadersMiddleware,
+    )
     from .websocket import WebSocketManager
 
     logger.info("API endpoint modules loaded successfully")
@@ -127,6 +132,8 @@ class APIState:
         self.cleanup_task: Optional[asyncio.Task] = None
         self.health_monitor = None
         self.health_monitor_task: Optional[asyncio.Task] = None
+        self.api_call_count: int = 0
+        self.mcp_call_count: int = 0
 
 
 state = APIState()
@@ -624,6 +631,9 @@ def create_app() -> FastAPI:
 
     # Add security headers middleware (executes 3rd - adds security headers to all responses)
     app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add API metrics middleware (executes 4th - counts API and MCP calls)
+    app.add_middleware(APIMetricsMiddleware)
 
     # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 
