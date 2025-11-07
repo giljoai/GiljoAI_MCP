@@ -377,46 +377,32 @@ Project: {project.name}"""
 
                 await session.commit()
 
-                # Broadcast WebSocket event for real-time UI update (Handover 0086A Task 1.5)
+                # Broadcast WebSocket event via EventBus (Handover 0111 Issue #1)
                 try:
                     from api.app import state
-                    from api.dependencies.websocket import WebSocketDependency
-                    from api.events.schemas import EventFactory
 
-                    # Get WebSocket manager via dependency injection
-                    ws_manager = getattr(state, "websocket_manager", None)
-                    if ws_manager:
-                        ws_dep = WebSocketDependency(ws_manager)
-
-                        # Create standardized event using EventFactory
-                        # Task 2.3: Include user_config_applied flag based on user_id presence
-                        event_data = EventFactory.project_mission_updated(
-                            project_id=project.id,
-                            tenant_key=project.tenant_key,
-                            mission=mission,
-                            token_estimate=len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
-                            generated_by="orchestrator",
-                            user_config_applied=bool(user_id),  # True when user_id provided (Task 2.3 COMPLETE)
-                        )
-
-                        # Broadcast using production-grade method with multi-tenant isolation
-                        sent_count = await ws_dep.broadcast_to_tenant(
-                            tenant_key=project.tenant_key,
-                            event_type="project:mission_updated",
-                            data=event_data["data"],
-                        )
+                    # Get Event Bus from application state
+                    event_bus = getattr(state, "event_bus", None)
+                    if event_bus:
+                        # Publish event to EventBus (WebSocketEventListener will broadcast)
+                        await event_bus.publish("project:mission_updated", {
+                            "tenant_key": project.tenant_key,
+                            "project_id": str(project.id),
+                            "mission": mission,
+                            "user_config_applied": bool(user_id),
+                            "token_estimate": len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
+                        })
 
                         logger.info(
-                            f"Mission update broadcasted to {sent_count} clients",
+                            "Mission update published to event bus",
                             extra={
                                 "project_id": str(project.id),
                                 "tenant_key": project.tenant_key,
-                                "sent_count": sent_count,
                             },
                         )
                     else:
                         logger.debug(
-                            "WebSocket manager not available for mission update broadcast",
+                            "Event bus not available for mission update",
                             extra={
                                 "project_id": str(project.id),
                                 "tenant_key": project.tenant_key,
@@ -426,7 +412,7 @@ Project: {project.name}"""
                 except Exception as e:
                     # Log with full context but don't fail the mission update
                     logger.error(
-                        f"Failed to broadcast mission update: {e}",
+                        f"Failed to publish mission update event: {e}",
                         extra={
                             "project_id": str(project.id),
                             "tenant_key": project.tenant_key,
