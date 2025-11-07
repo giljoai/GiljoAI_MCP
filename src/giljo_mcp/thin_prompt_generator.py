@@ -290,3 +290,187 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
             return {}
 
         return user.field_priority_config
+
+    async def generate_execution_prompt(
+        self,
+        orchestrator_job_id: str,
+        project_id: str,
+        claude_code_mode: bool = False
+    ) -> str:
+        """
+        Generate execution phase prompt for orchestrator.
+
+        Handover 0109: Generates thin client prompts for project execution phase.
+        Supports TWO modes:
+        - Multi-terminal: User manually launches agents in separate terminals
+        - Claude Code: Orchestrator spawns sub-agents using Task tool
+
+        Args:
+            orchestrator_job_id: Existing orchestrator job UUID
+            project_id: Project UUID
+            claude_code_mode: True for Claude Code subagent spawning, False for multi-terminal
+
+        Returns:
+            Thin prompt for execution phase (~15-20 lines)
+
+        Raises:
+            ValueError: If orchestrator job or project not found
+        """
+        # Fetch orchestrator job
+        orch_stmt = select(MCPAgentJob).where(
+            and_(
+                MCPAgentJob.job_id == orchestrator_job_id,
+                MCPAgentJob.tenant_key == self.tenant_key
+            )
+        )
+        orch_result = await self.db.execute(orch_stmt)
+        orchestrator = orch_result.scalar_one_or_none()
+
+        if not orchestrator:
+            raise ValueError(f"Orchestrator job {orchestrator_job_id} not found")
+
+        # Fetch project
+        project_stmt = select(Project).where(
+            and_(
+                Project.id == project_id,
+                Project.tenant_key == self.tenant_key
+            )
+        )
+        project_result = await self.db.execute(project_stmt)
+        project = project_result.scalar_one_or_none()
+
+        if not project:
+            raise ValueError(f"Project {project_id} not found")
+
+        # Fetch specialist agent jobs for this project (exclude orchestrator)
+        agents_stmt = select(MCPAgentJob).where(
+            and_(
+                MCPAgentJob.project_id == project_id,
+                MCPAgentJob.tenant_key == self.tenant_key,
+                MCPAgentJob.agent_type != "orchestrator"
+            )
+        ).order_by(MCPAgentJob.created_at)
+
+        agents_result = await self.db.execute(agents_stmt)
+        agent_jobs = agents_result.scalars().all()
+
+        # Generate appropriate prompt based on mode
+        if claude_code_mode:
+            return self._build_claude_code_execution_prompt(
+                orchestrator_id=orchestrator_job_id,
+                project=project,
+                agent_jobs=agent_jobs
+            )
+        else:
+            return self._build_multi_terminal_execution_prompt(
+                orchestrator_id=orchestrator_job_id,
+                project=project,
+                agent_jobs=agent_jobs
+            )
+
+    def _build_multi_terminal_execution_prompt(
+        self,
+        orchestrator_id: str,
+        project,
+        agent_jobs: list
+    ) -> str:
+        """
+        Build multi-terminal mode execution prompt.
+
+        User manually launches agents in separate terminals.
+        Orchestrator coordinates their work via MCP.
+        """
+        # Format agent list
+        agent_list_lines = []
+        if agent_jobs:
+            for agent in agent_jobs:
+                agent_list_lines.append(f"- {agent.agent_name} (Agent ID: {agent.job_id})")
+        else:
+            agent_list_lines.append("(No agents spawned yet)")
+
+        agent_list = "\n".join(agent_list_lines)
+
+        return f"""PROJECT EXECUTION PHASE - MULTI-TERMINAL MODE
+
+Orchestrator ID: {orchestrator_id}
+Project: {project.name}
+Tenant Key: {self.tenant_key}
+
+CONTEXT:
+- Project mission created and persisted
+- Specialist agents spawned and waiting
+- User launching agents in separate terminal windows
+
+YOUR ROLE: COORDINATE AGENT WORKFLOW
+1. Monitor dashboard for agent progress updates
+2. Respond to agent messages via MCP
+3. Track completion status
+4. Handle blockers and escalations
+
+IMPORTANT:
+- Agents check in via acknowledge_job()
+- You coordinate, agents execute
+- User manually manages terminal windows
+
+AGENT TEAM:
+{agent_list}
+
+Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self.tenant_key}')
+"""
+
+    def _build_claude_code_execution_prompt(
+        self,
+        orchestrator_id: str,
+        project,
+        agent_jobs: list
+    ) -> str:
+        """
+        Build Claude Code subagent mode execution prompt.
+
+        Orchestrator spawns sub-agents using Task tool.
+        Sub-agents receive identity via instructions string.
+        """
+        # Format agent list with missions
+        agent_spawn_lines = []
+        if agent_jobs:
+            for idx, agent in enumerate(agent_jobs, 1):
+                mission = agent.mission or "(No mission assigned)"
+                agent_spawn_lines.append(
+                    f"{idx}. {agent.agent_name}:\n"
+                    f"   - Mission: {mission}\n"
+                    f"   - Agent ID: {agent.job_id}\n"
+                    f"   - Job ID: {agent.job_id}"
+                )
+        else:
+            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
+
+        agent_list = "\n\n".join(agent_spawn_lines)
+
+        return f"""PROJECT EXECUTION PHASE - CLAUDE CODE SUBAGENT MODE
+
+Orchestrator ID: {orchestrator_id}
+Project: {project.name}
+Tenant Key: {self.tenant_key}
+
+YOUR ROLE: SPAWN & COORDINATE SUB-AGENTS
+
+STEP 1: ACTIVATE AGENT TEAM
+For each agent below, spawn Claude Code sub-agent using Task tool:
+
+{agent_list}
+
+(Pattern: spawn_agent_job() already called during staging - use existing IDs)
+
+STEP 2: REMIND EACH SUB-AGENT
+- acknowledge_job(job_id="{{job_id}}", agent_id="{{agent_id}}", tenant_key="{self.tenant_key}")
+- report_progress() after milestones
+- receive_messages() for commands
+- complete_job() when done
+
+STEP 3: COORDINATE WORKFLOW
+- Monitor via get_workflow_status()
+- Respond to agent messages
+- Handle blockers
+
+Reference: See Handover 0106b for full sub-agent spawn instructions
+"""
