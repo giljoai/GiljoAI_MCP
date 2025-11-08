@@ -15,7 +15,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from .database import DatabaseManager
-from .models import Job
+from .models import Job, MCPAgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -32,25 +32,31 @@ class AgentJobManager:
     - Enforce tenant isolation
     - Manage job messages and metadata
 
-    Valid status transitions:
-    - pending -> active (via acknowledge_job)
-    - pending -> failed (via fail_job)
-    - pending -> blocked (via fail_job, Handover 0066)
-    - active -> completed (via complete_job)
-    - active -> failed (via fail_job)
-    - active -> blocked (via fail_job, Handover 0066)
-    - completed -> [terminal state, no transitions]
-    - failed -> [terminal state, no transitions]
-    - blocked -> [terminal state, no transitions] (Handover 0066)
+    Valid status transitions (Handover 0113 - 7 State System):
+    - waiting -> working (via update_job_status or acknowledge_job)
+    - waiting -> failed (via fail_job)
+    - waiting -> cancelled (via cancel_job)
+    - working -> complete (via complete_job)
+    - working -> failed (via fail_job)
+    - working -> blocked (via update_job_status)
+    - working -> cancelled (via cancel_job)
+    - blocked -> working (via update_job_status)
+    - blocked -> failed (via fail_job)
+    - blocked -> cancelled (via cancel_job)
+    - complete -> working (via continue_working - resume project)
+    - complete -> decommissioned (via decommission_job - project closeout)
+    - failed, cancelled, decommissioned -> [terminal states, no transitions]
     """
 
-    # Valid status transitions
+    # Valid status transitions (Handover 0113 - 7 State System)
     VALID_TRANSITIONS = {
-        "pending": {"active", "failed", "blocked"},
-        "active": {"completed", "failed", "blocked"},
-        "completed": set(),  # Terminal state
+        "waiting": {"working", "failed", "cancelled"},
+        "working": {"complete", "failed", "blocked", "cancelled"},
+        "blocked": {"working", "failed", "cancelled"},
+        "complete": {"working", "decommissioned"},  # Continue working OR close out project
         "failed": set(),  # Terminal state
-        "blocked": set(),  # Terminal state (Handover 0066)
+        "cancelled": set(),  # Terminal state
+        "decommissioned": set(),  # Terminal state
     }
 
     def __init__(self, db_manager: DatabaseManager):
@@ -326,23 +332,31 @@ class AgentJobManager:
         tenant_key: str,
         job_id: str,
         error: Optional[dict[str, Any]] = None,
-    ) -> Job:
+        failure_reason: str = "error",
+    ) -> MCPAgentJob:
         """
-        Mark job as failed (pending/active -> failed).
+        Mark job as failed (waiting/working/blocked -> failed).
 
         Handover 0072: Automatically syncs task status to 'blocked'.
+        Handover 0113: Added failure_reason parameter for categorizing failures.
 
         Args:
             tenant_key: Tenant key for isolation
             job_id: Job ID to fail
             error: Optional error data to store in messages
+            failure_reason: Reason for failure - 'error', 'timeout', or 'system_error'
 
         Returns:
-            Updated Job instance
+            Updated MCPAgentJob instance
 
         Raises:
-            ValueError: If job not found or status transition invalid
+            ValueError: If job not found, status transition invalid, or invalid failure_reason
         """
+        # Validate failure_reason
+        valid_reasons = {"error", "timeout", "system_error"}
+        if failure_reason not in valid_reasons:
+            raise ValueError(f"Invalid failure_reason '{failure_reason}'. Must be one of: {valid_reasons}")
+
         with self.db_manager.get_session() as session:
             # Get job with tenant isolation
             job = self._get_job_or_raise(session, tenant_key, job_id)
@@ -352,6 +366,7 @@ class AgentJobManager:
 
             # Update job
             job.status = "failed"
+            job.failure_reason = failure_reason
             job.completed_at = datetime.now(timezone.utc)
 
             # Add error as message
@@ -361,6 +376,7 @@ class AgentJobManager:
                         "role": "system",
                         "type": "error",
                         "content": error,
+                        "failure_reason": failure_reason,
                     }
                 )
                 job.messages = job.messages + [error_msg]
@@ -371,7 +387,114 @@ class AgentJobManager:
             session.commit()
             session.refresh(job)
 
-        logger.info(f"Failed job {job_id} for tenant {tenant_key}: {error}")
+        logger.info(f"Failed job {job_id} for tenant {tenant_key}: {failure_reason} - {error}")
+
+        return job
+
+    def continue_working(
+        self,
+        tenant_key: str,
+        job_id: str,
+    ) -> MCPAgentJob:
+        """
+        Resume a completed job (complete -> working).
+
+        Handover 0113: Allows continuing work after project completion without closing out.
+
+        Args:
+            tenant_key: Tenant key for isolation
+            job_id: Job ID to resume
+
+        Returns:
+            Updated MCPAgentJob instance
+
+        Raises:
+            ValueError: If job not found or status transition invalid
+        """
+        with self.db_manager.get_session() as session:
+            # Get job with tenant isolation
+            job = self._get_job_or_raise(session, tenant_key, job_id)
+
+            # Validate status transition
+            self._validate_status_transition(job.status, "working")
+
+            # Update job
+            job.status = "working"
+            job.completed_at = None  # Clear completion timestamp
+            job.started_at = datetime.now(timezone.utc)  # Update start time
+
+            # Add system message
+            resume_msg = self._create_message(
+                {
+                    "role": "system",
+                    "type": "status_change",
+                    "content": "Job resumed for continued work",
+                    "previous_status": "complete",
+                    "new_status": "working",
+                }
+            )
+            job.messages = job.messages + [resume_msg]
+
+            session.commit()
+            session.refresh(job)
+
+        logger.info(f"Resumed job {job_id} for tenant {tenant_key}")
+
+        return job
+
+    def decommission_job(
+        self,
+        tenant_key: str,
+        job_id: str,
+    ) -> MCPAgentJob:
+        """
+        Decommission a completed job (complete -> decommissioned).
+
+        Handover 0113: Project closeout workflow - marks job as retired.
+        Only jobs in 'complete' status can be decommissioned.
+
+        Args:
+            tenant_key: Tenant key for isolation
+            job_id: Job ID to decommission
+
+        Returns:
+            Updated MCPAgentJob instance
+
+        Raises:
+            ValueError: If job not found or not in 'complete' status
+        """
+        with self.db_manager.get_session() as session:
+            # Get job with tenant isolation
+            job = self._get_job_or_raise(session, tenant_key, job_id)
+
+            # Custom validation: Only completed jobs can be decommissioned
+            if job.status != "complete":
+                raise ValueError(
+                    f"Only completed jobs can be decommissioned. "
+                    f"Current status: '{job.status}'"
+                )
+
+            # Update job status and timestamp
+            job.status = "decommissioned"
+            job.decommissioned_at = datetime.now(timezone.utc)
+
+            # Add system message for audit trail
+            decommission_msg = self._create_message(
+                {
+                    "role": "system",
+                    "type": "status_change",
+                    "content": "Job decommissioned - project closeout",
+                    "previous_status": "complete",
+                    "new_status": "decommissioned",
+                    "timestamp": job.decommissioned_at.isoformat(),
+                }
+            )
+            job.messages = job.messages + [decommission_msg]
+
+            session.commit()
+            session.refresh(job)
+
+        logger.info(f"Decommissioned job {job_id} for tenant {tenant_key}")
 
         return job
 
