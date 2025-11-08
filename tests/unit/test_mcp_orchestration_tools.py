@@ -246,12 +246,12 @@ class TestOrchestrationTools:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
-            # Mock agent lookup with mission
-            from src.giljo_mcp.models import Agent
+            # Mock agent lookup with mission (using MCPAgentJob)
+            from src.giljo_mcp.models import MCPAgentJob
 
-            mock_agent = Mock(spec=Agent)
-            mock_agent.id = str(uuid.uuid4())
-            mock_agent.name = "implementer"
+            mock_agent = Mock(spec=MCPAgentJob)
+            mock_agent.job_id = str(uuid.uuid4())
+            mock_agent.agent_name = "implementer"
             mock_agent.tenant_key = self.tenant_key
             mock_agent.mission = "# Mission: Implement Features\n\nImplement the required features."
 
@@ -262,7 +262,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_agent_mission = registrar.get_registered_tool("get_agent_mission")
 
-            result = await get_agent_mission(agent_id=mock_agent.id, tenant_key=self.tenant_key)
+            result = await get_agent_mission(agent_id=mock_agent.job_id, tenant_key=self.tenant_key)
 
             # Verify markdown mission returned
             assert isinstance(result, dict)
@@ -311,12 +311,12 @@ class TestOrchestrationTools:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
-            # Mock agent without mission
-            from src.giljo_mcp.models import Agent
+            # Mock agent without mission (using MCPAgentJob)
+            from src.giljo_mcp.models import MCPAgentJob
 
-            mock_agent = Mock(spec=Agent)
-            mock_agent.id = str(uuid.uuid4())
-            mock_agent.name = "implementer"
+            mock_agent = Mock(spec=MCPAgentJob)
+            mock_agent.job_id = str(uuid.uuid4())
+            mock_agent.agent_name = "implementer"
             mock_agent.tenant_key = self.tenant_key
             mock_agent.mission = None  # No mission!
 
@@ -327,7 +327,7 @@ class TestOrchestrationTools:
             register_orchestration_tools(mock_server, self.db_manager)
             get_agent_mission = registrar.get_registered_tool("get_agent_mission")
 
-            result = await get_agent_mission(agent_id=mock_agent.id, tenant_key=self.tenant_key)
+            result = await get_agent_mission(agent_id=mock_agent.job_id, tenant_key=self.tenant_key)
 
             # Should return error
             assert isinstance(result, dict)
