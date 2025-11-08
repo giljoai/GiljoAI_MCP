@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from .database import DatabaseManager
 from .models import AgentTemplate
+from .system_prompts import SystemPromptService
 from .template_manager import apply_augmentation
 
 
@@ -105,6 +106,7 @@ class MissionTemplateGeneratorV2:
         """Initialize with optional database manager"""
         self.db_manager = db_manager
         self.adapter = TemplateAdapter(db_manager) if db_manager else None
+        self.system_prompt_service = SystemPromptService(db_manager)
 
         # Fallback templates if database is not available
         self.ORCHESTRATOR_TEMPLATE = """You are the Project Orchestrator for: {project_name}
@@ -137,29 +139,21 @@ Your role is to review code and ensure quality."""
         additional_context: Optional[str] = None,
     ) -> str:
         """Generate orchestrator mission using database template"""
-        if self.adapter:
-            variables = {
-                "project_name": project_name,
-                "project_mission": project_mission,
-                "product_name": product_name,
-            }
+        variables = {
+            "project_name": project_name,
+            "project_mission": project_mission,
+            "product_name": product_name,
+        }
 
-            augmentations = []
-            if additional_context:
-                augmentations.append(
-                    {
-                        "type": "append",
-                        "content": f"\nADDITIONAL CONTEXT:\n{additional_context}",
-                    }
-                )
+        prompt_record = await self.system_prompt_service.get_orchestrator_prompt()
+        content = prompt_record.content
 
-            return await self.adapter.get_template(
-                role="orchestrator", variables=variables, augmentations=augmentations
-            )
-        # Fallback to hardcoded template
-        content = self.ORCHESTRATOR_TEMPLATE.format(project_name=project_name, project_mission=project_mission)
+        for key, value in variables.items():
+            content = content.replace(f"{{{key}}}", str(value))
+
         if additional_context:
-            content += f"\n\nADDITIONAL CONTEXT:\n{additional_context}"
+            content = f"{content}\n\nADDITIONAL CONTEXT:\n{additional_context}"
+
         return content
 
     async def generate_agent_mission(

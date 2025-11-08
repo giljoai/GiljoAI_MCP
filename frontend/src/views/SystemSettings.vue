@@ -23,6 +23,10 @@
         <v-icon start>mdi-shield-lock</v-icon>
         Security
       </v-tab>
+      <v-tab value="system">
+        <v-icon start>mdi-cog</v-icon>
+        System
+      </v-tab>
     </v-tabs>
 
     <!-- Tab Content -->
@@ -515,6 +519,81 @@
           </v-card-actions>
         </v-card>
       </v-window-item>
+
+      <v-window-item value="system">
+        <v-card>
+          <v-card-title>System Orchestrator Prompt</v-card-title>
+          <v-card-subtitle>Core instructions for the Giljo Orchestrator (admin override only)</v-card-subtitle>
+
+          <v-card-text>
+            <v-alert type="warning" variant="tonal" class="mb-4">
+              <v-icon start>mdi-alert</v-icon>
+              Editing this prompt can break orchestrator coordination. Only proceed if you understand the full impact.
+              Always keep a backup and verify flows after saving.
+            </v-alert>
+
+            <v-alert
+              v-if="orchestratorPromptError"
+              type="error"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="orchestratorPromptError = null"
+            >
+              {{ orchestratorPromptError }}
+            </v-alert>
+
+            <v-alert
+              v-if="orchestratorPromptFeedback"
+              type="success"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="orchestratorPromptFeedback = null"
+            >
+              {{ orchestratorPromptFeedback }}
+            </v-alert>
+
+            <v-textarea
+              v-model="orchestratorPrompt"
+              :loading="orchestratorPromptLoading"
+              :readonly="orchestratorPromptLoading"
+              label="Orchestrator Prompt"
+              class="mono-textarea"
+              rows="18"
+              auto-grow
+              variant="outlined"
+              spellcheck="false"
+            />
+
+            <div class="text-caption mt-2">
+              {{ orchestratorPromptStatus }}
+            </div>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-btn
+              variant="text"
+              color="warning"
+              :disabled="orchestratorPromptLoading || orchestratorPromptSaving"
+              @click="restoreOrchestratorPrompt"
+            >
+              <v-icon start>mdi-backup-restore</v-icon>
+              Restore Default
+            </v-btn>
+            <v-spacer />
+            <v-btn
+              color="primary"
+              :loading="orchestratorPromptSaving"
+              :disabled="!orchestratorPromptDirty || orchestratorPromptSaving"
+              @click="saveOrchestratorPrompt"
+            >
+              <v-icon start>mdi-content-save</v-icon>
+              Save Override
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-window-item>
     </v-window>
 
     <!-- Claude Code Configuration Modal -->
@@ -788,7 +867,7 @@ context_sharing = true</code></pre>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import CodexMarkIcon from '@/components/icons/CodexMarkIcon.vue'
 import { useRouter } from 'vue-router'
@@ -826,6 +905,29 @@ const cookieDomains = ref([])
 const newDomain = ref('')
 const domainError = ref('')
 const cookieDomainFeedback = ref(null)
+
+// System prompt editor state
+const orchestratorPrompt = ref('')
+const orchestratorPromptBaseline = ref('')
+const orchestratorPromptLoading = ref(false)
+const orchestratorPromptSaving = ref(false)
+const orchestratorPromptDirty = ref(false)
+const orchestratorPromptMetadata = ref({
+  isOverride: false,
+  updatedAt: null,
+  updatedBy: null,
+})
+const orchestratorPromptError = ref(null)
+const orchestratorPromptFeedback = ref(null)
+
+const orchestratorPromptStatus = computed(() => {
+  if (orchestratorPromptMetadata.value.isOverride && orchestratorPromptMetadata.value.updatedAt) {
+    const timestamp = orchestratorPromptMetadata.value.updatedAt.toLocaleString()
+    const actor = orchestratorPromptMetadata.value.updatedBy || 'admin'
+    return `Override saved ${timestamp} by ${actor}`
+  }
+  return 'Using default system prompt'
+})
 
 // Download state
 const downloadingSlashCommands = ref(false)
@@ -1287,6 +1389,82 @@ async function removeCookieDomain(domain) {
   }
 }
 
+// System Prompt Methods
+async function loadOrchestratorPrompt() {
+  orchestratorPromptLoading.value = true
+  orchestratorPromptError.value = null
+  orchestratorPromptFeedback.value = null
+
+  try {
+    const response = await api.system.getOrchestratorPrompt()
+    const data = response.data || {}
+    orchestratorPrompt.value = data.content || ''
+    orchestratorPromptBaseline.value = orchestratorPrompt.value
+    orchestratorPromptMetadata.value = {
+      isOverride: Boolean(data.is_override),
+      updatedAt: data.updated_at ? new Date(data.updated_at) : null,
+      updatedBy: data.updated_by || null,
+    }
+    orchestratorPromptDirty.value = false
+  } catch (error) {
+    console.error('[SYSTEM] Failed to load orchestrator prompt:', error)
+    orchestratorPromptError.value = error.response?.data?.detail || 'Failed to load orchestrator prompt.'
+  } finally {
+    orchestratorPromptLoading.value = false
+  }
+}
+
+async function saveOrchestratorPrompt() {
+  if (!orchestratorPromptDirty.value) return
+  orchestratorPromptSaving.value = true
+  orchestratorPromptError.value = null
+  orchestratorPromptFeedback.value = null
+
+  try {
+    const response = await api.system.updateOrchestratorPrompt(orchestratorPrompt.value)
+    const data = response.data || {}
+    orchestratorPrompt.value = data.content || orchestratorPrompt.value
+    orchestratorPromptBaseline.value = orchestratorPrompt.value
+    orchestratorPromptMetadata.value = {
+      isOverride: Boolean(data.is_override),
+      updatedAt: data.updated_at ? new Date(data.updated_at) : null,
+      updatedBy: data.updated_by || null,
+    }
+    orchestratorPromptDirty.value = false
+    orchestratorPromptFeedback.value = 'Override saved successfully.'
+  } catch (error) {
+    console.error('[SYSTEM] Failed to save orchestrator prompt:', error)
+    orchestratorPromptError.value = error.response?.data?.detail || 'Failed to save orchestrator prompt.'
+  } finally {
+    orchestratorPromptSaving.value = false
+  }
+}
+
+async function restoreOrchestratorPrompt() {
+  orchestratorPromptSaving.value = true
+  orchestratorPromptError.value = null
+  orchestratorPromptFeedback.value = null
+
+  try {
+    const response = await api.system.resetOrchestratorPrompt()
+    const data = response.data || {}
+    orchestratorPrompt.value = data.content || ''
+    orchestratorPromptBaseline.value = orchestratorPrompt.value
+    orchestratorPromptMetadata.value = {
+      isOverride: Boolean(data.is_override),
+      updatedAt: data.updated_at ? new Date(data.updated_at) : null,
+      updatedBy: data.updated_by || null,
+    }
+    orchestratorPromptDirty.value = false
+    orchestratorPromptFeedback.value = 'Reverted to default orchestrator prompt.'
+  } catch (error) {
+    console.error('[SYSTEM] Failed to reset orchestrator prompt:', error)
+    orchestratorPromptError.value = error.response?.data?.detail || 'Failed to restore default prompt.'
+  } finally {
+    orchestratorPromptSaving.value = false
+  }
+}
+
 // Download Methods
 async function generateSlashCommandsDownload() {
   downloadingSlashCommands.value = true
@@ -1344,6 +1522,10 @@ async function generateAgentTemplatesDownload() {
   }
 }
 
+watch(orchestratorPrompt, (value) => {
+  orchestratorPromptDirty.value = value !== orchestratorPromptBaseline.value
+})
+
 // Lifecycle
 onMounted(async () => {
   // Load database settings from config on mount
@@ -1352,10 +1534,15 @@ onMounted(async () => {
   // Load network settings from config on mount
   await loadNetworkSettings()
 
+  await loadOrchestratorPrompt()
+
   // Load cookie domains
   await loadCookieDomains()
 })
 </script>
 
 <style scoped>
+.mono-textarea :deep(textarea) {
+  font-family: 'Roboto Mono', monospace;
+}
 </style>

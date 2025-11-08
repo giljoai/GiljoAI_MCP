@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 
 
 logger = logging.getLogger(__name__)
@@ -148,6 +149,7 @@ async def list_agent_templates(
                 select(AgentTemplate)
                 .where(AgentTemplate.tenant_key == current_user.tenant_key)
                 .where(AgentTemplate.is_active == True)
+                .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
                 .order_by(AgentTemplate.role, AgentTemplate.name)
             )
 
@@ -209,6 +211,8 @@ async def download_agent_template(
 
     # Extract role from filename (remove .md extension, replace hyphens with spaces)
     role = filename[:-3].replace("-", " ")
+    if role.strip().lower() in SYSTEM_MANAGED_ROLES:
+        raise HTTPException(status_code=404, detail=f"Template '{filename}' not found")
 
     try:
         # Query template by role and tenant

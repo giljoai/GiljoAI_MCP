@@ -57,6 +57,7 @@ try:
     from giljo_mcp.config_manager import get_config
     from giljo_mcp.database import DatabaseManager
     from giljo_mcp.models import Project
+    from giljo_mcp.system_prompts import SystemPromptService
     from giljo_mcp.tenant import TenantManager
     from giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -91,6 +92,7 @@ try:
         projects,
         prompts,
         serena,
+        system_prompts,
         setup_security,
         slash_commands,
         statistics,
@@ -136,6 +138,7 @@ class APIState:
         self.health_monitor_task: Optional[asyncio.Task] = None
         self.api_call_count: dict[str, int] = {}
         self.mcp_call_count: dict[str, int] = {}
+        self.system_prompt_service: Optional[SystemPromptService] = None
 
 
 state = APIState()
@@ -196,6 +199,9 @@ async def lifespan(app: FastAPI):
             logger.info("Creating database tables...")
             await state.db_manager.create_tables_async()
             logger.info("Database tables created/verified successfully")
+
+            state.system_prompt_service = SystemPromptService(state.db_manager)
+            logger.info("System prompt service initialized")
         except Exception as e:
             logger.error(f"Database initialization failed: {e}", exc_info=True)
             raise
@@ -742,6 +748,7 @@ def create_app() -> FastAPI:
     app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])  # Handover 0109
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
+    app.include_router(system_prompts.router, prefix="/api/v1/system", tags=["system"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

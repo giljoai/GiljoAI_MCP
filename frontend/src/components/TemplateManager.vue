@@ -22,8 +22,8 @@
     <v-card-text>
       <!-- Active Agent Counter (Handover 0075) -->
       <v-alert
-        v-if="activeCount !== null"
-        :type="activeCount >= 8 ? 'warning' : 'info'"
+        v-if="totalActiveAgents !== null"
+        :type="remainingUserSlots === 0 ? 'warning' : 'info'"
         variant="tonal"
         density="compact"
         class="mb-4"
@@ -31,25 +31,25 @@
         <div class="d-flex align-center justify-space-between">
           <div>
             <strong>Active Agents:</strong>
-            <span :class="activeCount >= 8 ? 'text-warning' : ''">
-              {{ activeCount }} / 8
+            <span :class="remainingUserSlots === 0 ? 'text-warning' : ''">
+              {{ totalActiveAgents }} / {{ totalCapacity }}
             </span>
             <span class="text-medium-emphasis ml-2">
-              ({{ 8 - activeCount }} slots remaining)
+              ({{ remainingUserSlots }} user slots remaining — {{ systemReservedSlots }} reserved for Orchestrator)
             </span>
           </div>
           <v-chip
-            v-if="activeCount >= 8"
+            v-if="remainingUserSlots === 0"
             size="small"
             color="warning"
             prepend-icon="mdi-alert"
           >
-            Limit Reached
+            User Limit Reached
           </v-chip>
         </div>
-        <div v-if="activeCount >= 8" class="text-body-2 mt-2">
-          Maximum active agents reached. Deactivate an agent to enable another.
-          <strong>Reason:</strong> Claude Code context budget limit (6-8 agents recommended).
+        <div v-if="remainingUserSlots === 0" class="text-body-2 mt-2">
+          Maximum user-managed agents reached ({{ userAgentLimit }}). Orchestrator remains always-on and reserved.
+          Deactivate an agent to enable another.
         </div>
       </v-alert>
 
@@ -154,7 +154,7 @@
           <div class="d-flex align-center justify-center">
             <v-switch
               :model-value="item.is_active"
-              :disabled="!item.is_active && activeCount >= 8"
+              :disabled="!item.is_active && remainingUserSlots === 0"
               color="primary"
               hide-details
               density="compact"
@@ -162,7 +162,7 @@
               :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
             />
             <v-tooltip
-              v-if="!item.is_active && activeCount >= 8"
+              v-if="!item.is_active && remainingUserSlots === 0"
               location="top"
             >
               <template v-slot:activator="{ props }">
@@ -171,7 +171,7 @@
                 </v-icon>
               </template>
               <span>
-                Maximum 8 active agents allowed (context budget limit).
+                Maximum {{ userAgentLimit }} user-managed agents allowed (context budget limit).
                 Deactivate another agent first.
               </span>
             </v-tooltip>
@@ -764,7 +764,14 @@ const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const generating = ref(false)
-const activeCount = ref(null) // Handover 0075: Track active agent count
+const activeStats = ref({
+  totalActive: null,
+  totalCapacity: null,
+  userActive: 0,
+  userLimit: 7,
+  remainingUserSlots: 7,
+  systemReserved: 1,
+}) // Tracks system reservation + user slots
 const previewContent = ref('') // Handover 0103: Preview window content
 
 // Error snackbar state
@@ -940,6 +947,22 @@ const modelOptions = computed(() => {
   return [] // Read-only for non-Claude
 })
 
+const totalActiveAgents = computed(() => activeStats.value.totalActive)
+const totalCapacity = computed(() => {
+  if (activeStats.value.totalCapacity !== null) {
+    return activeStats.value.totalCapacity
+  }
+  return (activeStats.value.userLimit || 7) + (activeStats.value.systemReserved || 1)
+})
+const remainingUserSlots = computed(() => {
+  if (typeof activeStats.value.remainingUserSlots === 'number') {
+    return Math.max(0, activeStats.value.remainingUserSlots)
+  }
+  return Math.max(0, (activeStats.value.userLimit || 7) - (activeStats.value.userActive || 0))
+})
+const systemReservedSlots = computed(() => activeStats.value.systemReserved ?? 1)
+const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
+
 // Methods
 const loadTemplates = async () => {
   loading.value = true
@@ -947,10 +970,12 @@ const loadTemplates = async () => {
     // Load ALL templates (active and inactive) - no filter to get both
     const response = await api.templates.list()
     // Map backend fields to frontend fields
-    templates.value = (response.data || []).map((t) => ({
-      ...t,
-      template: t.template_content, // Map template_content to template for frontend
-    }))
+    templates.value = (response.data || [])
+      .filter((t) => !t.is_system_role)
+      .map((t) => ({
+        ...t,
+        template: t.template_content, // Map template_content to template for frontend
+      }))
   } catch (error) {
     console.error('Failed to load templates:', error)
   } finally {
@@ -961,12 +986,22 @@ const loadTemplates = async () => {
 // Handover 0075: Load active agent count
 const loadActiveCount = async () => {
   try {
-    const response = await api.templates.list({ is_active: true })
-    // Count active templates from the response
-    activeCount.value = (response.data || []).filter(t => t.is_active).length
+    const response = await api.templates.activeCount()
+    const data = response.data || {}
+    activeStats.value = {
+      totalActive: data.total_active ?? ((data.active_count || 0) + (data.system_reserved || 1)),
+      totalCapacity: data.total_capacity ?? ((data.max_allowed || 7) + (data.system_reserved || 1)),
+      userActive: data.active_count ?? 0,
+      userLimit: data.max_allowed ?? 7,
+      remainingUserSlots: data.remaining_slots ?? Math.max(0, (data.max_allowed || 7) - (data.active_count || 0)),
+      systemReserved: data.system_reserved ?? 1,
+    }
   } catch (error) {
     console.error('[TEMPLATE MANAGER] Failed to load active count:', error)
-    activeCount.value = 0
+    activeStats.value = {
+      ...activeStats.value,
+      totalActive: activeStats.value.totalActive ?? activeStats.value.systemReserved,
+    }
   }
 }
 

@@ -27,10 +27,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+USER_AGENT_EXPORT_LIMIT = 7
 
 
 # Pydantic Models
@@ -424,6 +426,7 @@ async def export_templates_to_claude_code(
         .where(
             AgentTemplate.tenant_key == current_user.tenant_key,
             AgentTemplate.is_active,
+            AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)),
         )
         .order_by(AgentTemplate.name)
     )
@@ -442,11 +445,11 @@ async def export_templates_to_claude_code(
 
     # Validate agent count (warn if exceeds recommended limit)
     active_count = len(templates)
-    if active_count > 8:
+    if active_count > USER_AGENT_EXPORT_LIMIT:
         logger.warning(
-            f"User exporting {active_count} agents (exceeds recommended limit of 8). "
-            f"tenant={current_user.tenant_key}. Claude Code recommends 6-8 agents for optimal "
-            f"context budget performance."
+            f"User exporting {active_count} agents (exceeds recommended user-managed limit of {USER_AGENT_EXPORT_LIMIT}). "
+            f"tenant={current_user.tenant_key}. Orchestrator is reserved internally; enabling more than "
+            f"{USER_AGENT_EXPORT_LIMIT} user agents may reduce available context."
         )
 
     # Export each template
@@ -508,8 +511,10 @@ async def export_templates_to_claude_code(
 
     # Compose message with optional warning about recommended limit
     base_message = f"Successfully exported {len(exported_files)} template(s) to {export_dir}"
-    if active_count > 8:
-        base_message += " (Warning: exporting more than 8 agents may reduce available context in Claude Code)"
+    if active_count > USER_AGENT_EXPORT_LIMIT:
+        base_message += (
+            f" (Warning: exporting more than {USER_AGENT_EXPORT_LIMIT} user agents may reduce available context)"
+        )
 
     # Return results (including backup info)
     return {
