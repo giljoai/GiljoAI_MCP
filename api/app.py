@@ -73,7 +73,7 @@ try:
         agent_jobs,
         agent_management,
         agent_templates,
-        agents,
+        # agents,  # DEPRECATED (Handover 0116) - superseded by agent_jobs
         ai_tools,
         auth,
         auth_pin_recovery,
@@ -578,7 +578,7 @@ def create_app() -> FastAPI:
                 "name": "projects",
                 "description": "Project management operations - create, update, and monitor AI development projects",
             },
-            {"name": "agents", "description": "Agent control operations - spawn, manage, and decommission AI agents"},
+            # {"name": "agents", "description": "DEPRECATED - Use agent-jobs instead"},
             {
                 "name": "Agent Management",
                 "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",
@@ -734,7 +734,8 @@ def create_app() -> FastAPI:
     app.include_router(products.router, prefix="/api")
     app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
-    app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
+    # DEPRECATED (Handover 0116): Legacy Agent endpoint superseded by agent_jobs.py (MCPAgentJob model)
+    # app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
     app.include_router(agent_management.router, tags=["Agent Management"])
     app.include_router(agent_templates.router, prefix="/api/v1/agents/templates", tags=["agent-templates"])
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
