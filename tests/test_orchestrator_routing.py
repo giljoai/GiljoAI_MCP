@@ -11,7 +11,7 @@ import pytest
 
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.enums import AgentRole, ProjectStatus
-from src.giljo_mcp.models import Agent, AgentTemplate, MCPAgentJob, Project
+from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Project
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
 
@@ -245,56 +245,56 @@ async def test_get_agent_template_multi_tenant_isolation(db_manager, orchestrato
 
 @pytest.mark.asyncio
 async def test_spawn_claude_code_agent_creates_agent(orchestrator, test_project, claude_template):
-    """Test Claude Code agent spawning creates Agent record."""
-    agent = await orchestrator._spawn_claude_code_agent(
+    """Test Claude Code agent spawning creates MCPAgentJob record."""
+    job = await orchestrator._spawn_claude_code_agent(
         project=test_project,
         role=AgentRole.IMPLEMENTER,
         template=claude_template,
     )
 
-    assert agent is not None
-    assert agent.mode == "claude"
-    assert agent.role == "implementer"
-    assert agent.status == "active"
-    assert agent.job_id is None  # No job for Claude agents
-    assert agent.tenant_key == test_project.tenant_key
-    assert agent.project_id == test_project.id
+    assert job is not None
+    assert job.tool_type == "claude"
+    assert job.agent_type == "implementer"
+    assert job.status == "active"
+    assert job.job_id is not None  # Job ID always exists in MCPAgentJob
+    assert job.tenant_key == test_project.tenant_key
+    assert job.project_id == test_project.id
 
 
 @pytest.mark.asyncio
 async def test_spawn_claude_code_agent_includes_mcp_instructions(orchestrator, test_project, claude_template):
     """Test Claude Code agent mission includes MCP coordination protocol."""
-    agent = await orchestrator._spawn_claude_code_agent(
+    job = await orchestrator._spawn_claude_code_agent(
         project=test_project,
         role=AgentRole.IMPLEMENTER,
         template=claude_template,
     )
 
     # Verify mission includes MCP instructions
-    assert "MCP Coordination Protocol" in agent.mission
-    assert "acknowledge_job" in agent.mission
-    assert "report_progress" in agent.mission
-    assert "complete_job" in agent.mission
-    assert test_project.tenant_key in agent.mission
+    assert "MCP Coordination Protocol" in job.mission
+    assert "acknowledge_job" in job.mission
+    assert "report_progress" in job.mission
+    assert "complete_job" in job.mission
+    assert test_project.tenant_key in job.mission
 
 
 @pytest.mark.asyncio
 async def test_spawn_claude_code_agent_stores_metadata(orchestrator, test_project, claude_template):
     """Test Claude Code agent stores template metadata."""
-    agent = await orchestrator._spawn_claude_code_agent(
+    job = await orchestrator._spawn_claude_code_agent(
         project=test_project,
         role=AgentRole.IMPLEMENTER,
         template=claude_template,
     )
 
-    assert agent.meta_data["template_id"] == claude_template.id
-    assert agent.meta_data["template_name"] == claude_template.name
-    assert agent.meta_data["tool"] == "claude"
+    assert job.job_metadata["template_id"] == claude_template.id
+    assert job.job_metadata["template_name"] == claude_template.name
+    assert job.job_metadata["tool"] == "claude"
     # Auto-export removed (Handover 0074): orchestrator no longer writes files.
     # Ensure core template metadata preserved without exported_path.
-    assert "template_id" in agent.meta_data
-    assert "template_name" in agent.meta_data
-    assert "tool" in agent.meta_data
+    assert "template_id" in job.job_metadata
+    assert "template_name" in job.job_metadata
+    assert "tool" in job.job_metadata
 
 
 # ========================================================================
@@ -305,58 +305,58 @@ async def test_spawn_claude_code_agent_stores_metadata(orchestrator, test_projec
 @pytest.mark.asyncio
 async def test_spawn_legacy_agent_creates_job(orchestrator, test_project, codex_template, db_manager):
     """Test legacy agent spawning creates MCP job."""
-    agent = await orchestrator._spawn_legacy_agent(
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
     )
 
     # Verify job was created
-    assert agent.job_id is not None
+    assert job.job_id is not None
 
-    # Query job from database
+    # Query job from database to verify persistence
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent.job_id)
+        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
         result = await session.execute(stmt)
-        job = result.scalar_one_or_none()
+        db_job = result.scalar_one_or_none()
 
-        assert job is not None
-        assert job.agent_type == "tester"
-        assert job.status == "pending"
-        assert job.tenant_key == test_project.tenant_key
+        assert db_job is not None
+        assert db_job.agent_type == "tester"
+        assert db_job.status == "pending"
+        assert db_job.tenant_key == test_project.tenant_key
 
 
 @pytest.mark.asyncio
 async def test_spawn_legacy_agent_links_agent_to_job(orchestrator, test_project, codex_template):
-    """Test legacy agent is linked to MCP job via job_id."""
-    agent = await orchestrator._spawn_legacy_agent(
+    """Test legacy agent job has correct tool type and status."""
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
     )
 
-    assert agent.mode == "codex"
-    assert agent.job_id is not None
-    assert agent.status == "waiting_acknowledgment"
+    assert job.tool_type == "codex"
+    assert job.job_id is not None
+    assert job.status == "waiting"
 
 
 @pytest.mark.asyncio
 async def test_spawn_legacy_agent_generates_cli_prompt(orchestrator, test_project, gemini_template):
     """Test legacy agent generates CLI prompt in metadata."""
-    agent = await orchestrator._spawn_legacy_agent(
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.REVIEWER,
         template=gemini_template,
     )
 
-    assert "cli_prompt" in agent.meta_data
-    cli_prompt = agent.meta_data["cli_prompt"]
+    assert "cli_prompt" in job.job_metadata
+    cli_prompt = job.job_metadata["cli_prompt"]
 
     # Verify CLI prompt structure
     assert "Job Information" in cli_prompt
-    assert agent.job_id in cli_prompt
+    assert job.job_id in cli_prompt
     assert "Getting Started" in cli_prompt
     assert "acknowledge_job" in cli_prompt
     assert test_project.tenant_key in cli_prompt
@@ -365,13 +365,13 @@ async def test_spawn_legacy_agent_generates_cli_prompt(orchestrator, test_projec
 @pytest.mark.asyncio
 async def test_spawn_legacy_agent_includes_behavioral_rules(orchestrator, test_project, codex_template):
     """Test legacy agent CLI prompt includes behavioral rules."""
-    agent = await orchestrator._spawn_legacy_agent(
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
     )
 
-    cli_prompt = agent.meta_data["cli_prompt"]
+    cli_prompt = job.job_metadata["cli_prompt"]
     assert "Behavioral Rules" in cli_prompt
     assert "Write comprehensive tests" in cli_prompt
 
@@ -384,78 +384,78 @@ async def test_spawn_legacy_agent_includes_behavioral_rules(orchestrator, test_p
 @pytest.mark.asyncio
 async def test_spawn_agent_routes_to_claude_code(orchestrator, test_project, claude_template, db_manager):
     """Test spawn_agent routes to Claude Code when template.tool='claude'."""
-    agent = await orchestrator.spawn_agent(
+    job = await orchestrator.spawn_agent(
         project_id=test_project.id,
         role=AgentRole.IMPLEMENTER,
     )
 
-    assert agent.mode == "claude"
-    assert agent.job_id is None
-    assert agent.status == "active"
+    assert job.tool_type == "claude"
+    assert job.job_id is not None
+    assert job.status == "active"
 
 
 @pytest.mark.asyncio
 async def test_spawn_agent_routes_to_codex(orchestrator, test_project, codex_template, db_manager):
     """Test spawn_agent routes to Codex when template.tool='codex'."""
-    agent = await orchestrator.spawn_agent(
+    job = await orchestrator.spawn_agent(
         project_id=test_project.id,
         role=AgentRole.TESTER,
     )
 
-    assert agent.mode == "codex"
-    assert agent.job_id is not None
-    assert agent.status == "waiting_acknowledgment"
+    assert job.tool_type == "codex"
+    assert job.job_id is not None
+    assert job.status == "waiting"
 
 
 @pytest.mark.asyncio
 async def test_spawn_agent_routes_to_gemini(orchestrator, test_project, gemini_template, db_manager):
     """Test spawn_agent routes to Gemini when template.tool='gemini'."""
-    agent = await orchestrator.spawn_agent(
+    job = await orchestrator.spawn_agent(
         project_id=test_project.id,
         role=AgentRole.REVIEWER,
     )
 
-    assert agent.mode == "gemini"
-    assert agent.job_id is not None
-    assert agent.status == "waiting_acknowledgment"
+    assert job.tool_type == "gemini"
+    assert job.job_id is not None
+    assert job.status == "waiting"
 
 
 @pytest.mark.asyncio
 async def test_spawn_agent_fallback_when_no_template(orchestrator, test_project, db_manager):
     """Test spawn_agent falls back to legacy logic when no template found."""
     # Spawn agent for role with no template
-    agent = await orchestrator.spawn_agent(
+    job = await orchestrator.spawn_agent(
         project_id=test_project.id,
         role=AgentRole.ANALYZER,
     )
 
-    assert agent is not None
-    assert agent.mode == "claude"  # Default fallback
-    assert agent.status == "active"
+    assert job is not None
+    assert job.tool_type == "claude"  # Default fallback
+    assert job.status == "active"
 
 
 # ========================================================================
-# AGENT-JOB SYNCHRONIZATION TESTS
+# JOB STATUS TRANSITION TESTS (Agent table removed)
 # ========================================================================
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_syncs_agent_status(orchestrator, test_project, codex_template, db_manager):
-    """Test acknowledge_job syncs linked Agent status to active."""
+async def test_acknowledge_job_transitions_status(orchestrator, test_project, codex_template, db_manager):
+    """Test acknowledge_job transitions MCPAgentJob status to active."""
     from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 
-    # Spawn legacy agent (creates job + agent)
-    agent = await orchestrator._spawn_legacy_agent(
+    # Spawn legacy agent (creates MCPAgentJob)
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
     )
 
-    # Persist agent
+    # Persist job
     async with db_manager.get_session_async() as session:
-        session.add(agent)
+        session.add(job)
         await session.commit()
-        await session.refresh(agent)
+        await session.refresh(job)
 
     # Register MCP tools
     tools = {}
@@ -463,99 +463,99 @@ async def test_acknowledge_job_syncs_agent_status(orchestrator, test_project, co
 
     # Acknowledge job
     result = tools["acknowledge_job"](
-        job_id=agent.job_id,
+        job_id=job.job_id,
         agent_id="tester",
         tenant_key=test_project.tenant_key,
     )
 
     assert result["status"] == "success"
 
-    # Verify Agent status synced to active
+    # Verify MCPAgentJob status transitioned to active
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(Agent).where(Agent.id == agent.id)
+        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
         result = await session.execute(stmt)
-        updated_agent = result.scalar_one()
+        updated_job = result.scalar_one()
 
-        assert updated_agent.status == "active"
+        assert updated_job.status == "active"
 
 
 @pytest.mark.asyncio
-async def test_complete_job_syncs_agent_status(orchestrator, test_project, codex_template, db_manager):
-    """Test complete_job syncs linked Agent status to completed."""
+async def test_complete_job_transitions_status(orchestrator, test_project, codex_template, db_manager):
+    """Test complete_job transitions MCPAgentJob status to complete."""
     from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 
-    # Spawn and persist agent
-    agent = await orchestrator._spawn_legacy_agent(
+    # Spawn and persist job
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
     )
 
     async with db_manager.get_session_async() as session:
-        session.add(agent)
+        session.add(job)
         await session.commit()
-        await session.refresh(agent)
+        await session.refresh(job)
 
     # Register tools and acknowledge job first
     tools = {}
     register_agent_coordination_tools(tools, db_manager)
     tools["acknowledge_job"](
-        job_id=agent.job_id,
+        job_id=job.job_id,
         agent_id="tester",
         tenant_key=test_project.tenant_key,
     )
 
     # Complete job
     result = tools["complete_job"](
-        job_id=agent.job_id,
+        job_id=job.job_id,
         result={"summary": "All tests passing", "coverage": "95%"},
         tenant_key=test_project.tenant_key,
     )
 
     assert result["status"] == "success"
 
-    # Verify Agent status synced to completed
+    # Verify MCPAgentJob status transitioned to complete
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(Agent).where(Agent.id == agent.id)
+        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
         result = await session.execute(stmt)
-        updated_agent = result.scalar_one()
+        updated_job = result.scalar_one()
 
-        assert updated_agent.status == "completed"
+        assert updated_job.status == "complete"
 
 
 @pytest.mark.asyncio
-async def test_report_error_syncs_agent_status(orchestrator, test_project, codex_template, db_manager):
-    """Test report_error syncs linked Agent status to failed."""
+async def test_report_error_transitions_status(orchestrator, test_project, codex_template, db_manager):
+    """Test report_error transitions MCPAgentJob status to failed."""
     from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 
-    # Spawn and persist agent
-    agent = await orchestrator._spawn_legacy_agent(
+    # Spawn and persist job
+    job = await orchestrator._spawn_legacy_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
     )
 
     async with db_manager.get_session_async() as session:
-        session.add(agent)
+        session.add(job)
         await session.commit()
-        await session.refresh(agent)
+        await session.refresh(job)
 
     # Register tools and acknowledge job
     tools = {}
     register_agent_coordination_tools(tools, db_manager)
     tools["acknowledge_job"](
-        job_id=agent.job_id,
+        job_id=job.job_id,
         agent_id="tester",
         tenant_key=test_project.tenant_key,
     )
 
     # Report error
     result = tools["report_error"](
-        job_id=agent.job_id,
+        job_id=job.job_id,
         error_type="test_failure",
         error_message="Test suite failed",
         context="Running integration tests",
@@ -564,15 +564,15 @@ async def test_report_error_syncs_agent_status(orchestrator, test_project, codex
 
     assert result["status"] == "success"
 
-    # Verify Agent status synced to failed
+    # Verify MCPAgentJob status transitioned to failed
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(Agent).where(Agent.id == agent.id)
+        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
         result = await session.execute(stmt)
-        updated_agent = result.scalar_one()
+        updated_job = result.scalar_one()
 
-        assert updated_agent.status == "failed"
+        assert updated_job.status == "failed"
 
 
 # ========================================================================
@@ -665,7 +665,7 @@ def test_generate_cli_prompt_copy_paste_ready(orchestrator, test_project, gemini
 
 @pytest.mark.asyncio
 async def test_spawn_agent_respects_tenant_isolation(orchestrator, db_manager):
-    """Test agents can't access templates from other tenants."""
+    """Test agent jobs can't access templates from other tenants."""
     async with db_manager.get_session_async() as session:
         # Create project for tenant A
         project_a = Project(
@@ -691,15 +691,15 @@ async def test_spawn_agent_respects_tenant_isolation(orchestrator, db_manager):
         await session.refresh(project_a)
 
         # Try to spawn agent for tenant A (should not use tenant B's template)
-        agent = await orchestrator.spawn_agent(
+        job = await orchestrator.spawn_agent(
             project_id=project_a.id,
             role=AgentRole.IMPLEMENTER,
         )
 
         # Should fall back to legacy logic (no template found)
-        assert agent is not None
+        assert job is not None
         # Should NOT use tenant B's template
-        assert agent.meta_data.get("template_id") != template_b.id
+        assert job.job_metadata.get("template_id") != template_b.id
 
 
 # ========================================================================
@@ -722,13 +722,13 @@ async def test_spawn_agent_with_custom_mission(orchestrator, test_project, claud
     """Test spawn_agent accepts custom mission override."""
     custom_mission = "Custom mission for agent"
 
-    agent = await orchestrator.spawn_agent(
+    job = await orchestrator.spawn_agent(
         project_id=test_project.id,
         role=AgentRole.IMPLEMENTER,
         custom_mission=custom_mission,
     )
 
-    assert custom_mission in agent.mission
+    assert custom_mission in job.mission
 
 
 @pytest.mark.asyncio

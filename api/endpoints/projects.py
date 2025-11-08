@@ -7,11 +7,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.database import DatabaseManager, get_db_manager
 from src.giljo_mcp.models import User
 
 
@@ -241,12 +242,12 @@ async def list_projects(
 
             projects = []
             for proj in db_projects:
-                # Get agent and message counts
-                from src.giljo_mcp.models import Agent, Message
+                # Get agent job and message counts
+                from src.giljo_mcp.models import MCPAgentJob, Message
 
-                agent_stmt = select(Agent).where(Agent.project_id == proj.id)
-                agent_result = await session.execute(agent_stmt)
-                agent_count = len(agent_result.scalars().all())
+                agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == proj.id)
+                agent_job_result = await session.execute(agent_job_stmt)
+                agent_count = len(agent_job_result.scalars().all())
 
                 message_stmt = select(Message).where(Message.project_id == proj.id)
                 message_result = await session.execute(message_stmt)
@@ -295,7 +296,7 @@ async def get_active_project(
     from sqlalchemy import select
 
     from api.app import state
-    from src.giljo_mcp.models import Agent, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     logger.info(f"[GET ACTIVE PROJECT] User: {current_user.username}, Tenant: {current_user.tenant_key}")
 
@@ -318,10 +319,10 @@ async def get_active_project(
                 logger.info(f"[GET ACTIVE PROJECT] No active project found for tenant {current_user.tenant_key}")
                 return None
 
-            # Get agent and message counts
-            agent_stmt = select(Agent).where(Agent.project_id == project.id)
-            agent_result = await session.execute(agent_stmt)
-            agent_count = len(agent_result.scalars().all())
+            # Get agent job and message counts
+            agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+            agent_job_result = await session.execute(agent_job_stmt)
+            agent_count = len(agent_job_result.scalars().all())
 
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
@@ -380,12 +381,12 @@ async def get_project_by_alias(alias: str):
             if not project:
                 raise HTTPException(status_code=404, detail=f"Project with alias '{alias}' not found")
 
-            # Get agent and message counts
-            from src.giljo_mcp.models import Agent, Message
+            # Get agent job and message counts
+            from src.giljo_mcp.models import MCPAgentJob, Message
 
-            agent_stmt = select(Agent).where(Agent.project_id == project.id)
-            agent_result = await session.execute(agent_stmt)
-            agent_count = len(agent_result.scalars().all())
+            agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+            agent_job_result = await session.execute(agent_job_stmt)
+            agent_count = len(agent_job_result.scalars().all())
 
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
@@ -528,7 +529,7 @@ async def get_project(
     """Get project details by ID"""
     from sqlalchemy import or_, select
 
-    from src.giljo_mcp.models import Agent, MCPAgentJob, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     try:
         # Query project directly from database (like get_project_by_alias)
@@ -564,11 +565,6 @@ async def get_project(
                 thin_client=job.thin_client if hasattr(job, 'thin_client') else True
             ))
 
-        # Get legacy agent count (from old Agent table)
-        agent_stmt = select(Agent).where(Agent.project_id == project.id)
-        agent_result = await db.execute(agent_stmt)
-        agent_count = len(agent_result.scalars().all())
-
         message_stmt = select(Message).where(Message.project_id == project.id)
         message_result = await db.execute(message_stmt)
         message_count = len(message_result.scalars().all())
@@ -586,7 +582,7 @@ async def get_project(
             completed_at=project.completed_at,
             context_budget=project.context_budget,
             context_used=project.context_used,
-            agent_count=len(agents_list) + agent_count,  # Total from both tables
+            agent_count=len(agents_list),  # Count from MCPAgentJob only
             message_count=message_count,
             agents=agents_list,
         )
@@ -1054,7 +1050,7 @@ async def complete_project(
     from sqlalchemy import select
 
     from api.app import state
-    from src.giljo_mcp.models import Agent, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1082,10 +1078,10 @@ async def complete_project(
 
             await session.flush()
 
-            # Get agent and message counts
-            agent_stmt = select(Agent).where(Agent.project_id == project.id)
-            agent_result = await session.execute(agent_stmt)
-            agent_count = len(agent_result.scalars().all())
+            # Get agent job and message counts
+            agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+            agent_job_result = await session.execute(agent_job_stmt)
+            agent_count = len(agent_job_result.scalars().all())
 
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
@@ -1141,7 +1137,7 @@ async def cancel_project(
     from sqlalchemy import select
 
     from api.app import state
-    from src.giljo_mcp.models import Agent, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1169,10 +1165,10 @@ async def cancel_project(
 
             await session.flush()
 
-            # Get agent and message counts
-            agent_stmt = select(Agent).where(Agent.project_id == project.id)
-            agent_result = await session.execute(agent_stmt)
-            agent_count = len(agent_result.scalars().all())
+            # Get agent job and message counts
+            agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+            agent_job_result = await session.execute(agent_job_stmt)
+            agent_count = len(agent_job_result.scalars().all())
 
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
@@ -1413,7 +1409,7 @@ async def restore_completed_project(
     from sqlalchemy import select
 
     from api.app import state
-    from src.giljo_mcp.models import Agent, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1443,10 +1439,10 @@ async def restore_completed_project(
 
             await session.flush()
 
-            # Get agent and message counts
-            agent_stmt = select(Agent).where(Agent.project_id == project.id)
-            agent_result = await session.execute(agent_stmt)
-            agent_count = len(agent_result.scalars().all())
+            # Get agent job and message counts
+            agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+            agent_job_result = await session.execute(agent_job_stmt)
+            agent_count = len(agent_job_result.scalars().all())
 
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
@@ -1576,7 +1572,7 @@ async def restore_project(
     from sqlalchemy import select
 
     from api.app import state
-    from src.giljo_mcp.models import Agent, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1604,10 +1600,10 @@ async def restore_project(
 
             await session.flush()
 
-            # Get agent and message counts
-            agent_stmt = select(Agent).where(Agent.project_id == project.id)
-            agent_result = await session.execute(agent_stmt)
-            agent_count = len(agent_result.scalars().all())
+            # Get agent job and message counts
+            agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+            agent_job_result = await session.execute(agent_job_stmt)
+            agent_count = len(agent_job_result.scalars().all())
 
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
@@ -1673,7 +1669,7 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
 
     from sqlalchemy import select
 
-    from src.giljo_mcp.models import Agent, Message, Project, Task
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
 
     logger = logging.getLogger(__name__)
 
@@ -1705,12 +1701,12 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
                     "deleted_at": project.deleted_at.isoformat(),
                 }
 
-                # Cascade delete: agents
-                agent_stmt = select(Agent).where(Agent.project_id == project.id)
-                agent_result = await session.execute(agent_stmt)
-                agents = agent_result.scalars().all()
-                for agent in agents:
-                    await session.delete(agent)
+                # Cascade delete: agent jobs
+                agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                agent_job_result = await session.execute(agent_job_stmt)
+                agent_jobs = agent_job_result.scalars().all()
+                for job in agent_jobs:
+                    await session.delete(job)
 
                 # Cascade delete: tasks
                 task_stmt = select(Task).where(Task.project_id == project.id)
@@ -1759,7 +1755,7 @@ async def get_project_summary(
     """
     from sqlalchemy import select
 
-    from src.giljo_mcp.models import Agent, MCPAgentJob, Message, Project
+    from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
     # Fetch project
     project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
@@ -1769,12 +1765,7 @@ async def get_project_summary(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Fetch agents
-    agents_stmt = select(Agent).where(Agent.project_id == project_id, Agent.tenant_key == current_user.tenant_key)
-    agents_result = await db.execute(agents_stmt)
-    agents = agents_result.scalars().all()
-
-    # Fetch agent jobs (if project_id exists)
+    # Fetch agent jobs ONLY (Agent table deprecated)
     jobs = []
     try:
         jobs_stmt = select(MCPAgentJob).where(
@@ -1794,20 +1785,18 @@ async def get_project_summary(
     messages_result = await db.execute(messages_stmt)
     messages = messages_result.scalars().all()
 
-    # Build agent summaries
+    # Build agent summaries from MCPAgentJob records
     agent_summaries = []
-    job_map = {job.job_id: job for job in jobs}
 
-    for agent in agents:
-        job = job_map.get(agent.job_id) if agent.job_id else None
+    for job in jobs:
         agent_summaries.append(
             AgentSummary(
-                id=agent.id,
-                name=agent.name,
-                type=agent.type,
-                status=agent.status,
-                job_mission=job.mission if job else None,
-                job_id=agent.job_id,
+                id=job.job_id,
+                name=job.agent_name or job.agent_type,
+                type=job.agent_type,
+                status=job.status,
+                job_mission=job.mission,
+                job_id=job.job_id,
             )
         )
 
