@@ -72,7 +72,7 @@ def upgrade() -> None:
         )
     )
 
-    print("[0113 Phase 3]   ✓ decommissioned_at column added successfully")
+    print("[0113 Phase 3]   OK decommissioned_at column added successfully")
     print("[0113 Phase 3] Migration complete\n")
     print("=" * 80)
 
@@ -95,7 +95,7 @@ def downgrade() -> None:
 
     op.drop_column("mcp_agent_jobs", "decommissioned_at")
 
-    print("[0113 Phase 3 Rollback]   ✓ decommissioned_at column dropped successfully")
+    print("[0113 Phase 3 Rollback]   OK decommissioned_at column dropped successfully")
     print("[0113 Phase 3 Rollback] Rollback complete\n")
     print("WARNING: All decommissioning timestamp data has been lost.\n")
     print("=" * 80)
