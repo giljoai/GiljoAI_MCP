@@ -1118,7 +1118,6 @@ Example: /task Fix authentication bug in login flow"""
         """
         try:
             from giljo_mcp.agent_job_manager import AgentJobManager
-            from giljo_mcp.models import Agent
             from giljo_mcp.tenant import tenant_manager
 
             # Use current tenant if not provided
@@ -1158,25 +1157,7 @@ Example: /task Fix authentication bug in login flow"""
                         "error": "Cannot assign converted task to agent (task is now a project)",
                     }
 
-                # Get or create agent
-                agent_query = select(Agent).where(and_(Agent.tenant_key == tenant_key, Agent.name == agent_type))
-                agent_result = await session.execute(agent_query)
-                agent = agent_result.scalar_one_or_none()
-
-                if not agent:
-                    # Create agent if it doesn't exist
-                    agent = Agent(
-                        tenant_key=tenant_key, name=agent_type, capabilities={"type": agent_type}, status="available"
-                    )
-                    session.add(agent)
-                    await session.flush()
-
-                # Update task with assigned agent
-                task.assigned_agent_id = str(agent.id)
-                task.status = "in_progress"
-                task.started_at = datetime.now(timezone.utc)
-
-                # Auto-spawn agent job if requested
+                # Auto-spawn agent job (required for task assignment)
                 job_id = None
                 if auto_spawn_job:
                     # Build mission from task if not provided
@@ -1201,12 +1182,21 @@ Example: /task Fix authentication bug in login flow"""
 
                     job_id = job.job_id
 
-                    # Link task to agent job
+                    # Update task with assigned agent job
+                    task.assigned_agent_id = job_id  # Now references MCPAgentJob.job_id
                     task.agent_job_id = job_id
+                    task.status = "in_progress"
+                    task.started_at = datetime.now(timezone.utc)
 
                     logger.info(
                         f"Created agent job {job_id} for task {task_id} (agent_type={agent_type}, tenant={tenant_key})"
                     )
+                else:
+                    # No job spawned - task remains unassigned
+                    return {
+                        "success": False,
+                        "error": "auto_spawn_job must be True to assign task to agent",
+                    }
 
                 await session.commit()
 
@@ -1214,7 +1204,7 @@ Example: /task Fix authentication bug in login flow"""
                     "success": True,
                     "task_id": str(task.id),
                     "task_title": task.title,
-                    "assigned_agent_id": str(agent.id),
+                    "assigned_agent_job_id": job_id,
                     "assigned_agent_type": agent_type,
                     "agent_job_id": job_id,
                     "job_spawned": auto_spawn_job,
