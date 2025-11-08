@@ -222,4 +222,5 @@ markers = [
     "stress: marks tests as stress/performance tests",
     "network: marks tests requiring network connectivity",
     "server_mode: marks tests requiring server mode",
+    "deprecated: marks tests for deprecated functionality (Handover 0116)",
 ]

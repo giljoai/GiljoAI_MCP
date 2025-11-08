@@ -452,103 +452,66 @@ class ToolAccessor:
     # Agent Tools
 
     async def ensure_agent(self, project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
-        """Ensure an agent exists for work on a project"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
-            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
-                # Get project with tenant filtering
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-                )
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Check if agent exists
-                agent_result = await session.execute(
-                    select(Agent).where(
-                        Agent.name == agent_name, Agent.project_id == project_id, Agent.tenant_key == tenant_key
-                    )
-                )
-                agent = agent_result.scalar_one_or_none()
-
-                if agent:
-                    return {
-                        "success": True,
-                        "agent": agent_name,
-                        "agent_id": str(agent.id),
-                        "message": "Agent already exists",
-                    }
-
-                # Create agent
-                agent = Agent(
-                    name=agent_name,
-                    project_id=project.id,
-                    tenant_key=project.tenant_key,
-                    status="active",
-                    role=mission or "worker",
-                )
-
-                session.add(agent)
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "agent": agent_name,
-                    "agent_id": str(agent.id),
-                    "message": "Agent created successfully",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to ensure agent: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        DEPRECATED: Internal helper - should not be exposed as MCP tool.
+        
+        This tool is an internal helper that creates legacy Agent records.
+        External callers should use spawn_agent_job() for agent creation.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await ensure_agent(project_id, agent_name="impl-1", mission="...")
+            
+            # NEW (correct for external use)
+            await spawn_agent_job(
+                agent_type="implementer",
+                agent_name="impl-1",
+                mission="...",
+                project_id=project_id,
+                tenant_key=tenant_key
+            )
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Internal helper, shouldn't be exposed as MCP tool. Use spawn_agent_job() instead.",
+            "replacement": "spawn_agent_job",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Internal helper only. External callers should use spawn_agent_job()."
+        }
 
     async def agent_health(self, agent_name: Optional[str] = None) -> dict[str, Any]:
-        """Check agent health and context usage"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
-            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
-                if agent_name:
-                    result = await session.execute(
-                        select(Agent).where(Agent.name == agent_name, Agent.tenant_key == tenant_key)
-                    )
-                    agents = [result.scalar_one_or_none()]
-                else:
-                    result = await session.execute(select(Agent).where(Agent.tenant_key == tenant_key))
-                    agents = result.scalars().all()
-
-                if not agents or (len(agents) == 1 and not agents[0]):
-                    return {"success": False, "error": "No agents found"}
-
-                health_data = []
-                for agent in agents:
-                    if agent:
-                        health_data.append(
-                            {
-                                "name": agent.name,
-                                "status": agent.status,
-                                "context_used": agent.context_used or 0,
-                                "project_id": str(agent.project_id),
-                                "created_at": agent.created_at.isoformat() if agent.created_at else None,
-                                "last_active": agent.updated_at.isoformat() if agent.updated_at else None,
-                            }
-                        )
-
-                return {
-                    "success": True,
-                    "health": health_data[0] if agent_name else health_data,
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to check agent health: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        DEPRECATED: Use get_workflow_status() instead.
+        
+        This tool is a duplicate of get_agent_status and queries legacy 'agents' table.
+        Use get_workflow_status() for team-level agent monitoring with 7-state model.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await agent_health(agent_name="impl-1")
+            
+            # NEW (correct)
+            await get_workflow_status(
+                project_id=project_id,
+                tenant_key=tenant_key
+            )
+            # Returns status for ALL agents in project workflow
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Duplicate of get_agent_status. Use get_workflow_status() for team-level monitoring.",
+            "replacement": "get_workflow_status",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Queries 'agents' table. Use get_workflow_status() for 7-state MCPAgentJob monitoring."
+        }
 
     async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
         """Gracefully end an agent's work"""
@@ -575,150 +538,160 @@ class ToolAccessor:
             return {"success": False, "error": str(e)}
 
     async def spawn_agent(self, name: str, role: str, mission: str) -> dict[str, Any]:
-        """Spawn a new agent (alias for ensure_agent with role parameter)"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active project. Switch project first."}
-
-            async with self.db_manager.get_session_async() as session:
-                # Find project by tenant key
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Create agent using ensure_agent
-                result = await self.ensure_agent(str(project.id), name, mission)
-                if result.get("success"):
-                    result["role"] = role
-                return result
-
-        except Exception as e:
-            logger.exception(f"Failed to spawn agent: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        DEPRECATED: Use spawn_agent_job() instead.
+        
+        This tool creates legacy Agent records (4-state model: idle, active, completed, failed).
+        Handover 0116 migrates to MCPAgentJob model (7-state model).
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await spawn_agent(name="impl-1", role="implementer", mission="...")
+            
+            # NEW (correct)
+            await spawn_agent_job(
+                agent_type="implementer",
+                agent_name="impl-1",
+                mission="...",
+                project_id=project_id,
+                tenant_key=tenant_key
+            )
+        
+        See: Comprehensive_MCP_Analysis.md lines 356-390
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Use spawn_agent_job() instead. This tool creates legacy Agent records (4-state).",
+            "replacement": "spawn_agent_job",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Creates records in 'agents' table. Dashboard reads from 'mcp_agent_jobs' table."
+        }
 
     async def list_agents(self, status: Optional[str] = None) -> dict[str, Any]:
-        """List agents in current project"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active project. Switch project first."}
-
-            async with self.db_manager.get_session_async() as session:
-                # Find project - prefer active project if multiple exist
-                project_query = select(Project).where(
-                    and_(Project.tenant_key == tenant_key, Project.status == "active")
-                )
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-
-                # Fallback to most recent project if no active project
-                if not project:
-                    project_query = (
-                        select(Project)
-                        .where(Project.tenant_key == tenant_key)
-                        .order_by(Project.created_at.desc())
-                        .limit(1)
-                    )
-                    project_result = await session.execute(project_query)
-                    project = project_result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Query agents
-                query = select(Agent).where(Agent.project_id == project.id)
-                if status:
-                    query = query.where(Agent.status == status)
-
-                result = await session.execute(query)
-                agents = result.scalars().all()
-
-                agent_list = []
-                for agent in agents:
-                    agent_list.append(
-                        {
-                            "id": str(agent.id),
-                            "name": agent.name,
-                            "role": agent.role,
-                            "status": agent.status,
-                            "context_used": agent.context_used,
-                            "mission": agent.mission,
-                            "created_at": agent.created_at.isoformat() if agent.created_at else None,
-                        }
-                    )
-
-                return {"success": True, "agents": agent_list, "count": len(agent_list)}
-
-        except Exception as e:
-            logger.exception(f"Failed to list agents: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        DEPRECATED: Use get_pending_jobs() instead.
+        
+        This tool queries legacy 'agents' table (4-state model).
+        Dashboard reads from 'mcp_agent_jobs' table (7-state model), causing data disconnect.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await list_agents(status="active")
+            
+            # NEW (correct)
+            await get_pending_jobs(
+                agent_type="implementer",
+                tenant_key=tenant_key
+            )
+        
+        See: Comprehensive_MCP_Analysis.md lines 400-427
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Use get_pending_jobs() instead. Dashboard uses MCPAgentJob table.",
+            "replacement": "get_pending_jobs",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Queries 'agents' table. Dashboard displays 'mcp_agent_jobs' records."
+        }
 
     async def get_agent_status(self, agent_name: str) -> dict[str, Any]:
-        """Get detailed status of a specific agent"""
-        return await self.agent_health(agent_name)
+        """
+        DEPRECATED: Use get_workflow_status() instead.
+        
+        This tool uses legacy 4-state Agent model (idle, active, completed, failed).
+        Use get_workflow_status() for 7-state MCPAgentJob model monitoring.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await get_agent_status(agent_name="impl-1")
+            
+            # NEW (correct)
+            await get_workflow_status(
+                project_id=project_id,
+                tenant_key=tenant_key
+            )
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Use get_workflow_status() instead. This uses 4-state Agent model.",
+            "replacement": "get_workflow_status",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Queries 'agents' table (4-state). Use get_workflow_status (7-state MCPAgentJob)."
+        }
 
     async def update_agent(self, agent_name: str, **kwargs) -> dict[str, Any]:
-        """Update agent properties"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active project"}
-
-            async with self.db_manager.get_session_async() as session:
-                # Find project
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Find agent
-                agent_query = select(Agent).where(Agent.project_id == project.id, Agent.name == agent_name)
-                agent_result = await session.execute(agent_query)
-                agent = agent_result.scalar_one_or_none()
-
-                if not agent:
-                    return {"success": False, "error": f"Agent '{agent_name}' not found"}
-
-                # Update fields
-                for key, value in kwargs.items():
-                    if hasattr(agent, key):
-                        setattr(agent, key, value)
-
-                await session.commit()
-
-                return {"success": True, "agent_name": agent_name, "updated_fields": list(kwargs.keys())}
-
-        except Exception as e:
-            logger.exception(f"Failed to update agent: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        DEPRECATED: Use report_progress() or complete_job() instead.
+        
+        This tool updates legacy 'agents' table. Dashboard doesn't display these updates.
+        Use report_progress() for incremental updates or complete_job() for finalization.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await update_agent(agent_name="impl-1", status="active")
+            
+            # NEW (in-progress updates)
+            await report_progress(
+                job_id=job_id,
+                progress={"status": "active", "details": "..."}
+            )
+            
+            # NEW (completion)
+            await complete_job(
+                job_id=job_id,
+                result={"status": "completed", "output": "..."}
+            )
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Use report_progress() (in-progress) or complete_job() (finished).",
+            "replacement": "report_progress or complete_job",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Updates 'agents' table. Dashboard displays 'mcp_agent_jobs' updates only."
+        }
 
     async def retire_agent(self, agent_name: str, reason: str = "completed") -> dict[str, Any]:
-        """Retire an agent (alias for decommission_agent)"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active project"}
-
-            async with self.db_manager.get_session_async() as session:
-                # Find project
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                return await self.decommission_agent(agent_name, str(project.id), reason)
-
-        except Exception as e:
-            logger.exception(f"Failed to retire agent: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        DEPRECATED: Agent retirement handled automatically via job lifecycle.
+        
+        This tool manually retires agents in legacy 'agents' table.
+        In the new job model, retirement happens automatically when jobs complete or decommission.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete)
+            await retire_agent(agent_name="impl-1", reason="completed")
+            
+            # NEW (automatic via job lifecycle)
+            # No explicit retirement needed - complete_job() handles lifecycle
+            await complete_job(
+                job_id=job_id,
+                result={"output": "..."}
+            )
+            # Job automatically transitions to 'completed' state
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
+        """
+        return {
+            "error": "DEPRECATED",
+            "message": "Agent retirement handled automatically when job completes or decommissions.",
+            "replacement": "Automatic via job lifecycle (use complete_job)",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Manual retirement not needed. Job state transitions handle lifecycle."
+        }
 
     # Message Tools
 
@@ -1128,184 +1101,119 @@ class ToolAccessor:
         force_refresh: bool = False,
     ) -> dict[str, Any]:
         """
-        Discover project context dynamically.
-
-        Args:
-            project_id: Project UUID (optional - uses current project if not provided)
-            path: File path to discover (optional)
-            agent_role: Role of the agent (orchestrator, analyzer, implementer, tester)
-            force_refresh: Force fresh discovery ignoring cache
-
-        Returns:
-            Discovered context organized by priority
+        DEPRECATED: Stub implementation - not needed.
+        
+        This tool was a placeholder for context discovery functionality.
+        Thin client architecture (Handover 0088) eliminated the need for this tool.
+        Agents access context directly via IDE tools and get_agent_mission().
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete stub)
+            await discover_context(project_id=project_id, agent_role="implementer")
+            
+            # NEW (no replacement needed)
+            # Context provided via:
+            # 1. get_agent_mission() - returns mission with embedded context
+            # 2. IDE tools (Read, Grep, Glob) - direct file/codebase access
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
         """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-
-            async with self.db_manager.get_session_async() as session:
-                # Get project
-                if project_id:
-                    project = await session.get(Project, project_id)
-                else:
-                    result = await session.execute(
-                        select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
-                    )
-                    project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "No active project"}
-
-                # Get product
-                product = None
-                if project.product_id:
-                    product = await session.get(Product, project.product_id)
-
-                context = {
-                    "project": {
-                        "id": str(project.id),
-                        "name": project.name,
-                        "description": project.description,
-                        "mission": project.mission,
-                        "status": project.status,
-                    }
-                }
-
-                if product:
-                    context["product"] = {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "context": product.config_data or {},
-                        "tech_stack": product.config_data.get("tech_stack") if product.config_data else None,
-                    }
-
-                return {"success": True, "context": context}
-
-        except Exception as e:
-            logger.error(f"Error discovering context: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}
+        return {
+            "error": "DEPRECATED",
+            "message": "Stub implementation. Thin client architecture eliminated need for this tool.",
+            "replacement": "None - not needed",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Agents access context via get_agent_mission() and IDE tools (Read, Grep, Glob)."
+        }
 
     async def get_file_context(self, file_path: str) -> dict[str, Any]:
         """
-        Get context for a specific file.
-
-        This method provides context discovery for the specified file path.
-        Currently returns a placeholder message directing users to use the
-        Serena file context discovery system for detailed file analysis.
-
-        Args:
-            file_path: Path to the file (relative or absolute)
-
-        Returns:
-            Context information with file path and placeholder message
+        DEPRECATED: Stub implementation - not needed.
+        
+        This tool was a placeholder directing users to Serena MCP tools.
+        Agents access files directly via IDE tools (Read, Grep).
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete stub)
+            await get_file_context(file_path="src/main.py")
+            
+            # NEW (no replacement needed)
+            # Use IDE tools directly:
+            # - Read tool for file contents
+            # - mcp__serena__read_file for file reading
+            # - mcp__serena__get_symbols_overview for code structure
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
         """
-        try:
-            return {
-                "success": True,
-                "file_path": file_path,
-                "context": {
-                    "message": "File context discovery via Serena MCP tools",
-                    "note": "Use Serena file tools (read_file, get_symbols_overview) for detailed context",
-                },
-            }
-        except Exception as e:
-            logger.error(f"Error getting file context for {file_path}: {e}", exc_info=True)
-            return {"success": False, "file_path": file_path, "error": str(e)}
+        return {
+            "error": "DEPRECATED",
+            "message": "Stub implementation. Agents access files directly via IDE tools.",
+            "replacement": "None - not needed",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Use Read tool or Serena MCP (read_file, get_symbols_overview) for file access."
+        }
 
     async def search_context(self, query: str, file_types: Optional[list[str]] = None) -> dict[str, Any]:
         """
-        Search project context.
-
-        This method searches for patterns/content in project context.
-        Currently returns a placeholder message directing users to use the
-        Serena grep/search MCP tools for detailed context searching.
-
-        Args:
-            query: Search query string
-            file_types: Optional list of file type filters (e.g., ['*.py', '*.ts'])
-
-        Returns:
-            Search results with query metadata and placeholder message
+        DEPRECATED: Stub implementation - not needed.
+        
+        This tool was a placeholder directing users to Serena MCP grep tools.
+        Agents use IDE search capabilities (Grep tool) directly.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete stub)
+            await search_context(query="class MyClass", file_types=["*.py"])
+            
+            # NEW (no replacement needed)
+            # Use IDE tools directly:
+            # - Grep tool for pattern search
+            # - mcp__serena__search_for_pattern for regex search
+            # - Glob tool for file name patterns
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
         """
-        try:
-            return {
-                "success": True,
-                "results": [],
-                "query": query,
-                "file_types": file_types or [],
-                "message": "Context search via Serena MCP tools",
-                "note": "Use Serena search tools (Grep) for detailed pattern matching and content search",
-            }
-        except Exception as e:
-            logger.error(f"Error searching context for query '{query}': {e}", exc_info=True)
-            return {"success": False, "query": query, "error": str(e)}
+        return {
+            "error": "DEPRECATED",
+            "message": "Stub implementation. Agents use IDE search capabilities (Grep tool) directly.",
+            "replacement": "None - not needed",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Use Grep tool or Serena MCP (search_for_pattern) for content search."
+        }
 
     async def get_context_summary(self, project_id: Optional[str] = None) -> dict[str, Any]:
         """
-        Get a summary of project context.
-
-        Args:
-            project_id: Project UUID (optional - uses current project if not provided)
-
-        Returns:
-            Context summary with key information
+        DEPRECATED: Stub implementation - not needed.
+        
+        This tool was a placeholder for project context summaries.
+        Thin client architecture (Handover 0088) provides context via get_agent_mission().
+        Mission includes all necessary context for agents.
+        This method will be removed in v3.2.0.
+        
+        Migration:
+            # OLD (obsolete stub)
+            await get_context_summary(project_id=project_id)
+            
+            # NEW (no replacement needed)
+            # Context summary provided via:
+            # - get_agent_mission() returns mission with embedded context
+            # - Mission field includes project/product context
+        
+        See: Comprehensive_MCP_Analysis.md for migration guide
         """
-        try:
-            # Get current tenant and project
-            from sqlalchemy import and_, select
-
-            from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.models import Product, Project
-            from giljo_mcp.tenant_manager import tenant_manager
-
-            tenant_key = tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active tenant"}
-
-            db_manager = DatabaseManager()
-            async with db_manager.get_session_async() as session:
-                # Get project
-                if project_id:
-                    query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-                else:
-                    # Get active project
-                    query = select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
-
-                result = await session.execute(query)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Get product if exists
-                product = None
-                if project.product_id:
-                    result = await session.execute(
-                        select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
-                    )
-                    product = result.scalar_one_or_none()
-
-                # Build summary
-                summary_parts = [f"Project: {project.name}"]
-                if project.description:
-                    summary_parts.append(f"Description: {project.description[:200]}")
-                if product:
-                    summary_parts.append(f"Product: {product.name}")
-                    if product.vision_document:
-                        vision_preview = product.vision_document[:300]
-                        summary_parts.append(f"Vision: {vision_preview}")
-
-                return {
-                    "success": True,
-                    "summary": "\n".join(summary_parts),
-                    "project_id": str(project.id),
-                    "project_name": project.name,
-                    "product_id": str(product.id) if product else None,
-                    "product_name": product.name if product else None,
-                }
-
-        except Exception as e:
-            logger.error(f"Error getting context summary: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}
+        return {
+            "error": "DEPRECATED",
+            "message": "Stub implementation. Mission from get_agent_mission() provides context.",
+            "replacement": "None - not needed",
+            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
+            "removal_version": "v3.2.0",
+            "reason": "Context provided via get_agent_mission() - mission field includes all necessary context."
+        }
 
     # Template Tools
 

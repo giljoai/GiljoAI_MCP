@@ -13,7 +13,7 @@ from fastmcp import FastMCP
 from sqlalchemy import select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, Project, Session
+from giljo_mcp.models import MCPAgentJob, Project, Session
 from giljo_mcp.tenant import TenantManager, current_tenant
 
 
@@ -113,8 +113,8 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
                 project_list = []
                 for project in projects:
-                    # Get agent count
-                    agent_query = select(Agent).where(Agent.project_id == project.id)
+                    # Get agent job count
+                    agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
                     agent_result = await session.execute(agent_query)
                     agents = agent_result.scalars().all()
 
@@ -242,14 +242,14 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 )
                 await session.execute(session_update)
 
-                # Decommission all agents
+                # Decommission all agent jobs
                 agent_update = (
-                    update(Agent)
+                    update(MCPAgentJob)
                     .where(
-                        Agent.project_id == project.id,
-                        Agent.status.in_(["active", "idle"]),
+                        MCPAgentJob.project_id == project.id,
+                        MCPAgentJob.status.in_(["pending", "running", "waiting"]),
                     )
-                    .values(status="decommissioned")
+                    .values(status="decommissioned", decommissioned_at=datetime.now(timezone.utc))
                 )
                 await session.execute(agent_update)
 
@@ -470,8 +470,8 @@ Project: {project.name}"""
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
-                # Get agents
-                agent_query = select(Agent).where(Agent.project_id == project.id)
+                # Get agent jobs
+                agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
                 agent_result = await session.execute(agent_query)
                 agents = agent_result.scalars().all()
 
@@ -479,10 +479,10 @@ Project: {project.name}"""
                 for agent in agents:
                     agent_list.append(
                         {
-                            "name": agent.name,
-                            "role": agent.role,
+                            "name": agent.agent_name,
+                            "role": agent.agent_type,
                             "status": agent.status,
-                            "context_used": agent.context_used,
+                            "context_used": 0,  # MCPAgentJob doesn't track context_used
                         }
                     )
 

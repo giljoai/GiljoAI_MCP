@@ -12,7 +12,7 @@ from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.message_queue import MessageQueue
-from giljo_mcp.models import Agent, Message, Project
+from giljo_mcp.models import MCPAgentJob, Message, Project
 from giljo_mcp.tenant import TenantManager
 
 
@@ -65,21 +65,25 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 if not from_agent:
                     from_agent = "orchestrator"
 
-                # Get sender agent if specified
+                # Get sender agent job if specified
                 from_agent_id = None
                 if from_agent and from_agent != "system":
-                    sender_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == from_agent))
+                    sender_query = select(MCPAgentJob).where(
+                        and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == from_agent)
+                    )
                     sender_result = await session.execute(sender_query)
                     sender = sender_result.scalar_one_or_none()
                     if sender:
-                        from_agent_id = str(sender.id)
+                        from_agent_id = str(sender.job_id)
 
-                # Verify all recipient agents exist
+                # Verify all recipient agent jobs exist
                 verified_recipients = []
                 failed_recipients = []
 
                 for agent_name in to_agents:
-                    agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
+                    agent_query = select(MCPAgentJob).where(
+                        and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name)
+                    )
                     agent_result = await session.execute(agent_query)
                     recipient = agent_result.scalar_one_or_none()
 
@@ -87,7 +91,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         verified_recipients.append(agent_name)
                     else:
                         failed_recipients.append(agent_name)
-                        logger.warning(f"Recipient agent '{agent_name}' not found")
+                        logger.warning(f"Recipient agent job '{agent_name}' not found")
 
                 if not verified_recipients:
                     return {
@@ -190,11 +194,11 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     # Get sender name
                     from_agent_name = "system"
                     if msg.from_agent_id:
-                        sender_query = select(Agent).where(Agent.id == msg.from_agent_id)
+                        sender_query = select(MCPAgentJob).where(MCPAgentJob.job_id == msg.from_agent_id)
                         sender_result = await session.execute(sender_query)
                         sender = sender_result.scalar_one_or_none()
                         if sender:
-                            from_agent_name = sender.name
+                            from_agent_name = sender.agent_name
 
                     message_list.append(
                         {
@@ -395,15 +399,15 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Get all agents in the project
-                agent_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.status != "decommissioned")
+                # Get all agent jobs in the project
+                agent_query = select(MCPAgentJob).where(
+                    and_(MCPAgentJob.project_id == project_id, MCPAgentJob.status != "decommissioned")
                 )
                 agent_result = await session.execute(agent_query)
                 agents = agent_result.scalars().all()
 
                 if not agents:
-                    return {"success": False, "error": "No active agents in project"}
+                    return {"success": False, "error": "No active agent jobs in project"}
 
                 # Get tenant key
                 project_query = select(Project).where(Project.id == project_id)
@@ -417,7 +421,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     }
 
                 tenant_key = project.tenant_key
-                agent_names = [agent.name for agent in agents]
+                agent_names = [agent.agent_name for agent in agents]
 
                 # Create single broadcast message for all agents
                 message = Message(
