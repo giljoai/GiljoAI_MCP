@@ -1,7 +1,7 @@
 """Remove agent FK dependencies (Handover 0116)
 
-Revision ID: 20251107_0116_remove_agent_fk
-Revises: 20251107_0113b_add_decommissioned_at_field
+Revision ID: 0116_remove_agent_fk
+Revises: 0113b_decom_at
 Create Date: 2025-11-07 20:53:13
 
 This migration removes all foreign key constraints from agents.id across 6 tables,
@@ -27,8 +27,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '20251107_0116_remove_agent_fk'
-down_revision = '20251107_0113b_add_decommissioned_at_field'
+revision = '0116_remove_fk'
+down_revision = '0113b_decom_at'
 branch_labels = None
 depends_on = None
 
