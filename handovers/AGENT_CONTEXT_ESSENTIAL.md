@@ -46,6 +46,10 @@ Claude Code Terminal    ←HTTP→   GiljoAI MCP Server :7272
 - Visual progress tracking
 - Communication hub between agents
 
+**Tennancy**
+All users accounts operate as tennants separated from other users, MCP server connections are API token enabled to ensure Agentic coding tool only communiates in the context of a tennnat.
+
+s
 ---
 
 ## Core Concepts (The Hierarchy)
@@ -116,7 +120,7 @@ When an agent starts working, it creates a job tracked by the system.
 
 **Job Lifecycle:**
 ```
-waiting → active → working → completed/failed/blocked
+waiting → working → completed →  /failed/blocked
 ```
 
 **Tracked Data:**
@@ -151,7 +155,7 @@ Lightweight notes for ideas that pop up during coding.
 1. **Install** GiljoAI MCP server (`python install.py`)
 2. **Create account** → 6 default agent templates auto-seeded
 3. **Export agents** → My Settings → Integrations → Copy command
-4. **Install in CLI** → Paste command in Claude Code/Codex/Gemini terminal
+4. **Attach MCP server** pre made copy commands for claude, codex and gemini, APIkey enabled for tennancy.
 5. **Agents registered** → Templates available in `~/.claude/agents/`
 
 ---
@@ -159,7 +163,8 @@ Lightweight notes for ideas that pop up during coding.
 ### Phase 2: Create Context Structure
 1. **Create Product** → Define vision, tech stack, dependencies
 2. **Upload vision docs** → Architecture specs, API docs, coding standards
-3. **Create Project** → Write what you want to accomplish (project description)
+3.  **context loading** → Build out product with key data sets, coding language, front end, back end etc.
+4. **Create Project** → Write what you want to accomplish (project description)
 
 ---
 
@@ -168,14 +173,15 @@ Lightweight notes for ideas that pop up during coding.
 2. **Dashboard shows Launch Tab** with three windows:
    - **Project Description** (your human-written goals)
    - **Orchestrator Created Mission** (empty at start)
-   - **Agent Team** (empty at start)
+   - **Agent Team** Filled with only orchestrator at start.
 
 3. **Copy orchestrator prompt** → Paste in terminal
 4. **Orchestrator runs** (in your terminal):
    - Calls `get_orchestrator_instructions()` via MCP
    - Reads product vision, project description, context
+   - complies with users context prioritization configurator in my settings(can be left at default)
    - Creates condensed mission (displayed in dashboard)
-   - Selects agents (cards appear live in dashboard)
+   - Selects agents (cards appear live in dashboard), selecting agents from active tempaltes in template manager.
    - Calls `spawn_agent_job()` for each agent (creates jobs on server)
 
 5. **Review mission** → Check token estimates, agent selections
@@ -190,9 +196,9 @@ Lightweight notes for ideas that pop up during coding.
 - Copy orchestrator execution prompt
 - Paste in same terminal window
 - Claude spawns sub-agents automatically via native capabilities
-- All agents work in one terminal session
+- All agents work in one terminal session, uses custom instructions in imported agent profile files.
 
-**B) Codex/Gemini (Multi-Terminal):**
+**B) Codex/Gemini (Claude optional to work this way) (Multi-Terminal):**
 - Copy each agent's launch prompt individually
 - Paste in separate terminal windows (one per agent)
 - Each agent runs independently
