@@ -23,11 +23,11 @@ from ..models import Job
 
 logger = logging.getLogger(__name__)
 
-# Valid status values
-VALID_STATUSES = {"waiting", "preparing", "working", "review", "complete", "failed", "blocked"}
+# Valid status values (Handover 0113 - 7 State System)
+VALID_STATUSES = {"waiting", "working", "blocked", "complete", "failed", "cancelled", "decommissioned"}
 
 # Terminal states (cannot transition from these)
-TERMINAL_STATES = {"complete", "failed"}
+TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
 
 
 async def set_agent_status(
@@ -45,7 +45,7 @@ async def set_agent_status(
     Args:
         job_id: Agent job ID to update
         tenant_key: Tenant identifier for multi-tenant isolation
-        status: One of ['waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked']
+        status: One of ['waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned']
         progress: Optional[int] - Progress percentage (0-100), required for 'working' status
         reason: Optional[str] - Reason for 'failed' or 'blocked' status
         current_task: Optional[str] - Description of current task (for 'working' status)
@@ -70,10 +70,11 @@ async def set_agent_status(
         - Only jobs belonging to the specified tenant can be updated
         - No cross-tenant status updates possible
 
-    State Machine:
-        - Cannot transition from terminal states ('complete', 'failed')
+    State Machine (Handover 0113 - 7 State System):
+        - Cannot transition from terminal states ('failed', 'cancelled', 'decommissioned')
         - 'working' status requires progress parameter
         - 'failed' and 'blocked' statuses require reason parameter
+        - 'decommissioned' state returns special error message for visibility
     """
     try:
         # Validate input parameters
@@ -118,6 +119,16 @@ async def set_agent_status(
 
             # Validate state machine - cannot transition from terminal states
             if old_status in TERMINAL_STATES:
+                # Handover 0113: Special message for decommissioned agents
+                if old_status == "decommissioned":
+                    return {
+                        "success": False,
+                        "error": "AGENT_DECOMMISSIONED",
+                        "job_id": job_id,
+                        "old_status": old_status,
+                        "message": f"Agent {job_id} has been decommissioned (project closeout complete). Spawn a new agent if needed.",
+                        "decommissioned_at": job.decommissioned_at.isoformat() if job.decommissioned_at else None,
+                    }
                 raise ValueError(
                     f"Cannot transition from terminal state '{old_status}'. Job is already in final state."
                 )

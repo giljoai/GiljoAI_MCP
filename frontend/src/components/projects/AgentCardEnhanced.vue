@@ -160,21 +160,62 @@
           </div>
         </div>
 
-        <!-- Jobs Tab - Failure/Blocked State -->
-        <div v-else-if="agent.status === 'failed' || agent.status === 'blocked'" class="error-content">
+        <!-- Jobs Tab - Failure State (Handover 0113: Shows failure_reason) -->
+        <div v-else-if="agent.status === 'failed'" class="error-content">
           <v-alert
-            :type="agent.status === 'failed' ? 'error' : 'warning'"
+            type="error"
             density="compact"
             variant="tonal"
             class="mb-2"
           >
             <div class="text-caption font-weight-bold mb-1">
-              {{ agent.status === 'failed' ? 'Failure' : 'Blocked' }}
+              Failure
+              <v-chip
+                v-if="agent.failure_reason"
+                size="x-small"
+                color="error"
+                variant="outlined"
+                class="ml-2"
+              >
+                {{ agent.failure_reason }}
+              </v-chip>
             </div>
             <div class="text-body-2">
               {{ agent.block_reason || 'No details available' }}
             </div>
           </v-alert>
+        </div>
+
+        <!-- Jobs Tab - Blocked State -->
+        <div v-else-if="agent.status === 'blocked'" class="error-content">
+          <v-alert
+            type="warning"
+            density="compact"
+            variant="tonal"
+            class="mb-2"
+          >
+            <div class="text-caption font-weight-bold mb-1">Blocked</div>
+            <div class="text-body-2">
+              {{ agent.block_reason || 'No details available' }}
+            </div>
+          </v-alert>
+        </div>
+
+        <!-- Jobs Tab - Cancelled State (Handover 0113) -->
+        <div v-else-if="agent.status === 'cancelled'" class="cancelled-content text-center py-4">
+          <v-icon size="48" color="warning" class="mb-2">mdi-cancel</v-icon>
+          <div class="text-body-1 font-weight-medium">Cancelled</div>
+          <div class="text-caption text-grey mt-1">Job was cancelled by user</div>
+        </div>
+
+        <!-- Jobs Tab - Decommissioned State (Handover 0113) -->
+        <div v-else-if="agent.status === 'decommissioned'" class="decommissioned-content text-center py-4">
+          <v-icon size="48" color="grey-darken-1" class="mb-2">mdi-archive</v-icon>
+          <div class="text-body-1 font-weight-medium">Decommissioned</div>
+          <div class="text-caption text-grey mt-1">Project closeout complete</div>
+          <div v-if="agent.decommissioned_at" class="text-caption text-grey mt-1">
+            {{ new Date(agent.decommissioned_at).toLocaleString() }}
+          </div>
         </div>
       </div>
 
@@ -188,9 +229,8 @@
     <v-card-actions class="pa-4 pt-0">
       <!-- Cancel Controls (Handover 0107) -->
       <div v-if="canCancel && mode === 'jobs'" class="cancel-controls mb-2" style="width: 100%;">
-        <!-- Graceful Cancel Button -->
+        <!-- Cancel Button -->
         <v-btn
-          v-if="agent.status !== 'cancelling'"
           color="warning"
           variant="outlined"
           size="small"
@@ -198,34 +238,8 @@
           @click="requestCancel"
           class="mb-2"
         >
-          <v-icon start>mdi-stop-circle-outline</v-icon>
+          <v-icon start>mdi-cancel</v-icon>
           Cancel Job
-        </v-btn>
-
-        <!-- Cancelling State Chip -->
-        <v-chip
-          v-if="agent.status === 'cancelling'"
-          color="warning"
-          variant="flat"
-          block
-          class="mb-2"
-          style="width: 100%; justify-content: center; height: 36px;"
-        >
-          <v-icon start>mdi-progress-clock</v-icon>
-          <span class="text-caption">Cancelling... (agent will stop on next check-in)</span>
-        </v-chip>
-
-        <!-- Force Stop Button (after 5 min cancelling) -->
-        <v-btn
-          v-if="agent.status === 'cancelling' && showForceStop"
-          color="error"
-          variant="outlined"
-          size="small"
-          block
-          @click="forceStop"
-        >
-          <v-icon start>mdi-alert-octagon</v-icon>
-          Force Stop
         </v-btn>
       </div>
 
@@ -320,17 +334,43 @@
         View Error
       </v-btn>
 
-      <!-- Orchestrator: Closeout Project (all agents complete) -->
-      <v-btn
-        v-else-if="isOrchestrator && showCloseoutButton"
-        variant="elevated"
-        color="success"
-        block
-        @click="$emit('closeout-project')"
-      >
-        <v-icon start>mdi-check-circle</v-icon>
-        Closeout Project
-      </v-btn>
+      <!-- Complete State: Continue Working OR Close Out (Handover 0113) -->
+      <div v-else-if="agent.status === 'complete'" class="complete-actions">
+        <v-btn
+          variant="outlined"
+          color="primary"
+          block
+          class="mb-2"
+          @click="$emit('continue-working', agent)"
+        >
+          <v-icon start>mdi-play-circle</v-icon>
+          Continue Working
+        </v-btn>
+        
+        <v-btn
+          v-if="isOrchestrator"
+          variant="elevated"
+          color="success"
+          block
+          @click="$emit('closeout-project')"
+        >
+          <v-icon start>mdi-check-circle</v-icon>
+          Close Out Project
+        </v-btn>
+      </div>
+
+      <!-- Cancelled/Decommissioned State: No actions (terminal states) -->
+      <div v-else-if="agent.status === 'cancelled' || agent.status === 'decommissioned'" class="terminal-state">
+        <v-chip
+          color="grey"
+          variant="flat"
+          block
+          style="width: 100%; justify-content: center; height: 36px;"
+        >
+          <v-icon start>{{ agent.status === 'cancelled' ? 'mdi-cancel' : 'mdi-archive' }}</v-icon>
+          <span class="text-caption">{{ agent.status === 'cancelled' ? 'Cancelled' : 'Archived' }}</span>
+        </v-chip>
+      </div>
       </slot>
     </v-card-actions>
   </v-card>
@@ -402,7 +442,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'copy-execution-prompt'])
+defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'copy-execution-prompt', 'continue-working'])
 
 /**
  * Agent color configuration
@@ -445,6 +485,11 @@ const STATUS_CONFIG = {
     icon: 'mdi-cog',
     label: 'Working'
   },
+  blocked: {
+    color: 'orange',
+    icon: 'mdi-alert-octagon',
+    label: 'Blocked'
+  },
   complete: {
     color: 'yellow-darken-2',
     icon: 'mdi-check-circle',
@@ -455,10 +500,15 @@ const STATUS_CONFIG = {
     icon: 'mdi-alert-circle',
     label: 'Failure'
   },
-  blocked: {
-    color: 'orange',
-    icon: 'mdi-alert-octagon',
-    label: 'Blocked'
+  cancelled: {
+    color: 'warning',
+    icon: 'mdi-cancel',
+    label: 'Cancelled'
+  },
+  decommissioned: {
+    color: 'grey-darken-1',
+    icon: 'mdi-archive',
+    label: 'Decommissioned'
   }
 }
 
@@ -593,27 +643,16 @@ const isStale = computed(() => {
   return (
     minutesSinceLastUpdate.value !== null &&
     minutesSinceLastUpdate.value > 10 &&
-    ['active', 'working'].includes(props.agent.status)
+    ['working'].includes(props.agent.status)
   )
 })
 
 // Check if cancel controls should be shown
 const canCancel = computed(() => {
-  return ['active', 'working', 'cancelling'].includes(props.agent.status)
+  return ['working'].includes(props.agent.status)
 })
 
-// Calculate minutes since cancellation request
-const minutesCancelling = computed(() => {
-  if (props.agent.status !== 'cancelling' || !props.agent.cancelled_at) return 0
-  const cancelledTime = new Date(props.agent.cancelled_at)
-  const now = new Date()
-  return Math.floor((now - cancelledTime) / 60000)
-})
-
-// Show force stop button after 5 minutes of cancelling
-const showForceStop = computed(() => {
-  return minutesCancelling.value > 5
-})
+// Removed: minutesCancelling and showForceStop (Handover 0113 - atomic cancellation)
 
 /**
  * Initialize composables
@@ -640,7 +679,7 @@ const requestCancel = async () => {
       reason: 'User requested cancellation'
     })
 
-    showToast('Cancel request sent - agent will stop soon', 'info')
+    showToast('Job cancelled successfully', 'success')
   } catch (error) {
     console.error('Failed to cancel job:', error)
     showToast(
@@ -650,33 +689,7 @@ const requestCancel = async () => {
   }
 }
 
-// Force stop unresponsive agent
-const forceStop = async () => {
-  const confirmed = confirm(
-    'Force Stop Agent?\n\n' +
-    'The agent is not responding to the cancel request.\n' +
-    'This will immediately mark the job as failed.\n\n' +
-    'WARNING: This does NOT terminate the external terminal process.\n' +
-    'You must manually close the agent terminal.\n\n' +
-    'Continue with force stop?'
-  )
-
-  if (!confirmed) return
-
-  try {
-    await api.post(`/jobs/${props.agent.id}/force-fail`, {
-      reason: 'Unresponsive to cancel request'
-    })
-
-    showToast('Agent force stopped', 'success')
-  } catch (error) {
-    console.error('Failed to force stop:', error)
-    showToast(
-      error.response?.data?.detail || 'Failed to force stop',
-      'error'
-    )
-  }
-}
+// Removed forceStop method (Handover 0113 - atomic cancellation)
 
 /**
  * Lifecycle hooks for WebSocket event listeners

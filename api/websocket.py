@@ -613,10 +613,14 @@ class WebSocketManager:
         current_task: Optional[str] = None,
         progress_percentage: Optional[int] = None,
         meta_data: Optional[dict] = None,
+        failure_reason: Optional[str] = None,  # Handover 0113
+        decommissioned_at: Optional[str] = None,  # Handover 0113
     ):
         """
         Broadcast real-time status updates during agent execution.
         Includes context usage changes and current task information.
+        
+        Handover 0113: Added failure_reason and decommissioned_at for 7-state system.
         """
         message = {
             "type": "agent:update",
@@ -635,6 +639,14 @@ class WebSocketManager:
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+
+        # Handover 0113: Include failure_reason for failed status
+        if status == "failed" and failure_reason:
+            message["data"]["failure_reason"] = failure_reason
+
+        # Handover 0113: Include decommissioned_at for decommissioned status
+        if status == "decommissioned" and decommissioned_at:
+            message["data"]["decommissioned_at"] = decommissioned_at
 
         # Multi-tenant isolation
         for client_id, websocket in self.active_connections.items():

@@ -14,7 +14,11 @@ class WebSocketService:
 
     @staticmethod
     async def notify_agent_status(websocket_manager, agent_name: str, project_id: str, status: str, **kwargs):
-        """Helper to notify agent status changes"""
+        """
+        Helper to notify agent status changes.
+        
+        Handover 0113: Added support for failure_reason and decommissioned_at.
+        """
         if not websocket_manager:
             return
 
@@ -31,6 +35,8 @@ class WebSocketService:
                 current_task=kwargs.get("current_task"),
                 progress_percentage=kwargs.get("progress_percentage"),
                 meta_data=kwargs.get("meta_data", {}),
+                failure_reason=kwargs.get("failure_reason"),  # Handover 0113
+                decommissioned_at=kwargs.get("decommissioned_at"),  # Handover 0113
             )
         except Exception:
             logger.exception("Failed to broadcast agent status")

@@ -12,11 +12,11 @@ This preserves historical data while breaking dependencies.
 
 Tables modified:
 1. messages.from_agent_id (nullable) - SET NULL
-2. jobs.agent_id (NOT NULL → nullable) - MAKE NULLABLE, then SET NULL
+2. jobs.agent_id (NOT NULL -> nullable) - MAKE NULLABLE, then SET NULL
 3. agent_interactions.parent_agent_id (nullable) - SET NULL
 4. template_usage_stats.agent_id (nullable) - SET NULL
 5. git_commits.agent_id (nullable) - SET NULL
-6. optimization_metrics.agent_id (NOT NULL → nullable) - MAKE NULLABLE, then SET NULL
+6. optimization_metrics.agent_id (NOT NULL -> nullable) - MAKE NULLABLE, then SET NULL
 
 IMPORTANT: This migration is IRREVERSIBLE. Downgrade will recreate FK constraints
 but cannot restore the original agent_id values.
@@ -57,7 +57,7 @@ def upgrade():
         "SELECT COUNT(*) FROM messages WHERE from_agent_id IS NOT NULL"
     ))
     count = result.scalar()
-    print(f"  → Found {count} messages with agent references")
+    print(f"  -> Found {count} messages with agent references")
 
     # Drop FK constraint
     # Note: SQLAlchemy auto-generates constraint names, we need to find it
@@ -70,25 +70,25 @@ def upgrade():
     constraint_name = result.scalar()
 
     if constraint_name:
-        print(f"  → Dropping FK constraint: {constraint_name}")
+        print(f"  -> Dropping FK constraint: {constraint_name}")
         op.drop_constraint(constraint_name, 'messages', type_='foreignkey')
     else:
-        print("  → No FK constraint found (may have been dropped manually)")
+        print("  -> No FK constraint found (may have been dropped manually)")
 
     # Set to NULL
     bind.execute(sa.text("UPDATE messages SET from_agent_id = NULL WHERE from_agent_id IS NOT NULL"))
-    print(f"  → Set {count} records to NULL")
-    print("  ✓ messages.from_agent_id complete")
+    print(f"  -> Set {count} records to NULL")
+    print("  OK messages.from_agent_id complete")
 
     # -------------------------------------------------------------------------
-    # 2. jobs.agent_id (NOT NULL → NULLABLE)
+    # 2. jobs.agent_id (NOT NULL -> NULLABLE)
     # -------------------------------------------------------------------------
     print("\n[2/6] Processing jobs.agent_id...")
 
     # Count affected records
     result = bind.execute(sa.text("SELECT COUNT(*) FROM jobs"))
     count = result.scalar()
-    print(f"  → Found {count} job records")
+    print(f"  -> Found {count} job records")
 
     # Drop FK constraint
     result = bind.execute(sa.text("""
@@ -100,19 +100,19 @@ def upgrade():
     constraint_name = result.scalar()
 
     if constraint_name:
-        print(f"  → Dropping FK constraint: {constraint_name}")
+        print(f"  -> Dropping FK constraint: {constraint_name}")
         op.drop_constraint(constraint_name, 'jobs', type_='foreignkey')
     else:
-        print("  → No FK constraint found (may have been dropped manually)")
+        print("  -> No FK constraint found (may have been dropped manually)")
 
     # Make column nullable
-    print("  → Making agent_id nullable")
+    print("  -> Making agent_id nullable")
     op.alter_column('jobs', 'agent_id', nullable=True, existing_type=sa.String(36))
 
     # Set to NULL
     bind.execute(sa.text("UPDATE jobs SET agent_id = NULL"))
-    print(f"  → Set {count} records to NULL")
-    print("  ✓ jobs.agent_id complete")
+    print(f"  -> Set {count} records to NULL")
+    print("  OK jobs.agent_id complete")
 
     # -------------------------------------------------------------------------
     # 3. agent_interactions.parent_agent_id (NULLABLE)
@@ -124,7 +124,7 @@ def upgrade():
         "SELECT COUNT(*) FROM agent_interactions WHERE parent_agent_id IS NOT NULL"
     ))
     count = result.scalar()
-    print(f"  → Found {count} agent interactions with parent references")
+    print(f"  -> Found {count} agent interactions with parent references")
 
     # Drop FK constraint
     result = bind.execute(sa.text("""
@@ -136,17 +136,17 @@ def upgrade():
     constraint_name = result.scalar()
 
     if constraint_name:
-        print(f"  → Dropping FK constraint: {constraint_name}")
+        print(f"  -> Dropping FK constraint: {constraint_name}")
         op.drop_constraint(constraint_name, 'agent_interactions', type_='foreignkey')
     else:
-        print("  → No FK constraint found (may have been dropped manually)")
+        print("  -> No FK constraint found (may have been dropped manually)")
 
     # Set to NULL
     bind.execute(sa.text(
         "UPDATE agent_interactions SET parent_agent_id = NULL WHERE parent_agent_id IS NOT NULL"
     ))
-    print(f"  → Set {count} records to NULL")
-    print("  ✓ agent_interactions.parent_agent_id complete")
+    print(f"  -> Set {count} records to NULL")
+    print("  OK agent_interactions.parent_agent_id complete")
 
     # -------------------------------------------------------------------------
     # 4. template_usage_stats.agent_id (NULLABLE)
@@ -158,7 +158,7 @@ def upgrade():
         "SELECT COUNT(*) FROM template_usage_stats WHERE agent_id IS NOT NULL"
     ))
     count = result.scalar()
-    print(f"  → Found {count} template usage records with agent references")
+    print(f"  -> Found {count} template usage records with agent references")
 
     # Drop FK constraint
     result = bind.execute(sa.text("""
@@ -170,17 +170,17 @@ def upgrade():
     constraint_name = result.scalar()
 
     if constraint_name:
-        print(f"  → Dropping FK constraint: {constraint_name}")
+        print(f"  -> Dropping FK constraint: {constraint_name}")
         op.drop_constraint(constraint_name, 'template_usage_stats', type_='foreignkey')
     else:
-        print("  → No FK constraint found (may have been dropped manually)")
+        print("  -> No FK constraint found (may have been dropped manually)")
 
     # Set to NULL
     bind.execute(sa.text(
         "UPDATE template_usage_stats SET agent_id = NULL WHERE agent_id IS NOT NULL"
     ))
-    print(f"  → Set {count} records to NULL")
-    print("  ✓ template_usage_stats.agent_id complete")
+    print(f"  -> Set {count} records to NULL")
+    print("  OK template_usage_stats.agent_id complete")
 
     # -------------------------------------------------------------------------
     # 5. git_commits.agent_id (NULLABLE)
@@ -192,7 +192,7 @@ def upgrade():
         "SELECT COUNT(*) FROM git_commits WHERE agent_id IS NOT NULL"
     ))
     count = result.scalar()
-    print(f"  → Found {count} git commits with agent references")
+    print(f"  -> Found {count} git commits with agent references")
 
     # Drop FK constraint
     result = bind.execute(sa.text("""
@@ -204,27 +204,27 @@ def upgrade():
     constraint_name = result.scalar()
 
     if constraint_name:
-        print(f"  → Dropping FK constraint: {constraint_name}")
+        print(f"  -> Dropping FK constraint: {constraint_name}")
         op.drop_constraint(constraint_name, 'git_commits', type_='foreignkey')
     else:
-        print("  → No FK constraint found (may have been dropped manually)")
+        print("  -> No FK constraint found (may have been dropped manually)")
 
     # Set to NULL
     bind.execute(sa.text(
         "UPDATE git_commits SET agent_id = NULL WHERE agent_id IS NOT NULL"
     ))
-    print(f"  → Set {count} records to NULL")
-    print("  ✓ git_commits.agent_id complete")
+    print(f"  -> Set {count} records to NULL")
+    print("  OK git_commits.agent_id complete")
 
     # -------------------------------------------------------------------------
-    # 6. optimization_metrics.agent_id (NOT NULL → NULLABLE)
+    # 6. optimization_metrics.agent_id (NOT NULL -> NULLABLE)
     # -------------------------------------------------------------------------
     print("\n[6/6] Processing optimization_metrics.agent_id...")
 
     # Count affected records
     result = bind.execute(sa.text("SELECT COUNT(*) FROM optimization_metrics"))
     count = result.scalar()
-    print(f"  → Found {count} optimization metric records")
+    print(f"  -> Found {count} optimization metric records")
 
     # Drop FK constraint
     result = bind.execute(sa.text("""
@@ -236,19 +236,19 @@ def upgrade():
     constraint_name = result.scalar()
 
     if constraint_name:
-        print(f"  → Dropping FK constraint: {constraint_name}")
+        print(f"  -> Dropping FK constraint: {constraint_name}")
         op.drop_constraint(constraint_name, 'optimization_metrics', type_='foreignkey')
     else:
-        print("  → No FK constraint found (may have been dropped manually)")
+        print("  -> No FK constraint found (may have been dropped manually)")
 
     # Make column nullable
-    print("  → Making agent_id nullable")
+    print("  -> Making agent_id nullable")
     op.alter_column('optimization_metrics', 'agent_id', nullable=True, existing_type=sa.String(36))
 
     # Set to NULL
     bind.execute(sa.text("UPDATE optimization_metrics SET agent_id = NULL"))
-    print(f"  → Set {count} records to NULL")
-    print("  ✓ optimization_metrics.agent_id complete")
+    print(f"  -> Set {count} records to NULL")
+    print("  OK optimization_metrics.agent_id complete")
 
     # -------------------------------------------------------------------------
     # Summary

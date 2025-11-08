@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Agent, Configuration, ContextIndex, Message, Project, Task, Vision
+from src.giljo_mcp.models import Configuration, ContextIndex, MCPAgentJob, Message, Project, Task, Vision
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -38,21 +38,21 @@ class ToolsTestHelper:
         return project
 
     @staticmethod
-    async def create_test_agent(session: AsyncSession, project_id: str, name: str = "test_agent") -> Agent:
-        """Create a test agent in the database"""
-        agent = Agent(
-            id=str(uuid.uuid4()),
-            name=name,
-            type="worker",
+    async def create_test_agent(session: AsyncSession, project_id: str, name: str = "test_agent") -> MCPAgentJob:
+        """Create a test agent job in the database"""
+        agent_job = MCPAgentJob(
+            job_id=str(uuid.uuid4()),
+            agent_name=name,
+            agent_type="worker",
             status="active",
             project_id=project_id,
             tenant_key=TenantManager.generate_tenant_key(name),
             created_at=datetime.now(timezone.utc),
         )
-        session.add(agent)
+        session.add(agent_job)
         await session.commit()
-        await session.refresh(agent)
-        return agent
+        await session.refresh(agent_job)
+        return agent_job
 
     @staticmethod
     async def create_test_message(

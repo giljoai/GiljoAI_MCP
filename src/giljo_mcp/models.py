@@ -612,7 +612,7 @@ class Message(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    from_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    from_agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     to_agents = Column(JSON, default=list)  # List of agent names
     message_type = Column(String(50), default="direct")  # direct, broadcast, system
     subject = Column(String(255), nullable=True)
@@ -635,7 +635,7 @@ class Message(Base):
 
     # Relationships
     project = relationship("Project", back_populates="messages")
-    sender = relationship("Agent", foreign_keys=[from_agent_id], back_populates="sent_messages")
+    # sender relationship removed (Handover 0116) - Agent model eliminated
 
     __table_args__ = (
         Index("idx_message_tenant", "tenant_key"),
@@ -925,7 +925,7 @@ class Job(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
-    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
+    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed, made nullable (Handover 0116)
     job_type = Column(String(100), nullable=False)
     status = Column(String(50), default="active")  # active, completed, cancelled
     tasks = Column(JSON, default=list)  # List of task descriptions
@@ -935,8 +935,7 @@ class Job(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     meta_data = Column(JSON, default=dict)
 
-    # Relationships
-    agent = relationship("Agent", back_populates="jobs")
+    # Relationships removed (Handover 0116) - Agent model eliminated
 
     __table_args__ = (
         Index("idx_job_tenant", "tenant_key"),
@@ -956,7 +955,7 @@ class AgentInteraction(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    parent_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    parent_agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     sub_agent_name = Column(String(100), nullable=False)
     interaction_type = Column(String(20), nullable=False)  # SPAWN, COMPLETE, ERROR
     mission = Column(Text, nullable=False)
@@ -971,7 +970,7 @@ class AgentInteraction(Base):
 
     # Relationships
     project = relationship("Project", backref="agent_interactions")
-    parent_agent = relationship("Agent", backref="sub_agent_interactions")
+    # parent_agent relationship removed (Handover 0116) - Agent model eliminated
 
     __table_args__ = (
         Index("idx_interaction_tenant", "tenant_key"),
@@ -1176,7 +1175,7 @@ class TemplateUsageStats(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
-    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
 
     # Usage details
@@ -1192,7 +1191,7 @@ class TemplateUsageStats(Base):
 
     # Relationships
     template = relationship("AgentTemplate", back_populates="usage_stats")
-    agent = relationship("Agent", backref="template_usage_stats")
+    # agent relationship removed (Handover 0116) - Agent model eliminated
     project = relationship("Project", backref="template_usage_stats")
 
     __table_args__ = (
@@ -1309,7 +1308,7 @@ class GitCommit(Base):
 
     # Orchestrator context
     triggered_by = Column(String(50), nullable=True)  # 'auto_commit', 'manual', 'project_completion'
-    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     commit_type = Column(String(50), nullable=True)  # 'feature', 'fix', 'docs', 'refactor', etc.
 
     # Status tracking
@@ -1920,7 +1919,7 @@ class OptimizationMetric(Base):
     tenant_key = Column(String(36), nullable=False, index=True)
 
     # Foreign keys
-    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
+    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed, made nullable (Handover 0116)
 
     # Operation details
     operation_type = Column(String(50), nullable=False)  # OperationType enum value
@@ -1937,8 +1936,7 @@ class OptimizationMetric(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    # Relationships
-    agent = relationship("Agent", backref="optimization_metrics")
+    # Relationships removed (Handover 0116) - Agent model eliminated
 
     __table_args__ = (
         Index("idx_optimization_metric_tenant", "tenant_key"),
@@ -2074,9 +2072,13 @@ class MCPAgentJob(Base):
     )
     mission = Column(Text, nullable=False, comment="Agent mission/instructions")
 
-    # Handover 0073: Expanded status states (waiting, preparing, working, review, complete, failed, blocked, cancelling)
+    # Handover 0073: Expanded status states
     # Handover 0107: Added 'cancelling' state for graceful cancellation
+    # Handover 0113: Simplified to 7 states (waiting, working, blocked, complete, failed, cancelled, decommissioned)
     status = Column(String(50), default="waiting", nullable=False)
+    failure_reason = Column(
+        String(50), nullable=True, comment="Reason for failure: error, timeout, system_error (Handover 0113)"
+    )
 
     spawned_by = Column(String(36), nullable=True, comment="Agent ID that spawned this job")
     context_chunks = Column(JSON, default=list, comment="Array of chunk_ids from mcp_context_index for context loading")
@@ -2166,10 +2168,6 @@ class MCPAgentJob(Base):
         nullable=True,
         comment="Timestamp when agent job was decommissioned (Handover 0113)"
     )
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Timestamp of last message queue check by agent (Handover 0107)"
-    )
 
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
@@ -2189,6 +2187,11 @@ class MCPAgentJob(Base):
             name="ck_mcp_agent_job_status",
         ),
         CheckConstraint("progress >= 0 AND progress <= 100", name="ck_mcp_agent_job_progress_range"),
+        # Handover 0113: Failure reason constraint
+        CheckConstraint(
+            "failure_reason IS NULL OR failure_reason IN ('error', 'timeout', 'system_error')",
+            name="ck_mcp_agent_job_failure_reason",
+        ),
         CheckConstraint(
             "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name="ck_mcp_agent_job_tool_type"
         ),

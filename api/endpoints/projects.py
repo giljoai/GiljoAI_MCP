@@ -2189,3 +2189,267 @@ async def complete_project_closeout(
     return ProjectCompleteResponse(
         success=True, completed_at=project.completed_at.isoformat(), retired_agents=retired_count
     )
+
+
+
+# ========================================
+# Handover 0113: Project Agent Lifecycle
+# ========================================
+
+
+class ProjectCloseOutResponse(BaseModel):
+    """Response for project close-out operation."""
+
+    success: bool
+    message: str
+    agents_decommissioned: int
+    decommissioned_agent_ids: list[str]
+    project_status: str
+
+
+class ContinueWorkingResponse(BaseModel):
+    """Response for continue working operation."""
+
+    success: bool
+    message: str
+    agents_resumed: int
+    resumed_agent_ids: list[str]
+    project_status: str
+
+
+@router.post("/{project_id}/close-out", response_model=ProjectCloseOutResponse)
+async def close_out_project(
+    project_id: str,
+    request: Request,
+    db_manager: DatabaseManager = Depends(get_db_manager),
+):
+    """
+    Close out project by decommissioning all completed agents.
+
+    Handover 0113: Project closeout workflow - transitions all complete agents to decommissioned.
+
+    Workflow:
+    1. Find all agents with status='complete' for this project
+    2. Transition each to status='decommissioned'
+    3. Set decommissioned_at timestamp
+    4. Update project status to 'completed'
+    5. Broadcast WebSocket updates
+
+    Args:
+        project_id: Project ID
+        request: FastAPI request
+        db_manager: Database manager
+
+    Returns:
+        ProjectCloseOutResponse with summary
+
+    Raises:
+        HTTPException 404: Project not found
+        HTTPException 403: Unauthorized
+    """
+    from giljo_mcp.agent_job_manager import AgentJobManager
+
+    auth_context = request.state.auth_context
+    tenant_key = auth_context["tenant_key"]
+
+    logger.info(f"[Project Close-Out] Starting closeout for project {project_id} (tenant: {tenant_key})")
+
+    # Verify project exists and belongs to tenant
+    with db_manager.get_session() as session:
+        project = session.execute(
+            select(Project).where(
+                and_(
+                    Project.id == project_id,
+                    Project.tenant_key == tenant_key,
+                    Project.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Find all complete agents
+        complete_agents = session.execute(
+            select(MCPAgentJob).where(
+                and_(
+                    MCPAgentJob.project_id == project_id,
+                    MCPAgentJob.tenant_key == tenant_key,
+                    MCPAgentJob.status == "complete",
+                )
+            )
+        ).scalars().all()
+
+        if not complete_agents:
+            logger.info(f"[Project Close-Out] No complete agents found for project {project_id}")
+            return ProjectCloseOutResponse(
+                success=True,
+                message="No agents to decommission",
+                agents_decommissioned=0,
+                decommissioned_agent_ids=[],
+                project_status=project.status,
+            )
+
+        # Decommission all complete agents
+        agent_job_manager = AgentJobManager(db_manager)
+        decommissioned_ids = []
+
+        for agent in complete_agents:
+            try:
+                agent_job_manager.decommission_job(tenant_key, agent.job_id)
+                decommissioned_ids.append(agent.job_id)
+                logger.info(f"[Project Close-Out] Decommissioned agent {agent.job_id} ({agent.agent_name})")
+
+                # Broadcast WebSocket update
+                if hasattr(request.state, "websocket_manager") and request.state.websocket_manager:
+                    from api.websocket_service import WebSocketService
+
+                    await WebSocketService.notify_agent_status(
+                        request.state.websocket_manager,
+                        agent_name=agent.agent_name or agent.agent_type,
+                        project_id=project_id,
+                        status="decommissioned",
+                        tenant_key=tenant_key,
+                        agent_id=agent.job_id,
+                        decommissioned_at=datetime.now(timezone.utc).isoformat(),
+                    )
+
+            except Exception as e:
+                logger.error(f"[Project Close-Out] Failed to decommission agent {agent.job_id}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to decommission agent {agent.job_id}")
+
+        # Update project status to completed
+        project.status = "completed"
+        project.completed_at = datetime.now(timezone.utc)
+        session.commit()
+        session.refresh(project)
+
+        logger.info(
+            f"[Project Close-Out] Successfully decommissioned {len(decommissioned_ids)} agents for project {project_id}"
+        )
+
+        return ProjectCloseOutResponse(
+            success=True,
+            message=f"Successfully decommissioned {len(decommissioned_ids)} agents",
+            agents_decommissioned=len(decommissioned_ids),
+            decommissioned_agent_ids=decommissioned_ids,
+            project_status=project.status,
+        )
+
+
+@router.post("/{project_id}/continue-working", response_model=ContinueWorkingResponse)
+async def continue_working_on_project(
+    project_id: str,
+    request: Request,
+    db_manager: DatabaseManager = Depends(get_db_manager),
+):
+    """
+    Continue working on project by resuming all completed agents.
+
+    Handover 0113: Continue working workflow - transitions all complete agents back to working.
+
+    Workflow:
+    1. Find all agents with status='complete' for this project
+    2. Transition each to status='working'
+    3. Clear completed_at timestamp, set started_at to now
+    4. Keep project status='active'
+    5. Broadcast WebSocket updates
+
+    Args:
+        project_id: Project ID
+        request: FastAPI request
+        db_manager: Database manager
+
+    Returns:
+        ContinueWorkingResponse with summary
+
+    Raises:
+        HTTPException 404: Project not found
+        HTTPException 403: Unauthorized
+    """
+    from giljo_mcp.agent_job_manager import AgentJobManager
+
+    auth_context = request.state.auth_context
+    tenant_key = auth_context["tenant_key"]
+
+    logger.info(f"[Continue Working] Starting resume for project {project_id} (tenant: {tenant_key})")
+
+    # Verify project exists and belongs to tenant
+    with db_manager.get_session() as session:
+        project = session.execute(
+            select(Project).where(
+                and_(
+                    Project.id == project_id,
+                    Project.tenant_key == tenant_key,
+                    Project.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Find all complete agents
+        complete_agents = session.execute(
+            select(MCPAgentJob).where(
+                and_(
+                    MCPAgentJob.project_id == project_id,
+                    MCPAgentJob.tenant_key == tenant_key,
+                    MCPAgentJob.status == "complete",
+                )
+            )
+        ).scalars().all()
+
+        if not complete_agents:
+            logger.info(f"[Continue Working] No complete agents found for project {project_id}")
+            return ContinueWorkingResponse(
+                success=True,
+                message="No agents to resume",
+                agents_resumed=0,
+                resumed_agent_ids=[],
+                project_status=project.status,
+            )
+
+        # Resume all complete agents
+        agent_job_manager = AgentJobManager(db_manager)
+        resumed_ids = []
+
+        for agent in complete_agents:
+            try:
+                agent_job_manager.continue_working(tenant_key, agent.job_id)
+                resumed_ids.append(agent.job_id)
+                logger.info(f"[Continue Working] Resumed agent {agent.job_id} ({agent.agent_name})")
+
+                # Broadcast WebSocket update
+                if hasattr(request.state, "websocket_manager") and request.state.websocket_manager:
+                    from api.websocket_service import WebSocketService
+
+                    await WebSocketService.notify_agent_status(
+                        request.state.websocket_manager,
+                        agent_name=agent.agent_name or agent.agent_type,
+                        project_id=project_id,
+                        status="working",
+                        tenant_key=tenant_key,
+                        agent_id=agent.job_id,
+                    )
+
+            except Exception as e:
+                logger.error(f"[Continue Working] Failed to resume agent {agent.job_id}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to resume agent {agent.job_id}")
+
+        # Ensure project status is active
+        if project.status != "active":
+            project.status = "active"
+            project.completed_at = None
+            session.commit()
+            session.refresh(project)
+
+        logger.info(f"[Continue Working] Successfully resumed {len(resumed_ids)} agents for project {project_id}")
+
+        return ContinueWorkingResponse(
+            success=True,
+            message=f"Successfully resumed {len(resumed_ids)} agents",
+            agents_resumed=len(resumed_ids),
+            resumed_agent_ids=resumed_ids,
+            project_status=project.status,
+        )

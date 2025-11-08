@@ -76,9 +76,42 @@
       "description": "Simplify from 9 states to 7 states",
       "files_modified": []
     },
+    "phase_3b_database_fk_migration": {
+      "status": "completed",
+      "description": "Remove all FK constraints from agents.id (Handover 0116)",
+      "migration_file": "F:\\GiljoAI_MCP\\migrations\\versions\\20251107_0116_remove_agent_fk_dependencies.py",
+      "migration_id": "0116_remove_fk",
+      "revises": "0113b_decom_at",
+      "tables_modified": ["messages", "jobs", "agent_interactions", "template_usage_stats", "git_commits", "optimization_metrics"],
+      "fk_constraints_dropped": 6,
+      "columns_made_nullable": 2,
+      "data_action": "SET_NULL",
+      "records_affected": 0,
+      "reversible": true,
+      "reversible_notes": "Downgrade recreates FK constraints but cannot restore agent_id values",
+      "model_changes_file": "F:\\GiljoAI_MCP\\src\\giljo_mcp\\models.py",
+      "relationships_removed": 6,
+      "critical_blockers_resolved": [
+        "jobs.agent_id NOT NULL → nullable",
+        "optimization_metrics.agent_id NOT NULL → nullable"
+      ],
+      "next_step": "Agent table can now be safely dropped",
+      "tested": true,
+      "test_results": {
+        "upgrade_tested": true,
+        "downgrade_tested": true,
+        "re_upgrade_tested": true,
+        "all_tests_passed": true
+      },
+      "files_modified": [
+        "migrations/versions/20251107_0116_remove_agent_fk_dependencies.py",
+        "src/giljo_mcp/models.py"
+      ]
+    },
     "phase_4_0113_agent_elimination": {
       "status": "pending",
       "description": "Drop Agent table and complete migration",
+      "prerequisites": ["phase_3b_database_fk_migration must be completed"],
       "files_modified": []
     },
     "phase_5_validation": {
@@ -132,6 +165,34 @@
       "reason": "TDD approach - comprehensive tests for decommissioned_at field and decommission workflow",
       "zombie_candidate": false,
       "commit": "a17fbdd"
+    },
+    {
+      "file": "migrations/versions/20251107_0116_remove_agent_fk_dependencies.py",
+      "action": "CREATE_MIGRATION",
+      "migration_id": "0116_remove_fk",
+      "lines_added": "~350 lines",
+      "complexity": "high",
+      "reason": "Database migration to remove all FK constraints from agents.id, preparing for Agent table drop",
+      "reversible": true,
+      "reversible_notes": "Downgrade recreates FK constraints but cannot restore agent_id values (all set to NULL)",
+      "downtime": "<5 seconds",
+      "zombie_candidate": false,
+      "tables_affected": 6,
+      "critical_blockers_resolved": 2,
+      "commit": "pending"
+    },
+    {
+      "file": "src/giljo_mcp/models.py",
+      "action": "REMOVE_FK_CONSTRAINTS",
+      "models_modified": ["Message", "Job", "AgentInteraction", "TemplateUsageStats", "GitCommit", "OptimizationMetric"],
+      "fk_constraints_removed": 6,
+      "relationships_removed": 6,
+      "columns_made_nullable": 2,
+      "lines_changed": "~12 lines",
+      "complexity": "medium",
+      "reason": "Remove all ForeignKey references to agents.id and associated relationships, preparing for Agent model elimination",
+      "zombie_candidate": false,
+      "commit": "pending"
     }
   ],
   "files_deleted": [],
@@ -141,12 +202,15 @@
     "dual_model_files": 5,
     "agent_only_files": 7,
     "mcpagentjob_only_files": 0,
-    "files_migrated": 4,
+    "files_migrated": 6,
     "files_deleted": 0,
-    "lines_changed": 419,
+    "lines_changed": 781,
     "tests_added": 11,
     "zombie_files_identified": 0,
-    "scope_reduction": "96% reduction from initial estimates (12 actual vs 206 expected)"
+    "scope_reduction": "96% reduction from initial estimates (12 actual vs 206 expected)",
+    "database_migrations_created": 2,
+    "fk_constraints_removed": 6,
+    "critical_blockers_resolved": 2
   },
   "notes": [
     "Migration started: Combining Handover 0116 (Agent model cleanup) with Handover 0113 (State system unification)",

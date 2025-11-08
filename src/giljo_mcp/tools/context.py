@@ -707,11 +707,11 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     }
 
                 # Get session stats
-                from giljo_mcp.models import Agent, Message
+                from giljo_mcp.models import MCPAgentJob, Message
                 from giljo_mcp.models import Session as DBSession
 
-                # Count agents
-                agent_query = select(Agent).where(Agent.project_id == project.id)
+                # Count agent jobs (active agents)
+                agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
                 agent_result = await session.execute(agent_query)
                 agents = agent_result.scalars().all()
 

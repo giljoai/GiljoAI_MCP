@@ -4,11 +4,9 @@ Unit tests for product configuration management tools
 Tests get_product_config(), update_product_config(), and get_product_settings()
 """
 
-from datetime import datetime, timezone
-
 import pytest
 
-from giljo_mcp.models import Agent, Product, Project
+from giljo_mcp.models import Product, Project
 from giljo_mcp.tools.product import (
     get_product_config,
     get_product_settings,
@@ -64,6 +62,7 @@ async def project_with_product(db_session, product_with_config):
         tenant_key=product_with_config.tenant_key,
         product_id=product_with_config.id,
         name="Test Project",
+        description="Test project description",  # Added for NOT NULL constraint
         mission="Test project mission",
         status="active",
     )
@@ -72,58 +71,14 @@ async def project_with_product(db_session, product_with_config):
     return project
 
 
-@pytest.fixture
-async def implementer_agent(db_session, project_with_product):
-    """Create an implementer agent for testing"""
-    agent = Agent(
-        tenant_key=project_with_product.tenant_key,
-        project_id=project_with_product.id,
-        name="implementer-1",
-        role="implementer",
-        status="active",
-        created_at=datetime.now(timezone.utc),
-    )
-    db_session.add(agent)
-    await db_session.commit()
-    return agent
-
-
-@pytest.fixture
-async def tester_agent(db_session, project_with_product):
-    """Create a tester agent for testing"""
-    agent = Agent(
-        tenant_key=project_with_product.tenant_key,
-        project_id=project_with_product.id,
-        name="tester-qa",
-        role="tester",
-        status="active",
-        created_at=datetime.now(timezone.utc),
-    )
-    db_session.add(agent)
-    await db_session.commit()
-    return agent
-
-
-@pytest.fixture
-async def orchestrator_agent(db_session, project_with_product):
-    """Create an orchestrator agent for testing"""
-    agent = Agent(
-        tenant_key=project_with_product.tenant_key,
-        project_id=project_with_product.id,
-        name="orchestrator",
-        role="orchestrator",
-        status="active",
-        created_at=datetime.now(timezone.utc),
-    )
-    db_session.add(agent)
-    await db_session.commit()
-    return agent
+# Agent fixtures removed - tests use agent_name/agent_role strings directly
+# product.py tools don't query Agent model, they just use name/role for filtering
 
 
 class TestGetProductConfigFiltered:
     """Test get_product_config() with filtered=True (role-based filtering)"""
 
-    async def test_implementer_gets_filtered_config(self, db_session, project_with_product, implementer_agent):
+    async def test_implementer_gets_filtered_config(self, db_session, project_with_product):
         """Test that implementer gets only relevant fields"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -154,7 +109,7 @@ class TestGetProductConfigFiltered:
         assert "api_docs" not in config
         assert "documentation_style" not in config
 
-    async def test_tester_gets_filtered_config(self, db_session, project_with_product, tester_agent):
+    async def test_tester_gets_filtered_config(self, db_session, project_with_product):
         """Test that tester gets only testing-relevant fields"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -180,7 +135,7 @@ class TestGetProductConfigFiltered:
         assert "deployment_modes" not in config
         assert "api_docs" not in config
 
-    async def test_role_detection_from_agent_name(self, db_session, project_with_product, implementer_agent):
+    async def test_role_detection_from_agent_name(self, db_session, project_with_product):
         """Test that role is detected from agent name when not provided"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -199,18 +154,7 @@ class TestGetProductConfigFiltered:
 
     async def test_unknown_role_uses_default_filtering(self, db_session, project_with_product):
         """Test that unknown roles get analyzer-level filtering (default)"""
-        # Create agent with unknown role
-        unknown_agent = Agent(
-            tenant_key=project_with_product.tenant_key,
-            project_id=project_with_product.id,
-            name="custom-agent",
-            role="custom",
-            status="active",
-            created_at=datetime.now(timezone.utc),
-        )
-        db_session.add(unknown_agent)
-        await db_session.commit()
-
+        # No need to create agent - product.py only uses agent_name/role strings
         result = await get_product_config(
             project_id=str(project_with_product.id),
             filtered=True,
@@ -233,7 +177,7 @@ class TestGetProductConfigFiltered:
 class TestGetProductConfigUnfiltered:
     """Test get_product_config() with filtered=False (full config)"""
 
-    async def test_orchestrator_gets_full_config(self, db_session, project_with_product, orchestrator_agent):
+    async def test_orchestrator_gets_full_config(self, db_session, project_with_product):
         """Test that orchestrator with filtered=False gets ALL fields"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -260,7 +204,7 @@ class TestGetProductConfigUnfiltered:
         assert "deployment_modes" in config
         assert "serena_mcp_enabled" in config
 
-    async def test_worker_can_request_full_config(self, db_session, project_with_product, implementer_agent):
+    async def test_worker_can_request_full_config(self, db_session, project_with_product):
         """Test that worker agents can request full config with filtered=False"""
         result = await get_product_config(
             project_id=str(project_with_product.id),
@@ -297,6 +241,7 @@ class TestGetProductConfigErrors:
             tenant_key="test-tenant",
             product_id=None,  # No product
             name="Orphan Project",
+            description="Test project without product",
             mission="Test",
             status="active",
         )
@@ -341,6 +286,7 @@ class TestGetProductConfigErrors:
             tenant_key=product_empty.tenant_key,
             product_id=product_empty.id,  # Now product_empty.id is available
             name="Test Project",
+            description="Test project with empty config",
             mission="Test",
             status="active",
         )
@@ -593,7 +539,7 @@ class TestGetProductSettings:
         assert "api_docs" in config
         assert "serena_mcp_enabled" in config
 
-    async def test_settings_alias_for_orchestrators(self, db_session, project_with_product, orchestrator_agent):
+    async def test_settings_alias_for_orchestrators(self, db_session, project_with_product):
         """Test that orchestrators use get_product_settings() for full access"""
         result = await get_product_settings(project_id=str(project_with_product.id), session=db_session)
 
