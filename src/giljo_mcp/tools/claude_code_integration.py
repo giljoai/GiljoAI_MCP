@@ -8,7 +8,7 @@ and generate orchestrator prompts that can spawn the appropriate sub-agents.
 from typing import Dict
 
 from ..database import DatabaseManager
-from ..models import Agent, Project
+from ..models import MCPAgentJob, Project
 
 
 # Mapping of MCP agent roles to Claude Code agent types
@@ -74,21 +74,21 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
         if not project:
             return {"error": "Project not found"}
 
-        # Get all active agents for this project
-        agents = session.query(Agent).filter_by(project_id=project_id, tenant_key=tenant_key, status="active").all()
+        # Get all active agent jobs for this project (migrated from Agent to MCPAgentJob - Handover 0116)
+        agent_jobs = session.query(MCPAgentJob).filter_by(project_id=project_id, tenant_key=tenant_key, status="active").all()
 
         agent_instructions = []
-        for agent in agents:
-            claude_type = get_claude_code_agent_type(agent.role)
+        for job in agent_jobs:
+            claude_type = get_claude_code_agent_type(job.agent_type)
 
             agent_instructions.append(
                 {
-                    "mcp_agent_id": agent.id,
-                    "mcp_agent_name": agent.name,
-                    "mcp_role": agent.role,
+                    "mcp_agent_id": job.job_id,
+                    "mcp_agent_name": job.agent_type,  # MCPAgentJob uses agent_type instead of name
+                    "mcp_role": job.agent_type,
                     "claude_code_type": claude_type,
-                    "mission": agent.mission or f"Work on {project.name} as {agent.role}",
-                    "context_budget": agent.meta_data.get("context_budget", 50000) if agent.meta_data else 50000,
+                    "mission": job.mission or f"Work on {project.name} as {job.agent_type}",
+                    "context_budget": job.metadata.get("context_budget", 50000) if job.metadata else 50000,
                 }
             )
 

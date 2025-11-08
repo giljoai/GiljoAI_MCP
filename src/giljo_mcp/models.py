@@ -522,7 +522,6 @@ class Project(Base):
 
     # Relationships
     product = relationship("Product", back_populates="projects")
-    agents = relationship("Agent", back_populates="project", cascade="all, delete-orphan")
     agent_jobs = relationship("MCPAgentJob", back_populates="project", cascade="all, delete-orphan")  # Handover 0062
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship(
@@ -553,52 +552,6 @@ class Project(Base):
             postgresql_where=text("status = 'active'"),
         ),
     )
-
-
-class Agent(Base):
-    """
-    Agent model - represents an AI agent working on a project.
-    Each agent belongs to exactly one project (multi-tenant).
-    """
-
-    __tablename__ = "agents"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    name = Column(String(200), nullable=False)
-    role = Column(String(200), nullable=False)  # orchestrator, analyzer, implementer, tester, etc.
-    status = Column(String(50), default="active")  # active, idle, working, decommissioned
-    mission = Column(Text, nullable=True)
-    context_used = Column(Integer, default=0)
-    last_active = Column(DateTime(timezone=True), server_default=func.now())
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    decommissioned_at = Column(DateTime(timezone=True), nullable=True)
-    meta_data = Column(JSON, default=dict)
-
-    # Multi-tool orchestration (Handover 0045 - Phase 3)
-    job_id = Column(String(36), nullable=True, index=True)  # Links to MCPAgentJob
-    mode = Column(String(20), default="claude", server_default="claude")  # claude | codex | gemini
-
-    # Relationships
-    project = relationship("Project", back_populates="agents")
-    sent_messages = relationship("Message", foreign_keys="Message.from_agent_id", back_populates="sender")
-    jobs = relationship("Job", back_populates="agent", cascade="all, delete-orphan")
-
-    __table_args__ = (
-        UniqueConstraint("project_id", "name", name="uq_agent_project_name"),
-        Index("idx_agent_tenant", "tenant_key"),
-        Index("idx_agent_project", "project_id"),
-        Index("idx_agent_status", "status"),
-    )
-
-    @property
-    def message_count(self):
-        """Get count of messages received by this agent"""
-        # Count messages sent to this agent
-        if hasattr(self, "sent_messages"):
-            return len(self.sent_messages) if self.sent_messages else 0
-        return 0
 
 
 class Message(Base):
@@ -1326,7 +1279,7 @@ class GitCommit(Base):
 
     # Relationships
     project = relationship("Project", backref="git_commits")
-    agent = relationship("Agent", backref="git_commits")
+    # agent relationship removed (Handover 0116) - Agent model eliminated
 
     __table_args__ = (
         Index("idx_git_commit_tenant", "tenant_key"),

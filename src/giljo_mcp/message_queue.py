@@ -16,7 +16,7 @@ from .database import DatabaseManager
 
 # Import from centralized exceptions
 from .exceptions import ConsistencyError, QueueException
-from .models import Agent, Message
+from .models import MCPAgentJob, Message
 from .tenant import TenantManager
 
 
@@ -346,7 +346,7 @@ class RoutingEngine:
         # Broadcast messages go to all agents
         self._routing_rules.append(TypeRoutingRule("broadcast", ["*"]))
 
-    async def route_message(self, message: Message, available_agents: list[Agent]) -> list[str]:
+    async def route_message(self, message: Message, available_agents: list[MCPAgentJob]) -> list[str]:
         """
         Determine optimal agent(s) for message delivery.
 
@@ -365,7 +365,7 @@ class RoutingEngine:
                 rule_agents = rule.get_agents()
                 if "*" in rule_agents:
                     # Wildcard - all agents
-                    candidates.extend([a.name for a in available_agents])
+                    candidates.extend([a.agent_name for a in available_agents])
                 else:
                     candidates.extend(rule_agents)
 
@@ -374,7 +374,7 @@ class RoutingEngine:
             # No specific rules, check capabilities
             for agent in available_agents:
                 if self._can_handle(agent, message):
-                    candidates.append(agent.name)
+                    candidates.append(agent.agent_name)
 
         # Step 3: Remove duplicates while preserving order
         seen = set()
@@ -395,9 +395,9 @@ class RoutingEngine:
 
         return healthy_agents
 
-    def _can_handle(self, agent: Agent, message: Message) -> bool:
+    def _can_handle(self, agent: MCPAgentJob, message: Message) -> bool:
         """Check if agent can handle message type"""
-        agent_capabilities = self._agent_capabilities.get(agent.name, [])
+        agent_capabilities = self._agent_capabilities.get(agent.agent_name, [])
 
         # Default capability matching
         if message.message_type in agent_capabilities:
