@@ -355,10 +355,6 @@ export const api = {
 
   // Agent Jobs (Handover 0066 - Kanban Dashboard)
   agentJobs: {
-    // Get Kanban board data for project
-    getKanbanBoard: (projectId) =>
-      apiClient.get(`/api/agent-jobs/kanban/${projectId}`),
-
     // Get message thread for a specific job
     getMessageThread: (jobId) =>
       apiClient.get(`/api/agent-jobs/${jobId}/messages`),
