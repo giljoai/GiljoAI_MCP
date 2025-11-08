@@ -87,7 +87,53 @@
       "files_modified": []
     }
   },
-  "files_modified": [],
+  "files_modified": [
+    {
+      "file": "src/giljo_mcp/models.py",
+      "action": "ADD_COLUMN",
+      "field_added": "MCPAgentJob.decommissioned_at",
+      "lines_changed": "~12 lines",
+      "complexity": "low",
+      "tests_added": true,
+      "migration_created": "0113b_decom_at",
+      "reason": "Required for Handover 0113 project closeout workflow - tracks when agent jobs are retired",
+      "zombie_candidate": false,
+      "commit": "4409f3b"
+    },
+    {
+      "file": "src/giljo_mcp/agent_job_manager.py",
+      "action": "ENHANCE_METHOD",
+      "method_enhanced": "decommission_job",
+      "lines_changed": "~50 lines",
+      "complexity": "low",
+      "tests_added": true,
+      "reason": "Added explicit validation for 'complete' status requirement, clearer error messages",
+      "zombie_candidate": false,
+      "commit": "3e05e56"
+    },
+    {
+      "file": "migrations/versions/20251107_0113b_add_decommissioned_at_field.py",
+      "action": "CREATE_MIGRATION",
+      "migration_id": "0113b_decom_at",
+      "lines_added": "~101 lines",
+      "complexity": "low",
+      "reason": "Database migration to add decommissioned_at column to mcp_agent_jobs table",
+      "reversible": true,
+      "downtime": "<1 second",
+      "zombie_candidate": false,
+      "commit": "9417abf"
+    },
+    {
+      "file": "tests/test_agent_job_manager.py",
+      "action": "ADD_TESTS",
+      "tests_added": 11,
+      "lines_added": "~256 lines",
+      "complexity": "low",
+      "reason": "TDD approach - comprehensive tests for decommissioned_at field and decommission workflow",
+      "zombie_candidate": false,
+      "commit": "a17fbdd"
+    }
+  ],
   "files_deleted": [],
   "zombie_orphan_candidates": [],
   "statistics": {
@@ -95,9 +141,10 @@
     "dual_model_files": 5,
     "agent_only_files": 7,
     "mcpagentjob_only_files": 0,
-    "files_migrated": 0,
+    "files_migrated": 4,
     "files_deleted": 0,
-    "lines_changed": 0,
+    "lines_changed": 419,
+    "tests_added": 11,
     "zombie_files_identified": 0,
     "scope_reduction": "96% reduction from initial estimates (12 actual vs 206 expected)"
   },
