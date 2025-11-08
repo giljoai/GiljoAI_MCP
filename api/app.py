@@ -10,6 +10,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+from datetime import datetime, timezone
 
 
 # Set up logging early to catch import issues
