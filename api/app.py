@@ -102,6 +102,7 @@ try:
         user_settings,
         users,
         vision_documents,
+        websocket_bridge,
     )
     from .middleware import (
         APIMetricsMiddleware,
@@ -774,6 +775,7 @@ def create_app() -> FastAPI:
     app.include_router(system_prompts.router, prefix="/api/v1/system", tags=["system"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
+    app.include_router(websocket_bridge.router, prefix="/api/v1/ws-bridge", tags=["websocket-bridge"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
     app.include_router(users.router, prefix="/api/users", tags=["users"])

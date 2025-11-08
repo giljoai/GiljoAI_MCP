@@ -378,14 +378,27 @@ Project: {project.name}"""
                 await session.commit()
 
                 # Broadcast WebSocket event via EventBus (Handover 0111 Issue #1)
+                logger.info("=" * 70)
+                logger.info("ATTEMPTING TO BROADCAST MISSION UPDATE VIA EVENTBUS")
                 try:
+                    logger.info("Step 1: Importing api.app.state...")
                     from api.app import state
+                    logger.info(f"Step 1: state imported: {state}")
 
                     # Get Event Bus from application state
+                    logger.info("Step 2: Getting event_bus from state...")
                     event_bus = getattr(state, "event_bus", None)
+                    logger.info(f"Step 2: event_bus = {event_bus}")
+                    logger.info(f"Step 2: event_bus type = {type(event_bus)}")
+
                     if event_bus:
+                        logger.info("Step 3: EventBus found! Publishing event...")
+                        logger.info(f"Step 3: Event type: project:mission_updated")
+                        logger.info(f"Step 3: Tenant key: {project.tenant_key}")
+                        logger.info(f"Step 3: Project ID: {str(project.id)}")
+
                         # Publish event to EventBus (WebSocketEventListener will broadcast)
-                        await event_bus.publish("project:mission_updated", {
+                        result = await event_bus.publish("project:mission_updated", {
                             "tenant_key": project.tenant_key,
                             "project_id": str(project.id),
                             "mission": mission,
@@ -393,14 +406,22 @@ Project: {project.name}"""
                             "token_estimate": len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
                         })
 
+                        logger.info(f"Step 3: EventBus.publish() returned: {result}")
                         logger.info(
                             "Mission update published to event bus",
                             extra={
                                 "project_id": str(project.id),
                                 "tenant_key": project.tenant_key,
+                                "handlers_notified": result,
                             },
                         )
+                        logger.info("=" * 70)
                     else:
+                        logger.warning("=" * 70)
+                        logger.warning("EVENT BUS NOT AVAILABLE FOR MISSION UPDATE!")
+                        logger.warning(f"state.event_bus = {event_bus}")
+                        logger.warning(f"Available state attributes: {dir(state)}")
+                        logger.warning("=" * 70)
                         logger.debug(
                             "Event bus not available for mission update",
                             extra={
@@ -411,6 +432,11 @@ Project: {project.name}"""
 
                 except Exception as e:
                     # Log with full context but don't fail the mission update
+                    logger.error("=" * 70)
+                    logger.error(f"FAILED TO PUBLISH MISSION UPDATE EVENT: {e}")
+                    logger.error(f"Exception type: {type(e).__name__}")
+                    logger.error(f"Exception args: {e.args}")
+                    logger.error("=" * 70)
                     logger.error(
                         f"Failed to publish mission update event: {e}",
                         extra={
