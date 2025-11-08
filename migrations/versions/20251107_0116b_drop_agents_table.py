@@ -61,24 +61,44 @@ def upgrade():
     # =========================================================================
     print("\nSTEP 1: Running safety checks...")
 
-    # Check 1: Verify FK constraints removed
+    # Check 1: Verify FK constraints removed (check constraints that reference agents.id specifically)
     result = bind.execute(sa.text("""
-        SELECT COUNT(*) FROM information_schema.table_constraints
-        WHERE constraint_type = 'FOREIGN KEY'
-          AND constraint_name LIKE '%agent%'
-          AND table_name IN ('messages', 'jobs', 'agent_interactions',
-                             'template_usage_stats', 'git_commits',
-                             'optimization_metrics')
+        SELECT COUNT(*)
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.constraint_column_usage AS ccu
+          ON tc.constraint_name = ccu.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND ccu.table_name = 'agents'
+          AND tc.table_name IN ('messages', 'jobs', 'agent_interactions',
+                               'template_usage_stats', 'git_commits',
+                               'optimization_metrics')
     """))
     fk_count = result.scalar()
 
     if fk_count > 0:
+        # Get details about remaining FKs
+        result = bind.execute(sa.text("""
+            SELECT tc.table_name, tc.constraint_name, kcu.column_name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+              ON tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage AS ccu
+              ON tc.constraint_name = ccu.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND ccu.table_name = 'agents'
+              AND tc.table_name IN ('messages', 'jobs', 'agent_interactions',
+                                   'template_usage_stats', 'git_commits',
+                                   'optimization_metrics')
+        """))
+        details = list(result)
+        detail_str = '\n'.join([f"    - {row[0]}.{row[2]} ({row[1]})" for row in details])
         raise Exception(
-            f"SAFETY CHECK FAILED: {fk_count} FK constraints still reference agents table. "
-            f"Run migration 0116_remove_fk first."
+            f"SAFETY CHECK FAILED: {fk_count} FK constraints still reference agents table.\n"
+            f"  Run migration 0116_remove_fk first.\n\n"
+            f"  Remaining FK constraints:\n{detail_str}"
         )
 
-    print(f"  ✓ FK constraints removed: {fk_count} (expected 0)")
+    print(f"  OK FK constraints to agents table removed: {fk_count} (expected 0)")
 
     # Check 2: Verify agents table exists
     result = bind.execute(sa.text("""
@@ -91,7 +111,7 @@ def upgrade():
         print("  ⚠ agents table already dropped - skipping migration")
         return
 
-    print(f"  ✓ agents table exists")
+    print(f"  OK agents table exists")
 
     # Check 3: Verify MCPAgentJob has required fields
     result = bind.execute(sa.text("""
@@ -108,7 +128,7 @@ def upgrade():
             f"Found {required_fields}/5. Run migrations 0113_simplify_7_states and 0113b_decom_at first."
         )
 
-    print(f"  ✓ MCPAgentJob has required fields: {required_fields}/5")
+    print(f"  OK MCPAgentJob has required fields: {required_fields}/5")
 
     # =========================================================================
     # STEP 2: Create Backup Table
@@ -135,14 +155,14 @@ def upgrade():
     # Count backed up records
     result = bind.execute(sa.text("SELECT COUNT(*) FROM agents_backup_final"))
     backup_count = result.scalar()
-    print(f"  ✓ Created backup with {backup_count} records")
+    print(f"  OK Created backup with {backup_count} records")
 
     # Add metadata comment
     bind.execute(sa.text("""
         COMMENT ON TABLE agents_backup_final IS
         'Backup of agents table before Handover 0116 drop. Created 2025-11-07. Safe to drop after 2025-12-07 (30 days).'
     """))
-    print("  ✓ Added retention metadata (30-day retention)")
+    print("  OK Added retention metadata (30-day retention)")
 
     # =========================================================================
     # STEP 3: Migrate Legacy Data to MCPAgentJob
@@ -170,7 +190,7 @@ def upgrade():
           AND j.job_metadata->>'legacy_agent_data' IS NULL
     """))
     migrated_count = result.rowcount
-    print(f"  ✓ Migrated {migrated_count} agent records to MCPAgentJob.job_metadata")
+    print(f"  OK Migrated {migrated_count} agent records to MCPAgentJob.job_metadata")
 
     # Count orphaned agents (no job_id)
     result = bind.execute(sa.text("""
@@ -187,7 +207,7 @@ def upgrade():
     print("\nSTEP 4: Dropping agents table...")
 
     op.drop_table('agents')
-    print("  ✓ agents table dropped")
+    print("  OK agents table dropped")
 
     # =========================================================================
     # STEP 5: Final Verification
@@ -204,7 +224,7 @@ def upgrade():
     if remaining > 0:
         raise Exception("SAFETY CHECK FAILED: agents table still exists after drop")
 
-    print("  ✓ agents table no longer exists")
+    print("  OK agents table no longer exists")
 
     # Verify backup exists
     result = bind.execute(sa.text("""
@@ -216,7 +236,7 @@ def upgrade():
     if backup_exists == 0:
         raise Exception("SAFETY CHECK FAILED: agents_backup_final table missing")
 
-    print("  ✓ Backup table exists")
+    print("  OK Backup table exists")
 
     # Verify backup record count matches
     result = bind.execute(sa.text("SELECT COUNT(*) FROM agents_backup_final"))
@@ -228,7 +248,7 @@ def upgrade():
             f"({final_backup_count} != {backup_count})"
         )
 
-    print(f"  ✓ Backup record count verified: {final_backup_count}")
+    print(f"  OK Backup record count verified: {final_backup_count}")
 
     # Count migrated data in MCPAgentJob
     result = bind.execute(sa.text("""
@@ -236,7 +256,7 @@ def upgrade():
         WHERE job_metadata->'legacy_agent_data' IS NOT NULL
     """))
     jobs_with_legacy = result.scalar()
-    print(f"  ✓ MCPAgentJob records with legacy data: {jobs_with_legacy}")
+    print(f"  OK MCPAgentJob records with legacy data: {jobs_with_legacy}")
 
     # =========================================================================
     # Summary
@@ -249,10 +269,10 @@ def upgrade():
     print(f"  Orphaned agents:          {orphaned_count}")
     print(f"  MCPAgentJob w/ legacy:    {jobs_with_legacy}")
     print()
-    print("  ✓ agents table dropped successfully")
-    print("  ✓ Backup preserved in agents_backup_final (30-day retention)")
-    print("  ✓ Legacy data migrated to MCPAgentJob.job_metadata")
-    print("  ✓ MCPAgentJob is now sole source of truth for agent state")
+    print("  OK agents table dropped successfully")
+    print("  OK Backup preserved in agents_backup_final (30-day retention)")
+    print("  OK Legacy data migrated to MCPAgentJob.job_metadata")
+    print("  OK MCPAgentJob is now sole source of truth for agent state")
     print()
     print("NEXT STEPS:")
     print("  1. Remove Agent model from src/giljo_mcp/models.py")
