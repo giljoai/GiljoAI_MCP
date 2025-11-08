@@ -231,62 +231,16 @@ def register_optimization_tools(mcp, db_manager=None):
             Dict with handoff status and details
         """
         try:
-            # Get agent details
-            async with db_manager.get_session_async() as session:
-                from sqlalchemy import select
-
-                from ..models import Agent
-
-                result = await session.execute(select(Agent).where(Agent.id == agent_id))
-                agent = result.scalar_one_or_none()
-
-                if not agent:
-                    return {"error": f"Agent {agent_id} not found", "handoff_completed": False}
-
-                # Check if handoff is needed
-                needs_handoff, auto_reason = await orchestrator.check_handoff_needed(agent_id)
-
-                # Create handoff context
-                handoff_context = {
-                    "summary": f"Handoff requested: {reason}",
-                    "context_used": agent.context_used,
-                    "agent_role": agent.role,
-                    "forced": True,
-                    "reason": reason or auto_reason,
-                }
-
-                # Find or create target agent
-                target_agents = await session.execute(
-                    select(Agent).where(
-                        Agent.project_id == agent.project_id,
-                        Agent.role == target_agent_role,
-                        Agent.status.in_(["active", "idle"]),
-                    )
-                )
-                target_agent = target_agents.scalar_one_or_none()
-
-                if not target_agent:
-                    # Spawn new target agent
-                    from ..enums import AgentRole
-
-                    target_agent = await orchestrator.spawn_agent(
-                        project_id=agent.project_id, role=AgentRole(target_agent_role)
-                    )
-
-                # Perform handoff
-                handoff_message = await orchestrator.handoff(
-                    from_agent_id=agent_id, to_agent_id=target_agent.id, context=handoff_context
-                )
-
-                return {
-                    "agent_id": agent_id,
-                    "target_agent_id": target_agent.id,
-                    "target_agent_role": target_agent_role,
-                    "handoff_completed": True,
-                    "handoff_message_id": handoff_message.id,
-                    "reason": reason,
-                    "context_used": agent.context_used,
-                }
+            # force_agent_handoff disabled (Handover 0116) - Agent model eliminated
+            # This function used legacy Agent model for handoff coordination
+            # TODO: Reimplement using MCPAgentJob and orchestrator succession if needed
+            # See Handover 0080 for orchestrator succession implementation
+            return {
+                "error": "force_agent_handoff disabled - Agent model removed in Handover 0116",
+                "agent_id": agent_id,
+                "handoff_completed": False,
+                "migration_note": "Use orchestrator succession (Handover 0080) instead"
+            }
 
         except Exception as e:
             logger.error(f"Failed to force agent handoff: {e}")

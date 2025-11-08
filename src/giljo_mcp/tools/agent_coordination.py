@@ -185,25 +185,9 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # Acknowledge job with tenant isolation
             job = job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job_id)
 
-            # HANDOVER 0045 Phase 3: SYNC linked Agent record
-            try:
-                from sqlalchemy import select
-
-                from ..models import Agent
-
-                with db_manager.get_session() as session:
-                    # Find Agent linked to this job
-                    stmt = select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
-                    result = session.execute(stmt)
-                    agent = result.scalar_one_or_none()
-
-                    if agent:
-                        agent.status = "active"
-                        session.commit()
-                        logger.info(f"[acknowledge_job] Synced Agent {agent.id} status to active")
-            except Exception as e:
-                logger.warning(f"[acknowledge_job] Failed to sync Agent record: {e}")
-                # Non-critical - continue without sync
+            # Agent status sync removed (Handover 0116) - Agent model eliminated
+            # Previously synced job acknowledgment to legacy agents table
+            # MCPAgentJob status is authoritative and updated via AgentJobManager
 
             logger.info(f"[acknowledge_job] Job {job_id} acknowledged by {agent_id} for tenant {tenant_key}")
 
@@ -524,25 +508,9 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # Complete job with tenant isolation
             job = job_manager.complete_job(tenant_key=tenant_key, job_id=job_id, result=result)
 
-            # HANDOVER 0045 Phase 3: SYNC linked Agent record
-            try:
-                from sqlalchemy import select
-
-                from ..models import Agent
-
-                with db_manager.get_session() as session:
-                    # Find Agent linked to this job
-                    stmt = select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
-                    result_db = session.execute(stmt)
-                    agent = result_db.scalar_one_or_none()
-
-                    if agent:
-                        agent.status = "completed"
-                        session.commit()
-                        logger.info(f"[complete_job] Synced Agent {agent.id} status to completed")
-            except Exception as e:
-                logger.warning(f"[complete_job] Failed to sync Agent record: {e}")
-                # Non-critical - continue without sync
+            # Agent status sync removed (Handover 0116) - Agent model eliminated
+            # Previously synced job completion to legacy agents table
+            # MCPAgentJob status is authoritative and updated via AgentJobManager
 
             # Check for next job (optional chaining)
             next_jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_type=job.agent_type, limit=1)
@@ -675,25 +643,9 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # Fail job with tenant isolation
             job = job_manager.fail_job(tenant_key=tenant_key, job_id=job_id, error=error_data)
 
-            # HANDOVER 0045 Phase 3: SYNC linked Agent record
-            try:
-                from sqlalchemy import select
-
-                from ..models import Agent
-
-                with db_manager.get_session() as session:
-                    # Find Agent linked to this job
-                    stmt = select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
-                    result_db = session.execute(stmt)
-                    agent = result_db.scalar_one_or_none()
-
-                    if agent:
-                        agent.status = "failed"
-                        session.commit()
-                        logger.info(f"[report_error] Synced Agent {agent.id} status to failed")
-            except Exception as e:
-                logger.warning(f"[report_error] Failed to sync Agent record: {e}")
-                # Non-critical - continue without sync
+            # Agent status sync removed (Handover 0116) - Agent model eliminated
+            # Previously synced job failure to legacy agents table
+            # MCPAgentJob status is authoritative and updated via AgentJobManager
 
             # Store error in message queue for orchestrator visibility
             with db_manager.get_session() as session:
