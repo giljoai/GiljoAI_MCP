@@ -12,7 +12,7 @@ from fastmcp import FastMCP
 from sqlalchemy import and_, select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, AgentInteraction, Job, Message, Project, Task
+from giljo_mcp.models import AgentInteraction, Job, MCPAgentJob, Message, Project, Task
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.websocket_client import broadcast_sub_agent_event
 
@@ -38,7 +38,7 @@ async def _ensure_agent(
 async def _ensure_agent_with_session(
     session, project_id: str, agent_name: str, mission: Optional[str] = None
 ) -> dict[str, Any]:
-    """Internal helper with session for ensure_agent"""
+    """Internal helper with session for ensure_agent - Now uses MCPAgentJob"""
     # Check if project exists
     project_query = select(Project).where(Project.id == project_id)
     project_result = await session.execute(project_query)
@@ -50,8 +50,10 @@ async def _ensure_agent_with_session(
             "error": f"Project {project_id} not found",
         }
 
-    # Check if agent already exists
-    agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
+    # Check if agent job already exists
+    agent_query = select(MCPAgentJob).where(
+        and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name)
+    )
     agent_result = await session.execute(agent_query)
     existing_agent = agent_result.scalar_one_or_none()
 
@@ -59,32 +61,31 @@ async def _ensure_agent_with_session(
         return {
             "success": True,
             "agent": agent_name,
-            "agent_id": str(existing_agent.id),
+            "agent_id": str(existing_agent.job_id),
             "status": existing_agent.status,
             "is_new": False,
-            "message": "Returning existing agent",
+            "message": "Returning existing agent job",
         }
 
-    # Create new agent
-    agent = Agent(
-        project_id=project.id,
-        name=agent_name,
-        role=agent_name,
-        status="idle",
-        mission=mission,
-        context_used=0,
-        created_at=datetime.now(timezone.utc),
+    # Create new agent job using AgentJobManager
+    from giljo_mcp.agent_job_manager import AgentJobManager
+
+    job_manager = AgentJobManager(tenant_key=project.tenant_key)
+    agent_job = await job_manager.create_job(
+        agent_type=agent_name,
+        mission=mission or f"Agent: {agent_name}",
+        project_id=project_id,
+        spawned_by=None,  # Human-initiated
+        context_chunks=[],
     )
-    session.add(agent)
-    await session.commit()
 
     return {
         "success": True,
         "agent": agent_name,
-        "agent_id": str(agent.id),
-        "status": "idle",
+        "agent_id": str(agent_job.job_id),
+        "status": agent_job.status,
         "is_new": True,
-        "message": "Agent created successfully",
+        "message": "Agent job created successfully",
     }
 
 
@@ -105,21 +106,39 @@ async def _decommission_agent(
 async def _decommission_agent_with_session(
     session, agent_name: str, project_id: str, reason: str = "completed"
 ) -> dict[str, Any]:
-    """Internal helper with session for decommission_agent"""
-    agent_query = select(Agent).where(and_(Agent.name == agent_name, Agent.project_id == project_id))
+    """Internal helper with session for decommission_agent - Now uses MCPAgentJob"""
+    agent_query = select(MCPAgentJob).where(
+        and_(MCPAgentJob.agent_name == agent_name, MCPAgentJob.project_id == project_id)
+    )
     agent_result = await session.execute(agent_query)
     agent = agent_result.scalar_one_or_none()
 
     if not agent:
         return {
             "success": False,
-            "error": f"Agent '{agent_name}' not found in project {project_id}",
+            "error": f"Agent job '{agent_name}' not found in project {project_id}",
         }
 
-    agent.status = "decommissioned"
-    agent.decommission_reason = reason
-    agent.updated_at = datetime.now(timezone.utc)
-    await session.commit()
+    # Use AgentJobManager to decommission properly
+    from giljo_mcp.agent_job_manager import AgentJobManager
+
+    project_query = select(Project).where(Project.id == project_id)
+    project_result = await session.execute(project_query)
+    project = project_result.scalar_one_or_none()
+
+    if not project:
+        return {
+            "success": False,
+            "error": f"Project {project_id} not found",
+        }
+
+    job_manager = AgentJobManager(tenant_key=project.tenant_key)
+    # Decommission requires job to be in 'complete' status first
+    if agent.status != "complete":
+        agent.status = "complete"
+        await session.commit()
+
+    await job_manager.decommission_job(str(agent.job_id))
 
     return {
         "success": True,
@@ -142,24 +161,24 @@ async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> d
 
 
 async def _get_agent_health_with_session(session, agent_name: Optional[str] = None) -> dict[str, Any]:
-    """Internal helper with session for agent_health"""
+    """Internal helper with session for agent_health - Now uses MCPAgentJob"""
     if agent_name:
-        agent_query = select(Agent).where(Agent.name == agent_name)
+        agent_query = select(MCPAgentJob).where(MCPAgentJob.agent_name == agent_name)
         agent_result = await session.execute(agent_query)
         agent = agent_result.scalar_one_or_none()
 
         if not agent:
-            return {"success": False, "error": f"Agent '{agent_name}' not found"}
+            return {"success": False, "error": f"Agent job '{agent_name}' not found"}
 
         return {
             "success": True,
             "agent": agent_name,
             "status": agent.status,
-            "context_used": agent.context_used,
+            "context_used": 0,  # MCPAgentJob doesn't track context_used
             "last_activity": agent.updated_at.isoformat() if agent.updated_at else None,
         }
-    # Return health for all agents
-    agents_query = select(Agent)
+    # Return health for all agent jobs
+    agents_query = select(MCPAgentJob)
     agents_result = await session.execute(agents_query)
     agents = agents_result.scalars().all()
 
@@ -168,7 +187,7 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
         "total_agents": len(agents),
         "agents": [
             {
-                "name": agent.name,
+                "name": agent.agent_name,
                 "status": agent.status,
                 "context_used": agent.context_used,
                 "project_id": str(agent.project_id),
@@ -197,11 +216,11 @@ async def _handoff_agent_work_with_session(
 ) -> dict[str, Any]:
     """Internal helper with session for handoff"""
     # Check both agents exist
-    from_query = select(Agent).where(and_(Agent.name == from_agent, Agent.project_id == project_id))
+    from_query = select(MCPAgentJob).where(and_(MCPAgentJob.agent_name == from_agent, MCPAgentJob.project_id == project_id))
     from_result = await session.execute(from_query)
     from_agent_obj = from_result.scalar_one_or_none()
 
-    to_query = select(Agent).where(and_(Agent.name == to_agent, Agent.project_id == project_id))
+    to_query = select(MCPAgentJob).where(and_(MCPAgentJob.agent_name == to_agent, MCPAgentJob.project_id == project_id))
     to_result = await session.execute(to_query)
     to_agent_obj = to_result.scalar_one_or_none()
 
@@ -258,7 +277,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                     }
 
                 # Check if agent already exists
-                agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
+                agent_query = select(MCPAgentJob).where(and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name))
                 agent_result = await session.execute(agent_query)
                 existing_agent = agent_result.scalar_one_or_none()
 
@@ -268,7 +287,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                     return {
                         "success": True,
                         "agent": agent_name,
-                        "agent_id": str(existing_agent.id),
+                        "agent_id": str(existing_agent.job_id),
                         "status": existing_agent.status,
                         "is_new": False,
                         "message": "Returning existing agent",
@@ -292,7 +311,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 return {
                     "success": True,
                     "agent": agent_name,
-                    "agent_id": str(agent.id),
+                    "agent_id": str(agent.job_id),
                     "status": "idle",
                     "is_new": True,
                     "message": "Agent created successfully",
@@ -329,7 +348,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 agent_id = ensure_result["agent_id"]
 
                 # Get the agent
-                agent_query = select(Agent).where(Agent.id == agent_id)
+                agent_query = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_id)
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
@@ -343,7 +362,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 # Create discovery job for orchestrator
                 if agent_name.lower() == "orchestrator":
                     discovery_job = Job(
-                        agent_id=agent.id,
+                        agent_id=agent.job_id,
                         type="discovery",
                         status="active",
                         created_at=datetime.now(timezone.utc),
@@ -366,7 +385,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 return {
                     "success": True,
                     "agent": agent_name,
-                    "agent_id": str(agent.id),
+                    "agent_id": str(agent.job_id),
                     "status": "active",
                     "workflow": ("discovery" if agent_name.lower() == "orchestrator" else "ready"),
                     "message": f"Agent activated and {'started discovery' if agent_name.lower() == 'orchestrator' else 'ready for work'}",
@@ -404,7 +423,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         try:
             async with db_manager.get_session_async() as session:
                 # Find the agent
-                agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
+                agent_query = select(MCPAgentJob).where(and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name))
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
@@ -422,7 +441,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                         return {"success": False, "error": "Failed to create agent"}
 
                 # Check for existing active job
-                job_query = select(Job).where(and_(Job.agent_id == agent.id, Job.status == "active"))
+                job_query = select(Job).where(and_(Job.agent_id == agent.job_id, Job.status == "active"))
                 job_result = await session.execute(job_query)
                 existing_job = job_result.scalar_one_or_none()
 
@@ -436,7 +455,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 else:
                     # Create new job
                     job = Job(
-                        agent_id=agent.id,
+                        agent_id=agent.job_id,
                         type=job_type,
                         status="active",
                         scope_boundary=scope_boundary,
@@ -596,7 +615,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                     return {"success": False, "error": "Project not found"}
 
                 # Build agent query
-                agent_query = select(Agent).where(Agent.project_id == project.id)
+                agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
 
                 if agent_name:
                     agent_query = agent_query.where(Agent.name == agent_name)
@@ -614,19 +633,19 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 for agent in agents:
                     # Count pending messages
                     message_query = select(Message).where(
-                        and_(Message.to_agent == agent.name, Message.status == "pending")
+                        and_(Message.to_agent == agent.agent_name, Message.status == "pending")
                     )
                     message_result = await session.execute(message_query)
                     pending_messages = len(message_result.scalars().all())
 
                     # Get active job
-                    job_query = select(Job).where(and_(Job.agent_id == agent.id, Job.status == "active"))
+                    job_query = select(Job).where(and_(Job.agent_id == agent.job_id, Job.status == "active"))
                     job_result = await session.execute(job_query)
                     active_job = job_result.scalar_one_or_none()
 
                     health_data.append(
                         {
-                            "name": agent.name,
+                            "name": agent.agent_name,
                             "status": agent.status,
                             "context_used": agent.context_used,
                             "pending_messages": pending_messages,
@@ -661,7 +680,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         try:
             async with db_manager.get_session_async() as session:
                 # Find the agent
-                agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
+                agent_query = select(MCPAgentJob).where(and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name))
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
@@ -674,7 +693,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 # Complete any active jobs
                 job_update = (
                     update(Job)
-                    .where(Job.agent_id == agent.id, Job.status == "active")
+                    .where(Job.agent_id == agent.job_id, Job.status == "active")
                     .values(
                         status="completed" if reason == "completed" else reason,
                         completed_at=datetime.now(timezone.utc),
@@ -767,7 +786,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 interaction = AgentInteraction(
                     tenant_key=project.tenant_key,
                     project_id=project_id,
-                    parent_agent_id=parent_agent.id,
+                    parent_agent_id=parent_agent.job_id,
                     sub_agent_name=sub_agent_name,
                     interaction_type="SPAWN",
                     mission=mission,
@@ -873,7 +892,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
 
                 # Update parent agent context usage if tokens provided
                 if tokens_used and interaction.parent_agent_id:
-                    parent_query = select(Agent).where(Agent.id == interaction.parent_agent_id)
+                    parent_query = select(MCPAgentJob).where(MCPAgentJob.job_id == interaction.parent_agent_id)
                     parent_result = await session.execute(parent_query)
                     parent_agent = parent_result.scalar_one_or_none()
 
@@ -896,11 +915,11 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 # Get parent agent name for WebSocket event
                 parent_agent_name = "unknown"
                 if interaction.parent_agent_id:
-                    parent_query = select(Agent).where(Agent.id == interaction.parent_agent_id)
+                    parent_query = select(MCPAgentJob).where(MCPAgentJob.job_id == interaction.parent_agent_id)
                     parent_result = await session.execute(parent_query)
                     parent_agent = parent_result.scalar_one_or_none()
                     if parent_agent:
-                        parent_agent_name = parent_agent.name
+                        parent_agent_name = parent_agent.agent_name
 
                 # Broadcast WebSocket event
                 await broadcast_sub_agent_event(
