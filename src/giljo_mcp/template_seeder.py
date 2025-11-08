@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
+from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,14 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         current_time = datetime.now(timezone.utc)
 
         for template_def in default_templates:
+            if template_def["role"] in SYSTEM_MANAGED_ROLES:
+                logger.debug(
+                    "Skipping system-managed template '%s' during seeding (tenant=%s)",
+                    template_def["role"],
+                    tenant_key,
+                )
+                continue
+
             # Handover 0106: Dual-field system (system_instructions + user_instructions)
             # Get MCP coordination section + Context Request + Check-In Protocol (same for all templates)
             system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}"

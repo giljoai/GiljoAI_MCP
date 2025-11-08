@@ -16,11 +16,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
+from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_renderer import render_template
 from src.giljo_mcp.template_validation import (
     get_role_color,
@@ -33,6 +34,10 @@ router = APIRouter()
 
 # Maximum template size (100KB as per spec)
 MAX_TEMPLATE_SIZE = 100 * 1024  # 100KB in bytes
+USER_MANAGED_AGENT_LIMIT = 7  # Reserve one slot for orchestrator
+
+def _is_system_managed_role(role: Optional[str]) -> bool:
+    return bool(role and role in SYSTEM_MANAGED_ROLES)
 
 
 # Pydantic models for request/response
@@ -148,6 +153,7 @@ class TemplateResponse(BaseModel):
     avg_generation_ms: Optional[float] = None
     created_by: Optional[str] = None
     preferred_tool: str = "claude"
+    is_system_role: bool = Field(False, description="True when template is system managed")
 
     @classmethod
     def from_orm(cls, template):
@@ -186,6 +192,8 @@ class TemplateResponse(BaseModel):
             avg_generation_ms=template.avg_generation_ms,
             created_by=template.created_by,
             preferred_tool=getattr(template, "preferred_tool", template.cli_tool or template.tool or "claude")
+            ,
+            is_system_role=_is_system_managed_role(template.role),
         )
 
 
@@ -281,6 +289,10 @@ async def validate_active_agent_limit(
     """
     from src.giljo_mcp.models import AgentTemplate
 
+    # System-managed roles are not user-toggleable
+    if _is_system_managed_role(role):
+        return False, "System-managed roles cannot be toggled"
+
     # If deactivating, always allow
     if not new_is_active:
         return True, ""
@@ -294,11 +306,17 @@ async def validate_active_agent_limit(
             return False, "Template not found"
 
     # Count currently active distinct roles (excluding the one being toggled)
-    stmt = select(AgentTemplate.role).where(
-        AgentTemplate.tenant_key == tenant_key,
-        AgentTemplate.is_active == True,  # noqa: E712
-        AgentTemplate.id != template_id,
-    ).distinct()
+    system_roles = list(SYSTEM_MANAGED_ROLES)
+    stmt = (
+        select(AgentTemplate.role)
+        .where(
+            AgentTemplate.tenant_key == tenant_key,
+            AgentTemplate.is_active == True,  # noqa: E712
+            AgentTemplate.id != template_id,
+        )
+        .where(AgentTemplate.role.notin_(system_roles))
+        .distinct()
+    )
 
     result = await db.execute(stmt)
     active_roles = {row[0] for row in result.all()}
@@ -307,9 +325,13 @@ async def validate_active_agent_limit(
     if role in active_roles:
         return True, ""
 
-    # If we have 8 distinct active roles, block new role activation
-    if len(active_roles) >= 8:
-        return False, f"Maximum 8 active agent roles allowed (currently {len(active_roles)}). Deactivate another role first."
+    # If we have 7 distinct active roles, block new role activation (orchestrator is reserved)
+    if len(active_roles) >= USER_MANAGED_AGENT_LIMIT:
+        return (
+            False,
+            f"Maximum {USER_MANAGED_AGENT_LIMIT} active agent roles allowed (currently {len(active_roles)}). "
+            "Deactivate another role first.",
+        )
 
     return True, ""
 
@@ -334,6 +356,9 @@ async def get_template(
         from src.giljo_mcp.models import AgentTemplate
 
         context = get_tenant_and_product_from_user(current_user)
+
+        if _is_system_managed_role(template.role):
+            raise HTTPException(status_code=403, detail="System-managed roles cannot be created or duplicated")
 
         # Get template with tenant isolation
         stmt = select(AgentTemplate).where(
@@ -361,6 +386,7 @@ async def get_templates(
     is_active: Optional[bool] = Query(
         None, description="Filter by active status (None=all, True=active only, False=inactive only)"
     ),
+    include_system: bool = Query(False, description="Include system-managed templates"),
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -383,6 +409,14 @@ async def get_templates(
         filters = [
             AgentTemplate.tenant_key == context["tenant_key"],
         ]
+        if not include_system:
+            system_roles = list(SYSTEM_MANAGED_ROLES)
+            filters.append(
+                or_(
+                    AgentTemplate.role.is_(None),
+                    AgentTemplate.role.notin_(system_roles),
+                )
+            )
 
         # Optional is_active filter (None = all templates)
         if is_active is not None:
@@ -428,8 +462,8 @@ async def get_active_count(
     """
     Get count of active templates for current tenant (Handover 0075).
 
-    Returns active agent count, maximum allowed (8), and remaining slots.
-    Used by frontend to display "Active: 6/8" counter and validate limits.
+    Returns user-manageable active agent count, reserved system slots, and remaining capacity.
+    Used by frontend to display "Active: 1 (system) + N / 8" counter and validate limits.
 
     Security:
     - Multi-tenant isolation: Only counts templates for user's tenant_key
@@ -447,19 +481,28 @@ async def get_active_count(
 
         context = get_tenant_and_product_from_user(current_user)
 
-        # Count active templates for tenant
-        stmt = select(func.count(AgentTemplate.id)).where(
-            AgentTemplate.tenant_key == context["tenant_key"],
-            AgentTemplate.is_active == True,  # noqa: E712
+        # Count active user-manageable templates for tenant
+        stmt = (
+            select(func.count(AgentTemplate.id))
+            .where(
+                AgentTemplate.tenant_key == context["tenant_key"],
+                AgentTemplate.is_active == True,  # noqa: E712
+            )
+            .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
         )
 
         result = await session.execute(stmt)
-        active_count = result.scalar_one()
+        user_active = result.scalar_one()
+        system_reserved = len(SYSTEM_MANAGED_ROLES)
+        total_capacity = USER_MANAGED_AGENT_LIMIT + system_reserved
 
         return {
-            "active_count": active_count,
-            "max_allowed": 8,
-            "remaining_slots": max(0, 8 - active_count),
+            "active_count": user_active,
+            "max_allowed": USER_MANAGED_AGENT_LIMIT,
+            "remaining_slots": max(0, USER_MANAGED_AGENT_LIMIT - user_active),
+            "system_reserved": system_reserved,
+            "total_active": user_active + system_reserved,
+            "total_capacity": total_capacity,
         }
 
     except Exception as e:
@@ -681,6 +724,11 @@ async def update_template(
         if template.tenant_key == "system":
             raise HTTPException(status_code=403, detail="System templates are read-only")  # noqa: TRY301
 
+        if _is_system_managed_role(template.role):
+            raise HTTPException(
+                status_code=403, detail="System-managed templates must be edited via protected system endpoints"
+            )
+
         # CRITICAL: Prevent system_instructions modification (Handover 0106)
         # Check if request contains system_instructions field (even if None)
         if hasattr(update, "system_instructions") and "system_instructions" in update.model_dump(exclude_unset=True):
@@ -734,6 +782,8 @@ async def update_template(
             template.name = update.name
 
         if update.role is not None:
+            if _is_system_managed_role(update.role):
+                raise HTTPException(status_code=403, detail="Cannot assign system-managed role to user templates")
             template.role = update.role
             # Auto-update background_color when role changes
             template.background_color = get_role_color(update.role)
@@ -885,6 +935,9 @@ async def delete_template(
         # Prevent system template deletion
         if template.tenant_key == "system":
             raise HTTPException(status_code=403, detail="System templates cannot be deleted")  # noqa: TRY301
+
+        if _is_system_managed_role(template.role):
+            raise HTTPException(status_code=403, detail="System-managed templates cannot be deleted or archived")
 
         template_name = template.name
 
@@ -1160,6 +1213,11 @@ async def restore_template_version(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")  # noqa: TRY301
 
+        if _is_system_managed_role(template.role):
+            raise HTTPException(
+                status_code=403, detail="System-managed templates cannot be restored via this endpoint"
+            )
+
         # Archive current version before restoring
         current_archive = TemplateArchive(
             tenant_key=template.tenant_key,
@@ -1274,6 +1332,9 @@ async def reset_template_to_system_default(
         # Cannot reset system templates
         if tenant_template.tenant_key == "system":
             raise HTTPException(status_code=400, detail="Cannot reset system templates")
+
+        if _is_system_managed_role(tenant_template.role):
+            raise HTTPException(status_code=403, detail="System-managed templates cannot be reset")
 
         if not tenant_template.role:
             raise HTTPException(status_code=400, detail="Template must have a role to reset to system default")
