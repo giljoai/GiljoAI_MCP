@@ -13,8 +13,8 @@ Use cases:
 - Maintain audit trail for agent lifecycle
 - Support project closeout workflow (Handover 0113)
 
-Revision ID: 20251107_0113b_add_decommissioned_at_field
-Revises: 20251107_0113_simplify_to_7_states
+Revision ID: 0113b_decommissioned_at
+Revises: 0113_simplify_7_states
 Create Date: 2025-11-07 00:00:00.000000
 
 Database impact:
@@ -34,8 +34,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "20251107_0113b_add_decommissioned_at_field"
-down_revision: Union[str, Sequence[str], None] = "20251107_0113_simplify_to_7_states"
+revision: str = "0113b_decom_at"
+down_revision: Union[str, Sequence[str], None] = "0113_simplify_7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
