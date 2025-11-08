@@ -13,7 +13,7 @@ import yaml
 from sqlalchemy import and_, select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, Message, Product, Project, Task
+from giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
 from giljo_mcp.tenant import TenantManager
 
 
@@ -227,9 +227,9 @@ class ToolAccessor:
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
-                # Get agents
-                agent_result = await session.execute(select(Agent).where(Agent.project_id == project.id))
-                agents = agent_result.scalars().all()
+                # Get agent jobs (migrated from Agent to MCPAgentJob - Handover 0116)
+                agent_job_result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.project_id == project.id))
+                agent_jobs = agent_job_result.scalars().all()
 
                 # Get pending messages
                 message_result = await session.execute(
@@ -251,7 +251,7 @@ class ToolAccessor:
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
                     },
-                    "agents": [{"name": agent.name, "status": agent.status, "role": agent.role} for agent in agents],
+                    "agents": [{"name": job.agent_type, "status": job.status, "role": job.agent_type} for job in agent_jobs],
                     "pending_messages": pending_messages,
                 }
 
@@ -838,18 +838,18 @@ class ToolAccessor:
         """Broadcast message to all agents in project"""
         try:
             async with self.db_manager.get_session_async() as session:
-                # Get all agents in project
-                result = await session.execute(select(Agent).where(Agent.project_id == project_id))
-                agents = result.scalars().all()
+                # Get all agent jobs in project (migrated from Agent to MCPAgentJob - Handover 0116)
+                result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.project_id == project_id))
+                agent_jobs = result.scalars().all()
 
-                if not agents:
-                    return {"success": False, "error": "No agents found in project"}
+                if not agent_jobs:
+                    return {"success": False, "error": "No agent jobs found in project"}
 
-                agent_names = [agent.name for agent in agents]
+                agent_types = [job.agent_type for job in agent_jobs]
 
                 # Send message to all agents
                 return await self.send_message(
-                    to_agents=agent_names,
+                    to_agents=agent_types,
                     content=content,
                     project_id=project_id,
                     message_type="broadcast",
@@ -1831,21 +1831,9 @@ Begin by fetching your mission.
             job_manager = AgentJobManager(self.db_manager)
             job = job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job_id)
 
-            # Sync linked Agent record
-            try:
-                async with self.db_manager.get_session_async() as session:
-                    from giljo_mcp.models import Agent
-
-                    result = await session.execute(
-                        select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
-                    )
-                    agent = result.scalar_one_or_none()
-
-                    if agent:
-                        agent.status = "active"
-                        await session.commit()
-            except Exception as sync_error:
-                logger.warning(f"Failed to sync Agent status: {sync_error}")
+            # Agent status sync removed (Handover 0116) - Agent model eliminated
+            # Previously synced job acknowledgment to legacy agents table
+            # MCPAgentJob status is authoritative and updated via AgentJobManager
 
             return {
                 "status": "success",
@@ -1915,21 +1903,9 @@ Begin by fetching your mission.
             job_manager = AgentJobManager(self.db_manager)
             job = job_manager.complete_job(tenant_key=tenant_key, job_id=job_id, result=result)
 
-            # Sync linked Agent record
-            try:
-                async with self.db_manager.get_session_async() as session:
-                    from giljo_mcp.models import Agent
-
-                    result_obj = await session.execute(
-                        select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
-                    )
-                    agent = result_obj.scalar_one_or_none()
-
-                    if agent:
-                        agent.status = "completed"
-                        await session.commit()
-            except Exception as sync_error:
-                logger.warning(f"Failed to sync Agent status: {sync_error}")
+            # Agent status sync removed (Handover 0116) - Agent model eliminated
+            # Previously synced job completion to legacy agents table
+            # MCPAgentJob status is authoritative and updated via AgentJobManager
 
             return {"status": "success", "job_id": job.job_id, "message": "Job completed successfully"}
 
@@ -1956,19 +1932,11 @@ Begin by fetching your mission.
             job_manager = AgentJobManager(self.db_manager)
             job = job_manager.fail_job(tenant_key=tenant_key, job_id=job_id, error_message=error)
 
-            # Sync linked Agent record
+            # Agent status sync removed (Handover 0116) - Agent model eliminated
+            # Previously synced job failure to legacy agents table
+            # MCPAgentJob status is authoritative and updated via AgentJobManager
             try:
-                async with self.db_manager.get_session_async() as session:
-                    from giljo_mcp.models import Agent
-
-                    result = await session.execute(
-                        select(Agent).where(Agent.job_id == job_id, Agent.tenant_key == tenant_key)
-                    )
-                    agent = result.scalar_one_or_none()
-
-                    if agent:
-                        agent.status = "failed"
-                        await session.commit()
+                pass
             except Exception as sync_error:
                 logger.warning(f"Failed to sync Agent status: {sync_error}")
 
