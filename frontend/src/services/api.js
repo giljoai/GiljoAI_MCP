@@ -308,6 +308,7 @@ export const api = {
     preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
+    activeCount: () => apiClient.get('/api/v1/templates/stats/active-count'),
     exportClaudeCode: (data) => apiClient.post('/api/export/claude-code', data),
   },
 
@@ -416,6 +417,13 @@ export const api = {
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
       apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),
+  },
+
+  system: {
+    getOrchestratorPrompt: () => apiClient.get('/api/v1/system/orchestrator-prompt'),
+    updateOrchestratorPrompt: (content) =>
+      apiClient.put('/api/v1/system/orchestrator-prompt', { content }),
+    resetOrchestratorPrompt: () => apiClient.post('/api/v1/system/orchestrator-prompt/reset'),
   },
 }
 
