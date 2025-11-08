@@ -34,8 +34,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.app import state
-
 # Handover 0086B: Production-grade WebSocket dependency injection
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 
@@ -1045,6 +1043,9 @@ async def broadcast_message(
 
     # Broadcast WebSocket event (if available)
     try:
+        # Lazy import to avoid circular dependency
+        from api.app import state
+
         if state.websocket_manager:
             await state.websocket_manager.broadcast_to_project(
                 message_request.project_id,

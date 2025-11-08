@@ -224,7 +224,7 @@ async def handle_tools_list(
         # Agent Management Tools
         {
             "name": "spawn_agent",
-            "description": "Spawn a new AI agent for the project",
+            "description": "[DEPRECATED] Use spawn_agent_job instead. Creates legacy Agent records (4-state). See Comprehensive_MCP_Analysis.md. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -237,7 +237,7 @@ async def handle_tools_list(
         },
         {
             "name": "list_agents",
-            "description": "List all agents in the current project",
+            "description": "[DEPRECATED] Use get_pending_jobs instead. Queries legacy 'agents' table. Dashboard uses 'mcp_agent_jobs'. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -248,7 +248,7 @@ async def handle_tools_list(
         },
         {
             "name": "get_agent_status",
-            "description": "Get status of a specific agent",
+            "description": "[DEPRECATED] Use get_workflow_status instead. Uses 4-state Agent model. Replacement provides 7-state MCPAgentJob monitoring. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {"agent_id": {"type": "string", "description": "Agent ID"}},
@@ -257,7 +257,7 @@ async def handle_tools_list(
         },
         {
             "name": "update_agent",
-            "description": "Update agent configuration or status",
+            "description": "[DEPRECATED] Use report_progress (in-progress) or complete_job (finished) instead. Updates legacy 'agents' table. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -270,7 +270,7 @@ async def handle_tools_list(
         },
         {
             "name": "retire_agent",
-            "description": "Retire an agent from active duty",
+            "description": "[DEPRECATED] Agent retirement handled automatically via job lifecycle. Use complete_job() instead. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {"agent_id": {"type": "string", "description": "Agent ID to retire"}},
@@ -433,7 +433,7 @@ async def handle_tools_list(
         # Context Discovery Tools
         {
             "name": "discover_context",
-            "description": "Discover available context in the project",
+            "description": "[DEPRECATED] Stub implementation - not needed. Thin client architecture (Handover 0088) eliminated need. Use get_agent_mission(). Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {"project_id": {"type": "string", "description": "Project ID"}},
@@ -441,7 +441,7 @@ async def handle_tools_list(
         },
         {
             "name": "get_file_context",
-            "description": "Get context from a specific file",
+            "description": "[DEPRECATED] Stub implementation - not needed. Agents access files directly via Read tool or Serena MCP (read_file). Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {"file_path": {"type": "string", "description": "Path to file"}},
@@ -450,7 +450,7 @@ async def handle_tools_list(
         },
         {
             "name": "search_context",
-            "description": "Search through project context",
+            "description": "[DEPRECATED] Stub implementation - not needed. Agents use IDE search (Grep) or Serena MCP (search_for_pattern) directly. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -463,7 +463,7 @@ async def handle_tools_list(
         },
         {
             "name": "get_context_summary",
-            "description": "Get summary of available context",
+            "description": "[DEPRECATED] Stub implementation - not needed. Mission from get_agent_mission() provides all necessary context. Removal: v3.2.0",
             "inputSchema": {
                 "type": "object",
                 "properties": {"project_id": {"type": "string", "description": "Project ID"}},
