@@ -808,3 +808,259 @@ class TestAgentJobManagerEdgeCases:
         assert job.messages[0]["content"] == "Starting work"
         assert job.messages[1]["content"] == "Still working"
         assert job.messages[2]["content"] == "Almost done"
+
+
+class TestAgentJobDecommissioning:
+    """Test decommissioning functionality for agent jobs (Handover 0113)."""
+
+    def test_decommissioned_at_field_exists(self, db_session, db_manager):
+        """Test that decommissioned_at field exists in MCPAgentJob model."""
+        from src.giljo_mcp.models import MCPAgentJob
+
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create a job
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+
+        # Verify decommissioned_at field exists and is NULL by default
+        assert hasattr(job, 'decommissioned_at')
+        assert job.decommissioned_at is None
+
+    def test_decommissioned_at_is_nullable(self, db_session, db_manager):
+        """Test that decommissioned_at field is nullable."""
+        from src.giljo_mcp.models import MCPAgentJob
+        from sqlalchemy import inspect
+
+        # Get column metadata
+        inspector = inspect(db_manager.engine)
+        columns = {col['name']: col for col in inspector.get_columns('mcp_agent_jobs')}
+
+        # Verify decommissioned_at is nullable
+        assert 'decommissioned_at' in columns
+        assert columns['decommissioned_at']['nullable'] is True
+
+    def test_decommissioned_at_is_timezone_aware(self, db_session, db_manager):
+        """Test that decommissioned_at field uses timezone-aware datetime."""
+        from src.giljo_mcp.models import MCPAgentJob
+        from sqlalchemy import inspect
+
+        # Get column metadata
+        inspector = inspect(db_manager.engine)
+        columns = {col['name']: col for col in inspector.get_columns('mcp_agent_jobs')}
+
+        # Verify decommissioned_at is timestamp with timezone
+        assert 'decommissioned_at' in columns
+        col_type = str(columns['decommissioned_at']['type']).lower()
+        assert 'timestamp' in col_type or 'datetime' in col_type
+
+    def test_decommission_job_from_complete_status(self, db_session, db_manager):
+        """Test decommissioning a job that is in 'complete' status."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create, acknowledge, and complete job
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+        job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
+        job = manager.complete_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id,
+            result={"status": "success"},
+        )
+
+        assert job.status == "completed"
+        assert job.decommissioned_at is None
+
+        # Decommission the job
+        decommissioned_job = manager.decommission_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id
+        )
+
+        # Verify decommissioning
+        assert decommissioned_job.status == "decommissioned"
+        assert decommissioned_job.decommissioned_at is not None
+        assert isinstance(decommissioned_job.decommissioned_at, datetime)
+
+    def test_decommission_job_invalid_from_pending(self, db_session, db_manager):
+        """Test that decommissioning fails for non-complete jobs (pending)."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create pending job
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+
+        # Try to decommission pending job (should fail)
+        with pytest.raises(ValueError, match="Only completed jobs can be decommissioned"):
+            manager.decommission_job(
+                tenant_key=tenant_key,
+                job_id=job.job_id
+            )
+
+    def test_decommission_job_invalid_from_active(self, db_session, db_manager):
+        """Test that decommissioning fails for non-complete jobs (active)."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create and acknowledge job
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+        job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
+
+        # Try to decommission active job (should fail)
+        with pytest.raises(ValueError, match="Only completed jobs can be decommissioned"):
+            manager.decommission_job(
+                tenant_key=tenant_key,
+                job_id=job.job_id
+            )
+
+    def test_decommission_job_invalid_from_failed(self, db_session, db_manager):
+        """Test that decommissioning fails for failed jobs."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create, acknowledge, and fail job
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+        job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
+        job = manager.fail_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id,
+            error={"error": "Test failure"}
+        )
+
+        # Try to decommission failed job (should fail)
+        with pytest.raises(ValueError, match="Only completed jobs can be decommissioned"):
+            manager.decommission_job(
+                tenant_key=tenant_key,
+                job_id=job.job_id
+            )
+
+    def test_decommission_job_tenant_isolation(self, db_session, db_manager):
+        """Test that decommissioning respects tenant isolation."""
+        tenant_key1 = str(uuid4())
+        tenant_key2 = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create and complete job for tenant1
+        job = manager.create_job(
+            tenant_key=tenant_key1,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+        job = manager.acknowledge_job(tenant_key=tenant_key1, job_id=job.job_id)
+        job = manager.complete_job(
+            tenant_key=tenant_key1,
+            job_id=job.job_id,
+            result={"status": "success"}
+        )
+
+        # Try to decommission with tenant2 credentials (should fail)
+        with pytest.raises(ValueError, match="Job .* not found for tenant"):
+            manager.decommission_job(
+                tenant_key=tenant_key2,
+                job_id=job.job_id
+            )
+
+    def test_decommission_job_not_found(self, db_session, db_manager):
+        """Test decommissioning a non-existent job."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        fake_job_id = str(uuid4())
+
+        # Try to decommission non-existent job (should fail)
+        with pytest.raises(ValueError, match="Job .* not found for tenant"):
+            manager.decommission_job(
+                tenant_key=tenant_key,
+                job_id=fake_job_id
+            )
+
+    def test_decommission_job_idempotent(self, db_session, db_manager):
+        """Test that decommissioning a job twice is idempotent."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create, acknowledge, and complete job
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+        )
+        job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
+        job = manager.complete_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id,
+            result={"status": "success"}
+        )
+
+        # Decommission the job first time
+        job1 = manager.decommission_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id
+        )
+        first_decommission_time = job1.decommissioned_at
+
+        # Decommission the same job again (should be idempotent)
+        job2 = manager.decommission_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id
+        )
+
+        # Verify idempotency (timestamp should be preserved)
+        assert job2.status == "decommissioned"
+        assert job2.decommissioned_at == first_decommission_time
+
+    def test_project_closeout_workflow_decommissions_all_complete_agents(self, db_session, db_manager):
+        """Test project closeout workflow sets decommissioned_at for all complete agents."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create multiple jobs (simulating a project)
+        jobs = []
+        for i in range(5):
+            job = manager.create_job(
+                tenant_key=tenant_key,
+                agent_type="implementer",
+                mission=f"Mission {i}",
+            )
+            job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
+            job = manager.complete_job(
+                tenant_key=tenant_key,
+                job_id=job.job_id,
+                result={"status": "success"}
+            )
+            jobs.append(job)
+
+        # Decommission all jobs (simulating project closeout)
+        decommissioned_jobs = []
+        for job in jobs:
+            decommissioned_job = manager.decommission_job(
+                tenant_key=tenant_key,
+                job_id=job.job_id
+            )
+            decommissioned_jobs.append(decommissioned_job)
+
+        # Verify all jobs are decommissioned
+        assert len(decommissioned_jobs) == 5
+        for job in decommissioned_jobs:
+            assert job.status == "decommissioned"
+            assert job.decommissioned_at is not None
