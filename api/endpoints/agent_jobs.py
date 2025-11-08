@@ -16,11 +16,6 @@ Provides REST API for comprehensive agent job operations:
 - POST /api/agent-jobs/{job_id}/spawn-children - Spawn children
 - GET /api/agent-jobs/{job_id}/hierarchy - Get hierarchy
 
-Kanban Board API endpoints for Handover 0066: Agent Kanban Dashboard:
-- GET /api/agent-jobs/kanban/{project_id} - Get Kanban board data
-- GET /api/agent-jobs/{job_id}/message-thread - Get message thread
-- POST /api/agent-jobs/{job_id}/send-message - Send developer message
-
 Job Cancellation & Health Monitoring endpoints for Handover 0107:
 - POST /api/agent-jobs/{job_id}/cancel - Cancel job gracefully
 - POST /api/agent-jobs/{job_id}/force-fail - Force fail unresponsive job
@@ -32,11 +27,14 @@ All endpoints enforce role-based access control and multi-tenant isolation.
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.app import state
 
 # Handover 0086B: Production-grade WebSocket dependency injection
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
@@ -55,16 +53,9 @@ from api.schemas.agent_job import (
     JobForceFailRequest,
     JobForceFailResponse,
     JobHealthResponse,
-    JobHierarchyResponse,
     JobListResponse,
     JobResponse,
-    JobSpawnRequest,
-    JobSpawnResponse,
     JobUpdateRequest,
-    KanbanBoardResponse,
-    KanbanColumn,
-    KanbanJobCard,
-    MessageCounts,
     MessageResponse,
     MessageSendRequest,
     MessageThreadItem,
@@ -73,8 +64,10 @@ from api.schemas.agent_job import (
     SendMessageResponse,
 )
 from api.schemas.prompt import BroadcastMessageRequest, BroadcastMessageResponse
+from src.giljo_mcp.agent_job_manager import AgentJobManager
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
+from src.giljo_mcp.slash_commands.handover import handle_gil_handover
 
 
 logger = logging.getLogger(__name__)
@@ -252,11 +245,10 @@ async def create_job(
                 "sent_count": sent_count,
             },
         )
-    except Exception as e:
-        logger.error(
-            f"Failed to broadcast agent creation: {e}",
+    except Exception:
+        logger.exception(
+            "Failed to broadcast agent creation",
             extra={"job_id": str(job.job_id), "agent_type": job.agent_type, "tenant_key": current_user.tenant_key},
-            exc_info=True,
         )
         # Non-critical - continue without WebSocket broadcast
 
@@ -411,8 +403,6 @@ async def update_job(
         new_status = update_data["status"]
 
         # Validate status transition
-        from src.giljo_mcp.agent_job_manager import AgentJobManager
-
         valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
         if new_status not in valid_transitions:
@@ -517,8 +507,6 @@ async def acknowledge_job(
 
     # Validate status transition
     if job.status != "pending":
-        from src.giljo_mcp.agent_job_manager import AgentJobManager
-
         valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
         if "active" not in valid_transitions:
@@ -529,8 +517,6 @@ async def acknowledge_job(
             )
 
     # Update job
-    from datetime import datetime, timezone
-
     job.acknowledged = True
     job.status = "active"
     job.started_at = datetime.now(timezone.utc)
@@ -580,8 +566,6 @@ async def complete_job(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Validate status transition
-    from src.giljo_mcp.agent_job_manager import AgentJobManager
-
     valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
     if "completed" not in valid_transitions:
@@ -592,8 +576,6 @@ async def complete_job(
         )
 
     # Update job
-    from datetime import datetime, timezone
-
     job.status = "completed"
     job.completed_at = datetime.now(timezone.utc)
 
@@ -605,7 +587,7 @@ async def complete_job(
             "content": complete_request.result,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        job.messages = job.messages + [result_msg]
+        job.messages = [*job.messages, result_msg]
 
     await db.commit()
     await db.refresh(job)
@@ -652,8 +634,6 @@ async def fail_job(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Validate status transition
-    from src.giljo_mcp.agent_job_manager import AgentJobManager
-
     valid_transitions = AgentJobManager.VALID_TRANSITIONS.get(job.status, set())
 
     if "failed" not in valid_transitions:
@@ -664,8 +644,6 @@ async def fail_job(
         )
 
     # Update job
-    from datetime import datetime, timezone
-
     job.status = "failed"
     job.completed_at = datetime.now(timezone.utc)
 
@@ -677,7 +655,7 @@ async def fail_job(
             "content": fail_request.error,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        job.messages = job.messages + [error_msg]
+        job.messages = [*job.messages, error_msg]
 
     await db.commit()
     await db.refresh(job)
@@ -724,7 +702,6 @@ async def send_message(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Create message
-    from datetime import datetime, timezone
 
     message = {
         "role": message_request.role,
@@ -735,7 +712,7 @@ async def send_message(
     }
 
     # Add message to job
-    job.messages = job.messages + [message]
+    job.messages = [*job.messages, message]
 
     await db.commit()
     await db.refresh(job)
@@ -830,8 +807,8 @@ async def acknowledge_message(
         msg_idx = int(message_id)
         if msg_idx < 0 or msg_idx >= len(job.messages or []):
             raise IndexError
-    except (ValueError, IndexError):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    except (ValueError, IndexError) as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found") from e
 
     # Update message acknowledged status
     messages = job.messages or []
@@ -854,215 +831,6 @@ async def acknowledge_message(
 
 
 # Job Coordination Endpoints
-
-
-@router.post("/{job_id}/spawn-children", response_model=JobSpawnResponse, status_code=status.HTTP_201_CREATED)
-async def spawn_children(
-    job_id: str,
-    spawn_request: JobSpawnRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> JobSpawnResponse:
-    """
-    Spawn child jobs from a parent job.
-
-    Args:
-        job_id: Parent job ID
-        spawn_request: Child job specifications
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        Spawn response with created child job IDs
-
-    Raises:
-        HTTPException: 404 if parent job not found
-    """
-    logger.debug(f"User {current_user.username} spawning children for job {job_id}")
-
-    # Query parent job with tenant isolation
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    parent_job = result.scalar_one_or_none()
-
-    if not parent_job:
-        logger.warning(f"Parent job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-
-    # Create child jobs
-    child_job_ids = []
-    for child_spec in spawn_request.children:
-        child_job = MCPAgentJob(
-            tenant_key=current_user.tenant_key,
-            agent_type=child_spec.agent_type,
-            mission=child_spec.mission,
-            status="pending",
-            spawned_by=parent_job.job_id,
-            context_chunks=child_spec.context_chunks or [],
-            messages=[],
-            acknowledged=False,
-        )
-
-        db.add(child_job)
-        await db.flush()  # Get job_id without committing
-        child_job_ids.append(child_job.job_id)
-
-    await db.commit()
-
-    logger.info(f"Spawned {len(child_job_ids)} children for job {job_id}")
-
-    return JobSpawnResponse(
-        parent_job_id=parent_job.job_id,
-        child_job_ids=child_job_ids,
-        message=f"{len(child_job_ids)} child jobs spawned successfully",
-    )
-
-
-@router.get("/{job_id}/hierarchy", response_model=JobHierarchyResponse)
-async def get_hierarchy(
-    job_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
-) -> JobHierarchyResponse:
-    """
-    Get job hierarchy (parent + all children).
-
-    Args:
-        job_id: Parent job ID
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        Hierarchy response with parent and children
-
-    Raises:
-        HTTPException: 404 if parent job not found
-    """
-    logger.debug(f"User {current_user.username} getting hierarchy for job {job_id}")
-
-    # Query parent job with tenant isolation
-    parent_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == current_user.tenant_key
-    )
-    result = await db.execute(parent_stmt)
-    parent = result.scalar_one_or_none()
-
-    if not parent:
-        logger.warning(f"Parent job {job_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-
-    # Query children
-    children_stmt = (
-        select(MCPAgentJob)
-        .where(MCPAgentJob.spawned_by == job_id, MCPAgentJob.tenant_key == current_user.tenant_key)
-        .order_by(MCPAgentJob.created_at)
-    )
-
-    result = await db.execute(children_stmt)
-    children = result.scalars().all()
-
-    logger.info(f"Retrieved hierarchy for job {job_id}: {len(children)} children")
-
-    return JobHierarchyResponse(
-        parent=job_to_response(parent),
-        children=[job_to_response(child) for child in children],
-        total_children=len(children),
-    )
-
-
-# Kanban Board Endpoints (Handover 0066)
-
-
-@router.get("/kanban/{project_id}", response_model=KanbanBoardResponse)
-async def get_kanban_board(
-    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
-) -> KanbanBoardResponse:
-    """
-    Get Kanban board data for Agent Kanban Dashboard.
-
-    Returns jobs grouped by status (4 columns: pending, active, completed, blocked)
-    with message counts for each job.
-
-    Args:
-        project_id: Project ID to get Kanban board for
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        Kanban board data with 4 columns and message counts
-
-    Raises:
-        HTTPException: 404 if project not found (includes multi-tenant isolation)
-    """
-    logger.debug(f"User {current_user.username} getting Kanban board for project {project_id}")
-
-    # Verify project exists and user has access (multi-tenant isolation)
-    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
-    result = await db.execute(project_stmt)
-    project = result.scalar_one_or_none()
-
-    if not project:
-        logger.warning(f"Project {project_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
-    # Query all jobs for this project
-    jobs_stmt = (
-        select(MCPAgentJob)
-        .where(MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key)
-        .order_by(MCPAgentJob.created_at.desc())
-    )
-
-    result = await db.execute(jobs_stmt)
-    jobs = result.scalars().all()
-
-    # Helper function to calculate message counts
-    def calculate_message_counts(job: MCPAgentJob) -> MessageCounts:
-        """Calculate message counts for a job."""
-        messages = job.messages or []
-
-        unread_count = sum(1 for msg in messages if msg.get("status") == "pending")
-        acknowledged_count = sum(1 for msg in messages if msg.get("status") == "acknowledged")
-        sent_count = sum(1 for msg in messages if msg.get("from") in ["developer", "user"])
-
-        return MessageCounts(
-            unread_messages=unread_count, acknowledged_messages=acknowledged_count, sent_messages=sent_count
-        )
-
-    # Helper function to convert job to Kanban card
-    def job_to_kanban_card(job: MCPAgentJob) -> KanbanJobCard:
-        """Convert MCPAgentJob to KanbanJobCard."""
-        return KanbanJobCard(
-            job_id=job.job_id,
-            agent_type=job.agent_type,
-            mission=job.mission,
-            status=job.status,
-            acknowledged=job.acknowledged,
-            started_at=job.started_at,
-            completed_at=job.completed_at,
-            created_at=job.created_at,
-            message_counts=calculate_message_counts(job),
-        )
-
-    # Group jobs by status (4 columns)
-    columns_data = {"pending": [], "active": [], "completed": [], "blocked": []}
-
-    for job in jobs:
-        if job.status in columns_data:
-            columns_data[job.status].append(job_to_kanban_card(job))
-
-    # Create column objects
-    columns = [
-        KanbanColumn(status="pending", jobs=columns_data["pending"]),
-        KanbanColumn(status="active", jobs=columns_data["active"]),
-        KanbanColumn(status="completed", jobs=columns_data["completed"]),
-        KanbanColumn(status="blocked", jobs=columns_data["blocked"]),
-    ]
-
-    logger.info(
-        f"Retrieved Kanban board for project {project_id}: "
-        f"pending={len(columns_data['pending'])}, active={len(columns_data['active'])}, "
-        f"completed={len(columns_data['completed'])}, blocked={len(columns_data['blocked'])}"
-    )
-
-    return KanbanBoardResponse(project_id=project_id, columns=columns)
 
 
 @router.get("/{job_id}/message-thread", response_model=MessageThreadResponse)
@@ -1156,8 +924,6 @@ async def send_developer_message(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Create message
-    from datetime import datetime, timezone
-
     message = {
         "from": "developer",
         "content": message_request.content,
@@ -1211,9 +977,6 @@ async def broadcast_message(
         400: Message content invalid or empty
         403: User not authorized to access project
     """
-    from datetime import datetime, timezone
-    from uuid import uuid4
-
     logger.debug(f"User {current_user.username} broadcasting to project {message_request.project_id}")
 
     # Validate content
@@ -1282,8 +1045,6 @@ async def broadcast_message(
 
     # Broadcast WebSocket event (if available)
     try:
-        from api.app import state
-
         if state.websocket_manager:
             await state.websocket_manager.broadcast_to_project(
                 message_request.project_id,
@@ -1296,8 +1057,8 @@ async def broadcast_message(
                     "timestamp": timestamp,
                 },
             )
-    except Exception as e:
-        logger.warning(f"Failed to broadcast WebSocket event: {e}")
+    except Exception:
+        logger.warning("Failed to broadcast WebSocket event")
         # Don't fail the request if WebSocket broadcast fails
 
     return BroadcastMessageResponse(
@@ -1347,8 +1108,6 @@ async def trigger_succession(
         400: Job is not an orchestrator or already handed over
         403: User not authorized to access job
     """
-    from src.giljo_mcp.slash_commands.handover import handle_gil_handover
-
     logger.debug(f"User {current_user.username} triggering succession for job {job_id}")
 
     # Execute succession handler (reuse slash command logic)
@@ -1362,7 +1121,7 @@ async def trigger_succession(
     if not result.get("success"):
         # Determine appropriate HTTP status code based on error type
         error = result.get("error", "UNKNOWN")
-        if error == "NO_ORCHESTRATOR" or error == "INVALID_ORCHESTRATOR":
+        if error in ("NO_ORCHESTRATOR", "INVALID_ORCHESTRATOR"):
             status_code = status.HTTP_404_NOT_FOUND
         elif error in ("ALREADY_HANDED_OVER", "SUCCESSOR_EXISTS"):
             status_code = status.HTTP_409_CONFLICT
@@ -1425,8 +1184,6 @@ async def cancel_job(
         )
 
     # Update job status
-    from datetime import datetime, timezone
-
     job.status = "blocked"  # Use 'blocked' as closest existing status for cancellation
     job.block_reason = f"Cancelled: {cancellation_request.reason}"
     cancelled_at = datetime.now(timezone.utc)
@@ -1488,8 +1245,6 @@ async def force_fail_job(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Update job status to failed
-    from datetime import datetime, timezone
-
     job.status = "failed"
     job.completed_at = datetime.now(timezone.utc)
 
@@ -1548,8 +1303,6 @@ async def get_job_health(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Calculate health metrics
-    from datetime import datetime, timezone
-
     now = datetime.now(timezone.utc)
 
     # Determine last progress timestamp (most recent of started_at or last_health_check)

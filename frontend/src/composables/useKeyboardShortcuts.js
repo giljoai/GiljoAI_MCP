@@ -9,7 +9,6 @@ export function useKeyboardShortcuts() {
     { key: 'Ctrl+K, Cmd+K', description: 'Quick search/command palette', action: 'search' },
     { key: 'Alt+1', description: 'Navigate to Dashboard', action: () => router.push('/Dashboard') },
     { key: 'Alt+2', description: 'Navigate to Projects', action: () => router.push('/projects') },
-    { key: 'Alt+3', description: 'Navigate to Jobs', action: () => router.push('/kanban') },
     { key: 'Alt+4', description: 'Navigate to Messages', action: () => router.push('/messages') },
     { key: 'Alt+5', description: 'Navigate to Tasks', action: () => router.push('/tasks') },
     { key: 'Alt+6', description: 'Navigate to Settings', action: () => router.push('/settings') },
@@ -146,7 +145,7 @@ export function useKeyboardShortcuts() {
     // Check for Alt+Number navigation
     if (event.altKey && event.key >= '1' && event.key <= '6') {
       event.preventDefault()
-      const routes = ['/Dashboard', '/projects', '/kanban', '/messages', '/tasks', '/settings']
+      const routes = ['/Dashboard', '/projects', '/messages', '/tasks', '/settings']
       const index = parseInt(event.key) - 1
       if (routes[index]) {
         router.push(routes[index])
