@@ -2157,6 +2157,17 @@ class MCPAgentJob(Base):
     last_message_check_at = Column(
         DateTime(timezone=True),
         nullable=True,
+        comment="Timestamp of last message queue check (Handover 0107)"
+    )
+
+    # Handover 0113: Project closeout workflow
+    decommissioned_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when agent job was decommissioned (Handover 0113)"
+    )
+        DateTime(timezone=True),
+        nullable=True,
         comment="Timestamp of last message queue check by agent (Handover 0107)"
     )
 
@@ -2174,7 +2185,7 @@ class MCPAgentJob(Base):
         Index("idx_agent_jobs_instance", "project_id", "agent_type", "instance_number"),
         Index("idx_agent_jobs_handover", "handover_to"),
         CheckConstraint(
-            "status IN ('waiting', 'preparing', 'active', 'working', 'review', 'complete', 'failed', 'blocked', 'cancelling')",
+            "status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')",
             name="ck_mcp_agent_job_status",
         ),
         CheckConstraint("progress >= 0 AND progress <= 100", name="ck_mcp_agent_job_progress_range"),
