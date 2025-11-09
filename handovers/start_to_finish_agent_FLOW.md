@@ -762,6 +762,16 @@ template_count = await seed_tenant_templates(db, tenant_key)
 5. **reviewer** - CLI: claude, Color: #9B59B6, Model: sonnet
 6. **documenter** - CLI: claude, Color: #27AE60, Model: sonnet
 
+**Available Colors in claude code**
+Red
+Blue
+Green
+Yellow
+Purple
+Orange
+Pink
+Cyan           
+
 **Template Structure**:
 - All required fields populated: cli_tool, background_color, model, tools
 - MCP coordination protocol included in template_content
