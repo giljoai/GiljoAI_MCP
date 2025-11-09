@@ -21,36 +21,29 @@
     <v-row class="jobs-tab__row" no-gutters>
       <!-- Left Column: Project Header + Agent Cards (60%) -->
       <v-col cols="12" lg="7" xl="8" class="jobs-tab__left-column">
-        <!-- Project Header -->
-        <div class="jobs-tab__project-header mb-4">
-          <div class="text-overline text-grey">Project</div>
-          <h2 class="text-h5 font-weight-bold mb-1">{{ project.name }}</h2>
-          <div class="text-caption text-grey-darken-1">
-            <v-icon size="small" class="mr-1">mdi-identifier</v-icon>
-            Project ID: <code class="project-id-code">{{ project.project_id }}</code>
-          </div>
-        </div>
 
         <!-- Agent Cards Container -->
         <div class="jobs-tab__agents-container">
           <div class="jobs-tab__agents-header mb-3">
-            <h3 class="text-subtitle-1 font-weight-bold">
-              Active Agents
-              <v-chip size="small" color="primary" class="ml-2">
+            <div class="panel-header bg-success text-white d-flex align-center">
+              <v-icon class="mr-2">mdi-account-group</v-icon>
+              <span>Active Agents</span>
+              <v-chip size="small" color="white" text-color="success" class="ml-2 font-weight-bold">
                 {{ sortedAgents.length }}
               </v-chip>
-            </h3>
+            </div>
           </div>
 
           <!-- Claude Code Subagent Mode Toggle (Handover 0105) -->
-          <v-card
-            class="claude-code-toggle mb-3"
-            elevation="2"
-          >
+          <v-card class="claude-code-toggle mb-3" elevation="2">
+            <div class="panel-header bg-primary text-white d-flex align-center">
+              <v-icon class="mr-2">mdi-robot</v-icon>
+              <span>Launch Mode</span>
+            </div>
             <v-card-text class="pa-3">
               <v-switch
                 v-model="usingClaudeCodeSubagents"
-                color="primary"
+                color="orange"
                 density="comfortable"
                 hide-details
               >
@@ -134,7 +127,7 @@
           <!-- Message Stream -->
           <MessageStream
             :messages="messages"
-            :project-id="project.project_id"
+            :project-id="projectId"
             :auto-scroll="true"
             :loading="false"
             class="jobs-tab__message-stream"
@@ -362,6 +355,15 @@ const usingClaudeCodeSubagents = ref(false)
 const executionPromptDialog = ref(false)
 const executionPromptText = ref('')
 const loadingExecutionPrompt = ref(false)
+
+/**
+ * Project ID (supports either project_id or id)
+ */
+const projectId = computed(() => {
+  return (
+    (props.project && (props.project.project_id || props.project.id)) || 'Unknown'
+  )
+})
 
 /**
  * Agent sorting priority map
@@ -698,7 +700,6 @@ onBeforeUnmount(() => {
   }
 
   &__project-header {
-    padding: 16px;
     background: var(--color-bg-primary, #ffffff);
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
@@ -729,6 +730,7 @@ onBeforeUnmount(() => {
     border-radius: 8px;
     background: var(--color-bg-primary, #ffffff);
     border: 1px solid rgba(0, 0, 0, 0.08);
+    border-left: 3px solid var(--agent-orchestrator-primary);
   }
 
   &__agents-scroll {
@@ -825,6 +827,15 @@ onBeforeUnmount(() => {
   &__message-input {
     flex-shrink: 0;
   }
+}
+
+/* Panel header styling (match LaunchTab) */
+.panel-header {
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
 }
 
 /* Execution Prompt Dialog (Handover 0109) */

@@ -219,14 +219,11 @@
         </div>
       </div>
 
-      <!-- Orchestrator Special: Launch Prompt Icons -->
-      <div v-if="isOrchestrator && mode === 'jobs'" class="orchestrator-tools mt-3">
-        <LaunchPromptIcons />
-      </div>
+    <!-- Orchestrator special launch icons removed per UX request -->
     </v-card-text>
 
     <!-- Action Button -->
-    <v-card-actions class="pa-4 pt-0">
+    <v-card-actions class="pa-4 pt-0 agent-card-actions">
       <!-- Cancel Controls (Handover 0107) -->
       <div v-if="canCancel && mode === 'jobs'" class="cancel-controls mb-2" style="width: 100%;">
         <!-- Cancel Button -->
@@ -260,7 +257,7 @@
 
       <!-- Jobs Tab: Waiting State - Launch Agent -->
       <v-tooltip
-        v-if="agent.status === 'waiting'"
+        v-if="mode === 'jobs' && agent.status === 'waiting'"
         :disabled="!promptButtonDisabled"
         location="bottom"
       >
@@ -286,7 +283,7 @@
 
       <!-- Orchestrator: Copy Execution Prompt (Handover 0109) -->
       <v-btn
-        v-if="isOrchestrator && (agent.status === 'waiting' || agent.status === 'working')"
+        v-if="mode === 'jobs' && isOrchestrator && (agent.status === 'waiting' || agent.status === 'working')"
         variant="outlined"
         color="primary"
         block
@@ -299,7 +296,7 @@
 
       <!-- Orchestrator: Hand Over (Handover 0080a) -->
       <v-btn
-        v-if="isOrchestrator && agent.status === 'working'"
+        v-if="mode === 'jobs' && isOrchestrator && agent.status === 'working'"
         variant="outlined"
         color="warning"
         block
@@ -312,7 +309,7 @@
 
       <!-- Jobs Tab: Working State - Details -->
       <v-btn
-        v-else-if="agent.status === 'working'"
+        v-else-if="mode === 'jobs' && agent.status === 'working'"
         variant="outlined"
         color="primary"
         block
@@ -324,7 +321,7 @@
 
       <!-- Jobs Tab: Failure/Blocked State - View Error -->
       <v-btn
-        v-else-if="agent.status === 'failed' || agent.status === 'blocked'"
+        v-else-if="mode === 'jobs' && (agent.status === 'failed' || agent.status === 'blocked')"
         variant="outlined"
         :color="agent.status === 'failed' ? 'error' : 'warning'"
         block
@@ -335,7 +332,7 @@
       </v-btn>
 
       <!-- Complete State: Continue Working OR Close Out (Handover 0113) -->
-      <div v-else-if="agent.status === 'complete'" class="complete-actions">
+      <div v-else-if="mode === 'jobs' && agent.status === 'complete'" class="complete-actions">
         <v-btn
           variant="outlined"
           color="primary"
@@ -360,7 +357,7 @@
       </div>
 
       <!-- Cancelled/Decommissioned State: No actions (terminal states) -->
-      <div v-else-if="agent.status === 'cancelled' || agent.status === 'decommissioned'" class="terminal-state">
+      <div v-else-if="mode === 'jobs' && (agent.status === 'cancelled' || agent.status === 'decommissioned')" class="terminal-state">
         <v-chip
           color="grey"
           variant="flat"
@@ -382,7 +379,6 @@ import { getAgentColor, darkenColor, lightenColor } from '@/config/agentColors'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-import LaunchPromptIcons from './LaunchPromptIcons.vue'
 
 /**
  * AgentCardEnhanced Component
@@ -926,5 +922,12 @@ onBeforeUnmount(() => {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Stack action buttons vertically */
+.agent-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>
