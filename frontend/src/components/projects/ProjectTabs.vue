@@ -161,8 +161,9 @@ onMounted(() => {
   store.setProject(props.project)
 
   // Subscribe to WebSocket updates if project is launched
-  if (store.isLaunched) {
-    wsStore.subscribeToProject(props.project.project_id)
+  if (store.isLaunched && props.project) {
+    const pid = props.project.project_id || props.project.id
+    if (pid) wsStore.subscribeToProject(pid)
   }
 })
 
@@ -172,7 +173,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   // Unsubscribe from WebSocket
   if (props.project) {
-    wsStore.unsubscribe('project', props.project.project_id)
+    const pid = props.project.project_id || props.project.id
+    if (pid) wsStore.unsubscribe('project', pid)
   }
 })
 

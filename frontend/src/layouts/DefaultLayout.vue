@@ -26,7 +26,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
-import { useAgentStore } from '@/stores/agents'
 import { useMessageStore } from '@/stores/messages'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
@@ -36,7 +35,6 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const wsStore = useWebSocketStore()
-const agentStore = useAgentStore()
 const messageStore = useMessageStore()
 
 const drawer = ref(true)
@@ -101,8 +99,8 @@ onMounted(async () => {
       await wsStore.connect()
       console.log('[DefaultLayout] WebSocket connected with automatic cookie authentication')
 
-      // Load initial data
-      await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
+      // Load initial data (remove legacy /api/v1/agents call)
+      await Promise.all([messageStore.fetchMessages()])
 
       // Set up 10-second message polling interval
       messagePollingInterval = setInterval(async () => {
