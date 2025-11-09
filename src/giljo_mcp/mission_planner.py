@@ -1112,8 +1112,227 @@ Complexity: {analysis.complexity}
             priority=agent_config.priority,
             scope_boundary=f"Focus on {agent_config.role} responsibilities only",
             success_criteria=success_criteria,
-            dependencies=None,
+            dependencies=None,  # Will be populated in generate_missions
         )
+
+    def _detect_agent_dependencies(self, mission_content: str, agent_role: str, all_agent_roles: list[str]) -> list[str]:
+        """
+        Detect which agents this agent depends on based on mission content.
+
+        Handover 0118: Dependency detection for automatic coordination code injection.
+
+        Scans mission content for dependency indicators like:
+        - "wait for <agent>"
+        - "after <agent> completes"
+        - "depends on <agent>"
+        - "requires <agent> to finish"
+
+        Args:
+            mission_content: Mission text to scan
+            agent_role: Role of the agent being checked
+            all_agent_roles: List of all agent roles in the project
+
+        Returns:
+            List of agent roles this agent depends on (empty if no dependencies)
+
+        Example:
+            >>> mission = "Wait for implementer and documenter to complete before analyzing"
+            >>> deps = planner._detect_agent_dependencies(mission, "analyzer", ["implementer", "documenter", "analyzer"])
+            >>> deps
+            ['implementer', 'documenter']
+        """
+        dependencies = []
+
+        # Dependency patterns to search for
+        dependency_patterns = [
+            r"wait for (\w+)",
+            r"after (\w+) completes?",
+            r"depends? on (\w+)",
+            r"requires? (\w+) to finish",
+            r"when (\w+) (?:is|are) done",
+            r"once (\w+) finishes?",
+        ]
+
+        # Convert mission to lowercase for case-insensitive matching
+        mission_lower = mission_content.lower()
+
+        # Check each pattern
+        for pattern in dependency_patterns:
+            matches = re.findall(pattern, mission_lower, re.IGNORECASE)
+            for match in matches:
+                # Check if match is an agent role (or close match)
+                for role in all_agent_roles:
+                    if role.lower() in match.lower() or match.lower() in role.lower():
+                        if role != agent_role and role not in dependencies:
+                            dependencies.append(role)
+
+        logger.debug(
+            f"Detected dependencies for {agent_role}: {dependencies}",
+            extra={"agent_role": agent_role, "dependencies": dependencies},
+        )
+
+        return dependencies
+
+    def _add_dependency_coordination_code(self, mission_content: str, agent_role: str, dependencies: list[str]) -> str:
+        """
+        Inject dependency coordination code into agent mission.
+
+        Handover 0118: Auto-generate dependency waiting logic for agents.
+
+        This adds explicit coordination code that:
+        1. Checks for COMPLETE messages from dependencies
+        2. Waits up to 5 minutes (10 checks × 30 seconds)
+        3. Escalates to orchestrator if timeout
+
+        Args:
+            mission_content: Original mission text
+            agent_role: Type of agent (e.g., "analyzer")
+            dependencies: List of agent types this agent depends on
+
+        Returns:
+            Enhanced mission with dependency coordination code
+
+        Note:
+            Only adds coordination if dependencies list is non-empty.
+        """
+        if not dependencies:
+            return mission_content
+
+        # Generate dependency list as string
+        deps_str = ", ".join(dependencies)
+        deps_set_str = "{" + ", ".join([f'"{dep}"' for dep in dependencies]) + "}"
+
+        dependency_code = f"""
+
+## CRITICAL: DEPENDENCY COORDINATION (Handover 0118)
+
+**Dependencies:** This mission requires {deps_str} to complete first.
+
+**YOU MUST wait for dependencies before starting work.**
+
+### Coordination Protocol
+
+**BEFORE STARTING WORK**, execute this dependency waiting logic:
+
+```python
+# Dependency coordination for {agent_role}
+dependencies_met = False
+max_checks = 10  # 5 minutes total (30 sec × 10)
+check_count = 0
+required_deps = {deps_set_str}
+completed_deps = set()
+
+while not dependencies_met and check_count < max_checks:
+    # Check for messages from orchestrator and other agents
+    messages = receive_messages(
+        agent_id="<AGENT_ID>",
+        tenant_key="<TENANT_KEY>"
+    )
+
+    # Look for completion messages
+    for msg in messages:
+        # Check for COMPLETE messages from dependencies
+        if msg.message_type == "COMPLETE" and msg.from_agent in required_deps:
+            completed_deps.add(msg.from_agent)
+            logger.info(f"Dependency met: {{msg.from_agent}} completed")
+
+        # Check for explicit DEPENDENCY_MET from orchestrator
+        elif msg.message_type == "DEPENDENCY_MET" and msg.to_agent == "<AGENT_TYPE>":
+            # Orchestrator explicitly notified us all dependencies are met
+            dependencies_met = True
+            logger.info("Orchestrator confirmed all dependencies met")
+            break
+
+    # Check if all dependencies satisfied
+    if required_deps.issubset(completed_deps):
+        dependencies_met = True
+        logger.info(f"All dependencies met: {{completed_deps}}")
+        break
+
+    # Still waiting
+    if not dependencies_met:
+        check_count += 1
+        still_waiting = required_deps - completed_deps
+
+        # Send status update to orchestrator
+        send_message(
+            from_agent="<AGENT_TYPE>",
+            to_agent="orchestrator",
+            message_type="STATUS",
+            content=f"Waiting for dependencies: {{', '.join(still_waiting)}}. Check {{check_count}}/10.",
+            tenant_key="<TENANT_KEY>"
+        )
+
+        logger.info(f"Waiting for dependencies ({{check_count}}/10): {{still_waiting}}")
+
+        # Wait 30 seconds before checking again
+        import time
+        time.sleep(30)
+
+# After waiting loop
+if not dependencies_met:
+    # Timeout - escalate to orchestrator
+    logger.error(f"TIMEOUT: Dependencies not met after 5 minutes. Still waiting for: {{required_deps - completed_deps}}")
+
+    send_message(
+        from_agent="<AGENT_TYPE>",
+        to_agent="orchestrator",
+        message_type="BLOCKER",
+        content=f"TIMEOUT: Dependencies not met after 5 minutes. Still waiting for: {{', '.join(required_deps - completed_deps)}}. Please advise.",
+        tenant_key="<TENANT_KEY>"
+    )
+
+    # STOP and wait for orchestrator response
+    # Do not proceed with mission until orchestrator provides guidance
+
+else:
+    # Dependencies met - acknowledge and proceed
+    logger.info("All dependencies satisfied. Beginning work.")
+
+    send_message(
+        from_agent="<AGENT_TYPE>",
+        to_agent="orchestrator",
+        message_type="ACKNOWLEDGMENT",
+        content=f"All dependencies met ({{', '.join(completed_deps)}}). Beginning work now.",
+        tenant_key="<TENANT_KEY>"
+    )
+```
+
+### IMPORTANT
+
+- **DO NOT start work** until `dependencies_met == True`
+- **DO NOT skip** the dependency checking logic
+- **DO wait** for orchestrator response if timeout occurs
+- **DO send** status updates every 30 seconds while waiting
+
+Once dependencies are confirmed met, proceed with your mission tasks below.
+
+---
+"""
+
+        # Insert dependency code at the beginning of mission (after header/title)
+        # Find a good insertion point (after first header if exists)
+        lines = mission_content.split("\n")
+        insert_index = 0
+
+        # Find first non-header, non-empty line (good insertion point)
+        for i, line in enumerate(lines):
+            if line.strip() and not line.startswith("#"):
+                insert_index = i
+                break
+
+        # Insert dependency code
+        lines_before = lines[:insert_index]
+        lines_after = lines[insert_index:]
+
+        enhanced_mission = "\n".join(lines_before) + dependency_code + "\n".join(lines_after)
+
+        logger.info(
+            f"Added dependency coordination code to {agent_role} mission",
+            extra={"agent_role": agent_role, "dependencies": dependencies, "added_lines": dependency_code.count("\n")},
+        )
+
+        return enhanced_mission
 
     async def generate_missions(
         self,
@@ -1229,6 +1448,45 @@ Complexity: {analysis.complexity}
                 agent_config, analysis, product, project, vision_chunks, user_id, serena_context
             )
             missions[agent_config.role] = mission
+
+        # Handover 0118: Detect dependencies and inject coordination code
+        # Second pass: Now that all missions are generated, detect dependencies
+        all_agent_roles = [agent.role for agent in selected_agents]
+
+        for agent_config in selected_agents:
+            mission = missions[agent_config.role]
+
+            # Detect dependencies from mission content
+            detected_deps = self._detect_agent_dependencies(
+                mission.content, agent_config.role, all_agent_roles
+            )
+
+            if detected_deps:
+                # Inject dependency coordination code into mission content
+                enhanced_content = self._add_dependency_coordination_code(
+                    mission.content, agent_config.role, detected_deps
+                )
+
+                # Update mission with enhanced content and dependencies
+                missions[agent_config.role] = Mission(
+                    agent_role=mission.agent_role,
+                    content=enhanced_content,
+                    token_count=self._count_tokens(enhanced_content),
+                    context_chunk_ids=mission.context_chunk_ids,
+                    priority=mission.priority,
+                    scope_boundary=mission.scope_boundary,
+                    success_criteria=mission.success_criteria,
+                    dependencies=detected_deps,
+                )
+
+                logger.info(
+                    f"Enhanced {agent_config.role} mission with dependency coordination",
+                    extra={
+                        "agent_role": agent_config.role,
+                        "dependencies": detected_deps,
+                        "token_count": missions[agent_config.role].token_count,
+                    },
+                )
 
         # Calculate total mission tokens
         total_mission_tokens = sum(mission.token_count for mission in missions.values())

@@ -61,8 +61,8 @@ async def execute_slash_command(request: SlashCommandRequest):
         # Import here to avoid circular dependency
         from api.app import state
 
-        # Execute handler with database session
-        async with state.db_manager.get_session() as session:
+        # Execute handler with database session (sync session for handlers)
+        with state.db_manager.get_session() as session:
             result = await handler(
                 db_session=session,
                 tenant_key=request.tenant_key,
