@@ -198,6 +198,7 @@ class WebSocketManager:
         disconnected_clients = []
 
         # Iterate through all active connections
+        logger.info(f"[BROADCAST DEBUG] Total active connections: {len(self.active_connections)}, Target tenant: {tenant_key}")
         for client_id, websocket in self.active_connections.items():
             # Skip excluded client if specified
             if exclude_client and client_id == exclude_client:
@@ -207,8 +208,11 @@ class WebSocketManager:
             auth_context = self.auth_contexts.get(client_id, {})
             client_tenant = auth_context.get("tenant_key")
 
+            logger.info(f"[BROADCAST DEBUG] Client {client_id[:8]}: tenant={client_tenant}, target={tenant_key}, match={client_tenant == tenant_key}")
+
             # Skip if client is not in the target tenant
             if client_tenant != tenant_key:
+                logger.info(f"[BROADCAST DEBUG] Skipping client {client_id[:8]} - tenant mismatch")
                 continue
 
             # Try to send to this client

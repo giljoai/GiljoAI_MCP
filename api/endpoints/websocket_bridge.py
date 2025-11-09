@@ -90,21 +90,42 @@ async def emit_websocket_event(
                 detail="event_type and tenant_key are required"
             )
 
-        # Prepare WebSocket message
+        # Prepare WebSocket message (FLATTEN payload for frontend handlers)
+        # Frontend handlers expect fields like tenant_key, project_id at the top level, not nested.
+        flattened = dict(request.data or {})
+        flattened["tenant_key"] = request.tenant_key
         message = {
             "type": request.event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "schema_version": "1.0",
-            "data": request.data,
+            **flattened,
         }
+
+        # Check if WebSocket manager is available
+        if not ws_dep.manager:
+            logger.warning(
+                "WebSocket manager not available for broadcast",
+                extra={"event_type": request.event_type, "tenant_key": request.tenant_key}
+            )
+            return WebSocketEventResponse(
+                success=False,
+                event_type=request.event_type,
+                clients_notified=0,
+                message="WebSocket manager not available"
+            )
 
         # Broadcast to tenant
         clients_notified = 0
-        for client_id, ws in ws_dep.ws_manager.active_connections.items():
-            auth_context = ws_dep.ws_manager.auth_contexts.get(client_id, {})
+        logger.info(f"[BRIDGE DEBUG] Total active connections: {len(ws_dep.manager.active_connections)}, Target tenant: {request.tenant_key}")
+        for client_id, ws in ws_dep.manager.active_connections.items():
+            auth_context = ws_dep.manager.auth_contexts.get(client_id, {})
+            client_tenant = auth_context.get("tenant_key")
+
+            logger.info(f"[BRIDGE DEBUG] Client {client_id[:8]}: tenant={client_tenant}, target={request.tenant_key}, match={client_tenant == request.tenant_key}")
 
             # Multi-tenant isolation
-            if auth_context.get("tenant_key") != request.tenant_key:
+            if client_tenant != request.tenant_key:
+                logger.info(f"[BRIDGE DEBUG] Skipping client {client_id[:8]} - tenant mismatch")
                 continue
 
             try:

@@ -32,19 +32,28 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
 
         from src.giljo_mcp.models import SetupState
 
-        stmt = select(SetupState).where(SetupState.tenant_key == "default")
-        result = await db.execute(stmt)
-        setup_state = result.scalar_one_or_none()
+        # Prefer explicit 'default' tenant row when present
+        stmt_default = select(SetupState).where(SetupState.tenant_key == "default")
+        result_default = await db.execute(stmt_default)
+        setup_state = result_default.scalar_one_or_none()
 
-        if setup_state:
+        if setup_state is not None:
             return {
-                "database_initialized": setup_state.database_initialized
-                # REMOVED (Handover 0035): default_password_active field no longer exists
-                # v3.0+ uses first_admin_created flag in create-first-admin endpoint
+                "database_initialized": bool(getattr(setup_state, "database_initialized", False))
             }
 
-        # No setup state found - assume not initialized
-        return {"database_initialized": False}
+        # Fallback: derive initialization from any SetupState row
+        # Order by database_initialized desc so True wins
+        stmt_any = select(SetupState.database_initialized).order_by(SetupState.database_initialized.desc()).limit(1)
+        result_any = await db.execute(stmt_any)
+        any_flag = result_any.scalar_one_or_none()
+        if any_flag is not None:
+            return {"database_initialized": bool(any_flag)}
+
+        # Final fallback: no SetupState rows yet, but DB session exists → treat as initialized
+        # Rationale: avoid incorrectly enabling setup-mode for authenticated environments
+        logger.warning("[WS SETUP DEBUG] No SetupState rows found; treating database as initialized")
+        return {"database_initialized": True}
 
     except Exception as e:
         logger.error(f"Failed to get setup state: {e}")
@@ -75,6 +84,7 @@ async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) 
     # Check setup state
     setup_state = await get_setup_state(db)
     database_initialized = setup_state.get("database_initialized", True)
+    logger.info(f"[WS SETUP DEBUG] db={db}, setup_state={setup_state}, database_initialized={database_initialized}")
 
     # Allow connection without auth during initial setup (database not initialized)
     # REMOVED (Handover 0035): Password change phase check (default_password_active field no longer exists)

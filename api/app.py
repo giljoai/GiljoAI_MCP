@@ -494,9 +494,10 @@ async def lifespan(app: FastAPI):
             # Don't crash the app on startup check failure
             logger.warning("Continuing startup despite setup check failure")
 
-    # Expose db_manager directly on app.state for auth middleware compatibility
+    # Expose db_manager and websocket_manager directly on app.state
     # This must be done AFTER initialization, not in create_app()
     app.state.db_manager = state.db_manager
+    app.state.websocket_manager = state.websocket_manager
 
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
@@ -859,9 +860,13 @@ def create_app() -> FastAPI:
                 await websocket.accept()
 
                 # STEP 3: Store connection with authentication context
+                user_info = auth_result.get("user", {})
+                tenant_key_from_user = user_info.get("tenant_key", "default")
+                logger.info(f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}")
                 auth_context = {
-                    "user": auth_result.get("user", {}),
+                    "user": user_info,
                     "context": auth_result.get("context", "normal"),  # 'setup' or 'normal'
+                    "tenant_key": tenant_key_from_user,  # CRITICAL: Extract for WebSocket filtering
                 }
                 # Determine auth type from query parameters
                 if token:
