@@ -377,75 +377,38 @@ Project: {project.name}"""
 
                 await session.commit()
 
-                # Broadcast WebSocket event via EventBus (Handover 0111 Issue #1)
-                logger.info("=" * 70)
-                logger.info("ATTEMPTING TO BROADCAST MISSION UPDATE VIA EVENTBUS")
+                # Broadcast WebSocket event via HTTP bridge (cross-process communication)
+                logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated for project {project_id}")
                 try:
-                    logger.info("Step 1: Importing api.app.state...")
-                    from api.app import state
-                    logger.info(f"Step 1: state imported: {state}")
+                    import httpx
 
-                    # Get Event Bus from application state
-                    logger.info("Step 2: Getting event_bus from state...")
-                    event_bus = getattr(state, "event_bus", None)
-                    logger.info(f"Step 2: event_bus = {event_bus}")
-                    logger.info(f"Step 2: event_bus type = {type(event_bus)}")
+                    logger.info(f"[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge")
 
-                    if event_bus:
-                        logger.info("Step 3: EventBus found! Publishing event...")
-                        logger.info(f"Step 3: Event type: project:mission_updated")
-                        logger.info(f"Step 3: Tenant key: {project.tenant_key}")
-                        logger.info(f"Step 3: Project ID: {str(project.id)}")
+                    # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
+                    async with httpx.AsyncClient() as client:
+                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                        logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url}")
 
-                        # Publish event to EventBus (WebSocketEventListener will broadcast)
-                        result = await event_bus.publish("project:mission_updated", {
-                            "tenant_key": project.tenant_key,
-                            "project_id": str(project.id),
-                            "mission": mission,
-                            "user_config_applied": bool(user_id),
-                            "token_estimate": len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
-                        })
-
-                        logger.info(f"Step 3: EventBus.publish() returned: {result}")
-                        logger.info(
-                            "Mission update published to event bus",
-                            extra={
-                                "project_id": str(project.id),
+                        response = await client.post(
+                            bridge_url,
+                            json={
+                                "event_type": "project:mission_updated",
                                 "tenant_key": project.tenant_key,
-                                "handlers_notified": result,
+                                "data": {
+                                    "project_id": str(project.id),
+                                    "mission": mission,
+                                    "user_config_applied": bool(user_id),
+                                    "token_estimate": len(mission) // 4,
+                                    "generated_by": "orchestrator",
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                },
                             },
+                            timeout=5.0,
                         )
-                        logger.info("=" * 70)
-                    else:
-                        logger.warning("=" * 70)
-                        logger.warning("EVENT BUS NOT AVAILABLE FOR MISSION UPDATE!")
-                        logger.warning(f"state.event_bus = {event_bus}")
-                        logger.warning(f"Available state attributes: {dir(state)}")
-                        logger.warning("=" * 70)
-                        logger.debug(
-                            "Event bus not available for mission update",
-                            extra={
-                                "project_id": str(project.id),
-                                "tenant_key": project.tenant_key,
-                            },
-                        )
-
-                except Exception as e:
-                    # Log with full context but don't fail the mission update
-                    logger.error("=" * 70)
-                    logger.error(f"FAILED TO PUBLISH MISSION UPDATE EVENT: {e}")
-                    logger.error(f"Exception type: {type(e).__name__}")
-                    logger.error(f"Exception args: {e.args}")
-                    logger.error("=" * 70)
-                    logger.error(
-                        f"Failed to publish mission update event: {e}",
-                        extra={
-                            "project_id": str(project.id),
-                            "tenant_key": project.tenant_key,
-                            "error": str(e),
-                        },
-                        exc_info=True,
-                    )
+                        logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response: {response.status_code}")
+                        logger.info(f"[WEBSOCKET] Broadcasted mission_updated for project {project_id} via HTTP bridge")
+                except Exception as ws_error:
+                    logger.error(f"[WEBSOCKET ERROR] Failed to broadcast mission_updated via HTTP bridge: {ws_error}", exc_info=True)
 
                 logger.info(f"Updated mission for project '{project.name}'")
 

@@ -544,11 +544,15 @@ const handleAgentCreated = (data) => {
     return
   }
 
-  // Extract agent ID
-  const agentId = data.agent?.id || data.agent?.job_id
+  // Support both payload shapes:
+  // 1) Nested: { agent: { id|job_id, agent_type, agent_name, status } }
+  // 2) Flat:   { agent_id|agent_job_id, agent_type, agent_name, status }
+  const nestedAgent = data.agent || {}
+  const fallbackAgentId = data.agent_id || data.agent_job_id
+  const agentId = nestedAgent.id || nestedAgent.job_id || fallbackAgentId
 
   if (!agentId) {
-    console.warn('[LaunchTab] Agent creation ignored: no ID')
+    console.warn('[LaunchTab] Agent creation ignored: no ID in payload')
     return
   }
 
@@ -558,17 +562,23 @@ const handleAgentCreated = (data) => {
     return
   }
 
+  // Build normalized agent object for UI
+  const normalizedAgent = {
+    id: agentId,
+    job_id: agentId,
+    agent_type: nestedAgent.agent_type || data.agent_type || 'unknown',
+    agent_name: nestedAgent.agent_name || data.agent_name || `Agent ${agentId.substring(0, 6)}`,
+    status: nestedAgent.status || data.status || 'waiting',
+  }
+
   // Add to Set first (atomic operation)
   agentIds.value.add(agentId)
 
   // Then add to reactive array
-  agents.value.push({
-    ...data.agent,
-    id: agentId  // Normalize ID field
-  })
+  agents.value.push(normalizedAgent)
 
   // Show notification
-  const agentType = data.agent?.agent_type || 'Unknown'
+  const agentType = normalizedAgent.agent_type || 'Unknown'
   toastMessage.value = `Agent Selected - ${agentType} agent assigned to project`
   showToast.value = true
 
