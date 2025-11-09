@@ -66,14 +66,14 @@
           <div class="message-stream__content">
             <!-- Message Routing -->
             <div class="message-stream__routing">
+              <span v-if="isUserMessage(message)" class="text-subtitle-2 font-weight-bold text-blue">
+                {{ developerUsername }}
+              </span>
               <span v-if="isBroadcast(message)" class="text-subtitle-2 font-weight-bold">
-                Broadcast:
+                → Broadcast:
               </span>
               <span v-else-if="message.to_agent" class="text-subtitle-2 font-weight-bold">
-                To {{ formatAgentName(message.to_agent) }}:
-              </span>
-              <span v-else-if="isUserMessage(message)" class="text-subtitle-2 font-weight-bold">
-                User Message
+                → To {{ formatAgentName(message.to_agent) }}:
               </span>
             </div>
 
@@ -179,6 +179,14 @@ const props = defineProps({
   autoScroll: {
     type: Boolean,
     default: true
+  },
+
+  /**
+   * Current developer username (for displaying on developer messages)
+   */
+  developerUsername: {
+    type: String,
+    default: 'Developer'
   },
 
   /**

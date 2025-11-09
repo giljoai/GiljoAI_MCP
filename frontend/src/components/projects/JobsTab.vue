@@ -189,10 +189,11 @@ const props = defineProps({
     type: Object,
     required: true,
     validator: (value) => {
+      // Accept either project_id or id to support both shapes
       return (
         value &&
         typeof value === 'object' &&
-        'project_id' in value &&
+        (('project_id' in value) || ('id' in value)) &&
         'name' in value
       )
     }
