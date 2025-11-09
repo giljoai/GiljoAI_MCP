@@ -1095,7 +1095,7 @@ Standard message types for clarity:
 - **ACKNOWLEDGMENT**: Confirming receipt of message
 - **STATUS**: Current state update
 - **DEPENDENCY_MET**: Dependencies satisfied, proceed
-- **USER**: Message from user (urgent, priority)
+- **DEVELOPER_MESSAGE**: Message from developer/user (urgent, priority) - Detected via `msg.get("from") == "developer"`
 - **ESCALATION**: Serious issue requiring attention (orchestrator only)
 
 ### CHECKPOINT 1: BEFORE STARTING WORK
@@ -1145,8 +1145,8 @@ for msg in messages:
     if msg.message_type == "DIRECTIVE":
         # Orchestrator giving new instructions
         # Follow immediately
-    elif msg.from_agent == "USER":
-        # User sending corrections
+    elif msg.get("from") == "developer":
+        # User/developer sending corrections
         # Acknowledge and adjust work
     elif msg.message_type == "QUESTION":
         # Another agent asking you something
@@ -1205,17 +1205,17 @@ send_message(
    - Dependent agents (they can now start)
    - Team (awareness of progress)
 
-### USER MESSAGE HANDLING
+### DEVELOPER MESSAGE HANDLING
 
-When you receive message from USER:
+When you receive message from developer (messages where `msg.get("from") == "developer"`):
 
 **Step 1: Acknowledge Immediately (<30 seconds)**
 ```python
 send_message(
     from_agent="<AGENT_TYPE>",
-    to_agent="USER",
+    to_agent="orchestrator",  # Orchestrator will relay to developer
     message_type="ACKNOWLEDGMENT",
-    content=f"Received your message: {user_msg.content[:100]}... Reviewing now.",
+    content=f"Received developer message: {developer_msg.content[:100]}... Reviewing now.",
     tenant_key="<TENANT_KEY>"
 )
 ```
@@ -1226,16 +1226,16 @@ send_message(
 - Should I stop current task?
 
 **Step 3: Execute Changes**
-- Prioritize user requests over original mission if conflict
+- Prioritize developer requests over original mission if conflict
 - Adjust work accordingly
 
 **Step 4: Report Completion**
 ```python
 send_message(
     from_agent="<AGENT_TYPE>",
-    to_agent="USER",
+    to_agent="orchestrator",  # Orchestrator will relay to developer
     message_type="COMPLETE",
-    content="Completed your request: [summary of changes]. Continuing with mission.",
+    content="Completed developer request: [summary of changes]. Continuing with mission.",
     tenant_key="<TENANT_KEY>"
 )
 ```
@@ -1288,7 +1288,7 @@ You MUST implement this communication protocol. Without it:
 | QUESTION | Agent | MEDIUM | Answer from mission context | < 2 minutes |
 | PROGRESS | Agent | LOW | Acknowledge, update tracking | < 5 minutes |
 | COMPLETE | Agent | HIGH | Verify, notify dependents | < 1 minute |
-| USER | User | URGENT | Acknowledge, forward to agents | < 30 seconds |
+| Developer (`from=="developer"`) | Developer/User | URGENT | Acknowledge, forward to agents | < 30 seconds |
 
 ### PHASE 1: TEAM ASSEMBLY (After Spawning Agents)
 
@@ -1394,15 +1394,15 @@ if msg.message_type == "COMPLETE":
         )
 ```
 
-**USER Messages (URGENT - Handle Immediately):**
+**USER/Developer Messages (URGENT - Handle Immediately):**
 ```python
-if msg.from_agent == "USER":
-    # User sending instructions or corrections
+if msg.get("from") == "developer":
+    # User/developer sending instructions or corrections
     # Acknowledge immediately
 
     send_message(
         from_agent="orchestrator",
-        to_agent="USER",
+        to_agent="all",  # Acknowledge to all so user sees response
         message_type="ACKNOWLEDGMENT",
         content=f"Received: {msg.content[:100]}... Forwarding to affected agents.",
         tenant_key="<TENANT_KEY>"
