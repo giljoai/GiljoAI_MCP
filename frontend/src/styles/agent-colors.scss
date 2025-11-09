@@ -18,15 +18,23 @@
   --agent-analyzer-dark: #C0392B;
   --agent-analyzer-light: #F1948A;
 
-  /* Implementor - Blue */
+  /* Implementer/Implementor - Blue */
   --agent-implementor-primary: #3498DB;
   --agent-implementor-dark: #2980B9;
   --agent-implementor-light: #85C1E9;
+  /* Alias variables for canonical naming */
+  --agent-implementer-primary: var(--agent-implementor-primary);
+  --agent-implementer-dark: var(--agent-implementor-dark);
+  --agent-implementer-light: var(--agent-implementor-light);
 
-  /* Researcher - Green */
+  /* Documenter/Researcher - Green */
   --agent-researcher-primary: #27AE60;
   --agent-researcher-dark: #229954;
   --agent-researcher-light: #7DCEA0;
+  /* Alias variables for canonical naming */
+  --agent-documenter-primary: var(--agent-researcher-primary);
+  --agent-documenter-dark: var(--agent-researcher-dark);
+  --agent-documenter-light: var(--agent-researcher-light);
 
   /* Reviewer - Purple */
   --agent-reviewer-primary: #9B59B6;
@@ -169,11 +177,11 @@
       @include agent-card-header(var(--agent-analyzer-primary));
     }
 
-    &--implementor {
+    &--implementor, &--implementer {
       @include agent-card-header(var(--agent-implementor-primary));
     }
 
-    &--researcher {
+    &--researcher, &--documenter {
       @include agent-card-header(var(--agent-researcher-primary));
     }
 
@@ -198,11 +206,11 @@
     @include agent-card-border(var(--agent-analyzer-primary));
   }
 
-  &--implementor {
+  &--implementor, &--implementer {
     @include agent-card-border(var(--agent-implementor-primary));
   }
 
-  &--researcher {
+  &--researcher, &--documenter {
     @include agent-card-border(var(--agent-researcher-primary));
   }
 
@@ -224,11 +232,11 @@
     @include chat-head-badge(var(--agent-analyzer-primary));
   }
 
-  &--implementor {
+  &--implementor, &--implementer {
     @include chat-head-badge(var(--agent-implementor-primary));
   }
 
-  &--researcher {
+  &--researcher, &--documenter {
     @include chat-head-badge(var(--agent-researcher-primary));
   }
 

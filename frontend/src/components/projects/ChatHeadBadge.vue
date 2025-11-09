@@ -40,7 +40,12 @@ const props = defineProps({
     type: String,
     required: true,
     validator: (value) => {
-      const validTypes = ['orchestrator', 'analyzer', 'implementor', 'researcher', 'reviewer', 'tester']
+      const validTypes = [
+        // Canonical roles
+        'orchestrator', 'analyzer', 'implementer', 'documenter', 'reviewer', 'tester',
+        // Legacy aliases kept for backward compatibility
+        'implementor', 'researcher'
+      ]
       return validTypes.includes(value.toLowerCase())
     }
   },
