@@ -9,6 +9,9 @@
  * @see handovers/0041/ (Agent Template Management)
  */
 
+// Canonical role color map. Keep canonical roles aligned with backend
+// seeded templates: orchestrator, implementer, tester, analyzer, reviewer, documenter.
+// We also support legacy aliases (implementor, researcher) via a synonym map below.
 export const AGENT_COLORS = {
   orchestrator: {
     hex: '#D4A574',
@@ -20,19 +23,19 @@ export const AGENT_COLORS = {
     hex: '#E74C3C',
     name: 'Analyzer',
     badge: 'An',
-    description: 'Analysis and research tasks'
+    description: 'Architecture and analysis tasks'
   },
-  implementor: {
+  implementer: {
     hex: '#3498DB',
-    name: 'Implementor',
+    name: 'Implementer',
     badge: 'Im',
     description: 'Implementation and development tasks'
   },
-  researcher: {
+  documenter: {
     hex: '#27AE60',
-    name: 'Researcher',
-    badge: 'Re',
-    description: 'Research and information gathering'
+    name: 'Documenter',
+    badge: 'Do',
+    description: 'Creates and updates documentation'
   },
   reviewer: {
     hex: '#9B59B6',
@@ -48,6 +51,20 @@ export const AGENT_COLORS = {
   }
 }
 
+// Legacy/alias mapping (UI used to use these names)
+const AGENT_SYNONYMS = {
+  implementor: 'implementer',
+  researcher: 'documenter',
+  // Common misspellings or variants
+  analyser: 'analyzer',
+  'code-reviewer': 'reviewer',
+  'front-end-implementer': 'implementer',
+  'frontend-implementer': 'implementer',
+  'back-end-implementer': 'implementer',
+  'backend-implementer': 'implementer',
+  documentor: 'documenter'
+}
+
 /**
  * Get agent color by agent type
  * @param {string} agentType - Agent type (orchestrator, analyzer, etc.)
@@ -55,7 +72,8 @@ export const AGENT_COLORS = {
  */
 export function getAgentColor(agentType) {
   const normalizedType = agentType?.toLowerCase() || ''
-  return AGENT_COLORS[normalizedType] || AGENT_COLORS.orchestrator
+  const canonical = AGENT_SYNONYMS[normalizedType] || normalizedType
+  return AGENT_COLORS[canonical] || AGENT_COLORS.orchestrator
 }
 
 /**
