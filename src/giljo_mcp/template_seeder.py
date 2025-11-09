@@ -105,6 +105,10 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         # Get Context Request section (Handover 0109)
         context_request_section = _get_context_request_section()
 
+        # Get Messaging Protocol sections (Handover 0118)
+        agent_messaging_section = _get_agent_messaging_protocol_section()
+        orchestrator_messaging_section = _get_orchestrator_messaging_protocol_section()
+
         # Use new comprehensive templates (Handover 0103)
         default_templates = _get_default_templates_v103()
 
@@ -122,8 +126,14 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 continue
 
             # Handover 0106: Dual-field system (system_instructions + user_instructions)
-            # Get MCP coordination section + Context Request + Check-In Protocol (same for all templates)
-            system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}"
+            # Handover 0118: Add messaging protocol to system instructions
+            # Build system_instructions: MCP + Context Request + Check-In + Messaging Protocol
+            if template_def["role"] == "orchestrator":
+                # Orchestrator gets enhanced messaging protocol
+                system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
+            else:
+                # Regular agents get standard messaging protocol
+                system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
 
             # Get role-specific user instructions
             user_instructions = template_def["template_content"]
@@ -1038,4 +1048,442 @@ mcp__giljo-mcp__send_message(
 ```
 
 **Keep responses concise** - Only provide information directly relevant to agent's question.
+"""
+
+
+def _get_agent_messaging_protocol_section() -> str:
+    """
+    Generate agent messaging protocol section (Handover 0118).
+
+    This section implements comprehensive inter-agent communication protocol
+    identified as critical gap in first execution test (EVALUATION_FIRST_TEST.md).
+
+    Without messaging, agents cannot:
+    - Coordinate dependencies
+    - Handle blockers
+    - Respond to user mid-execution
+    - Work in multi-terminal mode
+
+    Returns:
+        str - Agent messaging protocol section in markdown format
+
+    Note:
+        This section is added to ALL agent templates (implementer, tester,
+        analyzer, reviewer, documenter). Orchestrator gets enhanced version.
+    """
+    return """## MANDATORY: INTER-AGENT MESSAGING PROTOCOL (Handover 0118)
+
+**CRITICAL**: Communication with orchestrator and team is REQUIRED, not optional.
+
+### Why Messaging is Mandatory
+
+Without messaging, complex workflows WILL FAIL:
+- Dependencies cannot be coordinated
+- Blockers go unreported
+- User corrections missed
+- Multi-terminal mode breaks
+
+### Message Types Reference
+
+Standard message types for clarity:
+
+- **DIRECTIVE**: Instruction from orchestrator (follow immediately)
+- **BLOCKER**: You are stuck and need help (urgent)
+- **QUESTION**: You need clarification (non-urgent)
+- **PROGRESS**: Reporting milestone completion (informational)
+- **COMPLETE**: Work finished (important for dependencies)
+- **ACKNOWLEDGMENT**: Confirming receipt of message
+- **STATUS**: Current state update
+- **DEPENDENCY_MET**: Dependencies satisfied, proceed
+- **USER**: Message from user (urgent, priority)
+- **ESCALATION**: Serious issue requiring attention (orchestrator only)
+
+### CHECKPOINT 1: BEFORE STARTING WORK
+
+**Required Actions:**
+
+1. Check for orchestrator welcome message:
+```python
+messages = receive_messages(
+    agent_id="<AGENT_ID>",
+    tenant_key="<TENANT_KEY>"
+)
+
+# Look for welcome message
+for msg in messages:
+    if msg.from_agent == "orchestrator" and msg.message_type == "DIRECTIVE":
+        # Read and acknowledge
+        send_message(
+            from_agent="<AGENT_TYPE>",
+            to_agent="orchestrator",
+            message_type="ACKNOWLEDGMENT",
+            content="Welcome message received. Beginning work.",
+            tenant_key="<TENANT_KEY>"
+        )
+```
+
+2. Check for special instructions or user corrections
+
+3. **If mission has dependencies**, wait for DEPENDENCY_MET message:
+   - Check messages every 30 seconds (max 10 attempts = 5 minutes)
+   - Look for COMPLETE messages from dependencies
+   - Look for DEPENDENCY_MET from orchestrator
+   - If timeout, send BLOCKER message
+
+### CHECKPOINT 2: DURING WORK (Every 5-10 Actions)
+
+**Required Actions:**
+
+1. Check for new messages:
+```python
+messages = receive_messages(
+    agent_id="<AGENT_ID>",
+    tenant_key="<TENANT_KEY>"
+)
+
+for msg in messages:
+    if msg.message_type == "DIRECTIVE":
+        # Orchestrator giving new instructions
+        # Follow immediately
+    elif msg.from_agent == "USER":
+        # User sending corrections
+        # Acknowledge and adjust work
+    elif msg.message_type == "QUESTION":
+        # Another agent asking you something
+        # Respond promptly
+```
+
+2. Report progress after each major milestone:
+```python
+send_message(
+    from_agent="<AGENT_TYPE>",
+    to_agent="orchestrator",
+    message_type="PROGRESS",
+    content="Milestone complete: [description of what you finished]",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+3. Keep working between message checks (don't check every action)
+
+### CHECKPOINT 3: IF BLOCKED
+
+**Immediate Action Required:**
+
+```python
+send_message(
+    from_agent="<AGENT_TYPE>",
+    to_agent="orchestrator",
+    message_type="BLOCKER",
+    content="BLOCKED: [clear description of issue]. Need guidance on [specific question].",
+    tenant_key="<TENANT_KEY>"
+)
+
+# Then WAIT for orchestrator response before proceeding
+# Check messages every 30 seconds for response
+```
+
+**CRITICAL**: Do not guess or proceed when blocked. Wait for guidance.
+
+### CHECKPOINT 4: WHEN COMPLETE
+
+**Required Actions:**
+
+1. Broadcast completion to all:
+```python
+send_message(
+    from_agent="<AGENT_TYPE>",
+    to_agent="all",
+    message_type="COMPLETE",
+    content="Work complete. Deliverables: [summary]. Files: [list]. Ready for next phase.",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+2. This notifies:
+   - Orchestrator (updates workflow status)
+   - Dependent agents (they can now start)
+   - Team (awareness of progress)
+
+### USER MESSAGE HANDLING
+
+When you receive message from USER:
+
+**Step 1: Acknowledge Immediately (<30 seconds)**
+```python
+send_message(
+    from_agent="<AGENT_TYPE>",
+    to_agent="USER",
+    message_type="ACKNOWLEDGMENT",
+    content=f"Received your message: {user_msg.content[:100]}... Reviewing now.",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+**Step 2: Assess Impact**
+- Does this change current work direction?
+- Do I need to undo anything?
+- Should I stop current task?
+
+**Step 3: Execute Changes**
+- Prioritize user requests over original mission if conflict
+- Adjust work accordingly
+
+**Step 4: Report Completion**
+```python
+send_message(
+    from_agent="<AGENT_TYPE>",
+    to_agent="USER",
+    message_type="COMPLETE",
+    content="Completed your request: [summary of changes]. Continuing with mission.",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+### Messaging Best Practices
+
+**DO:**
+- Check messages at proper checkpoints (not every action)
+- Use correct message types (BLOCKER, PROGRESS, etc.)
+- Send concise, actionable messages
+- Acknowledge important messages
+- Report blockers immediately
+
+**DON'T:**
+- Flood message center (rate limit yourself)
+- Send messages during every action (only at checkpoints)
+- Ignore messages from orchestrator or user
+- Proceed when blocked without guidance
+- Skip completion broadcast
+"""
+
+
+def _get_orchestrator_messaging_protocol_section() -> str:
+    """
+    Generate orchestrator-specific messaging protocol section (Handover 0118).
+
+    Orchestrators have additional responsibilities for team coordination,
+    blocker handling, and dependency management.
+
+    Returns:
+        str - Orchestrator messaging protocol section in markdown format
+    """
+    return """## ORCHESTRATOR MESSAGING PROTOCOL (Handover 0118)
+
+As orchestrator, you are the team coordinator. Messaging is your primary coordination mechanism.
+
+### CRITICAL REQUIREMENT
+
+You MUST implement this communication protocol. Without it:
+- Complex workflows will fail
+- Multi-terminal mode breaks
+- User interaction impossible
+- Agents work in isolation (no coordination)
+
+### Message Type Handling Matrix
+
+| Type | From | Priority | Required Action | Response Time |
+|------|------|----------|-----------------|---------------|
+| BLOCKER | Agent | URGENT | Provide guidance or reassign | < 1 minute |
+| QUESTION | Agent | MEDIUM | Answer from mission context | < 2 minutes |
+| PROGRESS | Agent | LOW | Acknowledge, update tracking | < 5 minutes |
+| COMPLETE | Agent | HIGH | Verify, notify dependents | < 1 minute |
+| USER | User | URGENT | Acknowledge, forward to agents | < 30 seconds |
+
+### PHASE 1: TEAM ASSEMBLY (After Spawning Agents)
+
+**Required Action:**
+
+Send welcome message to establish communication:
+
+```python
+send_message(
+    from_agent="orchestrator",
+    to_agent="all",
+    message_type="DIRECTIVE",
+    content="Team assembled. All agents: Check messages before starting work. Report progress after major milestones. Flag blockers immediately using BLOCKER message type. I will monitor and coordinate.",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+**Why**: This establishes that messaging is active and expected.
+
+### PHASE 2: COORDINATION LOOP (Every 3-5 Actions)
+
+**Required Actions:**
+
+1. Check for messages:
+```python
+messages = receive_messages(
+    agent_id="<ORCHESTRATOR_ID>",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+2. Process by message type:
+
+**BLOCKER Messages (URGENT - Handle First):**
+```python
+if msg.message_type == "BLOCKER":
+    # Agent is stuck and needs help
+    # RESPOND IMMEDIATELY with guidance
+
+    send_message(
+        from_agent="orchestrator",
+        to_agent=msg.from_agent,
+        message_type="DIRECTIVE",
+        content=f"I see your blocker with [issue]. Try [solution]. If that fails, I'll reassign this task.",
+        tenant_key="<TENANT_KEY>"
+    )
+```
+
+**QUESTION Messages:**
+```python
+if msg.message_type == "QUESTION":
+    # Agent needs clarification
+    # Provide context from product vision or mission
+
+    send_message(
+        from_agent="orchestrator",
+        to_agent=msg.from_agent,
+        message_type="DIRECTIVE",
+        content=f"Your question about [topic]: [answer from mission context]",
+        tenant_key="<TENANT_KEY>"
+    )
+```
+
+**PROGRESS Messages:**
+```python
+if msg.message_type == "PROGRESS":
+    # Agent reporting milestone
+    # Acknowledge receipt
+
+    send_message(
+        from_agent="orchestrator",
+        to_agent=msg.from_agent,
+        message_type="ACKNOWLEDGMENT",
+        content=f"Progress noted. Good work on [milestone].",
+        tenant_key="<TENANT_KEY>"
+    )
+```
+
+**COMPLETE Messages:**
+```python
+if msg.message_type == "COMPLETE":
+    # Agent finished work
+    # Verify completion, notify dependent agents
+
+    send_message(
+        from_agent="orchestrator",
+        to_agent=msg.from_agent,
+        message_type="ACKNOWLEDGMENT",
+        content="Completion confirmed.",
+        tenant_key="<TENANT_KEY>"
+    )
+
+    # Notify dependent agents
+    # Check workflow for agents waiting on this one
+    dependent_agents = get_dependent_agents(msg.from_agent)
+    for dependent in dependent_agents:
+        send_message(
+            from_agent="orchestrator",
+            to_agent=dependent,
+            message_type="DEPENDENCY_MET",
+            content=f"{msg.from_agent} has completed. You may now begin your work.",
+            tenant_key="<TENANT_KEY>"
+        )
+```
+
+**USER Messages (URGENT - Handle Immediately):**
+```python
+if msg.from_agent == "USER":
+    # User sending instructions or corrections
+    # Acknowledge immediately
+
+    send_message(
+        from_agent="orchestrator",
+        to_agent="USER",
+        message_type="ACKNOWLEDGMENT",
+        content=f"Received: {msg.content[:100]}... Forwarding to affected agents.",
+        tenant_key="<TENANT_KEY>"
+    )
+
+    # Forward to agents (determine which agents need this)
+    if "all agents" in msg.content.lower():
+        send_message(
+            from_agent="orchestrator",
+            to_agent="all",
+            message_type="DIRECTIVE",
+            content=f"USER REQUEST FOR ALL: {msg.content}. All agents acknowledge and adjust.",
+            tenant_key="<TENANT_KEY>"
+        )
+    else:
+        # Forward to specific agent
+        # (extract agent from message or ask user)
+```
+
+### PHASE 3: STATUS BROADCASTS (Every 10-15 Actions)
+
+**Optional but Recommended:**
+
+Broadcast team status periodically:
+
+```python
+send_message(
+    from_agent="orchestrator",
+    to_agent="all",
+    message_type="STATUS",
+    content="Team status: Implementer: working (60%), Documenter: complete, Analyzer: waiting for implementer",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+### PHASE 4: ESCALATION HANDLING
+
+If agent blocked for >5 minutes without resolution:
+
+```python
+send_message(
+    from_agent="orchestrator",
+    to_agent="USER",
+    message_type="ESCALATION",
+    content="ATTENTION NEEDED: [Agent] has been blocked on [issue] for 5+ minutes. Please advise.",
+    tenant_key="<TENANT_KEY>"
+)
+```
+
+### Orchestrator Best Practices
+
+**DO:**
+- Check messages every 3-5 actions (not every action)
+- Respond to BLOCKER messages within 1 minute
+- Send welcome message after spawning agents
+- Notify dependent agents when dependencies complete
+- Escalate to user if agent blocked >5 minutes
+
+**DON'T:**
+- Ignore agent messages
+- Let blockers go unresolved
+- Forget to notify dependent agents
+- Overwhelm agents with status broadcasts (max every 15 actions)
+
+### Example Coordination Flow
+
+```
+1. Spawn all agents
+2. Send welcome message to "all"
+3. Enter coordination loop:
+   FOR EACH 3-5 actions:
+     - Check messages
+     - Handle BLOCKER (priority 1)
+     - Handle USER (priority 1)
+     - Handle COMPLETE (priority 2)
+     - Handle QUESTION (priority 3)
+     - Handle PROGRESS (priority 4)
+     - Send status update (every 15 actions)
+   REPEAT
+4. When all agents complete:
+   - Send completion summary to "all"
+   - Close out project
+```
 """

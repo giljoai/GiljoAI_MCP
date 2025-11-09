@@ -104,9 +104,8 @@ class FileStaging:
         """
         Stage slash commands as a ZIP file.
 
-        Creates a ZIP file containing only the gil_handover.md slash command.
-        Import commands (gil_import_productagents, gil_import_personalagents)
-        are no longer included per Handover 0096 refactoring.
+        Creates a ZIP file containing GiljoAI slash command files (.md) for CLI tools.
+        Includes core commands: gil_fetch, gil_update, gil_activate, gil_launch, gil_handover
 
         Args:
             staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
@@ -121,21 +120,30 @@ class FileStaging:
             staging_path.mkdir(parents=True, exist_ok=True)
             zip_path = staging_path / "slash_commands.zip"
 
-            # Get only gil_handover template
+            # Get all templates
             all_templates = get_all_templates()
-            if "gil_handover.md" not in all_templates:
-                msg = "Missing slash command template: gil_handover.md"
+            # Select a stable subset
+            wanted = [
+                "gil_fetch.md",
+                "gil_update.md",
+                "gil_activate.md",
+                "gil_launch.md",
+                "gil_handover.md",
+            ]
+            missing = [w for w in wanted if w not in all_templates]
+            if missing:
+                msg = f"Missing slash command templates: {', '.join(missing)}"
                 logger.error(msg)
                 return (None, msg)
-            templates = {"gil_handover.md": all_templates["gil_handover.md"]}
+            templates = {name: all_templates[name] for name in wanted}
 
             # Create ZIP file with single command
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for filename, content in templates.items():
                     zf.writestr(filename, content)
 
-            logger.info(f"Staged slash commands ZIP: {zip_path} (1 file)")
-            return (zip_path, "Successfully staged 1 slash command")
+            logger.info(f"Staged slash commands ZIP: {zip_path} ({len(templates)} files)")
+            return (zip_path, f"Successfully staged {len(templates)} slash commands")
         except OSError as e:
             msg = f"Disk error creating slash commands ZIP: {e}"
             logger.error(msg)
