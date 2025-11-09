@@ -360,11 +360,18 @@ export const api = {
     getMessageThread: (jobId) =>
       apiClient.get(`/api/agent-jobs/${jobId}/messages`),
 
-    // Send message to agent
+    // Send message to specific agent
     sendMessage: (jobId, data) =>
       apiClient.post(`/api/agent-jobs/${jobId}/send-message`, {
         content: data.content,
         to: data.to,
+      }),
+
+    // Broadcast message to all agents in project
+    broadcast: (data) =>
+      apiClient.post(`/api/agent-jobs/broadcast`, {
+        project_id: data.project_id,
+        content: data.content,
       }),
 
     // Get job details

@@ -406,20 +406,47 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       if (!this.currentProject) return
 
       try {
-        const message = {
-          project_id: this.currentProject.id,
-          content,
-          from: 'developer',
-          to_agent: recipient === 'broadcast' ? null : recipient,
-          type: recipient === 'broadcast' ? 'broadcast' : 'message',
-          timestamp: new Date().toISOString(),
-          status: 'pending'
+        if (recipient === 'broadcast') {
+          // Use broadcast endpoint for broadcast messages
+          const response = await api.agentJobs.broadcast({
+            project_id: this.currentProject.id,
+            content
+          })
+
+          // Add broadcast message to local messages
+          this.addMessage({
+            id: response.broadcast_id,
+            from: 'developer',
+            to_agent: null,
+            content,
+            type: 'broadcast',
+            timestamp: new Date().toISOString(),
+            status: 'sent'
+          })
+        } else {
+          // Find the orchestrator job for this project to send targeted message
+          const orchestratorJob = this.agents.find(a => a.agent_type === 'orchestrator')
+
+          if (!orchestratorJob) {
+            throw new Error('Orchestrator not found - cannot send message')
+          }
+
+          const response = await api.agentJobs.sendMessage(orchestratorJob.job_id, {
+            content,
+            to: recipient
+          })
+
+          // Add message to local messages
+          this.addMessage({
+            id: response.message_id,
+            from: 'developer',
+            to_agent: recipient,
+            content,
+            type: 'message',
+            timestamp: response.timestamp,
+            status: response.status
+          })
         }
-
-        const response = await api.agent_jobs.sendMessage(message)
-
-        // Add to local messages
-        this.addMessage(response)
       } catch (error) {
         console.error('Failed to send message:', error)
         throw error
