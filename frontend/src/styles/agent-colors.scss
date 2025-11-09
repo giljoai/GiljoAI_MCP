@@ -173,7 +173,7 @@
       @include agent-card-header(var(--agent-orchestrator-primary));
     }
 
-    &--analyzer {
+    &--analyzer, &--researcher {
       @include agent-card-header(var(--agent-analyzer-primary));
     }
 
@@ -181,7 +181,7 @@
       @include agent-card-header(var(--agent-implementor-primary));
     }
 
-    &--researcher, &--documenter {
+    &--documenter {
       @include agent-card-header(var(--agent-researcher-primary));
     }
 
@@ -202,7 +202,7 @@
     @include agent-card-border(var(--agent-orchestrator-primary));
   }
 
-  &--analyzer {
+  &--analyzer, &--researcher {
     @include agent-card-border(var(--agent-analyzer-primary));
   }
 
@@ -210,7 +210,7 @@
     @include agent-card-border(var(--agent-implementor-primary));
   }
 
-  &--researcher, &--documenter {
+  &--documenter {
     @include agent-card-border(var(--agent-researcher-primary));
   }
 
@@ -228,7 +228,7 @@
     @include chat-head-badge(var(--agent-orchestrator-primary));
   }
 
-  &--analyzer {
+  &--analyzer, &--researcher {
     @include chat-head-badge(var(--agent-analyzer-primary));
   }
 
@@ -236,7 +236,7 @@
     @include chat-head-badge(var(--agent-implementor-primary));
   }
 
-  &--researcher, &--documenter {
+  &--documenter {
     @include chat-head-badge(var(--agent-researcher-primary));
   }
 

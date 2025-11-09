@@ -209,9 +209,9 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       this.error = null
 
       try {
-        const response = await api.orchestrator.launchProject(
-          this.currentProject.id
-        )
+        const response = await api.orchestrator.launchProject({
+          project_id: this.currentProject.id,
+        })
 
         this.isLaunched = true
         this.activeTab = 'jobs'
