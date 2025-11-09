@@ -1322,12 +1322,12 @@ const getCategoryColor = (role) => {
   const colors = {
     orchestrator: '#D4A574',  // Tan/Beige
     analyzer: '#E74C3C',      // Red
+    researcher: '#E74C3C',    // Red (alias → analyzer)
     implementer: '#3498DB',   // Blue
     implementor: '#3498DB',   // Blue (alias)
     tester: '#FFC300',        // Yellow
     reviewer: '#9B59B6',      // Purple
     documenter: '#27AE60',    // Green
-    researcher: '#27AE60',    // Green (alias)
     custom: '#90A4AE',        // Gray
   }
   return colors[role] || '#90A4AE'

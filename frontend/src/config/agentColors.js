@@ -54,7 +54,7 @@ export const AGENT_COLORS = {
 // Legacy/alias mapping (UI used to use these names)
 const AGENT_SYNONYMS = {
   implementor: 'implementer',
-  researcher: 'documenter',
+  researcher: 'analyzer',
   // Common misspellings or variants
   analyser: 'analyzer',
   'code-reviewer': 'reviewer',
