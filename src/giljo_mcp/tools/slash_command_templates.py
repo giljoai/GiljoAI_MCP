@@ -73,6 +73,74 @@ Optional arguments: reason can be "context_limit", "manual", or "phase_transitio
 Call the tool now to begin.
 """
 
+GIL_FETCH_MD = """---
+name: gil_fetch
+description: Fetch and install GiljoAI agent templates
+allowed-tools: ["mcp__giljo-mcp__*"]
+---
+
+Use the mcp__giljo-mcp__gil_fetch tool to download the latest agent templates from your GiljoAI MCP server.
+
+This will:
+1. Generate a secure one-time download link
+2. Download agent_templates.zip
+3. Install into your ~/.claude/agents/ folder (or project .claude/agents)
+
+Call the tool now to begin.
+"""
+
+GIL_UPDATE_MD = """---
+name: gil_update
+description: Update GiljoAI agent templates to the latest version
+allowed-tools: ["mcp__giljo-mcp__*"]
+---
+
+Use the mcp__giljo-mcp__gil_update tool to refresh your installed agent templates to the latest versions.
+
+This will:
+1. Generate a secure one-time download link
+2. Download agent_templates.zip
+3. Replace existing templates with a backup
+
+Call the tool now to begin.
+"""
+
+GIL_ACTIVATE_MD = """---
+name: gil_activate
+description: Activate a project to prepare orchestrator staging
+allowed-tools: ["mcp__giljo-mcp__*"]
+---
+
+Provide the project ID when calling the tool to activate it:
+
+Example:
+"Call mcp__giljo-mcp__gil_activate with {\"project_id\": \"<PROJECT_ID>\"}"
+
+Activation will:
+1. Set project status to active
+2. Ensure an orchestrator job exists (status=waiting)
+
+Call the tool with project_id to begin.
+"""
+
+GIL_LAUNCH_MD = """---
+name: gil_launch
+description: Launch a staged project into execution
+allowed-tools: ["mcp__giljo-mcp__*"]
+---
+
+Provide the project ID when calling the tool to launch execution:
+
+Example:
+"Call mcp__giljo-mcp__gil_launch with {\"project_id\": \"<PROJECT_ID>\"}"
+
+Launch will:
+1. Validate mission exists and agents are spawned
+2. Update project staging status to launching
+
+Call the tool with project_id to begin.
+"""
+
 
 def get_all_templates() -> dict[str, str]:
     """
@@ -85,4 +153,8 @@ def get_all_templates() -> dict[str, str]:
         "gil_import_productagents.md": GIL_IMPORT_PRODUCTAGENTS_MD,
         "gil_import_personalagents.md": GIL_IMPORT_PERSONALAGENTS_MD,
         "gil_handover.md": GIL_HANDOVER_MD,
+        "gil_fetch.md": GIL_FETCH_MD,
+        "gil_update.md": GIL_UPDATE_MD,
+        "gil_activate.md": GIL_ACTIVATE_MD,
+        "gil_launch.md": GIL_LAUNCH_MD,
     }

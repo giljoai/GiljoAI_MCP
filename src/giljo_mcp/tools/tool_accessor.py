@@ -2539,12 +2539,139 @@ Begin by fetching your mission.
                     db_session=session,
                     tenant_key=self.tenant_manager.get_current_tenant(),
                     project_id=None,  # Not used by handover
-                    job_id=current_job_id,
+                    orchestrator_job_id=current_job_id,
                     reason=reason,
                 )
 
             return result
 
         except Exception as e:
-            logger.exception(f"Failed to trigger handover: {e}")
-            return {"success": False, "message": f"Failed to trigger handover: {e!s}", "error": "UNEXPECTED_ERROR"}
+            logger.exception(f"Failed to execute gil_handover: {e}")
+            return {"success": False, "message": str(e)}
+
+    # Handover 0083: Core /gil_* commands exposed as MCP tools
+    async def gil_fetch(self) -> dict[str, Any]:
+        """Stage agent templates and return a download URL."""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
+
+            from giljo_mcp.downloads.token_manager import TokenManager
+            from giljo_mcp.file_staging import FileStaging
+            async with self.db_manager.get_session_async() as session:
+                token_manager = TokenManager(db_session=session)
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="agent_templates",
+                    filename="agent_templates.zip",
+                )
+                file_staging = FileStaging(db_session=session)
+                staging_path = await file_staging.create_staging_directory(tenant_key, token)
+                zip_path, message = await file_staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+                if not zip_path:
+                    await token_manager.mark_failed(token, message)
+                    return {"success": False, "error": message}
+                await token_manager.mark_ready(token)
+
+            from api.app import state
+            cfg = state.config
+            host = cfg.get("services", {}).get("api", {}).get("host", "localhost")
+            port = cfg.get("services", {}).get("api", {}).get("port", 7272)
+            download_url = f"http://{host}:{port}/api/download/temp/{token}/agent_templates.zip"
+            return {"success": True, "download_url": download_url}
+        except Exception as e:
+            logger.exception(f"gil_fetch failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def gil_update(self) -> dict[str, Any]:
+        return await self.gil_fetch()
+
+    async def gil_activate(self, project_id: str) -> dict[str, Any]:
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
+            if not project_id:
+                return {"success": False, "error": "project_id is required"}
+            from sqlalchemy import select
+            from giljo_mcp.models import Project, Product, MCPAgentJob
+            from datetime import datetime, timezone
+            async with self.db_manager.get_session_async() as session:
+                res = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
+                project = res.scalar_one_or_none()
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+                if project.status != "inactive":
+                    return {"success": False, "error": f"Project cannot be activated from status '{project.status}'"}
+                if project.product_id:
+                    prod = await session.execute(select(Product).where(Product.id == project.product_id))
+                    product = prod.scalar_one_or_none()
+                    if not product or not getattr(product, "is_active", False):
+                        return {"success": False, "error": "Parent product inactive or missing"}
+                project.status = "active"
+                project.updated_at = datetime.now(timezone.utc)
+                await session.commit()
+                orch = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.tenant_key == tenant_key,
+                        MCPAgentJob.agent_type == "orchestrator",
+                    )
+                )
+                orchestrator = orch.scalar_one_or_none()
+                if not orchestrator:
+                    orchestrator = MCPAgentJob(
+                        tenant_key=tenant_key,
+                        project_id=project_id,
+                        agent_type="orchestrator",
+                        agent_name="Orchestrator",
+                        mission=(
+                            "I am ready to create the project mission based on product context and project description. "
+                            "I will write the mission in the mission window and select the proper agents below."
+                        ),
+                        status="waiting",
+                        tool_type="universal",
+                        progress=0,
+                        acknowledged=False,
+                        context_chunks=[],
+                        messages=[],
+                    )
+                    session.add(orchestrator)
+                    await session.commit()
+            return {"success": True, "project_id": project_id}
+        except Exception as e:
+            logger.exception(f"gil_activate failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def gil_launch(self, project_id: str) -> dict[str, Any]:
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
+            if not project_id:
+                return {"success": False, "error": "project_id is required"}
+            from sqlalchemy import select
+            from giljo_mcp.models import Project, MCPAgentJob
+            from datetime import datetime, timezone
+            async with self.db_manager.get_session_async() as session:
+                pr = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
+                project = pr.scalar_one_or_none()
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+                if not project.mission or not project.mission.strip():
+                    return {"success": False, "error": "Project mission has not been created. Please complete staging first."}
+                ag = await session.execute(
+                    select(MCPAgentJob).where(MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == tenant_key)
+                )
+                agents = ag.scalars().all()
+                if not agents:
+                    return {"success": False, "error": "No agents have been spawned for this project. Please complete staging first."}
+                if hasattr(project, "staging_status"):
+                    project.staging_status = "launching"
+                    project.updated_at = datetime.now(timezone.utc)
+                    await session.commit()
+            return {"success": True, "project_id": project_id, "agent_count": len(agents)}
+        except Exception as e:
+            logger.exception(f"gil_launch failed: {e}")
+            return {"success": False, "error": str(e)}
