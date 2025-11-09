@@ -205,12 +205,13 @@ MESSAGE_TYPES = {
         "action": "Proceed with work",
         "example": "Implementer completed. You may now begin analysis."
     },
-    "USER": {
-        "from": "USER",
+    "DEVELOPER_MESSAGE": {
+        "from": "developer",
         "to": "agent/orchestrator",
         "priority": "URGENT",
         "action": "Acknowledge, adjust work",
-        "example": "Add security section to all documentation files."
+        "example": "Add security section to all documentation files.",
+        "detection": "msg.get('from') == 'developer'"
     },
     "ESCALATION": {
         "from": "orchestrator",
@@ -247,8 +248,8 @@ messages = receive_messages(agent_id="<AGENT_ID>", tenant_key="<TENANT_KEY>")
 for msg in messages:
     if msg.message_type == "DIRECTIVE":
         # Follow new instructions
-    elif msg.from_agent == "USER":
-        # Acknowledge and adjust work
+    elif msg.get("from") == "developer":
+        # Developer/user message - acknowledge and adjust work
     elif msg.message_type == "QUESTION":
         # Respond to question
 ```
