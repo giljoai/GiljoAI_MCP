@@ -77,6 +77,9 @@ class MCPSessionManager:
 
         api_key, user = auth_result
 
+        # Fetch any existing sessions for this API key + tenant ordered by most recent
+        # Note: scalar_one_or_none() raises MultipleResultsFound when duplicates exist.
+        # We tolerate duplicates by selecting the most recent and optionally cleaning up extras.
         stmt = (
             select(MCPSession)
             .where(MCPSession.api_key_id == api_key.id, MCPSession.tenant_key == user.tenant_key)
@@ -84,7 +87,21 @@ class MCPSessionManager:
         )
 
         result = await self.db.execute(stmt)
-        existing_session = result.scalar_one_or_none()
+        sessions = result.scalars().all()
+        existing_session = sessions[0] if sessions else None
+
+        # If duplicates exist, remove older ones to prevent future query exceptions
+        if len(sessions) > 1:
+            try:
+                stale_ids = [s.id for s in sessions[1:]]
+                if stale_ids:
+                    await self.db.execute(delete(MCPSession).where(MCPSession.id.in_(stale_ids)))
+                    await self.db.commit()
+                    logger.warning(
+                        f"[MCP Session] Deduplicated {len(stale_ids)} stale sessions for api_key={api_key.id} tenant={user.tenant_key}"
+                    )
+            except Exception as cleanup_err:
+                logger.error(f"[MCP Session] Failed to cleanup duplicate sessions: {cleanup_err}")
 
         if existing_session and not existing_session.is_expired:
             existing_session.last_accessed = datetime.now(timezone.utc)
