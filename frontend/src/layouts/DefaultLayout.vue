@@ -97,9 +97,9 @@ onMounted(async () => {
   // Initialize WebSocket and data polling only if user is authenticated
   if (userLoaded && currentUser.value) {
     try {
-      // Connect WebSocket with cookie-based authentication
+      // Connect WebSocket - browser will automatically send httpOnly access_token cookie
       await wsStore.connect()
-      console.log('[DefaultLayout] WebSocket connected successfully')
+      console.log('[DefaultLayout] WebSocket connected with automatic cookie authentication')
 
       // Load initial data
       await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
