@@ -281,18 +281,7 @@
         </span>
       </v-tooltip>
 
-      <!-- Orchestrator: Copy Execution Prompt (Handover 0109) -->
-      <v-btn
-        v-if="mode === 'jobs' && isOrchestrator && (agent.status === 'waiting' || agent.status === 'working')"
-        variant="outlined"
-        color="primary"
-        block
-        class="mt-2"
-        @click="$emit('copy-execution-prompt', agent)"
-      >
-        <v-icon start>mdi-play-circle</v-icon>
-        Copy Execution Prompt
-      </v-btn>
+      <!-- Orchestrator: Copy Execution Prompt removed - Launch button handles prompt copy -->
 
       <!-- Orchestrator: Hand Over (Handover 0080a) -->
       <v-btn
@@ -438,7 +427,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'copy-execution-prompt', 'continue-working'])
+defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'continue-working'])
 
 /**
  * Agent color configuration
