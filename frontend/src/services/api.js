@@ -398,6 +398,7 @@ export const api = {
       apiClient.get(`/api/v1/prompts/execution/${orchestratorJobId}`, {
         params: { claude_code_mode: claudeCodeMode }
       }),
+    agentPrompt: (agentJobId) => apiClient.get(`/api/prompts/agent/${agentJobId}`),
   },
 
   // Downloads (Natural Language Instructions via MCP Tools)

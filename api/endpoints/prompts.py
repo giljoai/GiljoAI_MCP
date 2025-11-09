@@ -555,23 +555,75 @@ async def get_execution_prompt(
         # Initialize thin client generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # Generate execution prompt
-        result = await generator.generate_execution_prompt(
+        # Fetch orchestrator job to determine project_id and validate type/tenant
+        job_stmt = select(MCPAgentJob).where(
+            MCPAgentJob.job_id == orchestrator_job_id,
+            MCPAgentJob.tenant_key == current_user.tenant_key,
+        )
+        job_result = await db.execute(job_stmt)
+        job = job_result.scalar_one_or_none()
+
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Orchestrator job {orchestrator_job_id} not found or not accessible",
+            )
+
+        if (job.agent_type or '').lower() != 'orchestrator':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Execution prompt is only available for orchestrator jobs",
+            )
+
+        # Fetch project for metadata
+        proj_stmt = select(Project).where(
+            Project.id == job.project_id,
+            Project.tenant_key == current_user.tenant_key,
+        )
+        proj_result = await db.execute(proj_stmt)
+        project = proj_result.scalar_one_or_none()
+
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {job.project_id} not found",
+            )
+
+        # Count specialist agents (exclude orchestrator)
+        agent_count_stmt = select(func.count(MCPAgentJob.id)).where(
+            MCPAgentJob.project_id == job.project_id,
+            MCPAgentJob.tenant_key == current_user.tenant_key,
+            MCPAgentJob.agent_type != 'orchestrator',
+        )
+        agent_count_result = await db.execute(agent_count_stmt)
+        agent_count = int(agent_count_result.scalar() or 0)
+
+        # Generate execution prompt (returns a string)
+        prompt_text = await generator.generate_execution_prompt(
             orchestrator_job_id=orchestrator_job_id,
-            claude_code_mode=claude_code_mode
+            project_id=job.project_id,
+            claude_code_mode=claude_code_mode,
         )
 
-        # Add success flag for frontend
-        result["success"] = True
+        # Build frontend-compatible response
+        response = {
+            "success": True,
+            "orchestrator_job_id": orchestrator_job_id,
+            "project_id": str(job.project_id),
+            "project_name": project.name if hasattr(project, 'name') else None,
+            "claude_code_mode": bool(claude_code_mode),
+            "prompt": prompt_text,
+            "agent_count": agent_count,
+            "estimated_tokens": len(prompt_text) // 4,
+        }
 
         logger.info(
             f"[EXECUTION PROMPT] Generated for orchestrator={orchestrator_job_id}, "
             f"mode={'claude-code' if claude_code_mode else 'multi-terminal'}, "
-            f"user={current_user.username}, "
-            f"agents={result['agent_count']}"
+            f"user={current_user.username}, agents={agent_count}"
         )
 
-        return result
+        return response
 
     except ValueError as e:
         # Orchestrator not found or validation error

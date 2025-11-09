@@ -862,17 +862,75 @@ class ToolAccessor:
             return {"success": False, "error": str(e)}
 
     async def receive_messages(self, agent_id: str, limit: int = 10) -> dict[str, Any]:
-        """Receive pending messages for an agent (alias for get_messages)"""
-        return await self.get_messages(agent_id, limit=limit)
+        """Receive pending messages for an agent by job_id (legacy compatible).
 
-    async def list_messages(self, project_id: Optional[str] = None, status: Optional[str] = None) -> dict[str, Any]:
-        """List messages in a project"""
+        Aligns with MCP tool schema used by thin clients where `agent_id` is the job_id.
+        The older API expected an agent name; we normalize to job_id here and
+        fetch messages from the Job.messages queue (JSONB) via AgentCommunicationQueue.
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+
+            comm_queue = AgentCommunicationQueue(self.db_manager)
+            async with self.db_manager.get_session_async() as session:
+                result = comm_queue.get_messages(
+                    session=session,
+                    job_id=agent_id,
+                    tenant_key=tenant_key,
+                    to_agent=None,
+                    message_type=None,
+                    unread_only=True,
+                )
+
+                if result.get("status") != "success":
+                    return {"success": False, "error": result.get("error")}
+
+                messages = result.get("messages", [])
+                if isinstance(limit, int) and limit > 0:
+                    messages = messages[:limit]
+
+                return {"success": True, "messages": messages, "count": len(messages)}
+        except Exception as e:
+            logger.exception(f"Failed to receive messages: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def list_messages(
+        self,
+        project_id: Optional[str] = None,
+        status: Optional[str] = None,
+        agent_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """List messages in a project or for a specific agent (legacy compatible)."""
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key and not project_id:
                 return {"success": False, "error": "No active project"}
 
             async with self.db_manager.get_session_async() as session:
+                if agent_id:
+                    # Prefer agent (job) scoped listing using communication queue for compatibility
+                    from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+
+                    comm_queue = AgentCommunicationQueue(self.db_manager)
+                    result = comm_queue.get_messages(
+                        session=session,
+                        job_id=agent_id,
+                        tenant_key=tenant_key or "",
+                        to_agent=None,
+                        message_type=None,
+                        unread_only=False,
+                    )
+
+                    if result.get("status") != "success":
+                        return {"success": False, "error": result.get("error")}
+
+                    messages = result.get("messages", [])
+                    return {"success": True, "messages": messages, "count": len(messages)}
+
                 if project_id:
                     query = select(Message).where(Message.project_id == project_id)
                 else:
@@ -1709,10 +1767,10 @@ Begin by fetching your mission.
             return {"error": f"Orchestration failed: {e!s}"}
 
     async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
-        """Get workflow status for a project"""
+        """Get workflow status for a project (MCPAgentJob aware)."""
         try:
             async with self.db_manager.get_session_async() as session:
-                from giljo_mcp.models import Job, Project
+                from giljo_mcp.models import Project, MCPAgentJob
 
                 # Verify project exists
                 result = await session.execute(
@@ -1723,15 +1781,21 @@ Begin by fetching your mission.
                 if not project:
                     return {"error": f"Project '{project_id}' not found"}
 
-                # Get all Jobs for this tenant
-                jobs_result = await session.execute(select(Job).where(Job.tenant_key == tenant_key))
+                # Get all MCPAgentJobs for this project/tenant
+                jobs_result = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.tenant_key == tenant_key,
+                        MCPAgentJob.project_id == project_id,
+                    )
+                )
                 jobs = jobs_result.scalars().all()
 
                 # Count by status
-                active_count = sum(1 for job in jobs if job.status == "active")
-                completed_count = sum(1 for job in jobs if job.status == "completed")
+                working_like = {"active", "working"}
+                active_count = sum(1 for job in jobs if job.status in working_like)
+                completed_count = sum(1 for job in jobs if job.status in {"complete", "completed"})
                 failed_count = sum(1 for job in jobs if job.status == "failed")
-                pending_count = sum(1 for job in jobs if job.status == "pending")
+                pending_count = sum(1 for job in jobs if job.status in {"waiting", "pending"})
                 total_count = len(jobs)
 
                 # Calculate progress
@@ -1813,135 +1877,162 @@ Begin by fetching your mission.
             return {"status": "error", "error": str(e), "jobs": [], "count": 0}
 
     async def acknowledge_job(self, job_id: str, agent_id: str) -> dict[str, Any]:
-        """Acknowledge job assignment"""
-        from giljo_mcp.agent_job_manager import AgentJobManager
-
+        """Acknowledge job assignment (MCPAgentJob, async safe)."""
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
                 return {"status": "error", "error": "No tenant context available"}
 
-            # Validate inputs
             if not job_id or not job_id.strip():
                 return {"status": "error", "error": "job_id cannot be empty"}
-
             if not agent_id or not agent_id.strip():
                 return {"status": "error", "error": "agent_id cannot be empty"}
 
-            job_manager = AgentJobManager(self.db_manager)
-            job = job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job_id)
+            from giljo_mcp.models import MCPAgentJob
+            from datetime import datetime, timezone
 
-            # Agent status sync removed (Handover 0116) - Agent model eliminated
-            # Previously synced job acknowledgment to legacy agents table
-            # MCPAgentJob status is authoritative and updated via AgentJobManager
+            async with self.db_manager.get_session_async() as session:
+                result = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+                job = result.scalar_one_or_none()
+                if not job:
+                    return {"status": "error", "error": f"Job {job_id} not found"}
 
-            return {
-                "status": "success",
-                "job": {
-                    "job_id": job.job_id,
-                    "agent_type": job.agent_type,
-                    "mission": job.mission,
-                    "status": job.status,
-                    "started_at": job.started_at.isoformat() if job.started_at else None,
-                },
-                "next_instructions": "Begin executing your mission",
-            }
+                # Idempotent
+                if job.acknowledged and job.status in {"working", "active"}:
+                    return {
+                        "status": "success",
+                        "job": {
+                            "job_id": job.job_id,
+                            "agent_type": job.agent_type,
+                            "mission": job.mission,
+                            "status": job.status,
+                            "started_at": job.started_at.isoformat() if job.started_at else None,
+                        },
+                        "next_instructions": "Begin executing your mission",
+                    }
 
+                job.acknowledged = True
+                # Normalize to 'working' for MCPAgentJob
+                job.status = "working"
+                job.started_at = datetime.now(timezone.utc)
+                await session.commit()
+                await session.refresh(job)
+
+                return {
+                    "status": "success",
+                    "job": {
+                        "job_id": job.job_id,
+                        "agent_type": job.agent_type,
+                        "mission": job.mission,
+                        "status": job.status,
+                        "started_at": job.started_at.isoformat() if job.started_at else None,
+                    },
+                    "next_instructions": "Begin executing your mission",
+                }
         except Exception as e:
             logger.exception(f"Failed to acknowledge job: {e}")
             return {"status": "error", "error": str(e)}
 
     async def report_progress(self, job_id: str, progress: dict[str, Any]) -> dict[str, Any]:
-        """Report job progress"""
+        """Report job progress (store message in Job.messages queue)."""
         from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        import json
 
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
                 return {"status": "error", "error": "No tenant context available"}
 
-            # Validate inputs
             if not job_id or not job_id.strip():
                 return {"status": "error", "error": "job_id cannot be empty"}
-
             if not progress or not isinstance(progress, dict):
                 return {"status": "error", "error": "progress must be a non-empty dict"}
 
             comm_queue = AgentCommunicationQueue(self.db_manager)
-
-            # Send progress message
-            comm_queue.send_message(
-                tenant_key=tenant_key,
-                from_job_id=job_id,
-                to_job_id="orchestrator",
-                message_type="progress",
-                content=progress,
-            )
+            async with self.db_manager.get_session_async() as session:
+                # Serialize dict to string for message content
+                content = json.dumps(progress)
+                result = comm_queue.send_message(
+                    session=session,
+                    job_id=job_id,
+                    tenant_key=tenant_key,
+                    from_agent=job_id,
+                    to_agent=None,
+                    message_type="progress",
+                    content=content,
+                    priority=1,
+                    metadata=None,
+                )
+                if result.get("status") != "success":
+                    return {"status": "error", "error": result.get("error")}
 
             return {"status": "success", "message": "Progress reported successfully"}
-
         except Exception as e:
             logger.exception(f"Failed to report progress: {e}")
             return {"status": "error", "error": str(e)}
 
     async def complete_job(self, job_id: str, result: dict[str, Any]) -> dict[str, Any]:
-        """Mark job as complete"""
-        from giljo_mcp.agent_job_manager import AgentJobManager
-
+        """Mark job as complete (MCPAgentJob, async safe)."""
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
                 return {"status": "error", "error": "No tenant context available"}
 
-            # Validate inputs
             if not job_id or not job_id.strip():
                 return {"status": "error", "error": "job_id cannot be empty"}
-
             if not result or not isinstance(result, dict):
                 return {"status": "error", "error": "result must be a non-empty dict"}
 
-            job_manager = AgentJobManager(self.db_manager)
-            job = job_manager.complete_job(tenant_key=tenant_key, job_id=job_id, result=result)
-
-            # Agent status sync removed (Handover 0116) - Agent model eliminated
-            # Previously synced job completion to legacy agents table
-            # MCPAgentJob status is authoritative and updated via AgentJobManager
-
-            return {"status": "success", "job_id": job.job_id, "message": "Job completed successfully"}
-
+            from giljo_mcp.models import MCPAgentJob
+            from datetime import datetime, timezone
+            async with self.db_manager.get_session_async() as session:
+                res = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+                job = res.scalar_one_or_none()
+                if not job:
+                    return {"status": "error", "error": f"Job {job_id} not found"}
+                job.status = "complete"
+                job.completed_at = datetime.now(timezone.utc)
+                await session.commit()
+                return {"status": "success", "job_id": job.job_id, "message": "Job completed successfully"}
         except Exception as e:
             logger.exception(f"Failed to complete job: {e}")
             return {"status": "error", "error": str(e)}
 
     async def report_error(self, job_id: str, error: str) -> dict[str, Any]:
-        """Report job error"""
-        from giljo_mcp.agent_job_manager import AgentJobManager
-
+        """Report job error (MCPAgentJob, async safe)."""
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
                 return {"status": "error", "error": "No tenant context available"}
 
-            # Validate inputs
             if not job_id or not job_id.strip():
                 return {"status": "error", "error": "job_id cannot be empty"}
-
             if not error or not error.strip():
                 return {"status": "error", "error": "error message cannot be empty"}
 
-            job_manager = AgentJobManager(self.db_manager)
-            job = job_manager.fail_job(tenant_key=tenant_key, job_id=job_id, error_message=error)
-
-            # Agent status sync removed (Handover 0116) - Agent model eliminated
-            # Previously synced job failure to legacy agents table
-            # MCPAgentJob status is authoritative and updated via AgentJobManager
-            try:
-                pass
-            except Exception as sync_error:
-                logger.warning(f"Failed to sync Agent status: {sync_error}")
-
-            return {"status": "success", "job_id": job.job_id, "message": "Error reported successfully"}
-
+            from giljo_mcp.models import MCPAgentJob
+            async with self.db_manager.get_session_async() as session:
+                res = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+                job = res.scalar_one_or_none()
+                if not job:
+                    return {"status": "error", "error": f"Job {job_id} not found"}
+                job.status = "failed"
+                job.failure_reason = "error"
+                job.block_reason = error
+                await session.commit()
+                return {"status": "success", "job_id": job.job_id, "message": "Error reported successfully"}
         except Exception as e:
             logger.exception(f"Failed to report error: {e}")
             return {"status": "error", "error": str(e)}

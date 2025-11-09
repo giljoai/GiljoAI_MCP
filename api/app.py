@@ -914,7 +914,7 @@ def create_app() -> FastAPI:
                         tenant_key = None
                         if entity_type == "project" and state.db_manager:
                             # Get project tenant for validation
-                            async with state.db_manager.session() as session:
+                            async with state.db_manager.get_session_async() as session:
                                 stmt = select(Project).where(Project.id == entity_id)
                                 result = await session.execute(stmt)
                                 project = result.scalar_one_or_none()
