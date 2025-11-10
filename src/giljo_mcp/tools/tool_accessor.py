@@ -14,6 +14,7 @@ from sqlalchemy import and_, select, update
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
+from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.tenant import TenantManager
 
 
@@ -27,427 +28,73 @@ class ToolAccessor:
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
 
+        # Initialize service layer (Handover 0121 - Phase 1)
+        self._project_service = ProjectService(db_manager, tenant_manager)
+
     # Project Tools
 
     async def create_project(
         self,
         name: str,
         mission: str,
-        description: str = "",  # Optional description parameter
+        description: str = "",
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
-        status: str = "inactive",  # Handover 0050b: projects default to inactive
+        status: str = "inactive",
         context_budget: int = 150000,
     ) -> dict[str, Any]:
-        """Create a new project"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Use provided tenant key or generate a new one
-                if not tenant_key:
-                    tenant_key = f"tk_{uuid4().hex}"
-
-                # Create project
-                project = Project(
-                    name=name,
-                    mission=mission,
-                    description=description,  # Use provided description
-                    tenant_key=tenant_key,
-                    product_id=product_id,
-                    status=status,  # Use the passed status parameter
-                    context_budget=context_budget,
-                    context_used=0,
-                )
-
-                session.add(project)
-                await session.commit()
-
-                project_id = str(project.id)
-
-                logger.info(f"Created project {project_id} with status '{status}' and tenant key {tenant_key}")
-
-                return {
-                    "success": True,
-                    "project_id": project_id,
-                    "tenant_key": tenant_key,
-                    "product_id": product_id,
-                    "name": name,
-                    "status": status,  # Return the actual status used
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to create project: {e}")
-            return {"success": False, "error": str(e)}
+        """Create a new project (delegates to ProjectService)"""
+        return await self._project_service.create_project(
+            name=name,
+            mission=mission,
+            description=description,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            status=status,
+            context_budget=context_budget,
+        )
 
     async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
-        """List all projects with optional status filter and tenant filtering"""
-        try:
-            # Use provided tenant_key or get from context
-            if not tenant_key:
-                tenant_key = self.tenant_manager.get_current_tenant()
-
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
-            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
-                # TENANT ISOLATION: Only return projects for the specified tenant
-                query = select(Project).where(Project.tenant_key == tenant_key)
-                if status:
-                    query = query.where(Project.status == status)
-
-                result = await session.execute(query)
-                projects = result.scalars().all()
-
-                project_list = []
-                for project in projects:
-                    # Get agent count and message count for this project
-                    agent_count = 0
-                    message_count = 0
-
-                    project_list.append(
-                        {
-                            "id": str(project.id),
-                            "name": project.name,
-                            "mission": project.mission,
-                            "status": project.status,
-                            "tenant_key": project.tenant_key,
-                            "product_id": project.product_id,
-                            "created_at": project.created_at.isoformat(),
-                            "updated_at": (
-                                project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
-                            ),
-                            "context_budget": project.context_budget,
-                            "context_used": project.context_used,
-                            "agent_count": agent_count,
-                            "message_count": message_count,
-                        }
-                    )
-
-                return {"success": True, "projects": project_list}
-
-        except Exception as e:
-            logger.exception(f"Failed to list projects: {e}")
-            return {"success": False, "error": str(e)}
+        """List all projects with optional status filter (delegates to ProjectService)"""
+        return await self._project_service.list_projects(
+            status=status,
+            tenant_key=tenant_key
+        )
 
     async def get_project(self, project_id: str) -> dict[str, Any]:
-        """Get a specific project by ID"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                query = select(Project).where(Project.id == project_id)
-                result = await session.execute(query)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": f"Project {project_id} not found"}
-
-                return {
-                    "success": True,
-                    "project": {
-                        "id": str(project.id),
-                        "name": project.name,
-                        "mission": project.mission,
-                        "status": project.status,
-                        "product_id": project.product_id,
-                        "tenant_key": project.tenant_key,
-                        "context_budget": project.context_budget,
-                        "context_used": project.context_used,
-                        "created_at": project.created_at.isoformat() if project.created_at else None,
-                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                    },
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to get project: {e}")
-            return {"success": False, "error": str(e)}
+        """Get a specific project by ID (delegates to ProjectService)"""
+        return await self._project_service.get_project(project_id)
 
     async def switch_project(self, project_id: str) -> dict[str, Any]:
-        """Switch to a different project"""
-        try:
-            async with self.db_manager.get_session_async() as db_session:
-                from giljo_mcp.models import Session as SessionModel
-                from giljo_mcp.tenant import current_tenant
-
-                # Find project
-                query = select(Project).where(Project.id == project_id)
-                result = await db_session.execute(query)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": f"Project {project_id} not found"}
-
-                # Set tenant context
-                self.tenant_manager.set_current_tenant(project.tenant_key)
-                current_tenant.set(project.tenant_key)
-
-                # Create new session if needed
-                session_query = select(SessionModel).where(
-                    SessionModel.project_id == project.id, SessionModel.status == "active"
-                )
-                session_result = await db_session.execute(session_query)
-                active_session = session_result.scalar_one_or_none()
-
-                if not active_session:
-                    active_session = SessionModel(
-                        project_id=project.id,
-                        started_at=datetime.now(),
-                        status="active",
-                    )
-                    db_session.add(active_session)
-                    await db_session.commit()
-
-                logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
-
-                return {
-                    "success": True,
-                    "project_id": str(project.id),
-                    "name": project.name,
-                    "mission": project.mission,
-                    "tenant_key": project.tenant_key,
-                    "session_id": str(active_session.id),
-                    "context_usage": f"{project.context_used}/{project.context_budget}",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to switch project: {e}")
-            return {"success": False, "error": str(e)}
+        """Switch to a different project (delegates to ProjectService)"""
+        return await self._project_service.switch_project(project_id)
 
     async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
-        """Get comprehensive project status"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Get project
-                query = select(Project)
-                if project_id:
-                    query = query.where(Project.id == project_id)
-                else:
-                    query = query.where(Project.status == "active").limit(1)
-
-                result = await session.execute(query)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Get agent jobs (migrated from Agent to MCPAgentJob - Handover 0116)
-                agent_job_result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.project_id == project.id))
-                agent_jobs = agent_job_result.scalars().all()
-
-                # Get pending messages
-                message_result = await session.execute(
-                    select(Message).where(Message.project_id == project.id, Message.status == "pending")
-                )
-                pending_messages = len(message_result.scalars().all())
-
-                return {
-                    "success": True,
-                    "project": {
-                        "id": str(project.id),
-                        "name": project.name,
-                        "mission": project.mission,
-                        "status": project.status,
-                        "tenant_key": project.tenant_key,
-                        "product_id": project.product_id,
-                        "created_at": project.created_at.isoformat(),
-                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                        "context_budget": project.context_budget,
-                        "context_used": project.context_used,
-                    },
-                    "agents": [{"name": job.agent_type, "status": job.status, "role": job.agent_type} for job in agent_jobs],
-                    "pending_messages": pending_messages,
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to get project status: {e}")
-            return {"success": False, "error": str(e)}
+        """Get comprehensive project status (delegates to ProjectService)"""
+        return await self._project_service.get_project_status(project_id)
 
     async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
-        """Close a completed project with summary (DEPRECATED: Use complete_project instead)"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Update project status with completed_at timestamp
-                result = await session.execute(
-                    update(Project)
-                    .where(Project.id == project_id)
-                    .values(
-                        status="completed",
-                        completed_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
-                        meta_data={"summary": summary},
-                    )
-                )
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
-
-                await session.commit()
-
-                logger.info(f"Closed project {project_id}")
-
-                return {
-                    "success": True,
-                    "message": f"Project {project_id} closed successfully",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to close project: {e}")
-            return {"success": False, "error": str(e)}
+        """
+        Close a completed project with summary.
+        DEPRECATED: Use complete_project instead (delegates to ProjectService)
+        """
+        return await self._project_service.complete_project(project_id, summary)
 
     async def complete_project(self, project_id: str, summary: Optional[str] = None) -> dict[str, Any]:
-        """Mark a project as completed with completed_at timestamp"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Build update values
-                update_values = {
-                    "status": "completed",
-                    "completed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
-                }
-
-                # Add summary to meta_data if provided
-                if summary:
-                    update_values["meta_data"] = {"summary": summary}
-
-                result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
-
-                await session.commit()
-
-                logger.info(f"Completed project {project_id}")
-
-                return {
-                    "success": True,
-                    "message": f"Project {project_id} completed successfully",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to complete project: {e}")
-            return {"success": False, "error": str(e)}
+        """Mark a project as completed (delegates to ProjectService)"""
+        return await self._project_service.complete_project(project_id, summary)
 
     async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
-        """Cancel a project with completed_at timestamp"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Build update values
-                update_values = {
-                    "status": "cancelled",
-                    "completed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
-                }
-
-                # Add reason to meta_data if provided
-                if reason:
-                    update_values["meta_data"] = {"cancellation_reason": reason}
-
-                result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
-
-                await session.commit()
-
-                logger.info(f"Cancelled project {project_id}")
-
-                return {
-                    "success": True,
-                    "message": f"Project {project_id} cancelled successfully",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to cancel project: {e}")
-            return {"success": False, "error": str(e)}
+        """Cancel a project (delegates to ProjectService)"""
+        return await self._project_service.cancel_project(project_id, reason)
 
     async def restore_project(self, project_id: str) -> dict[str, Any]:
-        """Restore a completed or cancelled project to inactive status"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Update project to inactive and clear completed_at
-                result = await session.execute(
-                    update(Project)
-                    .where(Project.id == project_id)
-                    .values(
-                        status="inactive",
-                        completed_at=None,
-                        updated_at=datetime.utcnow(),
-                    )
-                )
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
-
-                await session.commit()
-
-                logger.info(f"Restored project {project_id}")
-
-                return {
-                    "success": True,
-                    "message": f"Project {project_id} restored successfully",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to restore project: {e}")
-            return {"success": False, "error": str(e)}
+        """Restore a completed or cancelled project (delegates to ProjectService)"""
+        return await self._project_service.restore_project(project_id)
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
-        """Update the mission field after orchestrator analysis"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                result = await session.execute(
-                    update(Project)
-                    .where(Project.id == project_id)
-                    .values(mission=mission, updated_at=datetime.utcnow())
-                )
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
-
-                # Get project for tenant_key
-                project_result = await session.execute(
-                    select(Project).where(Project.id == project_id)
-                )
-                project = project_result.scalar_one_or_none()
-
-                await session.commit()
-
-                # Broadcast mission update via WebSocket HTTP bridge
-                logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated for project {project_id}")
-                if project:
-                    try:
-                        import httpx
-                        
-                        logger.info(f"[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge")
-
-                        # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
-                        async with httpx.AsyncClient() as client:
-                            bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                            logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url}")
-                            
-                            response = await client.post(
-                                bridge_url,
-                                json={
-                                    "event_type": "project:mission_updated",
-                                    "tenant_key": project.tenant_key,
-                                    "data": {
-                                        "project_id": project_id,
-                                        "mission": mission,
-                                        "token_estimate": len(mission) // 4,
-                                        "user_config_applied": False,
-                                        "generated_by": "orchestrator",
-                                        "timestamp": datetime.utcnow().isoformat(),
-                                    },
-                                },
-                                timeout=5.0,
-                            )
-                            logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response: {response.status_code}")
-                            logger.info(f"[WEBSOCKET] Broadcasted mission_updated for project {project_id} via HTTP bridge")
-                    except Exception as ws_error:
-                        logger.error(f"[WEBSOCKET ERROR] Failed to broadcast mission_updated via HTTP bridge: {ws_error}", exc_info=True)
-
-                return {"success": True, "message": "Mission updated successfully"}
-
-        except Exception as e:
-            logger.exception(f"Failed to update mission: {e}")
-            return {"success": False, "error": str(e)}
+        """Update the mission field (delegates to ProjectService)"""
+        return await self._project_service.update_project_mission(project_id, mission)
 
     # Agent Tools
 
