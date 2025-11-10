@@ -753,7 +753,8 @@ def create_app() -> FastAPI:
 
     # Include routers
     # Handover 0046 Issue #4: Router prefix moved to router definition
-    app.include_router(products.router, prefix="/api")
+    # Handover 0126: Modular products module (prefix and tags defined in module __init__.py)
+    app.include_router(products.router)
     app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     # Handover 0125: Modular projects module (prefix and tags defined in module __init__.py)
     app.include_router(projects.router)
@@ -770,7 +771,8 @@ def create_app() -> FastAPI:
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(system_prompts.router, prefix="/api/v1/system", tags=["system"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
-    app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
+    # Handover 0126: Modular templates module (prefix and tags defined in module __init__.py)
+    app.include_router(templates.router)
     app.include_router(websocket_bridge.router, prefix="/api/v1/ws-bridge", tags=["websocket-bridge"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
