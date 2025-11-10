@@ -17,6 +17,59 @@
 
 ---
 
+## 🚨 CRITICAL CONSTRAINTS
+
+### NO UI/UX CHANGES
+**ZERO visual or user experience changes. The application looks and behaves IDENTICALLY to users.**
+- ✅ Backend code refactoring ONLY
+- ✅ Internal code organization changes
+- ❌ NO changes to user interfaces
+- ❌ NO changes to user workflows
+- ❌ NO visual modifications
+
+### API COMPATIBILITY GUARANTEE
+**ALL API routes remain IDENTICAL. Frontend sees ZERO breaking changes.**
+- ✅ Same HTTP methods (GET, POST, PUT, DELETE)
+- ✅ Same route paths (`/api/v1/projects/*`, `/api/v1/templates/*`, etc.)
+- ✅ Same request/response formats (add fields OK, remove fields NOT OK)
+- ✅ Same error codes and formats
+- ❌ NO route renames or moves
+- ❌ NO breaking schema changes
+
+**Example:**
+```python
+# BEFORE: All in one file
+# api/endpoints/projects.py
+POST /api/v1/projects -> create_project()
+
+# AFTER: Split into modules
+# api/endpoints/projects/crud.py
+POST /api/v1/projects -> create_project()  # SAME ROUTE!
+```
+
+### AGGRESSIVE CLEANUP POLICY
+**DELETE old code completely. NO facades, NO zombie code, NO orphans.**
+- ✅ Delete old endpoint files after migration
+- ✅ Remove all unused functions and tests
+- ✅ Clean up imports and dependencies
+- ✅ Remove commented code
+- ❌ NO "backward compatibility facades" unless CRITICAL
+- ❌ NO keeping old files "just in case"
+- ❌ NO leaving dead code around
+
+**Rationale:** Project is fully backed up. We can rollback entire refactoring if needed. Aggressive cleanup prevents future confusion.
+
+### INTEGRATION TESTING MANDATE
+**Every handover MUST pass comprehensive integration tests.**
+- ✅ Normal use cases (happy path)
+- ✅ Edge cases (boundary conditions)
+- ✅ Error scenarios (failure handling)
+- ✅ Multi-tenant isolation
+- ✅ End-to-end workflows
+- ✅ Performance benchmarks (< 5% degradation)
+
+---
+
 ## 📋 Execution Philosophy
 
 **Decision (2025-11-10):** Complete one handover at a time. Do NOT pre-create all handover documents.

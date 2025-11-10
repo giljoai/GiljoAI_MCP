@@ -10,43 +10,90 @@
 
 ## Executive Summary
 
-Modularize template and product endpoints into well-organized endpoint families that use TemplateService and ProductService for all operations, improving maintainability and following the consolidation pattern established in Handovers 0124 and 0125.
+Modularize template and product endpoints into focused modules that use TemplateService and ProductService for all operations. **API routes remain IDENTICAL - no breaking changes to frontend.**
+
+### 🚨 CRITICAL REQUIREMENTS
+
+**1. ZERO API Breaking Changes**
+- ALL routes stay at `/api/v1/templates/*` and `/api/v1/products/*`
+- Same HTTP methods, same request/response formats
+- Frontend sees ZERO difference
+
+**2. Aggressive Code Cleanup**
+- DELETE `templates.py` after migration (replace with templates/ module)
+- DELETE `products.py` after migration (replace with products/ module)
+- DELETE all old template/product code and tests
+- NO facades, NO "backward compatibility wrappers"
+
+**3. Backend Reorganization Only**
+- Split large files into focused modules
+- All code uses TemplateService and ProductService
+- Clean module structure for maintainability
 
 ### Problem Statement
 
 **Current State:**
-- Template endpoints scattered across multiple files
-- Product endpoints mixed with template logic
-- Some endpoints have direct database access (bypass service layer)
-- Inconsistent patterns across template vs product operations
-- Large files with mixed concerns (CRUD + business logic)
+- Templates in single 700-line file
+- Products in single 400-line file
+- Mixed concerns in both files
+- Some direct database access
 
 **Example of Current Structure:**
 ```
 api/endpoints/
-├── templates.py              (~700 lines) - Template CRUD + product logic
-├── products.py               (~400 lines) - Product management
-└── ... (template/product logic scattered elsewhere)
+├── templates.py              (~700 lines) - DELETE after migration
+├── products.py               (~400 lines) - DELETE after migration
 ```
 
 ### Desired State
 
-**Modularized Structure:**
+**Reorganized Backend (SAME API routes!):**
 ```
 api/endpoints/templates/
-├── __init__.py
-├── crud.py                   (~200 lines) - Template CRUD operations
-├── management.py             (~150 lines) - Template lifecycle
-└── validation.py             (~150 lines) - Template validation
+├── __init__.py               # Export all routers
+├── crud.py                   (~200 lines) - Template CRUD
+├── management.py             (~150 lines) - Lifecycle
+├── validation.py             (~150 lines) - Validation
+└── versions.py               (~200 lines) - Version management
 
 api/endpoints/products/
-├── __init__.py
-├── crud.py                   (~200 lines) - Product CRUD operations
-├── settings.py               (~150 lines) - Product settings/config
-└── integration.py            (~150 lines) - Product integrations
+├── __init__.py               # Export all routers
+├── crud.py                   (~200 lines) - Product CRUD
+├── settings.py               (~150 lines) - Settings/config
+└── integration.py            (~150 lines) - Integrations
 ```
 
-**All endpoints use TemplateService and ProductService**
+**API Routes (UNCHANGED!):**
+```
+# Templates
+POST   /api/v1/templates
+GET    /api/v1/templates
+GET    /api/v1/templates/{template_id}
+PUT    /api/v1/templates/{template_id}
+DELETE /api/v1/templates/{template_id}
+POST   /api/v1/templates/{template_id}/clone
+POST   /api/v1/templates/{template_id}/validate
+PUT    /api/v1/templates/{template_id}/publish
+PUT    /api/v1/templates/{template_id}/archive
+GET    /api/v1/templates/{template_id}/versions
+POST   /api/v1/templates/{template_id}/versions
+GET    /api/v1/templates/{template_id}/versions/{version}
+
+# Products
+POST   /api/v1/products
+GET    /api/v1/products
+GET    /api/v1/products/{product_id}
+PUT    /api/v1/products/{product_id}
+DELETE /api/v1/products/{product_id}
+GET    /api/v1/products/{product_id}/settings
+PUT    /api/v1/products/{product_id}/settings
+GET    /api/v1/products/{product_id}/context-budget
+POST   /api/v1/products/{product_id}/github
+POST   /api/v1/products/{product_id}/jira
+GET    /api/v1/products/{product_id}/integrations
+```
+
+**All endpoints use TemplateService and ProductService** (no direct DB access)
 
 ---
 
@@ -717,38 +764,56 @@ async def test_product_lifecycle():
 - Check database query counts
 - Monitor memory usage
 
-### Phase 6: Migration & Cleanup (1 day)
+### Phase 6: Migrate and DELETE Old Files (1 day)
 
-**Step 6.1: Update Old Endpoint Files**
-```python
-# api/endpoints/templates.py (now a facade)
-from .templates.crud import router as crud_router
-from .templates.management import router as management_router
-from .templates.validation import router as validation_router
-from .templates.versions import router as versions_router
-
-# Re-export for backward compatibility
-# OR mark as deprecated and redirect
-```
-
-**Step 6.2: Update Main Router**
+**Step 6.1: Update Main Router**
 ```python
 # api/main.py or api/router.py
-from api.endpoints.templates import crud as template_crud
-from api.endpoints.templates import management as template_management
-from api.endpoints.products import crud as product_crud
-from api.endpoints.products import settings as product_settings
+# BEFORE:
+from api.endpoints import templates, products
+
+# AFTER (only modules):
+from api.endpoints.templates import crud as template_crud, management as template_mgmt
+from api.endpoints.templates import validation as template_valid, versions as template_vers
+from api.endpoints.products import crud as product_crud, settings as product_settings
+from api.endpoints.products import integration as product_integ
 
 app.include_router(template_crud.router)
-app.include_router(template_management.router)
+app.include_router(template_mgmt.router)
+app.include_router(template_valid.router)
+app.include_router(template_vers.router)
 app.include_router(product_crud.router)
 app.include_router(product_settings.router)
+app.include_router(product_integ.router)
 ```
 
-**Step 6.3: Remove Direct DB Access**
-- Audit all endpoints for database imports
-- Ensure all use TemplateService/ProductService
-- Remove unused database session dependencies
+**Step 6.2: DELETE templates.py**
+```bash
+rm api/endpoints/templates.py
+rm tests/unit/test_templates_endpoint.py
+rm tests/integration/test_templates.py
+```
+
+**Step 6.3: DELETE products.py**
+```bash
+rm api/endpoints/products.py
+rm tests/unit/test_products_endpoint.py
+rm tests/integration/test_products.py
+```
+
+**Step 6.4: Clean Up Imports**
+- Remove all imports of deleted files
+- Update any code that referenced old endpoints
+- Verify no references remain using grep
+
+**Step 6.5: Search for Zombie References**
+```bash
+# Search for any references to deleted files
+grep -r "from.*endpoints.templates import" .
+grep -r "from.*endpoints.products import" .
+
+# Delete or update ANY files that reference old code
+```
 
 ---
 
@@ -891,13 +956,17 @@ async def clone_template(
 
 ## Rollback Plan
 
-If issues arise:
-1. **Keep old files active** (as facades)
-2. **Redirect new modules to old** if needed
-3. **Fix issues** in modular structure
-4. **Re-enable** once fixed
+**Full backup exists before refactoring begins.**
 
-No data loss risk - only code organization changes.
+If critical issues arise that cannot be fixed within 1 day:
+1. **Revert entire commit** - Use git to rollback all changes
+2. **Restore from backup** - Project is fully backed up before starting
+3. **Fix issues offline** - Debug in separate branch
+4. **Re-attempt refactoring** - Once issues understood
+
+**No partial rollbacks** - Either commit works completely or revert everything.
+
+No data loss risk - only code organization changes, database untouched.
 
 ---
 
