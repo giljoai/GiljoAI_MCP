@@ -9,6 +9,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -53,9 +55,9 @@ class AgentCommunicationQueue:
         """
         self.db_manager = db_manager
 
-    def send_message(
+    async def send_message(
         self,
-        session: Session,
+        session: AsyncSession,
         job_id: str,
         tenant_key: str,
         from_agent: str,
@@ -92,7 +94,8 @@ class AgentCommunicationQueue:
                 return {"status": "error", "error": "Message content cannot be empty"}
 
             # Retrieve job
-            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -121,15 +124,15 @@ class AgentCommunicationQueue:
                 # Handle mock objects in tests that don't have _sa_instance_state
                 pass
 
-            session.commit()
+            await session.commit()
 
             return {"status": "success", "message_id": message["id"]}
 
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def send_message_batch(
-        self, session: Session, job_id: str, tenant_key: str, messages: List[Dict[str, Any]]
+    async def send_message_batch(
+        self, session: AsyncSession, job_id: str, tenant_key: str, messages: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         Send multiple messages to the job's message queue.
@@ -151,7 +154,8 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -182,16 +186,16 @@ class AgentCommunicationQueue:
                 # Handle mock objects in tests
                 pass
 
-            session.commit()
+            await session.commit()
 
             return {"status": "success", "sent_count": sent_count}
 
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def get_messages(
+    async def get_messages(
         self,
-        session: Session,
+        session: AsyncSession,
         job_id: str,
         tenant_key: str,
         to_agent: Optional[str] = None,
@@ -214,7 +218,8 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -243,8 +248,8 @@ class AgentCommunicationQueue:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def get_unread_count(
-        self, session: Session, job_id: str, tenant_key: str, to_agent: Optional[str] = None
+    async def get_unread_count(
+        self, session: AsyncSession, job_id: str, tenant_key: str, to_agent: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Get count of unread messages.
@@ -260,7 +265,8 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -285,8 +291,8 @@ class AgentCommunicationQueue:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def acknowledge_message(
-        self, session: Session, job_id: str, tenant_key: str, message_id: str, agent_id: str
+    async def acknowledge_message(
+        self, session: AsyncSession, job_id: str, tenant_key: str, message_id: str, agent_id: str
     ) -> Dict[str, Any]:
         """
         Acknowledge a message.
@@ -303,7 +309,8 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -341,15 +348,15 @@ class AgentCommunicationQueue:
                 # Handle mock objects in tests
                 pass
 
-            session.commit()
+            await session.commit()
 
             return {"status": "success"}
 
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def acknowledge_all_messages(
-        self, session: Session, job_id: str, tenant_key: str, agent_id: str, to_agent: Optional[str] = None
+    async def acknowledge_all_messages(
+        self, session: AsyncSession, job_id: str, tenant_key: str, agent_id: str, to_agent: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Acknowledge all unread messages for an agent.
@@ -366,7 +373,8 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -399,7 +407,7 @@ class AgentCommunicationQueue:
                 # Handle mock objects in tests
                 pass
 
-            session.commit()
+            await session.commit()
 
             return {"status": "success", "acknowledged_count": acknowledged_count}
 

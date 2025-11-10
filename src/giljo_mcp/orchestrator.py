@@ -21,6 +21,7 @@ from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .mission_planner import MissionPlanner
 from .models import MCPAgentJob, AgentTemplate, Job, Message, Product, Project
+from .agent_communication_queue import AgentCommunicationQueue
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
 from .workflow_engine import WorkflowEngine
@@ -102,6 +103,9 @@ class ProjectOrchestrator:
 
         # Phase 3: Initialize agent job manager (Handover 0045)
         self.agent_job_manager = AgentJobManager(self.db_manager)
+
+        # Messaging queue (JSONB per job)
+        self.comm_queue = AgentCommunicationQueue(self.db_manager)
 
     # ========================================================================
     # HANDOVER 0045 - Phase 3: Multi-Tool Agent Orchestration Routing
@@ -275,6 +279,186 @@ class ProjectOrchestrator:
         )
 
         return agent
+
+    # ========================================================================
+    # Messaging helpers (Handover 0118)
+    # ========================================================================
+
+    async def send_welcome_broadcast(self, project_id: str) -> int:
+        """Send a welcome/directive message to all active agent jobs in a project.
+
+        Uses the per-job JSONB message queue so agents can retrieve via
+        get_next_instruction/receive_messages.
+
+        Returns the number of messages sent.
+        """
+        async with self.db_manager.get_session_async() as session:
+            # Get project and jobs
+            result = await session.execute(
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs))
+            )
+            project = result.scalar_one_or_none()
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+
+            sent = 0
+            tenant_key = project.tenant_key
+            jobs = [j for j in project.agent_jobs]
+
+            for job in jobs:
+                try:
+                    await self.comm_queue.send_message(
+                        session=session,
+                        job_id=job.job_id,
+                        tenant_key=tenant_key,
+                        from_agent="orchestrator",
+                        to_agent=job.agent_type,
+                        message_type="orchestrator_instruction",
+                        content=(
+                            "Team assembled. Check messages before starting. "
+                            "Report progress at milestones. Flag issues immediately."
+                        ),
+                        priority=1,
+                    )
+                    sent += 1
+                except Exception:
+                    # Continue sending to others; errors are logged at queue level
+                    continue
+
+            return sent
+
+    async def broadcast_team_status(self, project_id: str) -> dict[str, Any]:
+        """Broadcast a concise team status to all agents in the project."""
+        async with self.db_manager.get_session_async() as session:
+            result = await session.execute(
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs))
+            )
+            project = result.scalar_one_or_none()
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+
+            tenant_key = project.tenant_key
+            jobs = list(project.agent_jobs)
+
+            # Compose a short status line
+            parts = []
+            for job in jobs:
+                parts.append(f"{job.agent_type}:{job.status}")
+            content = "Team status: " + ", ".join(parts)
+
+            sent = 0
+            for job in jobs:
+                try:
+                    await self.comm_queue.send_message(
+                        session=session,
+                        job_id=job.job_id,
+                        tenant_key=tenant_key,
+                        from_agent="orchestrator",
+                        to_agent=job.agent_type,
+                        message_type="orchestrator_instruction",
+                        content=content,
+                        priority=0,
+                    )
+                    sent += 1
+                except Exception:
+                    continue
+
+            return {"sent": sent, "content": content}
+
+    async def poll_and_handle_messages(
+        self,
+        project_id: str,
+        iterations: int = 10,
+        interval_seconds: float = 3.0,
+    ) -> dict[str, Any]:
+        """Poll agent message queues and handle progress/errors.
+
+        - Acknowledges unread messages addressed to orchestrator or broadcast
+        - For 'error' messages: replies with a directive placeholder
+        - Returns summary counts
+        """
+        import asyncio as _asyncio
+
+        progress_count = 0
+        error_count = 0
+        acknowledged = 0
+
+        async with self.db_manager.get_session_async() as session:
+            # Load project and jobs
+            result = await session.execute(
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs))
+            )
+            project = result.scalar_one_or_none()
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+
+            tenant_key = project.tenant_key
+            jobs = list(project.agent_jobs)
+
+        # Poll loop (use fresh sessions inside loop for isolation)
+        for _ in range(max(1, int(iterations))):
+            async with self.db_manager.get_session_async() as session:
+                for job in jobs:
+                    # Get all unread messages for this job (broadcast or directed to orchestrator)
+                    result = await self.comm_queue.get_messages(
+                        session=session,
+                        job_id=job.job_id,
+                        tenant_key=tenant_key,
+                        to_agent=None,
+                        message_type=None,
+                        unread_only=True,
+                    )
+                    msgs = result.get("messages", []) if isinstance(result, dict) else []
+
+                    for msg in msgs:
+                        mtype = msg.get("type")
+                        content = msg.get("content", "")
+
+                        # Count and handle
+                        if mtype == "progress":
+                            progress_count += 1
+                        elif mtype == "error":
+                            error_count += 1
+                            # Send quick directive back to agent with acknowledgment of the error
+                            try:
+                                await self.comm_queue.send_message(
+                                    session=session,
+                                    job_id=job.job_id,
+                                    tenant_key=tenant_key,
+                                    from_agent="orchestrator",
+                                    to_agent=job.agent_type,
+                                    message_type="orchestrator_instruction",
+                                    content=(
+                                        "Error received. Investigating. Provide minimal repro if possible; "
+                                        "stand by for updated instructions."
+                                    ),
+                                    priority=2,
+                                )
+                            except Exception:
+                                pass
+
+                        # Acknowledge message so agents don't see it as unread next poll
+                        try:
+                            ack = await self.comm_queue.acknowledge_message(
+                                session=session,
+                                job_id=job.job_id,
+                                tenant_key=tenant_key,
+                                message_id=msg.get("id", ""),
+                                agent_id="orchestrator",
+                            )
+                            if isinstance(ack, dict) and ack.get("status") == "success":
+                                acknowledged += 1
+                        except Exception:
+                            pass
+
+            await _asyncio.sleep(interval_seconds)
+
+        return {
+            "progress": progress_count,
+            "errors": error_count,
+            "acknowledged": acknowledged,
+            "iterations": iterations,
+        }
 
     async def _spawn_legacy_agent(
         self,

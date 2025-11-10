@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from ..database import DatabaseManager
 from ..models import MCPContextIndex, Product, VisionDocument
@@ -276,14 +275,14 @@ class VisionDocumentRepository:
 
             await session.flush()
 
-    def get_by_type(
-        self, session: Session, tenant_key: str, product_id: str, document_type: str
+    async def get_by_type(
+        self, session: AsyncSession, tenant_key: str, product_id: str, document_type: str
     ) -> List[VisionDocument]:
         """
         Get all vision documents of a specific type for a product.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Product ID to search within
             document_type: Document type to filter by (vision, architecture, etc.)
@@ -291,26 +290,26 @@ class VisionDocumentRepository:
         Returns:
             List of VisionDocument instances
         """
-        return (
-            session.query(VisionDocument)
-            .filter(
+        result = await session.execute(
+            select(VisionDocument)
+            .where(
                 VisionDocument.tenant_key == tenant_key,
                 VisionDocument.product_id == product_id,
                 VisionDocument.document_type == document_type,
                 VisionDocument.is_active == True,
             )
             .order_by(VisionDocument.display_order)
-            .all()
         )
+        return list(result.scalars().all())
 
-    def set_active_status(
-        self, session: Session, tenant_key: str, document_id: str, is_active: bool
+    async def set_active_status(
+        self, session: AsyncSession, tenant_key: str, document_id: str, is_active: bool
     ) -> Optional[VisionDocument]:
         """
         Set active status of a vision document.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             document_id: Document ID to update
             is_active: New active status
@@ -318,23 +317,23 @@ class VisionDocumentRepository:
         Returns:
             Updated VisionDocument instance or None if not found
         """
-        doc = self.get_by_id(session, tenant_key, document_id)
+        doc = await self.get_by_id(session, tenant_key, document_id)
 
         if doc:
             doc.is_active = is_active
             doc.updated_at = datetime.now(timezone.utc)
-            session.flush()
+            await session.flush()
 
         return doc
 
-    def update_display_order(
-        self, session: Session, tenant_key: str, document_id: str, new_order: int
+    async def update_display_order(
+        self, session: AsyncSession, tenant_key: str, document_id: str, new_order: int
     ) -> Optional[VisionDocument]:
         """
         Update display order of a vision document.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             document_id: Document ID to update
             new_order: New display order value
@@ -342,21 +341,21 @@ class VisionDocumentRepository:
         Returns:
             Updated VisionDocument instance or None if not found
         """
-        doc = self.get_by_id(session, tenant_key, document_id)
+        doc = await self.get_by_id(session, tenant_key, document_id)
 
         if doc:
             doc.display_order = new_order
             doc.updated_at = datetime.now(timezone.utc)
-            session.flush()
+            await session.flush()
 
         return doc
 
-    def count_by_product(self, session: Session, tenant_key: str, product_id: str, active_only: bool = True) -> int:
+    async def count_by_product(self, session: AsyncSession, tenant_key: str, product_id: str, active_only: bool = True) -> int:
         """
         Count vision documents for a product.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Product ID to count documents for
             active_only: If True, only count active documents (default: True)
@@ -364,11 +363,14 @@ class VisionDocumentRepository:
         Returns:
             Number of vision documents
         """
-        query = session.query(VisionDocument).filter(
+        from sqlalchemy import func
+
+        stmt = select(func.count()).select_from(VisionDocument).where(
             VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product_id
         )
 
         if active_only:
-            query = query.filter(VisionDocument.is_active == True)
+            stmt = stmt.where(VisionDocument.is_active == True)
 
-        return query.count()
+        result = await session.execute(stmt)
+        return result.scalar()

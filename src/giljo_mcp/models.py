@@ -26,6 +26,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session, declarative_base, relationship
 from sqlalchemy.sql import func
@@ -1461,18 +1462,21 @@ class SetupState(Base):
         }
 
     @classmethod
-    def get_by_tenant(cls, session: Session, tenant_key: str) -> Optional["SetupState"]:
+    async def get_by_tenant(cls, session: AsyncSession, tenant_key: str) -> Optional["SetupState"]:
         """
         Retrieve SetupState for a specific tenant.
 
         Args:
-            session: SQLAlchemy session
+            session: Async SQLAlchemy session
             tenant_key: Tenant identifier
 
         Returns:
             SetupState instance or None if not found
         """
-        return session.query(cls).filter(cls.tenant_key == tenant_key).first()
+        from sqlalchemy import select
+
+        result = await session.execute(select(cls).where(cls.tenant_key == tenant_key))
+        return result.scalar_one_or_none()
 
     @classmethod
     def create_or_update(cls, session: Session, tenant_key: str, **kwargs) -> "SetupState":
