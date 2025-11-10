@@ -866,16 +866,16 @@ class ToolAccessor:
 
         Aligns with MCP tool schema used by thin clients where `agent_id` is the job_id.
         The older API expected an agent name; we normalize to job_id here and
-        fetch messages from the Job.messages queue (JSONB) via AgentCommunicationQueue.
+        fetch messages from the message queue via MessageQueue compatibility layer.
         """
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
                 return {"success": False, "error": "No tenant context available"}
 
-            from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+            from giljo_mcp.agent_message_queue import AgentMessageQueue
 
-            comm_queue = AgentCommunicationQueue(self.db_manager)
+            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
             async with self.db_manager.get_session_async() as session:
                 result = await comm_queue.get_messages(
                     session=session,
@@ -913,9 +913,9 @@ class ToolAccessor:
             async with self.db_manager.get_session_async() as session:
                 if agent_id:
                     # Prefer agent (job) scoped listing using communication queue for compatibility
-                    from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+                    from giljo_mcp.agent_message_queue import AgentMessageQueue
 
-                    comm_queue = AgentCommunicationQueue(self.db_manager)
+                    comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
                     result = await comm_queue.get_messages(
                         session=session,
                         job_id=agent_id,
@@ -1938,8 +1938,8 @@ Begin by fetching your mission.
             return {"status": "error", "error": str(e)}
 
     async def report_progress(self, job_id: str, progress: dict[str, Any]) -> dict[str, Any]:
-        """Report job progress (store message in Job.messages queue)."""
-        from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        """Report job progress (store message in message queue)."""
+        from giljo_mcp.agent_message_queue import AgentMessageQueue
         import json
 
         try:
@@ -1952,7 +1952,7 @@ Begin by fetching your mission.
             if not progress or not isinstance(progress, dict):
                 return {"status": "error", "error": "progress must be a non-empty dict"}
 
-            comm_queue = AgentCommunicationQueue(self.db_manager)
+            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
             async with self.db_manager.get_session_async() as session:
                 # Serialize dict to string for message content
                 content = json.dumps(progress)
@@ -2039,7 +2039,7 @@ Begin by fetching your mission.
 
     async def get_next_instruction(self, job_id: str, agent_type: str, tenant_key: str) -> dict[str, Any]:
         """Get next instructions for agent from message queue"""
-        from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from giljo_mcp.agent_message_queue import AgentMessageQueue
 
         try:
             # Validate inputs
@@ -2052,7 +2052,7 @@ Begin by fetching your mission.
             if not tenant_key or not tenant_key.strip():
                 return {"status": "error", "error": "tenant_key cannot be empty"}
 
-            comm_queue = AgentCommunicationQueue(self.db_manager)
+            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
 
             # Get unread messages for this job
             async with self.db_manager.get_session_async() as session:

@@ -9,14 +9,14 @@ Production-grade features:
 - Comprehensive error handling
 - Audit logging for all operations
 - Type validation and safety checks
-- Integration with existing AgentJobManager and AgentCommunicationQueue
+- Integration with existing AgentJobManager and MessageQueue (Handover 0120)
 """
 
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from ..agent_communication_queue import AgentCommunicationQueue
+from ..message_queue import MessageQueue
 from ..agent_job_manager import AgentJobManager
 from ..database import DatabaseManager
 
@@ -33,7 +33,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
         db_manager: DatabaseManager instance for database operations
     """
     job_manager = AgentJobManager(db_manager)
-    comm_queue = AgentCommunicationQueue(db_manager)
+    comm_queue = AgentMessageQueue(db_manager)  # Using compatibility layer for AgentCommunicationQueue API
 
     def get_pending_jobs(agent_type: str, tenant_key: str) -> Dict[str, Any]:
         """
