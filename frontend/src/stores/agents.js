@@ -36,11 +36,13 @@ export const useAgentStore = defineStore('agents', () => {
   const agentHealth = computed(() => (agentId) => healthData.value[agentId] || null)
 
   // Actions
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.list() to api.agentJobs.list()
+  // Field mappings: agent_id → job_id, created_at → spawned_at
   async function fetchAgents(projectId = null) {
     loading.value = true
     error.value = null
     try {
-      const response = await api.agents.list(projectId)
+      const response = await api.agentJobs.list(projectId)
       agents.value = response.data
     } catch (err) {
       error.value = err.message
@@ -50,11 +52,12 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.get() to api.agentJobs.get()
   async function fetchAgent(id) {
     loading.value = true
     error.value = null
     try {
-      const response = await api.agents.get(id)
+      const response = await api.agentJobs.get(id)
       currentAgent.value = response.data
 
       // Update in list if exists
@@ -70,11 +73,12 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.create() to api.agentJobs.spawn()
   async function createAgent(agentData) {
     loading.value = true
     error.value = null
     try {
-      const response = await api.agents.create(agentData)
+      const response = await api.agentJobs.spawn(agentData)
       agents.value.push(response.data)
       return response.data
     } catch (err) {
@@ -86,9 +90,10 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.health() to api.agentJobs.status()
   async function fetchAgentHealth(id) {
     try {
-      const response = await api.agents.health(id)
+      const response = await api.agentJobs.status(id)
       healthData.value[id] = response.data
       return response.data
     } catch (err) {
@@ -97,11 +102,13 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.assign() to api.agentJobs.spawn()
+  // The old assign method is replaced with spawn for creating new agent jobs
   async function assignJob(agentName, jobData) {
     loading.value = true
     error.value = null
     try {
-      const response = await api.agents.assign(agentName, jobData)
+      const response = await api.agentJobs.spawn({ agent_name: agentName, ...jobData })
       await fetchAgents() // Refresh agents list
       return response.data
     } catch (err) {
@@ -113,11 +120,12 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.decommission() to api.agentJobs.terminate()
   async function decommissionAgent(id, reason = 'completed') {
     loading.value = true
     error.value = null
     try {
-      const response = await api.agents.decommission(id, reason)
+      const response = await api.agentJobs.terminate(id, reason)
       agents.value = agents.value.filter((a) => a.id !== id)
       if (currentAgent.value?.id === id) {
         currentAgent.value = null
@@ -132,9 +140,10 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.tree() to api.agentJobs.hierarchy()
   async function fetchAgentTree(projectId) {
     try {
-      const response = await api.agents.tree(projectId)
+      const response = await api.agentJobs.hierarchy(projectId)
       agentTree.value = response.data
       return response.data
     } catch (err) {
@@ -143,12 +152,13 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.metrics() to api.agentJobs.metrics()
   async function fetchAgentMetrics(projectId, timeRange = '24h') {
     try {
       const hours = typeof timeRange === 'string' && timeRange.endsWith('h')
         ? parseInt(timeRange)
         : 24
-      const response = await api.agents.metrics(projectId, isNaN(hours) ? 24 : hours)
+      const response = await api.agentJobs.metrics(projectId, isNaN(hours) ? 24 : hours)
       agentMetrics.value = response.data
       return response.data
     } catch (err) {
