@@ -11,6 +11,37 @@ Execute Handover 0124: Agent Endpoint Consolidation
 - No band-aids
 - No technical debt
 
+## 🚨 CRITICAL CONSTRAINTS
+
+### ZERO UI/UX Changes
+**The application looks and behaves IDENTICALLY to users.**
+- Backend code refactoring ONLY
+- NO changes to user interfaces
+- NO changes to user workflows
+- NO visual modifications
+
+### API COMPATIBILITY GUARANTEE
+**ALL API routes remain IDENTICAL. Frontend sees ZERO breaking changes.**
+- Same HTTP methods (GET, POST, PUT, DELETE)
+- Same route paths (`/api/v1/agent-jobs/*`)
+- Same request/response formats (add fields OK, remove fields NOT OK)
+- Same error codes and formats
+- NO route renames or moves
+- NO breaking schema changes
+
+### AGGRESSIVE CLEANUP POLICY
+**DELETE old code completely. NO facades, NO zombie code, NO orphans.**
+- Delete `agents.py` completely after migration
+- Delete `orchestration.py` completely after migration
+- Remove spawn_agents from `projects_lifecycle.py`
+- Delete ALL old agent-related test files
+- Clean up all imports and dependencies
+- Remove all commented code
+- NO "backward compatibility facades"
+- NO keeping old files "just in case"
+
+**Rationale:** Project is fully backed up. We can rollback entire refactoring if needed. Aggressive cleanup prevents future confusion and code rot.
+
 ## Required Reading (IN ORDER)
 
 ### 1. Read First: Refactoring Roadmap
@@ -89,17 +120,48 @@ After reading all four documents in order:
 
 ## Quality Checklist Before Completion
 
+### Code Quality
 - [ ] All code follows existing patterns from 0123
 - [ ] Comprehensive docstrings on all functions
 - [ ] Type hints throughout
 - [ ] Error handling and logging
-- [ ] Unit tests >80% coverage
-- [ ] Integration tests for full workflows
-- [ ] All linting passes
-- [ ] No performance degradation
+- [ ] All linting passes (ruff, mypy)
+- [ ] No commented code remaining
+- [ ] No unused imports
+- [ ] No zombie/orphan code
+
+### Testing (CRITICAL - User Requirement)
+- [ ] Unit tests >80% coverage on all new code
+- [ ] Integration tests for **normal use cases** (happy path)
+- [ ] Integration tests for **edge cases** (boundary conditions)
+- [ ] Integration tests for **error scenarios** (failure handling)
+- [ ] Multi-tenant isolation tests
+- [ ] Performance tests (< 5% degradation)
+- [ ] End-to-end workflow tests
+- [ ] ALL tests passing
+
+### Code Cleanup (CRITICAL - Aggressive Policy)
+- [ ] Deleted `agents.py` completely
+- [ ] Deleted `orchestration.py` completely
+- [ ] Removed spawn_agents from `projects_lifecycle.py`
+- [ ] Deleted ALL old agent test files
+- [ ] Verified NO references to deleted files (grep check)
+- [ ] Cleaned up ALL imports
+- [ ] NO facades or compatibility wrappers remaining
+
+### API Compatibility (CRITICAL - Zero Breaking Changes)
+- [ ] All routes at `/api/v1/agent-jobs/*` unchanged
+- [ ] Same HTTP methods
+- [ ] Same request/response formats
+- [ ] Same error codes
+- [ ] Frontend tests still pass (if available)
+- [ ] API documentation reflects current state only
+
+### Documentation
 - [ ] API documentation updated
 - [ ] Completion document written
 - [ ] REFACTORING_ROADMAP updated to mark 0124 complete
+- [ ] Architecture diagrams updated (if needed)
 
 ## Git Workflow
 

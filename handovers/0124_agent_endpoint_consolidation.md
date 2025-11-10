@@ -10,39 +10,71 @@
 
 ## Executive Summary
 
-Consolidate the fragmented agent-related endpoints into a single, well-organized `/api/v1/agent-jobs/*` endpoint family that uses the newly extracted OrchestrationService and deprecated agent methods cleanup.
+Consolidate the fragmented agent-related endpoints into a single, well-organized `api/endpoints/agent_jobs/` module that uses the newly extracted OrchestrationService. **API routes remain IDENTICAL - no breaking changes to frontend.**
+
+### 🚨 CRITICAL REQUIREMENTS
+
+**1. ZERO API Breaking Changes**
+- ALL routes stay at `/api/v1/agent-jobs/*` (existing routes)
+- Same HTTP methods, same request/response formats
+- Frontend sees ZERO difference
+
+**2. Aggressive Code Cleanup**
+- DELETE `agents.py` completely (legacy, already marked deprecated)
+- DELETE `orchestration.py` (merge into agent_jobs/)
+- REMOVE spawn_agents from `projects_lifecycle.py`
+- DELETE all old agent-related code
+- NO facades, NO "backward compatibility wrappers"
+
+**3. Backend Reorganization Only**
+- Reorganize large files into focused modules
+- All code uses OrchestrationService
+- Clean module structure for maintainability
 
 ### Problem Statement
 
 **Current State:**
-- Agent functionality scattered across multiple endpoint files
+- Agent functionality scattered across 4+ endpoint files
 - Mix of legacy Agent model and new MCPAgentJob model
-- Inconsistent naming (`/agents/*`, `/agent-jobs/*`, `/orchestration/*`)
+- 1,200+ lines spread across multiple files
 - Direct database access in some endpoints
 - Duplicated logic across endpoint files
 
 **Example of Current Fragmentation:**
 ```
 api/endpoints/
-├── agents.py              # Legacy agent CRUD (deprecated)
-├── agent_jobs.py          # Main agent job operations
-├── orchestration.py       # Orchestration operations
-├── projects_lifecycle.py  # Contains spawn_agents method
-└── ...                    # Other files with agent logic
+├── agents.py              # 400 lines - LEGACY, DELETE THIS
+├── agent_jobs.py          # 600 lines - Main operations
+├── orchestration.py       # 200 lines - DELETE THIS, merge into agent_jobs/
+├── projects_lifecycle.py  # Has spawn_agents - REMOVE, belongs in agent_jobs
+└── ...
 ```
 
 ### Desired State
 
-**Consolidated Structure:**
+**Reorganized Backend (SAME API routes!):**
 ```
-api/endpoints/
-├── agent_jobs/
-│   ├── __init__.py
-│   ├── lifecycle.py       # spawn, acknowledge, complete
-│   ├── status.py          # get_status, list_pending
-│   ├── progress.py        # report_progress, report_error
-│   └── orchestration.py   # orchestrate_project, workflow_status
-└── ... (other endpoints)
+api/endpoints/agent_jobs/
+├── __init__.py           # Export all routers
+├── spawn.py              # ~150 lines - spawn operations
+├── lifecycle.py          # ~200 lines - acknowledge, complete, error
+├── status.py             # ~150 lines - get status, list pending, get mission
+├── progress.py           # ~100 lines - report progress
+└── orchestration.py      # ~200 lines - orchestrate project, workflow status
+```
+
+**API Routes (UNCHANGED!):**
+```
+POST   /api/v1/agent-jobs/spawn
+GET    /api/v1/agent-jobs/pending
+POST   /api/v1/agent-jobs/{job_id}/acknowledge
+POST   /api/v1/agent-jobs/{job_id}/complete
+POST   /api/v1/agent-jobs/{job_id}/error
+GET    /api/v1/agent-jobs/{job_id}/mission
+GET    /api/v1/agent-jobs/{job_id}
+POST   /api/v1/agent-jobs/{job_id}/progress
+POST   /api/v1/agent-jobs/orchestrate/{project_id}
+GET    /api/v1/agent-jobs/workflow/{project_id}
 ```
 
 **All endpoints use OrchestrationService** (no direct database access)
@@ -225,41 +257,75 @@ async def spawn_agent_job(
 - All endpoints delegate to OrchestrationService
 - Consistent error handling and validation
 
-### Phase 2: Migrate Existing Endpoints (1 day)
+### Phase 2: Migrate and DELETE Old Files (1 day)
 
-**Step 2.1: Update agent_jobs.py**
-- Point existing routes to new module
-- Add deprecation warnings to old direct-access endpoints
-- Maintain backward compatibility
-
-**Step 2.2: Update orchestration.py**
-- Move orchestration endpoints to new module
-- Update route prefixes for consistency
-
-**Step 2.3: Update projects_lifecycle.py**
-- Remove spawn_agents method
-- Redirect to agent_jobs module
-
-### Phase 3: Deprecate Legacy Endpoints (1 day)
-
-**Step 3.1: Mark agents.py as Deprecated**
+**Step 2.1: Update Main Router**
 ```python
-# api/endpoints/agents.py
-@router.post("/spawn")
-@deprecated(
-    version="3.2.0",
-    reason="Use /api/v1/agent-jobs/spawn instead",
-    alternative="/api/v1/agent-jobs/spawn"
-)
-async def spawn_agent_legacy(...):
-    """DEPRECATED: Use /api/v1/agent-jobs/spawn"""
-    # Add deprecation warning to response
-    # Delegate to new endpoint internally
+# api/main.py or api/router.py
+# BEFORE:
+from api.endpoints import agent_jobs, agents, orchestration
+
+# AFTER (only agent_jobs module):
+from api.endpoints.agent_jobs import spawn, lifecycle, status, progress, orchestration
+
+app.include_router(spawn.router)
+app.include_router(lifecycle.router)
+app.include_router(status.router)
+app.include_router(progress.router)
+app.include_router(orchestration.router)
+```
+
+**Step 2.2: DELETE agents.py**
+```bash
+rm api/endpoints/agents.py
+rm tests/unit/test_agents_endpoint.py  # Delete old tests too
+rm tests/integration/test_agents.py     # Delete integration tests
+```
+
+**Step 2.3: DELETE orchestration.py**
+```bash
+rm api/endpoints/orchestration.py
+rm tests/unit/test_orchestration_endpoint.py
+```
+
+**Step 2.4: REMOVE spawn_agents from projects_lifecycle.py**
+```python
+# api/endpoints/projects_lifecycle.py
+# DELETE this entire function:
+# async def spawn_agents(...):
+#     ...  DELETE ALL OF THIS
+
+# If other functions used spawn_agents, update them to call agent_jobs endpoints instead
+```
+
+**Step 2.5: Clean Up Imports**
+- Remove all imports of deleted files
+- Update any code that referenced old agent endpoints
+- Verify no references remain using grep
+
+### Phase 3: Comprehensive Cleanup (1 day)
+
+**Step 3.1: Delete Test Files**
+```bash
+# Find and delete ALL test files related to old structure
+find tests/ -name "*agents*" -type f -delete
+find tests/ -name "*old_orchestration*" -type f -delete
 ```
 
 **Step 3.2: Update API Documentation**
-- Mark legacy endpoints as deprecated in OpenAPI
-- Add migration guide to docs
+- Remove all references to deleted endpoints
+- Update OpenAPI schema (auto-generated from remaining routes)
+- Verify documentation reflects NEW structure only
+
+**Step 3.3: Search for Zombie References**
+```bash
+# Search for any references to deleted files
+grep -r "from.*endpoints.agents" .
+grep -r "from.*endpoints.orchestration" .
+grep -r "spawn_agents" api/
+
+# Delete or update ANY files that reference old code
+```
 
 ### Phase 4: Testing & Validation (2 days)
 
@@ -404,13 +470,17 @@ except Exception as e:
 
 ## Rollback Plan
 
-If issues arise:
-1. **Keep legacy endpoints active** (already deprecated, not removed)
-2. **Redirect new endpoints to legacy** if needed
-3. **Fix issues** in consolidated module
-4. **Re-enable** once fixed
+**Full backup exists before refactoring begins.**
 
-No data loss risk - only endpoint organization changes.
+If critical issues arise that cannot be fixed within 1 day:
+1. **Revert entire commit** - Use git to rollback all changes
+2. **Restore from backup** - Project is fully backed up before starting
+3. **Fix issues offline** - Debug in separate branch
+4. **Re-attempt refactoring** - Once issues understood
+
+**No partial rollbacks** - Either commit works completely or revert everything.
+
+No data loss risk - only code organization changes, database untouched.
 
 ---
 
