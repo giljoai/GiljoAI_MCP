@@ -1,0 +1,541 @@
+"""
+Unit tests for OrchestrationService (Handover 0123 - Phase 2)
+
+Tests cover:
+- Project orchestration
+- Agent job lifecycle (spawn, acknowledge, complete, error)
+- Job progress reporting
+- Workflow status monitoring
+- Pending job retrieval
+- Error handling and edge cases
+
+Target: >80% line coverage
+"""
+
+import pytest
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
+from uuid import uuid4
+
+from giljo_mcp.services.orchestration_service import OrchestrationService
+from giljo_mcp.models import MCPAgentJob, Project
+
+
+class TestOrchestrationServiceJobManagement:
+    """Test agent job management operations"""
+
+    @pytest.mark.asyncio
+    async def test_spawn_agent_job_success(self):
+        """Test successful agent job creation"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "project-id"
+        mock_project.name = "Test Project"
+        mock_project.tenant_key = "test-tenant"
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_project)
+        session.execute = AsyncMock(return_value=mock_result)
+        session.add = Mock()
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Mock httpx for WebSocket broadcast
+        with patch('httpx.AsyncClient') as mock_client:
+            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
+                return_value=Mock(status_code=200)
+            )
+
+            # Act
+            result = await service.spawn_agent_job(
+                agent_type="implementer",
+                agent_name="impl-1",
+                mission="Implement feature X",
+                project_id="project-id",
+                tenant_key="test-tenant"
+            )
+
+        # Assert
+        assert result["success"] is True
+        assert "agent_job_id" in result
+        assert "agent_prompt" in result
+        assert result["thin_client"] is True
+        assert result["mission_stored"] is True
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_spawn_agent_job_project_not_found(self):
+        """Test spawn_agent_job fails when project doesn't exist"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=None)
+        session.execute = AsyncMock(return_value=mock_result)
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.spawn_agent_job(
+            agent_type="implementer",
+            agent_name="impl-1",
+            mission="test",
+            project_id="nonexistent",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert "error" in result
+        assert "NOT_FOUND" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_agent_mission_success(self):
+        """Test successful mission retrieval"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock agent job
+        mock_job = Mock(spec=MCPAgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.agent_type = "implementer"
+        mock_job.mission = "Implement feature X with unit tests"
+        mock_job.project_id = "project-id"
+        mock_job.spawned_by = "parent-job-id"
+        mock_job.status = "waiting"
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_job)
+        session.execute = AsyncMock(return_value=mock_result)
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_agent_mission(
+            agent_job_id="job-123",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert result["success"] is True
+        assert result["agent_job_id"] == "job-123"
+        assert result["agent_type"] == "implementer"
+        assert "Implement feature X" in result["mission"]
+        assert result["thin_client"] is True
+
+    @pytest.mark.asyncio
+    async def test_acknowledge_job_success(self):
+        """Test successful job acknowledgment"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock job
+        mock_job = Mock(spec=MCPAgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.agent_type = "implementer"
+        mock_job.mission = "Test mission"
+        mock_job.acknowledged = False
+        mock_job.status = "waiting"
+        mock_job.started_at = None
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_job)
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.acknowledge_job(
+            job_id="job-123",
+            agent_id="agent-456"
+        )
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["job"]["job_id"] == "job-123"
+        assert mock_job.acknowledged is True
+        assert mock_job.status == "working"
+        assert mock_job.started_at is not None
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_acknowledge_job_idempotent(self):
+        """Test that acknowledging an already-acknowledged job is idempotent"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock already-acknowledged job
+        mock_job = Mock(spec=MCPAgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.agent_type = "implementer"
+        mock_job.mission = "Test mission"
+        mock_job.acknowledged = True
+        mock_job.status = "working"
+        mock_job.started_at = datetime.now()
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_job)
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.acknowledge_job(
+            job_id="job-123",
+            agent_id="agent-456"
+        )
+
+        # Assert
+        assert result["status"] == "success"
+        # Should not commit again
+        session.commit.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_complete_job_success(self):
+        """Test successful job completion"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock job
+        mock_job = Mock(spec=MCPAgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.status = "working"
+        mock_job.completed_at = None
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_job)
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.complete_job(
+            job_id="job-123",
+            result={"output": "Successfully completed"}
+        )
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["job_id"] == "job-123"
+        assert mock_job.status == "complete"
+        assert mock_job.completed_at is not None
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_report_error_success(self):
+        """Test successful error reporting"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock job
+        mock_job = Mock(spec=MCPAgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.status = "working"
+        mock_job.failure_reason = None
+        mock_job.block_reason = None
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=mock_job)
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.report_error(
+            job_id="job-123",
+            error="Failed to compile code"
+        )
+
+        # Assert
+        assert result["status"] == "success"
+        assert mock_job.status == "failed"
+        assert mock_job.failure_reason == "error"
+        assert mock_job.block_reason == "Failed to compile code"
+        session.commit.assert_awaited_once()
+
+
+class TestOrchestrationServiceWorkflow:
+    """Test workflow and orchestration operations"""
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status_success(self):
+        """Test successful workflow status retrieval"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "project-id"
+
+        # Mock jobs with various statuses
+        mock_job1 = Mock(spec=MCPAgentJob)
+        mock_job1.status = "working"
+
+        mock_job2 = Mock(spec=MCPAgentJob)
+        mock_job2.status = "complete"
+
+        mock_job3 = Mock(spec=MCPAgentJob)
+        mock_job3.status = "waiting"
+
+        mock_project_result = Mock()
+        mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
+
+        mock_jobs_result = Mock()
+        mock_jobs_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_job1, mock_job2, mock_job3])))
+
+        session.execute = AsyncMock(side_effect=[mock_project_result, mock_jobs_result])
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_workflow_status(
+            project_id="project-id",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert "active_agents" in result
+        assert "completed_agents" in result
+        assert "failed_agents" in result
+        assert "pending_agents" in result
+        assert "progress_percent" in result
+        assert "current_stage" in result
+        assert result["total_agents"] == 3
+        assert result["active_agents"] == 1
+        assert result["completed_agents"] == 1
+        assert result["pending_agents"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status_project_not_found(self):
+        """Test workflow status fails when project doesn't exist"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=None)
+        session.execute = AsyncMock(return_value=mock_result)
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_workflow_status(
+            project_id="nonexistent",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert "error" in result
+        assert "not found" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_pending_jobs_success(self):
+        """Test successful pending jobs retrieval"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock pending jobs
+        mock_job1 = Mock(spec=MCPAgentJob)
+        mock_job1.job_id = "job-1"
+        mock_job1.agent_type = "implementer"
+        mock_job1.mission = "Mission 1"
+        mock_job1.context_chunks = []
+        mock_job1.created_at = datetime.now()
+
+        mock_job2 = Mock(spec=MCPAgentJob)
+        mock_job2.job_id = "job-2"
+        mock_job2.agent_type = "implementer"
+        mock_job2.mission = "Mission 2"
+        mock_job2.context_chunks = []
+        mock_job2.created_at = datetime.now()
+
+        mock_result = Mock()
+        mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_job1, mock_job2])))
+        session.execute = AsyncMock(return_value=mock_result)
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_pending_jobs(
+            agent_type="implementer",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["count"] == 2
+        assert len(result["jobs"]) == 2
+        assert result["jobs"][0]["job_id"] == "job-1"
+        assert result["jobs"][1]["job_id"] == "job-2"
+
+    @pytest.mark.asyncio
+    async def test_get_pending_jobs_empty_agent_type(self):
+        """Test get_pending_jobs validation for empty agent_type"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_pending_jobs(
+            agent_type="",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert result["status"] == "error"
+        assert "cannot be empty" in result["error"]
+
+
+class TestOrchestrationServiceErrorHandling:
+    """Test error handling"""
+
+    @pytest.mark.asyncio
+    async def test_spawn_agent_job_database_exception(self):
+        """Test database exception handling in spawn_agent_job"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+
+        db_manager.get_session_async = AsyncMock(
+            side_effect=Exception("Connection lost")
+        )
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.spawn_agent_job(
+            agent_type="implementer",
+            agent_name="impl-1",
+            mission="test",
+            project_id="project-id",
+            tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert "error" in result
+        assert "INTERNAL_ERROR" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_acknowledge_job_no_tenant_context(self):
+        """Test acknowledge_job fails without tenant context"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+
+        tenant_manager.get_current_tenant = Mock(return_value=None)
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.acknowledge_job(
+            job_id="job-123",
+            agent_id="agent-456"
+        )
+
+        # Assert
+        assert result["status"] == "error"
+        assert "No tenant context" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_complete_job_invalid_result(self):
+        """Test complete_job validation for invalid result"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.complete_job(
+            job_id="job-123",
+            result="not-a-dict"  # Should be a dict
+        )
+
+        # Assert
+        assert result["status"] == "error"
+        assert "must be a non-empty dict" in result["error"]
