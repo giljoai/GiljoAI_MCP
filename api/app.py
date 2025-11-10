@@ -74,7 +74,6 @@ try:
         agent_jobs,
         agent_management,
         agent_templates,
-        # agents,  # DEPRECATED (Handover 0116) - superseded by agent_jobs
         ai_tools,
         auth,
         auth_pin_recovery,
@@ -758,8 +757,6 @@ def create_app() -> FastAPI:
     app.include_router(products.router, prefix="/api")
     app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
-    # DEPRECATED (Handover 0116): Legacy Agent endpoint superseded by agent_jobs.py (MCPAgentJob model)
-    # app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
     app.include_router(agent_management.router, tags=["Agent Management"])
     app.include_router(agent_templates.router, prefix="/api/v1/agents/templates", tags=["agent-templates"])
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
@@ -767,9 +764,7 @@ def create_app() -> FastAPI:
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
     app.include_router(agent_jobs.router, prefix="/api/agent-jobs", tags=["agent-jobs"])
-    app.include_router(orchestration.router, prefix="/api/orchestrator", tags=["orchestration"])
     app.include_router(orchestration.router, prefix="/api/v1/orchestration", tags=["orchestration"])  # Handover 0109
-    app.include_router(prompts.router, prefix="/api/prompts", tags=["prompts"])
     app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])  # Handover 0109
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
