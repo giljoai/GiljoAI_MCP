@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 
 from src.giljo_mcp.context_manager import validate_config_data
-from src.giljo_mcp.models import Agent, AgentTemplate, Product, Project
+# TODO(0127a): from src.giljo_mcp.models import Agent, AgentTemplate, Product, Project
+# from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 
 
 # Use db_session fixture from conftest.py
