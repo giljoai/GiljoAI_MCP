@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import Agent, Message, Project, Task
+from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
 from src.giljo_mcp.models import Session as DBSession
 
 
@@ -80,21 +80,19 @@ class TenantFixture:
             )
             session.add(project)
 
-            # Create agents if requested
-            agents = []
+            # Create agent jobs if requested
+            agent_jobs = []
             for i in range(with_agents):
-                agent = Agent(
-                    id=str(uuid.uuid4()),
+                job = MCPAgentJob(
+                    job_id=str(uuid.uuid4()),
                     tenant_key=tenant_key,
                     project_id=project.id,
-                    name=f"agent_{i}",
-                    role=random.choice(["analyzer", "implementer", "tester", "reviewer"]),
-                    status="active",
-                    context_used=0,
-                    max_context=100000,
+                    agent_type=random.choice(["analyzer", "implementer", "tester", "reviewer"]),
+                    mission=f"Test mission for agent {i}",
+                    status="pending",
                 )
-                agents.append(agent)
-                session.add(agent)
+                agent_jobs.append(job)
+                session.add(job)
 
             # Create messages if requested
             messages = []
@@ -228,7 +226,7 @@ class TenantFixture:
             # Delete in reverse order of dependencies
             session.query(Task).filter_by(tenant_key=tenant_key).delete()
             session.query(Message).filter_by(tenant_key=tenant_key).delete()
-            session.query(Agent).filter_by(tenant_key=tenant_key).delete()
+            session.query(MCPAgentJob).filter_by(tenant_key=tenant_key).delete()
             session.query(DBSession).filter_by(tenant_key=tenant_key).delete()
             session.query(Project).filter_by(tenant_key=tenant_key).delete()
             session.commit()
@@ -310,15 +308,13 @@ class TenantFixture:
 
             for i in range(count):
                 if entity_type == "agent":
-                    entity = Agent(
-                        id=str(uuid.uuid4()),
+                    entity = MCPAgentJob(
+                        job_id=str(uuid.uuid4()),
                         tenant_key=tenant_key,
                         project_id=project.id,
-                        name=f"random_agent_{i}",
-                        role=random.choice(["analyzer", "implementer", "tester"]),
-                        status="active",
-                        context_used=random.randint(0, 50000),
-                        max_context=100000,
+                        agent_type=random.choice(["analyzer", "implementer", "tester"]),
+                        mission=f"Random mission for agent {i}",
+                        status="pending",
                     )
                 elif entity_type == "message":
                     entity = Message(
