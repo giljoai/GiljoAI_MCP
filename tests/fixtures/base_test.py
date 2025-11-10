@@ -112,8 +112,8 @@ class BaseIntegrationTest(BaseAsyncTest):
     """Base class for integration tests"""
 
     async def create_test_environment(self, db_session):
-        """Create a complete test environment with projects, agents, etc."""
-        from src.giljo_mcp.models import Agent, Project
+        """Create a complete test environment with projects, agent jobs, etc."""
+        from src.giljo_mcp.models import MCPAgentJob, Project
         from tests.fixtures.base_fixtures import TestData
 
         # Create tenant key
@@ -124,25 +124,25 @@ class BaseIntegrationTest(BaseAsyncTest):
         project = Project(**project_data)
         db_session.add(project)
 
-        # Create agents
-        agents = []
-        for role in ["orchestrator", "analyzer", "implementer"]:
-            agent_data = TestData.generate_agent_data(project.id, role)
-            agent = Agent(**agent_data)
-            db_session.add(agent)
-            agents.append(agent)
+        # Create agent jobs
+        agent_jobs = []
+        for agent_type in ["orchestrator", "analyzer", "implementer"]:
+            job_data = TestData.generate_agent_job_data(project.id, tenant_key, agent_type)
+            job = MCPAgentJob(**job_data)
+            db_session.add(job)
+            agent_jobs.append(job)
 
         await db_session.commit()
 
-        return {"tenant_key": tenant_key, "project": project, "agents": agents}
+        return {"tenant_key": tenant_key, "project": project, "agent_jobs": agent_jobs}
 
     async def cleanup_test_environment(self, db_session, environment: dict):
         """Clean up test environment"""
-        from src.giljo_mcp.models import Agent, Message, Project, Task
+        from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
 
         # Delete in order to respect foreign keys
         await db_session.query(Message).filter_by(project_id=environment["project"].id).delete()
         await db_session.query(Task).filter_by(project_id=environment["project"].id).delete()
-        await db_session.query(Agent).filter_by(project_id=environment["project"].id).delete()
+        await db_session.query(MCPAgentJob).filter_by(project_id=environment["project"].id).delete()
         await db_session.query(Project).filter_by(id=environment["project"].id).delete()
         await db_session.commit()

@@ -14,7 +14,8 @@ import pytest
 
 from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
 from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import Agent, Product, Project
+# TODO(0127a): from src.giljo_mcp.models import Agent, Product, Project
+# from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 
 
 @pytest.fixture
