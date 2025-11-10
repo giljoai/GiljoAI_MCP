@@ -7,9 +7,8 @@ All operations enforce tenant isolation for security.
 
 from typing import List, Optional
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from ..models import MCPContextIndex, MCPContextSummary
 from .base import BaseRepository
@@ -74,8 +73,8 @@ class ContextRepository:
             summary=summary,
         )
 
-    def search_chunks(
-        self, session: Session, tenant_key: str, product_id: str, query: str, limit: int = 10
+    async def search_chunks(
+        self, session: AsyncSession, tenant_key: str, product_id: str, query: str, limit: int = 10
     ) -> List[MCPContextIndex]:
         """
         Search chunks by keywords using PostgreSQL full-text search.
@@ -83,7 +82,7 @@ class ContextRepository:
         Uses pg_trgm extension for fuzzy matching on keywords array.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Product to search within
             query: Search query
@@ -111,7 +110,7 @@ class ContextRepository:
             LIMIT :limit
         """)
 
-        result = session.execute(
+        result = await session.execute(
             search_query,
             {
                 "tenant_key": tenant_key,
@@ -125,70 +124,78 @@ class ContextRepository:
         # Convert results to MCPContextIndex objects
         chunks = []
         for row in result:
-            chunk = session.query(MCPContextIndex).filter(MCPContextIndex.id == row.id).first()
+            stmt = select(MCPContextIndex).where(MCPContextIndex.id == row.id)
+            chunk_result = await session.execute(stmt)
+            chunk = chunk_result.scalar_one_or_none()
             if chunk:
                 chunks.append(chunk)
 
         return chunks
 
-    def get_chunks_by_product(self, session: Session, tenant_key: str, product_id: str) -> List[MCPContextIndex]:
+    async def get_chunks_by_product(self, session: AsyncSession, tenant_key: str, product_id: str) -> List[MCPContextIndex]:
         """
         Get all chunks for a product ordered by chunk_order.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Product ID to retrieve chunks for
 
         Returns:
             List of MCPContextIndex instances ordered by chunk_order
         """
-        return (
-            session.query(MCPContextIndex)
-            .filter(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
+        result = await session.execute(
+            select(MCPContextIndex)
+            .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
             .order_by(MCPContextIndex.chunk_order)
-            .all()
         )
+        return list(result.scalars().all())
 
-    def get_chunk_by_id(self, session: Session, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
+    async def get_chunk_by_id(self, session: AsyncSession, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
         """
         Get a specific chunk by chunk_id.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             chunk_id: Chunk ID to retrieve
 
         Returns:
             MCPContextIndex instance or None if not found
         """
-        return (
-            session.query(MCPContextIndex)
-            .filter(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.chunk_id == chunk_id)
-            .first()
+        result = await session.execute(
+            select(MCPContextIndex).where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.chunk_id == chunk_id)
         )
+        return result.scalar_one_or_none()
 
-    def delete_chunks_by_product(self, session: Session, tenant_key: str, product_id: str) -> int:
+    async def delete_chunks_by_product(self, session: AsyncSession, tenant_key: str, product_id: str) -> int:
         """
         Delete all chunks for a product.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Product ID to delete chunks for
 
         Returns:
             Number of chunks deleted
         """
-        count = (
-            session.query(MCPContextIndex)
-            .filter(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
-            .count()
-        )
+        from sqlalchemy import delete
 
-        session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id
-        ).delete()
+        # Count first
+        count_result = await session.execute(
+            select(func.count())
+            .select_from(MCPContextIndex)
+            .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id)
+        )
+        count = count_result.scalar()
+
+        # Then delete
+        await session.execute(
+            delete(MCPContextIndex).where(
+                MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.product_id == product_id
+            )
+        )
 
         return count
 
@@ -269,61 +276,63 @@ class ContextRepository:
             reduction_percent=reduction_percent,
         )
 
-    def get_summaries_by_product(self, session: Session, tenant_key: str, product_id: str) -> List[MCPContextSummary]:
+    async def get_summaries_by_product(self, session: AsyncSession, tenant_key: str, product_id: str) -> List[MCPContextSummary]:
         """
         Get all summaries for a product.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Product ID to retrieve summaries for
 
         Returns:
             List of MCPContextSummary instances
         """
-        return (
-            session.query(MCPContextSummary)
-            .filter(MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.product_id == product_id)
+        result = await session.execute(
+            select(MCPContextSummary)
+            .where(MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.product_id == product_id)
             .order_by(MCPContextSummary.created_at.desc())
-            .all()
         )
+        return list(result.scalars().all())
 
-    def get_summary_by_id(self, session: Session, tenant_key: str, context_id: str) -> Optional[MCPContextSummary]:
+    async def get_summary_by_id(self, session: AsyncSession, tenant_key: str, context_id: str) -> Optional[MCPContextSummary]:
         """
         Get a specific summary by context_id.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             context_id: Context ID to retrieve
 
         Returns:
             MCPContextSummary instance or None if not found
         """
-        return (
-            session.query(MCPContextSummary)
-            .filter(MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.context_id == context_id)
-            .first()
+        result = await session.execute(
+            select(MCPContextSummary).where(
+                MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.context_id == context_id
+            )
         )
+        return result.scalar_one_or_none()
 
-    def get_token_reduction_stats(self, session: Session, tenant_key: str, product_id: Optional[str] = None) -> dict:
+    async def get_token_reduction_stats(self, session: AsyncSession, tenant_key: str, product_id: Optional[str] = None) -> dict:
         """
         Get token reduction statistics for a tenant or specific product.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             product_id: Optional product ID to filter by
 
         Returns:
             Dictionary with reduction statistics
         """
-        query = session.query(MCPContextSummary).filter(MCPContextSummary.tenant_key == tenant_key)
+        stmt = select(MCPContextSummary).where(MCPContextSummary.tenant_key == tenant_key)
 
         if product_id:
-            query = query.filter(MCPContextSummary.product_id == product_id)
+            stmt = stmt.where(MCPContextSummary.product_id == product_id)
 
-        summaries = query.all()
+        result = await session.execute(stmt)
+        summaries = list(result.scalars().all())
 
         if not summaries:
             return {

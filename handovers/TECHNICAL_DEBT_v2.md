@@ -280,6 +280,43 @@ AgentMetrics.vue        - High-level metrics, no real-time tracking
 
 ---
 
+### ENHANCEMENT: Orchestrator Message Loop Automation (Toggleable)
+**Status**: Manual available (tools added); automation not wired
+**Impact**: MEDIUM-HIGH – Smoother runs, fewer manual steps
+**Complexity**: LOW-MEDIUM (bounded polling in background task)
+**Effort**: 3–5 hours
+**Dependencies**: Messaging infra complete (`AgentCommunicationQueue`, MCP tools)
+
+#### Current State
+- Orchestrator can send welcome/status and poll/handle messages using MCP tools:
+  - `orchestrate_project()` auto-sends a welcome after spawn
+  - Manual helpers: `send_welcome`, `broadcast_status`, `coordinate_messages(iterations, interval)`
+- Polling is manual/on‑demand to aid debugging.
+
+#### Problem
+- Developers must remember to trigger `coordinate_messages` during execution to process progress/errors in real time.
+
+#### Proposed Improvement
+- Add an automation toggle to run the message loop automatically during the workflow window:
+  - Option A (default off): Background polling when orchestrator starts; respects project lifecycle.
+  - Option B: Keep manual default; add a “Run message coordination automatically” toggle when starting an orchestrator.
+
+#### Implementation Outline
+- Add config/flag: `auto_message_coordination: bool` (CLI param and server config)
+- If enabled: start a background task that calls `poll_and_handle_messages(project_id, iterations=∞, interval=3s)` until completion.
+- Surface toggle in UI when launching orchestrator; persist per run.
+
+#### Success Criteria
+- Toggle present in UI and/or CLI; default = manual (current behavior).
+- When enabled, messages (progress/errors) get acknowledged and basic replies are sent automatically.
+- No impact on SQLAlchemy 2.0 compliance or DB schema.
+
+#### Notes
+- Keep automation conservative; avoid spamming status messages (rate-limit broadcasts).
+- Log actions for traceability; allow turning off mid-run.
+
+---
+
 ### 🚨 BLOCKER 4: Enhanced Agent Cards with Project Context (Handover 0062)
 **Status**: Not Started
 **Impact**: CRITICAL - Can't see what agents are working on

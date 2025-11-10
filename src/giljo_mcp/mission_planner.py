@@ -422,7 +422,10 @@ Success Criteria:
                     user = result.scalar_one_or_none()
             else:
                 with self.db_manager.get_session() as session:
-                    user = session.query(User).filter_by(id=user_id).first()
+                    from sqlalchemy import select
+
+                    result = session.execute(select(User).filter_by(id=user_id))
+                    user = result.scalar_one_or_none()
 
             if user and user.field_priority_config:
                 # Extract serena_enabled from field_priority_config JSONB
@@ -897,9 +900,13 @@ Success Criteria:
 
         # Query user settings
         try:
-            user = self.db_manager.session.query(User).filter_by(id=user_id).first()
-            if user and user.field_priority_config:
-                return user.field_priority_config
+            from sqlalchemy import select
+
+            with self.db_manager.get_session() as session:
+                result = session.execute(select(User).filter_by(id=user_id))
+                user = result.scalar_one_or_none()
+                if user and user.field_priority_config:
+                    return user.field_priority_config
         except Exception as e:
             logger.warning(f"Failed to load user field priority config: {e}")
 

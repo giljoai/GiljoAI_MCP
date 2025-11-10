@@ -107,6 +107,13 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     tenant_key=tenant_key, product_id=project.product_id, project_requirements=project.mission
                 )
 
+                # Handover 0118: Send welcome message to all spawned jobs
+                try:
+                    await orchestrator.send_welcome_broadcast(project_id=project.id)
+                except Exception:
+                    # Non-fatal; continue returning orchestration result
+                    pass
+
                 logger.info(
                     f"Orchestration completed for project {project.id}. "
                     f"Spawned {len(result_dict.get('spawned_jobs', []))} jobs."
@@ -120,6 +127,52 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         except Exception as e:
             logger.error(f"Orchestration failed: {e}", exc_info=True)
             return {"error": f"Orchestration failed: {e!s}"}
+
+    # --------------------------------------------------------------------
+    # Messaging protocol helpers (Handover 0118)
+    # --------------------------------------------------------------------
+
+    @mcp.tool()
+    async def send_welcome(project_id: str, tenant_key: str) -> dict[str, Any]:
+        """Send welcome/directive message to all agents in a project."""
+        try:
+            orchestrator = ProjectOrchestrator()
+            sent = await orchestrator.send_welcome_broadcast(project_id)
+            return {"success": True, "sent": sent}
+        except Exception as e:
+            logger.exception(f"send_welcome failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def broadcast_status(project_id: str, tenant_key: str) -> dict[str, Any]:
+        """Broadcast team status summary to all agents."""
+        try:
+            orchestrator = ProjectOrchestrator()
+            res = await orchestrator.broadcast_team_status(project_id)
+            return {"success": True, **res}
+        except Exception as e:
+            logger.exception(f"broadcast_status failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def coordinate_messages(
+        project_id: str,
+        tenant_key: str,
+        iterations: int = 10,
+        interval_seconds: float = 3.0,
+    ) -> dict[str, Any]:
+        """Poll message queues and handle progress/errors for a bounded time."""
+        try:
+            orchestrator = ProjectOrchestrator()
+            res = await orchestrator.poll_and_handle_messages(
+                project_id=project_id,
+                iterations=iterations,
+                interval_seconds=interval_seconds,
+            )
+            return {"success": True, **res}
+        except Exception as e:
+            logger.exception(f"coordinate_messages failed: {e}")
+            return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any]:
