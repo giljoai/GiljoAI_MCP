@@ -387,6 +387,22 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     // ==================== Message Management ====================
 
     /**
+     * Load existing messages for a project from the database
+     * @param {string} projectId - Project ID to load messages for
+     */
+    async loadMessages(projectId) {
+      try {
+        const response = await api.messages.list({ project_id: projectId })
+        if (response.data && Array.isArray(response.data)) {
+          this.messages = response.data
+          console.log(`[ProjectTabs] Loaded ${response.data.length} existing messages for project ${projectId}`)
+        }
+      } catch (error) {
+        console.error('[ProjectTabs] Failed to load messages:', error)
+      }
+    },
+
+    /**
      * Add message to list
      * @param {Object} message - Message object
      */
