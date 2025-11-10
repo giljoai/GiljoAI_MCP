@@ -1,19 +1,38 @@
 ---
 **Document Type:** Master Refactoring Roadmap
-**Version:** 1.1
+**Version:** 2.0
 **Created:** 2025-11-10
 **Last Updated:** 2025-11-10
-**Status:** In Progress (0121 ✅ COMPLETE)
-**Timeline:** 8-10 weeks (after Handover 0119 completion)
-**Scope:** Handovers 0120-0129
-**Execution Strategy:** Sequential, one handover at a time
+**Status:** In Progress (0127 ✅ COMPLETE, Critical Gaps Identified)
+**Timeline:** 10-12 weeks (extended for production-grade quality)
+**Scope:** Handovers 0120-0131+ (expanded scope)
+**Execution Strategy:** Sequential with sub-tasks (a,b,c,d) for surgical precision
 ---
 
-# GiljoAI MCP Refactoring Roadmap (0120-0129)
+# GiljoAI MCP Refactoring Roadmap (0120-0131+)
 
 ## 🎯 Mission Statement
 
 **Transform the GiljoAI MCP backend from rapid-iteration prototype to production-ready architecture while maintaining the working orchestration system.**
+
+---
+
+## ⚠️ CRITICAL UPDATE (Post-0127 Analysis)
+
+### Application Status: **WORKING WONDERFULLY**
+The system is functioning excellently as a prototype. Our goal is to make it production-grade WITHOUT breaking anything.
+
+### Key Findings from Master Code Review:
+1. **Backend: 75% Complete** - Service layer working, modularization successful
+2. **Frontend: Needs harmonization** - WebSocket 4-layer nightmare, duplicate components
+3. **Critical Blockers:**
+   - Test suite broken (Agent model removal)
+   - ProductService missing
+   - Deep deprecated code still present (auth_legacy.py, prompt_generator.py)
+   - God object models.py (2,271 lines)
+
+### New Strategy: **Surgical Precision with Sub-Tasks**
+Each handover now has sub-tasks (a, b, c, d) for careful, incremental changes that won't break the working system.
 
 ---
 
@@ -574,21 +593,43 @@ Each handover creates:
 
 ## 📊 Progress Tracking
 
-### Handover Status Board
+### Handover Status Board - UPDATED WITH SUB-TASKS
 
-| ID | Handover | Status | Duration | Completion Date |
-|----|----------|--------|----------|-----------------|
-| 0119 | API Harmonization | **PREREQUISITE** | 1-2 days | - |
-| 0120 | Message Queue Consolidation | Planning | 1 week | - |
-| 0121 | ToolAccessor Phase 1 | **✅ COMPLETE** | 1 day | 2025-11-10 |
-| 0122 | Orchestration Documentation | **✅ COMPLETE** | 1 day | 2025-11-10 |
-| 0123 | ToolAccessor Phase 2 | **✅ COMPLETE** | 1 day | 2025-11-10 |
-| 0124 | Agent Endpoint Consolidation | **✅ COMPLETE** | 1 day | 2025-11-10 |
-| 0125 | Projects Modularization | **✅ COMPLETE** | 1 day | 2025-11-10 |
-| 0126 | Templates & Products Modularization | **✅ COMPLETE** | 1 day | 2025-11-10 |
-| 0127 | Deprecated Code Removal | **✅ COMPLETE** | <1 day | 2025-11-10 |
-| 0128 | Frontend Consolidation | Planning | 2-3 days | - |
-| 0129 | Integration Testing | Planning | 1 week | - |
+| ID | Handover | Status | Duration | Completion Date | Priority |
+|----|----------|--------|----------|-----------------|----------|
+| 0119 | API Harmonization | **PREREQUISITE** | 1-2 days | - | - |
+| 0120 | Message Queue Consolidation | **Needs Review** | 1 week | - | LOW |
+| 0121 | ToolAccessor Phase 1 | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
+| 0122 | Orchestration Documentation | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
+| 0123 | ToolAccessor Phase 2 | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
+| 0124 | Agent Endpoint Consolidation | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
+| 0125 | Projects Modularization | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
+| 0126 | Templates & Products Modularization | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
+| 0127 | Deprecated Code Removal (Basic) | **✅ COMPLETE** | <1 day | 2025-11-10 | - |
+| **0127a** | **Fix Test Suite** | **🚨 CRITICAL** | 4-8 hours | - | **P0** |
+| **0127b** | **Create ProductService** | **High Priority** | 1-2 days | - | **P1** |
+| **0127c** | **Deep Deprecated Code Removal** | **High Priority** | 2-3 days | - | **P1** |
+| **0127d** | **Migrate Utility Functions** | **Medium** | 1-2 days | - | **P2** |
+| 0128 | **Backend Deep Cleanup** | **Expanded** | 1 week | - | **P1** |
+| 0128a | Split models.py (2,271 lines) | Planning | 2-3 days | - | P1 |
+| 0128b | Remove auth_legacy.py | Planning | 1 day | - | P1 |
+| 0128c | Remove prompt_generator.py | Planning | 1 day | - | P1 |
+| 0128d | Clean deprecated DB fields | Planning | 1-2 days | - | P2 |
+| 0129 | **Integration Testing & Performance** | **Expanded** | 1 week | - | **P0** |
+| 0129a | Fix all broken tests | Planning | 2-3 days | - | P0 |
+| 0129b | Performance benchmarks | Planning | 1-2 days | - | P1 |
+| 0129c | Security testing (OWASP) | Planning | 2-3 days | - | P1 |
+| 0129d | Load testing | Planning | 1-2 days | - | P2 |
+| 0130 | **Frontend WebSocket Consolidation** | **NEW** | 1 week | - | **P1** |
+| 0130a | Consolidate 4 layers to 2 | Planning | 2-3 days | - | P1 |
+| 0130b | Remove flowWebSocket.js | Planning | 1 day | - | P1 |
+| 0130c | Merge duplicate components | Planning | 1-2 days | - | P2 |
+| 0130d | Centralize API calls | Planning | 2-3 days | - | P2 |
+| 0131 | **Production Readiness** | **NEW** | 1 week | - | **P1** |
+| 0131a | Add monitoring/observability | Planning | 2-3 days | - | P1 |
+| 0131b | Implement rate limiting | Planning | 1 day | - | P1 |
+| 0131c | Add LICENSE & OSS files | Planning | 1 day | - | P1 |
+| 0131d | Create deployment guide | Planning | 2-3 days | - | P2 |
 
 **0123 Final Results:**
 - ✅ **ALL SERVICES EXTRACTED** (5/5): TemplateService, TaskService, MessageService, ContextService, OrchestrationService
@@ -606,6 +647,110 @@ Each handover creates:
 - ⚠️ **Known Issues Documented**: Some utility functions not migrated (purge_expired_deleted_projects, validate_active_agent_limit, validate_project_path) - to be addressed in future functional handover
 
 **Update this table after each handover completion!**
+
+---
+
+## 🚨 CRITICAL PATH - IMMEDIATE ACTIONS
+
+### Priority 0: BLOCKERS (Must Fix NOW)
+
+#### **0127a: Fix Test Suite** (4-8 hours)
+**THE #1 BLOCKER - Nothing else matters until this is fixed**
+- **Problem**: `ImportError: cannot import name 'Agent' from 'src.giljo_mcp.models'`
+- **Root Cause**: Agent model was removed but test fixtures still reference it
+- **Fix**:
+  1. Update `tests/fixtures/base_fixtures.py` - remove Agent imports
+  2. Update `tests/conftest.py` - remove Agent references
+  3. Fix any test that imports Agent model
+  4. Run full test suite to identify other breaks
+- **Validation**: `pytest tests/` must pass 100%
+- **Risk**: ZERO - only fixing test files, not production code
+
+#### **0129a: Fix All Broken Tests** (Part of 0129)
+- Complete test suite validation
+- Fix any remaining test failures
+- Achieve >80% coverage target
+
+### Priority 1: HIGH PRIORITY (This Week)
+
+#### **0127b: Create ProductService** (1-2 days)
+**Architectural Gap - Violates Service Layer Pattern**
+- **Problem**: Products endpoints have direct database access (no service layer)
+- **Fix**:
+  1. Create `src/giljo_mcp/services/product_service.py` (~350 lines)
+  2. Follow ProjectService pattern exactly
+  3. Update `api/endpoints/products/` to use ProductService
+  4. Add comprehensive tests (>80% coverage)
+- **Validation**: All product endpoints work through service layer
+- **Risk**: LOW - following established pattern
+
+#### **0127c: Deep Deprecated Code Removal** (2-3 days)
+**CRITICAL - Prevents agents from using old code**
+- **Files to Delete**:
+  - `src/giljo_mcp/auth_legacy.py` (672 lines) - contains deprecated auto-login
+  - `src/giljo_mcp/prompt_generator.py` - entire DEPRECATED fat prompt system
+  - `frontend/src/components/navigation/NavigationDrawer.vue.backup`
+  - `tests/installer/test_platform_handlers.py.backup`
+  - `src/giljo_mcp/mission_planner.py.backup`
+- **Database Fields to Remove**:
+  - Product.vision_document, vision_text, vision_source, chunked
+  - Old agent_id foreign keys
+  - MCPAgentJob.prompt field (use system_instructions + user_instructions)
+- **Validation**: grep for any remaining references before deletion
+- **Risk**: LOW - all deprecated code, not used
+
+#### **0128: Backend Deep Cleanup** (1 week total)
+**Split into surgical sub-tasks for safety:**
+
+**0128a: Split models.py** (2-3 days)
+- **Problem**: 2,271 line GOD OBJECT containing all models
+- **Fix**: Split into domain modules:
+  - `models/auth.py` - User, Session, ApiKey
+  - `models/projects.py` - Project, ProjectStatus
+  - `models/agents.py` - MCPAgentJob, AgentMessage
+  - `models/templates.py` - Template, TemplateVersion
+  - `models/products.py` - Product, ProductSettings
+  - `models/base.py` - Base, TenantMixin, TimestampMixin
+  - `models/__init__.py` - Re-export all for compatibility
+- **Risk**: MEDIUM - must maintain all imports
+
+**0128b & 0128c**: Remove auth_legacy.py and prompt_generator.py (covered in 0127c)
+
+**0128d: Clean Deprecated DB Fields** (1-2 days)
+- Create Alembic migration to drop deprecated columns
+- Test migration on dev database first
+- Keep backup of database before migration
+
+### Priority 2: FRONTEND (After Backend Stable)
+
+#### **0130: Frontend WebSocket Consolidation** (1 week)
+**CAREFUL - This works, don't break it!**
+
+**0130a: Consolidate 4 layers to 2** (2-3 days)
+- **Current Nightmare**:
+  - websocket.js (507 lines) → flowWebSocket.js (377 lines) → stores/websocket.js (318 lines) → useWebSocket.js (142 lines)
+- **Target Architecture**:
+  - stores/websocket.js - Pinia store (state + reconnection)
+  - composables/useWebSocket.js - Vue composable (component interface)
+- **Approach**:
+  1. Map all current functionality
+  2. Create new consolidated version
+  3. Test extensively before switching
+  4. Keep old files as .backup initially
+
+**0130b: Remove flowWebSocket.js** (1 day)
+- Merge functionality into main websocket store
+- Update all components using flowWebSocket
+
+**0130c: Merge Duplicate Components** (1-2 days)
+- AgentCard.vue vs AgentCardEnhanced.vue
+- Timeline components (3 variants)
+- Setup wizards duplicates
+
+**0130d: Centralize API Calls** (2-3 days)
+- 30+ components make raw axios calls
+- All should use `/services/api.js`
+- Add consistent error handling
 
 ---
 
@@ -651,6 +796,58 @@ src/giljo_mcp/
 ```
 
 **Total Lines:** Similar to current, but much better organized!
+
+---
+
+## 🛡️ SAFETY PROTOCOL - DO NOT BREAK THE WORKING SYSTEM
+
+### Before EVERY Change:
+1. **Create feature branch**: `git checkout -b handover-[ID]-[description]`
+2. **Run application**: Verify it starts and basic flows work
+3. **Document current state**: Note what's working
+4. **Make incremental changes**: Small commits, test frequently
+5. **Validation after each change**: Run app, test affected endpoints
+
+### If Something Breaks:
+1. **STOP immediately** - Don't try to fix forward
+2. **Git reset**: `git reset --hard HEAD`
+3. **Analyze**: What caused the break?
+4. **Adjust approach**: Smaller increments
+5. **Document**: Add to lessons learned
+
+### Critical Rules:
+- **NEVER** delete code without verifying it's unused (grep first)
+- **NEVER** change working endpoints without tests passing first
+- **NEVER** modify database schema without backup
+- **ALWAYS** keep backup branches until PR is merged
+- **ALWAYS** test with actual UI, not just unit tests
+
+---
+
+## 🎯 Revised Success Criteria
+
+### Must Have (Production Blockers):
+- ✅ Test suite passes 100%
+- ✅ All services follow consistent pattern
+- ✅ No deprecated code accessible to agents
+- ✅ Performance degradation < 5%
+- ✅ Zero breaking changes to API
+- ✅ Frontend WebSocket stable (2 layers max)
+
+### Should Have (Production Quality):
+- ✅ models.py split into domains
+- ✅ >80% test coverage
+- ✅ Security testing passed (OWASP Top 10)
+- ✅ Load testing passed (100 concurrent users)
+- ✅ Monitoring/observability ready
+- ✅ Rate limiting implemented
+
+### Nice to Have (Post-Launch):
+- ✅ API documentation (OpenAPI/Swagger)
+- ✅ Developer onboarding guide
+- ✅ CI/CD pipeline configured
+- ✅ Docker deployment option
+- ✅ Cloud database support
 
 ---
 
@@ -701,7 +898,53 @@ src/giljo_mcp/
 
 ---
 
-**Document Version:** 1.1
+## 📅 Revised Timeline Summary
+
+### Week 1-2: CRITICAL FIXES
+- **0127a**: Fix test suite (4-8 hours) - **BLOCKER**
+- **0127b**: Create ProductService (1-2 days)
+- **0127c**: Deep deprecated code removal (2-3 days)
+- **0127d**: Migrate utility functions (1-2 days)
+
+### Week 3-4: BACKEND CLEANUP
+- **0128a-d**: Backend deep cleanup (models.py split, remove legacy)
+- **0120**: Review message queue consolidation
+
+### Week 5-6: TESTING & VALIDATION
+- **0129a-d**: Integration testing, performance, security
+
+### Week 7-8: FRONTEND HARMONIZATION
+- **0130a-d**: WebSocket consolidation (CAREFUL - it works!)
+- Frontend component cleanup
+
+### Week 9-10: PRODUCTION READINESS
+- **0131a-d**: Monitoring, rate limiting, OSS files, deployment
+
+### Total Timeline: **10-12 weeks** to production-grade
+
+---
+
+## 🎓 Key Lessons from Analysis
+
+1. **The system works** - Don't break it with aggressive changes
+2. **75% backend complete** - Finish the remaining 25% carefully
+3. **Frontend needs work** - But it's working, so be surgical
+4. **Deprecated code is dangerous** - Agents might use it
+5. **Tests are critical** - Fix them first, everything else follows
+
+---
+
+## 📝 Next Immediate Actions
+
+1. **Fix test suite (0127a)** - THE #1 PRIORITY - BLOCKER!
+2. **Create ProductService (0127b)** - Architectural consistency
+3. **Deep deprecated removal (0127c)** - Prevent agent confusion
+4. **Then proceed sequentially** - One sub-task at a time
+
+---
+
+**Document Version:** 2.0
 **Last Updated:** 2025-11-10
-**Status:** In Progress (0121-0127 Complete, 0128-0129 Remaining)
-**Next Handover:** 0128 (Frontend Consolidation) or 0129 (Integration Testing)
+**Status:** Ready for Execution with Enhanced Safety
+**Next Critical Task:** 0127a (Fix Test Suite) - BLOCKER
+**Overall Progress:** 75% Complete (Backend), 40% (Frontend), 60% (Overall)
