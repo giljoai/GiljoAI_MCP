@@ -7,7 +7,9 @@ All operations enforce tenant isolation for security.
 
 from typing import List, Optional
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import MCPContextIndex, MCPContextSummary
