@@ -157,8 +157,16 @@ watch(
 /**
  * Set project on mount
  */
-onMounted(() => {
+onMounted(async () => {
   store.setProject(props.project)
+
+  // Load existing messages from database
+  if (props.project) {
+    const pid = props.project.project_id || props.project.id
+    if (pid) {
+      await store.loadMessages(pid)
+    }
+  }
 
   // Subscribe to WebSocket updates if project is launched
   if (store.isLaunched && props.project) {
@@ -183,9 +191,14 @@ onBeforeUnmount(() => {
  */
 watch(
   () => props.project,
-  (newProject) => {
+  async (newProject) => {
     if (newProject) {
       store.setProject(newProject)
+      // Load messages for the new project
+      const pid = newProject.project_id || newProject.id
+      if (pid) {
+        await store.loadMessages(pid)
+      }
     }
   },
   { deep: true }
