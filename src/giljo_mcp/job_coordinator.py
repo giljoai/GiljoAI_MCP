@@ -41,7 +41,7 @@ class JobCoordinator:
         Args:
             db_manager: DatabaseManager instance for session management
             job_manager: AgentJobManager for job operations
-            comm_queue: AgentCommunicationQueue for notifications
+            comm_queue: MessageQueue for notifications
         """
         self.db = db_manager
         self.job_manager = job_manager
