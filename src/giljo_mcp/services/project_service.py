@@ -1,0 +1,719 @@
+"""
+ProjectService - Dedicated service for project domain logic
+
+This service extracts all project-related operations from ToolAccessor
+as part of Phase 1 of the god object refactoring (Handover 0121).
+
+Responsibilities:
+- CRUD operations for projects
+- Project lifecycle management (complete, cancel, restore)
+- Project state and status tracking
+- Project metrics and statistics
+
+Design Principles:
+- Single Responsibility: Only project domain logic
+- Dependency Injection: Accepts DatabaseManager and TenantManager
+- Async/Await: Full SQLAlchemy 2.0 async support
+- Error Handling: Consistent exception handling and logging
+- Testability: Can be unit tested independently
+"""
+
+import logging
+from datetime import datetime
+from typing import Any, Optional
+from uuid import uuid4
+
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import MCPAgentJob, Message, Project
+from giljo_mcp.tenant import TenantManager
+
+
+logger = logging.getLogger(__name__)
+
+
+class ProjectService:
+    """
+    Service for managing project lifecycle and operations.
+
+    This service handles all project-related operations including:
+    - Creating, reading, updating projects
+    - Project status transitions (complete, cancel, restore)
+    - Project metrics and status reporting
+    - Mission updates with WebSocket integration
+
+    Thread Safety: Each instance is session-scoped. Do not share across requests.
+    """
+
+    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+        """
+        Initialize ProjectService with database and tenant management.
+
+        Args:
+            db_manager: Database manager for async database operations
+            tenant_manager: Tenant manager for multi-tenancy support
+        """
+        self.db_manager = db_manager
+        self.tenant_manager = tenant_manager
+        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    # ============================================================================
+    # CRUD Operations
+    # ============================================================================
+
+    async def create_project(
+        self,
+        name: str,
+        mission: str,
+        description: str = "",
+        product_id: Optional[str] = None,
+        tenant_key: Optional[str] = None,
+        status: str = "inactive",
+        context_budget: int = 150000,
+    ) -> dict[str, Any]:
+        """
+        Create a new project.
+
+        Args:
+            name: Project name (required)
+            mission: AI-generated mission statement (required)
+            description: Human-written project description (default: "")
+            product_id: Parent product ID if project belongs to a product
+            tenant_key: Tenant key for multi-tenancy (auto-generated if not provided)
+            status: Initial project status (default: "inactive")
+            context_budget: Token budget for context usage (default: 150000)
+
+        Returns:
+            Dict with success status and project details or error
+
+        Example:
+            >>> result = await service.create_project(
+            ...     name="Build API",
+            ...     mission="Create RESTful API with FastAPI",
+            ...     description="User management API"
+            ... )
+            >>> print(result["project_id"])
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Generate tenant key if not provided
+                if not tenant_key:
+                    tenant_key = f"tk_{uuid4().hex}"
+
+                # Create project entity
+                project = Project(
+                    name=name,
+                    mission=mission,
+                    description=description,
+                    tenant_key=tenant_key,
+                    product_id=product_id,
+                    status=status,
+                    context_budget=context_budget,
+                    context_used=0,
+                )
+
+                session.add(project)
+                await session.commit()
+
+                project_id = str(project.id)
+
+                self._logger.info(
+                    f"Created project {project_id} with status '{status}' "
+                    f"and tenant key {tenant_key}"
+                )
+
+                return {
+                    "success": True,
+                    "project_id": project_id,
+                    "tenant_key": tenant_key,
+                    "product_id": product_id,
+                    "name": name,
+                    "status": status,
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to create project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_project(self, project_id: str) -> dict[str, Any]:
+        """
+        Get a specific project by ID.
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Dict with success status and project details or error
+
+        Example:
+            >>> result = await service.get_project("abc-123")
+            >>> if result["success"]:
+            ...     print(result["project"]["name"])
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                query = select(Project).where(Project.id == project_id)
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {
+                        "success": False,
+                        "error": f"Project {project_id} not found"
+                    }
+
+                return {
+                    "success": True,
+                    "project": {
+                        "id": str(project.id),
+                        "name": project.name,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "status": project.status,
+                        "staging_status": project.staging_status,
+                        "product_id": project.product_id,
+                        "tenant_key": project.tenant_key,
+                        "context_budget": project.context_budget,
+                        "context_used": project.context_used,
+                        "created_at": project.created_at.isoformat() if project.created_at else None,
+                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
+                    },
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to get project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def list_projects(
+        self,
+        status: Optional[str] = None,
+        tenant_key: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        List all projects with optional filters.
+
+        Args:
+            status: Filter by project status (optional)
+            tenant_key: Tenant key for filtering (uses current tenant if not provided)
+
+        Returns:
+            Dict with success status and list of projects or error
+
+        Example:
+            >>> result = await service.list_projects(status="active")
+            >>> for project in result["projects"]:
+            ...     print(project["name"])
+        """
+        try:
+            # Use provided tenant_key or get from context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+
+            if not tenant_key:
+                return {
+                    "success": False,
+                    "error": "No tenant context available"
+                }
+
+            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
+                # TENANT ISOLATION: Only return projects for the specified tenant
+                query = select(Project).where(Project.tenant_key == tenant_key)
+                if status:
+                    query = query.where(Project.status == status)
+
+                result = await session.execute(query)
+                projects = result.scalars().all()
+
+                project_list = []
+                for project in projects:
+                    # For list view, we include basic metrics
+                    # (agent_count and message_count would require additional queries)
+                    project_list.append({
+                        "id": str(project.id),
+                        "name": project.name,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "status": project.status,
+                        "staging_status": project.staging_status,
+                        "tenant_key": project.tenant_key,
+                        "product_id": project.product_id,
+                        "created_at": project.created_at.isoformat(),
+                        "updated_at": (
+                            project.updated_at.isoformat()
+                            if project.updated_at
+                            else project.created_at.isoformat()
+                        ),
+                        "context_budget": project.context_budget,
+                        "context_used": project.context_used,
+                    })
+
+                return {
+                    "success": True,
+                    "projects": project_list
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to list projects: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def update_project_mission(
+        self,
+        project_id: str,
+        mission: str
+    ) -> dict[str, Any]:
+        """
+        Update the mission field after orchestrator analysis.
+
+        This method also broadcasts the mission update via WebSocket HTTP bridge
+        for real-time UI updates.
+
+        Args:
+            project_id: Project UUID
+            mission: Updated mission statement
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.update_project_mission(
+            ...     "abc-123",
+            ...     "Build comprehensive REST API with authentication"
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(mission=mission, updated_at=datetime.utcnow())
+                )
+
+                if result.rowcount == 0:
+                    return {
+                        "success": False,
+                        "error": "Project not found"
+                    }
+
+                # Get project for tenant_key
+                project_result = await session.execute(
+                    select(Project).where(Project.id == project_id)
+                )
+                project = project_result.scalar_one_or_none()
+
+                await session.commit()
+
+                # Broadcast mission update via WebSocket HTTP bridge
+                if project:
+                    await self._broadcast_mission_update(project_id, mission, project.tenant_key)
+
+                return {
+                    "success": True,
+                    "message": "Mission updated successfully"
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to update mission: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # Lifecycle Management
+    # ============================================================================
+
+    async def complete_project(
+        self,
+        project_id: str,
+        summary: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Mark a project as completed with completed_at timestamp.
+
+        Args:
+            project_id: Project UUID
+            summary: Optional completion summary to store in metadata
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.complete_project(
+            ...     "abc-123",
+            ...     summary="Successfully implemented all features"
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Build update values
+                update_values = {
+                    "status": "completed",
+                    "completed_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+
+                # Add summary to meta_data if provided
+                if summary:
+                    update_values["meta_data"] = {"summary": summary}
+
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(**update_values)
+                )
+
+                if result.rowcount == 0:
+                    return {
+                        "success": False,
+                        "error": "Project not found"
+                    }
+
+                await session.commit()
+
+                self._logger.info(f"Completed project {project_id}")
+
+                return {
+                    "success": True,
+                    "message": f"Project {project_id} completed successfully",
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to complete project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def cancel_project(
+        self,
+        project_id: str,
+        reason: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Cancel a project with completed_at timestamp.
+
+        Args:
+            project_id: Project UUID
+            reason: Optional cancellation reason to store in metadata
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.cancel_project(
+            ...     "abc-123",
+            ...     reason="Requirements changed"
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Build update values
+                update_values = {
+                    "status": "cancelled",
+                    "completed_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+
+                # Add reason to meta_data if provided
+                if reason:
+                    update_values["meta_data"] = {"cancellation_reason": reason}
+
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(**update_values)
+                )
+
+                if result.rowcount == 0:
+                    return {
+                        "success": False,
+                        "error": "Project not found"
+                    }
+
+                await session.commit()
+
+                self._logger.info(f"Cancelled project {project_id}")
+
+                return {
+                    "success": True,
+                    "message": f"Project {project_id} cancelled successfully",
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to cancel project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def restore_project(self, project_id: str) -> dict[str, Any]:
+        """
+        Restore a completed or cancelled project to inactive status.
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.restore_project("abc-123")
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Update project to inactive and clear completed_at
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(
+                        status="inactive",
+                        completed_at=None,
+                        updated_at=datetime.utcnow(),
+                    )
+                )
+
+                if result.rowcount == 0:
+                    return {
+                        "success": False,
+                        "error": "Project not found"
+                    }
+
+                await session.commit()
+
+                self._logger.info(f"Restored project {project_id}")
+
+                return {
+                    "success": True,
+                    "message": f"Project {project_id} restored successfully",
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to restore project: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # State & Metrics
+    # ============================================================================
+
+    async def get_project_status(
+        self,
+        project_id: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Get comprehensive project status including agents and messages.
+
+        If project_id is not provided, returns the first active project.
+
+        Args:
+            project_id: Project UUID (optional, defaults to active project)
+
+        Returns:
+            Dict with project details, agents list, and message counts
+
+        Example:
+            >>> result = await service.get_project_status("abc-123")
+            >>> print(f"Active agents: {len(result['agents'])}")
+            >>> print(f"Pending messages: {result['pending_messages']}")
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Get project
+                query = select(Project)
+                if project_id:
+                    query = query.where(Project.id == project_id)
+                else:
+                    query = query.where(Project.status == "active").limit(1)
+
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {
+                        "success": False,
+                        "error": "Project not found"
+                    }
+
+                # Get agent jobs (migrated from Agent to MCPAgentJob - Handover 0116)
+                agent_job_result = await session.execute(
+                    select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                )
+                agent_jobs = agent_job_result.scalars().all()
+
+                # Get pending messages
+                message_result = await session.execute(
+                    select(Message).where(
+                        Message.project_id == project.id,
+                        Message.status == "pending"
+                    )
+                )
+                pending_messages = len(message_result.scalars().all())
+
+                return {
+                    "success": True,
+                    "project": {
+                        "id": str(project.id),
+                        "name": project.name,
+                        "mission": project.mission,
+                        "status": project.status,
+                        "staging_status": project.staging_status,
+                        "tenant_key": project.tenant_key,
+                        "product_id": project.product_id,
+                        "created_at": project.created_at.isoformat(),
+                        "completed_at": (
+                            project.completed_at.isoformat()
+                            if project.completed_at
+                            else None
+                        ),
+                        "context_budget": project.context_budget,
+                        "context_used": project.context_used,
+                    },
+                    "agents": [
+                        {
+                            "name": job.agent_type,
+                            "status": job.status,
+                            "role": job.agent_type
+                        }
+                        for job in agent_jobs
+                    ],
+                    "pending_messages": pending_messages,
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to get project status: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def switch_project(self, project_id: str) -> dict[str, Any]:
+        """
+        Switch to a different project context.
+
+        This updates the tenant context and creates/activates a session
+        for the target project.
+
+        Args:
+            project_id: Project UUID to switch to
+
+        Returns:
+            Dict with success status and project details or error
+
+        Example:
+            >>> result = await service.switch_project("abc-123")
+            >>> print(f"Switched to: {result['name']}")
+        """
+        try:
+            async with self.db_manager.get_session_async() as db_session:
+                from giljo_mcp.models import Session as SessionModel
+                from giljo_mcp.tenant import current_tenant
+
+                # Find project
+                query = select(Project).where(Project.id == project_id)
+                result = await db_session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {
+                        "success": False,
+                        "error": f"Project {project_id} not found"
+                    }
+
+                # Set tenant context
+                self.tenant_manager.set_current_tenant(project.tenant_key)
+                current_tenant.set(project.tenant_key)
+
+                # Create new session if needed
+                session_query = select(SessionModel).where(
+                    SessionModel.project_id == project.id,
+                    SessionModel.status == "active"
+                )
+                session_result = await db_session.execute(session_query)
+                active_session = session_result.scalar_one_or_none()
+
+                if not active_session:
+                    active_session = SessionModel(
+                        project_id=project.id,
+                        started_at=datetime.now(),
+                        status="active",
+                    )
+                    db_session.add(active_session)
+                    await db_session.commit()
+
+                self._logger.info(
+                    f"Switched to project '{project.name}' (ID: {project_id})"
+                )
+
+                return {
+                    "success": True,
+                    "project_id": str(project.id),
+                    "name": project.name,
+                    "mission": project.mission,
+                    "tenant_key": project.tenant_key,
+                    "session_id": str(active_session.id),
+                    "context_usage": f"{project.context_used}/{project.context_budget}",
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to switch project: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # Private Helper Methods
+    # ============================================================================
+
+    async def _broadcast_mission_update(
+        self,
+        project_id: str,
+        mission: str,
+        tenant_key: str
+    ) -> None:
+        """
+        Broadcast mission update via WebSocket HTTP bridge.
+
+        This method uses the HTTP bridge to emit WebSocket events since
+        MCP runs in a separate process from the main application.
+
+        Args:
+            project_id: Project UUID
+            mission: Updated mission text
+            tenant_key: Tenant key for routing
+        """
+        self._logger.info(
+            f"[WEBSOCKET DEBUG] About to broadcast mission_updated "
+            f"for project {project_id}"
+        )
+
+        try:
+            import httpx
+
+            self._logger.info(
+                "[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge"
+            )
+
+            # Use HTTP bridge to emit WebSocket event
+            async with httpx.AsyncClient() as client:
+                bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                self._logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url}")
+
+                response = await client.post(
+                    bridge_url,
+                    json={
+                        "event_type": "project:mission_updated",
+                        "tenant_key": tenant_key,
+                        "data": {
+                            "project_id": project_id,
+                            "mission": mission,
+                            "token_estimate": len(mission) // 4,
+                            "user_config_applied": False,
+                            "generated_by": "orchestrator",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                    },
+                    timeout=5.0,
+                )
+
+                self._logger.info(
+                    f"[WEBSOCKET DEBUG] HTTP bridge response: {response.status_code}"
+                )
+                self._logger.info(
+                    f"[WEBSOCKET] Broadcasted mission_updated for project "
+                    f"{project_id} via HTTP bridge"
+                )
+
+        except Exception as ws_error:
+            self._logger.error(
+                f"[WEBSOCKET ERROR] Failed to broadcast mission_updated "
+                f"via HTTP bridge: {ws_error}",
+                exc_info=True
+            )
