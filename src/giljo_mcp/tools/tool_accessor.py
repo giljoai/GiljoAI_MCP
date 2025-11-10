@@ -15,6 +15,10 @@ from sqlalchemy import and_, select, update
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
 from giljo_mcp.services.project_service import ProjectService
+from giljo_mcp.services.template_service import TemplateService
+from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.services.message_service import MessageService
+from giljo_mcp.services.context_service import ContextService
 from giljo_mcp.tenant import TenantManager
 
 
@@ -28,8 +32,12 @@ class ToolAccessor:
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
 
-        # Initialize service layer (Handover 0121 - Phase 1)
+        # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2)
         self._project_service = ProjectService(db_manager, tenant_manager)
+        self._template_service = TemplateService(db_manager, tenant_manager)
+        self._task_service = TaskService(db_manager, tenant_manager)
+        self._message_service = MessageService(db_manager, tenant_manager)
+        self._context_service = ContextService(db_manager, tenant_manager)
 
     # Project Tools
 
@@ -340,7 +348,7 @@ class ToolAccessor:
             "reason": "Manual retirement not needed. Job state transitions handle lifecycle."
         }
 
-    # Message Tools
+    # Message Tools (delegates to MessageService)
 
     async def send_message(
         self,
@@ -351,199 +359,35 @@ class ToolAccessor:
         priority: str = "normal",
         from_agent: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Send message to one or more agents"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Get project
-                result = await session.execute(select(Project).where(Project.id == project_id))
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Create message
-                message = Message(
-                    project_id=project.id,
-                    tenant_key=project.tenant_key,
-                    from_agent_id=from_agent or "orchestrator",
-                    to_agents=to_agents,
-                    content=content,
-                    message_type=message_type,
-                    priority=priority,
-                    status="pending",
-                )
-
-                session.add(message)
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "message_id": str(message.id),
-                    "to_agents": to_agents,
-                    "type": message_type,
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to send message: {e}")
-            return {"success": False, "error": str(e)}
+        """Send message to one or more agents (delegates to MessageService)"""
+        return await self._message_service.send_message(
+            to_agents=to_agents,
+            content=content,
+            project_id=project_id,
+            message_type=message_type,
+            priority=priority,
+            from_agent=from_agent
+        )
 
     async def get_messages(self, agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
-        """Retrieve pending messages for an agent"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                query = select(Message).where(Message.status == "pending")
-
-                if project_id:
-                    query = query.where(Message.project_id == project_id)
-
-                result = await session.execute(query)
-                messages = result.scalars().all()
-
-                # Filter messages for this agent
-                agent_messages = []
-                for msg in messages:
-                    if agent_name in msg.to_agents or not msg.to_agents:
-                        agent_messages.append(
-                            {
-                                "id": str(msg.id),
-                                "from": msg.from_agent_id,
-                                "content": msg.content,
-                                "type": msg.message_type,
-                                "priority": msg.priority,
-                                "created": msg.created_at.isoformat(),
-                            }
-                        )
-
-                return {
-                    "success": True,
-                    "agent": agent_name,
-                    "count": len(agent_messages),
-                    "messages": agent_messages,
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to get messages: {e}")
-            return {"success": False, "error": str(e)}
+        """Retrieve pending messages for an agent (delegates to MessageService)"""
+        return await self._message_service.get_messages(agent_name=agent_name, project_id=project_id)
 
     async def acknowledge_message(self, message_id: str, agent_name: str) -> dict[str, Any]:
-        """Mark message as received by agent"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                result = await session.execute(select(Message).where(Message.id == message_id))
-                message = result.scalar_one_or_none()
-
-                if not message:
-                    return {"success": False, "error": "Message not found"}
-
-                # Add to acknowledged_by array
-                if not message.acknowledged_by:
-                    message.acknowledged_by = []
-
-                if agent_name not in message.acknowledged_by:
-                    message.acknowledged_by.append(agent_name)
-                    await session.commit()
-
-                return {
-                    "success": True,
-                    "message_id": message_id,
-                    "acknowledged_by": agent_name,
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to acknowledge message: {e}")
-            return {"success": False, "error": str(e)}
+        """Mark message as received by agent (delegates to MessageService)"""
+        return await self._message_service.acknowledge_message(message_id=message_id, agent_name=agent_name)
 
     async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
-        """Mark message as completed with result"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                msg_result = await session.execute(select(Message).where(Message.id == message_id))
-                message = msg_result.scalar_one_or_none()
-
-                if not message:
-                    return {"success": False, "error": "Message not found"}
-
-                # Update message
-                message.status = "completed"
-                message.result = result
-                message.completed_by = agent_name
-                message.completed_at = datetime.utcnow()
-
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "message_id": message_id,
-                    "completed_by": agent_name,
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to complete message: {e}")
-            return {"success": False, "error": str(e)}
+        """Mark message as completed with result (delegates to MessageService)"""
+        return await self._message_service.complete_message(message_id=message_id, agent_name=agent_name, result=result)
 
     async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> dict[str, Any]:
-        """Broadcast message to all agents in project"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Get all agent jobs in project (migrated from Agent to MCPAgentJob - Handover 0116)
-                result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.project_id == project_id))
-                agent_jobs = result.scalars().all()
-
-                if not agent_jobs:
-                    return {"success": False, "error": "No agent jobs found in project"}
-
-                agent_types = [job.agent_type for job in agent_jobs]
-
-                # Send message to all agents
-                return await self.send_message(
-                    to_agents=agent_types,
-                    content=content,
-                    project_id=project_id,
-                    message_type="broadcast",
-                    priority=priority,
-                    from_agent="orchestrator",
-                )
-
-        except Exception as e:
-            logger.exception(f"Failed to broadcast message: {e}")
-            return {"success": False, "error": str(e)}
+        """Broadcast message to all agents in project (delegates to MessageService)"""
+        return await self._message_service.broadcast(content=content, project_id=project_id, priority=priority)
 
     async def receive_messages(self, agent_id: str, limit: int = 10) -> dict[str, Any]:
-        """Receive pending messages for an agent by job_id (legacy compatible).
-
-        Aligns with MCP tool schema used by thin clients where `agent_id` is the job_id.
-        The older API expected an agent name; we normalize to job_id here and
-        fetch messages from the message queue via MessageQueue compatibility layer.
-        """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
-            from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
-            async with self.db_manager.get_session_async() as session:
-                result = await comm_queue.get_messages(
-                    session=session,
-                    job_id=agent_id,
-                    tenant_key=tenant_key,
-                    to_agent=None,
-                    message_type=None,
-                    unread_only=True,
-                )
-
-                if result.get("status") != "success":
-                    return {"success": False, "error": result.get("error")}
-
-                messages = result.get("messages", [])
-                if isinstance(limit, int) and limit > 0:
-                    messages = messages[:limit]
-
-                return {"success": True, "messages": messages, "count": len(messages)}
-        except Exception as e:
-            logger.exception(f"Failed to receive messages: {e}")
-            return {"success": False, "error": str(e)}
+        """Receive pending messages for an agent by job_id (delegates to MessageService)"""
+        return await self._message_service.receive_messages(agent_id=agent_id, limit=limit)
 
     async def list_messages(
         self,
@@ -551,252 +395,58 @@ class ToolAccessor:
         status: Optional[str] = None,
         agent_id: Optional[str] = None,
     ) -> dict[str, Any]:
-        """List messages in a project or for a specific agent (legacy compatible)."""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key and not project_id:
-                return {"success": False, "error": "No active project"}
-
-            async with self.db_manager.get_session_async() as session:
-                if agent_id:
-                    # Prefer agent (job) scoped listing using communication queue for compatibility
-                    from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-                    comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
-                    result = await comm_queue.get_messages(
-                        session=session,
-                        job_id=agent_id,
-                        tenant_key=tenant_key or "",
-                        to_agent=None,
-                        message_type=None,
-                        unread_only=False,
-                    )
-
-                    if result.get("status") != "success":
-                        return {"success": False, "error": result.get("error")}
-
-                    messages = result.get("messages", [])
-                    return {"success": True, "messages": messages, "count": len(messages)}
-
-                if project_id:
-                    query = select(Message).where(Message.project_id == project_id)
-                else:
-                    # Find project by tenant key - prefer active project if multiple exist
-                    project_query = select(Project).where(
-                        and_(Project.tenant_key == tenant_key, Project.status == "active")
-                    )
-                    project_result = await session.execute(project_query)
-                    project = project_result.scalar_one_or_none()
-
-                    # Fallback to most recent project if no active project
-                    if not project:
-                        project_query = (
-                            select(Project)
-                            .where(Project.tenant_key == tenant_key)
-                            .order_by(Project.created_at.desc())
-                            .limit(1)
-                        )
-                        project_result = await session.execute(project_query)
-                        project = project_result.scalar_one_or_none()
-
-                    if not project:
-                        return {"success": False, "error": "Project not found"}
-                    query = select(Message).where(Message.project_id == project.id)
-
-                if status:
-                    query = query.where(Message.status == status)
-
-                result = await session.execute(query)
-                messages = result.scalars().all()
-
-                message_list = []
-                for msg in messages:
-                    message_list.append(
-                        {
-                            "id": str(msg.id),
-                            "from_agent": msg.from_agent,
-                            "to_agent": msg.to_agent,
-                            "type": msg.type,
-                            "content": msg.content,
-                            "status": msg.status,
-                            "priority": msg.priority,
-                            "created_at": msg.created_at.isoformat() if msg.created_at else None,
-                        }
-                    )
-
-                return {"success": True, "messages": message_list, "count": len(message_list)}
-
-        except Exception as e:
-            logger.exception(f"Failed to list messages: {e}")
-            return {"success": False, "error": str(e)}
+        """List messages in a project or for a specific agent (delegates to MessageService)"""
+        return await self._message_service.list_messages(
+            project_id=project_id, status=status, agent_id=agent_id
+        )
 
     # Task Tools
 
     async def log_task(self, content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
-        """Quick task capture"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                # Get the first active project as context (or create a default one)
-                from sqlalchemy import select
-
-                stmt = select(Project).where(Project.status == "active").limit(1)
-                result = await session.execute(stmt)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    # Create a default project for task logging
-                    project = Project(
-                        name="Default Tasks",
-                        mission="Default project for task logging",
-                        tenant_key=f"tk_{uuid4().hex[:12]}",
-                        status="active",
-                    )
-                    session.add(project)
-                    await session.flush()
-
-                task = Task(
-                    tenant_key=project.tenant_key,
-                    product_id=project.product_id,  # Inherit product_id from project
-                    project_id=str(project.id),
-                    title=content,  # Use content as title
-                    description=content,  # Also store as description
-                    category=category,
-                    priority=priority,
-                    status="pending",
-                )
-
-                session.add(task)
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "task_id": str(task.id),
-                    "message": "Task logged successfully",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to log task: {e}")
-            return {"success": False, "error": str(e)}
+        """Quick task capture (delegates to TaskService)"""
+        return await self._task_service.log_task(content=content, category=category, priority=priority)
 
     async def create_task(
         self, title: str, description: str, priority: str = "medium", assigned_to: Optional[str] = None
     ) -> dict[str, Any]:
-        """Create a new task"""
-        return await self.log_task(description, category=title, priority=priority)
+        """Create a new task (delegates to TaskService)"""
+        return await self._task_service.create_task(
+            title=title, description=description, priority=priority, assigned_to=assigned_to
+        )
 
     async def list_tasks(self, status: Optional[str] = None, assigned_to: Optional[str] = None) -> dict[str, Any]:
-        """List tasks"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active project"}
-
-            async with self.db_manager.get_session_async() as session:
-                # Find project - prefer active project if multiple exist
-                project_query = select(Project).where(
-                    and_(Project.tenant_key == tenant_key, Project.status == "active")
-                )
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-
-                # Fallback to most recent project if no active project
-                if not project:
-                    project_query = (
-                        select(Project)
-                        .where(Project.tenant_key == tenant_key)
-                        .order_by(Project.created_at.desc())
-                        .limit(1)
-                    )
-                    project_result = await session.execute(project_query)
-                    project = project_result.scalar_one_or_none()
-
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-
-                # Query tasks
-                query = select(Task).where(Task.project_id == project.id)
-                if status:
-                    query = query.where(Task.status == status)
-
-                result = await session.execute(query)
-                tasks = result.scalars().all()
-
-                task_list = []
-                for task in tasks:
-                    task_list.append(
-                        {
-                            "id": str(task.id),
-                            "description": task.description,
-                            "status": task.status,
-                            "priority": task.priority,
-                            "created_at": task.created_at.isoformat() if task.created_at else None,
-                        }
-                    )
-
-                return {"success": True, "tasks": task_list, "count": len(task_list)}
-
-        except Exception as e:
-            logger.exception(f"Failed to list tasks: {e}")
-            return {"success": False, "error": str(e)}
+        """List tasks (delegates to TaskService)"""
+        return await self._task_service.list_tasks(status=status, assigned_to=assigned_to)
 
     async def update_task(self, task_id: str, **kwargs) -> dict[str, Any]:
-        """Update a task"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                task_query = select(Task).where(Task.id == task_id)
-                task_result = await session.execute(task_query)
-                task = task_result.scalar_one_or_none()
-
-                if not task:
-                    return {"success": False, "error": f"Task {task_id} not found"}
-
-                # Update fields
-                for key, value in kwargs.items():
-                    if hasattr(task, key):
-                        setattr(task, key, value)
-
-                await session.commit()
-
-                return {"success": True, "task_id": task_id, "updated_fields": list(kwargs.keys())}
-
-        except Exception as e:
-            logger.exception(f"Failed to update task: {e}")
-            return {"success": False, "error": str(e)}
+        """Update a task (delegates to TaskService)"""
+        return await self._task_service.update_task(task_id, **kwargs)
 
     async def assign_task(self, task_id: str, agent_name: str) -> dict[str, Any]:
-        """Assign a task to an agent"""
-        return await self.update_task(task_id, assigned_to=agent_name, status="assigned")
+        """Assign a task to an agent (delegates to TaskService)"""
+        return await self._task_service.assign_task(task_id, agent_name)
 
     async def complete_task(self, task_id: str) -> dict[str, Any]:
-        """Mark a task as completed"""
-        return await self.update_task(task_id, status="completed")
+        """Mark a task as completed (delegates to TaskService)"""
+        return await self._task_service.complete_task(task_id)
 
-    # Context Tools (simplified stubs for now)
+    # Context Tools (delegates to ContextService)
 
     async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
-        """Get the context index for intelligent querying"""
-        return {"success": True, "index": {"documents": [], "sections": []}}
+        """Get the context index for intelligent querying (delegates to ContextService)"""
+        return await self._context_service.get_context_index(product_id=product_id)
 
     async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
-        """Get the vision document"""
-        return {
-            "success": True,
-            "part": part,
-            "total_parts": 1,
-            "content": "Vision document placeholder",
-            "tokens": 100,
-        }
+        """Get the vision document (delegates to ContextService)"""
+        return await self._context_service.get_vision(part=part, max_tokens=max_tokens)
 
     async def get_vision_index(self) -> dict[str, Any]:
-        """Get the vision document index"""
-        return {"success": True, "index": {"files": [], "chunks": []}}
+        """Get the vision document index (delegates to ContextService)"""
+        return await self._context_service.get_vision_index()
 
     async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
-        """Get all product settings for analysis"""
-        return {
-            "success": True,
-            "settings": {"product_id": product_id or "default", "config": {}},
-        }
+        """Get all product settings for analysis (delegates to ContextService)"""
+        return await self._context_service.get_product_settings(product_id=product_id)
 
     async def discover_context(
         self,
@@ -805,166 +455,40 @@ class ToolAccessor:
         agent_role: str = "default",
         force_refresh: bool = False,
     ) -> dict[str, Any]:
-        """
-        DEPRECATED: Stub implementation - not needed.
-        
-        This tool was a placeholder for context discovery functionality.
-        Thin client architecture (Handover 0088) eliminated the need for this tool.
-        Agents access context directly via IDE tools and get_agent_mission().
-        This method will be removed in v3.2.0.
-        
-        Migration:
-            # OLD (obsolete stub)
-            await discover_context(project_id=project_id, agent_role="implementer")
-            
-            # NEW (no replacement needed)
-            # Context provided via:
-            # 1. get_agent_mission() - returns mission with embedded context
-            # 2. IDE tools (Read, Grep, Glob) - direct file/codebase access
-        
-        See: Comprehensive_MCP_Analysis.md for migration guide
-        """
-        return {
-            "error": "DEPRECATED",
-            "message": "Stub implementation. Thin client architecture eliminated need for this tool.",
-            "replacement": "None - not needed",
-            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
-            "removal_version": "v3.2.0",
-            "reason": "Agents access context via get_agent_mission() and IDE tools (Read, Grep, Glob)."
-        }
+        """DEPRECATED: Delegates to ContextService"""
+        return await self._context_service.discover_context(
+            project_id=project_id, path=path, agent_role=agent_role, force_refresh=force_refresh
+        )
 
     async def get_file_context(self, file_path: str) -> dict[str, Any]:
-        """
-        DEPRECATED: Stub implementation - not needed.
-        
-        This tool was a placeholder directing users to Serena MCP tools.
-        Agents access files directly via IDE tools (Read, Grep).
-        This method will be removed in v3.2.0.
-        
-        Migration:
-            # OLD (obsolete stub)
-            await get_file_context(file_path="src/main.py")
-            
-            # NEW (no replacement needed)
-            # Use IDE tools directly:
-            # - Read tool for file contents
-            # - mcp__serena__read_file for file reading
-            # - mcp__serena__get_symbols_overview for code structure
-        
-        See: Comprehensive_MCP_Analysis.md for migration guide
-        """
-        return {
-            "error": "DEPRECATED",
-            "message": "Stub implementation. Agents access files directly via IDE tools.",
-            "replacement": "None - not needed",
-            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
-            "removal_version": "v3.2.0",
-            "reason": "Use Read tool or Serena MCP (read_file, get_symbols_overview) for file access."
-        }
+        """DEPRECATED: Delegates to ContextService"""
+        return await self._context_service.get_file_context(file_path=file_path)
 
     async def search_context(self, query: str, file_types: Optional[list[str]] = None) -> dict[str, Any]:
-        """
-        DEPRECATED: Stub implementation - not needed.
-        
-        This tool was a placeholder directing users to Serena MCP grep tools.
-        Agents use IDE search capabilities (Grep tool) directly.
-        This method will be removed in v3.2.0.
-        
-        Migration:
-            # OLD (obsolete stub)
-            await search_context(query="class MyClass", file_types=["*.py"])
-            
-            # NEW (no replacement needed)
-            # Use IDE tools directly:
-            # - Grep tool for pattern search
-            # - mcp__serena__search_for_pattern for regex search
-            # - Glob tool for file name patterns
-        
-        See: Comprehensive_MCP_Analysis.md for migration guide
-        """
-        return {
-            "error": "DEPRECATED",
-            "message": "Stub implementation. Agents use IDE search capabilities (Grep tool) directly.",
-            "replacement": "None - not needed",
-            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
-            "removal_version": "v3.2.0",
-            "reason": "Use Grep tool or Serena MCP (search_for_pattern) for content search."
-        }
+        """DEPRECATED: Delegates to ContextService"""
+        return await self._context_service.search_context(query=query, file_types=file_types)
 
     async def get_context_summary(self, project_id: Optional[str] = None) -> dict[str, Any]:
-        """
-        DEPRECATED: Stub implementation - not needed.
-        
-        This tool was a placeholder for project context summaries.
-        Thin client architecture (Handover 0088) provides context via get_agent_mission().
-        Mission includes all necessary context for agents.
-        This method will be removed in v3.2.0.
-        
-        Migration:
-            # OLD (obsolete stub)
-            await get_context_summary(project_id=project_id)
-            
-            # NEW (no replacement needed)
-            # Context summary provided via:
-            # - get_agent_mission() returns mission with embedded context
-            # - Mission field includes project/product context
-        
-        See: Comprehensive_MCP_Analysis.md for migration guide
-        """
-        return {
-            "error": "DEPRECATED",
-            "message": "Stub implementation. Mission from get_agent_mission() provides context.",
-            "replacement": "None - not needed",
-            "documentation": "See Comprehensive_MCP_Analysis.md for migration guide",
-            "removal_version": "v3.2.0",
-            "reason": "Context provided via get_agent_mission() - mission field includes all necessary context."
-        }
+        """DEPRECATED: Delegates to ContextService"""
+        return await self._context_service.get_context_summary(project_id=project_id)
 
-    # Template Tools
+    # Template Tools (delegates to TemplateService)
 
     async def list_templates(self) -> dict[str, Any]:
-        """List available templates"""
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
-            async with self.db_manager.get_session_async() as session:
-                from giljo_mcp.models import AgentTemplate
-
-                result = await session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-                templates = result.scalars().all()
-
-                return {
-                    "success": True,
-                    "templates": [
-                        {
-                            "id": str(t.id),
-                            "name": t.name,
-                            "role": t.role,
-                            "content": t.template_content,
-                            "cli_tool": t.cli_tool,
-                            "background_color": t.background_color,
-                        }
-                        for t in templates
-                    ],
-                }
-
-        except Exception as e:
-            logger.error(f"Error listing templates: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}
+        """List available templates (delegates to TemplateService)"""
+        return await self._template_service.list_templates()
 
     async def get_template(self, template_name: str) -> dict[str, Any]:
-        """Get a specific template"""
-        return {"success": True, "template": {"name": template_name, "content": ""}}
+        """Get a specific template (delegates to TemplateService)"""
+        return await self._template_service.get_template(template_name=template_name)
 
     async def create_template(self, name: str, content: str, **kwargs) -> dict[str, Any]:
-        """Create a new template"""
-        return {"success": True, "template_id": "new-template", "name": name}
+        """Create a new template (delegates to TemplateService)"""
+        return await self._template_service.create_template(name=name, content=content, **kwargs)
 
     async def update_template(self, template_id: str, **kwargs) -> dict[str, Any]:
-        """Update a template"""
-        return {"success": True, "template_id": template_id, "updated": True}
+        """Update a template (delegates to TemplateService)"""
+        return await self._template_service.update_template(template_id=template_id, **kwargs)
 
     # Agent Export Tools (Handover 0084)
 
