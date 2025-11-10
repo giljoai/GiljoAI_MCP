@@ -22,7 +22,7 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.fixtures.base_fixtures import (
     db_manager,
     db_session,
-    test_agents,
+    test_agent_jobs,
     test_messages,
     test_project,
 )
@@ -40,7 +40,7 @@ pytest_plugins = ["tests.pytest_postgresql_plugin"]
 __all__ = [
     "db_manager",
     "db_session",
-    "test_agents",
+    "test_agent_jobs",
     "test_messages",
     "test_project",
 ]
@@ -179,26 +179,27 @@ async def test_project_id(db_session):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_agent(db_session, test_project_id):
-    """Create a test agent"""
+async def test_agent_job(db_session, test_project_id, test_tenant_key):
+    """Create a test agent job"""
     import uuid
     from datetime import datetime, timezone
 
-    from src.giljo_mcp.models import Agent
+    from src.giljo_mcp.models import MCPAgentJob
 
-    agent = Agent(
-        id=str(uuid.uuid4()),
-        name="test_agent",
-        type="worker",
-        status="active",
+    job = MCPAgentJob(
+        job_id=str(uuid.uuid4()),
+        tenant_key=test_tenant_key,
         project_id=test_project_id,
+        agent_type="worker",
+        mission="Test mission for worker agent",
+        status="pending",
         created_at=datetime.now(timezone.utc),
     )
 
-    db_session.add(agent)
+    db_session.add(job)
     await db_session.commit()
 
-    return agent
+    return job
 
 
 # Performance benchmarking fixtures

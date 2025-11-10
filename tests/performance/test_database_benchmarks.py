@@ -18,7 +18,8 @@ import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Message, Project, Task
+# TODO(0127a): from src.giljo_mcp.models import Agent, Message, Project, Task
+# from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 from tests.benchmark_tools import PerformanceBenchmark
 
 
