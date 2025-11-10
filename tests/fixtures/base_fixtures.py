@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.enums import AgentStatus, ProjectStatus
-from src.giljo_mcp.models import Agent, Message, Project
+from src.giljo_mcp.models import MCPAgentJob, Message, Project
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
 
 
@@ -41,16 +41,16 @@ class TestData:
         }
 
     @staticmethod
-    def generate_agent_data(project_id: str, name: Optional[str] = None) -> dict[str, Any]:
-        """Generate test agent data"""
+    def generate_agent_job_data(project_id: str, tenant_key: str, agent_type: Optional[str] = None) -> dict[str, Any]:
+        """Generate test MCPAgentJob data"""
         return {
-            "id": str(uuid.uuid4()),
-            "name": name or f"agent_{uuid.uuid4().hex[:8]}",
-            "role": "worker",  # Agent uses 'role' not 'type'
-            "status": AgentStatus.ACTIVE.value,
+            "job_id": str(uuid.uuid4()),
+            "tenant_key": tenant_key,
             "project_id": project_id,
+            "agent_type": agent_type or "worker",
+            "mission": f"Test mission for {agent_type or 'worker'} agent",
+            "status": "pending",
             "created_at": datetime.now(timezone.utc),
-            "metadata": {"test": True},
         }
 
     @staticmethod
@@ -119,33 +119,33 @@ async def test_project(db_session) -> Project:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_agents(db_session, test_project) -> list:
-    """Create multiple test agents"""
-    agents = []
-    agent_names = ["orchestrator", "analyzer", "implementer", "tester"]
+async def test_agent_jobs(db_session, test_project) -> list:
+    """Create multiple test agent jobs"""
+    jobs = []
+    agent_types = ["orchestrator", "analyzer", "implementer", "tester"]
 
-    for name in agent_names:
-        agent_data = TestData.generate_agent_data(test_project.id, name)
-        agent = Agent(**agent_data)
-        db_session.add(agent)
-        agents.append(agent)
+    for agent_type in agent_types:
+        job_data = TestData.generate_agent_job_data(test_project.id, test_project.tenant_key, agent_type)
+        job = MCPAgentJob(**job_data)
+        db_session.add(job)
+        jobs.append(job)
 
     await db_session.commit()
-    for agent in agents:
-        await db_session.refresh(agent)
+    for job in jobs:
+        await db_session.refresh(job)
 
-    return agents
+    return jobs
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_messages(db_session, test_agents, test_project) -> list:
+async def test_messages(db_session, test_agent_jobs, test_project) -> list:
     """Create test messages between agents"""
     messages = []
 
-    # Create messages between agents
-    for i in range(len(test_agents) - 1):
+    # Create messages between agent jobs
+    for i in range(len(test_agent_jobs) - 1):
         msg_data = TestData.generate_message_data(
-            from_agent=test_agents[i].name, to_agent=test_agents[i + 1].name, project_id=test_project.id
+            from_agent=test_agent_jobs[i].job_id, to_agent=test_agent_jobs[i + 1].job_id, project_id=test_project.id
         )
         message = Message(**msg_data)
         db_session.add(message)

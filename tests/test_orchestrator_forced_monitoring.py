@@ -156,7 +156,8 @@ class TestOrchestratorForcedMonitoring:
         async with orchestrator.db_manager.get_session_async() as session:
             from sqlalchemy import update
 
-            from src.giljo_mcp.models import Agent
+# TODO(0127a): from src.giljo_mcp.models import Agent
+# from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 
             stmt = update(Agent).where(Agent.id == idle_agent.id).values(status="idle")
             await session.execute(stmt)
