@@ -1,6 +1,7 @@
 """
-Message Queue System for GiljoAI MCP
+Agent Message Queue System for GiljoAI MCP (Handover 0120)
 Provides ACID-compliant, priority-based message queue with intelligent routing
+Consolidates AgentCommunicationQueue functionality with advanced features
 """
 
 import asyncio
@@ -32,12 +33,15 @@ class MessagePriority(Enum):
     LOW = 1
 
 
-class MessageQueue:
+class AgentMessageQueue:
     """
     High-performance message queue manager with priority routing and ACID guarantees.
+
+    Handover 0120: Consolidated from AgentCommunicationQueue and MessageQueue.
+    Provides both compatibility layer methods and advanced features.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(self, db_manager: DatabaseManager, tenant_manager: Optional[TenantManager] = None):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._routing_engine = RoutingEngine()
@@ -60,7 +64,7 @@ class MessageQueue:
             "low": MessagePriority.LOW.value,
         }
 
-        logger.info("MessageQueue initialized")
+        logger.info("AgentMessageQueue initialized")
 
     async def enqueue(self, message: Message) -> str:
         """
@@ -321,6 +325,471 @@ class MessageQueue:
         await self._durability_manager.checkpoint()
         await self._monitor.persist_metrics()
         logger.info("Checkpoint created")
+
+    # ==================================================================================
+    # COMPATIBILITY LAYER - AgentCommunicationQueue API
+    # ==================================================================================
+    # The following methods provide backward compatibility with AgentCommunicationQueue
+    # to enable gradual migration of existing code. These methods:
+    # - Accept same parameters as AgentCommunicationQueue
+    # - Return dict responses {"status": "success"/"error", ...} instead of raising exceptions
+    # - Link messages to jobs via project_id
+    # - Map integer priorities (0, 1, 2) to string priorities ("low", "normal", "high")
+    # ==================================================================================
+
+    async def send_message(
+        self,
+        session: Any,  # AsyncSession
+        job_id: str,
+        tenant_key: str,
+        from_agent: str,
+        to_agent: Optional[str],
+        message_type: str,
+        content: str,
+        priority: int = 1,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """
+        Send a message (AgentCommunicationQueue compatibility).
+
+        Args:
+            session: Database session (AsyncSession)
+            job_id: Job ID to send message to
+            tenant_key: Tenant key for isolation
+            from_agent: Agent sending the message
+            to_agent: Agent receiving the message (None for broadcast)
+            message_type: Type of message (task, info, error, etc.)
+            content: Message content
+            priority: Message priority (0=low, 1=normal, 2=high)
+            metadata: Optional metadata dict
+
+        Returns:
+            Dict with status and message_id or error:
+            - Success: {"status": "success", "message_id": str}
+            - Error: {"status": "error", "error": str}
+        """
+        try:
+            # Validate priority
+            if priority not in [0, 1, 2]:
+                return {"status": "error", "error": "Priority must be 0 (low), 1 (normal), or 2 (high)"}
+
+            # Validate content
+            if not content or not content.strip():
+                return {"status": "error", "error": "Message content cannot be empty"}
+
+            # Map integer priority to string
+            priority_map = {0: "low", 1: "normal", 2: "high"}
+            priority_str = priority_map[priority]
+
+            # Retrieve job to get project_id
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
+
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Verify tenant isolation
+            if job.tenant_key != tenant_key:
+                return {"status": "error", "error": "Tenant key mismatch - access denied"}
+
+            # Create Message object
+            message = Message(
+                tenant_key=tenant_key,
+                project_id=job.project_id,
+                from_agent_id=from_agent,  # Store as from_agent_id (deprecated field, but still used)
+                to_agents=[to_agent] if to_agent else [],  # List for consistency
+                message_type=message_type,
+                content=content,
+                priority=priority_str,
+                status="pending",
+                meta_data=metadata or {},
+            )
+
+            # Add metadata to track compatibility layer usage
+            message.meta_data["_compat_layer"] = True
+            message.meta_data["_job_id"] = job_id
+            message.meta_data["_from_agent"] = from_agent
+
+            # Add to session
+            session.add(message)
+            await session.commit()
+
+            # Record metrics
+            await self._monitor.record_enqueue(message)
+
+            logger.info(
+                f"[Compat] Sent message {message.id} from {from_agent} to {to_agent or 'broadcast'} "
+                f"(job={job_id}, priority={priority_str})"
+            )
+
+            return {"status": "success", "message_id": str(message.id)}
+
+        except Exception as e:
+            logger.exception(f"[Compat] Failed to send message: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def send_message_batch(
+        self, session: Any, job_id: str, tenant_key: str, messages: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Send multiple messages (AgentCommunicationQueue compatibility).
+
+        Args:
+            session: Database session
+            job_id: Job ID to send messages to
+            tenant_key: Tenant key for isolation
+            messages: List of message dicts with keys:
+                - from_agent: str
+                - to_agent: Optional[str]
+                - type: str
+                - content: str
+                - priority: int (0-2)
+                - metadata: Optional[dict]
+
+        Returns:
+            Dict with status and sent_count or error:
+            - Success: {"status": "success", "sent_count": int}
+            - Error: {"status": "error", "error": str}
+        """
+        try:
+            # Retrieve job
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
+
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Verify tenant isolation
+            if job.tenant_key != tenant_key:
+                return {"status": "error", "error": "Tenant key mismatch - access denied"}
+
+            # Priority mapping
+            priority_map = {0: "low", 1: "normal", 2: "high"}
+
+            # Create and add all messages
+            sent_count = 0
+            for msg_data in messages:
+                priority_int = msg_data.get("priority", 1)
+                priority_str = priority_map.get(priority_int, "normal")
+
+                message = Message(
+                    tenant_key=tenant_key,
+                    project_id=job.project_id,
+                    from_agent_id=msg_data.get("from_agent"),
+                    to_agents=[msg_data.get("to_agent")] if msg_data.get("to_agent") else [],
+                    message_type=msg_data.get("type", "direct"),
+                    content=msg_data.get("content", ""),
+                    priority=priority_str,
+                    status="pending",
+                    meta_data=msg_data.get("metadata", {}),
+                )
+
+                # Add metadata
+                message.meta_data["_compat_layer"] = True
+                message.meta_data["_job_id"] = job_id
+
+                session.add(message)
+                sent_count += 1
+
+                # Record metrics
+                await self._monitor.record_enqueue(message)
+
+            await session.commit()
+
+            logger.info(f"[Compat] Sent batch of {sent_count} messages for job {job_id}")
+
+            return {"status": "success", "sent_count": sent_count}
+
+        except Exception as e:
+            logger.exception(f"[Compat] Failed to send message batch: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def get_messages(
+        self,
+        session: Any,
+        job_id: str,
+        tenant_key: str,
+        to_agent: Optional[str] = None,
+        message_type: Optional[str] = None,
+        unread_only: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Retrieve messages (AgentCommunicationQueue compatibility).
+
+        Args:
+            session: Database session
+            job_id: Job ID to retrieve messages from
+            tenant_key: Tenant key for isolation
+            to_agent: Filter by recipient agent
+            message_type: Filter by message type
+            unread_only: Only return unacknowledged messages
+
+        Returns:
+            Dict with status and messages list or error:
+            - Success: {"status": "success", "messages": list[dict]}
+            - Error: {"status": "error", "error": str}
+        """
+        try:
+            # Retrieve job
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
+
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Verify tenant isolation
+            if job.tenant_key != tenant_key:
+                return {"status": "error", "error": "Tenant key mismatch - access denied"}
+
+            # Build query
+            query = select(Message).where(
+                and_(
+                    Message.tenant_key == tenant_key,
+                    Message.project_id == job.project_id,
+                )
+            )
+
+            # Apply filters
+            if to_agent:
+                # Check if to_agent is in the to_agents array
+                query = query.where(Message.to_agents.contains([to_agent]))
+
+            if message_type:
+                query = query.where(Message.message_type == message_type)
+
+            if unread_only:
+                query = query.where(Message.status == "pending")
+
+            # Execute query
+            result = await session.execute(query.order_by(Message.created_at))
+            messages = result.scalars().all()
+
+            # Convert to dict format (AgentCommunicationQueue format)
+            messages_list = []
+            for msg in messages:
+                # Map back to integer priority
+                priority_reverse_map = {"low": 0, "normal": 1, "high": 2, "critical": 2}
+                priority_int = priority_reverse_map.get(msg.priority, 1)
+
+                # Convert to AgentCommunicationQueue format
+                msg_dict = {
+                    "id": str(msg.id),
+                    "from_agent": msg.from_agent_id or "",
+                    "to_agent": msg.to_agents[0] if msg.to_agents else None,
+                    "type": msg.message_type,
+                    "content": msg.content,
+                    "priority": priority_int,
+                    "acknowledged": msg.status in ["acknowledged", "completed"],
+                    "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
+                    "acknowledged_by": msg.acknowledged_by[0] if msg.acknowledged_by else None,
+                    "timestamp": msg.created_at.isoformat(),
+                    "metadata": msg.meta_data or {},
+                }
+
+                messages_list.append(msg_dict)
+
+            logger.info(f"[Compat] Retrieved {len(messages_list)} messages for job {job_id}")
+
+            return {"status": "success", "messages": messages_list}
+
+        except Exception as e:
+            logger.exception(f"[Compat] Failed to get messages: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def get_unread_count(
+        self, session: Any, job_id: str, tenant_key: str, to_agent: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Get count of unread messages (AgentCommunicationQueue compatibility).
+
+        Args:
+            session: Database session
+            job_id: Job ID to count messages from
+            tenant_key: Tenant key for isolation
+            to_agent: Optional filter by recipient agent
+
+        Returns:
+            Dict with status and unread_count or error:
+            - Success: {"status": "success", "unread_count": int}
+            - Error: {"status": "error", "error": str}
+        """
+        try:
+            # Retrieve job
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
+
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Verify tenant isolation
+            if job.tenant_key != tenant_key:
+                return {"status": "error", "error": "Tenant key mismatch - access denied"}
+
+            # Build query
+            query = select(func.count()).select_from(Message).where(
+                and_(
+                    Message.tenant_key == tenant_key,
+                    Message.project_id == job.project_id,
+                    Message.status == "pending",
+                )
+            )
+
+            # Apply filter
+            if to_agent:
+                query = query.where(Message.to_agents.contains([to_agent]))
+
+            # Execute query
+            result = await session.execute(query)
+            unread_count = result.scalar() or 0
+
+            logger.info(f"[Compat] Unread count for job {job_id}: {unread_count}")
+
+            return {"status": "success", "unread_count": unread_count}
+
+        except Exception as e:
+            logger.exception(f"[Compat] Failed to get unread count: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def acknowledge_message(
+        self, session: Any, job_id: str, tenant_key: str, message_id: str, agent_id: str
+    ) -> dict[str, Any]:
+        """
+        Acknowledge a message (AgentCommunicationQueue compatibility).
+
+        Args:
+            session: Database session
+            job_id: Job ID containing the message
+            tenant_key: Tenant key for isolation
+            message_id: Message ID to acknowledge
+            agent_id: Agent acknowledging the message
+
+        Returns:
+            Dict with status or error:
+            - Success: {"status": "success"}
+            - Error: {"status": "error", "error": str}
+        """
+        try:
+            # Retrieve job
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
+
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Verify tenant isolation
+            if job.tenant_key != tenant_key:
+                return {"status": "error", "error": "Tenant key mismatch - access denied"}
+
+            # Get message
+            result = await session.execute(
+                select(Message).where(
+                    and_(
+                        Message.id == message_id,
+                        Message.tenant_key == tenant_key,
+                        Message.project_id == job.project_id,
+                    )
+                )
+            )
+            message = result.scalar_one_or_none()
+
+            if not message:
+                return {"status": "error", "error": f"Message {message_id} not found"}
+
+            # Check if already acknowledged
+            if message.status in ["acknowledged", "completed"]:
+                return {"status": "error", "error": "Message already acknowledged"}
+
+            # Update message
+            message.status = "acknowledged"
+            message.acknowledged_at = datetime.now(timezone.utc)
+            if not message.acknowledged_by:
+                message.acknowledged_by = []
+            if agent_id not in message.acknowledged_by:
+                message.acknowledged_by.append(agent_id)
+
+            await session.commit()
+
+            logger.info(f"[Compat] Message {message_id} acknowledged by {agent_id}")
+
+            return {"status": "success"}
+
+        except Exception as e:
+            logger.exception(f"[Compat] Failed to acknowledge message: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def acknowledge_all_messages(
+        self, session: Any, job_id: str, tenant_key: str, agent_id: str, to_agent: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Acknowledge all unread messages (AgentCommunicationQueue compatibility).
+
+        Args:
+            session: Database session
+            job_id: Job ID containing messages
+            tenant_key: Tenant key for isolation
+            agent_id: Agent acknowledging messages
+            to_agent: Optional filter by recipient agent
+
+        Returns:
+            Dict with status and acknowledged_count or error:
+            - Success: {"status": "success", "acknowledged_count": int}
+            - Error: {"status": "error", "error": str}
+        """
+        try:
+            # Retrieve job
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            job = result.scalar_one_or_none()
+
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Verify tenant isolation
+            if job.tenant_key != tenant_key:
+                return {"status": "error", "error": "Tenant key mismatch - access denied"}
+
+            # Build query
+            query = select(Message).where(
+                and_(
+                    Message.tenant_key == tenant_key,
+                    Message.project_id == job.project_id,
+                    Message.status == "pending",
+                )
+            )
+
+            # Apply filter
+            if to_agent:
+                query = query.where(Message.to_agents.contains([to_agent]))
+
+            # Get messages
+            result = await session.execute(query)
+            messages = result.scalars().all()
+
+            # Acknowledge all
+            acknowledged_count = 0
+            now = datetime.now(timezone.utc)
+
+            for message in messages:
+                message.status = "acknowledged"
+                message.acknowledged_at = now
+                if not message.acknowledged_by:
+                    message.acknowledged_by = []
+                if agent_id not in message.acknowledged_by:
+                    message.acknowledged_by.append(agent_id)
+                acknowledged_count += 1
+
+            await session.commit()
+
+            logger.info(f"[Compat] Acknowledged {acknowledged_count} messages for agent {agent_id}")
+
+            return {"status": "success", "acknowledged_count": acknowledged_count}
+
+        except Exception as e:
+            logger.exception(f"[Compat] Failed to acknowledge all messages: {e}")
+            return {"status": "error", "error": str(e)}
+
+    # ==================================================================================
+    # END COMPATIBILITY LAYER
+    # ==================================================================================
 
 
 class RoutingEngine:
