@@ -10,39 +10,72 @@
 
 ## Executive Summary
 
-Modularize the monolithic project endpoints into a well-organized endpoint family that uses ProjectService for all operations, improving maintainability and following the consolidation pattern established in Handover 0124.
+Modularize the monolithic project endpoints into focused modules that use ProjectService for all operations. **API routes remain IDENTICAL - no breaking changes to frontend.**
+
+### 🚨 CRITICAL REQUIREMENTS
+
+**1. ZERO API Breaking Changes**
+- ALL routes stay at `/api/v1/projects/*` (existing routes)
+- Same HTTP methods, same request/response formats
+- Frontend sees ZERO difference
+
+**2. Aggressive Code Cleanup**
+- DELETE `projects_crud.py` after migration (replace with projects/crud.py)
+- DELETE `projects_lifecycle.py` after migration (replace with projects/lifecycle.py)
+- DELETE `projects_completion.py` after migration (replace with projects/completion.py)
+- DELETE all old project-related code and tests
+- NO facades, NO "backward compatibility wrappers"
+
+**3. Backend Reorganization Only**
+- Split large files into focused modules
+- All code uses ProjectService
+- Clean module structure for maintainability
 
 ### Problem Statement
 
 **Current State:**
-- Project endpoints scattered across multiple large files
-- Some endpoints have direct database access (bypass service layer)
-- Inconsistent patterns across different project operations
-- Mixed concerns (CRUD + lifecycle + completion in single files)
-- 600-1000+ lines per file
+- Project endpoints in 3 large files (1,500+ total lines)
+- Some endpoints bypass ProjectService (direct DB access)
+- Mixed concerns in single files
+- Hard to navigate and test
 
 **Example of Current Structure:**
 ```
 api/endpoints/
-├── projects_crud.py          (~600 lines) - Create, read, update, delete
-├── projects_lifecycle.py     (~500 lines) - Status changes, activation
-├── projects_completion.py    (~400 lines) - Completion workflow
-└── ... (project logic scattered elsewhere)
+├── projects_crud.py          (~600 lines) - DELETE after migration
+├── projects_lifecycle.py     (~500 lines) - DELETE after migration
+├── projects_completion.py    (~400 lines) - DELETE after migration
 ```
 
 ### Desired State
 
-**Modularized Structure:**
+**Reorganized Backend (SAME API routes!):**
 ```
 api/endpoints/projects/
-├── __init__.py
-├── crud.py                   (~200 lines) - CRUD operations only
+├── __init__.py               # Export all routers
+├── crud.py                   (~200 lines) - CRUD operations
 ├── lifecycle.py              (~200 lines) - Lifecycle management
 ├── status.py                 (~150 lines) - Status queries
 └── completion.py             (~200 lines) - Completion workflow
 ```
 
-**All endpoints use ProjectService** (extracted in Handover 0121)
+**API Routes (UNCHANGED!):**
+```
+POST   /api/v1/projects
+GET    /api/v1/projects
+GET    /api/v1/projects/{project_id}
+PUT    /api/v1/projects/{project_id}
+PUT    /api/v1/projects/{project_id}/mission
+POST   /api/v1/projects/{project_id}/activate
+POST   /api/v1/projects/{project_id}/switch
+POST   /api/v1/projects/{project_id}/cancel
+POST   /api/v1/projects/{project_id}/restore
+GET    /api/v1/projects/{project_id}/status
+POST   /api/v1/projects/{project_id}/complete
+GET    /api/v1/projects/{project_id}/summary
+```
+
+**All endpoints use ProjectService** (no direct DB access)
 
 ---
 
@@ -288,31 +321,48 @@ async def cancel_project(
 - All delegate to ProjectService
 - Consistent error handling
 
-### Phase 2: Migrate Existing Endpoints (1 day)
+### Phase 2: Migrate and DELETE Old Files (1 day)
 
-**Step 2.1: Update projects_crud.py**
+**Step 2.1: Update Main Router**
 ```python
-# api/endpoints/projects_crud.py (now a facade)
-from .projects.crud import router as crud_router
+# api/main.py or api/router.py
+# BEFORE:
+from api.endpoints import projects_crud, projects_lifecycle, projects_completion
 
-# Re-export for backward compatibility
-router = crud_router
+# AFTER (only projects module):
+from api.endpoints.projects import crud, lifecycle, status, completion
 
-# OR mark as deprecated and redirect
+app.include_router(crud.router)
+app.include_router(lifecycle.router)
+app.include_router(status.router)
+app.include_router(completion.router)
 ```
 
-**Step 2.2: Update projects_lifecycle.py**
-- Point to new lifecycle module
-- Maintain backward compatibility
+**Step 2.2: DELETE projects_crud.py**
+```bash
+rm api/endpoints/projects_crud.py
+rm tests/unit/test_projects_crud.py
+rm tests/integration/test_projects_crud.py
+```
 
-**Step 2.3: Update projects_completion.py**
-- Point to new completion module
-- Maintain backward compatibility
+**Step 2.3: DELETE projects_lifecycle.py**
+```bash
+rm api/endpoints/projects_lifecycle.py
+rm tests/unit/test_projects_lifecycle.py
+```
 
-**Step 2.4: Remove spawn-agents from projects_lifecycle.py**
-- Should be in agent_jobs (handled in 0124)
+**Step 2.4: DELETE projects_completion.py**
+```bash
+rm api/endpoints/projects_completion.py
+rm tests/unit/test_projects_completion.py
+```
 
-### Phase 3: Cleanup & Optimization (1 day)
+**Step 2.5: Clean Up Imports**
+- Remove all imports of deleted files
+- Update any code that referenced old project endpoints
+- Verify no references remain using grep
+
+### Phase 3: Comprehensive Cleanup (1 day)
 
 **Step 3.1: Remove Direct DB Access**
 - Audit all endpoints for database imports
@@ -508,13 +558,17 @@ async def update_mission(
 
 ## Rollback Plan
 
-If issues arise:
-1. **Keep old files active** (as facades)
-2. **Redirect new modules to old** if needed
-3. **Fix issues** in modular structure
-4. **Re-enable** once fixed
+**Full backup exists before refactoring begins.**
 
-No data loss risk - only code organization changes.
+If critical issues arise that cannot be fixed within 1 day:
+1. **Revert entire commit** - Use git to rollback all changes
+2. **Restore from backup** - Project is fully backed up before starting
+3. **Fix issues offline** - Debug in separate branch
+4. **Re-attempt refactoring** - Once issues understood
+
+**No partial rollbacks** - Either commit works completely or revert everything.
+
+No data loss risk - only code organization changes, database untouched.
 
 ---
 
