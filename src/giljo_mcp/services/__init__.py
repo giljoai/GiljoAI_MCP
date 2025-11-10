@@ -4,13 +4,14 @@ Services module for GiljoAI MCP.
 This module contains service classes for managing integrations and external tools.
 
 Handover 0121 (Phase 1): ProjectService extracted from ToolAccessor
-Handover 0123 (Phase 2): TemplateService, TaskService, MessageService, ContextService extracted
+Handover 0123 (Phase 2): TemplateService, TaskService, MessageService, ContextService, OrchestrationService extracted
 """
 
 from .claude_config_manager import ClaudeConfigManager
 from .config_service import ConfigService
 from .context_service import ContextService
 from .message_service import MessageService
+from .orchestration_service import OrchestrationService
 from .project_service import ProjectService
 from .serena_detector import SerenaDetector
 from .task_service import TaskService
@@ -22,6 +23,7 @@ __all__ = [
     "ConfigService",
     "ContextService",
     "MessageService",
+    "OrchestrationService",
     "ProjectService",
     "SerenaDetector",
     "TaskService",
