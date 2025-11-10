@@ -66,6 +66,15 @@
 **Why This Matters Now:**
 After Handover 0119, the API surface is clean. Now we need to clean up the backend infrastructure before refactoring ToolAccessor (Handover 0121).
 
+### Recent Related Work
+
+**Handover 0090 (MCP Tool Metadata):**
+- Added rich metadata to 25 MCP tools
+- Updated `api/endpoints/messages.py` (90 lines changed)
+- **Impact on this handover:** The messages.py endpoint may use one of the message queues
+- **Action Required:** Verify messages.py works correctly with consolidated queue
+- **Test Coverage:** Run `pytest tests/test_mcp_tool_metadata.py` after consolidation
+
 ---
 
 ## Current State Analysis
@@ -412,6 +421,44 @@ tests/test_orchestrator.py         # Update existing tests
 - [ ] All 3 agents spawn correctly
 - [ ] All MCP tools work (get_pending_jobs, acknowledge_job, report_progress, complete_job)
 - [ ] Zero regressions from original test
+
+---
+
+### Handover 0090 Integration Testing
+
+**Context:** Handover 0090 updated `api/endpoints/messages.py` (90 lines) with MCP tool metadata enhancements.
+
+**Tests Required:**
+- [ ] **MCP tool metadata still works** - Run: `pytest tests/test_mcp_tool_metadata.py`
+- [ ] **messages.py endpoint functional** - Verify all message endpoints work with consolidated queue
+- [ ] **No regressions in message tools** - Test send_message, get_messages, acknowledge_message tools
+- [ ] **WebSocket message delivery** - Verify real-time message updates still work
+
+**Specific Test Cases:**
+1. **Test messages.py with consolidated queue:**
+   ```bash
+   # API endpoint test
+   curl http://localhost:8000/api/messages/
+
+   # Verify response includes MCP metadata
+   ```
+
+2. **Test MCP tool metadata preservation:**
+   ```bash
+   pytest tests/test_mcp_tool_metadata.py -v
+   pytest tests/test_mcp_tool_metadata_standalone.py -v
+   ```
+
+3. **Verify message routing to agents:**
+   - Send message via messages.py endpoint
+   - Verify message appears in consolidated queue
+   - Verify agent receives message
+   - Verify metadata preserved throughout
+
+**If Tests Fail:**
+- Check if messages.py is using AgentCommunicationQueue or MessageQueue
+- Update messages.py imports to use consolidated AgentMessageQueue
+- Verify compatibility layer methods match messages.py expectations
 
 ---
 
