@@ -184,17 +184,42 @@ export const api = {
     cancelStaging: (id) => apiClient.post(`/api/v1/projects/${id}/cancel-staging`),
   },
 
-  // Agents
+  // DEPRECATED: Legacy agent endpoints removed in Handover 0116
+  // Migration: Use agentJobs.* methods instead (Handover 0119 Phase 1)
+  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
   agents: {
-    list: (projectId) => apiClient.get('/api/v1/agents/', { params: { project_id: projectId } }),
-    get: (id) => apiClient.get(`/api/v1/agents/${id}/`),
-    create: (data) => apiClient.post('/api/v1/agents/', data),
-    health: (id) => apiClient.get(`/api/v1/agents/${id}/health/`),
-    assign: (agentName, jobData) => apiClient.post(`/api/v1/agents/${agentName}/assign/`, jobData),
-    decommission: (id, reason) => apiClient.post(`/api/v1/agents/${id}/decommission/`, { reason }),
-    tree: (projectId) => apiClient.get('/api/v1/agents/tree', { params: { project_id: projectId } }),
-    metrics: (projectId, hours = 24) =>
-      apiClient.get('/api/v1/agents/metrics', { params: { project_id: projectId, hours } }),
+    list: () => {
+      console.error('DEPRECATED: api.agents.list() is removed. Use api.agentJobs.list() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    get: () => {
+      console.error('DEPRECATED: api.agents.get() is removed. Use api.agentJobs.get() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    create: () => {
+      console.error('DEPRECATED: api.agents.create() is removed. Use api.agentJobs.spawn() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    health: () => {
+      console.error('DEPRECATED: api.agents.health() is removed. Use api.agentJobs.status() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    assign: () => {
+      console.error('DEPRECATED: api.agents.assign() is removed. Use agentJobs.spawn() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    decommission: () => {
+      console.error('DEPRECATED: api.agents.decommission() is removed. Use api.agentJobs.terminate() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    tree: () => {
+      console.error('DEPRECATED: api.agents.tree() is removed. Use api.agentJobs.hierarchy() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
+    metrics: () => {
+      console.error('DEPRECATED: api.agents.metrics() is removed. Use api.agentJobs.metrics() instead.');
+      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+    },
   },
 
   // Messages
@@ -354,37 +379,42 @@ export const api = {
     updateConfig: (data) => apiClient.post('/api/serena/config', data),
   },
 
-  // Agent Jobs (Handover 0066 - Kanban Dashboard)
+  // Agent Jobs API (Handover 0119 Phase 1 - Migration from /api/v1/agents)
+  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
+  // Field mappings: agent_id → job_id, created_at → spawned_at, status → job status
   agentJobs: {
-    // Get message thread for a specific job
-    getMessageThread: (jobId) =>
-      apiClient.get(`/api/agent-jobs/${jobId}/messages`),
+    // Core job management (maps from old agents API)
+    list: (projectId) => apiClient.get('/api/agent-jobs/', { params: { project_id: projectId } }),
+    get: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
+    spawn: (data) => apiClient.post('/api/agent-jobs/spawn', data),
+    status: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
+    terminate: (jobId, reason) => apiClient.post(`/api/agent-jobs/${jobId}/terminate`, { reason }),
+    hierarchy: (projectId) => apiClient.get('/api/agent-jobs/hierarchy', { params: { project_id: projectId } }),
+    metrics: (projectId, hours = 24) => apiClient.get('/api/agent-jobs/metrics', { params: { project_id: projectId, hours } }),
 
-    // Send message to specific agent
+    // Additional job-specific endpoints (new functionality)
+    acknowledge: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/acknowledge`),
+    reportProgress: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/progress`, data),
+    complete: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/complete`, data),
+
+    // Message and communication endpoints (Handover 0066 - Kanban Dashboard)
+    messages: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
+    getMessageThread: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
     sendMessage: (jobId, data) =>
       apiClient.post(`/api/agent-jobs/${jobId}/send-message`, {
         content: data.content,
         to: data.to,
       }),
-
-    // Broadcast message to all agents in project
     broadcast: (data) =>
       apiClient.post(`/api/agent-jobs/broadcast`, {
         project_id: data.project_id,
         content: data.content,
       }),
 
-    // Get job details
-    getJob: (jobId) =>
-      apiClient.get(`/api/agent-jobs/${jobId}`),
-
-    // List jobs for project
-    listJobs: (projectId, params = {}) =>
-      apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
-
-    // Get job status
-    getStatus: (jobId) =>
-      apiClient.get(`/api/agent-jobs/${jobId}/status`),
+    // Legacy aliases for backward compatibility (deprecated but functional)
+    getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
+    listJobs: (projectId, params = {}) => apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
+    getStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
   },
 
   // Orchestrator (Multi-Agent Workflow Coordination)
@@ -397,15 +427,16 @@ export const api = {
     spawnTeam: (data) => apiClient.post('/api/v1/orchestration/spawn-team', data),
   },
 
-  // Prompts (Handover 0065 - Token Estimation)
+  // Prompts (Handover 0119 Phase 1 - Standardized to /api/v1/prompts)
+  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
   prompts: {
-    estimateTokens: (data) => apiClient.post('/api/prompts/estimate-tokens', data),
-    staging: (projectId, params) => apiClient.get(`/api/prompts/staging/${projectId}`, { params }),
+    estimateTokens: (data) => apiClient.post('/api/v1/prompts/estimate-tokens', data),
+    staging: (projectId, params) => apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),
     execution: (orchestratorJobId, claudeCodeMode) =>
       apiClient.get(`/api/v1/prompts/execution/${orchestratorJobId}`, {
         params: { claude_code_mode: claudeCodeMode }
       }),
-    agentPrompt: (agentJobId) => apiClient.get(`/api/prompts/agent/${agentJobId}`),
+    agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
   },
 
   // Downloads (Natural Language Instructions via MCP Tools)

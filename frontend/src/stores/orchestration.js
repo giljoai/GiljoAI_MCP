@@ -60,9 +60,10 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
     }
   }
 
+  // MIGRATION NOTE (Handover 0119): Updated to use /api/v1/prompts instead of /api/prompts
   const handleCopyPrompt = async (agentId, toolType) => {
     try {
-      const response = await api.get(`/api/prompts/${agentId}`, {
+      const response = await api.get(`/api/v1/prompts/${agentId}`, {
         params: { tool_type: toolType }
       })
       return response.data.prompt || 'Prompt not available'

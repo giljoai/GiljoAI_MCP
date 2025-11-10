@@ -91,10 +91,10 @@ export const API_CONFIG = {
     projects: '/api/v1/projects/',
     project: '/api/v1/projects/:id',
 
-    // Agent Management
-    agents: '/api/v1/agents/',
-    agent: '/api/v1/agents/:id',
-    agentHealth: '/api/v1/agents/:id/health',
+    // Agent Jobs Management (Handover 0119 - Migrated from /api/v1/agents)
+    agentJobs: '/api/agent-jobs/',
+    agentJob: '/api/agent-jobs/:jobId',
+    agentJobStatus: '/api/agent-jobs/:jobId/status',
 
     // Messages
     messages: '/api/v1/messages/',
@@ -113,11 +113,16 @@ export const API_CONFIG = {
     settings: '/api/v1/config/',
     context: '/api/v1/context/',
 
-    // Templates (NEW)
+    // Templates
     templates: '/api/v1/templates/',
     template: '/api/v1/templates/:id',
     templateHistory: '/api/v1/templates/:id/history',
     templateRestore: '/api/v1/templates/:id/restore/:archiveId',
+
+    // Prompts (Handover 0119 - Standardized to /api/v1/prompts)
+    prompts: '/api/v1/prompts/',
+    promptAgent: '/api/v1/prompts/agent/:jobId',
+    promptOrchestrator: '/api/v1/prompts/orchestrator/:projectId',
 
     // Statistics
     stats: '/api/v1/stats/',
