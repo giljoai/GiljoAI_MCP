@@ -87,7 +87,6 @@ try:
         mcp_tools,
         messages,
         network,
-        orchestration,
         products,
         projects,
         prompts,
@@ -763,8 +762,8 @@ def create_app() -> FastAPI:
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
-    app.include_router(agent_jobs.router, prefix="/api/agent-jobs", tags=["agent-jobs"])
-    app.include_router(orchestration.router, prefix="/api/v1/orchestration", tags=["orchestration"])  # Handover 0109
+    # Handover 0124: Consolidated agent_jobs module (includes orchestration endpoints)
+    app.include_router(agent_jobs.router)  # Prefix and tags defined in module __init__.py
     app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])  # Handover 0109
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])

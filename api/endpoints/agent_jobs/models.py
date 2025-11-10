@@ -1,0 +1,168 @@
+"""
+Pydantic models for agent_jobs endpoints.
+
+Request/response models for agent job operations with validation.
+"""
+
+from datetime import datetime
+from typing import Any, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+# ============================================================================
+# Spawn Agent Models
+# ============================================================================
+
+class SpawnAgentRequest(BaseModel):
+    """Request model for spawning a new agent job."""
+
+    agent_type: str = Field(..., description="Agent type (orchestrator, implementer, etc.)")
+    agent_name: Optional[str] = Field(None, description="Human-readable agent name")
+    mission: str = Field(..., description="Agent mission/instructions")
+    project_id: str = Field(..., description="Project UUID")
+    parent_job_id: Optional[str] = Field(None, description="Parent job UUID")
+    context_chunks: list[str] = Field(default_factory=list, description="Context chunk IDs")
+
+
+class SpawnAgentResponse(BaseModel):
+    """Response model for agent spawn operation."""
+
+    success: bool = Field(..., description="Whether spawn succeeded")
+    agent_job_id: str = Field(..., description="Created agent job ID")
+    agent_prompt: str = Field(..., description="Generated agent prompt")
+    mission_stored: bool = Field(..., description="Whether mission was stored")
+    thin_client: bool = Field(..., description="Whether using thin client architecture")
+
+
+# ============================================================================
+# Job Lifecycle Models
+# ============================================================================
+
+class JobAcknowledgeResponse(BaseModel):
+    """Response model for job acknowledgment."""
+
+    job_id: str
+    status: str
+    started_at: Optional[datetime]
+    message: str
+
+
+class JobCompleteRequest(BaseModel):
+    """Request model for job completion."""
+
+    result: Optional[str] = Field(None, description="Completion result/summary")
+
+
+class JobCompleteResponse(BaseModel):
+    """Response model for job completion."""
+
+    job_id: str
+    status: str
+    completed_at: Optional[datetime]
+    message: str
+
+
+class JobErrorRequest(BaseModel):
+    """Request model for reporting job error."""
+
+    error: str = Field(..., description="Error message/details")
+
+
+class JobErrorResponse(BaseModel):
+    """Response model for job error reporting."""
+
+    job_id: str
+    status: str
+    completed_at: Optional[datetime]
+    message: str
+
+
+# ============================================================================
+# Job Status Models
+# ============================================================================
+
+class JobResponse(BaseModel):
+    """Response model for job details."""
+
+    id: int
+    job_id: str
+    tenant_key: str
+    agent_type: str
+    mission: str
+    status: str
+    spawned_by: Optional[str]
+    context_chunks: list[str]
+    messages: list[dict[str, Any]]
+    acknowledged: bool
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
+
+
+class PendingJobsResponse(BaseModel):
+    """Response model for pending jobs list."""
+
+    jobs: list[JobResponse]
+    count: int
+
+
+class JobMissionResponse(BaseModel):
+    """Response model for job mission retrieval."""
+
+    job_id: str
+    mission: str
+    context_chunks: list[str]
+    status: str
+
+
+# ============================================================================
+# Progress Reporting Models
+# ============================================================================
+
+class ProgressReportRequest(BaseModel):
+    """Request model for progress reporting."""
+
+    progress_percent: int = Field(..., ge=0, le=100, description="Progress percentage")
+    status_message: Optional[str] = Field(None, description="Progress status message")
+    current_task: Optional[str] = Field(None, description="Current task description")
+
+
+class ProgressReportResponse(BaseModel):
+    """Response model for progress reporting."""
+
+    job_id: str
+    progress_percent: int
+    message: str
+
+
+# ============================================================================
+# Orchestration Models
+# ============================================================================
+
+class OrchestrateProjectRequest(BaseModel):
+    """Request model for project orchestration."""
+
+    project_id: UUID = Field(..., description="Project UUID to orchestrate")
+
+
+class OrchestrationResponse(BaseModel):
+    """Response model for orchestration operation."""
+
+    success: bool
+    project_id: str
+    message: Optional[str] = None
+    result: Optional[dict[str, Any]] = None
+
+
+class WorkflowStatusResponse(BaseModel):
+    """Response model for workflow status."""
+
+    project_id: str
+    status: str
+    agent_count: int
+    completed_count: int
+    failed_count: int
+    active_count: int
+    progress_percent: int
