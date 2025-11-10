@@ -21,7 +21,7 @@ from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .mission_planner import MissionPlanner
 from .models import MCPAgentJob, AgentTemplate, Job, Message, Product, Project
-from .agent_communication_queue import AgentCommunicationQueue
+from .agent_message_queue import AgentMessageQueue
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
 from .workflow_engine import WorkflowEngine
@@ -104,8 +104,8 @@ class ProjectOrchestrator:
         # Phase 3: Initialize agent job manager (Handover 0045)
         self.agent_job_manager = AgentJobManager(self.db_manager)
 
-        # Messaging queue (JSONB per job)
-        self.comm_queue = AgentCommunicationQueue(self.db_manager)
+        # Messaging queue (Handover 0120: MessageQueue with compatibility layer)
+        self.comm_queue = AgentMessageQueue(self.db_manager)
 
     # ========================================================================
     # HANDOVER 0045 - Phase 3: Multi-Tool Agent Orchestration Routing

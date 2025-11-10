@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 from fastmcp import FastMCP
 
-from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+from giljo_mcp.agent_message_queue import AgentMessageQueue
 from giljo_mcp.agent_job_manager import AgentJobManager
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.tenant import TenantManager
@@ -27,7 +27,7 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
 
     # Initialize managers
     job_manager = AgentJobManager(db_manager)
-    comm_queue = AgentCommunicationQueue(db_manager)
+    comm_queue = AgentMessageQueue(db_manager)  # Using compatibility layer
 
     @mcp.tool()
     async def check_orchestrator_messages(
@@ -55,7 +55,7 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Get messages using AgentCommunicationQueue
+                # Get messages using MessageQueue
                 result = await comm_queue.get_messages(
                     session=session,
                     job_id=job_id,
@@ -131,7 +131,7 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Acknowledge message using AgentCommunicationQueue
+                # Acknowledge message using MessageQueue
                 result = comm_queue.acknowledge_message(
                     session=session,
                     job_id=job_id,
