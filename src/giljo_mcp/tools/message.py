@@ -11,7 +11,7 @@ from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.message_queue import MessageQueue
+from giljo_mcp.agent_message_queue import AgentMessageQueue
 from giljo_mcp.models import MCPAgentJob, Message, Project
 from giljo_mcp.tenant import TenantManager
 
@@ -23,7 +23,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     """Register message communication tools with the MCP server"""
 
     # Initialize the MessageQueue system
-    message_queue = MessageQueue(db_manager, tenant_manager)
+    message_queue = AgentMessageQueue(db_manager, tenant_manager)
 
     @mcp.tool()
     async def send_message(

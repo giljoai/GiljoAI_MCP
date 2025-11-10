@@ -271,12 +271,13 @@ watch(() => props.agent.status, (newStatus, oldStatus) => {
 })
 
 // Methods
+// MIGRATION NOTE (Handover 0119): Updated to use /api/v1/prompts instead of /api/prompts
 const handleCopyPrompt = async () => {
   emit('copy-prompt', props.agent.id)
 
   try {
     // Fetch prompt from API
-    const response = await api.get(`/api/prompts/agent/${props.agent.id}`)
+    const response = await api.get(`/api/v1/prompts/agent/${props.agent.id}`)
     const promptText = response.data.prompt || 'Prompt not available'
 
     // Copy to clipboard
