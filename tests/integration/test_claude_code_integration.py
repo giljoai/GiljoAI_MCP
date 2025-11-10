@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import Agent, AgentInteraction
+# TODO(0127a): from src.giljo_mcp.models import Agent, AgentInteraction
+# from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 from src.giljo_mcp.tools.agent import (
     _ensure_agent,
 )
@@ -237,7 +238,8 @@ class TestAgentTrackingInfrastructure:
         # VALIDATION: Tracking infrastructure exists
 
         # Verify model is importable and has correct structure
-        from src.giljo_mcp.models import AgentInteraction
+# TODO(0127a): from src.giljo_mcp.models import AgentInteraction
+# from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 
         # Check model has required fields
         assert hasattr(AgentInteraction, "id")
