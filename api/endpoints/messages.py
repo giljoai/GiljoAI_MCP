@@ -4,6 +4,7 @@ Message management API endpoints
 
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -23,13 +24,16 @@ class MessageSend(BaseModel):
 
 class MessageResponse(BaseModel):
     id: str
-    from_agent: str
+    from_agent: str = Field(..., serialization_alias="from")
     to_agents: list[str]
+    to_agent: Optional[str] = None  # Single recipient for frontend compatibility
     content: str
-    message_type: str
+    message_type: str = Field(..., serialization_alias="type")
     priority: str
     status: str
     created_at: datetime
+
+    model_config = {"populate_by_name": True}
 
 
 @router.post("/", response_model=MessageResponse)
@@ -88,8 +92,14 @@ async def list_messages(
     agent_name: Optional[str] = Query(None, description="Filter by agent name (to or from)"),
     status: Optional[str] = Query(None, description="Filter by status"),
 ):
-    """List all messages with optional filters"""
+    """List all messages with optional filters
+
+    Messages are stored in the mcp_agent_jobs.messages JSONB column.
+    This endpoint aggregates messages from all agent jobs in the project.
+    """
     from api.app import state
+    from giljo_mcp.models import MCPAgentJob
+    from sqlalchemy import select
 
     # Check if database is available (not in setup mode)
     if not state.db_manager:
@@ -97,32 +107,58 @@ async def list_messages(
         return []
 
     try:
-        # Use the existing get_messages tool but adapt for listing
-        if agent_name:
-            result = await state.tool_accessor.get_messages(agent_name=agent_name, project_id=project_id)
-        else:
-            # For now, return empty if no agent specified - can be enhanced later
-            result = {"success": True, "messages": []}
-
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get messages"))  # noqa: TRY301
-
         messages = []
-        for msg in result.get("messages", []):
-            messages.append(
-                MessageResponse(
-                    id=msg["id"],
-                    from_agent=msg.get("from", "orchestrator"),
-                    to_agents=[msg.get("to", agent_name)] if agent_name else [],
-                    content=msg["content"],
-                    message_type=msg.get("type", "direct"),
-                    priority=msg.get("priority", "normal"),
-                    status=msg.get("status", "pending"),
-                    created_at=datetime.fromisoformat(msg["created"]),
-                )
-            )
 
-        return messages  # noqa: TRY300
+        async with state.db_manager.get_session_async() as session:
+            # Build query for agent jobs
+            query = select(MCPAgentJob)
+
+            if project_id:
+                query = query.where(MCPAgentJob.project_id == project_id)
+
+            result = await session.execute(query)
+            jobs = result.scalars().all()
+
+            # Aggregate messages from all jobs
+            for job in jobs:
+                if not job.messages:
+                    continue
+
+                for msg in job.messages:
+                    # Apply filters
+                    if status and msg.get("status") != status:
+                        continue
+                    if agent_name and msg.get("from") != agent_name and msg.get("to_agent") != agent_name:
+                        continue
+
+                    # Parse timestamp
+                    timestamp_str = msg.get("timestamp")
+                    if timestamp_str:
+                        try:
+                            created_at = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        except (ValueError, AttributeError):
+                            created_at = datetime.now()
+                    else:
+                        created_at = datetime.now()
+
+                    to_agent_val = msg.get("to_agent")
+                    messages.append(
+                        MessageResponse(
+                            id=msg.get("id", str(uuid4())),
+                            from_agent=msg.get("from", "developer"),
+                            to_agents=[to_agent_val] if to_agent_val else [],
+                            to_agent=to_agent_val,  # Single recipient for frontend
+                            content=msg.get("content", ""),
+                            message_type=msg.get("type", "direct"),
+                            priority=msg.get("priority", "normal"),
+                            status=msg.get("status", "pending"),
+                            created_at=created_at,
+                        )
+                    )
+
+        # Sort by timestamp (newest first)
+        messages.sort(key=lambda m: m.created_at, reverse=True)
+        return messages
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
