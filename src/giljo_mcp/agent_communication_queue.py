@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from .database import DatabaseManager
-from .models import Job
+from .models import MCPAgentJob
 
 
 class AgentCommunicationQueue:
@@ -94,7 +94,7 @@ class AgentCommunicationQueue:
                 return {"status": "error", "error": "Message content cannot be empty"}
 
             # Retrieve job
-            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -154,7 +154,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -218,7 +218,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -265,7 +265,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -309,7 +309,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -373,7 +373,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(Job).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -451,12 +451,12 @@ class AgentCommunicationQueue:
             "metadata": metadata or {},
         }
 
-    def _update_job_messages(self, job: Job, message: Dict[str, Any]) -> None:
+    def _update_job_messages(self, job: MCPAgentJob, message: Dict[str, Any]) -> None:
         """
         Append message to job's messages JSONB array.
 
         Args:
-            job: Job instance
+            job: MCPAgentJob instance
             message: Message dict to append
         """
         if job.messages is None:
