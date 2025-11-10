@@ -56,7 +56,7 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
         try:
             async with db_manager.get_session_async() as session:
                 # Get messages using AgentCommunicationQueue
-                result = comm_queue.get_messages(
+                result = await comm_queue.get_messages(
                     session=session,
                     job_id=job_id,
                     tenant_key=tenant_key,

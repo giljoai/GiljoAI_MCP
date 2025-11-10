@@ -877,7 +877,7 @@ class ToolAccessor:
 
             comm_queue = AgentCommunicationQueue(self.db_manager)
             async with self.db_manager.get_session_async() as session:
-                result = comm_queue.get_messages(
+                result = await comm_queue.get_messages(
                     session=session,
                     job_id=agent_id,
                     tenant_key=tenant_key,
@@ -916,7 +916,7 @@ class ToolAccessor:
                     from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
 
                     comm_queue = AgentCommunicationQueue(self.db_manager)
-                    result = comm_queue.get_messages(
+                    result = await comm_queue.get_messages(
                         session=session,
                         job_id=agent_id,
                         tenant_key=tenant_key or "",
@@ -1956,7 +1956,7 @@ Begin by fetching your mission.
             async with self.db_manager.get_session_async() as session:
                 # Serialize dict to string for message content
                 content = json.dumps(progress)
-                result = comm_queue.send_message(
+                result = await comm_queue.send_message(
                     session=session,
                     job_id=job_id,
                     tenant_key=tenant_key,
@@ -2056,7 +2056,7 @@ Begin by fetching your mission.
 
             # Get unread messages for this job
             async with self.db_manager.get_session_async() as session:
-                result = comm_queue.get_messages(
+                result = await comm_queue.get_messages(
                     session=session, job_id=job_id, tenant_key=tenant_key, to_agent=agent_type, unread_only=True
                 )
 

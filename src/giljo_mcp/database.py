@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -297,7 +297,10 @@ class DatabaseManager:
 
     def query_with_tenant(self, session: Session, model: Any, tenant_key: Optional[str] = None):
         """
-        Create a query with automatic tenant filtering.
+        Create a select statement with automatic tenant filtering.
+
+        DEPRECATED: Use select(model).where() directly with async sessions.
+        This method is kept for backward compatibility with sync sessions.
 
         Args:
             session: Database session
@@ -305,10 +308,16 @@ class DatabaseManager:
             tenant_key: Tenant key (uses current context if None)
 
         Returns:
-            Query with tenant filter pre-applied
+            Select statement with tenant filter pre-applied
         """
-        query = session.query(model)
-        return self.apply_tenant_filter(query, model, tenant_key)
+        # For SQLAlchemy 2.0 compatibility, return select statement
+        stmt = select(model)
+        if hasattr(model, "tenant_key"):
+            if tenant_key is None:
+                tenant_key = TenantManager.get_current_tenant()
+            if tenant_key:
+                stmt = stmt.where(model.tenant_key == tenant_key)
+        return stmt
 
     def validate_tenant_key(self, tenant_key: Optional[str]) -> bool:
         """

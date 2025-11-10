@@ -7,7 +7,8 @@ Every database operation MUST filter by tenant_key for security.
 
 from typing import Generic, List, Optional, TypeVar
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import DatabaseManager
 
@@ -51,40 +52,42 @@ class BaseRepository(Generic[T]):
         session.flush()
         return entity
 
-    def get_by_id(self, session: Session, tenant_key: str, entity_id: str) -> Optional[T]:
+    async def get_by_id(self, session: AsyncSession, tenant_key: str, entity_id: str) -> Optional[T]:
         """
         Get entity by ID with tenant filter.
 
         CRITICAL: Always filters by tenant_key to prevent cross-tenant access.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             entity_id: Entity ID to retrieve
 
         Returns:
             Entity instance or None if not found
         """
-        return (
-            session.query(self.model_class)
-            .filter(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
-            .first()
+        result = await session.execute(
+            select(self.model_class).where(
+                self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id
+            )
         )
+        return result.scalar_one_or_none()
 
-    def list_all(self, session: Session, tenant_key: str) -> List[T]:
+    async def list_all(self, session: AsyncSession, tenant_key: str) -> List[T]:
         """
         List all entities for tenant.
 
         CRITICAL: Only returns entities belonging to the tenant.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
 
         Returns:
             List of entities for the tenant
         """
-        return session.query(self.model_class).filter(self.model_class.tenant_key == tenant_key).all()
+        result = await session.execute(select(self.model_class).where(self.model_class.tenant_key == tenant_key))
+        return list(result.scalars().all())
 
     def delete(self, session: Session, tenant_key: str, entity_id: str) -> bool:
         """
@@ -106,34 +109,37 @@ class BaseRepository(Generic[T]):
             return True
         return False
 
-    def count(self, session: Session, tenant_key: str) -> int:
+    async def count(self, session: AsyncSession, tenant_key: str) -> int:
         """
         Count entities for tenant.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
 
         Returns:
             Number of entities for the tenant
         """
-        return session.query(self.model_class).filter(self.model_class.tenant_key == tenant_key).count()
+        result = await session.execute(
+            select(func.count()).select_from(self.model_class).where(self.model_class.tenant_key == tenant_key)
+        )
+        return result.scalar()
 
-    def exists(self, session: Session, tenant_key: str, entity_id: str) -> bool:
+    async def exists(self, session: AsyncSession, tenant_key: str, entity_id: str) -> bool:
         """
         Check if entity exists for tenant.
 
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for isolation
             entity_id: Entity ID to check
 
         Returns:
             True if entity exists for tenant, False otherwise
         """
-        return (
-            session.query(self.model_class)
-            .filter(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
-            .first()
-            is not None
+        result = await session.execute(
+            select(self.model_class).where(
+                self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id
+            )
         )
+        return result.scalar_one_or_none() is not None

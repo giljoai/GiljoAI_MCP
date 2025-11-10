@@ -216,7 +216,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "error": str(e),
             }
 
-    def report_progress(
+    async def report_progress(
         job_id: str,
         completed_todo: str,
         files_modified: List[str],
@@ -282,8 +282,8 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 }
 
             # Store progress in message queue
-            with db_manager.get_session() as session:
-                result = comm_queue.send_message(
+            async with db_manager.get_session_async() as session:
+                result = await comm_queue.send_message(
                     session=session,
                     job_id=job_id,
                     tenant_key=tenant_key,
@@ -332,7 +332,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "error": str(e),
             }
 
-    def get_next_instruction(job_id: str, agent_type: str, tenant_key: str) -> Dict[str, Any]:
+    async def get_next_instruction(job_id: str, agent_type: str, tenant_key: str) -> Dict[str, Any]:
         """
         Check for new instructions, user feedback, or handoff requests.
 
@@ -386,8 +386,8 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 }
 
             # Get unread messages for this job
-            with db_manager.get_session() as session:
-                result = comm_queue.get_messages(
+            async with db_manager.get_session_async() as session:
+                result = await comm_queue.get_messages(
                     session=session,
                     job_id=job_id,
                     tenant_key=tenant_key,
@@ -548,7 +548,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "error": str(e),
             }
 
-    def report_error(
+    async def report_error(
         job_id: str,
         error_type: str,
         error_message: str,
@@ -648,8 +648,8 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # MCPAgentJob status is authoritative and updated via AgentJobManager
 
             # Store error in message queue for orchestrator visibility
-            with db_manager.get_session() as session:
-                comm_queue.send_message(
+            async with db_manager.get_session_async() as session:
+                await comm_queue.send_message(
                     session=session,
                     job_id=job_id,
                     tenant_key=tenant_key,
@@ -694,7 +694,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "error": str(e),
             }
 
-    def send_message(
+    async def send_message(
         job_id: str,
         to_agent: str,
         message: str,
@@ -768,8 +768,8 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 }
 
             # Send message with tenant isolation
-            with db_manager.get_session() as session:
-                result = comm_queue.send_message(
+            async with db_manager.get_session_async() as session:
+                result = await comm_queue.send_message(
                     session=session,
                     job_id=job_id,
                     tenant_key=tenant_key,

@@ -66,16 +66,22 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
     Returns:
         Dictionary with agent spawn instructions
     """
+    from sqlalchemy import select
+
     db_manager = DatabaseManager()
     with db_manager.get_session() as session:
         # Get project
-        project = session.query(Project).filter_by(id=project_id, tenant_key=tenant_key).first()
+        result = session.execute(select(Project).filter_by(id=project_id, tenant_key=tenant_key))
+        project = result.scalar_one_or_none()
 
         if not project:
             return {"error": "Project not found"}
 
         # Get all active agent jobs for this project (migrated from Agent to MCPAgentJob - Handover 0116)
-        agent_jobs = session.query(MCPAgentJob).filter_by(project_id=project_id, tenant_key=tenant_key, status="active").all()
+        result = session.execute(
+            select(MCPAgentJob).filter_by(project_id=project_id, tenant_key=tenant_key, status="active")
+        )
+        agent_jobs = list(result.scalars().all())
 
         agent_instructions = []
         for job in agent_jobs:
