@@ -263,6 +263,7 @@ class SendMessageRequest(BaseModel):
     """
 
     content: str = Field(..., min_length=1, description="Message content")
+    to: Optional[str] = Field(None, description="Recipient agent type (orchestrator, implementer, etc.)")
 
     model_config = ConfigDict(from_attributes=True)
 
