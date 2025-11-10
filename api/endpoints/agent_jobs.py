@@ -924,6 +924,7 @@ async def send_developer_message(
     # Create message
     message = {
         "from": "developer",
+        "to_agent": message_request.to or job.agent_type,  # Default to job's agent type if not specified
         "content": message_request.content,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
