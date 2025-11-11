@@ -25,7 +25,7 @@ from src.giljo_mcp.models import User
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession) -> User:
     """Create a test user with API key for testing"""
-    from src.giljo_mcp.auth_legacy import AuthManager
+    from src.giljo_mcp.auth_manager import AuthManager
 
     user = User(
         username="test_network_user",
