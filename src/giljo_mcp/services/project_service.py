@@ -649,6 +649,123 @@ class ProjectService:
             return {"success": False, "error": str(e)}
 
     # ============================================================================
+    # Maintenance & Cleanup Methods
+    # ============================================================================
+
+    async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> dict[str, Any]:
+        """
+        Purge projects deleted more than specified days ago (Handover 0070).
+
+        This function performs cascade deletion:
+        1. Deletes child agents (MCPAgentJob)
+        2. Deletes child tasks
+        3. Deletes child messages
+        4. Deletes the project record
+
+        Called from startup.py on server start for automatic cleanup.
+
+        Args:
+            days_before_purge: Number of days before permanent deletion (default: 10)
+
+        Returns:
+            dict: Purge results with count and details
+                - success: bool - Operation success status
+                - purged_count: int - Number of projects purged
+                - projects: list - Details of purged projects
+                - error: str - Error message if failed
+
+        Example:
+            >>> result = await service.purge_expired_deleted_projects()
+            >>> print(f"Purged {result['purged_count']} projects")
+        """
+        from datetime import timedelta, timezone
+
+        from sqlalchemy import select
+
+        from giljo_mcp.models import MCPAgentJob, Message, Task
+
+        if not self.db_manager:
+            self._logger.error("[Handover 0070] Cannot purge - database manager not available")
+            return {"success": False, "error": "Database not available"}
+
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Find projects deleted more than specified days ago
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
+
+                stmt = select(Project).where(
+                    Project.deleted_at.isnot(None),
+                    Project.deleted_at < cutoff_date
+                )
+
+                result = await session.execute(stmt)
+                expired_projects = result.scalars().all()
+
+                if not expired_projects:
+                    self._logger.info(
+                        f"[Handover 0070] No expired deleted projects to purge "
+                        f"(cutoff: {days_before_purge} days)"
+                    )
+                    return {"success": True, "purged_count": 0, "projects": []}
+
+                purged_projects = []
+
+                for project in expired_projects:
+                    project_info = {
+                        "id": project.id,
+                        "name": project.name,
+                        "tenant_key": project.tenant_key,
+                        "deleted_at": project.deleted_at.isoformat(),
+                    }
+
+                    # Cascade delete: agent jobs
+                    agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                    agent_job_result = await session.execute(agent_job_stmt)
+                    agent_jobs = agent_job_result.scalars().all()
+                    for job in agent_jobs:
+                        await session.delete(job)
+
+                    # Cascade delete: tasks
+                    task_stmt = select(Task).where(Task.project_id == project.id)
+                    task_result = await session.execute(task_stmt)
+                    tasks = task_result.scalars().all()
+                    for task in tasks:
+                        await session.delete(task)
+
+                    # Cascade delete: messages
+                    message_stmt = select(Message).where(Message.project_id == project.id)
+                    message_result = await session.execute(message_stmt)
+                    messages = message_result.scalars().all()
+                    for message in messages:
+                        await session.delete(message)
+
+                    # Delete project
+                    await session.delete(project)
+
+                    self._logger.info(
+                        f"[Handover 0070] Purged project '{project.name}' (id: {project.id}, "
+                        f"tenant: {project.tenant_key}, deleted: {project.deleted_at})"
+                    )
+
+                    purged_projects.append(project_info)
+
+                await session.flush()
+
+                self._logger.info(
+                    f"[Handover 0070] Successfully purged {len(purged_projects)} expired deleted projects"
+                )
+
+                return {
+                    "success": True,
+                    "purged_count": len(purged_projects),
+                    "projects": purged_projects
+                }
+
+        except Exception as e:
+            self._logger.exception(f"[Handover 0070] Failed to purge expired deleted projects: {e}")
+            return {"success": False, "error": str(e), "purged_count": 0}
+
+    # ============================================================================
     # Private Helper Methods
     # ============================================================================
 
