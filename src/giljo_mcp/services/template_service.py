@@ -26,7 +26,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate
+# Model imports: Use domain-specific imports (Post-0128a)
+from giljo_mcp.models.templates import AgentTemplate
 from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from giljo_mcp.tenant import TenantManager
 

@@ -27,7 +27,12 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Message, Project
+
+# Import Pattern: Use modular imports from models package (Post-0128a)
+# See models/__init__.py for migration guidance
+from giljo_mcp.models.agents import MCPAgentJob
+from giljo_mcp.models.tasks import Message
+from giljo_mcp.models.projects import Project
 from giljo_mcp.tenant import TenantManager
 
 
