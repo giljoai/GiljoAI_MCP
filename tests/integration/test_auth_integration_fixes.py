@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from api.middleware import AuthMiddleware
-from src.giljo_mcp.auth_legacy import AuthManager
+from src.giljo_mcp.auth_manager import AuthManager
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Base, User
 
@@ -178,7 +178,7 @@ class TestDatabaseSessionPerRequest:
         mock_user.id = 1
 
         # Mock ensure_localhost_user to return our mock user
-        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=mock_user):
+        with patch("src.giljo_mcp.auth_manager.ensure_localhost_user", return_value=mock_user):
             # Authenticate request
             result = await auth_manager.authenticate_request(request)
 
@@ -273,7 +273,7 @@ class TestRequestStateConsistency:
         mock_user.id = 1
 
         # Mock ensure_localhost_user
-        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=mock_user):
+        with patch("src.giljo_mcp.auth_manager.ensure_localhost_user", return_value=mock_user):
             result = await auth_manager.authenticate_request(request)
 
         # Verify both user_id and user_obj are present
@@ -431,7 +431,7 @@ class TestRequestStateConsistency:
         mock_user.id = 1
 
         # Mock ensure_localhost_user
-        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=mock_user):
+        with patch("src.giljo_mcp.auth_manager.ensure_localhost_user", return_value=mock_user):
             # Authenticate through middleware
             middleware = AuthMiddleware(app=app, auth_manager=lambda: auth_manager)
 
@@ -487,7 +487,7 @@ class TestIntegrationAllFixes:
         request.state = Mock()
 
         # Mock ensure_localhost_user to use our created user
-        with patch("src.giljo_mcp.auth_legacy.ensure_localhost_user", return_value=localhost_user):
+        with patch("src.giljo_mcp.auth_manager.ensure_localhost_user", return_value=localhost_user):
             # Mock call_next
             async def mock_call_next(req):
                 # Verify state is set correctly (Fix #3)

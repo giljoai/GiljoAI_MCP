@@ -1,12 +1,12 @@
 """
-Localhost user management for legacy auth compatibility.
+Localhost user management for auth compatibility.
 
 DEPRECATED: This module provides backward compatibility for the localhost_user
 functionality that was removed in v3.0 unified architecture.
 
 In v3.0, all connections require proper authentication credentials.
 However, this module maintains the ensure_localhost_user function
-for legacy auth_legacy.py compatibility.
+for auth_manager.py compatibility.
 """
 
 import logging
@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 async def ensure_localhost_user(session: AsyncSession) -> Optional[User]:
     """
-    Ensure localhost user exists for legacy auth compatibility.
+    Ensure localhost user exists for auth compatibility.
 
     DEPRECATED: In v3.0 unified architecture, all users should use proper
-    authentication. This function exists only for legacy compatibility.
+    authentication. This function exists only for backward compatibility.
 
     Args:
         session: Async database session
