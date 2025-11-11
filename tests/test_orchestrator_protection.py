@@ -15,9 +15,12 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from datetime import datetime, timezone
 
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate, Configuration
-from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.system_prompts import SystemPromptService
+from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from src.giljo_mcp.tenant import TenantManager
 
 
 class TestSystemRolesConstant:
@@ -433,8 +436,6 @@ class Test7SlotUserLimit:
         self, async_db_session, test_tenant
     ):
         """Should reject activating 8th user-managed agent"""
-        from api.endpoints.templates import validate_active_agent_limit
-
         # Create 7 active user-managed templates
         for i in range(7):
             template = AgentTemplate(
@@ -459,9 +460,15 @@ class Test7SlotUserLimit:
         async_db_session.add(template_8)
         await async_db_session.commit()
 
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
+
         # Attempt to activate 8th template
-        is_valid, error_msg = await validate_active_agent_limit(
-            db=async_db_session,
+        is_valid, error_msg = await template_service.validate_active_agent_limit(
+            session=async_db_session,
             tenant_key=test_tenant,
             template_id="template-8",
             new_is_active=True,
@@ -476,8 +483,6 @@ class Test7SlotUserLimit:
         self, async_db_session, test_tenant
     ):
         """Should allow multiple templates of same role (counts as 1 slot)"""
-        from api.endpoints.templates import validate_active_agent_limit
-
         # Create 6 active unique roles
         for i in range(6):
             template = AgentTemplate(
@@ -502,9 +507,15 @@ class Test7SlotUserLimit:
         async_db_session.add(duplicate_role_template)
         await async_db_session.commit()
 
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
+
         # Should allow activation (same role, doesn't consume new slot)
-        is_valid, error_msg = await validate_active_agent_limit(
-            db=async_db_session,
+        is_valid, error_msg = await template_service.validate_active_agent_limit(
+            session=async_db_session,
             tenant_key=test_tenant,
             template_id="template-duplicate",
             new_is_active=True,
@@ -519,11 +530,15 @@ class Test7SlotUserLimit:
         self, async_db_session, test_tenant
     ):
         """Should reject toggle attempts for system-managed roles"""
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Attempt to toggle orchestrator
-        is_valid, error_msg = await validate_active_agent_limit(
-            db=async_db_session,
+        is_valid, error_msg = await template_service.validate_active_agent_limit(
+            session=async_db_session,
             tenant_key=test_tenant,
             template_id="orch-template",
             new_is_active=True,

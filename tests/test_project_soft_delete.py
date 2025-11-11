@@ -16,8 +16,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from api.endpoints.projects import purge_expired_deleted_projects
-from src.giljo_mcp.models import Agent, Message, Product, Project, Task
+from src.giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.mark.asyncio
@@ -195,8 +196,13 @@ class TestProjectSoftDelete:
         db_manager = MagicMock()
         db_manager.get_session_async = mock_get_session
 
+        # Create ProjectService with mocked db_manager
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant_key)
+        project_service = ProjectService(db_manager, tenant_manager)
+
         # Run purge
-        result = await purge_expired_deleted_projects(db_manager)
+        result = await project_service.purge_expired_deleted_projects()
 
         assert result["success"] is True
         assert result["purged_count"] == 1
@@ -248,8 +254,13 @@ class TestProjectSoftDelete:
         db_manager = MagicMock()
         db_manager.get_session_async = mock_get_session
 
+        # Create ProjectService with mocked db_manager
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant_key)
+        project_service = ProjectService(db_manager, tenant_manager)
+
         # Run purge
-        result = await purge_expired_deleted_projects(db_manager)
+        result = await project_service.purge_expired_deleted_projects()
 
         assert result["success"] is True
         assert result["purged_count"] == 1
@@ -419,8 +430,13 @@ class TestProjectSoftDelete:
         db_manager = MagicMock()
         db_manager.get_session_async = mock_get_session
 
+        # Create ProjectService with mocked db_manager
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant_key)
+        project_service = ProjectService(db_manager, tenant_manager)
+
         # Run purge
-        result = await purge_expired_deleted_projects(db_manager)
+        result = await project_service.purge_expired_deleted_projects()
 
         assert result["success"] is True
         assert result["purged_count"] == 2  # Both should be purged

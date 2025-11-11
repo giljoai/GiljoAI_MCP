@@ -819,6 +819,61 @@ class ProductService:
             return {"success": False, "error": str(e)}
 
     # ============================================================================
+    # Validation Methods
+    # ============================================================================
+
+    @staticmethod
+    def validate_project_path(project_path: str) -> bool:
+        """
+        Validate project path for agent export functionality (Handover 0084).
+
+        Args:
+            project_path: File system path to validate
+
+        Returns:
+            True if valid, raises HTTPException if invalid
+
+        Raises:
+            HTTPException: If path is invalid, doesn't exist, isn't a directory, or isn't writable
+
+        Example:
+            >>> ProductService.validate_project_path("/path/to/project")
+            True
+        """
+        from pathlib import Path
+
+        from fastapi import HTTPException
+
+        if not project_path:
+            return True  # Optional field
+
+        try:
+            # Expand user home directory if present
+            path = Path(project_path).expanduser()
+
+            # Check if path exists and is a directory
+            if not path.exists():
+                raise HTTPException(status_code=400, detail=f"Project path does not exist: {path}")
+
+            if not path.is_dir():
+                raise HTTPException(status_code=400, detail=f"Project path is not a directory: {path}")
+
+            # Check if path is writable (for .claude/agents creation)
+            try:
+                test_dir = path / ".claude_test_write"
+                test_dir.mkdir(exist_ok=True)
+                test_dir.rmdir()
+            except (PermissionError, OSError):
+                raise HTTPException(status_code=400, detail=f"Project path is not writable: {path}")
+
+            return True
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid project path: {e}")
+
+    # ============================================================================
     # Private Helper Methods
     # ============================================================================
 
