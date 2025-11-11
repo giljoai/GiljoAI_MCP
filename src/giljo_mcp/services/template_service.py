@@ -27,10 +27,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import AgentTemplate
+from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
+
+# Agent limit constants (Handover 0103)
+USER_MANAGED_AGENT_LIMIT = 7  # Reserve one slot for orchestrator
 
 
 class TemplateService:
@@ -373,3 +377,106 @@ class TemplateService:
         except Exception as e:
             self._logger.exception(f"Failed to update template: {e}")
             return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # Validation Methods
+    # ============================================================================
+
+    @staticmethod
+    def _is_system_managed_role(role: Optional[str]) -> bool:
+        """
+        Check if a role is system-managed and cannot be toggled by users.
+
+        Args:
+            role: Role name to check
+
+        Returns:
+            True if role is system-managed, False otherwise
+
+        Example:
+            >>> TemplateService._is_system_managed_role("orchestrator")
+            True
+            >>> TemplateService._is_system_managed_role("reviewer")
+            False
+        """
+        return bool(role and role in SYSTEM_MANAGED_ROLES)
+
+    async def validate_active_agent_limit(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        template_id: str,
+        new_is_active: bool,
+        role: Optional[str] = None,
+    ) -> tuple[bool, str]:
+        """
+        Validate 8-role active limit before toggling (Handover 0103).
+
+        Claude Code context budget constraint: Maximum 8 distinct active roles
+        to ensure optimal performance and sufficient tokens for code analysis.
+
+        Args:
+            session: Database session (for transaction context)
+            tenant_key: Tenant key for isolation
+            template_id: Template being toggled
+            new_is_active: Desired active state
+            role: Role of the template being toggled (optional, will be fetched if not provided)
+
+        Returns:
+            (is_valid, error_message) tuple
+            - (True, "") if validation passes
+            - (False, error_msg) if validation fails
+
+        Example:
+            >>> async with db_manager.get_session_async() as session:
+            ...     valid, msg = await service.validate_active_agent_limit(
+            ...         session, "tenant-1", "tpl-123", True, "orchestrator"
+            ...     )
+            ...     if not valid:
+            ...         raise HTTPException(409, msg)
+        """
+        # System-managed roles are not user-toggleable
+        if self._is_system_managed_role(role):
+            return False, "System-managed roles cannot be toggled"
+
+        # If deactivating, always allow
+        if not new_is_active:
+            return True, ""
+
+        # Get current template to fetch its role if not provided
+        if role is None:
+            stmt = select(AgentTemplate.role).where(AgentTemplate.id == template_id)
+            result = await session.execute(stmt)
+            role = result.scalar_one_or_none()
+            if not role:
+                return False, "Template not found"
+
+        # Count currently active distinct roles (excluding the one being toggled)
+        system_roles = list(SYSTEM_MANAGED_ROLES)
+        stmt = (
+            select(AgentTemplate.role)
+            .where(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.is_active == True,  # noqa: E712
+                AgentTemplate.id != template_id,
+            )
+            .where(AgentTemplate.role.notin_(system_roles))
+            .distinct()
+        )
+
+        result = await session.execute(stmt)
+        active_roles = {row[0] for row in result.all()}
+
+        # If this role is already active elsewhere, allow toggle
+        if role in active_roles:
+            return True, ""
+
+        # If we have 7 distinct active roles, block new role activation (orchestrator is reserved)
+        if len(active_roles) >= USER_MANAGED_AGENT_LIMIT:
+            return (
+                False,
+                f"Maximum {USER_MANAGED_AGENT_LIMIT} active agent roles allowed "
+                f"(currently {len(active_roles)}). Deactivate another role first.",
+            )
+
+        return True, ""
