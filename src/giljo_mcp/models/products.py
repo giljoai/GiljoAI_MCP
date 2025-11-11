@@ -53,20 +53,39 @@ class Product(Base):
         String(500), nullable=True, comment="File system path to product folder (required for agent export)"
     )
 
-    # DEPRECATED (Handover 0043): Legacy single-vision fields - Use vision_documents relationship instead
-    # These fields remain for backward compatibility but new code should use VisionDocument model
+    # ⚠️ DEPRECATED (Handover 0128e): Legacy single-vision fields - SCHEDULED FOR REMOVAL
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # These fields are DEPRECATED and will be removed in Phase 7 of Handover 0128e.
+    # ALL production code has been migrated to use the VisionDocument relationship.
+    #
+    # ❌ DO NOT USE THESE FIELDS:
+    #    - product.vision_path
+    #    - product.vision_document
+    #    - product.vision_type
+    #    - product.chunked
+    #
+    # ✅ USE THESE INSTEAD:
+    #    - product.vision_documents (VisionDocument relationship)
+    #    - product.primary_vision_text (helper property)
+    #    - product.primary_vision_path (helper property)
+    #    - product.has_vision (helper property)
+    #    - product.vision_is_chunked (helper property)
+    #    - product.primary_vision_storage_type (helper property)
+    #
+    # See helper properties below for migration examples.
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     vision_path = Column(
         String(500),
         nullable=True,
-        comment="DEPRECATED: File path to vision document (use vision_documents relationship)",
+        comment="DEPRECATED (Handover 0128e): Use vision_documents relationship instead",
     )
     vision_document = Column(
-        Text, nullable=True, comment="DEPRECATED: Inline vision text (use vision_documents relationship)"
+        Text, nullable=True, comment="DEPRECATED (Handover 0128e): Use vision_documents relationship instead"
     )
     vision_type = Column(
-        String(20), default="none", comment="DEPRECATED: Vision source (use vision_documents relationship)"
+        String(20), default="none", comment="DEPRECATED (Handover 0128e): Use vision_documents relationship instead"
     )
-    chunked = Column(Boolean, default=False, comment="DEPRECATED: Chunking status (use vision_documents.chunked)")
+    chunked = Column(Boolean, default=False, comment="DEPRECATED (Handover 0128e): Use vision_documents.chunked instead")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -166,6 +185,79 @@ class Product(Base):
         if not active_docs:
             return False
         return all(doc.chunked for doc in active_docs)
+
+    # Handover 0128e: Migration helper properties (replaces deprecated fields)
+    @property
+    def primary_vision_text(self) -> str:
+        """
+        Get primary vision document text.
+        Replaces deprecated: product.vision_document field
+        """
+        if not self.vision_documents:
+            return ""
+        # Get first active document, or first document if none active
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        doc = active_docs[0] if active_docs else (self.vision_documents[0] if self.vision_documents else None)
+        if not doc:
+            return ""
+        return doc.vision_document or ""
+
+    @property
+    def primary_vision_path(self) -> str:
+        """
+        Get primary vision file path.
+        Replaces deprecated: product.vision_path field
+        """
+        if not self.vision_documents:
+            return ""
+        # Get first active document, or first document if none active
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        doc = active_docs[0] if active_docs else (self.vision_documents[0] if self.vision_documents else None)
+        if not doc:
+            return ""
+        return doc.vision_path or ""
+
+    @property
+    def has_vision(self) -> bool:
+        """
+        Check if product has vision content.
+        Replaces deprecated: bool(product.vision_document) checks
+        """
+        if not self.vision_documents:
+            return False
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        docs_to_check = active_docs if active_docs else self.vision_documents
+        return any((doc.vision_document or doc.vision_path) for doc in docs_to_check)
+
+    @property
+    def vision_is_chunked(self) -> bool:
+        """
+        Check if vision is chunked.
+        Replaces deprecated: product.chunked field
+        """
+        if not self.vision_documents:
+            return False
+        # Get first active document, or first document if none active
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        doc = active_docs[0] if active_docs else (self.vision_documents[0] if self.vision_documents else None)
+        if not doc:
+            return False
+        return doc.chunked
+
+    @property
+    def primary_vision_storage_type(self) -> str:
+        """
+        Get primary vision storage type.
+        Replaces deprecated: product.vision_type field
+        """
+        if not self.vision_documents:
+            return "none"
+        # Get first active document, or first document if none active
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        doc = active_docs[0] if active_docs else (self.vision_documents[0] if self.vision_documents else None)
+        if not doc:
+            return "none"
+        return doc.storage_type
 
 
 class VisionDocument(Base):

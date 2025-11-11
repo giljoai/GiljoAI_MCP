@@ -5,6 +5,14 @@ Generates condensed agent missions from product vision analysis.
 Achieves 70% token reduction through intelligent context filtering and summarization.
 
 Phase 1 Implementation: Template-based analysis (no LLM calls)
+
+⚠️  IMPORTANT - Product Vision Field Migration (Handover 0128e):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This file has been migrated to use Product.vision_documents relationship.
+DO NOT use deprecated Product fields (vision_path, vision_document, vision_type, chunked).
+✅ Use: product.primary_vision_text, product.primary_vision_path, product.vision_is_chunked
+See: src/giljo_mcp/models/products.py for helper properties
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import logging
@@ -661,7 +669,7 @@ Success Criteria:
 
         # === MANDATORY: Product Vision (ALWAYS included - non-negotiable) ===
         # Vision document is foundational context that orchestrator needs
-        vision_text = product.vision_document or ""
+        vision_text = product.primary_vision_text
         if vision_text:
             formatted_vision = f"## Product Vision\n{vision_text}"
             context_sections.append(formatted_vision)
@@ -863,7 +871,7 @@ Success Criteria:
             features = product.config_data["features"]
 
         # Extract keywords from vision and description
-        combined_text = f"{product.vision_document or ''} {project_description}"
+        combined_text = f"{product.primary_vision_text} {project_description}"
         keywords = self._extract_keywords(combined_text)
 
         # Categorize work types
@@ -1366,7 +1374,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
 
         # Get vision chunks from context repository or vision document
         vision_chunks = []
-        if product.chunked:
+        if product.vision_is_chunked:
             # Try to fetch from context repository
             try:
                 if self.db_manager.is_async:
@@ -1394,15 +1402,15 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                 vision_chunks = []
 
         # Fallback to vision document if no chunks found
-        if not vision_chunks and product.vision_document:
+        if not vision_chunks and product.primary_vision_text:
             # Split vision document into rough chunks
-            vision_text = product.vision_document
+            vision_text = product.primary_vision_text
             # Split by double newline (paragraphs) or sections
             chunks = re.split(r"\n\n+|(?=^#{1,3} )", vision_text, flags=re.MULTILINE)
             vision_chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
 
         # Calculate original token count
-        original_tokens = self._count_tokens(product.vision_document or "")
+        original_tokens = self._count_tokens(product.primary_vision_text)
 
         # Handover 0086B Task 3.2: Fetch Serena toggle from config.yaml (system-wide setting)
         # IMPORTANT: Serena toggle is in My Settings → Integrations and stored in config.yaml
