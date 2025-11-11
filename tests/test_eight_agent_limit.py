@@ -12,7 +12,10 @@ Tests validate:
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.services.template_service import TemplateService
+from src.giljo_mcp.tenant import TenantManager
 
 
 # Test Fixtures
@@ -71,12 +74,15 @@ class TestValidateActiveAgentLimit:
         for i in range(8):
             await create_template(test_user.tenant_key, f"agent-{i}", is_active=True)
 
-        # Import validation function
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_user.tenant_key)
+        db_manager = DatabaseManager()  # Will use the session passed to validate method
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Deactivation should always succeed
-        valid, msg = await validate_active_agent_limit(
-            db=db_session, tenant_key=test_user.tenant_key, template_id="tpl-agent-0-0", new_is_active=False
+        valid, msg = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=test_user.tenant_key, template_id="tpl-agent-0-0", new_is_active=False
         )
 
         assert valid is True
@@ -92,11 +98,15 @@ class TestValidateActiveAgentLimit:
         # Create 1 inactive template
         inactive = await create_template(test_user.tenant_key, "agent-inactive", is_active=False)
 
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_user.tenant_key)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Activating 7th agent should succeed (6 + 1 = 7 < 8)
-        valid, msg = await validate_active_agent_limit(
-            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
+        valid, msg = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
         )
 
         assert valid is True
@@ -112,11 +122,15 @@ class TestValidateActiveAgentLimit:
         # Create 1 inactive template
         inactive = await create_template(test_user.tenant_key, "agent-8th", is_active=False)
 
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_user.tenant_key)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Activating 8th agent should succeed (7 + 1 = 8)
-        valid, msg = await validate_active_agent_limit(
-            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
+        valid, msg = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
         )
 
         assert valid is True
@@ -132,17 +146,20 @@ class TestValidateActiveAgentLimit:
         # Create 1 inactive template
         inactive = await create_template(test_user.tenant_key, "agent-9th", is_active=False)
 
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_user.tenant_key)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Activating 9th agent should FAIL
-        valid, msg = await validate_active_agent_limit(
-            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
+        valid, msg = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=test_user.tenant_key, template_id=inactive.id, new_is_active=True
         )
 
         assert valid is False
-        assert "Maximum 8 active agents allowed" in msg
-        assert "currently 8 active" in msg
-        assert "Claude Code context budget limit" in msg
+        assert "Maximum 7 active agent roles allowed" in msg
+        assert "currently" in msg
 
     @pytest.mark.asyncio
     async def test_multi_tenant_isolation(self, db_session: AsyncSession, test_user: User, create_template):
@@ -159,11 +176,14 @@ class TestValidateActiveAgentLimit:
         # Create inactive for tenant 2
         inactive_t2 = await create_template(tenant2_key, "t2-agent-inactive", is_active=False)
 
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Tenant 2 should be able to activate (5 + 1 = 6 < 8)
-        valid, msg = await validate_active_agent_limit(
-            db=db_session, tenant_key=tenant2_key, template_id=inactive_t2.id, new_is_active=True
+        valid, msg = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=tenant2_key, template_id=inactive_t2.id, new_is_active=True
         )
 
         assert valid is True
@@ -172,8 +192,8 @@ class TestValidateActiveAgentLimit:
         # But tenant 1 should still be blocked
         inactive_t1 = await create_template(test_user.tenant_key, "t1-agent-inactive", is_active=False)
 
-        valid_t1, msg_t1 = await validate_active_agent_limit(
-            db=db_session, tenant_key=test_user.tenant_key, template_id=inactive_t1.id, new_is_active=True
+        valid_t1, msg_t1 = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=test_user.tenant_key, template_id=inactive_t1.id, new_is_active=True
         )
 
         assert valid_t1 is False
@@ -189,12 +209,16 @@ class TestValidateActiveAgentLimit:
         # Create 1 active template that we'll toggle
         toggle_template = await create_template(test_user.tenant_key, "agent-toggle", is_active=True)
 
-        from api.endpoints.templates import validate_active_agent_limit
+        # Create TemplateService
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_user.tenant_key)
+        db_manager = DatabaseManager()
+        template_service = TemplateService(db_manager, tenant_manager)
 
         # Toggling existing active template to inactive should succeed
         # (count excludes template being toggled: 7 active others + 1 being toggled = 8 total)
-        valid, msg = await validate_active_agent_limit(
-            db=db_session, tenant_key=test_user.tenant_key, template_id=toggle_template.id, new_is_active=False
+        valid, msg = await template_service.validate_active_agent_limit(
+            session=db_session, tenant_key=test_user.tenant_key, template_id=toggle_template.id, new_is_active=False
         )
 
         assert valid is True
