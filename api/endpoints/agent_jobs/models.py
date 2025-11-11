@@ -89,16 +89,21 @@ class JobResponse(BaseModel):
     id: int
     job_id: str
     tenant_key: str
+    project_id: Optional[str] = None
     agent_type: str
+    agent_name: Optional[str] = None
     mission: str
     status: str
-    spawned_by: Optional[str]
-    context_chunks: list[str]
-    messages: list[dict[str, Any]]
-    acknowledged: bool
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    progress: int = 0
+    spawned_by: Optional[str] = None
+    tool_type: str = "universal"
+    context_chunks: list[str] = Field(default_factory=list)
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    acknowledged: bool = False
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 class PendingJobsResponse(BaseModel):
@@ -166,3 +171,12 @@ class WorkflowStatusResponse(BaseModel):
     failed_count: int
     active_count: int
     progress_percent: int
+
+
+class JobListResponse(BaseModel):
+    """Response model for job list with pagination (Handover 0135)."""
+
+    jobs: list[JobResponse]
+    total: int
+    limit: int
+    offset: int

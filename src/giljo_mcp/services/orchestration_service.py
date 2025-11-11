@@ -718,3 +718,116 @@ Begin by fetching your mission.
         except Exception as e:
             self._logger.exception(f"Failed to report error: {e}")
             return {"status": "error", "error": str(e)}
+
+    async def list_jobs(
+        self,
+        tenant_key: str,
+        project_id: Optional[str] = None,
+        status_filter: Optional[str] = None,
+        agent_type: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """
+        List agent jobs with flexible filtering.
+
+        Supports filtering by project, status, and agent type with pagination.
+        All jobs are filtered by tenant_key for multi-tenant isolation.
+
+        Args:
+            tenant_key: Tenant key for isolation (required)
+            project_id: Filter by project UUID (optional)
+            status_filter: Filter by status (waiting, active, completed, failed) (optional)
+            agent_type: Filter by agent type (orchestrator, implementer, etc.) (optional)
+            limit: Maximum results (default 100, max 500)
+            offset: Pagination offset (default 0)
+
+        Returns:
+            Dict with structure:
+            {
+                "jobs": [list of job dicts],
+                "total": int (total count matching filters),
+                "limit": int (limit applied),
+                "offset": int (offset applied)
+            }
+
+        Raises:
+            Exception: Database errors (logged and returned in error field)
+
+        Example:
+            >>> result = await service.list_jobs(
+            ...     tenant_key="tk_abc123",
+            ...     project_id="proj_xyz",
+            ...     status_filter="active"
+            ... )
+            >>> print(f"Found {len(result['jobs'])} active jobs")
+        """
+        try:
+            from sqlalchemy import func, select
+            from src.giljo_mcp.models import MCPAgentJob
+
+            async with self.db_manager.get_session_async() as session:
+                # Build query with filters
+                query = select(MCPAgentJob).where(
+                    MCPAgentJob.tenant_key == tenant_key
+                )
+
+                if project_id:
+                    query = query.where(MCPAgentJob.project_id == project_id)
+                if status_filter:
+                    query = query.where(MCPAgentJob.status == status_filter)
+                if agent_type:
+                    query = query.where(MCPAgentJob.agent_type == agent_type)
+
+                # Get total count
+                count_query = select(func.count()).select_from(query.subquery())
+                total_result = await session.execute(count_query)
+                total = total_result.scalar()
+
+                # Apply pagination and order
+                query = query.order_by(MCPAgentJob.created_at.desc())
+                query = query.limit(limit).offset(offset)
+
+                result = await session.execute(query)
+                jobs = result.scalars().all()
+
+                # Convert to dicts
+                job_dicts = [
+                    {
+                        "id": job.id,
+                        "job_id": job.job_id,
+                        "tenant_key": job.tenant_key,
+                        "project_id": job.project_id,
+                        "agent_type": job.agent_type,
+                        "agent_name": job.agent_name,
+                        "mission": job.mission,
+                        "status": job.status,
+                        "progress": job.progress,
+                        "spawned_by": job.spawned_by,
+                        "tool_type": job.tool_type,
+                        "context_chunks": job.context_chunks or [],
+                        "messages": job.messages or [],
+                        "acknowledged": job.acknowledged,
+                        "started_at": job.started_at,
+                        "completed_at": job.completed_at,
+                        "created_at": job.created_at,
+                        # Note: updated_at field removed - not present in MCPAgentJob model
+                    }
+                    for job in jobs
+                ]
+
+                self._logger.info(
+                    f"Listed {len(job_dicts)} jobs (total={total}, "
+                    f"project={project_id}, status={status_filter})"
+                )
+
+                return {
+                    "jobs": job_dicts,
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to list jobs: {e}")
+            return {"error": str(e)}

@@ -134,9 +134,40 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {Object} project - Project object
      */
     setProject(project) {
+      // Defensive validation
+      if (!project) {
+        console.warn('[ProjectTabs] setProject called with null/undefined project')
+        this.clearProject()
+        return
+      }
+
+      // Set project data
       this.currentProject = project
       this.orchestratorMission = project.mission || ''
-      this.agents = project.agents || []
+      this.agents = Array.isArray(project.agents) ? project.agents : []
+
+      // Production-grade isLaunched detection
+      // A project is considered "launched" if it has agent jobs (excluding just orchestrator in waiting state)
+      // This handles page reload scenarios where the project was previously launched
+      const hasNonOrchestratorAgents = this.agents.some(
+        agent => agent.agent_type !== 'orchestrator'
+      )
+      const hasActiveOrchestrator = this.agents.some(
+        agent => agent.agent_type === 'orchestrator' &&
+                 agent.status !== 'waiting'
+      )
+
+      // Set isLaunched flag based on agent state
+      // - If there are non-orchestrator agents, project was launched
+      // - If orchestrator is beyond waiting state, project was launched
+      this.isLaunched = hasNonOrchestratorAgents || hasActiveOrchestrator
+
+      // Log state for debugging (production-safe)
+      if (this.isLaunched) {
+        console.info(
+          `[ProjectTabs] Project "${project.name || project.id}" loaded with ${this.agents.length} agents - Jobs tab enabled`
+        )
+      }
     },
 
     /**
