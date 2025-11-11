@@ -2,6 +2,7 @@
 Agent Job Status Endpoints - Handover 0124
 
 Handles agent job status and query operations:
+- GET /api/agent-jobs/ - List all jobs with filtering (Handover 0135)
 - GET /api/agent-jobs/pending - List pending jobs
 - GET /api/agent-jobs/{job_id} - Get job details
 - GET /api/agent-jobs/{job_id}/mission - Get job mission
@@ -10,14 +11,17 @@ All operations use OrchestrationService (no direct DB access).
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 from .dependencies import get_orchestration_service
-from .models import JobMissionResponse, JobResponse, PendingJobsResponse
+from .models import JobListResponse, JobMissionResponse, JobResponse, PendingJobsResponse
 
 
 logger = logging.getLogger(__name__)
@@ -38,16 +42,95 @@ def job_to_response(job: dict) -> JobResponse:
         id=job.get("id", 0),
         job_id=job["job_id"],
         tenant_key=job["tenant_key"],
+        project_id=job.get("project_id"),
         agent_type=job["agent_type"],
+        agent_name=job.get("agent_name"),
         mission=job["mission"],
         status=job["status"],
+        progress=job.get("progress", 0),
         spawned_by=job.get("spawned_by"),
+        tool_type=job.get("tool_type", "universal"),
         context_chunks=job.get("context_chunks", []),
         messages=job.get("messages", []),
         acknowledged=job.get("acknowledged", False),
         started_at=job.get("started_at"),
         completed_at=job.get("completed_at"),
-        created_at=job["created_at"]
+        created_at=job["created_at"],
+        updated_at=job.get("updated_at")
+    )
+
+
+@router.get("/", response_model=JobListResponse)
+async def list_jobs(
+    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    status: Optional[str] = Query(None, description="Filter by status (waiting, active, completed, failed)"),
+    agent_type: Optional[str] = Query(None, description="Filter by agent type (orchestrator, implementer, etc.)"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum results (default 100, max 500)"),
+    offset: int = Query(0, ge=0, description="Pagination offset (default 0)"),
+    current_user: User = Depends(get_current_active_user),
+    orchestration_service: OrchestrationService = Depends(get_orchestration_service),
+) -> JobListResponse:
+    """
+    List agent jobs with flexible filtering.
+
+    All jobs are automatically filtered by the authenticated user's tenant_key
+    for multi-tenant isolation. Additional filters can be applied via query params.
+
+    Supports pagination for large result sets. Use offset/limit for paging.
+
+    Args:
+        project_id: Filter by project UUID (optional)
+        status: Filter by job status (optional)
+        agent_type: Filter by agent type (optional)
+        limit: Maximum results (default 100)
+        offset: Pagination offset (default 0)
+        current_user: Authenticated user (from dependency)
+        orchestration_service: Service for job operations (from dependency)
+
+    Returns:
+        JobListResponse with jobs list and pagination metadata
+
+    Raises:
+        HTTPException 500: Failed to list jobs
+
+    Example:
+        GET /api/agent-jobs/?project_id=abc123&status=active&limit=50
+    """
+    logger.debug(
+        f"User {current_user.username} listing jobs "
+        f"(project={project_id}, status={status}, type={agent_type}, "
+        f"limit={limit}, offset={offset})"
+    )
+
+    result = await orchestration_service.list_jobs(
+        tenant_key=current_user.tenant_key,
+        project_id=project_id,
+        status_filter=status,
+        agent_type=agent_type,
+        limit=limit,
+        offset=offset,
+    )
+
+    if "error" in result:
+        logger.error(f"Failed to list jobs: {result['error']}")
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list jobs: {result['error']}"
+        )
+
+    logger.info(
+        f"Found {len(result['jobs'])} jobs for user {current_user.username} "
+        f"(total={result['total']}, offset={offset})"
+    )
+
+    # Convert job dicts to JobResponse models
+    job_responses = [job_to_response(job) for job in result["jobs"]]
+
+    return JobListResponse(
+        jobs=job_responses,
+        total=result["total"],
+        limit=result["limit"],
+        offset=result["offset"],
     )
 
 

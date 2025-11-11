@@ -14,17 +14,15 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
 
 
-async def get_db_manager(db: AsyncSession = Depends(get_db_session)) -> DatabaseManager:
+async def get_db_manager() -> DatabaseManager:
     """
-    Get DatabaseManager instance from session.
+    Get DatabaseManager instance from app state.
 
-    Note: This is a temporary helper. In production, DatabaseManager should be
-    injected directly from the application context.
+    Returns the database manager from the FastAPI application state.
     """
-    # For now, we'll get the db_manager from the app state
-    # This assumes db_manager is available in the FastAPI app state
-    from src.giljo_mcp.database import db_manager as global_db_manager
-    return global_db_manager
+    # Get db_manager from application state (set during startup)
+    from api.app import state
+    return state.db_manager
 
 
 async def get_product_service(

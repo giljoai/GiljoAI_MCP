@@ -150,6 +150,124 @@ async def list_projects(
     ]
 
 
+@router.get("/deleted", response_model=List[ProjectResponse])
+async def get_deleted_projects(
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> List[ProjectResponse]:
+    """
+    Get soft-deleted projects for recovery (Handover 0070).
+
+    Returns projects with status='deleted' and deleted_at timestamp set.
+    These projects can be recovered within 10 days of deletion.
+
+    Args:
+        current_user: Authenticated user (from dependency)
+        project_service: Project service (from dependency)
+
+    Returns:
+        List of ProjectResponse for deleted projects
+
+    Raises:
+        HTTPException 500: Failed to list deleted projects
+    """
+    logger.debug(f"User {current_user.username} listing deleted projects")
+
+    # List deleted projects via ProjectService
+    result = await project_service.list_projects(status="deleted")
+
+    # Check for errors
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to list deleted projects")
+        logger.error(f"Deleted project listing failed: {error_msg}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+
+    projects = result.get("projects", [])
+    logger.info(f"Found {len(projects)} deleted projects for tenant {current_user.tenant_key}")
+
+    # Convert to response models
+    return [
+        ProjectResponse(
+            id=proj.get("id"),
+            alias=proj.get("alias", ""),
+            name=proj.get("name"),
+            description=proj.get("description"),
+            mission=proj.get("mission", ""),
+            status=proj.get("status"),
+            product_id=proj.get("product_id"),
+            created_at=proj.get("created_at"),
+            updated_at=proj.get("updated_at"),
+            completed_at=proj.get("completed_at"),
+            deleted_at=proj.get("deleted_at"),
+            context_budget=proj.get("context_budget", 150000),
+            context_used=proj.get("context_used", 0),
+            agent_count=proj.get("agent_count", 0),
+            message_count=proj.get("message_count", 0),
+            agents=[]
+        )
+        for proj in projects
+    ]
+
+
+@router.get("/active", response_model=Optional[ProjectResponse])
+async def get_active_project(
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> Optional[ProjectResponse]:
+    """
+    Get the currently active project for the user's tenant.
+
+    Returns the active project (status='active') or None if no project is active.
+
+    Follows Single Active Project architecture (Handover 0050b):
+    - Only ONE project can be active per product at any time
+    - Database enforces this via partial unique index
+
+    Args:
+        current_user: Authenticated user (from dependency)
+        project_service: Project service (from dependency)
+
+    Returns:
+        ProjectResponse with active project details, or None if no active project
+    """
+    logger.debug(f"User {current_user.username} fetching active project")
+
+    # Get active project via ProjectService
+    result = await project_service.get_active_project()
+
+    # Check for errors
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to get active project")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+
+    proj = result.get("project")
+
+    # No active project is OK - return None
+    if not proj:
+        logger.info(f"No active project found for tenant {current_user.tenant_key}")
+        return None
+
+    logger.info(f"Retrieved active project {proj.get('name')} for tenant {current_user.tenant_key}")
+
+    return ProjectResponse(
+        id=proj.get("id"),
+        alias=proj.get("alias", ""),
+        name=proj.get("name"),
+        description=proj.get("description"),
+        mission=proj.get("mission", ""),
+        status=proj.get("status"),
+        product_id=proj.get("product_id"),
+        created_at=proj.get("created_at"),
+        updated_at=proj.get("updated_at"),
+        completed_at=proj.get("completed_at"),
+        deleted_at=proj.get("deleted_at"),
+        context_budget=proj.get("context_budget", 150000),
+        context_used=proj.get("context_used", 0),
+        agent_count=proj.get("agent_count", 0),
+        message_count=proj.get("message_count", 0),
+    )
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: str,
@@ -186,6 +304,9 @@ async def get_project(
     proj = result.get("project", {})
     logger.info(f"Retrieved project {project_id} for tenant {current_user.tenant_key}")
 
+    # Production-grade: Use agents from service response (not hardcoded empty array)
+    agents_from_service = proj.get("agents", [])
+
     return ProjectResponse(
         id=proj.get("id"),
         alias=proj.get("alias", ""),
@@ -199,9 +320,9 @@ async def get_project(
         completed_at=proj.get("completed_at"),
         context_budget=proj.get("context_budget", 150000),
         context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
+        agent_count=proj.get("agent_count", len(agents_from_service)),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=agents_from_service  # Fixed: Use agents from ProjectService, not hardcoded []
     )
 
 

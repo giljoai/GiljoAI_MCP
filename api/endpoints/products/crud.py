@@ -134,6 +134,43 @@ async def list_products(
         raise HTTPException(status_code=500, detail=f"Failed to list products: {str(e)}")
 
 
+@router.get("/deleted", response_model=list[DeletedProductResponse])
+async def list_deleted_products(
+    current_user: User = Depends(get_current_active_user),
+    service: ProductService = Depends(get_product_service),
+) -> list[DeletedProductResponse]:
+    """
+    List soft-deleted products (Handover 0070).
+
+    Uses ProductService.list_deleted_products() for database operations.
+    """
+    try:
+        result = await service.list_deleted_products()
+
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return [
+            DeletedProductResponse(
+                id=p["id"],
+                name=p["name"],
+                description=p["description"],
+                deleted_at=p["deleted_at"],
+                days_until_purge=p["days_until_purge"],
+                purge_date=p["purge_date"],
+                project_count=p["project_count"],
+                vision_documents_count=p["vision_documents_count"],
+            )
+            for p in result["products"]
+        ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to list deleted products: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
     product_id: str,
@@ -244,40 +281,3 @@ async def update_product(
     except Exception as e:
         logger.error(f"Failed to update product: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update product: {str(e)}")
-
-
-@router.get("/deleted", response_model=list[DeletedProductResponse])
-async def list_deleted_products(
-    current_user: User = Depends(get_current_active_user),
-    service: ProductService = Depends(get_product_service),
-) -> list[DeletedProductResponse]:
-    """
-    List soft-deleted products (Handover 0070).
-
-    Uses ProductService.list_deleted_products() for database operations.
-    """
-    try:
-        result = await service.list_deleted_products()
-
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
-
-        return [
-            DeletedProductResponse(
-                id=p["id"],
-                name=p["name"],
-                description=p["description"],
-                deleted_at=p["deleted_at"],
-                days_until_purge=p["days_until_purge"],
-                purge_date=p["purge_date"],
-                project_count=p["project_count"],
-                vision_documents_count=p["vision_documents_count"],
-            )
-            for p in result["products"]
-        ]
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to list deleted products: {e}")
-        raise HTTPException(status_code=500, detail=str(e))

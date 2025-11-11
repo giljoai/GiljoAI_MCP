@@ -145,3 +145,33 @@ class ContinueWorkingResponse(BaseModel):
     agents_resumed: int
     resumed_agent_ids: list[str]
     project_status: str
+
+
+# ============================================================================
+# Orchestrator Models (Handover 0135)
+# ============================================================================
+
+class OrchestratorJobResponse(BaseModel):
+    """Orchestrator job details for project."""
+
+    id: int
+    job_id: str
+    agent_id: str  # Alias for backward compatibility
+    agent_type: str
+    agent_name: Optional[str]
+    mission: str
+    status: str
+    progress: int
+    tool_type: str
+    acknowledged: bool
+    created_at: Optional[datetime]
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    instance_number: Optional[int] = 1  # Handover 0080 - orchestrator succession
+
+
+class OrchestratorResponse(BaseModel):
+    """Response for GET /{project_id}/orchestrator."""
+
+    success: bool
+    orchestrator: OrchestratorJobResponse

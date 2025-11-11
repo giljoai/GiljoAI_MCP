@@ -53,39 +53,15 @@ class Product(Base):
         String(500), nullable=True, comment="File system path to product folder (required for agent export)"
     )
 
-    # ⚠️ DEPRECATED (Handover 0128e): Legacy single-vision fields - SCHEDULED FOR REMOVAL
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # These fields are DEPRECATED and will be removed in Phase 7 of Handover 0128e.
-    # ALL production code has been migrated to use the VisionDocument relationship.
-    #
-    # ❌ DO NOT USE THESE FIELDS:
-    #    - product.vision_path
-    #    - product.vision_document
-    #    - product.vision_type
-    #    - product.chunked
-    #
-    # ✅ USE THESE INSTEAD:
+    # ✅ Handover 0128e Complete: Deprecated vision fields removed
+    # Migration completed - all production code now uses VisionDocument relationship.
+    # Use these helper properties instead:
     #    - product.vision_documents (VisionDocument relationship)
     #    - product.primary_vision_text (helper property)
     #    - product.primary_vision_path (helper property)
     #    - product.has_vision (helper property)
     #    - product.vision_is_chunked (helper property)
     #    - product.primary_vision_storage_type (helper property)
-    #
-    # See helper properties below for migration examples.
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    vision_path = Column(
-        String(500),
-        nullable=True,
-        comment="DEPRECATED (Handover 0128e): Use vision_documents relationship instead",
-    )
-    vision_document = Column(
-        Text, nullable=True, comment="DEPRECATED (Handover 0128e): Use vision_documents relationship instead"
-    )
-    vision_type = Column(
-        String(20), default="none", comment="DEPRECATED (Handover 0128e): Use vision_documents relationship instead"
-    )
-    chunked = Column(Boolean, default=False, comment="DEPRECATED (Handover 0128e): Use vision_documents.chunked instead")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
