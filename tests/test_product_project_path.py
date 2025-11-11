@@ -18,8 +18,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.endpoints.products import validate_project_path
 from src.giljo_mcp.models import Product, User
+from src.giljo_mcp.services.product_service import ProductService
 
 
 @pytest_asyncio.fixture
@@ -155,16 +155,16 @@ class TestValidateProjectPath:
     def test_validate_existing_directory(self, temp_project_dir: Path):
         """Test validating an existing directory"""
 
-        result = validate_project_path(str(temp_project_dir))
+        result = ProductService.validate_project_path(str(temp_project_dir))
         assert result is True
 
     def test_validate_empty_path(self):
         """Test validating empty path (should pass as optional)"""
 
-        result = validate_project_path("")
+        result = ProductService.validate_project_path("")
         assert result is True
 
-        result = validate_project_path(None)
+        result = ProductService.validate_project_path(None)
         assert result is True
 
     def test_validate_nonexistent_path(self):
@@ -173,7 +173,7 @@ class TestValidateProjectPath:
         nonexistent_path = "/this/path/does/not/exist/anywhere"
 
         with pytest.raises(HTTPException) as exc_info:
-            validate_project_path(nonexistent_path)
+            ProductService.validate_project_path(nonexistent_path)
 
         assert exc_info.value.status_code == 400
         assert "does not exist" in str(exc_info.value.detail)
@@ -186,7 +186,7 @@ class TestValidateProjectPath:
         temp_file.write_text("test content")
 
         with pytest.raises(HTTPException) as exc_info:
-            validate_project_path(str(temp_file))
+            ProductService.validate_project_path(str(temp_file))
 
         assert exc_info.value.status_code == 400
         assert "is not a directory" in str(exc_info.value.detail)
@@ -197,7 +197,7 @@ class TestValidateProjectPath:
         # Mock permission error
         with patch("pathlib.Path.mkdir", side_effect=PermissionError("Permission denied")):
             with pytest.raises(HTTPException) as exc_info:
-                validate_project_path(str(temp_project_dir))
+                ProductService.validate_project_path(str(temp_project_dir))
 
             assert exc_info.value.status_code == 400
             assert "is not writable" in str(exc_info.value.detail)
@@ -213,7 +213,7 @@ class TestValidateProjectPath:
             with patch.object(mock_expanded, "exists", return_value=True):
                 with patch.object(mock_expanded, "is_dir", return_value=True):
                     with patch.object(mock_expanded, "mkdir"):
-                        result = validate_project_path("~/projects")
+                        result = ProductService.validate_project_path("~/projects")
                         assert result is True
 
                         # Verify expanduser was called
@@ -234,7 +234,7 @@ class TestProductAPIEndpoints:
 
         # Mock authentication and validation
         with patch("api.dependencies.get_tenant_key", return_value="test_tenant_001"):
-            with patch("api.endpoints.products.validate_project_path", return_value=True):
+            with patch("src.giljo_mcp.services.product_service.ProductService.validate_project_path", return_value=True):
                 response = client.post("/api/v1/products/", data=form_data)
 
         # Note: This test would need proper API setup to run fully
@@ -249,7 +249,7 @@ class TestProductAPIEndpoints:
 
         # Mock authentication and validation
         with patch("api.dependencies.get_tenant_key", return_value="test_tenant_001"):
-            with patch("api.endpoints.products.validate_project_path", return_value=True):
+            with patch("src.giljo_mcp.services.product_service.ProductService.validate_project_path", return_value=True):
                 response = client.put("/api/v1/products/prod_001", data=form_data)
 
         # Note: This test would need proper API setup to run fully
@@ -329,12 +329,12 @@ class TestProjectPathValidationIntegration:
     def test_validation_error_handling(self):
         """Test proper error handling when validation fails"""
 
-        with patch("api.endpoints.products.validate_project_path") as mock_validate:
+        with patch("src.giljo_mcp.services.product_service.ProductService.validate_project_path") as mock_validate:
             mock_validate.side_effect = HTTPException(status_code=400, detail="Project path validation failed")
 
             # Test that HTTPException is properly propagated
             with pytest.raises(HTTPException) as exc_info:
-                validate_project_path("/invalid/path")
+                ProductService.validate_project_path("/invalid/path")
 
             assert exc_info.value.status_code == 400
 
@@ -349,7 +349,7 @@ class TestCrossPatformPaths:
 
         with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
             with patch("pathlib.Path.mkdir"):
-                result = validate_project_path(windows_path)
+                result = ProductService.validate_project_path(windows_path)
                 assert result is True
 
     def test_unix_path_validation(self):
@@ -359,7 +359,7 @@ class TestCrossPatformPaths:
 
         with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.is_dir", return_value=True):
             with patch("pathlib.Path.mkdir"):
-                result = validate_project_path(unix_path)
+                result = ProductService.validate_project_path(unix_path)
                 assert result is True
 
     def test_path_normalization(self):
@@ -378,7 +378,7 @@ class TestCrossPatformPaths:
                         with patch("pathlib.Path.expanduser") as mock_expand:
                             mock_expand.return_value = Path("/normalized/path")
 
-                            result = validate_project_path(test_path)
+                            result = ProductService.validate_project_path(test_path)
                             assert result is True
 
 
