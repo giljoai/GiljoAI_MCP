@@ -71,10 +71,10 @@ Transform the remaining backend code from prototype remnants to production-grade
 
 ## 🔧 Sub-task Breakdown
 
-### 0128a: Split models.py God Object ✅ (Handover Exists)
+### 0128a: Split models.py God Object ✅ COMPLETE (2025-11-11)
 
-**Status:** Ready to Execute
-**Duration:** 2-3 days
+**Status:** ✅ Successfully Completed
+**Duration:** 2-3 days (actual)
 **Priority:** HIGHEST - Blocks clean architecture
 
 **Scope:**
@@ -118,6 +118,55 @@ from src.giljo_mcp.models import User, Project, MCPAgentJob
 - All imports updated
 - No references to auth_legacy remain
 
+### 0128e: Product Vision Field Migration 🚨 (NEW - CRITICAL)
+
+**Status:** Needs Handover (HIGH PRIORITY)
+**Duration:** 4-5 days
+**Priority:** P0 - CRITICAL (Discovered during 0128a)
+
+**Scope:**
+- Migrate 225+ occurrences from deprecated vision fields to VisionDocument relationship
+- Update 14 source files (mission_planner.py, orchestrator.py - CRITICAL)
+- Update 8 API files (context.py, agent_management.py, products/crud.py, products/lifecycle.py)
+- Update 20 test files (93 occurrences)
+- Create VisionFieldMigrator migration utilities
+- Add strategic breadcrumb comments
+- Alembic migration to drop 4 Product vision columns
+- **MUST complete BEFORE 0128d**
+
+**Why Critical:**
+- **98% of code uses deprecated fields** (`product.vision_path`, `product.vision_document`)
+- **Only 2% uses new system** (`product.vision_documents` relationship)
+- AI agents will learn the deprecated pattern (pattern frequency wins)
+- Severe confusion risk for future development
+- Two complete systems doing the same thing
+
+**Discovery during 0128a:**
+```
+Old system usage: 225+ occurrences across 42 files (98%)
+New system usage: 5 occurrences in 3 files (2%)
+Data in deprecated fields: ZERO (code-only migration)
+```
+
+**Critical Files:**
+- `mission_planner.py` - 6 uses in core orchestration logic
+- `orchestrator.py` - 7 uses in orchestration engine
+- `endpoints/context.py` - 6 uses in context indexing
+- `endpoints/agent_management.py` - 2 uses in agent spawning
+
+**Good News:**
+- Zero data in deprecated fields (no data migration needed)
+- Purely code refactoring task
+- Can be tested thoroughly before database changes
+
+**Validation:**
+- Zero occurrences of `product.vision_path` in codebase
+- Zero occurrences of `product.vision_document` in codebase
+- All code uses `product.vision_documents` relationship
+- Breadcrumb comments in place
+- Database columns dropped
+- Application runs normally
+
 ### 0128c: Remove Deprecated Method Stubs
 
 **Status:** Needs Handover
@@ -148,18 +197,20 @@ def deprecated_method(self):
 - Violates "fail fast" principle
 - Clutters codebase with unused code
 
-### 0128d: Clean Deprecated Database Fields
+### 0128d: Clean Agent_ID Foreign Keys (REVISED SCOPE)
 
 **Status:** Needs Handover
-**Duration:** 1-2 days
+**Duration:** 1 day
 **Priority:** MEDIUM - Database hygiene
+**NOTE:** Scope reduced after 0128e discovery
 
 **Scope:**
-- Create Alembic migration to drop 10 deprecated fields
-- Product model: 4 legacy vision fields (vision_path, vision_document, vision_type, chunked)
-- Various models: 6 agent_id foreign keys marked deprecated (Handover 0116)
+- Create Alembic migration to drop 6 agent_id foreign keys ONLY
+- Various models: agent_id foreign keys marked deprecated (Handover 0116)
+- **Product vision fields moved to 0128e** (dropped in Phase 7 of 0128e)
 - Test migration on development database
 - Document migration process
+- **MUST execute AFTER 0128e completes**
 
 **Why Critical:**
 - Deprecated fields confuse data model
@@ -176,32 +227,44 @@ def deprecated_method(self):
 
 ## 📋 Execution Strategy
 
-### Sequential Order (IMPORTANT)
+### Sequential Order (REVISED POST-0128a)
 
-1. **0128a FIRST** - Split models.py
-   - Most complex, highest risk
-   - Blocks other database work
-   - Already has detailed handover
+1. **0128a** ✅ COMPLETE (2025-11-11) - Split models.py
+   - Successfully completed
+   - Backward compatibility maintained
+   - **Discovery:** Critical vision field parallelism found
 
-2. **0128b SECOND** - Rename auth_legacy.py
+2. **0128b** - Rename auth_legacy.py (1 day)
    - Simple but critical
    - Prevents ongoing confusion
    - Quick win for clarity
+   - **Can run in parallel with 0128e planning**
 
-3. **0128c THIRD** - Remove deprecated stubs
+3. **0128e** 🚨 CRITICAL - Product Vision Field Migration (4-5 days)
+   - **MUST complete BEFORE 0128d**
+   - Migrate ALL 225+ occurrences to new relationship
+   - Code migration BEFORE database changes
+   - Touches critical orchestration files
+
+4. **0128c** - Remove deprecated stubs (1 day)
    - Lower risk cleanup
    - Can be done independently
-   - Improves code clarity
+   - **Can run in parallel with 0128b or 0128e**
 
-4. **0128d LAST** - Database migration
-   - Requires careful testing
-   - Needs backup strategy
-   - Can be deferred if issues arise
+5. **0128d LAST** - Drop agent_id foreign keys (1 day)
+   - **ONLY after 0128e completes**
+   - Reduced scope (vision fields in 0128e now)
+   - Simple database cleanup
 
-### Parallel Opportunities
+### Parallel Opportunities (REVISED)
 
-- 0128b and 0128c could run in parallel (different domains)
-- However, sequential is safer given the critical nature
+**Safe Parallel Execution:**
+- 0128b (auth rename) + 0128e planning (can overlap)
+- 0128c (method stubs) + 0128e execution (different files)
+
+**Critical Sequence:**
+- 0128e MUST complete before 0128d (code before database)
+- 0128a discovery drives 0128e priority to P0
 
 ---
 
@@ -215,14 +278,15 @@ def deprecated_method(self):
 - Rollback plans exist
 - Each sub-task is independent
 
-### Specific Risks
+### Specific Risks (REVISED POST-0128a)
 
 | Sub-task | Risk Level | Primary Risk | Mitigation |
 |----------|------------|--------------|------------|
-| 0128a | MEDIUM-HIGH | Breaking imports | __init__.py compatibility layer |
+| 0128a | ✅ COMPLETE | Breaking imports | Successfully mitigated via __init__.py |
 | 0128b | LOW | Simple rename | Find-and-replace operation |
+| 0128e | MEDIUM | Breaking orchestration | Thorough testing, zero data migration |
 | 0128c | LOW | Removing used methods | Grep for usage first |
-| 0128d | MEDIUM | Data loss | Database backup, test migration |
+| 0128d | LOW | Data loss | Execute after code migration complete |
 
 ### Rollback Strategy
 
@@ -256,13 +320,28 @@ Each sub-task must be:
 - Functions were in deleted backup files, recovered from git history
 - ContextService contains 5 additional deprecated methods (now in 0128c scope)
 
-### Applied to 0128
+### 0128a Specific Insights
 
-- Verify each deprecation claim before acting
+**Successfully Completed:**
+- Split 2,271-line models.py into 10 focused domain modules
+- Backward compatibility maintained via __init__.py re-exports
+- Self-documenting guidance for AI agents implemented
+- Zero breaking changes achieved
+
+**CRITICAL Discovery:**
+- Product vision field parallelism: 98% use deprecated, 2% use new system
+- 225+ occurrences of old vision fields vs 5 uses of new system
+- Severe AI agent confusion risk identified
+- **Action Required:** New handover 0128e created to address before 0128d
+
+### Applied to Remaining 0128 Tasks
+
+- Verify each deprecation claim before acting (proven by auth_legacy and vision fields)
 - Fix misleading names immediately (0128b)
-- Don't perfect everything (some technical debt is OK)
-- Execute sub-tasks sequentially
+- Aggressive purge when parallelism is severe (0128e)
+- Execute sub-tasks in correct sequence (0128e before 0128d)
 - Build on strengthened service layer from 0127d
+- Self-documenting code works for AI agents (models/__init__.py success)
 
 ---
 
@@ -288,10 +367,11 @@ Each sub-task must be:
 - Self-documenting codebase
 
 **AI Agent Experience:**
-- No risk of using deprecated code
+- No risk of using deprecated code (0128e eliminates 98% deprecated pattern)
 - Clear, obvious file purposes
 - Accurate code analysis
 - Reduced hallucination risk
+- Pattern frequency no longer misleads (vision fields 100% new system post-0128e)
 
 **Maintenance:**
 - Easier to add new models

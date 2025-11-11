@@ -611,11 +611,12 @@ Each handover creates:
 | **0127b** | **Create ProductService** | **High Priority** | 1-2 days | - | **P1** |
 | **0127c** | **Deep Deprecated Code Removal** | **High Priority** | 2-3 days | - | **P1** |
 | **0127d** | **Migrate Utility Functions** | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
-| 0128 | **Backend Deep Cleanup** | **Expanded** | 1 week | - | **P1** |
-| 0128a | Split models.py (2,271 lines) | Planning | 2-3 days | - | P1 |
+| 0128 | **Backend Deep Cleanup** | **Expanded + 0128e** | 1.5-2 weeks | - | **P1** |
+| 0128a | Split models.py (2,271 lines) | **✅ COMPLETE** | 2-3 days | 2025-11-11 | - |
 | 0128b | Rename auth_legacy.py → auth_manager.py | Planning | 1 day | - | P1 |
+| **0128e** | **Product Vision Field Migration (CRITICAL)** | **Planning** | 4-5 days | - | **P0** |
 | 0128c | Remove deprecated method stubs (~39 methods) | Planning | 1 day | - | P1 |
-| 0128d | Clean deprecated DB fields (10 fields) | Planning | 1-2 days | - | P2 |
+| 0128d | Clean deprecated DB fields (6 agent_id FKs) | Planning | 1 day | - | P2 |
 | 0129 | **Integration Testing & Performance** | **Expanded** | 1 week | - | **P0** |
 | 0129a | Fix all broken tests | Planning | 2-3 days | - | P0 |
 | 0129b | Performance benchmarks | Planning | 1-2 days | - | P1 |
@@ -655,6 +656,16 @@ Each handover creates:
 - ✅ **Service Layer Strengthened**: Clear sections for Validation, Maintenance, Business Logic
 - 🔍 **Discovery**: ContextService contains 5 additional deprecated methods (added to 0128c scope)
 - ✅ **Total Code Impact**: 271 lines added to services, all syntax validated
+
+**0128a Final Results:**
+- ✅ **models.py SUCCESSFULLY SPLIT**: 2,271-line god object → 10 focused domain modules
+- ✅ **Backward Compatibility**: 100% maintained via models/__init__.py re-exports
+- ✅ **New Module Structure**: auth.py, products.py, projects.py, agents.py, templates.py, tasks.py, context.py, config.py, base.py
+- ✅ **Self-Documenting Guidance**: Clear AI agent guidance in __init__.py header
+- ✅ **Zero Breaking Changes**: All 427 existing imports continue to work
+- ✅ **Original Preserved**: models.py.original backup maintained
+- 🚨 **CRITICAL DISCOVERY**: Product vision field parallelism (98% use deprecated fields, 2% use new system)
+- 📋 **Action Required**: New handover 0128e created to address vision field migration BEFORE 0128d
 
 **Update this table after each handover completion!**
 
@@ -716,7 +727,7 @@ Each handover creates:
 #### **0128: Backend Deep Cleanup** (1 week total)
 **Split into surgical sub-tasks for safety:**
 
-**0128a: Split models.py** (2-3 days)
+**0128a: Split models.py** ✅ **COMPLETE (2025-11-11)**
 - **Problem**: 2,271 line GOD OBJECT containing all models
 - **Fix**: Split into domain modules:
   - `models/auth.py` - User, Session, ApiKey
@@ -726,13 +737,28 @@ Each handover creates:
   - `models/products.py` - Product, ProductSettings
   - `models/base.py` - Base, TenantMixin, TimestampMixin
   - `models/__init__.py` - Re-export all for compatibility
-- **Risk**: MEDIUM - must maintain all imports
+- **Status**: Successfully completed, backward compatibility maintained
+- **Discovery**: Critical Product vision field parallelism found (98% old vs 2% new)
 
 **0128b: Rename auth_legacy.py** (1 day)
 - **Problem**: Active authentication system with misleading name (it's NOT legacy!)
 - **Fix**: Rename auth_legacy.py → auth_manager.py
-- Update all imports (6 files currently import it)
+- Update all imports (14 files currently import it)
 - **Risk**: LOW - simple find-and-replace operation
+
+**0128e: Product Vision Field Migration** 🚨 **CRITICAL** (4-5 days)
+- **Problem**: 98% of code uses deprecated vision fields (225+ occurrences), only 2% uses new VisionDocument relationship
+- **Discovery**: Found during 0128a execution - severe AI agent confusion risk
+- **Fix**: Migrate ALL code to use vision_documents relationship
+  - Update 14 source files (mission_planner.py, orchestrator.py - CRITICAL)
+  - Update 8 API files (context.py, agent_management.py, etc.)
+  - Update 20 test files (93 occurrences)
+  - Create VisionFieldMigrator utilities
+  - Add strategic breadcrumb comments
+  - Alembic migration to drop 4 Product vision columns
+- **Good News**: Zero data in deprecated fields - code-only migration
+- **Risk**: MEDIUM - touches critical orchestration code
+- **MUST COMPLETE BEFORE 0128d** - Code migration before database changes
 
 **0128c: Remove Deprecated Method Stubs** (1 day)
 - **Problem**: ~39 deprecated methods returning error messages
@@ -742,14 +768,14 @@ Each handover creates:
   - 5 methods from ContextService (discovered in 0127d)
 - **Risk**: LOW - verify no usage first with grep
 
-**0128d: Clean Deprecated DB Fields** (1-2 days)
-- **Problem**: 10 deprecated database fields still present
-- **Fix**: Create Alembic migration to drop:
-  - Product: 4 vision fields (vision_path, vision_document, vision_type, chunked)
-  - 6 agent_id foreign keys (marked deprecated in Handover 0116)
+**0128d: Clean Agent_ID Foreign Keys** (1 day) - **REVISED SCOPE**
+- **Problem**: 6 deprecated agent_id foreign keys still present (Handover 0116)
+- **Fix**: Create Alembic migration to drop agent_id fields only
+- **NOTE**: Product vision fields now handled in 0128e Phase 7
 - Test migration on dev database first
 - Keep backup of database before migration
-- **Risk**: MEDIUM - database changes require care
+- **MUST EXECUTE AFTER 0128e** - Vision fields must be migrated first
+- **Risk**: LOW - straightforward column drops after code migration
 
 ### Priority 2: FRONTEND (After Backend Stable)
 
