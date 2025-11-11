@@ -13,7 +13,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import User
+# Model imports: Use modular pattern (Post-0128a refactoring)
+from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.services import ProductService
 
 from .dependencies import get_product_service
