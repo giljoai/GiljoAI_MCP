@@ -70,12 +70,34 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         ws: true,
+        // Fix (Post-0128e): Ensure cookies are forwarded for authentication
+        // Browser cookies need to reach backend for JWT auth to work over LAN/WAN
+        cookieDomainRewrite: '', // Don't rewrite cookie domains
+        preserveHeaderKeyCase: true, // Preserve header casing
+        configure: (proxy, _options) => {
+          // Ensure cookies are forwarded from browser to backend
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            if (req.headers.cookie) {
+              proxyReq.setHeader('Cookie', req.headers.cookie)
+            }
+          })
+        },
       },
       // MCP endpoints if used
       '/mcp': {
         target: API_TARGET,
         changeOrigin: true,
         secure: false,
+        // Same cookie forwarding for MCP endpoints
+        cookieDomainRewrite: '',
+        preserveHeaderKeyCase: true,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            if (req.headers.cookie) {
+              proxyReq.setHeader('Cookie', req.headers.cookie)
+            }
+          })
+        },
       },
     },
     fs: {
