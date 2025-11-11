@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import Request
 
-from src.giljo_mcp.auth_legacy import AuthManager
+from src.giljo_mcp.auth_manager import AuthManager
 from src.giljo_mcp.models import User
 
 
