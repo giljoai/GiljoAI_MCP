@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from ..message_queue import MessageQueue
+from ..agent_message_queue import AgentMessageQueue as MessageQueue
 from ..agent_job_manager import AgentJobManager
 from ..database import DatabaseManager
 

@@ -7,7 +7,6 @@ Provides FastAPI dependencies for service layer access.
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.app import state
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.project_service import ProjectService
@@ -30,6 +29,9 @@ def get_project_service(
     Note:
         Service is request-scoped and uses global db_manager/tenant_manager from app state.
     """
+    # Import state lazily to avoid circular import
+    from api.app import state
+    
     # ProjectService uses db_manager (not session) for its own session management
     return ProjectService(
         db_manager=state.db_manager,
