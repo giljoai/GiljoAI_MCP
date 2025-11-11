@@ -221,62 +221,6 @@ async def handle_tools_list(
                 "required": ["orchestrator_id", "tenant_key"],
             },
         },
-        # Agent Management Tools
-        {
-            "name": "spawn_agent",
-            "description": "[DEPRECATED] Use spawn_agent_job instead. Creates legacy Agent records (4-state). See Comprehensive_MCP_Analysis.md. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "agent_type": {"type": "string", "description": "Type of agent to spawn"},
-                    "project_id": {"type": "string", "description": "Project ID"},
-                    "configuration": {"type": "object", "description": "Agent configuration"},
-                },
-                "required": ["agent_type", "project_id"],
-            },
-        },
-        {
-            "name": "list_agents",
-            "description": "[DEPRECATED] Use get_pending_jobs instead. Queries legacy 'agents' table. Dashboard uses 'mcp_agent_jobs'. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID"},
-                    "status": {"type": "string", "description": "Filter by agent status"},
-                },
-            },
-        },
-        {
-            "name": "get_agent_status",
-            "description": "[DEPRECATED] Use get_workflow_status instead. Uses 4-state Agent model. Replacement provides 7-state MCPAgentJob monitoring. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"agent_id": {"type": "string", "description": "Agent ID"}},
-                "required": ["agent_id"],
-            },
-        },
-        {
-            "name": "update_agent",
-            "description": "[DEPRECATED] Use report_progress (in-progress) or complete_job (finished) instead. Updates legacy 'agents' table. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "agent_id": {"type": "string", "description": "Agent ID"},
-                    "status": {"type": "string", "description": "New status"},
-                    "configuration": {"type": "object", "description": "Configuration updates"},
-                },
-                "required": ["agent_id"],
-            },
-        },
-        {
-            "name": "retire_agent",
-            "description": "[DEPRECATED] Agent retirement handled automatically via job lifecycle. Use complete_job() instead. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"agent_id": {"type": "string", "description": "Agent ID to retire"}},
-                "required": ["agent_id"],
-            },
-        },
         # Message Communication Tools
         {
             "name": "send_message",
@@ -428,45 +372,6 @@ async def handle_tools_list(
                     "updates": {"type": "object", "description": "Updates to apply"},
                 },
                 "required": ["template_name", "updates"],
-            },
-        },
-        # Context Discovery Tools
-        {
-            "name": "discover_context",
-            "description": "[DEPRECATED] Stub implementation - not needed. Thin client architecture (Handover 0088) eliminated need. Use get_agent_mission(). Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Project ID"}},
-            },
-        },
-        {
-            "name": "get_file_context",
-            "description": "[DEPRECATED] Stub implementation - not needed. Agents access files directly via Read tool or Serena MCP (read_file). Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"file_path": {"type": "string", "description": "Path to file"}},
-                "required": ["file_path"],
-            },
-        },
-        {
-            "name": "search_context",
-            "description": "[DEPRECATED] Stub implementation - not needed. Agents use IDE search (Grep) or Serena MCP (search_for_pattern) directly. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query"},
-                    "project_id": {"type": "string", "description": "Project ID"},
-                    "limit": {"type": "integer", "description": "Maximum results"},
-                },
-                "required": ["query"],
-            },
-        },
-        {
-            "name": "get_context_summary",
-            "description": "[DEPRECATED] Stub implementation - not needed. Mission from get_agent_mission() provides all necessary context. Removal: v3.2.0",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Project ID"}},
             },
         },
         # Health & Status Tools
@@ -721,12 +626,6 @@ async def handle_tools_call(
         # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
         "health_check": state.tool_accessor.health_check,
-        # Agent Management
-        "spawn_agent": state.tool_accessor.spawn_agent,
-        "list_agents": state.tool_accessor.list_agents,
-        "get_agent_status": state.tool_accessor.get_agent_status,
-        "update_agent": state.tool_accessor.update_agent,
-        "retire_agent": state.tool_accessor.retire_agent,
         # Message Communication
         "send_message": state.tool_accessor.send_message,
         "receive_messages": state.tool_accessor.receive_messages,
@@ -743,11 +642,6 @@ async def handle_tools_call(
         "get_template": state.tool_accessor.get_template,
         "create_template": state.tool_accessor.create_template,
         "update_template": state.tool_accessor.update_template,
-        # Context Discovery
-        "discover_context": state.tool_accessor.discover_context,
-        "get_file_context": state.tool_accessor.get_file_context,
-        "search_context": state.tool_accessor.search_context,
-        "get_context_summary": state.tool_accessor.get_context_summary,
         # Agent Coordination (Handover 0045)
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
         "acknowledge_job": state.tool_accessor.acknowledge_job,
