@@ -536,6 +536,42 @@ installer/
 
 ---
 
+## For Developers
+
+### Model Imports (Post-Handover 0128a)
+
+The models package has been refactored into domain-specific modules for better organization.
+
+**✅ Preferred (New Code)**:
+```python
+# Use modular imports for clarity
+from src.giljo_mcp.models.auth import User, APIKey, MCPSession
+from src.giljo_mcp.models.projects import Project, Session
+from src.giljo_mcp.models.agents import MCPAgentJob, AgentInteraction
+from src.giljo_mcp.models.products import Product, VisionDocument
+from src.giljo_mcp.models.tasks import Task, Message
+```
+
+**⚠️ Legacy (Existing Code Only)**:
+```python
+# This still works but is discouraged for new code
+from src.giljo_mcp.models import User, Project, MCPAgentJob
+```
+
+**Module Organization**:
+- `models.auth` - User authentication and API keys
+- `models.projects` - Project and session management
+- `models.agents` - Agent job orchestration
+- `models.products` - Product and vision documents
+- `models.tasks` - Task and message management
+- `models.templates` - Agent templates
+- `models.context` - Context indexing
+- `models.config` - System configuration
+
+See `src/giljo_mcp/models/__init__.py` for complete documentation.
+
+---
+
 ## Support
 
 **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
