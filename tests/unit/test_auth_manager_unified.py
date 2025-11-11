@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import Request
 
-from src.giljo_mcp.auth_legacy import AuthManager
+from src.giljo_mcp.auth_manager import AuthManager
 
 
 class TestUnifiedAuthManager:
@@ -228,6 +228,6 @@ class TestAuthManagerBackwardCompatibility:
     def test_removed_localhost_ips_constant(self, auth_manager):
         """Test that LOCALHOST_IPS constant has been removed"""
         # Should not have LOCALHOST_IPS
-        from src.giljo_mcp.auth_legacy import AuthManager
+        from src.giljo_mcp.auth_manager import AuthManager
 
         assert not hasattr(AuthManager, "LOCALHOST_IPS")
