@@ -671,6 +671,169 @@ Each handover creates:
 
 ---
 
+## 🎓 Key Lessons from 0128a Discovery
+
+### Critical Finding: Unintended Parallelism
+
+During 0128a execution, a comprehensive analysis revealed **mixed verdict** on code parallelism:
+- ✅ **Models import pattern** (backward compatibility) is GOOD - keep as-is
+- ❌ **Product vision fields** (dual systems) is CRITICAL - aggressive purge required
+
+**Source Analysis**: `handovers/0128_UNINTENDED_PARALLELISM_ANALYSIS.md`
+
+---
+
+### The Golden Rule: When Parallelism is Acceptable
+
+**TWO COMPLETE SYSTEMS** (DANGEROUS):
+> If 98% use OLD system and 2% use NEW system with NO prominent guidance
+> → **PURGE the old system aggressively**
+>
+> **Example:** Product vision fields (186 old occurrences vs 3 new occurrences)
+> - AI agents learn from pattern frequency (98% wins)
+> - "Deprecated" markers are ineffective against overwhelming usage
+> - Two complete implementations doing same thing = severe confusion
+
+**TWO IMPORT STYLES** (ACCEPTABLE):
+> If both access SAME code with CLEAR guidance favoring NEW style
+> → **KEEP both with documentation (controlled migration)**
+>
+> **Example:** Models import pattern (backward compatibility)
+> - Old: `from models import User` (96% of files)
+> - New: `from models.auth import User` (4% of files)
+> - Self-documenting guidance PRESENT in `models/__init__.py`
+> - AI agents read prominent guidance and prefer new style
+> - Controlled parallelism with explicit intent
+
+---
+
+### Why Models Import Works But Vision Fields Fail
+
+**Models Import Pattern** ✅ ACCEPTABLE:
+```python
+# models/__init__.py has PROMINENT guidance:
+"""
+✅ PREFERRED (New Code):
+    from src.giljo_mcp.models.auth import User
+⚠️  LEGACY (Existing Code Only):
+    from src.giljo_mcp.models import User
+"""
+```
+- **Risk:** LOW - AI agents see guidance first
+- **Migration:** Gradual, controlled, with clear direction
+- **Benefit:** Backward compatibility without confusion
+
+**Product Vision Fields** 🚨 CRITICAL:
+```python
+# 186 occurrences using old pattern:
+product.vision_path         # DEPRECATED but everywhere
+product.vision_document     # DEPRECATED but everywhere
+
+# 3 occurrences using new pattern:
+product.vision_documents    # NEW but invisible
+```
+- **Risk:** CRITICAL - AI agents learn OLD pattern (98% prevalence)
+- **Problem:** NO prominent guidance anywhere
+- **Impact:** New system essentially invisible to AI learning
+- **Solution:** Aggressive purge via handover 0128e
+
+---
+
+### AI Agent Learning Patterns
+
+**What Works** (Models Example):
+1. AI reads `models/__init__.py`
+2. Sees clear guidance: "✅ PREFERRED" vs "⚠️ LEGACY"
+3. Thinks: "I should use modular imports"
+4. Uses new pattern despite old pattern being more common
+5. **Result:** Effective guidance overcomes frequency
+
+**What Fails** (Vision Fields Example):
+1. AI searches codebase for "how to access product vision"
+2. Finds 186 examples using `product.vision_path`
+3. Finds 3 examples using `product.vision_documents`
+4. Sees "deprecated" marker but code works everywhere
+5. Thinks: "98% use vision_path, that must be correct"
+6. **Result:** Pattern frequency overwhelms markers
+
+---
+
+### Key Insights for Future Refactoring
+
+1. **Self-Documenting Guidance Works**
+   - The models `__init__.py` approach successfully guides both humans and AI agents
+   - Prominent, explicit guidance at point of import is effective
+
+2. **Pattern Frequency Overwhelms Markers**
+   - 98% usage of old pattern makes "deprecated" markers ineffective
+   - AI agents learn from what they see most, not from comments
+
+3. **Backward Compatibility vs Dual Systems**
+   - **Backward compatibility:** Two ways to access SAME code = OK with guidance
+   - **Dual systems:** Two complete implementations = DANGEROUS
+
+4. **Breadcrumbs Should Point, Not Preserve**
+   - Leave comments showing where code WENT
+   - DELETE the old code entirely
+   - Don't keep parallel systems "just in case"
+
+5. **When to Be Aggressive**
+   - Vision fields: 98% old, 2% new → PURGE old system completely
+   - Deprecated methods: Still callable → DELETE entirely
+   - Misleading names: Active code named "legacy" → RENAME immediately
+
+6. **When to Be Gradual**
+   - Import patterns: Same code, different paths → Document and migrate gradually
+   - Service layer: New pattern emerging → Create new, deprecate old, then remove
+   - API endpoints: External contracts → Maintain compatibility, refactor internals
+
+---
+
+### Action Items from Discovery
+
+**PRIORITY 0** - Created New Handover:
+- **0128e:** Product Vision Field Migration (CRITICAL)
+  - Migrate ALL 186 occurrences to VisionDocument relationship
+  - Complete code migration (no data migration needed - fields empty!)
+  - Add strategic breadcrumb comments
+  - Drop deprecated columns via Alembic migration
+  - **MUST execute BEFORE 0128d** (code before database)
+
+**Updated Dependencies**:
+- 0128e must complete before 0128d
+- 0128d revised scope (remove vision fields, focus on agent_id only)
+
+**Revised Timeline**:
+- 0128 series extended by 4-5 days for 0128e
+- Total 0128 duration: ~1.5-2 weeks (was 1 week)
+
+---
+
+### Recommendations for Future Orchestrators
+
+**YES - Be More Aggressive On:**
+1. ✅ Dual system parallelism (98% old vs 2% new)
+2. ✅ Deprecated method stubs (delete, don't just mark)
+3. ✅ Misleading names (rename immediately)
+4. ✅ Dead database fields (drop after code migration)
+
+**NO - Current Approach is Good For:**
+1. ✅ Backward compatibility with guidance (models import pattern)
+2. ✅ Gradual migration strategy (pragmatic and sustainable)
+3. ✅ Self-documenting code (excellent for AI agents)
+
+**Remember:** Code parallelism is only acceptable when:
+- Both paths access SAME implementation (not duplicate systems)
+- Prominent guidance clearly favors new approach
+- Migration path is explicit and documented
+- Risk of confusion is LOW (controlled parallelism)
+
+**Otherwise:** Aggressive purge is the only safe path forward.
+
+---
+
+---
+
 ## 🚨 CRITICAL PATH - IMMEDIATE ACTIONS
 
 ### Priority 0: BLOCKERS (Must Fix NOW)
