@@ -1,0 +1,418 @@
+"""
+Product-related models for GiljoAI MCP.
+
+This module contains models for products, vision documents, and vision chunks.
+Products are the top-level organizational unit in the system.
+"""
+
+from typing import Any
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from .base import Base, generate_uuid
+
+
+class Product(Base):
+    """
+    Product model - TOP-level organizational unit.
+    All projects, tasks, and agents belong to a product.
+
+    Vision Storage (Handover 0017 - Hybrid Approach):
+    - vision_path: File-based storage (existing workflow)
+    - vision_document: Inline text storage (new agentic workflow)
+    - vision_type: Source type ('file', 'inline', 'none')
+    - chunked: Has vision been chunked into mcp_context_index
+    """
+
+    __tablename__ = "products"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Handover 0084: Project path for agent export (required for copy-command interface)
+    project_path = Column(
+        String(500), nullable=True, comment="File system path to product folder (required for agent export)"
+    )
+
+    # DEPRECATED (Handover 0043): Legacy single-vision fields - Use vision_documents relationship instead
+    # These fields remain for backward compatibility but new code should use VisionDocument model
+    vision_path = Column(
+        String(500),
+        nullable=True,
+        comment="DEPRECATED: File path to vision document (use vision_documents relationship)",
+    )
+    vision_document = Column(
+        Text, nullable=True, comment="DEPRECATED: Inline vision text (use vision_documents relationship)"
+    )
+    vision_type = Column(
+        String(20), default="none", comment="DEPRECATED: Vision source (use vision_documents relationship)"
+    )
+    chunked = Column(Boolean, default=False, comment="DEPRECATED: Chunking status (use vision_documents.chunked)")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when product was soft deleted (NULL for active products)",
+    )
+    meta_data = Column(JSON, default=dict)
+
+    # Product status (Handover 0049)
+    is_active = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="Active product for token estimation and mission planning (one per tenant)",
+    )
+
+    # Rich configuration data (JSONB for PostgreSQL performance)
+    config_data = Column(
+        JSONB,
+        nullable=True,
+        default=dict,
+        comment="Rich project configuration: architecture, tech_stack, features, etc.",
+    )
+
+    # Relationships
+    projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
+
+    # Handover 0043: Multi-Vision Document Support
+    vision_documents = relationship(
+        "VisionDocument",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="VisionDocument.display_order",
+    )
+
+    __table_args__ = (
+        Index("idx_product_tenant", "tenant_key"),
+        Index("idx_product_name", "name"),
+        Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
+        Index(
+            "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
+        ),  # Soft delete support
+        CheckConstraint("vision_type IN ('file', 'inline', 'none')", name="ck_product_vision_type"),
+        # Handover 0050: Enforce single active product per tenant (defense in depth)
+        Index(
+            "idx_product_single_active_per_tenant", "tenant_key", unique=True, postgresql_where=text("is_active = true")
+        ),
+    )
+
+    @property
+    def has_config_data(self) -> bool:
+        """Check if product has config_data populated"""
+        return bool(self.config_data and len(self.config_data) > 0)
+
+    def get_config_field(self, field_path: str, default: Any = None) -> Any:
+        """
+        Get config field using dot notation (e.g., 'tech_stack.python')
+
+        Args:
+            field_path: Dot-separated path (e.g., 'architecture' or 'test_config.coverage')
+            default: Default value if field not found
+
+        Returns:
+            Field value or default
+        """
+        if not self.config_data:
+            return default
+
+        keys = field_path.split(".")
+        value = self.config_data
+
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return default
+
+        return value
+
+    # Handover 0043: Vision Documents properties
+    @property
+    def has_vision_documents(self) -> bool:
+        """Check if product has any active vision documents"""
+        if not hasattr(self, "vision_documents") or not self.vision_documents:
+            return False
+        return any(doc.is_active for doc in self.vision_documents)
+
+    @property
+    def all_documents_chunked(self) -> bool:
+        """Check if all active vision documents have been chunked"""
+        if not self.has_vision_documents:
+            return False
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        if not active_docs:
+            return False
+        return all(doc.chunked for doc in active_docs)
+
+
+class VisionDocument(Base):
+    """
+    Vision Document model - stores multiple vision documents per product.
+
+    Handover 0043: Multi-Vision Document Support - Phase 1
+    Enables products to have multiple vision documents (architecture, features, setup, etc.)
+    with chunking, versioning, and flexible storage (file-based or inline).
+
+    Storage Types:
+    - 'file': vision_path points to file, vision_document is NULL
+    - 'inline': vision_document contains text, vision_path is NULL
+    - 'hybrid': Both vision_path and vision_document populated (file + inline)
+
+    Document Types:
+    - 'vision': Primary vision document
+    - 'architecture': Architecture/design documents
+    - 'features': Feature specifications
+    - 'setup': Setup/installation guides
+    - 'api': API documentation
+    - 'testing': Test plans and strategies
+    - 'deployment': Deployment guides
+    - 'custom': User-defined document types
+
+    Multi-tenant isolation: All queries filter by tenant_key.
+    CASCADE deletes: Deleting VisionDocument deletes all chunks (via MCPContextIndex).
+    """
+
+    __tablename__ = "vision_documents"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+
+    # Document identification
+    document_name = Column(
+        String(255), nullable=False, comment="User-friendly document name (e.g., 'Product Architecture', 'API Design')"
+    )
+    document_type = Column(
+        String(50),
+        nullable=False,
+        default="vision",
+        comment="Document category: vision, architecture, features, setup, api, testing, deployment, custom",
+    )
+
+    # Storage configuration (flexible: file, inline, or hybrid)
+    vision_path = Column(
+        String(500), nullable=True, comment="File path to vision document (file-based or hybrid storage)"
+    )
+    vision_document = Column(Text, nullable=True, comment="Inline vision text (inline or hybrid storage)")
+    storage_type = Column(
+        String(20), nullable=False, default="file", comment="Storage mode: 'file', 'inline', or 'hybrid'"
+    )
+
+    # Chunking state
+    chunked = Column(
+        Boolean, default=False, nullable=False, comment="Has document been chunked into mcp_context_index for RAG"
+    )
+    chunk_count = Column(Integer, default=0, nullable=False, comment="Number of chunks created for this document")
+    total_tokens = Column(Integer, nullable=True, comment="Estimated total tokens in document")
+    file_size = Column(
+        BigInteger, nullable=True, comment="Original file size in bytes (NULL for inline content without file)"
+    )
+
+    # Versioning and integrity
+    version = Column(String(50), default="1.0.0", nullable=False, comment="Document version using semantic versioning")
+    content_hash = Column(String(64), nullable=True, comment="SHA-256 hash of document content for change detection")
+
+    # Status and display
+    is_active = Column(
+        Boolean, default=True, nullable=False, comment="Active documents are used for context; inactive are archived"
+    )
+    display_order = Column(Integer, default=0, nullable=False, comment="Display order in UI (lower numbers first)")
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Additional metadata
+    meta_data = Column(JSON, default=dict, comment="Additional metadata: author, tags, source_url, etc.")
+
+    # Relationships
+    product = relationship("Product", back_populates="vision_documents")
+    chunks = relationship(
+        "MCPContextIndex",
+        back_populates="vision_document",
+        cascade="all, delete-orphan",
+        foreign_keys="MCPContextIndex.vision_document_id",
+    )
+
+    __table_args__ = (
+        # Unique constraint: one document name per product
+        UniqueConstraint("product_id", "document_name", name="uq_vision_doc_product_name"),
+        # Multi-tenant isolation index (PRIMARY)
+        Index("idx_vision_doc_tenant", "tenant_key"),
+        Index("idx_vision_doc_product", "product_id"),
+        # Query optimization indexes
+        Index("idx_vision_doc_type", "document_type"),
+        Index("idx_vision_doc_active", "is_active"),
+        Index("idx_vision_doc_chunked", "chunked"),
+        # Composite indexes for common queries
+        Index("idx_vision_doc_tenant_product", "tenant_key", "product_id"),
+        Index("idx_vision_doc_product_type", "product_id", "document_type"),
+        Index("idx_vision_doc_product_active", "product_id", "is_active", "display_order"),
+        # Storage type constraint
+        CheckConstraint("storage_type IN ('file', 'inline', 'hybrid')", name="ck_vision_doc_storage_type"),
+        # Document type constraint
+        CheckConstraint(
+            "document_type IN ('vision', 'architecture', 'features', 'setup', 'api', 'testing', 'deployment', 'custom')",
+            name="ck_vision_doc_document_type",
+        ),
+        # Storage consistency constraints
+        CheckConstraint(
+            "(storage_type = 'file' AND vision_path IS NOT NULL) OR "
+            "(storage_type = 'inline' AND vision_document IS NOT NULL) OR "
+            "(storage_type = 'hybrid' AND vision_path IS NOT NULL AND vision_document IS NOT NULL)",
+            name="ck_vision_doc_storage_consistency",
+        ),
+        # Chunk count consistency
+        CheckConstraint("chunk_count >= 0", name="ck_vision_doc_chunk_count"),
+        CheckConstraint(
+            "(chunked = false AND chunk_count = 0) OR (chunked = true AND chunk_count > 0)",
+            name="ck_vision_doc_chunked_consistency",
+        ),
+    )
+
+    @property
+    def needs_rechunking(self) -> bool:
+        """
+        Check if document needs rechunking based on content changes.
+
+        Returns:
+            True if content_hash is None or content has changed since last chunking
+        """
+        if not self.chunked:
+            return True
+
+        if self.content_hash is None:
+            return True
+
+        # Calculate current content hash
+        import hashlib
+
+        content = ""
+
+        if self.storage_type == "file" and self.vision_path:
+            try:
+                from pathlib import Path
+
+                path = Path(self.vision_path)
+                if path.exists():
+                    content = path.read_text(encoding="utf-8")
+            except Exception:
+                return True
+        elif self.storage_type == "inline" and self.vision_document:
+            content = self.vision_document
+        elif self.storage_type == "hybrid":
+            # For hybrid, combine both sources
+            if self.vision_path:
+                try:
+                    from pathlib import Path
+
+                    path = Path(self.vision_path)
+                    if path.exists():
+                        content += path.read_text(encoding="utf-8")
+                except Exception:
+                    pass
+            if self.vision_document:
+                content += self.vision_document
+
+        current_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        return current_hash != self.content_hash
+
+    def update_content_hash(self) -> str:
+        """
+        Update content_hash based on current content.
+
+        Returns:
+            The new content hash (SHA-256)
+        """
+        import hashlib
+
+        content = ""
+
+        if self.storage_type == "file" and self.vision_path:
+            try:
+                from pathlib import Path
+
+                path = Path(self.vision_path)
+                if path.exists():
+                    content = path.read_text(encoding="utf-8")
+            except Exception:
+                pass
+        elif self.storage_type == "inline" and self.vision_document:
+            content = self.vision_document
+        elif self.storage_type == "hybrid":
+            # For hybrid, combine both sources
+            if self.vision_path:
+                try:
+                    from pathlib import Path
+
+                    path = Path(self.vision_path)
+                    if path.exists():
+                        content += path.read_text(encoding="utf-8")
+                except Exception:
+                    pass
+            if self.vision_document:
+                content += self.vision_document
+
+        self.content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        return self.content_hash
+
+
+class Vision(Base):
+    """
+    Vision model - stores product vision documents and chunks.
+    Supports large documents through chunking (50K+ tokens).
+    """
+
+    __tablename__ = "visions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    document_name = Column(String(255), nullable=False)
+    chunk_number = Column(Integer, default=1)
+    total_chunks = Column(Integer, default=1)
+    content = Column(Text, nullable=False)
+    tokens = Column(Integer, nullable=True)
+    version = Column(String(50), default="1.0.0")
+    # New fields for enhanced chunking
+    char_start = Column(Integer, nullable=True)
+    char_end = Column(Integer, nullable=True)
+    boundary_type = Column(String(20), nullable=True)  # document, section, paragraph, line, sentence, word, forced
+    keywords = Column(JSON, default=list)  # List of keywords extracted from chunk
+    headers = Column(JSON, default=list)  # List of headers found in chunk
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    meta_data = Column(JSON, default=dict)
+
+    # Relationships
+    project = relationship("Project", back_populates="visions")
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "document_name", "chunk_number", name="uq_vision_chunk"),
+        Index("idx_vision_tenant", "tenant_key"),
+        Index("idx_vision_project", "project_id"),
+        Index("idx_vision_document", "document_name"),
+    )
