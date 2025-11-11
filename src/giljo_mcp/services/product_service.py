@@ -26,6 +26,7 @@ from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Product, Project, Task, VisionDocument
@@ -233,7 +234,13 @@ class ProductService:
                 if not include_inactive:
                     conditions.append(Product.is_active == True)
 
-                stmt = select(Product).where(and_(*conditions)).order_by(Product.created_at.desc())
+                # Eagerly load vision_documents to avoid lazy loading in property access
+                stmt = (
+                    select(Product)
+                    .where(and_(*conditions))
+                    .options(selectinload(Product.vision_documents))
+                    .order_by(Product.created_at.desc())
+                )
                 result = await session.execute(stmt)
                 products = result.scalars().all()
 
@@ -932,12 +939,10 @@ class ProductService:
         unresolved_tasks = unresolved_result.scalar() or 0
 
         # Count vision documents
+        # Note: VisionDocument doesn't support soft delete (no deleted_at field)
         vision_result = await session.execute(
             select(func.count(VisionDocument.id)).where(
-                and_(
-                    VisionDocument.product_id == product_id,
-                    VisionDocument.deleted_at.is_(None)
-                )
+                VisionDocument.product_id == product_id
             )
         )
         vision_documents_count = vision_result.scalar() or 0

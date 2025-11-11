@@ -34,7 +34,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0128e_vision_fields'
-down_revision = None  # TODO: Update with actual previous revision ID
+down_revision = '0116b_drop_agents'  # Handover 0116 final cleanup
 branch_labels = None
 depends_on = None
 

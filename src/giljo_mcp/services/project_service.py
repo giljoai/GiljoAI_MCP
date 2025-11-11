@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -58,7 +58,11 @@ class ProjectService:
 
         Args:
             db_manager: Database manager for async database operations
-            tenant_manager: Tenant manager for multi-tenancy support
+            tenant_manager: Tenant manager for multi-tenancy support (provides global context access)
+
+        Note:
+            This service uses TenantManager.get_current_tenant() to retrieve tenant context.
+            The tenant context is set by the get_tenant_key() dependency in the auth flow.
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -144,21 +148,23 @@ class ProjectService:
 
     async def get_project(self, project_id: str) -> dict[str, Any]:
         """
-        Get a specific project by ID.
+        Get a specific project by ID with associated agent jobs.
 
         Args:
             project_id: Project UUID
 
         Returns:
-            Dict with success status and project details or error
+            Dict with success status and project details (including agents) or error
 
         Example:
             >>> result = await service.get_project("abc-123")
             >>> if result["success"]:
             ...     print(result["project"]["name"])
+            ...     print(f"Agents: {len(result['project']['agents'])}")
         """
         try:
             async with self.db_manager.get_session_async() as session:
+                # Get project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
                 project = result.scalar_one_or_none()
@@ -168,6 +174,31 @@ class ProjectService:
                         "success": False,
                         "error": f"Project {project_id} not found"
                     }
+
+                # Get agent jobs for this project (following get_active_project pattern)
+                from src.giljo_mcp.models import MCPAgentJob
+                agent_query = select(MCPAgentJob).where(
+                    MCPAgentJob.project_id == project_id
+                ).order_by(MCPAgentJob.created_at)
+                agent_result = await session.execute(agent_query)
+                agents = agent_result.scalars().all()
+
+                # Convert agents to simple dicts (matching AgentSimple schema)
+                agent_dicts = [
+                    {
+                        "id": agent.job_id,
+                        "job_id": agent.job_id,
+                        "agent_type": agent.agent_type,
+                        "agent_name": agent.agent_name,
+                        "status": agent.status,
+                        "thin_client": True,
+                    }
+                    for agent in agents
+                ]
+
+                self._logger.info(
+                    f"Retrieved project {project.name} with {len(agent_dicts)} agents"
+                )
 
                 return {
                     "success": True,
@@ -185,11 +216,110 @@ class ProjectService:
                         "created_at": project.created_at.isoformat() if project.created_at else None,
                         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
                         "completed_at": project.completed_at.isoformat() if project.completed_at else None,
+                        "agents": agent_dicts,  # Production-grade: Include agents in response
+                        "agent_count": len(agent_dicts),
                     },
                 }
 
         except Exception as e:
             self._logger.exception(f"Failed to get project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_active_project(self) -> dict[str, Any]:
+        """
+        Get the currently active project for the current tenant.
+
+        Returns the active project (status='active') or None if no project is active.
+
+        Follows Single Active Project architecture (Handover 0050b):
+        - Only ONE project can be active per product at any time
+        - Database enforces this via partial unique index
+
+        Returns:
+            Dict with success status and project details (or None if no active project)
+
+        Example:
+            >>> result = await service.get_active_project()
+            >>> if result["success"] and result["project"]:
+            ...     print(f"Active project: {result['project']['name']}")
+        """
+        try:
+            # Get current tenant from context
+            tenant_key = self.tenant_manager.get_current_tenant()
+
+            # DEBUG: Log tenant context retrieval
+            self._logger.debug(f"[get_active_project] Retrieved tenant_key from context: {tenant_key}")
+
+            if not tenant_key:
+                self._logger.error("[get_active_project] No tenant context available!")
+                return {
+                    "success": False,
+                    "error": "No tenant context available"
+                }
+
+            async with self.db_manager.get_session_async() as session:
+                # Query for active project (tenant-isolated)
+                from src.giljo_mcp.models import MCPAgentJob, Message
+
+                stmt = (
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.tenant_key == tenant_key,
+                            Project.status == "active"
+                        )
+                    )
+                    .limit(1)
+                )
+
+                result = await session.execute(stmt)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    self._logger.info(f"No active project found for tenant {tenant_key}")
+                    return {
+                        "success": True,
+                        "project": None
+                    }
+
+                # Get agent job and message counts
+                agent_job_stmt = select(func.count(MCPAgentJob.id)).where(
+                    MCPAgentJob.project_id == project.id
+                )
+                agent_count_result = await session.execute(agent_job_stmt)
+                agent_count = agent_count_result.scalar() or 0
+
+                message_stmt = select(func.count(Message.id)).where(
+                    Message.project_id == project.id
+                )
+                message_count_result = await session.execute(message_stmt)
+                message_count = message_count_result.scalar() or 0
+
+                self._logger.info(f"Found active project: {project.name} (ID: {project.id})")
+
+                return {
+                    "success": True,
+                    "project": {
+                        "id": str(project.id),
+                        "alias": project.alias or "",
+                        "name": project.name,
+                        "mission": project.mission or "",
+                        "description": project.description,
+                        "status": project.status,
+                        "product_id": project.product_id,
+                        "created_at": project.created_at.isoformat() if project.created_at else None,
+                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
+                        "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                        "context_budget": project.context_budget or 150000,
+                        "context_used": project.context_used or 0,
+                        "agent_count": agent_count,
+                        "message_count": message_count,
+                    },
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to get active project: {e}")
             return {"success": False, "error": str(e)}
 
     async def list_projects(
