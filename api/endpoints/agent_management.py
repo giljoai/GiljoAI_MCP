@@ -144,10 +144,41 @@ async def upload_vision_document(
                 chunks_created += 1
                 total_tokens += chunk["tokens"]
 
-            # Update Product model to mark as chunked
-            product.vision_document = content
-            product.vision_type = "inline"
-            product.chunked = True
+            # Create or update VisionDocument for this product
+            # Check if product already has a vision document
+            from sqlalchemy.orm import selectinload
+            from src.giljo_mcp.models.products import VisionDocument
+
+            stmt = select(VisionDocument).where(
+                VisionDocument.product_id == product_id,
+                VisionDocument.document_type == "vision"
+            ).options(selectinload(VisionDocument.product))
+            result = await db.execute(stmt)
+            vision_doc = result.scalar_one_or_none()
+
+            if vision_doc:
+                # Update existing vision document
+                vision_doc.vision_document = content
+                vision_doc.storage_type = "inline"
+                vision_doc.chunked = True
+                vision_doc.chunk_count = chunks_created
+                vision_doc.total_tokens = total_tokens
+            else:
+                # Create new vision document
+                vision_doc = VisionDocument(
+                    tenant_key=tenant_key,
+                    product_id=product_id,
+                    document_name="Primary Vision",
+                    document_type="vision",
+                    vision_document=content,
+                    storage_type="inline",
+                    chunked=True,
+                    chunk_count=chunks_created,
+                    total_tokens=total_tokens,
+                    is_active=True,
+                    display_order=0
+                )
+                db.add(vision_doc)
 
             await db.commit()
 

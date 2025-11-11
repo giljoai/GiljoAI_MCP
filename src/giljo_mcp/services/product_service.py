@@ -181,7 +181,7 @@ class ProductService:
                     "id": str(product.id),
                     "name": product.name,
                     "description": product.description,
-                    "vision_path": product.vision_path,
+                    "vision_path": product.primary_vision_path,  # Using new VisionDocument relationship
                     "project_path": product.project_path,
                     "is_active": product.is_active,
                     "config_data": product.config_data,
@@ -243,7 +243,7 @@ class ProductService:
                         "id": str(product.id),
                         "name": product.name,
                         "description": product.description,
-                        "vision_path": product.vision_path,
+                        "vision_path": product.primary_vision_path,  # Using new VisionDocument relationship
                         "project_path": product.project_path,
                         "is_active": product.is_active,
                         "config_data": product.config_data,
