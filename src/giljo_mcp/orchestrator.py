@@ -3,6 +3,14 @@ ProjectOrchestrator - Core orchestration engine for GiljoAI MCP.
 
 Manages project lifecycle, agent spawning, handoffs, context tracking,
 and multi-project concurrency with tenant isolation.
+
+⚠️  IMPORTANT - Product Vision Field Migration (Handover 0128e):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This file has been migrated to use Product.vision_documents relationship.
+DO NOT use deprecated Product fields (vision_path, vision_document, vision_type, chunked).
+✅ Use: product.primary_vision_text, product.primary_vision_path, product.vision_is_chunked
+See: src/giljo_mcp/models/products.py for helper properties
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import asyncio
@@ -1923,25 +1931,27 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                     f"Activate the product before creating agent missions."
                 )
 
-            # Get vision content (inline or file-based)
-            if product.vision_type == "inline":
-                vision_content = product.vision_document
-            elif product.vision_type == "file" and product.vision_path:
-                vision_content = Path(product.vision_path).read_text(encoding="utf-8")
+            # Get vision content from VisionDocument relationship
+            storage_type = product.primary_vision_storage_type
+            if storage_type == "inline":
+                vision_content = product.primary_vision_text
+            elif storage_type == "file" and product.primary_vision_path:
+                vision_content = Path(product.primary_vision_path).read_text(encoding="utf-8")
             else:
                 raise ValueError(f"Product {product_id} has no vision document")
 
-        # 2. Chunk vision if needed
-        if not product.chunked:
+        # 2. Chunk vision if needed (using new vision_documents relationship)
+        if not product.vision_is_chunked:
             logger.info(f"Chunking vision document for product {product_id}")
             chunker = VisionDocumentChunker(target_chunk_size=2000)
             chunks = chunker.chunk_document(vision_content, product_id=product_id)
 
-            # Store chunks in database (via ContextRepository or direct insert)
-            # For now, just mark as chunked
+            # Store chunks in database and mark primary vision document as chunked
             async with self.db_manager.get_session_async() as session:
                 db_product = await session.get(Product, product_id)
-                db_product.chunked = True
+                # Mark the first vision document as chunked
+                if db_product.vision_documents:
+                    db_product.vision_documents[0].chunked = True
                 await session.commit()
 
             logger.info(f"Chunked vision into {len(chunks)} chunks")

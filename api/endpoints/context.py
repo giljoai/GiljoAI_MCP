@@ -207,26 +207,34 @@ async def chunk_vision_document(
 
             content = None
             original_size = 0
+            vision_doc_id = None
 
-            if product.vision_document:
-                content = product.vision_document
+            # Get content from VisionDocument relationship
+            if product.primary_vision_text:
+                content = product.primary_vision_text
                 original_size = len(content)
-            elif product.vision_path:
+                # Get the vision document ID for later update
+                if product.vision_documents:
+                    vision_doc_id = product.vision_documents[0].id
+            elif product.primary_vision_path:
                 from pathlib import Path
 
                 import aiofiles
 
-                vision_path = Path(product.vision_path)
+                vision_path = Path(product.primary_vision_path)
                 if not vision_path.exists():
                     raise HTTPException(status_code=404, detail="Vision document file not found")
 
                 async with aiofiles.open(vision_path, encoding="utf-8") as f:
                     content = await f.read()
                     original_size = len(content)
+                # Get the vision document ID for later update
+                if product.vision_documents:
+                    vision_doc_id = product.vision_documents[0].id
             else:
                 raise HTTPException(status_code=404, detail="No vision document available for this product")
 
-            if product.chunked and not request.force_rechunk:
+            if product.vision_is_chunked and not request.force_rechunk:
                 return ChunkVisionResponse(
                     success=False,
                     product_id=product_id,
@@ -240,7 +248,15 @@ async def chunk_vision_document(
             result = cms.process_vision_document(tenant_key, product_id, content)
 
             if result["success"]:
-                product.chunked = True
+                # Mark vision document as chunked
+                if vision_doc_id:
+                    from src.giljo_mcp.models.products import VisionDocument
+                    stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
+                    vision_result = await db.execute(stmt)
+                    vision_doc = vision_result.scalar_one_or_none()
+                    if vision_doc:
+                        vision_doc.chunked = True
+                        vision_doc.chunk_count = result["chunks_created"]
                 await db.commit()
 
                 return ChunkVisionResponse(
