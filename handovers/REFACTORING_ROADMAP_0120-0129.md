@@ -610,12 +610,12 @@ Each handover creates:
 | **0127a-2** | **Complete Test Refactoring** | **High Priority** | 1-2 days | - | **P1** |
 | **0127b** | **Create ProductService** | **High Priority** | 1-2 days | - | **P1** |
 | **0127c** | **Deep Deprecated Code Removal** | **High Priority** | 2-3 days | - | **P1** |
-| **0127d** | **Migrate Utility Functions** | **Medium** | 1-2 days | - | **P2** |
+| **0127d** | **Migrate Utility Functions** | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
 | 0128 | **Backend Deep Cleanup** | **Expanded** | 1 week | - | **P1** |
 | 0128a | Split models.py (2,271 lines) | Planning | 2-3 days | - | P1 |
-| 0128b | Remove auth_legacy.py | Planning | 1 day | - | P1 |
-| 0128c | Remove prompt_generator.py | Planning | 1 day | - | P1 |
-| 0128d | Clean deprecated DB fields | Planning | 1-2 days | - | P2 |
+| 0128b | Rename auth_legacy.py → auth_manager.py | Planning | 1 day | - | P1 |
+| 0128c | Remove deprecated method stubs (~39 methods) | Planning | 1 day | - | P1 |
+| 0128d | Clean deprecated DB fields (10 fields) | Planning | 1-2 days | - | P2 |
 | 0129 | **Integration Testing & Performance** | **Expanded** | 1 week | - | **P0** |
 | 0129a | Fix all broken tests | Planning | 2-3 days | - | P0 |
 | 0129b | Performance benchmarks | Planning | 1-2 days | - | P1 |
@@ -645,7 +645,16 @@ Each handover creates:
 - ✅ **Configuration Updated**: .gitignore now includes *.backup pattern
 - ✅ **Validation Complete**: All syntax checks pass, modular structure intact
 - ✅ **Zero Breaking Changes**: 100% backward compatible (no functional changes)
-- ⚠️ **Known Issues Documented**: Some utility functions not migrated (purge_expired_deleted_projects, validate_active_agent_limit, validate_project_path) - to be addressed in future functional handover
+
+**0127d Final Results:**
+- ✅ **ALL UTILITY FUNCTIONS MIGRATED**: 3 functions successfully moved to service layer
+- ✅ **ProductService**: Added validate_project_path() static method (54 lines)
+- ✅ **ProjectService**: Added purge_expired_deleted_projects() instance method (117 lines)
+- ✅ **TemplateService**: Added validate_active_agent_limit() instance method (100 lines)
+- ✅ **Test Files Updated**: 4 test files updated to use service pattern
+- ✅ **Service Layer Strengthened**: Clear sections for Validation, Maintenance, Business Logic
+- 🔍 **Discovery**: ContextService contains 5 additional deprecated methods (added to 0128c scope)
+- ✅ **Total Code Impact**: 271 lines added to services, all syntax validated
 
 **Update this table after each handover completion!**
 
@@ -719,12 +728,28 @@ Each handover creates:
   - `models/__init__.py` - Re-export all for compatibility
 - **Risk**: MEDIUM - must maintain all imports
 
-**0128b & 0128c**: Remove auth_legacy.py and prompt_generator.py (covered in 0127c)
+**0128b: Rename auth_legacy.py** (1 day)
+- **Problem**: Active authentication system with misleading name (it's NOT legacy!)
+- **Fix**: Rename auth_legacy.py → auth_manager.py
+- Update all imports (6 files currently import it)
+- **Risk**: LOW - simple find-and-replace operation
+
+**0128c: Remove Deprecated Method Stubs** (1 day)
+- **Problem**: ~39 deprecated methods returning error messages
+- **Fix**: Remove entirely (not just mark deprecated)
+  - 19 methods from tool_accessor.py
+  - 15 method references from context_service.py
+  - 5 methods from ContextService (discovered in 0127d)
+- **Risk**: LOW - verify no usage first with grep
 
 **0128d: Clean Deprecated DB Fields** (1-2 days)
-- Create Alembic migration to drop deprecated columns
+- **Problem**: 10 deprecated database fields still present
+- **Fix**: Create Alembic migration to drop:
+  - Product: 4 vision fields (vision_path, vision_document, vision_type, chunked)
+  - 6 agent_id foreign keys (marked deprecated in Handover 0116)
 - Test migration on dev database first
 - Keep backup of database before migration
+- **Risk**: MEDIUM - database changes require care
 
 ### Priority 2: FRONTEND (After Backend Stable)
 
