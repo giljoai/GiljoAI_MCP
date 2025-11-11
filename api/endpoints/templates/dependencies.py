@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.template_service import TemplateService
-from api import state
 
 
 def get_template_service(
@@ -27,6 +26,9 @@ def get_template_service(
     Returns:
         TemplateService instance
     """
+    # Import state lazily to avoid circular import
+    from api.app import state
+    
     return TemplateService(
         db_manager=state.db_manager,
         tenant_manager=state.tenant_manager
