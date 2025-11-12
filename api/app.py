@@ -107,6 +107,8 @@ try:
         AuthMiddleware,
         RateLimitMiddleware,
         SecurityHeadersMiddleware,
+        InputValidationMiddleware,
+        # CSRFProtectionMiddleware,  # Optional - requires frontend integration
     )
     from .websocket import WebSocketManager
 
@@ -734,10 +736,22 @@ def create_app() -> FastAPI:
         app.add_middleware(RateLimitMiddleware, requests_per_minute=rate_limit)
 
     # Add security headers middleware (executes 3rd - adds security headers to all responses)
+    # Handover 0129c: Enhanced security headers (HSTS, CSP, X-Frame-Options, etc.)
     app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add input validation middleware (executes 3rd - validates query params, blocks malicious input)
+    # Handover 0129c: Protection against SQL injection, XSS, path traversal
+    app.add_middleware(InputValidationMiddleware, strict_mode=False)
 
     # Add API metrics middleware (executes 4th - counts API and MCP calls)
     app.add_middleware(APIMetricsMiddleware)
+
+    # CSRF protection middleware (optional - requires frontend integration)
+    # Handover 0129c: Uncomment when frontend is ready to send X-CSRF-Token headers
+    # app.add_middleware(
+    #     CSRFProtectionMiddleware,
+    #     exempt_paths=["/api/auth/login", "/api/auth/signup", "/api/health", "/api/metrics"]
+    # )
 
     # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 
