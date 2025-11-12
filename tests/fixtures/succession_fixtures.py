@@ -31,7 +31,7 @@ class SuccessionTestData:
     ) -> dict[str, Any]:
         """Generate orchestrator job data for testing"""
         return {
-            "job_id": f"orch-{uuid.uuid4()}",
+            "job_id": str(uuid.uuid4()),  # UUID is exactly 36 chars, no prefix
             "tenant_key": tenant_key,
             "project_id": project_id,
             "agent_type": "orchestrator",
@@ -55,8 +55,8 @@ class SuccessionTestData:
         return {
             "project_status": "60% complete",
             "active_agents": [
-                {"job_id": f"agent-{uuid.uuid4()}", "type": "frontend-dev", "status": "working"},
-                {"job_id": f"agent-{uuid.uuid4()}", "type": "backend-api", "status": "waiting"},
+                {"job_id": str(uuid.uuid4()), "type": "frontend-dev", "status": "working"},
+                {"job_id": str(uuid.uuid4()), "type": "backend-api", "status": "waiting"},
             ],
             "completed_phases": ["requirements", "architecture", "database-schema"],
             "pending_decisions": [
