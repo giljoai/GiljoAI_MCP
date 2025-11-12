@@ -6,7 +6,7 @@
       :prepend-icon="icon"
       variant="tonal"
       size="small"
-      :class="['connection-status', { reconnecting: wsStore.connectionState === 'reconnecting' }]"
+      :class="['connection-status', { reconnecting: wsStore.connectionStatus === 'reconnecting' }]"
       @click="showDebugPanel = !showDebugPanel"
       style="cursor: pointer"
     >
@@ -233,7 +233,7 @@ const refreshInterval = ref(null)
 
 // Computed
 const statusText = computed(() => {
-  switch (wsStore.connectionState) {
+  switch (wsStore.connectionStatus) {
     case 'connected':
       return 'Connected'
     case 'connecting':
@@ -248,7 +248,7 @@ const statusText = computed(() => {
 })
 
 const chipColor = computed(() => {
-  switch (wsStore.connectionState) {
+  switch (wsStore.connectionStatus) {
     case 'connected':
       return 'success'
     case 'connecting':
@@ -262,7 +262,7 @@ const chipColor = computed(() => {
 })
 
 const icon = computed(() => {
-  switch (wsStore.connectionState) {
+  switch (wsStore.connectionStatus) {
     case 'connected':
       return 'mdi-wifi'
     case 'connecting':
@@ -292,7 +292,7 @@ const maxReconnectAttempts = computed(() => wsStore.maxReconnectAttempts)
 const connectionError = computed(() => wsStore.connectionError)
 const messageQueueSize = computed(() => wsStore.messageQueueSize)
 const clientId = computed(() => wsStore.clientId)
-const connectionState = computed(() => wsStore.connectionState)
+const connectionState = computed(() => wsStore.connectionStatus)
 const subscriptions = computed(() => wsStore.subscriptions)
 
 const wsUrl = computed(() => {
