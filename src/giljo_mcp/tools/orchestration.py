@@ -369,28 +369,42 @@ Begin by fetching your mission.
                 prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
                 mission_tokens = len(mission) // 4  # ~2000 tokens
 
-                # Broadcast agent creation via EventBus (Handover 0111 Issue #1)
+                # Broadcast agent creation via HTTP bridge (Handover 0111 Issue #1 - FIXED)
+                # MCP tools run in separate process, must use HTTP bridge for WebSocket events
                 try:
-                    from api.app import state
+                    import httpx
 
-                    event_bus = getattr(state, "event_bus", None)
+                    # Use HTTP bridge to emit WebSocket event (cross-process communication)
+                    async with httpx.AsyncClient() as client:
+                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
 
-                    if event_bus:
-                        await event_bus.publish("agent:created", {
-                            "tenant_key": tenant_key,
-                            "project_id": project_id,
-                            "agent_id": agent_job_id,
-                            "agent_job_id": agent_job_id,
-                            "agent_type": agent_type,
-                            "agent_name": agent_name,
-                            "status": "pending",
-                            "thin_client": True,
-                            "prompt_tokens": prompt_tokens,
-                            "mission_tokens": mission_tokens,
-                        })
-                        logger.info(f"[EVENT BUS] Agent spawned: {agent_name} ({agent_type})")
-                except Exception as event_error:
-                    logger.warning(f"[EVENT BUS] Failed to publish agent:created: {event_error}")
+                        response = await client.post(
+                            bridge_url,
+                            json={
+                                "event_type": "agent:created",
+                                "tenant_key": tenant_key,
+                                "data": {
+                                    "project_id": project_id,
+                                    "agent_id": agent_job_id,
+                                    "agent_job_id": agent_job_id,
+                                    "agent_type": agent_type,
+                                    "agent_name": agent_name,
+                                    "status": "pending",
+                                    "thin_client": True,
+                                    "prompt_tokens": prompt_tokens,
+                                    "mission_tokens": mission_tokens,
+                                }
+                            },
+                            timeout=5.0  # 5 second timeout
+                        )
+
+                        if response.status_code == 200:
+                            logger.info(f"[HTTP BRIDGE] Agent spawned broadcast sent: {agent_name} ({agent_type})")
+                        else:
+                            logger.warning(f"[HTTP BRIDGE] Broadcast failed with status {response.status_code}")
+
+                except Exception as bridge_error:
+                    logger.warning(f"[HTTP BRIDGE] Failed to broadcast agent:created: {bridge_error}")
 
                 return {
                     "success": True,
