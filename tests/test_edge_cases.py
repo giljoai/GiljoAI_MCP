@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Configuration, Job, Message, Project, Session, Task, Vision
+from src.giljo_mcp.models import MCPAgentJob, Configuration, Job, Message, Project, Session, Task, Vision
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
