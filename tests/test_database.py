@@ -18,7 +18,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Message, Project, Task, Vision
+from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task, Vision
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
