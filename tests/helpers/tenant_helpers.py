@@ -17,7 +17,7 @@ from typing import Any, Callable, Optional
 from sqlalchemy.orm import Session
 
 from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import Agent, Message, Project, Task
+from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
 
 
 @dataclass
@@ -101,14 +101,14 @@ class TenantIsolationHelper:
                     )
 
                 if test_all_models:
-                    # Test Agent isolation
-                    if not self._test_model_isolation(session, Agent, tenant1_key, tenant2_key):
+                    # Test MCPAgentJob isolation
+                    if not self._test_model_isolation(session, MCPAgentJob, tenant1_key, tenant2_key):
                         return IsolationTestResult(
                             passed=False,
                             tenant1_key=tenant1_key,
                             tenant2_key=tenant2_key,
-                            test_type="agent_isolation",
-                            message="Agent isolation failed",
+                            test_type="agent_job_isolation",
+                            message="MCPAgentJob isolation failed",
                         )
 
                     # Test Message isolation
@@ -464,38 +464,50 @@ class PerformanceHelper:
         }
 
     def _create_entity(self, tenant_key: str) -> None:
-        """Create a random entity for load testing."""
+        """
+        Create a random entity for load testing.
+
+        Migration Note (0129a): Replaced Agent with MCPAgentJob.
+        """
         with self.db_manager.get_session() as session:
             project = session.query(Project).filter_by(tenant_key=tenant_key).first()
 
             if project:
-                agent = Agent(
-                    id=str(uuid.uuid4()),
+                agent_job = MCPAgentJob(
+                    job_id=str(uuid.uuid4()),
                     tenant_key=tenant_key,
                     project_id=project.id,
-                    name=f"load_test_agent_{uuid.uuid4().hex[:8]}",
-                    role="tester",
-                    status="active",
-                    context_used=0,
-                    max_context=100000,
+                    agent_name=f"load_test_agent_{uuid.uuid4().hex[:8]}",
+                    agent_type="tester",
+                    mission="Load testing mission",
+                    status="pending",
                 )
-                session.add(agent)
+                session.add(agent_job)
                 session.commit()
 
     def _query_entities(self, tenant_key: str) -> None:
-        """Query entities for load testing."""
+        """
+        Query entities for load testing.
+
+        Migration Note (0129a): Replaced Agent with MCPAgentJob.
+        """
         with self.db_manager.get_session() as session:
-            session.query(Agent).filter_by(tenant_key=tenant_key).limit(10).all()
+            session.query(MCPAgentJob).filter_by(tenant_key=tenant_key).limit(10).all()
 
             session.query(Message).filter_by(tenant_key=tenant_key).limit(10).all()
 
     def _update_entity(self, tenant_key: str) -> None:
-        """Update a random entity for load testing."""
-        with self.db_manager.get_session() as session:
-            agent = session.query(Agent).filter_by(tenant_key=tenant_key).first()
+        """
+        Update a random entity for load testing.
 
-            if agent:
-                agent.context_used = random.randint(0, 100000)
+        Migration Note (0129a): Replaced Agent with MCPAgentJob.
+        """
+        with self.db_manager.get_session() as session:
+            agent_job = session.query(MCPAgentJob).filter_by(tenant_key=tenant_key).first()
+
+            if agent_job:
+                # Update mission as a proxy for context usage
+                agent_job.mission = f"Updated mission {uuid.uuid4().hex[:8]}"
                 session.commit()
 
     def get_metrics_summary(self) -> dict[str, Any]:

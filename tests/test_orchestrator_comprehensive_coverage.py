@@ -203,9 +203,9 @@ class TestOrchestratorComprehensiveCoverage:
         async with orchestrator.db_manager.get_session_async() as session:
             from sqlalchemy import update
 
-            from src.giljo_mcp.models import Agent
+            from src.giljo_mcp.models import MCPAgentJob
 
-            stmt = update(Agent).where(Agent.id == agent.id).values(status="error")
+            stmt = update(MCPAgentJob).where(MCPAgentJob.job_id == agent.job_id).values(status="error")
             await session.execute(stmt)
             await session.commit()
 

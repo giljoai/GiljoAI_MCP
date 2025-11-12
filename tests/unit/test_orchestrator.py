@@ -14,7 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.enums import AgentRole, AgentStatus, ContextStatus, ProjectType
-from src.giljo_mcp.models import Agent, Project
+from src.giljo_mcp.models import MCPAgentJob, Project
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
 from tests.fixtures.base_fixtures import TestData
 from tests.fixtures.base_test import BaseAsyncTest
