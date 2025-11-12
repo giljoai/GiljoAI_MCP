@@ -613,10 +613,10 @@ Each handover creates:
 | **0127d** | **Migrate Utility Functions** | **✅ COMPLETE** | 1 day | 2025-11-10 | - |
 | 0128 | **Backend Deep Cleanup** | **Expanded + 0128e** | 1.5-2 weeks | - | **P1** |
 | 0128a | Split models.py (2,271 lines) | **✅ COMPLETE** | 2-3 days | 2025-11-11 | - |
-| 0128b | Rename auth_legacy.py → auth_manager.py | Planning | 1 day | - | P1 |
-| **0128e** | **Product Vision Field Migration (CRITICAL)** | **Planning** | 4-5 days | - | **P0** |
-| 0128c | Remove deprecated method stubs (~39 methods) | Planning | 1 day | - | P1 |
-| 0128d | Clean deprecated DB fields (6 agent_id FKs) | Planning | 1 day | - | P2 |
+| 0128b | Rename auth_legacy.py → auth_manager.py | **✅ COMPLETE** | 1 day | 2025-11-11 | - |
+| **0128e** | **Product Vision Field Migration** | **✅ COMPLETE** | 4-5 days | 2025-11-11 | - |
+| 0128c | Remove deprecated method stubs (~39 methods) | **✅ COMPLETE** | 1 day | 2025-11-11 | - |
+| 0128d | Drop deprecated agent_id FKs (6 columns) | **✅ COMPLETE** | 1 hour | 2025-11-11 | - |
 | 0129 | **Integration Testing & Performance** | **Expanded** | 1 week | - | **P0** |
 | 0129a | Fix all broken tests | Planning | 2-3 days | - | P0 |
 | 0129b | Performance benchmarks | Planning | 1-2 days | - | P1 |

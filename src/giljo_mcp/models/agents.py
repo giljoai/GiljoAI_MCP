@@ -207,7 +207,6 @@ class AgentInteraction(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    parent_agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     sub_agent_name = Column(String(100), nullable=False)
     interaction_type = Column(String(20), nullable=False)  # SPAWN, COMPLETE, ERROR
     mission = Column(Text, nullable=False)
@@ -227,7 +226,6 @@ class AgentInteraction(Base):
     __table_args__ = (
         Index("idx_interaction_tenant", "tenant_key"),
         Index("idx_interaction_project", "project_id"),
-        Index("idx_interaction_parent", "parent_agent_id"),
         Index("idx_interaction_type", "interaction_type"),
         Index("idx_interaction_created", "created_at"),
         CheckConstraint(
@@ -247,7 +245,6 @@ class Job(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
-    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed, made nullable (Handover 0116)
     job_type = Column(String(100), nullable=False)
     status = Column(String(50), default="active")  # active, completed, cancelled
     tasks = Column(JSON, default=list)  # List of task descriptions
@@ -261,6 +258,5 @@ class Job(Base):
 
     __table_args__ = (
         Index("idx_job_tenant", "tenant_key"),
-        Index("idx_job_agent", "agent_id"),
         Index("idx_job_status", "status"),
     )
