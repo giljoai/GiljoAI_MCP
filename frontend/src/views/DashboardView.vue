@@ -374,7 +374,7 @@ import { useProjectStore } from '@/stores/projects'
 import { useTaskStore } from '@/stores/tasks'
 
 import { formatDistanceToNow } from 'date-fns'
-import websocketService from '@/services/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 import api from '@/services/api'
 import setupService from '@/services/setupService'
 
@@ -765,7 +765,8 @@ onMounted(async () => {
   fetchInterval = setInterval(fetchCallCounts, 5000)
 
   // Set up WebSocket listeners for real-time updates
-  const unsubscribe = websocketService.onMessage('stats:update', handleRealtimeUpdate)
+  const wsStore = useWebSocketStore()
+  const unsubscribe = wsStore.on('stats:update', handleRealtimeUpdate)
 
   onUnmounted(() => {
     unsubscribe()

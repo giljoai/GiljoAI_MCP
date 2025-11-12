@@ -259,7 +259,7 @@ import '@vue-flow/core/dist/theme-default.css'
 
 import { useAgentFlowStore } from '@/stores/agentFlow'
 import { useAgentStore } from '@/stores/agents'
-import flowWebSocketService from '@/services/flowWebSocket'
+import { useWebSocketStore } from '@/stores/websocket'
 
 import AgentNode from './AgentNode.vue'
 import NodeDetailPanel from './panels/NodeDetailPanel.vue'
@@ -434,14 +434,16 @@ async function initializeFlow() {
     // Initialize flow from agents
     flowStore.initializeFromAgents()
 
-    // Initialize WebSocket service
-    flowWebSocketService.initialize()
+    // Initialize WebSocket store
+    const wsStore = useWebSocketStore()
     if (props.projectId) {
-      flowWebSocketService.subscribeToProject(props.projectId)
+      wsStore.subscribe(`project:${props.projectId}`)
     }
 
     // Subscribe to message flow events
-    flowWebSocketService.subscribeToMessageFlowEvents()
+    wsStore.on('message:flow', (data) => {
+      console.log('Flow message:', data)
+    })
 
     emit('flow-ready')
   } catch (error) {
@@ -458,7 +460,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (props.projectId) {
-    flowWebSocketService.unsubscribeFromProject(props.projectId)
+    const wsStore = useWebSocketStore()
+    wsStore.unsubscribe(`project:${props.projectId}`)
   }
 })
 </script>

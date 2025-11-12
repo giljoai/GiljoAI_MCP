@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
-import websocketService from '@/services/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 
 export const useMessageStore = defineStore('messages', () => {
   // State
@@ -251,13 +251,15 @@ export const useMessageStore = defineStore('messages', () => {
 
   // Initialize WebSocket listeners for real-time message updates
   function initializeWebSocketListeners() {
+    const wsStore = useWebSocketStore()
+
     // Listen for message updates
-    websocketService.onMessage('message', (data) => {
+    wsStore.on('message', (data) => {
       handleRealtimeUpdate(data.data)
     })
 
     // Listen for entity updates (messages)
-    websocketService.onMessage('entity_update', (data) => {
+    wsStore.on('entity_update', (data) => {
       if (data.entity_type === 'message') {
         handleRealtimeUpdate(data.data)
       }
