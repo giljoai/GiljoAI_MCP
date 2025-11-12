@@ -65,7 +65,6 @@ def test_acknowledge_message_array(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-ack",
                 project_id="test-project-ack",
-                from_agent_id="sender",
                 to_agents=["agent1", "agent2"],
                 message_type="direct",
                 content="Test acknowledgment arrays",
@@ -148,7 +147,6 @@ def test_complete_message_with_notes(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-complete",
                 project_id="test-project-complete",
-                from_agent_id="sender",
                 to_agents=["agent1"],
                 message_type="direct",
                 content="Test completion with notes",
@@ -216,7 +214,6 @@ def test_auto_acknowledgment(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-auto",
                 project_id="test-project-auto",
-                from_agent_id="sender",
                 to_agents=["agent1", "agent2"],
                 message_type="direct",
                 content="Test auto-acknowledgment",
@@ -287,7 +284,6 @@ def test_array_structure_format(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-format",
                 project_id="test-project-format",
-                from_agent_id="sender",
                 to_agents=["agent1"],
                 message_type="direct",
                 content="Test array formats",
@@ -364,7 +360,6 @@ def test_multi_agent_delivery(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-multi",
                 project_id="test-project-multi",
-                from_agent_id="sender",
                 to_agents=["agent1", "agent2", "agent3"],
                 message_type="direct",
                 content="Multi-agent test message",
@@ -419,7 +414,6 @@ def test_no_message_deletion(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-delete",
                 project_id="test-project-delete",
-                from_agent_id="sender",
                 to_agents=["agent1"],
                 message_type="direct",
                 content="Test deletion prevention",
@@ -520,7 +514,6 @@ def test_integration_flow(db_manager, results):
             message = Message(
                 tenant_key="test-tenant-integration",
                 project_id=project.id,
-                from_agent_id="orchestrator",
                 to_agents=["worker1", "worker2", "supervisor"],
                 message_type="direct",
                 content="Integration test task",

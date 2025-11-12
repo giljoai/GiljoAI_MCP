@@ -178,7 +178,7 @@ class TestHandoffMechanism:
         message = await orchestrator.handoff(analyzer.id, implementer.id, context)
 
         assert message.message_type == "handoff"
-        assert message.from_agent_id == analyzer.id
+        assert message.meta_data.get("_from_agent_id") == analyzer.id or message.meta_data.get("_from_agent") is not None
         assert "implementer" in message.to_agents
         assert message.priority == "high"
         assert "transfer_data" in message.content

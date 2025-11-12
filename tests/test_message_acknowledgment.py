@@ -72,7 +72,6 @@ async def test_message_acknowledgment():
         message = Message(
             tenant_key="test-tenant",
             project_id="test-project-123",
-            from_agent_id="agent-1",
             to_agents=["implementer", "tester"],  # Multi-agent recipients
             message_type="direct",
             content="Test message for multiple agents",

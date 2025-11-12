@@ -51,7 +51,7 @@ class TestData:
             "project_id": project_id,
             "agent_type": agent_type or "worker",
             "mission": f"Test mission for {agent_type or 'worker'} agent",
-            "status": "pending",
+            "status": "waiting",
             "created_at": datetime.now(timezone.utc),
         }
 
@@ -65,7 +65,7 @@ class TestData:
             "content": "Test message content",
             "project_id": project_id,
             "created_at": datetime.now(timezone.utc),
-            "status": "pending",
+            "status": "waiting",
         }
 
 
