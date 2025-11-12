@@ -26,7 +26,8 @@ class TestData:
     @staticmethod
     def generate_tenant_key() -> str:
         """Generate a test tenant key"""
-        return f"tk_test_{uuid.uuid4().hex[:16]}"
+        from src.giljo_mcp.tenant import TenantManager
+        return TenantManager.generate_tenant_key()
 
     @staticmethod
     def generate_project_data(tenant_key: str) -> dict[str, Any]:
@@ -34,6 +35,7 @@ class TestData:
         return {
             "id": str(uuid.uuid4()),
             "name": f"Test Project {uuid.uuid4().hex[:8]}",
+            "description": "Test project description for automated testing",
             "mission": "Test mission for automated testing",
             "status": ProjectStatus.ACTIVE.value,
             "tenant_key": tenant_key,
