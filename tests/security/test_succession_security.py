@@ -204,6 +204,7 @@ async def test_cross_tenant_data_isolation_in_handover(
     project_a = Project(
         id=str(uuid.uuid4()),
         name="Tenant A Project",
+        description="Test project for Tenant A security validation",
         mission="Tenant A",
         status="active",
         tenant_key=tenant_a_key,
@@ -211,6 +212,7 @@ async def test_cross_tenant_data_isolation_in_handover(
     project_b = Project(
         id=str(uuid.uuid4()),
         name="Tenant B Project",
+        description="Test project for Tenant B security validation",
         mission="Tenant B",
         status="active",
         tenant_key=tenant_b_key,
@@ -400,6 +402,7 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     project_a = Project(
         id=str(uuid.uuid4()),
         name="Tenant A Project",
+        description="Test project for Tenant A access control validation",
         mission="Tenant A",
         status="active",
         tenant_key=tenant_a_key,
@@ -407,6 +410,7 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     project_b = Project(
         id=str(uuid.uuid4()),
         name="Tenant B Project",
+        description="Test project for Tenant B access control validation",
         mission="Tenant B",
         status="active",
         tenant_key=tenant_b_key,
