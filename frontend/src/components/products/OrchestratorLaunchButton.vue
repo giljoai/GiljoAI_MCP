@@ -159,7 +159,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '@/services/api'
-import websocketService from '@/services/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 
 /**
  * OrchestratorLaunchButton Component
@@ -507,9 +507,11 @@ function announceToScreenReader(message) {
 
 // Lifecycle hooks
 onMounted(() => {
+  const wsStore = useWebSocketStore()
+
   // Register WebSocket event handlers
-  unsubscribeProgress = websocketService.onMessage('orchestrator:progress', handleProgressUpdate)
-  unsubscribeError = websocketService.onMessage('orchestrator:error', handleErrorUpdate)
+  unsubscribeProgress = wsStore.on('orchestrator:progress', handleProgressUpdate)
+  unsubscribeError = wsStore.on('orchestrator:error', handleErrorUpdate)
 
   console.log('[OrchestratorLaunchButton] WebSocket listeners registered')
 })

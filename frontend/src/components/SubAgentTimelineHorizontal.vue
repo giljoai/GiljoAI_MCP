@@ -280,7 +280,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectStore } from '@/stores/projects'
-import websocketService from '@/services/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 
 const props = defineProps({
   projectId: {
@@ -633,10 +633,12 @@ const animate = () => {
 
 // Lifecycle
 onMounted(() => {
+  const wsStore = useWebSocketStore()
+
   // Set up WebSocket listeners
-  const unsubscribeSpawn = websocketService.onMessage('agent:spawn', handleAgentSpawn)
-  const unsubscribeComplete = websocketService.onMessage('agent:complete', handleAgentComplete)
-  const unsubscribeUpdate = websocketService.onMessage('agent:update', handleAgentUpdate)
+  const unsubscribeSpawn = wsStore.on('agent:spawn', handleAgentSpawn)
+  const unsubscribeComplete = wsStore.on('agent:complete', handleAgentComplete)
+  const unsubscribeUpdate = wsStore.on('agent:update', handleAgentUpdate)
 
   // Start animation if in live mode
   if (viewMode.value === 'live' && props.autoRefresh) {
