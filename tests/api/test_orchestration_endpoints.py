@@ -257,7 +257,7 @@ class TestWorkflowStatusEndpoint:
 
     def test_workflow_status_success(self, client, mock_db_manager):
         """Test successful workflow status retrieval"""
-        from src.giljo_mcp.models import Agent, Project
+        from src.giljo_mcp.models import MCPAgentJob, Project
 
         # Mock project
         mock_project = Mock(spec=Project)

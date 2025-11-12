@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Job, Message, Project
+from src.giljo_mcp.models import MCPAgentJob, Job, Message, Project
 
 
 async def setup_test_data(session: AsyncSession):

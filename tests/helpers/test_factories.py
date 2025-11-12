@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from src.giljo_mcp.models import Agent, Message, Project
+from src.giljo_mcp.models import MCPAgentJob, Message, Project
 
 
 class TestDataFactory:
@@ -34,15 +34,30 @@ class TestDataFactory:
 
     @staticmethod
     def create_agent_data(
-        project_id: str, name: str = "test_agent", agent_type: str = "worker", status: str = "active"
+        project_id: str,
+        tenant_key: str,
+        agent_name: str = "test_agent",
+        agent_type: str = "worker",
+        mission: str = "Test mission for agent job",
+        status: str = "pending"
     ) -> dict[str, Any]:
-        """Create agent data dictionary"""
+        """
+        Create agent job data dictionary.
+
+        Migration Note (0129a): Replaced Agent model with MCPAgentJob.
+        Field mappings:
+        - Agent.name → MCPAgentJob.agent_name
+        - Agent.type → MCPAgentJob.agent_type
+        - Agent.tenant_id → MCPAgentJob.tenant_key
+        """
         return {
-            "id": str(uuid.uuid4()),
-            "name": name,
-            "type": agent_type,
-            "status": status,
+            "job_id": str(uuid.uuid4()),
+            "tenant_key": tenant_key,
             "project_id": project_id,
+            "agent_name": agent_name,
+            "agent_type": agent_type,
+            "mission": mission,
+            "status": status,
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
         }
@@ -94,14 +109,18 @@ class ProjectFactory:
 
 
 class AgentFactory:
-    """Factory for creating Agent model instances"""
+    """
+    Factory for creating MCPAgentJob model instances.
+
+    Migration Note (0129a): Replaced Agent with MCPAgentJob.
+    """
 
     @staticmethod
-    def build(project_id: str, **kwargs) -> Agent:
-        """Build an Agent instance with default values"""
-        defaults = TestDataFactory.create_agent_data(project_id)
+    def build(project_id: str, tenant_key: str, **kwargs) -> MCPAgentJob:
+        """Build an MCPAgentJob instance with default values"""
+        defaults = TestDataFactory.create_agent_data(project_id, tenant_key)
         defaults.update(kwargs)
-        return Agent(**defaults)
+        return MCPAgentJob(**defaults)
 
 
 class MessageFactory:
