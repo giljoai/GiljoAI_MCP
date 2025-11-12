@@ -65,8 +65,8 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 if not from_agent:
                     from_agent = "orchestrator"
 
-                # Get sender agent job if specified
-                from_agent_id = None
+                # Get sender agent job if specified (for metadata storage)
+                sender_job_id = None
                 if from_agent and from_agent != "system":
                     sender_query = select(MCPAgentJob).where(
                         and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == from_agent)
@@ -74,7 +74,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     sender_result = await session.execute(sender_query)
                     sender = sender_result.scalar_one_or_none()
                     if sender:
-                        from_agent_id = str(sender.job_id)
+                        sender_job_id = str(sender.job_id)
 
                 # Verify all recipient agent jobs exist
                 verified_recipients = []
@@ -107,7 +107,6 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 message = Message(
                     tenant_key=tenant_key,
                     project_id=project_id,
-                    from_agent_id=from_agent_id,
                     to_agents=verified_recipients,
                     message_type=message_type,
                     content=content,
@@ -115,6 +114,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     status="pending",
                     acknowledged_by=[],
                     completed_by=[],
+                    meta_data={"_from_agent": from_agent, "_from_agent_id": sender_job_id},
                 )
 
                 # Use the MessageQueue to enqueue the message
@@ -191,14 +191,8 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 }
                             )
 
-                    # Get sender name
-                    from_agent_name = "system"
-                    if msg.from_agent_id:
-                        sender_query = select(MCPAgentJob).where(MCPAgentJob.job_id == msg.from_agent_id)
-                        sender_result = await session.execute(sender_query)
-                        sender = sender_result.scalar_one_or_none()
-                        if sender:
-                            from_agent_name = sender.agent_name
+                    # Get sender name from metadata
+                    from_agent_name = msg.meta_data.get("_from_agent", "system") if msg.meta_data else "system"
 
                     message_list.append(
                         {
@@ -427,7 +421,6 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 message = Message(
                     tenant_key=tenant_key,
                     project_id=project_id,
-                    from_agent_id=None,  # System broadcast
                     to_agents=agent_names,
                     message_type="broadcast",
                     content=content,
@@ -435,6 +428,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     status="pending",
                     acknowledged_by=[],
                     completed_by=[],
+                    meta_data={"_from_agent": "system"},
                 )
                 session.add(message)
                 await session.flush()
@@ -491,7 +485,6 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 task_message = Message(
                     tenant_key=project.tenant_key,
                     project_id=project.id,
-                    from_agent_id=None,  # System message
                     to_agents=["orchestrator"],
                     message_type="task_log",
                     subject=f"Task: {category}" if category else "Task Log",
@@ -500,6 +493,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     status="pending",
                     acknowledged_by=[],
                     completed_by=[],
+                    meta_data={"_from_agent": "system"},
                 )
                 session.add(task_message)
                 await session.commit()

@@ -333,7 +333,6 @@ class TestEdgeCases:
             tenant_key=tenant_key,
             project_id=project.id,
             content="Content",
-            from_agent_id=None,  # Null sender
             subject=None,  # Null subject
             to_agents=[],  # Empty array
         )
@@ -343,8 +342,7 @@ class TestEdgeCases:
         # Verify handling
         assert message.to_agents == []
         assert message.acknowledged_by == []
-        assert message.from_agent_id is None
-
+        
     def test_context_budget_tracking(self, db_session):
         """Test context budget tracking and limits."""
         tenant_key = str(uuid4())

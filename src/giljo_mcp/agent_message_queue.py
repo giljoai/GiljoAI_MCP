@@ -396,7 +396,6 @@ class AgentMessageQueue:
             message = Message(
                 tenant_key=tenant_key,
                 project_id=job.project_id,
-                from_agent_id=from_agent,  # Store as from_agent_id (deprecated field, but still used)
                 to_agents=[to_agent] if to_agent else [],  # List for consistency
                 message_type=message_type,
                 content=content,
@@ -475,7 +474,6 @@ class AgentMessageQueue:
                 message = Message(
                     tenant_key=tenant_key,
                     project_id=job.project_id,
-                    from_agent_id=msg_data.get("from_agent"),
                     to_agents=[msg_data.get("to_agent")] if msg_data.get("to_agent") else [],
                     message_type=msg_data.get("type", "direct"),
                     content=msg_data.get("content", ""),
@@ -574,7 +572,7 @@ class AgentMessageQueue:
                 # Convert to AgentCommunicationQueue format
                 msg_dict = {
                     "id": str(msg.id),
-                    "from_agent": msg.from_agent_id or "",
+                    "from_agent": msg.meta_data.get("_from_agent", ""),
                     "to_agent": msg.to_agents[0] if msg.to_agents else None,
                     "type": msg.message_type,
                     "content": msg.content,

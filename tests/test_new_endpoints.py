@@ -79,7 +79,6 @@ async def setup_test_data(session: AsyncSession):
     msg1 = Message(
         tenant_key="test-tenant",
         project_id="test-project-001",
-        from_agent_id="agent-orchestrator",
         to_agents=["implementer"],
         content="Start implementation",
         message_type="direct",

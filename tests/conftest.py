@@ -192,7 +192,7 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
         project_id=test_project_id,
         agent_type="worker",
         mission="Test mission for worker agent",
-        status="pending",
+        status="waiting",
         created_at=datetime.now(timezone.utc),
     )
 
@@ -539,7 +539,8 @@ async def async_client(db_manager):
         app.dependency_overrides[get_current_active_user] = mock_get_current_user
         app.dependency_overrides[get_db_session] = mock_get_db_session
 
-        async with HTTPXAsyncClient(app=app, base_url="http://test") as client:
+        from httpx import ASGITransport
+        async with HTTPXAsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
 
         # Clear overrides

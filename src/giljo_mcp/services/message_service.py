@@ -115,12 +115,12 @@ class MessageService:
                 message = Message(
                     project_id=project.id,
                     tenant_key=project.tenant_key,
-                    from_agent_id=from_agent or "orchestrator",
                     to_agents=to_agents,
                     content=content,
                     message_type=message_type,
                     priority=priority,
                     status="pending",
+                    meta_data={"_from_agent": from_agent or "orchestrator"},
                 )
 
                 session.add(message)
@@ -247,7 +247,7 @@ class MessageService:
                     if agent_name in msg.to_agents or not msg.to_agents:
                         agent_messages.append({
                             "id": str(msg.id),
-                            "from": msg.from_agent_id,
+                            "from": msg.meta_data.get("_from_agent", "unknown"),
                             "content": msg.content,
                             "type": msg.message_type,
                             "priority": msg.priority,
