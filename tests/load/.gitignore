@@ -1,0 +1,10 @@
+# Load Testing Results
+results/
+
+# Locust logs
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
