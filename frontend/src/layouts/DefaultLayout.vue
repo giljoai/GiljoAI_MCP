@@ -27,6 +27,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
+import { setupWebSocketIntegrations } from '@/stores/websocketIntegrations'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import api from '@/services/api'
@@ -98,6 +99,10 @@ onMounted(async () => {
       // Connect WebSocket - browser will automatically send httpOnly access_token cookie
       await wsStore.connect()
       console.log('[DefaultLayout] WebSocket connected with automatic cookie authentication')
+
+      // Setup WebSocket V2 integrations (store-to-store message routing)
+      setupWebSocketIntegrations()
+      console.log('[DefaultLayout] WebSocket integrations setup complete')
 
       // Load initial data (remove legacy /api/v1/agents call)
       await Promise.all([messageStore.fetchMessages()])

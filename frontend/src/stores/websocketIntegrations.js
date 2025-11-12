@@ -6,7 +6,7 @@
  * Call setupWebSocketIntegrations() once in App.vue or main router
  */
 
-import { useWebSocketV2Store } from './websocketV2'
+import { useWebSocketStore } from './websocket'
 import { useProjectStore } from './projects'
 import { useAgentStore } from './agents'
 import { useMessageStore } from './messages'
@@ -26,7 +26,7 @@ export function setupWebSocketIntegrations() {
     return
   }
 
-  const wsStore = useWebSocketV2Store()
+  const wsStore = useWebSocketStore()
   const { showToast } = useToast()
 
   console.log('[WebSocket Integrations] Setting up integrations...')

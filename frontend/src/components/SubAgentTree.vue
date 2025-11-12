@@ -275,7 +275,7 @@ import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import * as d3 from 'd3'
 import api from '@/services/api'
-import websocketService from '@/services/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 
 const props = defineProps({
   projectId: {
@@ -613,10 +613,12 @@ const handleAgentHandoff = (data) => {
 onMounted(async () => {
   await fetchTreeData()
 
+  const wsStore = useWebSocketStore()
+
   // Set up WebSocket listeners
-  const unsubscribeSpawn = websocketService.onMessage('agent:spawn', handleAgentSpawn)
-  const unsubscribeComplete = websocketService.onMessage('agent:complete', handleAgentComplete)
-  const unsubscribeHandoff = websocketService.onMessage('agent:handoff', handleAgentHandoff)
+  const unsubscribeSpawn = wsStore.on('agent:spawn', handleAgentSpawn)
+  const unsubscribeComplete = wsStore.on('agent:complete', handleAgentComplete)
+  const unsubscribeHandoff = wsStore.on('agent:handoff', handleAgentHandoff)
 
   // Cleanup
   onUnmounted(() => {

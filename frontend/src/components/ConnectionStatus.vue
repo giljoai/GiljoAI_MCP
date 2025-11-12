@@ -221,7 +221,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWebSocketStore } from '@/stores/websocket'
-import websocketService from '@/services/websocket'
 
 const wsStore = useWebSocketStore()
 
@@ -305,21 +304,24 @@ const recentEvents = computed(() => debugInfo.value?.eventHistory?.slice(0, 10) 
 
 // Methods
 const updateDebugInfo = () => {
-  debugInfo.value = websocketService.getDebugInfo()
+  debugInfo.value = wsStore.getDebugInfo()
 }
 
 const forceReconnect = async () => {
-  await websocketService.forceReconnect()
+  await wsStore.disconnect()
+  await wsStore.connect()
   updateDebugInfo()
 }
 
 const simulateDrop = () => {
-  websocketService.simulateConnectionDrop()
+  // V2: Simulate by disconnecting
+  wsStore.disconnect()
   updateDebugInfo()
 }
 
 const sendTestMessage = () => {
-  websocketService.sendTestMessage('test', {
+  wsStore.send({
+    type: 'test',
     timestamp: new Date().toISOString(),
     message: 'Test message from debug panel',
   })
@@ -327,13 +329,13 @@ const sendTestMessage = () => {
 }
 
 const clearQueue = () => {
-  const cleared = websocketService.clearMessageQueue()
-  console.log(`Cleared ${cleared} messages from queue`)
+  // V2: Queue is managed internally, show info
+  console.log(`Message queue size: ${wsStore.messageQueueSize}`)
   updateDebugInfo()
 }
 
 const toggleDebugMode = (value) => {
-  websocketService.setDebugMode(value)
+  wsStore.setDebugMode(value)
   updateDebugInfo()
 }
 
@@ -368,7 +370,7 @@ const getEventColor = (type) => {
 // Lifecycle
 onMounted(() => {
   updateDebugInfo()
-  debugMode.value = websocketService.debug
+  debugMode.value = wsStore.debug || false
 
   // Update debug info every second when panel is open
   refreshInterval.value = setInterval(() => {

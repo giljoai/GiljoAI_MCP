@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
-import websocketService from '@/services/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 
 export const useAgentStore = defineStore('agents', () => {
   // State
@@ -341,33 +341,35 @@ export const useAgentStore = defineStore('agents', () => {
 
   // Initialize WebSocket listeners for real-time updates
   function initializeWebSocketListeners() {
+    const wsStore = useWebSocketStore()
+
     // Listen for agent updates
-    websocketService.onMessage('agent:update', (data) => {
+    wsStore.on('agent:update', (data) => {
       handleRealtimeUpdate(data.data)
     })
 
     // Listen for agent spawns
-    websocketService.onMessage('agent:spawn', (data) => {
+    wsStore.on('agent:spawn', (data) => {
       handleAgentSpawn(data.data)
     })
 
     // Listen for agent completions
-    websocketService.onMessage('agent:complete', (data) => {
+    wsStore.on('agent:complete', (data) => {
       handleAgentComplete(data.data)
     })
 
     // Listen for health alerts (Handover 0106)
-    websocketService.onMessage('agent:health_alert', (data) => {
+    wsStore.on('agent:health_alert', (data) => {
       handleHealthAlert(data.data)
     })
 
     // Listen for health recovery (Handover 0106)
-    websocketService.onMessage('agent:health_recovered', (data) => {
+    wsStore.on('agent:health_recovered', (data) => {
       handleHealthRecovered(data.data)
     })
 
     // Listen for entity updates (legacy format)
-    websocketService.onMessage('entity_update', (data) => {
+    wsStore.on('entity_update', (data) => {
       if (data.entity_type === 'agent') {
         handleRealtimeUpdate(data.data)
       }
