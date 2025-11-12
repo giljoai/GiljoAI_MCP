@@ -113,7 +113,6 @@ class Message(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    from_agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     to_agents = Column(JSON, default=list)  # List of agent names
     message_type = Column(String(50), default="direct")  # direct, broadcast, system
     subject = Column(String(255), nullable=True)
