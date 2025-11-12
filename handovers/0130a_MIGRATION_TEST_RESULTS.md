@@ -60,6 +60,17 @@ Successfully migrated from 4-layer WebSocket architecture to clean 2-layer V2 sy
 9. `composables/useWebSocket.js` - Updated useWebSocketV2Store → useWebSocketStore
 10. `stores/websocket.js` - Renamed export: useWebSocketV2Store → useWebSocketStore
 
+### 5. Connection Status Fix (1 file) ✅
+
+**Issue**: Connection status chip displayed "unknown" despite successful WebSocket connection
+**Root Cause**: Property name mismatch - store uses `connectionStatus` but component was reading `connectionState`
+
+**File Fixed**:
+11. `components/ConnectionStatus.vue` - Fixed all references to use `wsStore.connectionStatus` instead of `wsStore.connectionState`
+   - Line 9: Template class binding
+   - Lines 236, 251, 265: Computed property switch statements
+   - Line 295: connectionState computed property mapping
+
 ---
 
 ## Build Results
@@ -81,11 +92,11 @@ vite v7.1.9 building for production...
 
 ## Changes Summary
 
-### Files Modified: 14 total
+### Files Modified: 15 total
 
 **Migration Files**:
 1. `frontend/src/layouts/DefaultLayout.vue` - Added integrations import & setup
-2. `frontend/src/components/ConnectionStatus.vue` - Updated to V2 store
+2. `frontend/src/components/ConnectionStatus.vue` - Updated to V2 store + property name fix
 3. `frontend/src/stores/agents.js` - Import & method updates
 4. `frontend/src/stores/messages.js` - Import & method updates
 5. `frontend/src/components/agent-flow/FlowCanvas.vue` - Import & method updates
@@ -100,6 +111,9 @@ vite v7.1.9 building for production...
 **Files Renamed**:
 13. `frontend/src/stores/websocketV2.js` → `frontend/src/stores/websocket.js`
 14. `frontend/src/composables/useWebSocketV2.js` → `frontend/src/composables/useWebSocket.js`
+
+**Post-Migration Fixes**:
+15. `frontend/src/components/ConnectionStatus.vue` - Fixed connectionState → connectionStatus property references
 
 **Files Backed Up (4)**:
 - `services/websocket.js.backup-0130a`
