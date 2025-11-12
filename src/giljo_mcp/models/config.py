@@ -191,7 +191,6 @@ class GitCommit(Base):
 
     # Orchestrator context
     triggered_by = Column(String(50), nullable=True)  # 'auto_commit', 'manual', 'project_completion'
-    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     commit_type = Column(String(50), nullable=True)  # 'feature', 'fix', 'docs', 'refactor', etc.
 
     # Status tracking
@@ -543,9 +542,6 @@ class OptimizationMetric(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
 
-    # Foreign keys
-    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed, made nullable (Handover 0116)
-
     # Operation details
     operation_type = Column(String(50), nullable=False)  # OperationType enum value
     params_size = Column(Integer, nullable=False, default=0)
@@ -565,7 +561,6 @@ class OptimizationMetric(Base):
 
     __table_args__ = (
         Index("idx_optimization_metric_tenant", "tenant_key"),
-        Index("idx_optimization_metric_agent", "agent_id"),
         Index("idx_optimization_metric_type", "operation_type"),
         Index("idx_optimization_metric_date", "created_at"),
         Index("idx_optimization_metric_optimized", "optimized"),

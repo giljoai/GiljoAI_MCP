@@ -215,7 +215,6 @@ class TemplateUsageStats(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
-    agent_id = Column(String(36), nullable=True)  # DEPRECATED: FK to agents.id removed (Handover 0116)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
 
     # Usage details
