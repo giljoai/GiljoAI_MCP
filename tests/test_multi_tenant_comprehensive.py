@@ -76,7 +76,6 @@ class TestMultiTenantIsolation:
                     message = Message(
                         tenant_key=tenant_key,
                         project_id=project.id,
-                        from_agent_id=agents[j % 3].id if j > 0 else None,
                         to_agents=[agents[(j + 1) % 3].name],
                         content=f"Message {j} for tenant {i}",
                         message_type="direct",
@@ -309,7 +308,6 @@ class TestMultiTenantIsolation:
             message = Message(
                 tenant_key=TenantManager.inherit_tenant_key(agent),
                 project_id=project.id,
-                from_agent_id=agent.id,
                 to_agents=["other_agent"],
                 content="Inherited message",
                 message_type="direct",

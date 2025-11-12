@@ -1308,7 +1308,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             message = Message(
                 tenant_key=agent.tenant_key,
                 project_id=agent.project_id,
-                from_agent_id=None,  # System message
                 to_agents=[agent.agent_name],
                 message_type="system",
                 content=instructions,
@@ -1370,13 +1369,13 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 "transfer_data": context,
                 "handoff_instructions": handoff_instructions,
             }
+            handoff_context["_from_agent_id"] = from_agent.id  # Store sender in context
 
             # Create handoff message
             message = Message(
                 tenant_key=from_agent.tenant_key,
                 project_id=from_agent.project_id,
-                from_agent_id=from_agent.id,
-                to_agents=[to_agent.agent_name],
+                                to_agents=[to_agent.agent_name],
                 message_type="handoff",
                 content=str(handoff_context),
                 priority="high",

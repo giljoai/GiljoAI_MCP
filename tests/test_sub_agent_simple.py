@@ -212,7 +212,6 @@ class TestBackwardCompatibility:
         message = Message(
             tenant_key="test-tenant",
             project_id=sample_project.id,
-            from_agent_id=None,
             to_agents=["analyzer"],
             content="Analyze the system",
             message_type="direct",

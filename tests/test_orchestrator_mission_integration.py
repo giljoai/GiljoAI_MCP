@@ -102,7 +102,6 @@ async def test_orchestrator_integration():
     # Test 6: Handoff instructions
 
     handoff_message = await orchestrator.handoff(
-        from_agent_id=analyzer.id,
         to_agent_id=implementer.id,
         context={"summary": "Requirements analyzed and design complete"},
     )
