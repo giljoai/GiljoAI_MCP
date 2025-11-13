@@ -61,8 +61,9 @@ class GiljoDevControlPanel:
         """Initialize the control panel."""
         self.root = Tk()
         self.root.title("GiljoAI MCP - Developer Control Panel")
-        self.root.geometry("700x800")
-        self.root.resizable(False, False)
+        self.root.geometry("750x600")
+        self.root.resizable(True, True)
+        self.root.minsize(700, 500)
 
         # Project root detection (dynamic, no hardcoded paths)
         # If running from dev_tools/, go up one level
@@ -167,33 +168,53 @@ class GiljoDevControlPanel:
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
 
+        # Configure grid weights for resizing
+        main_frame.grid_rowconfigure(1, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
+
         # Build tabs
         self.build_services_tab()
         self.build_database_tab()
         self.build_resets_tab()
-        self.build_cache_tab()
-        self.build_frontend_tab()
 
-        # Status bar at bottom
-        self.status_label = ttk.Label(main_frame, text="Ready", relief="sunken", anchor="w")
-        self.status_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        # Status bar at bottom (5 rows high)
+        self.status_label = ttk.Label(
+            main_frame,
+            text="Ready",
+            relief="sunken",
+            anchor="nw",
+            justify="left",
+            padding=(5, 5)
+        )
+        self.status_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0), ipady=40)
 
     def build_services_tab(self):
-        """Build the Services tab."""
-        tab = ttk.Frame(self.notebook, padding="10")
+        """Build the Services tab with service management, cache, and frontend tools."""
+        tab = ttk.Frame(self.notebook, padding="5")
         self.notebook.add(tab, text="Services")
 
-        # Call existing service section builder (adapted for tab)
-        self.build_service_section(tab, 0)
+        # Make tab scrollable if needed
+        tab.grid_columnconfigure(0, weight=1)
+
+        row = 0
+
+        # Service Management section
+        row = self.build_service_section(tab, row)
+
+        # Cache Management section
+        row = self.build_cache_section(tab, row)
+
+        # Frontend Tools section
+        row = self.build_frontend_section(tab, row)
 
     def build_database_tab(self):
         """Build the Database tab (connection check only)."""
-        tab = ttk.Frame(self.notebook, padding="10")
+        tab = ttk.Frame(self.notebook, padding="5")
         self.notebook.add(tab, text="Database")
 
         # Database Connection Check section
-        section = ttk.LabelFrame(tab, text="Database Connection", padding="10")
-        section.grid(row=0, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(tab, text="Database Connection", padding="5")
+        section.grid(row=0, column=0, columnspan=2, sticky="ew", pady=3)
 
         # Connection status
         ttk.Label(section, text="Connection:").grid(row=0, column=0, sticky="w")
@@ -230,7 +251,7 @@ class GiljoDevControlPanel:
 
     def build_resets_tab(self):
         """Build the Resets tab (consolidated reset operations)."""
-        tab = ttk.Frame(self.notebook, padding="10")
+        tab = ttk.Frame(self.notebook, padding="5")
         self.notebook.add(tab, text="Resets")
 
         row = 0
@@ -239,8 +260,8 @@ class GiljoDevControlPanel:
         row = self.build_project_reset_section(tab, row)
 
         # Database Operations section
-        db_section = ttk.LabelFrame(tab, text="Database Operations", padding="10")
-        db_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        db_section = ttk.LabelFrame(tab, text="Database Operations", padding="5")
+        db_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         ttk.Button(
             db_section,
@@ -261,27 +282,11 @@ class GiljoDevControlPanel:
         # Environment Resets section
         row = self.build_reset_section(tab, row)
 
-    def build_cache_tab(self):
-        """Build the Cache tab."""
-        tab = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(tab, text="Cache")
-
-        # Call existing cache section builder (adapted for tab)
-        self.build_cache_section(tab, 0)
-
-    def build_frontend_tab(self):
-        """Build the Frontend tab."""
-        tab = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(tab, text="Frontend")
-
-        # Call existing frontend section builder (adapted for tab)
-        self.build_frontend_section(tab, 0)
-
     def build_service_section(self, parent: ttk.Frame, row: int) -> int:
         """Build service management section."""
         # Section frame
-        section = ttk.LabelFrame(parent, text="Service Management", padding="10")
-        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(parent, text="Service Management", padding="5")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         # Backend service
         ttk.Label(section, text="Backend API:").grid(row=0, column=0, sticky="w")
@@ -326,8 +331,8 @@ class GiljoDevControlPanel:
 
     def build_database_section(self, parent: ttk.Frame, row: int) -> int:
         """Build database management section."""
-        section = ttk.LabelFrame(parent, text="Database Management", padding="10")
-        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(parent, text="Database Management", padding="5")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         # Connection status
         ttk.Label(section, text="Connection:").grid(row=0, column=0, sticky="w")
@@ -372,8 +377,8 @@ class GiljoDevControlPanel:
 
     def build_project_reset_section(self, parent: ttk.Frame, row: int) -> int:
         """Build project reset section - clear AI-generated staging data only."""
-        section = ttk.LabelFrame(parent, text="Clear Project to Initial State", padding="10")
-        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(parent, text="Clear Project to Initial State", padding="5")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         ttk.Label(
             section,
@@ -413,8 +418,8 @@ class GiljoDevControlPanel:
 
     def build_reset_section(self, parent: ttk.Frame, row: int) -> int:
         """Build development reset section."""
-        section = ttk.LabelFrame(parent, text="Development Reset", padding="10")
-        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(parent, text="Development Reset", padding="5")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         ttk.Label(
             section,
@@ -468,8 +473,8 @@ class GiljoDevControlPanel:
 
     def build_cache_section(self, parent: ttk.Frame, row: int) -> int:
         """Build cache management section."""
-        section = ttk.LabelFrame(parent, text="Cache Management", padding="10")
-        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(parent, text="Cache Management", padding="5")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         ttk.Button(section, text="Clear Python Cache", command=self.clear_python_cache, width=20).grid(
             row=0, column=0, padx=5, pady=5
@@ -485,8 +490,8 @@ class GiljoDevControlPanel:
 
     def build_frontend_section(self, parent: ttk.Frame, row: int) -> int:
         """Build frontend tools section."""
-        section = ttk.LabelFrame(parent, text="Frontend Tools", padding="10")
-        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+        section = ttk.LabelFrame(parent, text="Frontend Tools", padding="5")
+        section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
         ttk.Label(
             section,
