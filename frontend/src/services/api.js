@@ -433,6 +433,14 @@ export const api = {
         content: data.content,
       }),
 
+    // Succession endpoints (Handover 0505, 0509)
+    triggerSuccession: (jobId, reason = 'manual', notes = '') =>
+      apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, {
+        reason,
+        notes
+      }),
+    successionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
+
     // Legacy aliases for backward compatibility (deprecated but functional)
     getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
     listJobs: (projectId, params = {}) => apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),

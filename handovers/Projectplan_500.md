@@ -51,14 +51,14 @@ The Handovers 0120-0130 refactoring successfully modularized the GiljoAI MCP arc
 17. User delete endpoint - wrong path
 18. Cookie domain settings (actually working)
 
-### Context Management & Orchestration (5 issues)
-19. trigger_succession endpoint - MISSING
+### Context Management & Orchestration (3 issues)
+19. trigger_succession endpoint - ✅ FIXED (0505)
 20. Context usage tracking - NOT IMPLEMENTED
 21. AgentJobManager not integrated
-22. SuccessionTimeline.vue - MISSING
-23. LaunchSuccessorDialog.vue - MISSING
+22. SuccessionTimeline.vue - ✅ FIXED (0509)
+23. LaunchSuccessorDialog.vue - ✅ FIXED (0509)
 
-**Total**: 23 broken items
+**Total**: 23 broken items (21 remaining)
 
 ---
 
