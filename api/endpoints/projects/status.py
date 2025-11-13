@@ -3,7 +3,8 @@ Project Status Endpoints - Handover 0125
 
 Handles project status and query operations:
 - GET /{project_id}/status - Get project status
-- GET /{project_id}/summary - Get project summary
+- GET /{project_id}/summary - Get project summary (Handover 0504)
+- GET /{project_id}/orchestrator - Get orchestrator job
 
 All operations use ProjectService where available.
 """
@@ -15,10 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
+from src.giljo_mcp.models.schemas import ProjectSummaryResponse
 from src.giljo_mcp.services.project_service import ProjectService
 
 from .dependencies import get_project_service
-from .models import OrchestratorResponse, ProjectSummaryResponse
+from .models import OrchestratorResponse
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +71,10 @@ async def get_project_summary(
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectSummaryResponse:
     """
-    Get comprehensive project summary for after-action review (Handover 0062).
+    Get comprehensive project summary with metrics (Handover 0504).
+
+    Returns project overview including job statistics, completion metrics,
+    and activity timestamps for dashboard display.
 
     Args:
         project_id: Project UUID
@@ -77,20 +82,30 @@ async def get_project_summary(
         project_service: Project service (from dependency)
 
     Returns:
-        ProjectSummaryResponse with full project summary
+        ProjectSummaryResponse with project metrics and status
 
     Raises:
         HTTPException 404: Project not found
-        HTTPException 501: Not yet implemented
+        HTTPException 500: Internal server error
     """
     logger.debug(f"User {current_user.username} getting summary for project {project_id}")
 
-    # TODO: Add get_project_summary to ProjectService
-    # This endpoint requires complex queries across multiple tables (agents, messages)
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="ProjectService.get_project_summary not yet implemented"
-    )
+    # Get summary via ProjectService
+    result = await project_service.get_project_summary(project_id=project_id)
+
+    # Check for errors
+    if not result.get("success"):
+        error_msg = result.get("error", "Project not found")
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+
+    logger.info(f"Retrieved summary for project {project_id}")
+
+    # Return data as ProjectSummaryResponse
+    summary_data = result.get("data", {})
+    return ProjectSummaryResponse(**summary_data)
 
 
 @router.get("/{project_id}/orchestrator", response_model=OrchestratorResponse)
