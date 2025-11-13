@@ -425,6 +425,24 @@ async def convert_task_to_project(
             detail="No active product. Please activate a product before converting tasks to projects.",
         )
 
+    # CRITICAL FIX: Check for existing active project and pause it
+    # This prevents UniqueViolationError on idx_project_single_active_per_product constraint
+    # Only ONE project can be active per product at a time (Handover 0050b)
+    existing_active_query = select(Project).where(
+        Project.product_id == active_product.id,
+        Project.status == "active"
+    )
+    existing_active_result = await db.execute(existing_active_query)
+    existing_active_project = existing_active_result.scalar_one_or_none()
+
+    if existing_active_project:
+        logger.info(
+            f"Pausing existing active project {existing_active_project.id} "
+            f"before creating new project from task {task_id}"
+        )
+        existing_active_project.status = "paused"
+        existing_active_project.updated_at = datetime.now(timezone.utc)
+
     # Create project
     project_name = conversion_request.project_name or task.title
     project = Project(
@@ -451,6 +469,10 @@ async def convert_task_to_project(
 
         for subtask in subtasks:
             subtask.project_id = project.id
+
+    # Delete the task after successful conversion
+    await db.delete(task)
+    logger.info(f"Deleted task {task_id} after successful conversion to project {project.id}")
 
     await db.commit()
     await db.refresh(project)
