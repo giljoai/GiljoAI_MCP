@@ -35,13 +35,21 @@ async def activate_product(
     service: ProductService = Depends(get_product_service),
 ) -> ProductActivationResponse:
     """
-    Activate a product (deactivates other products).
+    Activate a product (deactivates other products, auto-pauses their projects).
 
     Uses ProductService.activate_product() for database operations.
+    Handover 0503: Updated response to match frontend expectations.
     """
     logger.info(f"User {current_user.username} activating product {product_id}")
 
     try:
+        # Get currently active product (if any) before activation
+        active_result = await service.get_active_product()
+        previous_active_id = None
+        if active_result["success"] and active_result.get("product"):
+            previous_active_id = active_result["product"]["id"]
+
+        # Activate new product
         result = await service.activate_product(product_id)
 
         if not result["success"]:
@@ -49,14 +57,44 @@ async def activate_product(
                 raise HTTPException(status_code=404, detail=result["error"])
             raise HTTPException(status_code=400, detail=result["error"])
 
-        product_data = result["product"]
+        # Get full product details with metrics
+        product_result = await service.get_product(product_id, include_metrics=True)
 
-        return ProductActivationResponse(
+        if not product_result["success"]:
+            raise HTTPException(status_code=500, detail="Failed to retrieve activated product")
+
+        product_data = product_result["product"]
+
+        # Build ProductResponse
+        product_response = ProductResponse(
             id=product_data["id"],
             name=product_data["name"],
-            is_active=product_data["is_active"],
+            description=product_data["description"],
+            vision_path=product_data.get("vision_path"),
+            project_path=product_data.get("project_path"),
+            created_at=product_data.get("created_at"),
+            updated_at=product_data.get("updated_at"),
+            project_count=product_data.get("project_count", 0),
+            task_count=product_data.get("task_count", 0),
+            has_vision=product_data.get("has_vision", False),
+            unresolved_tasks=product_data.get("unresolved_tasks", 0),
+            unfinished_projects=product_data.get("unfinished_projects", 0),
+            vision_documents_count=product_data.get("vision_documents_count", 0),
+            config_data=product_data.get("config_data"),
+            has_config_data=product_data.get("has_config_data", False),
+            is_active=True,
+        )
+
+        # TODO: Query for deactivated projects when ProjectService integration is complete
+        # For now, return empty list as projects will be handled in future handover
+        deactivated_projects = []
+
+        return ProductActivationResponse(
+            product_id=product_data["id"],
+            previous_active_product_id=previous_active_id,
+            product=product_response,
             message=f"Product '{product_data['name']}' activated successfully",
-            deactivated_count=result.get("deactivated_count", 0)
+            deactivated_projects=deactivated_projects
         )
 
     except HTTPException:
