@@ -145,3 +145,97 @@ class ProjectResponse(BaseModel):
                 "product_id": "xyz-789"
             }
         }
+
+
+# ============================================================================
+# Orchestrator Succession Schemas - Handover 0505
+# ============================================================================
+
+
+class SuccessionRequest(BaseModel):
+    """
+    Request body for manual orchestrator succession trigger.
+
+    Used by "Hand Over" button in AgentCardEnhanced.vue and /gil_handover command.
+    """
+
+    reason: str = Field(
+        default="manual",
+        description="Succession reason (manual, context_limit, phase_transition)"
+    )
+    notes: Optional[str] = Field(
+        None,
+        description="Optional notes about why succession was triggered"
+    )
+
+    class Config:
+        """Pydantic config for schema validation."""
+        json_schema_extra = {
+            "example": {
+                "reason": "manual",
+                "notes": "Switching orchestrator for new project phase"
+            }
+        }
+
+
+class SuccessionResponse(BaseModel):
+    """
+    Response for manual succession trigger.
+
+    Returns successor job details and handover summary for launching new instance.
+    """
+
+    current_job_id: str = Field(..., description="Current orchestrator job UUID")
+    successor_job_id: str = Field(..., description="New successor orchestrator job UUID")
+    instance_number: int = Field(..., description="Successor instance number")
+    launch_prompt: str = Field(..., description="Thin-client launch prompt for successor")
+    handover_summary: Optional[str] = Field(None, description="Compressed handover summary")
+    succession_reason: str = Field(..., description="Reason for succession")
+    created_at: datetime = Field(..., description="Successor creation timestamp")
+
+    class Config:
+        """Pydantic config for schema validation."""
+        from_attributes = True  # SQLAlchemy model compatibility
+        json_schema_extra = {
+            "example": {
+                "current_job_id": "orch-job-123",
+                "successor_job_id": "orch-job-456",
+                "instance_number": 2,
+                "launch_prompt": "Continue orchestration from instance 1...",
+                "handover_summary": "Project 60% complete, 3 active agents...",
+                "succession_reason": "manual",
+                "created_at": "2025-01-13T14:22:00Z"
+            }
+        }
+
+
+class SuccessionStatusResponse(BaseModel):
+    """
+    Response for checking orchestrator succession status.
+
+    Indicates whether succession is needed based on context usage.
+    """
+
+    job_id: str = Field(..., description="Orchestrator job UUID")
+    needs_succession: bool = Field(..., description="True if succession recommended (>90% context)")
+    context_used: int = Field(..., description="Tokens used from context budget")
+    context_budget: int = Field(..., description="Total context budget in tokens")
+    context_usage_pct: float = Field(..., description="Context usage percentage (0-100)")
+    handover_to: Optional[str] = Field(None, description="Successor job ID if already handed over")
+    succession_reason: Optional[str] = Field(None, description="Reason for succession if triggered")
+    instance_number: int = Field(..., description="Current instance number")
+
+    class Config:
+        """Pydantic config for schema validation."""
+        json_schema_extra = {
+            "example": {
+                "job_id": "orch-job-123",
+                "needs_succession": True,
+                "context_used": 185000,
+                "context_budget": 200000,
+                "context_usage_pct": 92.5,
+                "handover_to": None,
+                "succession_reason": None,
+                "instance_number": 1
+            }
+        }

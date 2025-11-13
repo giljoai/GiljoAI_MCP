@@ -127,6 +127,9 @@ from .config import (
     ApiMetrics,
 )
 
+# Settings models
+from .settings import Settings
+
 # Export all for backward compatibility
 __all__ = [
     # Base
@@ -171,4 +174,6 @@ __all__ = [
     "OptimizationMetric",
     "DownloadToken",
     "ApiMetrics",
+    # Settings
+    "Settings",
 ]
