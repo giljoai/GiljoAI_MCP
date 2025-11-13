@@ -1,9 +1,29 @@
 # Handover 0130d: Centralize API Calls and Error Handling
 
+---
+**⚠️ CRITICAL UPDATE (2025-11-12): MERGED INTO HANDOVER 0515**
+
+This handover has been **merged** into the 0500 series remediation project:
+
+**New Scope**: Handover 0515 - Frontend Consolidation
+**Parent Project**: Projectplan_500.md
+**Status**: Deferred until after critical remediation (Handovers 0500-0514 complete)
+
+**Reason for Merger**: The refactoring (Handovers 0120-0130) left 23 critical implementation gaps. API centralization (0130d) and component consolidation (0130c) are now combined into a single cohesive frontend consolidation effort (Handover 0515). See:
+- **Investigation Reports**: Products, Projects, Settings, Orchestration breakage
+- **Master Plan**: `handovers/Projectplan_500.md`
+- **New Handover**: `handovers/0515_frontend_consolidation.md`
+
+**MERGED INTO**: Handover 0515 combines both 0130c (merge duplicate components) and 0130d (centralize API calls) into a single cohesive frontend consolidation effort.
+
+**Original scope below** (preserved for historical reference):
+
+---
+
 **Date**: 2025-11-12
 **Priority**: P2 (Medium - Code Quality & Maintainability)
 **Duration**: 2-3 days
-**Status**: ⏳ READY TO EXECUTE (after 0130c or standalone)
+**Status**: Merged into Handover 0515
 **Type**: API Architecture Refactoring
 **Dependencies**: None (can run independently)
 **Parent**: Handover 0130 (Frontend WebSocket Modernization)

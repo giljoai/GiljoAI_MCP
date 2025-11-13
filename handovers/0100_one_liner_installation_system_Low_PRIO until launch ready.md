@@ -1,8 +1,26 @@
 # Handover 0100: One-Liner Installation System
 
+---
+**⚠️ CRITICAL UPDATE (2025-11-12): DEFERRED TO HANDOVER 0512**
+
+This handover has been **reorganized** into the 0500 series remediation project:
+
+**New Scope**: Part of Handover 0512 - Documentation and Knowledge Base (Installation Documentation)
+**Parent Project**: Projectplan_500.md
+**Status**: Deferred until after critical remediation (Handovers 0500-0514 complete)
+
+**Reason**: The refactoring (Handovers 0120-0130) left 23 critical implementation gaps that must be fixed BEFORE proceeding with this enhancement. One-liner installation requires stable, tested system first. See:
+- **Investigation Reports**: Products, Projects, Settings, Orchestration breakage
+- **Master Plan**: `handovers/Projectplan_500.md`
+- **New Handover**: `handovers/0512_documentation_knowledge_base.md`
+
+**Original scope below** (preserved for historical reference):
+
+---
+
 **Date**: 2025-11-02
-**Status**: Ready for Implementation
-**Priority**: High
+**Status**: Deferred - See Handover 0512
+**Priority**: High (after 0500-0514)
 **Complexity**: Medium
 **Related**: Handover 0082 (Production-Grade npm Installation)
 

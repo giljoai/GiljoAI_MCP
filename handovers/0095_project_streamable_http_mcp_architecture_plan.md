@@ -1,5 +1,23 @@
 # Project 0095 — MCP Streamable HTTP + HTTPS Migration Plan
 
+---
+**⚠️ CRITICAL UPDATE (2025-11-12): DEFERRED TO HANDOVER 0515**
+
+This handover has been **reorganized** into the 0500 series remediation project:
+
+**New Scope**: Part of Handover 0515 - Frontend Consolidation (Streaming API Integration)
+**Parent Project**: Projectplan_500.md
+**Status**: Deferred until after critical remediation (Handovers 0500-0514 complete)
+
+**Reason**: The refactoring (Handovers 0120-0130) left 23 critical implementation gaps that must be fixed BEFORE proceeding with this enhancement. HTTP/HTTPS streaming migration requires stable foundation. See:
+- **Investigation Reports**: Products, Projects, Settings, Orchestration breakage
+- **Master Plan**: `handovers/Projectplan_500.md`
+- **New Handover**: `handovers/0515_frontend_consolidation.md` (includes streaming API integration)
+
+**Original scope below** (preserved for historical reference):
+
+---
+
 Document version: 1.1.0
 Date: 2025-11-08 (Updated)
 Owner: Core Platform
