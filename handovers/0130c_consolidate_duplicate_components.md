@@ -1,9 +1,29 @@
 # Handover 0130c: Consolidate Duplicate Components
 
+---
+**⚠️ CRITICAL UPDATE (2025-11-12): MERGED INTO HANDOVER 0515**
+
+This handover has been **merged** into the 0500 series remediation project:
+
+**New Scope**: Handover 0515 - Frontend Consolidation
+**Parent Project**: Projectplan_500.md
+**Status**: Deferred until after critical remediation (Handovers 0500-0514 complete)
+
+**Reason for Merger**: The refactoring (Handovers 0120-0130) left 23 critical implementation gaps. Component consolidation (0130c) and API centralization (0130d) are now combined into a single cohesive frontend consolidation effort (Handover 0515). See:
+- **Investigation Reports**: Products, Projects, Settings, Orchestration breakage
+- **Master Plan**: `handovers/Projectplan_500.md`
+- **New Handover**: `handovers/0515_frontend_consolidation.md`
+
+**MERGED INTO**: Handover 0515 combines both 0130c (merge duplicate components) and 0130d (centralize API calls) into a single cohesive frontend consolidation effort.
+
+**Original scope below** (preserved for historical reference):
+
+---
+
 **Date**: 2025-11-12
 **Priority**: P2 (Medium - Code Quality Improvement)
 **Duration**: 1-2 days
-**Status**: ⏳ READY TO EXECUTE (after 0130b)
+**Status**: Merged into Handover 0515
 **Type**: Component Consolidation & Refactoring
 **Dependencies**: Handover 0130b (Remove Zombie Code) - PENDING
 **Parent**: Handover 0130 (Frontend WebSocket Modernization)

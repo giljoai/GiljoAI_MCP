@@ -1,9 +1,26 @@
 ---
+**⚠️ CRITICAL UPDATE (2025-11-12): DEFERRED TO HANDOVER 0515**
+
+This handover has been **reorganized** into the 0500 series remediation project:
+
+**New Scope**: Part of Handover 0515 - Frontend Consolidation (Jobs Tab UI)
+**Parent Project**: Projectplan_500.md
+**Status**: Deferred until after critical remediation (Handovers 0500-0514 complete)
+
+**Reason**: The refactoring (Handovers 0120-0130) left 23 critical implementation gaps that must be fixed BEFORE proceeding with UI harmonization. Jobs tab needs functional foundation first. See:
+- **Investigation Reports**: Products, Projects, Settings, Orchestration breakage
+- **Master Plan**: `handovers/Projectplan_500.md`
+- **New Handover**: `handovers/0515_frontend_consolidation.md` (includes Jobs tab harmonization)
+
+**Original scope below** (preserved for historical reference):
+
+---
+
 **Handover ID:** 0114
 **Title:** Jobs Tab UI/UX Harmonization with Visual Design Spec
 **Date:** 2025-01-07
-**Status:** Planning
-**Priority:** High
+**Status:** Deferred - See Handover 0515
+**Priority:** High (after 0500-0514)
 **Complexity:** Medium
 **Estimated Effort:** 2 weeks
 **Related Handovers:**
