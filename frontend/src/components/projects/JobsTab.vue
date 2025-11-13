@@ -25,10 +25,10 @@
         <!-- Agent Cards Container -->
         <div class="jobs-tab__agents-container">
           <div class="jobs-tab__agents-header mb-3">
-            <div class="panel-header bg-success text-white d-inline-flex align-center">
-              <v-icon size="small">mdi-account-group</v-icon>
-              <span>Active Agents</span>
-              <v-chip size="x-small" color="white" text-color="success" class="font-weight-bold" density="compact">
+            <div class="panel-header bg-success text-white">
+              <v-icon size="small" class="flex-shrink-0">mdi-account-group</v-icon>
+              <span class="flex-shrink-0">Active Agents</span>
+              <v-chip size="x-small" color="white" text-color="success" class="font-weight-bold flex-shrink-0" density="compact">
                 {{ sortedAgents.length }}
               </v-chip>
             </div>
@@ -621,12 +621,15 @@ onBeforeUnmount(() => {
     display: inline-block;
 
     .panel-header {
-      padding: 8px 10px;
-      width: fit-content;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      gap: 6px !important;
+      padding: 8px 10px !important;
+      width: fit-content !important;
       border-radius: 4px;
       white-space: nowrap;
-      flex-wrap: nowrap;
-      gap: 4px;
     }
   }
 
