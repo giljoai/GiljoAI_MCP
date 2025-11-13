@@ -221,8 +221,8 @@
             <span>Agent Team</span>
             <v-chip
               v-if="agents.length > 0"
-              color="white"
-              text-color="success"
+              color="success"
+              text-color="white"
               size="small"
               class="ml-2 font-weight-bold"
             >
