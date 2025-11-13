@@ -216,16 +216,15 @@
     <v-row class="agent-cards-row">
       <v-col cols="12">
         <v-card elevation="2">
-          <v-card-title class="panel-header bg-success text-white">
+          <v-card-title class="panel-header bg-success text-white d-flex align-center">
             <v-icon class="mr-2">mdi-account-group</v-icon>
             <span>Agent Team</span>
-            <v-spacer />
             <v-chip
               v-if="agents.length > 0"
               color="white"
               text-color="success"
               size="small"
-              class="font-weight-bold"
+              class="ml-2 font-weight-bold"
             >
               {{ agents.length }} Agent{{ agents.length !== 1 ? 's' : '' }}
             </v-chip>
