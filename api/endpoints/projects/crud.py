@@ -334,7 +334,10 @@ async def update_project(
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectResponse:
     """
-    Update project fields.
+    Update project fields (Handover 0504).
+
+    Supports updating: name, description, mission, status.
+    Only provided fields are updated (partial updates supported).
 
     Args:
         project_id: Project UUID
@@ -351,11 +354,20 @@ async def update_project(
     """
     logger.debug(f"User {current_user.username} updating project {project_id}")
 
-    # Update mission if provided
-    if updates.mission is not None:
-        result = await project_service.update_project_mission(
+    # Convert updates to dict, excluding unset fields
+    update_dict = updates.dict(exclude_unset=True)
+
+    if not update_dict:
+        # No fields to update, just return current project
+        result = await project_service.get_project(project_id=project_id)
+        if not result.get("success"):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        proj = result.get("project", {})
+    else:
+        # Update via ProjectService
+        result = await project_service.update_project(
             project_id=project_id,
-            mission=updates.mission
+            updates=update_dict
         )
 
         if not result.get("success"):
@@ -365,15 +377,8 @@ async def update_project(
             else:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
-    # TODO: Add ProjectService methods for name/description/status updates
-    # For now, return updated project
+        proj = result.get("data", {})
 
-    # Get updated project
-    result = await project_service.get_project(project_id=project_id)
-    if not result.get("success"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
-    proj = result.get("project", {})
     logger.info(f"Updated project {project_id}")
 
     return ProjectResponse(
