@@ -972,9 +972,15 @@ class ProjectService:
                 if total_jobs > 0:
                     completion_percentage = (completed_jobs / total_jobs) * 100.0
 
-                # Get last activity timestamp
+                # Get last activity timestamp (most recent of completed_at, started_at, or last_progress_at)
                 last_activity_result = await session.execute(
-                    select(func.max(MCPAgentJob.updated_at))
+                    select(
+                        func.greatest(
+                            func.max(MCPAgentJob.completed_at),
+                            func.max(MCPAgentJob.started_at),
+                            func.max(MCPAgentJob.last_progress_at)
+                        )
+                    )
                     .where(
                         and_(
                             MCPAgentJob.project_id == project_id,
@@ -1398,10 +1404,10 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 self.tenant_manager.set_current_tenant(project.tenant_key)
                 current_tenant.set(project.tenant_key)
 
-                # Create new session if needed
+                # Create new session if needed (active = not ended)
                 session_query = select(SessionModel).where(
                     SessionModel.project_id == project.id,
-                    SessionModel.status == "active"
+                    SessionModel.ended_at.is_(None)
                 )
                 session_result = await db_session.execute(session_query)
                 active_session = session_result.scalar_one_or_none()
@@ -1410,7 +1416,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     active_session = SessionModel(
                         project_id=project.id,
                         started_at=datetime.now(),
-                        status="active",
+                        tenant_key=project.tenant_key
                     )
                     db_session.add(active_session)
                     await db_session.commit()

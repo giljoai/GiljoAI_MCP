@@ -20,28 +20,34 @@ from giljo_mcp.services.product_service import ProductService
 from giljo_mcp.models import Product, Project, Task, VisionDocument
 
 
+@pytest.fixture
+def mock_db_manager():
+    """Create properly configured mock database manager."""
+    db_manager = Mock()
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    db_manager.get_session_async = Mock(return_value=session)
+    return db_manager, session
+
+
 class TestProductServiceCRUD:
     """Test CRUD operations"""
 
     @pytest.mark.asyncio
-    async def test_create_product_success(self):
+    async def test_create_product_success(self, mock_db_manager):
         """Test successful product creation"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock no existing product
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
         ))
-        session.add = Mock()
-        session.commit = AsyncMock()
-        session.refresh = AsyncMock()
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -59,16 +65,10 @@ class TestProductServiceCRUD:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_create_product_duplicate_name(self):
+    async def test_create_product_duplicate_name(self, mock_db_manager):
         """Test creating product with duplicate name fails"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock existing product with same name
         existing_product = Mock()
@@ -89,16 +89,10 @@ class TestProductServiceCRUD:
         assert "already exists" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_get_product_success(self):
+    async def test_get_product_success(self, mock_db_manager):
         """Test successful product retrieval"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock product
         product = Mock()
@@ -127,16 +121,10 @@ class TestProductServiceCRUD:
         assert result["product"]["name"] == "Test Product"
 
     @pytest.mark.asyncio
-    async def test_get_product_not_found(self):
+    async def test_get_product_not_found(self, mock_db_manager):
         """Test get_product returns error when product not found"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
@@ -152,16 +140,10 @@ class TestProductServiceCRUD:
         assert "not found" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_list_products_success(self):
+    async def test_list_products_success(self, mock_db_manager):
         """Test successful product listing"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock products
         product1 = Mock()
@@ -192,16 +174,10 @@ class TestProductServiceCRUD:
         assert result["products"][0]["name"] == "Product 1"
 
     @pytest.mark.asyncio
-    async def test_update_product_success(self):
+    async def test_update_product_success(self, mock_db_manager):
         """Test successful product update"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock product
         product = Mock()
@@ -235,16 +211,10 @@ class TestProductServiceLifecycle:
     """Test lifecycle management"""
 
     @pytest.mark.asyncio
-    async def test_activate_product_success(self):
+    async def test_activate_product_success(self, mock_db_manager):
         """Test successful product activation"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock target product
         product = Mock()
@@ -276,16 +246,10 @@ class TestProductServiceLifecycle:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_deactivate_product_success(self):
+    async def test_deactivate_product_success(self, mock_db_manager):
         """Test successful product deactivation"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         product = Mock()
         product.id = "test-id"
@@ -309,16 +273,10 @@ class TestProductServiceLifecycle:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_delete_product_success(self):
+    async def test_delete_product_success(self, mock_db_manager):
         """Test successful product soft delete"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         product = Mock()
         product.id = "test-id"
@@ -342,16 +300,10 @@ class TestProductServiceLifecycle:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_restore_product_success(self):
+    async def test_restore_product_success(self, mock_db_manager):
         """Test successful product restoration"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         product = Mock()
         product.id = "test-id"
@@ -375,16 +327,10 @@ class TestProductServiceLifecycle:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_list_deleted_products(self):
+    async def test_list_deleted_products(self, mock_db_manager):
         """Test listing soft-deleted products"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock deleted product
         product = Mock()
@@ -393,21 +339,17 @@ class TestProductServiceLifecycle:
         product.description = "Test"
         product.deleted_at = datetime.now(timezone.utc)
 
-        # Mock execute calls
-        call_count = [0]
-
-        def mock_execute(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:  # First call: get deleted products
-                return AsyncMock(
-                    scalars=Mock(return_value=Mock(
-                        all=Mock(return_value=[product])
-                    ))
-                )
-            else:  # Subsequent calls: count queries
-                return AsyncMock(scalar=Mock(return_value=0))
-
-        session.execute = mock_execute
+        # Mock execute calls - Multiple sequential calls with side_effect
+        execute_mock = AsyncMock()
+        execute_mock.side_effect = [
+            # First call: get deleted products
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[product])))),
+            # Second call: project count
+            Mock(scalar=Mock(return_value=2)),
+            # Third call: vision document count (mocking VisionDocument.deleted_at.is_(None))
+            Mock(scalar=Mock(return_value=1)),
+        ]
+        session.execute = execute_mock
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -418,22 +360,18 @@ class TestProductServiceLifecycle:
         assert result["success"] is True
         assert len(result["products"]) == 1
         assert "days_until_purge" in result["products"][0]
+        assert result["products"][0]["project_count"] == 2
+        assert result["products"][0]["vision_documents_count"] == 1
 
 
 class TestProductServiceMetrics:
     """Test metrics and statistics"""
 
     @pytest.mark.asyncio
-    async def test_get_product_statistics(self):
+    async def test_get_product_statistics(self, mock_db_manager):
         """Test getting product statistics"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         product = Mock()
         product.id = "test-id"
@@ -445,12 +383,12 @@ class TestProductServiceMetrics:
         # Mock execute calls for product and metrics
         call_count = [0]
 
-        def mock_execute(*args, **kwargs):
+        async def mock_execute(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:  # First call: get product
-                return AsyncMock(scalar_one_or_none=Mock(return_value=product))
+                return Mock(scalar_one_or_none=Mock(return_value=product))
             else:  # Subsequent calls: count queries
-                return AsyncMock(scalar=Mock(return_value=5))
+                return Mock(scalar=Mock(return_value=5))
 
         session.execute = mock_execute
 
@@ -465,32 +403,28 @@ class TestProductServiceMetrics:
         assert result["statistics"]["name"] == "Test Product"
 
     @pytest.mark.asyncio
-    async def test_get_cascade_impact(self):
+    async def test_get_cascade_impact(self, mock_db_manager):
         """Test cascade impact analysis"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         product = Mock()
         product.id = "test-id"
         product.name = "Test Product"
 
-        # Mock execute calls
-        call_count = [0]
-
-        def mock_execute(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:  # First call: get product
-                return AsyncMock(scalar_one_or_none=Mock(return_value=product))
-            else:  # Subsequent calls: count queries
-                return AsyncMock(scalar=Mock(return_value=10))
-
-        session.execute = mock_execute
+        # Mock execute calls - Multiple sequential calls with side_effect
+        execute_mock = AsyncMock()
+        execute_mock.side_effect = [
+            # First call: get product
+            Mock(scalar_one_or_none=Mock(return_value=product)),
+            # Second call: total projects count
+            Mock(scalar=Mock(return_value=5)),
+            # Third call: total tasks count
+            Mock(scalar=Mock(return_value=10)),
+            # Fourth call: vision documents count
+            Mock(scalar=Mock(return_value=3)),
+        ]
+        session.execute = execute_mock
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -500,20 +434,17 @@ class TestProductServiceMetrics:
         # Assert
         assert result["success"] is True
         assert result["impact"]["product_id"] == "test-id"
-        assert "total_projects" in result["impact"]
+        assert result["impact"]["product_name"] == "Test Product"
+        assert result["impact"]["total_projects"] == 5
+        assert result["impact"]["total_tasks"] == 10
+        assert result["impact"]["total_vision_documents"] == 3
         assert "warning" in result["impact"]
 
     @pytest.mark.asyncio
-    async def test_get_active_product_found(self):
+    async def test_get_active_product_found(self, mock_db_manager):
         """Test getting active product when one exists"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         product = Mock()
         product.id = "active-id"
@@ -525,12 +456,12 @@ class TestProductServiceMetrics:
         # Mock execute calls
         call_count = [0]
 
-        def mock_execute(*args, **kwargs):
+        async def mock_execute(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:  # First call: get active product
-                return AsyncMock(scalar_one_or_none=Mock(return_value=product))
+                return Mock(scalar_one_or_none=Mock(return_value=product))
             else:  # Subsequent calls: metrics
-                return AsyncMock(scalar=Mock(return_value=0))
+                return Mock(scalar=Mock(return_value=0))
 
         session.execute = mock_execute
 
@@ -545,16 +476,10 @@ class TestProductServiceMetrics:
         assert result["product"]["name"] == "Active Product"
 
     @pytest.mark.asyncio
-    async def test_get_active_product_none(self):
+    async def test_get_active_product_none(self, mock_db_manager):
         """Test getting active product when none exists"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
@@ -580,9 +505,13 @@ class TestProductServiceErrorHandling:
         # Arrange
         db_manager = Mock()
 
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Database error")
-        )
+        # Create an async context manager that raises exception on __aenter__
+        async_cm = AsyncMock()
+        async_cm.__aenter__ = AsyncMock(side_effect=Exception("Database error"))
+        async_cm.__aexit__ = AsyncMock(return_value=False)
+
+        # Make get_session_async return the context manager
+        db_manager.get_session_async = Mock(return_value=async_cm)
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -597,16 +526,10 @@ class TestProductServiceErrorHandling:
         assert "Database error" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_activate_product_not_found(self):
+    async def test_activate_product_not_found(self, mock_db_manager):
         """Test activating nonexistent product"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
@@ -627,25 +550,16 @@ class TestProductServiceConfigData:
     """Test config_data field persistence - Handover 0500"""
 
     @pytest.mark.asyncio
-    async def test_create_product_with_config_data(self):
+    async def test_create_product_with_config_data(self, mock_db_manager):
         """Test config_data persists during product creation"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-        
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
-        
+        db_manager, session = mock_db_manager
+
         # Mock no existing product
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
         ))
-        session.add = Mock()
-        session.commit = AsyncMock()
-        session.refresh = AsyncMock()
-        
+
         service = ProductService(db_manager, "test-tenant")
         
         config = {
@@ -670,24 +584,15 @@ class TestProductServiceConfigData:
         session.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_product_without_config_data(self):
+    async def test_create_product_without_config_data(self, mock_db_manager):
         """Test product creation works without config_data"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-        
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
-        
+        db_manager, session = mock_db_manager
+
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
         ))
-        session.add = Mock()
-        session.commit = AsyncMock()
-        session.refresh = AsyncMock()
-        
+
         service = ProductService(db_manager, "test-tenant")
         
         # Act
@@ -700,17 +605,11 @@ class TestProductServiceConfigData:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_update_product_config_data(self):
+    async def test_update_product_config_data(self, mock_db_manager):
         """Test config_data updates correctly"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-        
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
-        
+        db_manager, session = mock_db_manager
+
         # Mock existing product
         existing_product = Mock(spec=Product)
         existing_product.id = str(uuid4())
@@ -718,13 +617,11 @@ class TestProductServiceConfigData:
         existing_product.description = "Test"
         existing_product.config_data = {"version": "1.0"}
         existing_product.updated_at = datetime.now(timezone.utc)
-        
+
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=existing_product)
         ))
-        session.commit = AsyncMock()
-        session.refresh = AsyncMock()
-        
+
         service = ProductService(db_manager, "test-tenant")
         
         # Act
@@ -744,39 +641,32 @@ class TestProductServiceVisionUpload:
     """Test vision document upload with chunking - Handover 0500"""
 
     @pytest.mark.asyncio
-    async def test_upload_small_vision_document(self):
+    async def test_upload_small_vision_document(self, mock_db_manager):
         """Test uploading vision document under token limit"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-        
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
-        
+        db_manager, session = mock_db_manager
+
         # Mock product exists
         product = Mock(spec=Product)
         product.id = str(uuid4())
         product.name = "Test Product"
-        
+
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=product)
         ))
-        session.commit = AsyncMock()
-        
-        # Mock vision document creation
-        with patch('src.giljo_mcp.services.product_service.VisionDocumentRepository') as MockRepo:
+
+        # Mock vision document creation - patch at the source module (lazy import)
+        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockRepo:
             mock_repo_instance = Mock()
             MockRepo.return_value = mock_repo_instance
-            
+
             mock_doc = Mock()
             mock_doc.id = str(uuid4())
             mock_doc.document_name = "vision.md"
             mock_repo_instance.create = AsyncMock(return_value=mock_doc)
-            
-            # Mock chunker
-            with patch('src.giljo_mcp.services.product_service.VisionDocumentChunker') as MockChunker:
+
+            # Mock chunker - patch at source module (lazy import in context_management)
+            with patch('src.giljo_mcp.context_management.chunker.VisionDocumentChunker') as MockChunker:
                 mock_chunker_instance = Mock()
                 MockChunker.return_value = mock_chunker_instance
                 mock_chunker_instance.chunk_vision_document = AsyncMock(return_value={
@@ -784,16 +674,16 @@ class TestProductServiceVisionUpload:
                     "chunks_created": 1,
                     "total_tokens": 150,
                 })
-                
+
                 service = ProductService(db_manager, "test-tenant")
-                
+
                 # Act
                 result = await service.upload_vision_document(
                     product_id=product.id,
                     content="# Vision Document\n\nThis is a small vision document.",
                     filename="vision.md"
                 )
-        
+
         # Assert
         assert result["success"] is True
         assert result["document_name"] == "vision.md"
@@ -801,22 +691,16 @@ class TestProductServiceVisionUpload:
         assert result["total_tokens"] > 0
 
     @pytest.mark.asyncio
-    async def test_upload_vision_product_not_found(self):
+    async def test_upload_vision_product_not_found(self, mock_db_manager):
         """Test vision upload fails for non-existent product"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-        
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
-        
+        db_manager, session = mock_db_manager
+
         # Mock product not found
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=None)
         ))
-        
+
         service = ProductService(db_manager, "test-tenant")
         
         # Act
@@ -832,38 +716,31 @@ class TestProductServiceVisionUpload:
         assert "not found" in result["error"].lower()
 
     @pytest.mark.asyncio
-    async def test_upload_vision_with_chunking_disabled(self):
+    async def test_upload_vision_with_chunking_disabled(self, mock_db_manager):
         """Test vision upload without auto-chunking"""
         # Arrange
-        db_manager = Mock()
-        session = AsyncMock()
-        
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
-        
+        db_manager, session = mock_db_manager
+
         # Mock product exists
         product = Mock(spec=Product)
         product.id = str(uuid4())
-        
+
         session.execute = AsyncMock(return_value=Mock(
             scalar_one_or_none=Mock(return_value=product)
         ))
-        session.commit = AsyncMock()
-        
-        # Mock vision document creation
-        with patch('src.giljo_mcp.services.product_service.VisionDocumentRepository') as MockRepo:
+
+        # Mock vision document creation - patch at source module (lazy import)
+        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockRepo:
             mock_repo_instance = Mock()
             MockRepo.return_value = mock_repo_instance
-            
+
             mock_doc = Mock()
             mock_doc.id = str(uuid4())
             mock_doc.document_name = "vision_no_chunk.md"
             mock_repo_instance.create = AsyncMock(return_value=mock_doc)
-            
+
             service = ProductService(db_manager, "test-tenant")
-            
+
             # Act
             result = await service.upload_vision_document(
                 product_id=product.id,
@@ -871,7 +748,7 @@ class TestProductServiceVisionUpload:
                 filename="vision_no_chunk.md",
                 auto_chunk=False
             )
-        
+
         # Assert
         assert result["success"] is True
         assert result["chunks_created"] == 0  # No chunking when disabled

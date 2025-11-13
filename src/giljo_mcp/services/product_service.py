@@ -618,10 +618,7 @@ class ProductService:
                     )
                     vision_count = await session.execute(
                         select(func.count(VisionDocument.id)).where(
-                            and_(
-                                VisionDocument.product_id == product.id,
-                                VisionDocument.deleted_at.is_(None)
-                            )
+                            VisionDocument.product_id == product.id
                         )
                     )
 
@@ -806,10 +803,7 @@ class ProductService:
 
                 vision_count = await session.execute(
                     select(func.count(VisionDocument.id)).where(
-                        and_(
-                            VisionDocument.product_id == product_id,
-                            VisionDocument.deleted_at.is_(None)
-                        )
+                        VisionDocument.product_id == product_id
                     )
                 )
 
