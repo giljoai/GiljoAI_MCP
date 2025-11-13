@@ -92,7 +92,11 @@ Execute Handover 0507 following production-grade standards.
 2. Stage changes: `git add [files]`
 3. Commit with descriptive message following this format:
 
+  CRITICAL RULE: Before creating a PR, ALWAYS run:
 ```bash
+git fetch origin
+git rebase origin/master
+
 git commit -m "$(cat <<'EOF'
 [handover_id]: [brief_summary]
 
