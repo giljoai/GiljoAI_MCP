@@ -3,6 +3,7 @@ import signal
 import sys
 import time
 import subprocess
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -30,11 +31,26 @@ class ProcessManager:
         self._frontend_info: Optional[ProcInfo] = None
 
     # ---------------------- API ----------------------
+    def _resolve_repo_python(self) -> str:
+        """Prefer the repo root venv Python if present, else current interpreter."""
+        here = Path(__file__).resolve()
+        repo_root = here.parents[2]
+        # Windows
+        win_py = repo_root / ".venv" / "Scripts" / "python.exe"
+        if win_py.exists():
+            return str(win_py)
+        # Unix
+        nix_py = repo_root / ".venv" / "bin" / "python"
+        if nix_py.exists():
+            return str(nix_py)
+        return sys.executable
+
     def start_api(self, host: str = "0.0.0.0", port: int = 7272, log_level: str = "info") -> ProcInfo:
         if self._api_proc and self._api_proc.poll() is None:
             return self._api_info  # type: ignore[return-value]
 
-        cmd = [sys.executable, "api/run_api.py", "--host", host, "--port", str(port), "--log-level", log_level]
+        python_bin = self._resolve_repo_python()
+        cmd = [python_bin, "api/run_api.py", "--host", host, "--port", str(port), "--log-level", log_level]
         self._api_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         self._api_info = ProcInfo(name="api", pid=self._api_proc.pid, started_at=time.time(), port=port, command=cmd)
         return self._api_info
@@ -106,4 +122,3 @@ class ProcessManager:
             }
 
         return {"api": proc_state(self._api_proc, self._api_info), "frontend": proc_state(self._frontend_proc, self._frontend_info)}
-
