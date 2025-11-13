@@ -1,21 +1,24 @@
 <template>
-  <v-container fluid>
-    <!-- Page Header -->
-    <v-row>
-      <v-col cols="12">
-        <div class="d-flex align-center mb-6">
-          <h1 class="text-h4">Products</h1>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
-            New Product
-          </v-btn>
-        </div>
-      </v-col>
-    </v-row>
+  <v-container fluid class="products-container">
+    <!-- Fixed Page Header -->
+    <div class="products-header">
+      <v-row>
+        <v-col cols="12">
+          <div class="d-flex align-center mb-6">
+            <h1 class="text-h4">Products</h1>
+            <v-spacer></v-spacer>
+            <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
+              New Product
+            </v-btn>
+          </div>
+        </v-col>
+      </v-row>
+    </div>
 
-    <!-- Products Grid -->
-    <v-row>
-      <v-col cols="12">
+    <!-- Scrollable Products Grid -->
+    <div class="products-content">
+      <v-row>
+        <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
             <span>All Products</span>
@@ -88,7 +91,7 @@
                 lg="3"
               >
                 <v-card
-                  :elevation="product.is_active ? 8 : 2"
+                  :elevation="0"
                   class="product-card h-100"
                 >
                   <v-card-text>
@@ -188,6 +191,7 @@
         </v-card>
       </v-col>
     </v-row>
+    </div><!-- End products-content -->
 
     <!-- Create/Edit Product Dialog -->
     <v-dialog v-model="showDialog" max-width="700" persistent retain-focus>
@@ -2250,8 +2254,34 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Fixed header and scrollable content layout */
+.products-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.products-header {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: inherit;
+  padding-top: 16px;
+}
+
+.products-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 24px;
+}
+
 .product-card {
   transition: all 0.3s ease;
+  border: 2px solid white;
+  border-radius: 12px;
 }
 
 .product-card:hover {
