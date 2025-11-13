@@ -131,40 +131,6 @@
       </v-col>
     </v-row>
 
-    <!-- Conversion Action Bar -->
-    <v-row v-if="selectedTasks.length > 0" class="mb-4">
-      <v-col>
-        <v-card color="primary" variant="outlined">
-          <v-card-text class="d-flex align-center">
-            <v-icon>mdi-checkbox-marked-multiple</v-icon>
-            <span class="ml-2"
-              >{{ selectedTasks.length }} task{{
-                selectedTasks.length > 1 ? 's' : ''
-              }}
-              selected</span
-            >
-            <v-spacer />
-            <v-btn
-              color="primary"
-              variant="flat"
-              prepend-icon="mdi-arrow-right-bold-circle"
-              @click="openConversionDialog"
-            >
-              Convert to Project{{ selectedTasks.length > 1 ? 's' : '' }}
-            </v-btn>
-            <v-btn
-              variant="text"
-              icon="mdi-close"
-              size="small"
-              class="ml-2"
-              @click="clearSelection"
-              aria-label="Clear selection"
-            />
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <!-- Tasks Table -->
     <v-card>
       <!-- Table Controls -->
@@ -190,16 +156,6 @@
             <v-progress-circular indeterminate color="primary" size="48" />
             <p class="text-body-2 text-medium-emphasis mt-2">Loading tasks...</p>
           </div>
-        </template>
-
-        <!-- Selection Column -->
-        <template v-slot:item.select="{ item }">
-          <v-checkbox-btn
-            :model-value="selectedTasks.includes(item.id)"
-            @update:model-value="toggleTaskSelection(item.id)"
-            density="compact"
-            hide-details
-          />
         </template>
 
         <!-- Status Column -->
@@ -230,6 +186,22 @@
               </div>
               <div class="text-caption text-medium-emphasis description-truncate">{{ item.description }}</div>
             </div>
+
+            <!-- Inline Convert Button -->
+            <v-btn
+              v-if="item.status !== 'completed' && !item.converted_project_id"
+              icon
+              size="small"
+              variant="text"
+              color="#ffc300"
+              @click.stop="convertTaskToProject(item)"
+              class="ml-2"
+            >
+              <v-icon>mdi-folder-arrow-up</v-icon>
+              <v-tooltip activator="parent" location="top">
+                Convert to Project
+              </v-tooltip>
+            </v-btn>
           </div>
         </template>
 
@@ -416,14 +388,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Task Converter Dialog -->
-    <TaskConverter
-      :show="showConversionDialog"
-      :selected-task-ids="selectedTasks"
-      @close="closeConversionDialog"
-      @converted="onTasksConverted"
-    />
-
     <!-- Conversion History Dialog -->
     <v-dialog v-model="showConversionHistory" max-width="900">
       <v-card>
@@ -455,7 +419,6 @@ import { useAgentStore } from '@/stores/agents'
 import { useUserStore } from '@/stores/user'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
-import TaskConverter from '@/components/TaskConverter.vue'
 import ConversionHistory from '@/components/ConversionHistory.vue'
 
 // Stores
@@ -479,11 +442,6 @@ const saving = ref(false)
 const taskFilter = ref('product_tasks')
 const user = computed(() => userStore.currentUser)
 
-// Bulk selection state
-const selectedTasks = ref([])
-const selectAll = ref(false)
-const showConversionDialog = ref(false)
-
 // Hierarchy state (feature disabled - not used)
 const showHierarchy = ref(false)
 const showConversionHistory = ref(false)
@@ -500,7 +458,6 @@ const currentTask = ref({
 
 // Table headers
 const headers = [
-  { title: 'Select', key: 'select', sortable: false, width: '60' },
   { title: 'Status', key: 'status', width: '120' },
   { title: 'Priority', key: 'priority', width: '100' },
   { title: 'Task', key: 'title' },
@@ -680,43 +637,6 @@ function cancelTask() {
     category: 'general',
     due_date: null,
   }
-}
-
-// Bulk selection methods
-function toggleTaskSelection(taskId) {
-  const index = selectedTasks.value.indexOf(taskId)
-  if (index > -1) {
-    selectedTasks.value.splice(index, 1)
-  } else {
-    selectedTasks.value.push(taskId)
-  }
-}
-
-function clearSelection() {
-  selectedTasks.value = []
-  selectAll.value = false
-}
-
-function openConversionDialog() {
-  if (selectedTasks.value.length === 0) return
-  showConversionDialog.value = true
-}
-
-function closeConversionDialog() {
-  showConversionDialog.value = false
-}
-
-function onTasksConverted(convertedProjects) {
-  // Clear selection after successful conversion
-  clearSelection()
-
-  // Refresh tasks to show updated conversion status
-  taskStore.fetchTasks()
-
-  // Optional: Show success message
-  console.log(
-    `Successfully converted ${selectedTasks.value.length} tasks to ${convertedProjects.length} project(s)`,
-  )
 }
 
 // Hierarchy methods removed - feature not used
