@@ -25,10 +25,10 @@
         <!-- Agent Cards Container -->
         <div class="jobs-tab__agents-container">
           <div class="jobs-tab__agents-header mb-3">
-            <div class="panel-header bg-success text-white d-flex align-center">
-              <v-icon class="mr-2">mdi-account-group</v-icon>
-              <span>Active Agents</span>
-              <v-chip size="small" color="white" text-color="success" class="ml-2 font-weight-bold">
+            <div class="panel-header bg-success text-white d-inline-flex align-center">
+              <v-icon size="small">mdi-account-group</v-icon>
+              <span class="mx-2">Active Agents</span>
+              <v-chip size="x-small" color="white" text-color="success" class="font-weight-bold" density="compact">
                 {{ sortedAgents.length }}
               </v-chip>
             </div>
@@ -618,9 +618,13 @@ onBeforeUnmount(() => {
   }
 
   &__agents-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: inline-block;
+
+    .panel-header {
+      padding: 8px 10px;
+      width: fit-content;
+      border-radius: 4px;
+    }
   }
 
   /* Claude Code Toggle Card (Handover 0105) */
@@ -730,7 +734,7 @@ onBeforeUnmount(() => {
 /* Panel header styling (match LaunchTab) */
 .panel-header {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 12px 16px;
