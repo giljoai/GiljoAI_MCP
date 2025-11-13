@@ -351,6 +351,56 @@
               Vision Documents
             </div>
 
+            <!-- Handover 0508: Upload error alert -->
+            <v-alert
+              v-if="visionUploadError"
+              type="error"
+              variant="tonal"
+              density="compact"
+              dismissible
+              @click:close="visionUploadError = null"
+              class="mb-4"
+            >
+              {{ visionUploadError }}
+            </v-alert>
+
+            <!-- Handover 0508: Upload progress indicator -->
+            <v-alert
+              v-if="uploadingVision"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mb-4"
+            >
+              <div class="d-flex align-center mb-2">
+                <v-progress-circular
+                  indeterminate
+                  size="20"
+                  width="2"
+                  class="mr-2"
+                />
+                <span>Uploading vision documents...</span>
+              </div>
+              <v-progress-linear
+                v-model="uploadProgress"
+                color="primary"
+                height="6"
+                class="mt-2"
+              />
+            </v-alert>
+
+            <!-- Handover 0508: Chunking indicator for large files -->
+            <v-alert
+              v-if="isChunking"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mb-4"
+            >
+              <v-icon start>mdi-scissors-cutting</v-icon>
+              Chunking large document... This may take a moment.
+            </v-alert>
+
             <!-- Existing Documents (Edit Mode Only) -->
             <div v-if="editingProduct && existingVisionDocuments.length > 0" class="mb-4">
               <div class="text-subtitle-2 mb-2">
@@ -1486,6 +1536,11 @@ const formRef = ref(null)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
 const detailsVisionDocuments = ref([])
+// Handover 0508: Vision upload error handling and progress tracking
+const uploadingVision = ref(false)
+const uploadProgress = ref(0)
+const isChunking = ref(false)
+const visionUploadError = ref(null)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
 const deleteConfirmationCheck = ref(false)
@@ -1828,6 +1883,53 @@ function formatDate(dateString) {
 
 function removeVisionFile(index) {
   visionFiles.value.splice(index, 1)
+  visionUploadError.value = null // Clear error when file is removed
+}
+
+// Handover 0508: Validate vision files before upload
+function validateVisionFile(file) {
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+  const ALLOWED_EXTENSIONS = ['.md', '.txt', '.markdown']
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    return `File too large. Maximum size is 10MB (${(file.size / 1024 / 1024).toFixed(1)}MB provided).`
+  }
+
+  // Validate file type
+  const hasValidExtension = ALLOWED_EXTENSIONS.some(ext =>
+    file.name.toLowerCase().endsWith(ext)
+  )
+
+  if (!hasValidExtension) {
+    return `Invalid file type. Please upload .md or .txt files.`
+  }
+
+  return null // Valid
+}
+
+// Handover 0508: Validate all vision files
+function validateVisionFiles() {
+  visionUploadError.value = null
+
+  if (!visionFiles.value || visionFiles.value.length === 0) {
+    return true // No files to validate
+  }
+
+  for (const file of visionFiles.value) {
+    const error = validateVisionFile(file)
+    if (error) {
+      visionUploadError.value = error
+      showToast({
+        message: error,
+        type: 'error',
+        duration: 7000,
+      })
+      return false
+    }
+  }
+
+  return true
 }
 
 function formatFileSize(bytes) {
@@ -1951,6 +2053,13 @@ async function confirmDelete(product) {
 async function saveProduct() {
   if (!formValid.value) return
 
+  // Handover 0508: Validate vision files before saving
+  if (visionFiles.value && visionFiles.value.length > 0) {
+    if (!validateVisionFiles()) {
+      return // Validation failed - error already shown via toast
+    }
+  }
+
   saving.value = true
   try {
     // Step 1: Create/Update product
@@ -1971,14 +2080,32 @@ async function saveProduct() {
       })
     }
 
-    // Step 2: Upload vision files (if any)
+    // Step 2: Upload vision files (if any) - Handover 0508: Enhanced error handling
     if (visionFiles.value && visionFiles.value.length > 0) {
       const productId = product?.id || editingProduct.value.id
+      uploadingVision.value = true
+      uploadProgress.value = 0
+      visionUploadError.value = null
+
+      let successCount = 0
+      let totalChunks = 0
 
       for (let i = 0; i < visionFiles.value.length; i++) {
         const file = visionFiles.value[i]
 
         try {
+          // Handover 0508: Show chunking indicator for large files (>75KB ≈ >25K tokens)
+          if (file.size > 75 * 1024) {
+            isChunking.value = true
+          }
+
+          // Simulate upload progress
+          const progressInterval = setInterval(() => {
+            if (uploadProgress.value < 90) {
+              uploadProgress.value += 10
+            }
+          }, 200)
+
           const formData = new FormData()
           formData.append('product_id', productId)
           formData.append('document_name', file.name.replace(/\.[^/.]+$/, ''))
@@ -1986,11 +2113,77 @@ async function saveProduct() {
           formData.append('vision_file', file)
           formData.append('auto_chunk', 'true')
 
-          await api.visionDocuments.upload(formData)
+          const response = await api.visionDocuments.upload(formData)
+
+          clearInterval(progressInterval)
+          uploadProgress.value = 100
+
+          successCount++
+          totalChunks += response.data?.chunks_created || response.data?.chunk_count || 0
+
+          // Handover 0508: Show success toast with chunk count
+          const chunkCount = response.data?.chunks_created || response.data?.chunk_count || 0
+          if (chunkCount > 1) {
+            showToast({
+              message: `${file.name} uploaded and split into ${chunkCount} chunks`,
+              type: 'success',
+              duration: 4000,
+            })
+          } else {
+            showToast({
+              message: `${file.name} uploaded successfully`,
+              type: 'success',
+              duration: 3000,
+            })
+          }
+
         } catch (uploadError) {
           console.error(`Failed to upload ${file.name}:`, uploadError)
+
+          // Handover 0508: Show specific error messages based on status code
+          let errorMessage = `Failed to upload ${file.name}`
+
+          if (uploadError.response) {
+            switch (uploadError.response.status) {
+              case 413:
+                errorMessage = `${file.name}: File too large (max 10MB)`
+                break
+              case 400:
+                errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Invalid file'}`
+                break
+              case 409:
+                errorMessage = `${file.name}: Document already exists. Please rename and try again.`
+                break
+              default:
+                errorMessage = `${file.name}: ${uploadError.response.data.detail || 'Upload failed'}`
+            }
+          } else if (uploadError.request) {
+            errorMessage = `${file.name}: Network error. Check connection and try again.`
+          }
+
+          visionUploadError.value = errorMessage
+
+          showToast({
+            message: errorMessage,
+            type: 'error',
+            duration: 7000,
+          })
+
           // Continue uploading other files
+        } finally {
+          isChunking.value = false
         }
+      }
+
+      uploadingVision.value = false
+
+      // Handover 0508: Show summary toast if multiple files uploaded
+      if (successCount > 1) {
+        showToast({
+          message: `Successfully uploaded ${successCount}/${visionFiles.value.length} vision documents (${totalChunks} total chunks)`,
+          type: 'success',
+          duration: 5000,
+        })
       }
     }
 
@@ -2023,6 +2216,9 @@ async function saveProduct() {
     // Handover 0051: Do NOT close dialog on error - keep form data visible
   } finally {
     saving.value = false
+    uploadingVision.value = false
+    uploadProgress.value = 0
+    isChunking.value = false
   }
 }
 
