@@ -67,14 +67,17 @@ class ActiveProductInfo(BaseModel):
     active_projects_count: int = Field(default=0, description="Number of active projects")
 
 
-class ProductActivationResponse(ProductResponse):
-    """Enhanced response for product activation with context"""
+class ProductActivationResponse(BaseModel):
+    """Response for product activation matching frontend expectations (Handover 0503)"""
 
-    previous_active_product: Optional[ActiveProductInfo] = Field(
-        None, description="Previously active product (if any) that was deactivated"
+    product_id: str = Field(..., description="ID of the activated product")
+    previous_active_product_id: Optional[str] = Field(
+        None, description="ID of previously active product (if any) that was deactivated"
     )
-    activation_timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="When this activation occurred"
+    product: ProductResponse = Field(..., description="Full activated product details")
+    message: str = Field(..., description="Success message")
+    deactivated_projects: List[str] = Field(
+        default_factory=list, description="IDs of projects that were auto-paused"
     )
 
 
