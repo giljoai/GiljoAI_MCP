@@ -106,35 +106,24 @@ export const api = {
     list: (params) => apiClient.get('/api/v1/products/', { params }),
     get: (id) => apiClient.get(`/api/v1/products/${id}/`),
     create: (data) => {
-      // Handle file upload with FormData
-      if (data instanceof FormData) {
-        return apiClient.post('/api/v1/products/', data, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
+      // Handover 0126: Send JSON to match backend ProductCreate schema
+      // Backend expects: { name, description, project_path }
+      const payload = {
+        name: data.name,
+        description: data.description || null,
+        project_path: data.projectPath || null,
       }
-      // Regular JSON creation without file
-      const formData = new FormData()
-      formData.append('name', data.name)
-      if (data.description) formData.append('description', data.description)
-      // Handover 0084: Add project_path for agent export
-      if (data.projectPath) formData.append('project_path', data.projectPath)
-      // Handover 0042: Add config_data as JSON string
-      if (data.configData) formData.append('config_data', JSON.stringify(data.configData))
-      return apiClient.post('/api/v1/products/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      return apiClient.post('/api/v1/products/', payload)
     },
     update: (id, data) => {
-      // Handover 0042: Convert to FormData for config_data support
-      const formData = new FormData()
-      if (data.name) formData.append('name', data.name)
-      if (data.description) formData.append('description', data.description)
-      // Handover 0084: Add project_path for agent export
-      if (data.projectPath) formData.append('project_path', data.projectPath)
-      if (data.configData) formData.append('config_data', JSON.stringify(data.configData))
-      return apiClient.put(`/api/v1/products/${id}/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      // Handover 0126: Send JSON to match backend ProductUpdate schema
+      // Backend expects: { name?, description?, project_path?, is_active? }
+      const payload = {}
+      if (data.name !== undefined) payload.name = data.name
+      if (data.description !== undefined) payload.description = data.description
+      if (data.projectPath !== undefined) payload.project_path = data.projectPath
+      if (data.isActive !== undefined) payload.is_active = data.isActive
+      return apiClient.put(`/api/v1/products/${id}/`, payload)
     },
     delete: (id) => apiClient.delete(`/api/v1/products/${id}/`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
