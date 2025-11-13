@@ -387,6 +387,358 @@ class TestProjectServiceLifecycle:
         assert result["success"] is True
         assert "restored successfully" in result["message"]
 
+    @pytest.mark.asyncio
+    async def test_activate_project_from_staging(self):
+        """Test activating project from staging state"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock project in staging state
+        mock_project = Mock(spec=Project)
+        mock_project.id = "test-project-id"
+        mock_project.product_id = "product-123"
+        mock_project.status = "staging"
+        mock_project.activated_at = None
+        mock_project.name = "Test Project"
+        mock_project.mission = "Test Mission"
+        mock_project.description = "Test Description"
+        mock_project.config_data = {}
+        mock_project.meta_data = {}
+        mock_project.created_at = datetime.utcnow()
+        mock_project.updated_at = datetime.utcnow()
+        mock_project.completed_at = None
+
+        # Mock query for existing project
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        session.execute = AsyncMock(return_value=mock_result)
+        
+        # Mock query for checking existing active project
+        mock_active_check = AsyncMock()
+        mock_active_check.scalar_one_or_none.return_value = None  # No existing active project
+        
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.activate_project("test-project-id")
+
+        # Assert
+        assert result["success"] is True
+        assert mock_project.status == "active"
+        assert mock_project.activated_at is not None
+        session.commit.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_activate_project_single_active_constraint(self):
+        """Test Single Active Project constraint enforcement"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock new project to activate
+        new_project = Mock(spec=Project)
+        new_project.id = "new-project-id"
+        new_project.product_id = "product-123"
+        new_project.status = "staging"
+        new_project.activated_at = None
+
+        # Mock existing active project
+        existing_project = Mock(spec=Project)
+        existing_project.id = "existing-project-id"
+        existing_project.product_id = "product-123"
+        existing_project.status = "active"
+
+        # Setup execute mock to return different projects based on query
+        execute_call_count = [0]
+        
+        async def execute_side_effect(*args, **kwargs):
+            execute_call_count[0] += 1
+            mock_result = AsyncMock()
+            if execute_call_count[0] == 1:  # First call: get new project
+                mock_result.scalar_one_or_none.return_value = new_project
+            elif execute_call_count[0] == 2:  # Second call: check for existing active
+                mock_result.scalar_one_or_none.return_value = existing_project
+            else:  # Update queries
+                mock_result.scalar_one_or_none.return_value = None
+            return mock_result
+
+        session.execute = AsyncMock(side_effect=execute_side_effect)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.activate_project("new-project-id")
+
+        # Assert
+        assert result["success"] is True
+        assert new_project.status == "active"
+        assert existing_project.status == "paused"  # Auto-deactivated
+
+    @pytest.mark.asyncio
+    async def test_deactivate_project_success(self):
+        """Test deactivating active project"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock active project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "test-project-id"
+        mock_project.status = "active"
+        mock_project.config_data = {}
+
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.deactivate_project(
+            "test-project-id",
+            reason="Testing pause"
+        )
+
+        # Assert
+        assert result["success"] is True
+        assert mock_project.status == "paused"
+        assert mock_project.config_data.get("deactivation_reason") == "Testing pause"
+
+    @pytest.mark.asyncio
+    async def test_cancel_staging_success(self):
+        """Test cancelling project in staging state"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock staging project with pending jobs
+        mock_project = Mock(spec=Project)
+        mock_project.id = "test-project-id"
+        mock_project.status = "staging"
+        mock_project.agent_jobs = []
+
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.cancel_staging("test-project-id")
+
+        # Assert
+        assert result["success"] is True
+        assert mock_project.status == "cancelled"
+        assert mock_project.completed_at is not None  # Using completed_at for cancelled_at
+
+    @pytest.mark.asyncio
+    async def test_get_project_summary_with_jobs(self):
+        """Test project summary includes accurate job metrics"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "test-project-id"
+        mock_project.name = "Test Project"
+        mock_project.status = "active"
+        mock_project.mission = "Test Mission"
+        mock_project.created_at = datetime.utcnow()
+        mock_project.activated_at = datetime.utcnow()
+        mock_project.product_id = "product-123"
+        
+        # Mock product
+        mock_product = Mock()
+        mock_product.name = "Test Product"
+        mock_project.product = mock_product
+
+        # Mock job counts
+        job_counts_data = [
+            ("completed", 3),
+            ("active", 1),
+            ("pending", 2),
+            ("failed", 1)
+        ]
+        
+        mock_job_counts = Mock()
+        mock_job_counts.all.return_value = job_counts_data
+
+        # Mock last activity
+        mock_last_activity = Mock()
+        mock_last_activity.scalar.return_value = datetime.utcnow()
+
+        execute_call_count = [0]
+        
+        async def execute_side_effect(*args, **kwargs):
+            execute_call_count[0] += 1
+            if execute_call_count[0] == 1:  # Get project
+                mock_result = AsyncMock()
+                mock_result.scalar_one_or_none.return_value = mock_project
+                return mock_result
+            elif execute_call_count[0] == 2:  # Job counts
+                return mock_job_counts
+            else:  # Last activity
+                return mock_last_activity
+
+        session.execute = AsyncMock(side_effect=execute_side_effect)
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_project_summary("test-project-id")
+
+        # Assert
+        assert result["success"] is True
+        summary = result["data"]
+        assert summary["total_jobs"] == 7
+        assert summary["completed_jobs"] == 3
+        assert summary["active_jobs"] == 1
+        assert summary["pending_jobs"] == 2
+        assert summary["failed_jobs"] == 1
+        assert summary["completion_percentage"] == pytest.approx(42.86, rel=0.1)
+
+    @pytest.mark.asyncio
+    async def test_update_project_multiple_fields(self):
+        """Test update_project updates all provided fields"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "test-project-id"
+        mock_project.name = "Old Name"
+        mock_project.description = "Old Description"
+        mock_project.mission = "Old Mission"
+        mock_project.config_data = {"old": "data"}
+
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Act
+        updates = {
+            "name": "New Name",
+            "description": "New Description",
+            "mission": "New Mission",
+            "config_data": {"new": "data"}
+        }
+        result = await service.update_project("test-project-id", updates)
+
+        # Assert
+        assert result["success"] is True
+        assert mock_project.name == "New Name"
+        assert mock_project.description == "New Description"
+        assert mock_project.mission == "New Mission"
+        assert mock_project.config_data == {"new": "data"}
+
+    @pytest.mark.asyncio
+    async def test_launch_project_creates_orchestrator(self):
+        """Test launch_project creates orchestrator job and returns prompt"""
+        # Arrange
+        db_manager = Mock()
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant.return_value = "test-tenant"
+        session = AsyncMock()
+
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "test-project-id"
+        mock_project.status = "staging"
+        mock_project.name = "Test Project"
+        mock_project.mission = "Test Mission"
+
+        # Mock orchestrator job
+        mock_job = Mock(spec=MCPAgentJob)
+        mock_job.id = "orchestrator-job-123"
+        mock_job.status = "pending"
+
+        mock_result = AsyncMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        session.execute = AsyncMock(return_value=mock_result)
+        session.add = Mock()
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        service = ProjectService(db_manager, tenant_manager)
+
+        # Mock AgentJobManager
+        with patch('giljo_mcp.services.project_service.AgentJobManager') as mock_ajm:
+            mock_job_manager = AsyncMock()
+            mock_job_manager.create_job.return_value = mock_job
+            mock_ajm.return_value = mock_job_manager
+
+            # Act
+            result = await service.launch_project("test-project-id")
+
+            # Assert
+            assert result["success"] is True
+            assert result["data"]["orchestrator_job_id"] == "orchestrator-job-123"
+            assert "launch_prompt" in result["data"]
+            assert mock_project.status == "active"
+
 
 class TestProjectServiceStatus:
     """Test status and metrics methods"""

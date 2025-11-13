@@ -1,13 +1,18 @@
 # Project 0500 Series Execution Prompt Template
 
 ## Copy-Paste Prompt for Agentic Coding Tools
+ Notes for Future Handovers
 
-```
-Execute Handover [PROJECT_NUMBER] following production-grade standards.
+  - Serena MCP saved significant time - Used get_symbols_overview and find_symbol instead of reading full files
+  - Production-grade code only - No TODO comments, no placeholders, no bandaids
+  - Token-efficient documentation - Inline comments optimized for AI agent consumption
+  - Existing patterns followed - Used VisionDocumentRepository and VisionDocumentChunker as designed
+
+Execute Handover 0501 following production-grade standards.
 
 ## Project Context
 
-**Handover Document**: F:\GiljoAI_MCP\handovers\[PROJECT_NUMBER]_[name].md
+**Handover Document**: F:\GiljoAI_MCP\handovers\0501_projectservice_implementation.md
 **Master Plan**: F:\GiljoAI_MCP\handovers\Projectplan_500.md
 **Architecture**: F:\GiljoAI_MCP\CLAUDE.md
 **Completion Format**: F:\GiljoAI_MCP\handovers\HANDOVER_INSTRUCTIONS.md
@@ -23,6 +28,7 @@ Execute Handover [PROJECT_NUMBER] following production-grade standards.
 - ❌ NO placeholder implementations
 
 ## Tools Available
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 
 **Serena MCP** (REQUIRED for code navigation):
 - Use `mcp__serena__get_symbols_overview` before reading files
@@ -43,12 +49,17 @@ Execute Handover [PROJECT_NUMBER] following production-grade standards.
 
 ## Execution Pattern
 
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
+
 ### Phase 1: PLAN
 1. Read handover document thoroughly
 2. Use Serena to explore affected files (`get_symbols_overview`, `find_symbol`)
 3. Read relevant memories for context
 4. Create execution plan with TodoWrite tool
 5. Identify dependencies and risks
+6. Only engage developer with questions if you need significant decisions related to vision, direction or significant cascading consequences.
+
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 
 ### Phase 2: IMPLEMENT
 1. Follow handover implementation tasks sequentially
@@ -57,12 +68,16 @@ Execute Handover [PROJECT_NUMBER] following production-grade standards.
 4. Add comprehensive inline documentation (for AI agents, token-efficient)
 5. Mark todos as completed as you finish each task
 
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
+
 ### Phase 3: TEST
 1. Write unit tests (>80% coverage target)
 2. Write integration tests if specified
 3. Run test suite: `pytest tests/ -v`
 4. Fix any failures immediately
 5. Validate against handover success criteria
+
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 
 ### Phase 4: COMMIT
 1. Review all changes: `git status`, `git diff`
@@ -83,14 +98,11 @@ Files Changed:
 
 Tests Added:
 - [List new test files/functions]
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
+Have a great day!
 EOF
 )"
 ```
-
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 ### Phase 5: REITERATE
 1. Re-read handover success criteria
 2. Validate each criterion is met
@@ -100,14 +112,14 @@ EOF
    - Test again
    - Commit fix
 4. Repeat until all criteria pass
-
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 ### Phase 6: VALIDATE
 1. Run full test suite: `pytest tests/ -v --cov`
 2. Check test coverage: Should be >80%
 3. Manual testing per handover testing strategy
 4. Database validation queries (if applicable)
 5. Verify no regressions: All existing tests still pass
-
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 ### Phase 7: DOCUMENT
 1. Update handover document with "COMPLETE" status
 2. Add completion summary:
@@ -171,7 +183,7 @@ Parameters:
 - Footer: Success criteria, files changed, tests added, attribution
 
 ## Success Criteria Validation
-
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 Before closing out, verify EVERY criterion from handover document:
 - [ ] All implementation tasks completed
 - [ ] All tests pass (unit + integration)
@@ -196,6 +208,7 @@ Before closing out, verify EVERY criterion from handover document:
 - Skip documentation updates
 
 ✅ **DO**:
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 - Use Serena MCP for efficient code navigation
 - Follow existing patterns in codebase
 - Write token-efficient documentation for AI agents
@@ -234,12 +247,12 @@ Next handover: 0501 (blocked until 0500 merged)
 **Status**: Template ready for use
 **Usage**: Copy the prompt section, replace [PROJECT_NUMBER], execute
 **Archive**: Keep this template for all 0500 series handovers
-```
+
 
 ---
 
 ## Usage Instructions
-
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 1. Copy the prompt from "Execute Handover..." to the end
 2. Replace `[PROJECT_NUMBER]` with actual handover (e.g., 0500, 0501, etc.)
 3. Replace `[name]` with handover name (e.g., productservice_enhancement)
@@ -248,9 +261,9 @@ Next handover: 0501 (blocked until 0500 merged)
 
 ## Example for Handover 0500
 
-```
-Execute Handover 0500 following production-grade standards.
 
+Execute Handover 0500 following production-grade standards.
+***CRITICAL*** YOU MUST USE CLAUDE CODE SUBAGENTS
 ## Project Context
 
 **Handover Document**: F:\GiljoAI_MCP\handovers\0500_productservice_enhancement.md
