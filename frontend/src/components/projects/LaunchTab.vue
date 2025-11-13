@@ -184,7 +184,7 @@
               <!-- Edit Button -->
               <v-btn
                 variant="outlined"
-                color="info"
+                color="white"
                 size="small"
                 @click="handleEditMission"
                 class="align-self-end"
@@ -998,7 +998,7 @@ defineExpose({
 .scrollable-content {
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: 300px;
+  max-height: 200px;
   padding: 12px;
   background: rgba(0, 0, 0, 0.02);
   border-radius: 4px;
@@ -1015,11 +1015,11 @@ defineExpose({
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.8);
     border-radius: 3px;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.3);
+      background: rgba(255, 255, 255, 1);
     }
   }
 }
