@@ -158,7 +158,7 @@
             variant="plain"
             density="compact"
             hide-details
-            class="inline-select"
+            class="inline-select inline-select-no-arrow"
           >
             <template v-slot:selection="{ item: statusItem }">
               <v-chip :color="getStatusColor(statusItem.value)" size="small" variant="flat">
@@ -187,7 +187,7 @@
             variant="plain"
             density="compact"
             hide-details
-            class="inline-select"
+            class="inline-select inline-select-no-arrow"
           >
             <template v-slot:selection="{ item: priorityItem }">
               <v-chip :color="getPriorityColor(priorityItem.value)" size="small" label>
