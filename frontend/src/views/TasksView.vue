@@ -1,22 +1,9 @@
 <template>
   <v-container>
-    <!-- Header with Actions -->
+    <!-- Header -->
     <v-row align="center" class="mb-4">
       <v-col>
         <h1 class="text-h4">Tasks</h1>
-      </v-col>
-      <v-col cols="auto">
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-history"
-          @click="showConversionHistory = true"
-          class="mr-2"
-        >
-          History
-        </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTaskDialog = true">
-          New Task
-        </v-btn>
       </v-col>
     </v-row>
 
@@ -137,7 +124,9 @@
       <v-card-title class="d-flex align-center py-3">
         <span class="text-h6">Tasks</span>
         <v-spacer />
-        <!-- Hierarchy toggle removed - feature not used -->
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTaskDialog = true">
+          New Task
+        </v-btn>
       </v-card-title>
 
       <v-data-table
@@ -388,24 +377,24 @@
       </v-card>
     </v-dialog>
 
-    <!-- Conversion History Dialog -->
-    <v-dialog v-model="showConversionHistory" max-width="900">
+    <!-- No Active Product Warning Dialog -->
+    <v-dialog v-model="showNoProductDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title class="d-flex align-center">
-          <span>Conversion History</span>
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="showConversionHistory = false"
-            aria-label="Close"
-          />
+        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300;">
+          <v-icon class="mr-2" size="large">mdi-alert-circle</v-icon>
+          <span class="text-h6">No Active Product</span>
         </v-card-title>
-        <ConversionHistory
-          :product-id="productStore.currentProductId"
-          @project-selected="handleProjectSelected"
-          @conversion-rolled-back="handleConversionRollback"
-        />
+        <v-card-text class="pt-6 pb-4">
+          <p class="text-body-1">
+            No products are set to active state. Please activate a product before converting tasks to projects.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pb-4 px-4">
+          <v-spacer />
+          <v-btn color="primary" variant="flat" @click="showNoProductDialog = false">
+            OK
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </v-container>
@@ -419,7 +408,6 @@ import { useAgentStore } from '@/stores/agents'
 import { useUserStore } from '@/stores/user'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
-import ConversionHistory from '@/components/ConversionHistory.vue'
 
 // Stores
 const taskStore = useTaskStore()
@@ -442,9 +430,8 @@ const saving = ref(false)
 const taskFilter = ref('product_tasks')
 const user = computed(() => userStore.currentUser)
 
-// Hierarchy state (feature disabled - not used)
-const showHierarchy = ref(false)
-const showConversionHistory = ref(false)
+// Dialog state
+const showNoProductDialog = ref(false)
 
 // Current task form
 const currentTask = ref({
@@ -597,12 +584,13 @@ async function completeTask(task) {
 }
 
 async function convertTaskToProject(task) {
+  // Check if there's an active product
   if (!productStore.currentProductId) {
-    alert('Please activate a product before converting tasks to projects.')
+    showNoProductDialog.value = true
     return
   }
 
-  if (confirm(`Convert task "${task.title}" to a project?\n\nThis will create a new project with the task's title and description.`)) {
+  if (confirm(`Convert task "${task.title}" to a project?\n\nThis will create a new project in the active product with the task's title and description.`)) {
     try {
       const response = await api.tasks.convertToProject(task.id)
       await taskStore.fetchTasks()
@@ -637,23 +625,6 @@ function cancelTask() {
     category: 'general',
     due_date: null,
   }
-}
-
-// Hierarchy methods removed - feature not used
-
-// Hierarchy helper methods removed - feature not used
-
-// Conversion history handlers
-function handleProjectSelected(projectId) {
-  // Navigate to project or emit event to parent
-  console.log('Navigate to project:', projectId)
-  // Could integrate with router: router.push(`/projects/${projectId}`)
-}
-
-function handleConversionRollback(conversion) {
-  // Refresh tasks after rollback
-  taskStore.fetchTasks()
-  console.log('Conversion rolled back:', conversion.id)
 }
 
 async function saveTask() {
