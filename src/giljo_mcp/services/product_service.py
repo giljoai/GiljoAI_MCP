@@ -162,7 +162,10 @@ class ProductService:
         """
         try:
             async with self.db_manager.get_session_async() as session:
-                stmt = select(Product).where(
+                # Eagerly load vision_documents to prevent lazy-loading issues
+                stmt = select(Product).options(
+                    selectinload(Product.vision_documents)
+                ).where(
                     and_(
                         Product.id == product_id,
                         Product.tenant_key == self.tenant_key,
@@ -235,11 +238,12 @@ class ProductService:
                     conditions.append(Product.is_active == True)
 
                 # Eagerly load vision_documents to avoid lazy loading in property access
+                # Sort: active products first, then by creation date (newest first)
                 stmt = (
                     select(Product)
                     .where(and_(*conditions))
                     .options(selectinload(Product.vision_documents))
-                    .order_by(Product.created_at.desc())
+                    .order_by(Product.is_active.desc(), Product.created_at.desc())
                 )
                 result = await session.execute(stmt)
                 products = result.scalars().all()
