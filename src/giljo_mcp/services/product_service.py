@@ -829,6 +829,143 @@ class ProductService:
             self._logger.exception(f"Failed to get cascade impact: {e}")
             return {"success": False, "error": str(e)}
 
+    async def upload_vision_document(
+        self,
+        product_id: str,
+        content: str,
+        filename: str,
+        auto_chunk: bool = True,
+        max_tokens: int = 25000,
+    ) -> Dict[str, Any]:
+        """
+        Upload and optionally chunk vision document for product.
+        
+        Uses VisionDocumentChunker for intelligent chunking at semantic boundaries.
+        Documents exceeding max_tokens are automatically split into chunks.
+        
+        Args:
+            product_id: Product UUID
+            content: Document content (text/markdown)
+            filename: Document filename
+            auto_chunk: Auto-chunk if content exceeds max_tokens (default: True)
+            max_tokens: Max tokens per chunk (default: 25000 for 32K models)
+        
+        Returns:
+            Dict with success status and document/chunk details
+            {
+                "success": bool,
+                "document_id": str,
+                "document_name": str,
+                "chunks_created": int,
+                "total_tokens": int,
+                "error": str (if failed)
+            }
+        
+        Raises:
+            ValueError: If product not found or user lacks access
+        
+        Example:
+            >>> result = await service.upload_vision_document(
+            ...     product_id="abc-123",
+            ...     content="# Vision\\n...",
+            ...     filename="vision.md"
+            ... )
+            >>> print(f"Created {result['chunks_created']} chunks")
+        """
+        try:
+            from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+            from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+            
+            async with self.db_manager.get_session_async() as session:
+                # Verify product exists and belongs to tenant
+                stmt = select(Product).where(
+                    and_(
+                        Product.id == product_id,
+                        Product.tenant_key == self.tenant_key,
+                        Product.deleted_at.is_(None)
+                    )
+                )
+                result = await session.execute(stmt)
+                product = result.scalar_one_or_none()
+                
+                if not product:
+                    return {
+                        "success": False,
+                        "error": f"Product {product_id} not found or access denied"
+                    }
+                
+                # Create vision document via repository
+                vision_repo = VisionDocumentRepository(db_manager=self.db_manager)
+                
+                # Calculate file size
+                file_size = len(content.encode('utf-8'))
+                
+                # Create document (inline storage)
+                doc = await vision_repo.create(
+                    session=session,
+                    tenant_key=self.tenant_key,
+                    product_id=product_id,
+                    document_name=filename,
+                    content=content,
+                    document_type="vision",
+                    storage_type="inline",
+                    file_size=file_size,
+                    is_active=True,
+                    display_order=0,
+                )
+                
+                await session.commit()
+                
+                self._logger.info(
+                    f"Created vision document {doc.id} for product {product_id}"
+                )
+                
+                # Auto-chunk if enabled
+                chunks_created = 0
+                total_tokens = 0
+                
+                if auto_chunk:
+                    chunker = VisionDocumentChunker(target_chunk_size=max_tokens)
+                    
+                    # Chunk the document
+                    chunk_result = await chunker.chunk_vision_document(
+                        session=session,
+                        tenant_key=self.tenant_key,
+                        vision_document_id=str(doc.id)
+                    )
+                    
+                    await session.commit()
+                    
+                    if chunk_result["success"]:
+                        chunks_created = chunk_result["chunks_created"]
+                        total_tokens = chunk_result["total_tokens"]
+                        
+                        self._logger.info(
+                            f"Chunked document {doc.id}: {chunks_created} chunks, "
+                            f"{total_tokens} tokens"
+                        )
+                    else:
+                        # Chunking failed but document created
+                        self._logger.warning(
+                            f"Document {doc.id} created but chunking failed: "
+                            f"{chunk_result.get('error', 'Unknown error')}"
+                        )
+                
+                return {
+                    "success": True,
+                    "document_id": str(doc.id),
+                    "document_name": doc.document_name,
+                    "chunks_created": chunks_created,
+                    "total_tokens": total_tokens,
+                }
+                
+        except ValueError as e:
+            self._logger.error(f"Validation error uploading vision document: {e}")
+            return {"success": False, "error": str(e)}
+        except Exception as e:
+            self._logger.exception(f"Failed to upload vision document: {e}")
+            return {"success": False, "error": str(e)}
+
     # ============================================================================
     # Validation Methods
     # ============================================================================
