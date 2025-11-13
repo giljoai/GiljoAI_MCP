@@ -150,7 +150,7 @@ class GiljoDevControlPanel:
                 self.config = None
 
     def build_ui(self):
-        """Build the complete UI."""
+        """Build the complete UI with tabbed interface."""
         # Main container with padding
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky="nsew")
@@ -163,18 +163,119 @@ class GiljoDevControlPanel:
         )
         title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
 
-        # Build sections
-        row = 1
-        row = self.build_service_section(main_frame, row)
-        row = self.build_database_section(main_frame, row)
-        row = self.build_project_reset_section(main_frame, row)
-        row = self.build_reset_section(main_frame, row)
-        row = self.build_cache_section(main_frame, row)
-        row = self.build_frontend_section(main_frame, row)
+        # Create tabbed notebook
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, 10))
+
+        # Build tabs
+        self.build_services_tab()
+        self.build_database_tab()
+        self.build_resets_tab()
+        self.build_cache_tab()
+        self.build_frontend_tab()
 
         # Status bar at bottom
         self.status_label = ttk.Label(main_frame, text="Ready", relief="sunken", anchor="w")
-        self.status_label.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(20, 0))
+        self.status_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+
+    def build_services_tab(self):
+        """Build the Services tab."""
+        tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(tab, text="Services")
+
+        # Call existing service section builder (adapted for tab)
+        self.build_service_section(tab, 0)
+
+    def build_database_tab(self):
+        """Build the Database tab (connection check only)."""
+        tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(tab, text="Database")
+
+        # Database Connection Check section
+        section = ttk.LabelFrame(tab, text="Database Connection", padding="10")
+        section.grid(row=0, column=0, columnspan=2, sticky="ew", pady=5)
+
+        # Connection status
+        ttk.Label(section, text="Connection:").grid(row=0, column=0, sticky="w")
+        self.db_conn_indicator = ttk.Label(section, text="●", foreground="red")
+        self.db_conn_indicator.grid(row=0, column=1)
+        self.db_conn_label = ttk.Label(section, text="Not checked")
+        self.db_conn_label.grid(row=0, column=2, sticky="w", padx=(5, 0))
+
+        # Database exists status
+        ttk.Label(section, text="giljo_mcp DB:").grid(row=1, column=0, sticky="w", pady=(10, 0))
+        self.db_exists_indicator = ttk.Label(section, text="●", foreground="red")
+        self.db_exists_indicator.grid(row=1, column=1, pady=(10, 0))
+        self.db_exists_label = ttk.Label(section, text="Not checked")
+        self.db_exists_label.grid(row=1, column=2, sticky="w", padx=(5, 0), pady=(10, 0))
+
+        # Last backup status
+        ttk.Label(section, text="Last Backup:").grid(row=2, column=0, sticky="w", pady=(10, 0))
+        self.backup_indicator = ttk.Label(section, text="●", foreground="gray")
+        self.backup_indicator.grid(row=2, column=1, pady=(10, 0))
+        self.backup_label = ttk.Label(section, text="Not checked")
+        self.backup_label.grid(row=2, column=2, sticky="w", padx=(5, 0), pady=(10, 0))
+
+        # Action buttons
+        ttk.Separator(section, orient="horizontal").grid(row=3, column=0, columnspan=4, sticky="ew", pady=10)
+        ttk.Button(section, text="Check Connection", command=self.check_db_connection, width=20).grid(
+            row=4, column=0, padx=5, pady=2
+        )
+        ttk.Button(section, text="Check Database", command=self.check_db_exists, width=20).grid(
+            row=4, column=1, padx=5, pady=2
+        )
+
+        # Check for last backup on startup
+        self.check_last_backup()
+
+    def build_resets_tab(self):
+        """Build the Resets tab (consolidated reset operations)."""
+        tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(tab, text="Resets")
+
+        row = 0
+
+        # Project Resets section
+        row = self.build_project_reset_section(tab, row)
+
+        # Database Operations section
+        db_section = ttk.LabelFrame(tab, text="Database Operations", padding="10")
+        db_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=5)
+
+        ttk.Button(
+            db_section,
+            text="Backup Database",
+            command=self.backup_database,
+            width=20
+        ).grid(row=0, column=0, padx=5, pady=5)
+
+        ttk.Button(
+            db_section,
+            text="Delete Database",
+            command=self.delete_database,
+            width=20
+        ).grid(row=0, column=1, padx=5, pady=5)
+
+        row += 1
+
+        # Environment Resets section
+        row = self.build_reset_section(tab, row)
+
+    def build_cache_tab(self):
+        """Build the Cache tab."""
+        tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(tab, text="Cache")
+
+        # Call existing cache section builder (adapted for tab)
+        self.build_cache_section(tab, 0)
+
+    def build_frontend_tab(self):
+        """Build the Frontend tab."""
+        tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(tab, text="Frontend")
+
+        # Call existing frontend section builder (adapted for tab)
+        self.build_frontend_section(tab, 0)
 
     def build_service_section(self, parent: ttk.Frame, row: int) -> int:
         """Build service management section."""
