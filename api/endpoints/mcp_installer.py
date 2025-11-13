@@ -176,7 +176,7 @@ async def get_user_by_id(user_id: str) -> Optional[User]:
     """
     import os
 
-    from giljo_mcp.database import DatabaseManager
+    from src.giljo_mcp.database import DatabaseManager
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:

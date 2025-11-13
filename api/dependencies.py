@@ -6,7 +6,7 @@ import os
 
 from fastapi import Request
 
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tenant import TenantManager
 
 
 async def get_tenant_key(request: Request) -> str:
