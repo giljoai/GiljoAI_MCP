@@ -71,6 +71,16 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    activated_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="First activation timestamp (only set once on first activation)"
+    )
+    paused_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when project was last paused/deactivated"
+    )
     deleted_at = Column(
         DateTime(timezone=True),
         nullable=True,

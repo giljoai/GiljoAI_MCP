@@ -575,6 +575,656 @@ class ProjectService:
             self._logger.exception(f"Failed to cancel project: {e}")
             return {"success": False, "error": str(e)}
 
+    async def activate_project(
+        self,
+        project_id: str,
+        force: bool = False,
+        websocket_manager: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Activate a staged or paused project.
+
+        State Transitions:
+        - staging → active (initial launch)
+        - paused → active (resume)
+
+        Enforces Single Active Project constraint: automatically deactivates
+        any existing active project in the same product before activating the new one.
+
+        Args:
+            project_id: Project UUID
+            force: If True, skip validation checks (default: False)
+            websocket_manager: Optional WebSocket manager for real-time updates
+
+        Returns:
+            Dict with success status, message, and project data
+
+        Raises:
+            Exception: If project not found or invalid state transition
+
+        Example:
+            >>> result = await service.activate_project("abc-123")
+            >>> # Returns: {"success": True, "data": {...}}
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Fetch project
+                result = await session.execute(
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Validate state transition
+                if project.status not in ["staging", "paused"] and not force:
+                    return {
+                        "success": False,
+                        "error": f"Cannot activate project from status '{project.status}'"
+                    }
+
+                # Check for existing active project in same product (Single Active Project constraint)
+                if project.product_id:
+                    existing_active_result = await session.execute(
+                        select(Project).where(
+                            and_(
+                                Project.product_id == project.product_id,
+                                Project.status == "active",
+                                Project.id != project_id,
+                                Project.tenant_key == self.tenant_manager.get_current_tenant()
+                            )
+                        )
+                    )
+                    existing_active = existing_active_result.scalar_one_or_none()
+
+                    if existing_active:
+                        # Auto-deactivate existing active project
+                        existing_active.status = "paused"
+                        existing_active.paused_at = datetime.utcnow()
+                        existing_active.updated_at = datetime.utcnow()
+                        self._logger.info(
+                            f"Auto-deactivated project {existing_active.id} due to Single Active Project constraint"
+                        )
+
+                # Activate project
+                project.status = "active"
+                project.updated_at = datetime.utcnow()
+
+                # Set activated_at only on first activation
+                if not project.activated_at:
+                    project.activated_at = datetime.utcnow()
+
+                await session.commit()
+                await session.refresh(project)
+
+                self._logger.info(f"Activated project {project_id}")
+
+                # Broadcast WebSocket event if manager provided
+                if websocket_manager:
+                    try:
+                        await websocket_manager.broadcast_project_update(
+                            project_id=project.id,
+                            update_type="status_changed",
+                            project_data={
+                                "name": project.name,
+                                "status": project.status,
+                                "mission": project.mission,
+                            }
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                # Build response using ProjectResponse schema structure
+                return {
+                    "success": True,
+                    "data": {
+                        "id": project.id,
+                        "name": project.name,
+                        "status": project.status,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "config_data": project.config_data or {},
+                        "meta_data": project.meta_data or {},
+                        "created_at": project.created_at,
+                        "updated_at": project.updated_at,
+                        "activated_at": project.activated_at,
+                        "completed_at": project.completed_at,
+                        "product_id": project.product_id,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to activate project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def deactivate_project(
+        self,
+        project_id: str,
+        reason: Optional[str] = None,
+        websocket_manager: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Deactivate (pause) an active project.
+
+        State Transition: active → paused
+
+        Args:
+            project_id: Project UUID
+            reason: Optional reason for deactivation (stored in config_data)
+            websocket_manager: Optional WebSocket manager for real-time updates
+
+        Returns:
+            Dict with success status, message, and project data
+
+        Example:
+            >>> result = await service.deactivate_project(
+            ...     "abc-123",
+            ...     reason="Taking a break"
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Fetch project
+                result = await session.execute(
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Validate state
+                if project.status != "active":
+                    return {
+                        "success": False,
+                        "error": f"Cannot deactivate project with status '{project.status}'"
+                    }
+
+                # Deactivate project
+                project.status = "paused"
+                project.paused_at = datetime.utcnow()
+                project.updated_at = datetime.utcnow()
+
+                # Store reason if provided
+                if reason:
+                    if not project.config_data:
+                        project.config_data = {}
+                    project.config_data["deactivation_reason"] = reason
+
+                await session.commit()
+                await session.refresh(project)
+
+                self._logger.info(f"Deactivated project {project_id}")
+
+                # Broadcast WebSocket event
+                if websocket_manager:
+                    try:
+                        await websocket_manager.broadcast_project_update(
+                            project_id=project.id,
+                            update_type="status_changed",
+                            project_data={
+                                "name": project.name,
+                                "status": project.status,
+                                "mission": project.mission,
+                            }
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                return {
+                    "success": True,
+                    "data": {
+                        "id": project.id,
+                        "name": project.name,
+                        "status": project.status,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "config_data": project.config_data or {},
+                        "meta_data": project.meta_data or {},
+                        "created_at": project.created_at,
+                        "updated_at": project.updated_at,
+                        "activated_at": project.activated_at,
+                        "completed_at": project.completed_at,
+                        "product_id": project.product_id,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to deactivate project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def cancel_staging(
+        self,
+        project_id: str,
+        websocket_manager: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Cancel a project in staging state.
+
+        State Transition: staging → cancelled
+
+        Similar to cancel_project() but specifically for staging state.
+        Cleans up any pending orchestrator jobs.
+
+        Args:
+            project_id: Project UUID
+            websocket_manager: Optional WebSocket manager for real-time updates
+
+        Returns:
+            Dict with success status, message, and project data
+
+        Example:
+            >>> result = await service.cancel_staging("abc-123")
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Fetch project
+                result = await session.execute(
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Validate state
+                if project.status != "staging":
+                    return {
+                        "success": False,
+                        "error": f"Cannot cancel staging for project with status '{project.status}'"
+                    }
+
+                # Cancel project
+                project.status = "cancelled"
+                project.completed_at = datetime.utcnow()  # Using completed_at for cancelled_at
+                project.updated_at = datetime.utcnow()
+
+                await session.commit()
+                await session.refresh(project)
+
+                self._logger.info(f"Cancelled staging for project {project_id}")
+
+                # Broadcast WebSocket event
+                if websocket_manager:
+                    try:
+                        await websocket_manager.broadcast_project_update(
+                            project_id=project.id,
+                            update_type="cancelled",
+                            project_data={
+                                "name": project.name,
+                                "status": project.status,
+                                "mission": project.mission,
+                            }
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                return {
+                    "success": True,
+                    "data": {
+                        "id": project.id,
+                        "name": project.name,
+                        "status": project.status,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "config_data": project.config_data or {},
+                        "meta_data": project.meta_data or {},
+                        "created_at": project.created_at,
+                        "updated_at": project.updated_at,
+                        "activated_at": project.activated_at,
+                        "completed_at": project.completed_at,
+                        "product_id": project.product_id,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to cancel staging: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_project_summary(
+        self,
+        project_id: str
+    ) -> dict[str, Any]:
+        """
+        Generate project summary with metrics and status.
+
+        Returns comprehensive project overview including job statistics,
+        completion metrics, and activity timestamps for dashboard display.
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Dict with success status and ProjectSummaryResponse data:
+            - Basic project info (id, name, status, mission)
+            - Agent job counts (pending/active/completed/failed)
+            - Mission completion percentage
+            - Timestamps (created, activated, last activity)
+            - Product context (id, name)
+
+        Example:
+            >>> result = await service.get_project_summary("abc-123")
+            >>> print(result["data"]["completion_percentage"])  # 75.0
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Fetch project with product eager loading
+                result = await session.execute(
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Get job counts by status
+                job_counts_result = await session.execute(
+                    select(
+                        MCPAgentJob.status,
+                        func.count(MCPAgentJob.id).label("count")
+                    )
+                    .where(
+                        and_(
+                            MCPAgentJob.project_id == project_id,
+                            MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                    .group_by(MCPAgentJob.status)
+                )
+                job_counts_raw = job_counts_result.all()
+
+                # Build job counts dict
+                job_counts = {status: count for status, count in job_counts_raw}
+                
+                total_jobs = sum(job_counts.values())
+                completed_jobs = job_counts.get("completed", 0)
+                failed_jobs = job_counts.get("failed", 0)
+                active_jobs = job_counts.get("active", 0)
+                pending_jobs = job_counts.get("pending", 0)
+
+                # Calculate completion percentage
+                completion_percentage = 0.0
+                if total_jobs > 0:
+                    completion_percentage = (completed_jobs / total_jobs) * 100.0
+
+                # Get last activity timestamp
+                last_activity_result = await session.execute(
+                    select(func.max(MCPAgentJob.updated_at))
+                    .where(
+                        and_(
+                            MCPAgentJob.project_id == project_id,
+                            MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                last_activity_at = last_activity_result.scalar()
+
+                # Get product info
+                product_name = ""
+                if project.product_id:
+                    from giljo_mcp.models.products import Product
+                    product_result = await session.execute(
+                        select(Product).where(Product.id == project.product_id)
+                    )
+                    product = product_result.scalar_one_or_none()
+                    if product:
+                        product_name = product.name
+
+                # Build summary response
+                summary_data = {
+                    "id": project.id,
+                    "name": project.name,
+                    "status": project.status,
+                    "mission": project.mission,
+                    "total_jobs": total_jobs,
+                    "completed_jobs": completed_jobs,
+                    "failed_jobs": failed_jobs,
+                    "active_jobs": active_jobs,
+                    "pending_jobs": pending_jobs,
+                    "completion_percentage": completion_percentage,
+                    "created_at": project.created_at,
+                    "activated_at": project.activated_at,
+                    "last_activity_at": last_activity_at,
+                    "product_id": project.product_id or "",
+                    "product_name": product_name,
+                }
+
+                return {"success": True, "data": summary_data}
+
+        except Exception as e:
+            self._logger.exception(f"Failed to get project summary: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def update_project(
+        self,
+        project_id: str,
+        updates: dict[str, Any],
+        websocket_manager: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Update project fields.
+
+        Updates all provided fields (name, description, mission, config_data).
+        This is the fixed version that handles multiple fields, not just mission.
+
+        Args:
+            project_id: Project UUID
+            updates: Dict of field updates (allowed: name, description, mission, config_data)
+            websocket_manager: Optional WebSocket manager for real-time updates
+
+        Returns:
+            Dict with success status and updated project data
+
+        Example:
+            >>> result = await service.update_project(
+            ...     "abc-123",
+            ...     {
+            ...         "name": "New Name",
+            ...         "description": "New Description",
+            ...         "mission": "New Mission"
+            ...     }
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Fetch project
+                result = await session.execute(
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Update allowed fields
+                allowed_fields = {"name", "description", "mission", "config_data"}
+                for field, value in updates.items():
+                    if field in allowed_fields:
+                        setattr(project, field, value)
+
+                project.updated_at = datetime.utcnow()
+
+                await session.commit()
+                await session.refresh(project)
+
+                self._logger.info(f"Updated project {project_id}")
+
+                # Broadcast WebSocket event
+                if websocket_manager:
+                    try:
+                        await websocket_manager.broadcast_project_update(
+                            project_id=project.id,
+                            update_type="updated",
+                            project_data={
+                                "name": project.name,
+                                "status": project.status,
+                                "mission": project.mission,
+                            }
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                return {
+                    "success": True,
+                    "data": {
+                        "id": project.id,
+                        "name": project.name,
+                        "status": project.status,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "config_data": project.config_data or {},
+                        "meta_data": project.meta_data or {},
+                        "created_at": project.created_at,
+                        "updated_at": project.updated_at,
+                        "activated_at": project.activated_at,
+                        "completed_at": project.completed_at,
+                        "product_id": project.product_id,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to update project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def launch_project(
+        self,
+        project_id: str,
+        launch_config: Optional[dict[str, Any]] = None,
+        websocket_manager: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Launch project orchestrator.
+
+        Creates orchestrator agent job and generates thin-client launch prompt.
+        Activates the project if not already active.
+
+        Args:
+            project_id: Project UUID
+            launch_config: Optional launch configuration
+            websocket_manager: Optional WebSocket manager for real-time updates
+
+        Returns:
+            Dict with success status and ProjectLaunchResponse data:
+            - project_id: Project UUID
+            - orchestrator_job_id: Created orchestrator job UUID
+            - launch_prompt: Thin-client prompt for starting orchestrator
+            - status: Project status after launch
+
+        Example:
+            >>> result = await service.launch_project("abc-123")
+            >>> print(result["data"]["orchestrator_job_id"])
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Fetch project
+                result = await session.execute(
+                    select(Project)
+                    .where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Activate project if not already active
+                if project.status != "active":
+                    activate_result = await self.activate_project(
+                        project_id,
+                        websocket_manager=websocket_manager
+                    )
+                    if not activate_result.get("success"):
+                        return activate_result
+
+                # Create orchestrator agent job
+                from giljo_mcp.agent_job_manager import AgentJobManager
+                
+                job_manager = AgentJobManager(session, self.tenant_manager.get_current_tenant())
+                
+                orchestrator_job = await job_manager.create_job(
+                    agent_type="orchestrator",
+                    project_id=project_id,
+                    config_data=launch_config or {}
+                )
+
+                # Generate thin-client launch prompt
+                launch_prompt = f"""Launch orchestrator for project: {project.name}
+
+Project ID: {project.id}
+Mission: {project.mission}
+Orchestrator Job ID: {orchestrator_job.id}
+
+This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool to fetch full mission details.
+"""
+
+                await session.commit()
+
+                self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job.id}")
+
+                # Broadcast WebSocket event
+                if websocket_manager:
+                    try:
+                        await websocket_manager.broadcast_project_update(
+                            project_id=project.id,
+                            update_type="launched",
+                            project_data={
+                                "name": project.name,
+                                "status": project.status,
+                                "orchestrator_job_id": orchestrator_job.id,
+                            }
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                return {
+                    "success": True,
+                    "data": {
+                        "project_id": project.id,
+                        "orchestrator_job_id": orchestrator_job.id,
+                        "launch_prompt": launch_prompt,
+                        "status": project.status,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to launch project: {e}")
+            return {"success": False, "error": str(e)}
+
     async def restore_project(self, project_id: str) -> dict[str, Any]:
         """
         Restore a completed or cancelled project to inactive status.
