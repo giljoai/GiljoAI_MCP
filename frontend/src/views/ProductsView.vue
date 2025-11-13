@@ -124,7 +124,7 @@
                     </div>
 
                     <!-- Statistics -->
-                    <v-divider class="my-3"></v-divider>
+                    <v-divider class="my-3 product-divider"></v-divider>
                     <v-row dense>
                       <v-col cols="4" class="text-center">
                         <div class="text-caption text-medium-emphasis">Tasks</div>
@@ -148,41 +148,67 @@
                   </v-card-text>
 
                   <v-card-actions>
-                    <v-btn
-                      variant="text"
-                      size="small"
-                      @click="toggleProductActivation(product)"
-                    >
-                      {{ product.is_active ? 'Deactivate' : 'Activate' }}
-                    </v-btn>
+                    <v-tooltip location="top" content-class="branded-tooltip">
+                      <template v-slot:activator="{ props }">
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          v-bind="props"
+                          @click="toggleProductActivation(product)"
+                          :style="product.is_active ? 'color: #ffc300' : ''"
+                        >
+                          <v-icon>{{ product.is_active ? 'mdi-stop' : 'mdi-play' }}</v-icon>
+                        </v-btn>
+                      </template>
+                      <span>{{ product.is_active ? 'Deactivate Product' : 'Activate Product' }}</span>
+                    </v-tooltip>
                     <v-spacer></v-spacer>
-                    <v-btn
-                      icon
-                      size="small"
-                      variant="text"
-                      @click="showProductDetails(product)"
-                      :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
-                    >
-                      <v-icon>mdi-information-outline</v-icon>
-                    </v-btn>
-                    <v-btn
-                      icon
-                      size="small"
-                      variant="text"
-                      @click="editProduct(product)"
-                      :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
-                    >
-                      <v-icon>mdi-pencil</v-icon>
-                    </v-btn>
-                    <v-btn
-                      icon
-                      size="small"
-                      variant="text"
-                      color="error"
-                      @click="confirmDelete(product)"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
+                    <v-tooltip location="top" content-class="branded-tooltip">
+                      <template v-slot:activator="{ props }">
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          v-bind="props"
+                          @click="showProductDetails(product)"
+                          :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
+                        >
+                          <v-icon>mdi-information-outline</v-icon>
+                        </v-btn>
+                      </template>
+                      <span>View Product Details</span>
+                    </v-tooltip>
+                    <v-tooltip location="top" content-class="branded-tooltip">
+                      <template v-slot:activator="{ props }">
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          v-bind="props"
+                          @click="editProduct(product)"
+                          :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
+                        >
+                          <v-icon>mdi-pencil</v-icon>
+                        </v-btn>
+                      </template>
+                      <span>Edit Product</span>
+                    </v-tooltip>
+                    <v-tooltip location="top" content-class="branded-tooltip">
+                      <template v-slot:activator="{ props }">
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          color="error"
+                          v-bind="props"
+                          @click="confirmDelete(product)"
+                        >
+                          <v-icon>mdi-delete</v-icon>
+                        </v-btn>
+                      </template>
+                      <span>Delete Product</span>
+                    </v-tooltip>
                   </v-card-actions>
                 </v-card>
               </v-col>
@@ -2288,6 +2314,17 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
+/* Lighter divider line (25% closer to white) */
+.product-divider {
+  opacity: 0.3;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Reduce spacing above card actions by 50% */
+.product-card :deep(.v-card-actions) {
+  padding-top: 4px;
+}
+
 /* Handover 0051: Spinning icon animation for save status */
 .mdi-spin {
   animation: spin 1s linear infinite;
@@ -2310,5 +2347,17 @@ onUnmounted(() => {
 .tabs-with-arrows :deep(.v-slide-group__prev .v-btn.v-btn--disabled .v-icon),
 .tabs-with-arrows :deep(.v-slide-group__next .v-btn.v-btn--disabled .v-icon) {
   opacity: 0.4;
+}
+</style>
+
+<style>
+/* Global branded tooltips - must be unscoped to affect tooltip overlays */
+.branded-tooltip {
+  background-color: rgba(255, 195, 0, 0.95) !important;
+  color: #000 !important;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 6px 12px;
+  border-radius: 6px;
 }
 </style>
