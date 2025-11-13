@@ -18,6 +18,9 @@ class ProductCreate(BaseModel):
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
     )
+    config_data: Optional[Dict[str, Any]] = Field(
+        None, description="Rich configuration data (JSONB)"
+    )
 
 
 class ProductUpdate(BaseModel):
@@ -26,6 +29,9 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     project_path: Optional[str] = None
+    config_data: Optional[Dict[str, Any]] = Field(
+        None, description="Rich configuration data (JSONB)"
+    )
 
 
 class ProductResponse(BaseModel):
