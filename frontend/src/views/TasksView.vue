@@ -1051,7 +1051,8 @@ onMounted(async () => {
 .status-chip {
   justify-content: center;
   padding: 4px 10px !important;
-  width: fit-content !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
 }
 
 .status-chip :deep(.v-chip__content) {
