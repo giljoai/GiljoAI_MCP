@@ -34,7 +34,7 @@
             Launch Jobs
           </v-btn>
 
-          <!-- Cancel Button (Visible during staging or when ready) -->
+          <!-- Re-Stage Project Button (Visible during staging or when ready) -->
           <v-btn
             v-if="isStaging || readyToLaunch"
             block
@@ -43,8 +43,13 @@
             size="large"
             @click="showCancelDialog = true"
           >
-            <v-icon start>mdi-close-circle</v-icon>
-            Cancel Staging
+            <v-icon start>mdi-refresh</v-icon>
+            Re-Stage Project
+            <v-tooltip activator="parent" location="bottom">
+              Use this when product vision, descriptions, or context configurations have changed.
+              This will delete all staged missions and agent jobs, requiring complete re-orchestration.
+              Note: This will incur new token costs as agents regenerate everything.
+            </v-tooltip>
           </v-btn>
 
           <!-- Info Text -->
@@ -260,19 +265,19 @@
       </v-col>
     </v-row>
 
-    <!-- Cancel Confirmation Dialog -->
+    <!-- Re-Stage Confirmation Dialog -->
     <v-dialog v-model="showCancelDialog" max-width="500" persistent>
       <v-card>
         <v-card-title class="text-h5 bg-error text-white">
-          <v-icon class="mr-2">mdi-alert</v-icon>
-          Cancel Project Staging?
+          <v-icon class="mr-2">mdi-refresh</v-icon>
+          Re-Stage Project?
         </v-card-title>
 
         <v-divider />
 
         <v-card-text class="pa-6">
           <p class="text-body-1 mb-3">
-            This will completely reset the project staging area:
+            This will completely reset the project staging area and clear all AI-generated content:
           </p>
 
           <v-list density="compact" class="mb-0">
@@ -280,7 +285,10 @@
               <v-list-item-title>Clear generated mission text</v-list-item-title>
             </v-list-item>
             <v-list-item prepend-icon="mdi-account-group-outline">
-              <v-list-item-title>Delete all created agents ({{ agents.length }})</v-list-item-title>
+              <v-list-item-title>Delete all spawned agents ({{ agents.length }})</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-message-off">
+              <v-list-item-title>Delete all agent communications</v-list-item-title>
             </v-list-item>
             <v-list-item prepend-icon="mdi-refresh">
               <v-list-item-title>Return to initial state</v-list-item-title>
@@ -288,8 +296,8 @@
           </v-list>
 
           <v-alert type="warning" variant="tonal" density="compact" class="mt-4 mb-0">
-            <v-icon start size="small">mdi-information</v-icon>
-            You will need to re-run the orchestrator to generate a new mission.
+            <v-icon start size="small">mdi-currency-usd</v-icon>
+            <strong>Token Cost Warning:</strong> Re-staging will incur new token costs as the orchestrator regenerates all missions and agent assignments.
           </v-alert>
         </v-card-text>
 
@@ -298,7 +306,7 @@
             @click="showCancelDialog = false"
             variant="text"
           >
-            Keep Staging
+            Keep Current Staging
           </v-btn>
           <v-spacer />
           <v-btn
@@ -306,8 +314,8 @@
             color="error"
             variant="elevated"
           >
-            <v-icon start>mdi-delete</v-icon>
-            Yes, Cancel Everything
+            <v-icon start>mdi-refresh</v-icon>
+            Yes, Re-Stage Project
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -742,9 +750,9 @@ function handleLaunchJobs() {
 }
 
 /**
- * Handle Cancel button (with confirmation)
+ * Handle Re-Stage Project button (with confirmation)
  * PRODUCTION-GRADE: API call with error handling (Handover 0108)
- * - Calls staging cancellation API endpoint
+ * - Calls staging cancellation API endpoint to clear all AI-generated content
  * - Shows success/error notifications
  * - Resets all UI state on success
  * - WebSocket handler updates UI in real-time
@@ -758,7 +766,7 @@ async function handleCancelStaging() {
     const result = response.data
 
     // Show success notification with agent count
-    toastMessage.value = `Staging cancelled: ${result.agents_deleted} agent${result.agents_deleted !== 1 ? 's' : ''} deleted`
+    toastMessage.value = `Project reset to initial state: ${result.agents_deleted} agent${result.agents_deleted !== 1 ? 's' : ''} and ${result.messages_deleted || 0} message${result.messages_deleted !== 1 ? 's' : ''} deleted`
     showToast.value = true
 
     // Reset UI state
@@ -767,11 +775,11 @@ async function handleCancelStaging() {
     emit('cancel-staging')
 
   } catch (error) {
-    console.error('[LaunchTab] Failed to cancel staging:', error)
+    console.error('[LaunchTab] Failed to re-stage project:', error)
 
     // Show error notification
-    const errorMsg = error.response?.data?.detail || error.message || 'Failed to cancel staging'
-    toastMessage.value = `Failed to cancel staging: ${errorMsg}`
+    const errorMsg = error.response?.data?.detail || error.message || 'Failed to reset project'
+    toastMessage.value = `Failed to re-stage project: ${errorMsg}`
     showToast.value = true
   }
 }
