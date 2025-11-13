@@ -494,6 +494,87 @@ async def lifespan(app: FastAPI):
             # Don't crash the app on startup check failure
             logger.warning("Continuing startup despite setup check failure")
 
+    # Run one-time purge of expired deleted projects and products (Handover 0070)
+    if state.db_manager:
+        try:
+            logger.info("Running startup purge of expired deleted items...")
+            from datetime import timedelta, timezone
+            from sqlalchemy import select
+            from giljo_mcp.models import Product, Project
+
+            # Get all tenants that have deleted items
+            async with state.db_manager.get_session_async() as session:
+                # Find all unique tenant keys with deleted items
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=10)
+
+                # Get unique tenants with expired deleted projects
+                project_stmt = select(Project.tenant_key).distinct().where(
+                    Project.deleted_at.isnot(None),
+                    Project.deleted_at < cutoff_date
+                )
+                project_result = await session.execute(project_stmt)
+                project_tenants = {row[0] for row in project_result.fetchall()}
+
+                # Get unique tenants with expired deleted products
+                product_stmt = select(Product.tenant_key).distinct().where(
+                    Product.deleted_at.isnot(None),
+                    Product.deleted_at < cutoff_date
+                )
+                product_result = await session.execute(product_stmt)
+                product_tenants = {row[0] for row in product_result.fetchall()}
+
+                all_tenants = project_tenants | product_tenants
+
+                if not all_tenants:
+                    logger.debug("[Handover 0070] No expired deleted items to purge")
+                else:
+                    total_projects_purged = 0
+                    total_products_purged = 0
+
+                    # Purge for each tenant
+                    for tenant_key in all_tenants:
+                        # Purge expired deleted projects
+                        from giljo_mcp.services.project_service import ProjectService
+                        project_service = ProjectService(
+                            db_manager=state.db_manager,
+                            tenant_manager=state.tenant_manager
+                        )
+                        # Set tenant context for this purge
+                        state.tenant_manager.set_current_tenant(tenant_key)
+
+                        project_purge_result = await project_service.purge_expired_deleted_projects(days_before_purge=10)
+                        if project_purge_result.get("success"):
+                            purged_count = project_purge_result.get("purged_count", 0)
+                            total_projects_purged += purged_count
+
+                        # Purge expired deleted products
+                        from giljo_mcp.services.product_service import ProductService
+                        product_service = ProductService(
+                            db_manager=state.db_manager,
+                            tenant_key=tenant_key
+                        )
+
+                        product_purge_result = await product_service.purge_expired_deleted_products(days_before_purge=10)
+                        if product_purge_result.get("success"):
+                            purged_count = product_purge_result.get("purged_count", 0)
+                            total_products_purged += purged_count
+
+                    # Clear tenant context
+                    state.tenant_manager.clear_current_tenant()
+
+                    if total_projects_purged > 0 or total_products_purged > 0:
+                        logger.info(
+                            f"[Handover 0070] Purged {total_projects_purged} expired deleted project(s) "
+                            f"and {total_products_purged} expired deleted product(s)"
+                        )
+                    else:
+                        logger.debug("[Handover 0070] No expired deleted items to purge")
+
+            logger.info("Startup purge complete")
+        except Exception as e:
+            logger.error(f"Failed to purge expired deleted items: {e}", exc_info=True)
+            logger.warning("Continuing startup despite purge failure")
+
     # Expose db_manager and websocket_manager directly on app.state
     # This must be done AFTER initialization, not in create_app()
     app.state.db_manager = state.db_manager
