@@ -18,8 +18,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from api.app import app
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, User
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import MCPAgentJob, User
 
 
 # ============================================================================

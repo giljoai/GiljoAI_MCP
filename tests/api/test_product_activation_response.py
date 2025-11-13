@@ -6,7 +6,7 @@ Verifies that all API endpoints return the is_active field correctly
 
 from datetime import datetime
 
-from api.endpoints.products import ProductResponse
+from api.endpoints.products.models import ProductResponse
 
 
 class TestProductResponseSchema:

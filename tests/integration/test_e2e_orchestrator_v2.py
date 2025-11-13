@@ -37,8 +37,8 @@ if not os.getenv("DATABASE_URL"):
     raise RuntimeError("DATABASE_URL environment variable not set")
 
 # Import database components
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product, Project
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, Project
 
 
 class E2ETestMetrics:
@@ -282,7 +282,7 @@ fields to each agent, reducing token usage by up to 60% for specialized roles.
                 'config_data': dict
             }
         """
-        from giljo_mcp.context_manager import get_filtered_config, get_full_config
+        from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
 
         async with self.db_manager.get_session_async() as session:
             # Get product from database
@@ -579,7 +579,7 @@ fields to each agent, reducing token usage by up to 60% for specialized roles.
                 start = time.time()
 
                 # Query database directly to measure JSONB performance (not HTTP overhead)
-                from giljo_mcp.context_manager import get_full_config
+                from src.giljo_mcp.context_manager import get_full_config
 
                 async with self.db_manager.get_session_async() as session:
                     product = await session.get(Product, product_id)
