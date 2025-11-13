@@ -119,7 +119,7 @@
     </v-row>
 
     <!-- Tasks Table -->
-    <v-card>
+    <v-card class="task-table-card">
       <!-- Table Controls -->
       <v-card-title class="d-flex align-center py-3">
         <span class="text-h6">Tasks</span>
@@ -129,16 +129,18 @@
         </v-btn>
       </v-card-title>
 
-      <v-data-table
-        :headers="headers"
-        :items="hierarchicalTasks"
-        :search="search"
-        :loading="loading"
-        :items-per-page="10"
-        class="elevation-0"
-        data-table
-        item-value="id"
-      >
+      <div class="table-wrapper">
+        <v-data-table
+          :headers="headers"
+          :items="hierarchicalTasks"
+          :search="search"
+          :loading="loading"
+          :items-per-page="25"
+          class="elevation-0 scrollable-table"
+          data-table
+          item-value="id"
+          height="600"
+        >
         <!-- Loading State -->
         <template v-slot:loading>
           <div class="text-center pa-4">
@@ -147,19 +149,59 @@
           </div>
         </template>
 
-        <!-- Status Column -->
+        <!-- Status Column - Inline Dropdown -->
         <template v-slot:item.status="{ item }">
-          <v-chip :color="getStatusColor(item.status)" size="small" variant="flat">
-            <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
-            {{ item.status }}
-          </v-chip>
+          <v-select
+            :model-value="item.status"
+            @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
+            :items="statusOptions"
+            variant="plain"
+            density="compact"
+            hide-details
+            class="inline-select"
+          >
+            <template v-slot:selection="{ item: statusItem }">
+              <v-chip :color="getStatusColor(statusItem.value)" size="small" variant="flat">
+                <v-icon start size="x-small">{{ getStatusIcon(statusItem.value) }}</v-icon>
+                {{ statusItem.value }}
+              </v-chip>
+            </template>
+            <template v-slot:item="{ props, item: statusItem }">
+              <v-list-item v-bind="props">
+                <template v-slot:prepend>
+                  <v-icon :color="getStatusColor(statusItem.value)" size="small">
+                    {{ getStatusIcon(statusItem.value) }}
+                  </v-icon>
+                </template>
+              </v-list-item>
+            </template>
+          </v-select>
         </template>
 
-        <!-- Priority Column -->
+        <!-- Priority Column - Inline Dropdown -->
         <template v-slot:item.priority="{ item }">
-          <v-chip :color="getPriorityColor(item.priority)" size="small" label>
-            {{ item.priority }}
-          </v-chip>
+          <v-select
+            :model-value="item.priority"
+            @update:model-value="(newPriority) => updateTaskField(item, 'priority', newPriority)"
+            :items="priorityOptions"
+            variant="plain"
+            density="compact"
+            hide-details
+            class="inline-select"
+          >
+            <template v-slot:selection="{ item: priorityItem }">
+              <v-chip :color="getPriorityColor(priorityItem.value)" size="small" label>
+                {{ priorityItem.value }}
+              </v-chip>
+            </template>
+            <template v-slot:item="{ props, item: priorityItem }">
+              <v-list-item v-bind="props">
+                <template v-slot:prepend>
+                  <v-chip :color="getPriorityColor(priorityItem.value)" size="x-small" label />
+                </template>
+              </v-list-item>
+            </template>
+          </v-select>
         </template>
 
         <!-- Title Column with Hierarchy and Drag Support -->
@@ -195,6 +237,25 @@
         </template>
 
 
+        <!-- Category Column - Inline Dropdown -->
+        <template v-slot:item.category="{ item }">
+          <v-select
+            :model-value="item.category"
+            @update:model-value="(newCategory) => updateTaskField(item, 'category', newCategory)"
+            :items="categoryOptions"
+            variant="plain"
+            density="compact"
+            hide-details
+            class="inline-select"
+          >
+            <template v-slot:selection="{ item: categoryItem }">
+              <v-chip size="small" variant="outlined">
+                {{ categoryItem.value }}
+              </v-chip>
+            </template>
+          </v-select>
+        </template>
+
         <!-- Created By User Column (Phase 4) -->
         <template v-slot:item.created_by_user_id="{ item }">
           <v-chip size="small" variant="outlined">
@@ -203,15 +264,41 @@
           </v-chip>
         </template>
 
-        <!-- Due Date Column -->
+        <!-- Due Date Column - Inline Calendar Picker -->
         <template v-slot:item.due_date="{ item }">
-          <div v-if="item.due_date">
-            <v-icon v-if="isOverdue(item.due_date)" color="error" size="x-small" class="mr-1">
-              mdi-alert
-            </v-icon>
-            {{ formatDate(item.due_date) }}
-          </div>
-          <span v-else class="text-medium-emphasis">No due date</span>
+          <v-menu
+            :close-on-content-click="false"
+            transition="scale-transition"
+            offset-y
+            min-width="auto"
+          >
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                variant="text"
+                size="small"
+                class="date-picker-btn"
+              >
+                <v-icon v-if="item.due_date && isOverdue(item.due_date)" color="error" size="x-small" class="mr-1">
+                  mdi-alert
+                </v-icon>
+                <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
+                <span v-else class="text-medium-emphasis">Set due date</span>
+                <v-icon size="small" class="ml-1">mdi-calendar</v-icon>
+              </v-btn>
+            </template>
+            <v-card>
+              <v-card-title class="py-2" style="background-color: #ffc300;">
+                <span class="text-subtitle-1">Select Due Date</span>
+              </v-card-title>
+              <v-date-picker
+                :model-value="item.due_date ? new Date(item.due_date) : null"
+                @update:model-value="(newDate) => updateTaskDueDate(item, newDate)"
+                color="primary"
+                show-adjacent-months
+              />
+            </v-card>
+          </v-menu>
         </template>
 
         <!-- Convert Status Column -->
@@ -299,7 +386,8 @@
             </p>
           </div>
         </template>
-      </v-data-table>
+        </v-data-table>
+      </div>
     </v-card>
 
     <!-- Create/Edit Task Dialog -->
@@ -397,6 +485,98 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Conversion Confirmation Dialog -->
+    <v-dialog v-model="showConversionConfirmDialog" max-width="500" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300;">
+          <v-icon class="mr-2" size="large">mdi-folder-arrow-up</v-icon>
+          <span class="text-h6">Convert to Project</span>
+        </v-card-title>
+        <v-card-text class="pt-6 pb-4">
+          <p class="text-body-1">
+            Convert task <strong>"{{ conversionTaskName }}"</strong> to a project?
+          </p>
+          <p class="text-body-2 text-medium-emphasis mt-2">
+            This will create a new project in the active product with the task's title and description.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pb-4 px-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showConversionConfirmDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="primary" variant="flat" @click="confirmConversion">
+            Convert
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="showDeleteConfirmDialog" max-width="500" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center py-4" style="background-color: #f44336; color: white;">
+          <v-icon class="mr-2" size="large" color="white">mdi-delete-alert</v-icon>
+          <span class="text-h6">Delete Task</span>
+        </v-card-title>
+        <v-card-text class="pt-6 pb-4">
+          <p class="text-body-1">
+            Are you sure you want to delete <strong>"{{ deleteTaskName }}"</strong>?
+          </p>
+          <p class="text-body-2 text-medium-emphasis mt-2">
+            This action cannot be undone.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pb-4 px-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showDeleteConfirmDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="error" variant="flat" @click="confirmDelete">
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Success Dialog -->
+    <v-dialog v-model="showSuccessDialog" max-width="500">
+      <v-card>
+        <v-card-title class="d-flex align-center py-4" style="background-color: #4caf50; color: white;">
+          <v-icon class="mr-2" size="large" color="white">mdi-check-circle</v-icon>
+          <span class="text-h6">Success</span>
+        </v-card-title>
+        <v-card-text class="pt-6 pb-4">
+          <p class="text-body-1">{{ successMessage }}</p>
+        </v-card-text>
+        <v-card-actions class="pb-4 px-4">
+          <v-spacer />
+          <v-btn color="success" variant="flat" @click="showSuccessDialog = false">
+            OK
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Error Dialog -->
+    <v-dialog v-model="showErrorDialog" max-width="500">
+      <v-card>
+        <v-card-title class="d-flex align-center py-4" style="background-color: #f44336; color: white;">
+          <v-icon class="mr-2" size="large" color="white">mdi-alert-circle</v-icon>
+          <span class="text-h6">Error</span>
+        </v-card-title>
+        <v-card-text class="pt-6 pb-4">
+          <p class="text-body-1">{{ errorMessage }}</p>
+        </v-card-text>
+        <v-card-actions class="pb-4 px-4">
+          <v-spacer />
+          <v-btn color="error" variant="flat" @click="showErrorDialog = false">
+            OK
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -432,6 +612,16 @@ const user = computed(() => userStore.currentUser)
 
 // Dialog state
 const showNoProductDialog = ref(false)
+const showConversionConfirmDialog = ref(false)
+const showDeleteConfirmDialog = ref(false)
+const showSuccessDialog = ref(false)
+const showErrorDialog = ref(false)
+const conversionTaskName = ref('')
+const deleteTaskName = ref('')
+const currentConvertingTask = ref(null)
+const currentDeletingTask = ref(null)
+const successMessage = ref('')
+const errorMessage = ref('')
 
 // Current task form
 const currentTask = ref({
@@ -583,34 +773,91 @@ async function completeTask(task) {
   }
 }
 
+// Inline editing helper functions
+async function updateTaskField(task, field, value) {
+  try {
+    await taskStore.updateTask(task.id, { [field]: value })
+  } catch (error) {
+    console.error(`Failed to update task ${field}:`, error)
+    errorMessage.value = `Failed to update ${field}`
+    showErrorDialog.value = true
+  }
+}
+
+async function updateTaskDueDate(task, newDate) {
+  try {
+    // Format date as YYYY-MM-DD
+    const formattedDate = newDate ? format(new Date(newDate), 'yyyy-MM-dd') : null
+    await taskStore.updateTask(task.id, { due_date: formattedDate })
+  } catch (error) {
+    console.error('Failed to update due date:', error)
+    errorMessage.value = 'Failed to update due date'
+    showErrorDialog.value = true
+  }
+}
+
 async function convertTaskToProject(task) {
-  // Check if there's an active product
-  if (!productStore.currentProductId) {
+  // Check if there's an active product using effectiveProductId
+  if (!productStore.effectiveProductId) {
     showNoProductDialog.value = true
     return
   }
 
-  if (confirm(`Convert task "${task.title}" to a project?\n\nThis will create a new project in the active product with the task's title and description.`)) {
-    try {
-      const response = await api.tasks.convertToProject(task.id)
-      await taskStore.fetchTasks()
-      alert(`Task successfully converted to project: ${response.data.name}`)
-    } catch (error) {
-      console.error('Error converting task to project:', error)
-      const errorMsg = error.response?.data?.detail || 'Failed to convert task to project'
-      alert(errorMsg)
-    }
+  // Show conversion confirmation dialog
+  conversionTaskName.value = task.title
+  currentConvertingTask.value = task
+  showConversionConfirmDialog.value = true
+}
+
+async function confirmConversion() {
+  showConversionConfirmDialog.value = false
+  const task = currentConvertingTask.value
+
+  if (!task) return
+
+  try {
+    const response = await api.tasks.convertToProject(task.id)
+    await taskStore.fetchTasks()
+
+    // Show success dialog
+    successMessage.value = `Task successfully converted to project: ${response.data.name}`
+    showSuccessDialog.value = true
+  } catch (error) {
+    console.error('Error converting task to project:', error)
+    const errorMsg = error.response?.data?.detail || 'Failed to convert task to project'
+
+    // Show error dialog
+    errorMessage.value = errorMsg
+    showErrorDialog.value = true
   }
+
+  currentConvertingTask.value = null
 }
 
 async function deleteTask(task) {
-  if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
-    try {
-      await taskStore.deleteTask(task.id)
-    } catch (error) {
-      console.error('Failed to delete task:', error)
-    }
+  // Show branded delete confirmation dialog
+  deleteTaskName.value = task.title
+  currentDeletingTask.value = task
+  showDeleteConfirmDialog.value = true
+}
+
+async function confirmDelete() {
+  showDeleteConfirmDialog.value = false
+  const task = currentDeletingTask.value
+
+  if (!task) return
+
+  try {
+    await taskStore.deleteTask(task.id)
+    successMessage.value = `Task "${task.title}" deleted successfully`
+    showSuccessDialog.value = true
+  } catch (error) {
+    console.error('Failed to delete task:', error)
+    errorMessage.value = 'Failed to delete task'
+    showErrorDialog.value = true
   }
+
+  currentDeletingTask.value = null
 }
 
 function cancelTask() {
@@ -704,6 +951,55 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Scrollable Table Styles */
+.task-table-card {
+  max-height: calc(100vh - 450px);
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-wrapper {
+  flex: 1;
+  overflow: auto;
+  max-height: 600px;
+}
+
+.scrollable-table {
+  height: 100%;
+}
+
+.scrollable-table :deep(.v-table__wrapper) {
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+/* Inline editing styles */
+.inline-select :deep(.v-field) {
+  border: none;
+  box-shadow: none;
+}
+
+.inline-select :deep(.v-field__input) {
+  padding: 0;
+  min-height: auto;
+}
+
+.inline-select:hover :deep(.v-field) {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+
+.date-picker-btn {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  padding: 4px 8px !important;
+}
+
+.date-picker-btn:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
 .task-row-content {
   display: flex;
   align-items: center;
