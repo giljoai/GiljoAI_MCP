@@ -267,8 +267,8 @@
           <v-menu
             :close-on-content-click="false"
             transition="scale-transition"
-            offset-y
-            min-width="auto"
+            :offset="[0, 50]"
+            location="bottom"
           >
             <template v-slot:activator="{ props }">
               <div
@@ -280,18 +280,19 @@
                   mdi-alert
                 </v-icon>
                 <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
-                <span v-else class="text-medium-emphasis">Set due date</span>
+                <span v-else class="text-medium-emphasis">Set date</span>
               </div>
             </template>
-            <v-card>
-              <v-card-title class="py-2" style="background-color: #ffc300;">
-                <span class="text-subtitle-1">Select Due Date</span>
+            <v-card class="compact-date-picker">
+              <v-card-title class="py-2 px-3" style="background-color: #ffc300;">
+                <span class="text-subtitle-2">Select Date</span>
               </v-card-title>
               <v-date-picker
                 :model-value="item.due_date ? new Date(item.due_date) : null"
                 @update:model-value="(newDate) => updateTaskDueDate(item, newDate)"
                 color="primary"
-                show-adjacent-months
+                hide-header
+                width="280"
               />
             </v-card>
           </v-menu>
@@ -631,8 +632,8 @@ const currentTask = ref({
 
 // Table headers
 const headers = [
-  { title: 'Status', key: 'status', width: '120' },
-  { title: 'Priority', key: 'priority', width: '100' },
+  { title: 'Status', key: 'status', width: '140' },
+  { title: 'Priority', key: 'priority', width: '110' },
   { title: 'Task', key: 'title' },
   { title: 'Category', key: 'category', width: '120' },
   // Hidden for now - may be relevant in future
@@ -979,11 +980,25 @@ onMounted(async () => {
 .inline-select :deep(.v-field__input) {
   padding: 0;
   min-height: auto;
+  padding-left: 20px;
 }
 
 .inline-select:hover :deep(.v-field) {
   background-color: rgba(0, 0, 0, 0.04);
   border-radius: 4px;
+}
+
+/* Compact date picker styling */
+.compact-date-picker {
+  max-width: 280px;
+}
+
+.compact-date-picker :deep(.v-date-picker-month) {
+  padding: 8px;
+}
+
+.compact-date-picker :deep(.v-date-picker-header) {
+  padding: 4px 8px;
 }
 
 /* Hide arrow indicator for category column */
