@@ -87,7 +87,7 @@ async def create_product(
 async def list_products(
     current_user: User = Depends(get_current_active_user),
     service: ProductService = Depends(get_product_service),
-    include_inactive: bool = Query(False, description="Include inactive products"),
+    include_inactive: bool = Query(True, description="Include inactive products (default: True, always show all)"),
 ) -> List[ProductResponse]:
     """
     List all products for the current tenant.
