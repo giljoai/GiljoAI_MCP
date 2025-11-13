@@ -16,8 +16,8 @@ from uuid import uuid4
 
 import pytest
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
 
 
 @pytest.mark.asyncio
@@ -98,8 +98,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_tool_accessor_has_method(self, db_manager):
         """Test 1: ToolAccessor has get_orchestrator_instructions method"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -144,8 +144,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_success(self, db_manager, tenant_context):
         """Test 4: get_orchestrator_instructions returns correct structure"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -176,8 +176,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_not_found(self, db_manager, tenant_context):
         """Test 5: get_orchestrator_instructions handles missing orchestrator"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -195,8 +195,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_tenant_isolation(self, db_manager, tenant_context):
         """Test 6: get_orchestrator_instructions enforces tenant isolation"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -212,8 +212,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_get_orchestrator_instructions_validation(self, db_manager):
         """Test 7: get_orchestrator_instructions validates inputs"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -250,8 +250,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_mission_planner_integration(self, db_manager, tenant_context):
         """Test 9: get_orchestrator_instructions integrates with MissionPlanner"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -277,8 +277,8 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_agent_templates_included(self, db_manager, tenant_context):
         """Test 10: get_orchestrator_instructions includes agent templates"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -436,8 +436,8 @@ class TestErrorHandling:
 
     async def test_handles_missing_project(self, db_manager):
         """Test 13: Gracefully handles missing project"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -468,8 +468,8 @@ class TestErrorHandling:
 
     async def test_handles_database_errors(self, db_manager):
         """Test 14: Handles database connection errors gracefully"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)

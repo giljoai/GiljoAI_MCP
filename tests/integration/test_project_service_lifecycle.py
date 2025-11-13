@@ -15,10 +15,10 @@ Target: >85% code coverage
 import pytest
 from datetime import datetime
 
-from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.models.projects import Project
-from giljo_mcp.models.agents import MCPAgentJob
-from giljo_mcp.models.products import Product
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.products import Product
 
 
 @pytest.mark.asyncio
