@@ -74,11 +74,11 @@ async def upload_vision_document(
         # Read file content
         content = await file.read()
         content_str = content.decode('utf-8')
-        
+
         # Upload via ProductService
         db_manager = DatabaseManager()
         product_service = ProductService(db_manager=db_manager, tenant_key=tenant_key)
-        
+
         result = await product_service.upload_vision_document(
             product_id=product_id,
             content=content_str,
@@ -86,18 +86,18 @@ async def upload_vision_document(
             auto_chunk=True,
             max_tokens=25000,
         )
-        
+
         if not result["success"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=result.get("error", "Vision upload failed")
             )
-        
+
         logger.info(
             f"Successfully uploaded vision document {result['document_id']}: "
             f"{result['chunks_created']} chunks, {result['total_tokens']} tokens"
         )
-        
+
         return {
             "success": True,
             "message": "Vision document uploaded and chunked successfully",
@@ -106,17 +106,36 @@ async def upload_vision_document(
             "chunks_created": result["chunks_created"],
             "total_tokens": result["total_tokens"],
         }
-        
+
     except UnicodeDecodeError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File must be valid UTF-8 encoded text"
         )
+    except ValueError as e:
+        # Handover 0508: Catch validation errors from ProductService
+        error_msg = str(e).lower()
+        if "already exists" in error_msg or "duplicate" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         logger.exception(f"Vision upload failed: {e}")
+        # Handover 0508: Check for IntegrityError (duplicate constraint violation)
+        error_str = str(e).lower()
+        if "unique" in error_str or "duplicate" in error_str or "uq_vision_doc" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again."
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Vision upload failed: {str(e)}"
+            detail="Upload failed. Please try again or contact support."
         )
 
 
