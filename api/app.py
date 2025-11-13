@@ -91,6 +91,7 @@ try:
         projects,
         prompts,
         serena,
+        settings,
         system_prompts,
         setup_security,
         slash_commands,
@@ -871,9 +872,12 @@ def create_app() -> FastAPI:
     app.include_router(websocket_bridge.router, prefix="/api/v1/ws-bridge", tags=["websocket-bridge"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
-    app.include_router(users.router, prefix="/api/users", tags=["users"])
+    # Handover 0506: Fixed user endpoint path to /api/v1/users
+    app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
     # v3: authenticated user-scoped settings
     app.include_router(user_settings.router, prefix="/api/v1/user", tags=["user-settings"])
+    # Handover 0506: System settings endpoints (general, network, database, product-info, cookie-domain)
+    app.include_router(settings.router, prefix="/api/v1/settings", tags=["settings"])
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(setup_security.router, prefix="/api/setup", tags=["setup-security"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
