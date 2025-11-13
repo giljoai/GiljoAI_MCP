@@ -24,10 +24,12 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
+import tiktoken
 from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import MCPAgentJob, Project
+from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
 
@@ -271,6 +273,17 @@ class OrchestrationService:
                         "thin_client": True,
                     },
                 )
+
+                # Set context tracking fields for orchestrators (Handover 0502)
+                if agent_type == "orchestrator":
+                    agent_job.context_budget = 200000  # Sonnet 4.5 default
+                    # Estimate initial context usage from mission
+                    try:
+                        encoder = tiktoken.get_encoding("cl100k_base")
+                        agent_job.context_used = len(encoder.encode(mission))
+                    except Exception:
+                        # Fallback estimation
+                        agent_job.context_used = len(mission) // 4
 
                 session.add(agent_job)
                 await session.commit()
@@ -831,3 +844,197 @@ Begin by fetching your mission.
         except Exception as e:
             self._logger.exception(f"Failed to list jobs: {e}")
             return {"error": str(e)}
+
+    async def update_context_usage(
+        self,
+        job_id: str,
+        additional_tokens: int,
+        tenant_key: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Increment context_used for job and check 90% succession threshold.
+
+        Args:
+            job_id: Agent job UUID
+            additional_tokens: Token count to add to context_used
+            tenant_key: Tenant key for isolation (optional)
+
+        Returns:
+            Dict with success status, updated usage metrics, succession_triggered flag
+
+        Raises:
+            ValueError: If job not found
+        """
+        async with self.db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            query = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            if tenant_key:
+                query = query.where(MCPAgentJob.tenant_key == tenant_key)
+
+            result = await session.execute(query)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise ValueError("Job not found")
+
+            # Increment context_used
+            if job.context_used is None:
+                job.context_used = 0
+            job.context_used += additional_tokens
+
+            # Calculate usage percentage
+            usage_percentage = 0.0
+            if job.context_budget and job.context_budget > 0:
+                usage_percentage = (job.context_used / job.context_budget) * 100
+
+            # Check if we need to trigger succession (90% threshold)
+            succession_triggered = False
+            if usage_percentage >= 90.0 and job.handover_to is None:
+                await self._trigger_auto_succession(job, session)
+                succession_triggered = True
+
+            await session.commit()
+
+            self._logger.info(
+                f"Updated context usage for job {job_id}: "
+                f"{job.context_used}/{job.context_budget} ({usage_percentage:.1f}%) "
+                f"succession_triggered={succession_triggered}"
+            )
+
+            return {
+                "success": True,
+                "context_used": job.context_used,
+                "context_budget": job.context_budget,
+                "usage_percentage": usage_percentage,
+                "succession_triggered": succession_triggered
+            }
+
+    async def estimate_message_tokens(self, message: str) -> int:
+        """
+        Estimate token count using tiktoken cl100k_base encoding.
+
+        Args:
+            message: Text message to estimate tokens for
+
+        Returns:
+            Estimated token count
+        """
+        try:
+            encoder = tiktoken.get_encoding("cl100k_base")
+            return len(encoder.encode(message))
+        except Exception as e:
+            self._logger.warning(f"Failed to estimate tokens with tiktoken: {e}, using fallback")
+            # Fallback: rough estimation (1 token ≈ 4 characters)
+            return len(message) // 4
+
+    async def _trigger_auto_succession(self, job: MCPAgentJob, session):
+        """
+        Auto-trigger succession when 90% threshold reached.
+
+        Args:
+            job: MCPAgentJob instance at 90%+ context usage
+            session: Active database session
+
+        Side effects:
+            Creates successor via OrchestratorSuccessionManager
+            Updates job.handover_to and job.succession_reason
+        """
+        try:
+            # Create succession manager
+            succession_manager = OrchestratorSuccessionManager(
+                db_session=session,
+                tenant_key=job.tenant_key
+            )
+
+            # Create successor
+            successor = await succession_manager.create_successor(
+                current_job_id=job.job_id,
+                reason="context_limit"
+            )
+
+            # Update current job with succession info
+            job.handover_to = successor.job_id
+            job.succession_reason = "context_limit"
+
+            self._logger.info(
+                f"Auto-triggered succession for job {job.job_id} -> {successor.job_id} "
+                f"(context limit reached)"
+            )
+
+        except Exception as e:
+            self._logger.error(
+                f"Failed to auto-trigger succession for job {job.job_id}: {e}",
+                exc_info=True
+            )
+            # Don't raise - succession failure shouldn't block context update
+
+    async def trigger_succession(
+        self,
+        job_id: str,
+        reason: str = "manual",
+        tenant_key: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Manually trigger orchestrator succession.
+
+        Args:
+            job_id: Agent job UUID
+            reason: Succession reason (default="manual")
+            tenant_key: Tenant key for isolation (optional)
+
+        Returns:
+            Dict with success=True and successor job details
+
+        Raises:
+            ValueError: If job not found, not orchestrator, or already has successor
+        """
+        async with self.db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            query = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            if tenant_key:
+                query = query.where(MCPAgentJob.tenant_key == tenant_key)
+
+            result = await session.execute(query)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise ValueError("Job not found")
+
+            # Validate: must be orchestrator
+            if job.agent_type != "orchestrator":
+                raise ValueError("Only orchestrator agents can trigger succession")
+
+            # Validate: must not already have successor
+            if job.handover_to is not None:
+                raise ValueError("Job already has a successor")
+
+            # Create succession manager
+            succession_manager = OrchestratorSuccessionManager(
+                db_session=session,
+                tenant_key=job.tenant_key
+            )
+
+            # Create successor
+            successor = await succession_manager.create_successor(
+                current_job_id=job.job_id,
+                reason=reason
+            )
+
+            # Update current job with succession info
+            job.handover_to = successor.job_id
+            job.succession_reason = reason
+
+            await session.commit()
+
+            self._logger.info(
+                f"Manually triggered succession for job {job.job_id} -> {successor.job_id} "
+                f"(reason: {reason})"
+            )
+
+            return {
+                "success": True,
+                "successor_job_id": successor.job_id,
+                "successor_agent_name": successor.agent_name,
+                "successor_instance_number": successor.instance_number,
+                "reason": reason
+            }
