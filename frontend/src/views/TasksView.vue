@@ -246,12 +246,10 @@
             variant="plain"
             density="compact"
             hide-details
-            class="inline-select"
+            class="inline-select inline-select-no-arrow"
           >
             <template v-slot:selection="{ item: categoryItem }">
-              <v-chip size="small" variant="outlined">
-                {{ categoryItem.value }}
-              </v-chip>
+              <span class="category-text">{{ categoryItem.value }}</span>
             </template>
           </v-select>
         </template>
@@ -273,19 +271,17 @@
             min-width="auto"
           >
             <template v-slot:activator="{ props }">
-              <v-btn
+              <div
                 v-bind="props"
-                variant="text"
-                size="small"
-                class="date-picker-btn"
+                class="date-text-clickable"
+                style="cursor: pointer;"
               >
                 <v-icon v-if="item.due_date && isOverdue(item.due_date)" color="error" size="x-small" class="mr-1">
                   mdi-alert
                 </v-icon>
                 <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
                 <span v-else class="text-medium-emphasis">Set due date</span>
-                <v-icon size="small" class="ml-1">mdi-calendar</v-icon>
-              </v-btn>
+              </div>
             </template>
             <v-card>
               <v-card-title class="py-2" style="background-color: #ffc300;">
@@ -990,14 +986,32 @@ onMounted(async () => {
   border-radius: 4px;
 }
 
-.date-picker-btn {
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  padding: 4px 8px !important;
+/* Hide arrow indicator for category column */
+.inline-select-no-arrow :deep(.v-field__append-inner) {
+  display: none;
 }
 
-.date-picker-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04) !important;
+.category-text {
+  cursor: pointer;
+  padding: 4px 8px;
+  display: inline-block;
+}
+
+.category-text:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+
+/* Date text clickable styling */
+.date-text-clickable {
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  transition: background-color 0.2s ease;
+}
+
+.date-text-clickable:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .task-row-content {
