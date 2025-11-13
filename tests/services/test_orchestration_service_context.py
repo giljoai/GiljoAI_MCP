@@ -26,7 +26,7 @@ def mock_db_manager():
     db_manager = MagicMock()
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock()
+    session.__aexit__ = AsyncMock(return_value=False)  # Don't suppress exceptions
     session.execute = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
