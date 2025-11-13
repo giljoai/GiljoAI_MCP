@@ -121,10 +121,10 @@
     <!-- Tasks Table -->
     <v-card class="task-table-card">
       <!-- Table Controls -->
-      <v-card-title class="d-flex align-center py-3">
+      <v-card-title class="d-flex align-center py-3 bg-primary text-white">
         <span class="text-h6">Tasks</span>
         <v-spacer />
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTaskDialog = true">
+        <v-btn color="white" variant="outlined" prepend-icon="mdi-plus" @click="showTaskDialog = true">
           New Task
         </v-btn>
       </v-card-title>
@@ -151,31 +151,33 @@
 
         <!-- Status Column - Inline Dropdown -->
         <template v-slot:item.status="{ item }">
-          <v-select
-            :model-value="item.status"
-            @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
-            :items="statusOptions"
-            variant="plain"
-            density="compact"
-            hide-details
-            class="inline-select inline-select-no-arrow"
-          >
-            <template v-slot:selection="{ item: statusItem }">
-              <v-chip :color="getStatusColor(statusItem.value)" size="small" variant="flat">
-                <v-icon start size="x-small">{{ getStatusIcon(statusItem.value) }}</v-icon>
-                {{ statusItem.value }}
-              </v-chip>
-            </template>
-            <template v-slot:item="{ props, item: statusItem }">
-              <v-list-item v-bind="props">
-                <template v-slot:prepend>
-                  <v-icon :color="getStatusColor(statusItem.value)" size="small">
-                    {{ getStatusIcon(statusItem.value) }}
-                  </v-icon>
-                </template>
-              </v-list-item>
-            </template>
-          </v-select>
+          <div class="d-flex justify-center">
+            <v-select
+              :model-value="item.status"
+              @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
+              :items="statusOptions"
+              variant="plain"
+              density="compact"
+              hide-details
+              class="inline-select inline-select-no-arrow"
+            >
+              <template v-slot:selection="{ item: statusItem }">
+                <v-chip :color="getStatusColor(statusItem.value)" size="small" variant="flat" class="status-chip">
+                  <v-icon start size="x-small">{{ getStatusIcon(statusItem.value) }}</v-icon>
+                  {{ statusItem.value }}
+                </v-chip>
+              </template>
+              <template v-slot:item="{ props, item: statusItem }">
+                <v-list-item v-bind="props">
+                  <template v-slot:prepend>
+                    <v-icon :color="getStatusColor(statusItem.value)" size="small">
+                      {{ getStatusIcon(statusItem.value) }}
+                    </v-icon>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+          </div>
         </template>
 
         <!-- Priority Column - Inline Dropdown -->
@@ -209,49 +211,37 @@
           <div
             class="task-row-content"
             :data-test="`task-row-${item.id}`"
+            @click="editTask(item)"
+            style="cursor: pointer;"
           >
             <!-- Task Content -->
-            <div class="task-content flex-grow-1" @click="editTask(item)" style="cursor: pointer;">
+            <div class="task-content flex-grow-1">
               <div class="d-flex align-center">
                 <span class="font-weight-medium">{{ item.title }}</span>
               </div>
               <div class="text-caption text-medium-emphasis description-truncate">{{ item.description }}</div>
             </div>
-
-            <!-- Inline Convert Button -->
-            <v-btn
-              v-if="item.status !== 'completed' && !item.converted_project_id"
-              icon
-              size="small"
-              variant="text"
-              color="#ffc300"
-              @click.stop="convertTaskToProject(item)"
-              class="ml-2"
-            >
-              <v-icon>mdi-folder-arrow-up</v-icon>
-              <v-tooltip activator="parent" location="top">
-                Convert to Project
-              </v-tooltip>
-            </v-btn>
           </div>
         </template>
 
 
         <!-- Category Column - Inline Dropdown -->
         <template v-slot:item.category="{ item }">
-          <v-select
-            :model-value="item.category"
-            @update:model-value="(newCategory) => updateTaskField(item, 'category', newCategory)"
-            :items="categoryOptions"
-            variant="plain"
-            density="compact"
-            hide-details
-            class="inline-select inline-select-no-arrow"
-          >
-            <template v-slot:selection="{ item: categoryItem }">
-              <span class="category-text">{{ categoryItem.value }}</span>
-            </template>
-          </v-select>
+          <div class="d-flex justify-center">
+            <v-select
+              :model-value="item.category"
+              @update:model-value="(newCategory) => updateTaskField(item, 'category', newCategory)"
+              :items="categoryOptions"
+              variant="plain"
+              density="compact"
+              hide-details
+              class="inline-select inline-select-no-arrow"
+            >
+              <template v-slot:selection="{ item: categoryItem }">
+                <span class="category-text">{{ categoryItem.value }}</span>
+              </template>
+            </v-select>
+          </div>
         </template>
 
         <!-- Created By User Column (Phase 4) -->
@@ -298,29 +288,24 @@
           </v-menu>
         </template>
 
-        <!-- Convert Status Column -->
-        <template v-slot:item.convert_status="{ item }">
-          <div v-if="item.converted_project_id">
-            <v-tooltip text="Task converted to project">
-              <template v-slot:activator="{ props }">
-                <v-chip
-                  v-bind="props"
-                  color="success"
-                  size="small"
-                  prepend-icon="mdi-arrow-right-bold-circle"
-                  variant="flat"
-                >
-                  Converted
-                </v-chip>
-              </template>
-            </v-tooltip>
+        <!-- Convert Column -->
+        <template v-slot:item.convert="{ item }">
+          <div class="d-flex justify-center">
+            <v-btn
+              v-if="item.status !== 'completed' && !item.converted_project_id"
+              icon
+              size="small"
+              variant="text"
+              color="#ffc300"
+              @click.stop="convertTaskToProject(item)"
+            >
+              <v-icon>mdi-folder-arrow-up</v-icon>
+              <v-tooltip activator="parent" location="top">
+                Convert to Project
+              </v-tooltip>
+            </v-btn>
+            <span v-else class="text-medium-emphasis">—</span>
           </div>
-          <div v-else-if="item.conversion_pending">
-            <v-chip color="warning" size="small" prepend-icon="mdi-clock-outline" variant="flat">
-              Pending
-            </v-chip>
-          </div>
-          <span v-else class="text-medium-emphasis">—</span>
         </template>
 
         <!-- Actions Column -->
@@ -632,21 +617,21 @@ const currentTask = ref({
 
 // Table headers
 const headers = [
-  { title: 'Status', key: 'status', width: '140' },
+  { title: 'Status', key: 'status', width: '140', align: 'center' },
   { title: 'Priority', key: 'priority', width: '110' },
   { title: 'Task', key: 'title' },
-  { title: 'Category', key: 'category', width: '120' },
+  { title: 'Category', key: 'category', width: '120', align: 'center' },
   // Hidden for now - may be relevant in future
   // { title: 'Created By', key: 'created_by_user_id', width: '150' },
   { title: 'Due Date', key: 'due_date', width: '120' },
-  { title: 'Convert Status', key: 'convert_status', width: '130' },
+  { title: 'Convert', key: 'convert', width: '80', align: 'center', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, width: '120' },
 ]
 
 // Filter options
 const statusOptions = ['pending', 'in_progress', 'completed', 'cancelled']
 const priorityOptions = ['low', 'medium', 'high', 'critical']
-const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'documentation', 'testing']
+const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'docs', 'testing']
 
 
 // Computed
@@ -980,7 +965,6 @@ onMounted(async () => {
 .inline-select :deep(.v-field__input) {
   padding: 0;
   min-height: auto;
-  padding-left: 20px;
 }
 
 .inline-select:hover :deep(.v-field) {
@@ -1061,6 +1045,52 @@ onMounted(async () => {
   text-overflow: ellipsis;
   line-height: 1.4;
   max-height: 2.8em; /* 2 lines × 1.4 line-height */
+}
+
+/* Status chip centered text with compact sizing */
+.status-chip {
+  justify-content: center;
+  padding: 4px 10px !important;
+  width: fit-content !important;
+}
+
+.status-chip :deep(.v-chip__content) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 0 !important;
+}
+
+.status-chip :deep(.v-icon) {
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Status column - allow badge overflow and remove constraints */
+.inline-select :deep(.v-field__input) {
+  overflow: visible !important;
+}
+
+.inline-select :deep(.v-input__control) {
+  overflow: visible !important;
+}
+
+.inline-select :deep(.v-field__field) {
+  overflow: visible !important;
+}
+
+/* Fix dropdown menu icons being cut off */
+.inline-select :deep(.v-list-item) {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+.inline-select :deep(.v-list-item__prepend) {
+  margin-right: 12px !important;
+}
+
+.inline-select :deep(.v-list-item__prepend .v-icon) {
+  margin: 0 !important;
 }
 
 </style>
