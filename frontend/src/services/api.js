@@ -106,34 +106,40 @@ export const api = {
     list: (params) => apiClient.get('/api/v1/products/', { params }),
     get: (id) => apiClient.get(`/api/v1/products/${id}/`),
     create: (data) => {
-      // Handover 0126: Send JSON to match backend ProductCreate schema
-      // Backend expects: { name, description, project_path }
+      // Handover 0507: Send JSON to match backend ProductCreate schema
+      // Backend expects: { name, description, project_path, config_data }
       const payload = {
         name: data.name,
         description: data.description || null,
         project_path: data.projectPath || null,
+        config_data: data.configData || null,  // FIX: Add config_data (Handover 0507)
       }
       return apiClient.post('/api/v1/products/', payload)
     },
     update: (id, data) => {
-      // Handover 0126: Send JSON to match backend ProductUpdate schema
-      // Backend expects: { name?, description?, project_path?, is_active? }
+      // Handover 0507: Send JSON to match backend ProductUpdate schema
+      // Backend expects: { name?, description?, project_path?, config_data?, is_active? }
       const payload = {}
       if (data.name !== undefined) payload.name = data.name
       if (data.description !== undefined) payload.description = data.description
       if (data.projectPath !== undefined) payload.project_path = data.projectPath
+      if (data.configData !== undefined) payload.config_data = data.configData  // FIX: Add config_data (Handover 0507)
       if (data.isActive !== undefined) payload.is_active = data.isActive
       return apiClient.put(`/api/v1/products/${id}/`, payload)
     },
     delete: (id) => apiClient.delete(`/api/v1/products/${id}/`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
+
+    // Vision document endpoints (Handover 0507: Consolidated to /vision)
     uploadVision: (id, file) => {
       const formData = new FormData()
-      formData.append('vision_file', file)
-      return apiClient.post(`/api/v1/products/${id}/upload-vision/`, formData, {
+      formData.append('file', file)  // Backend expects 'file' parameter
+      return apiClient.post(`/api/v1/products/${id}/vision`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
+    listVision: (id) => apiClient.get(`/api/v1/products/${id}/vision`),
+    deleteVision: (id, docId) => apiClient.delete(`/api/v1/products/${id}/vision/${docId}`),
     getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks/`),
     // Real-time token estimate for active product (Handover 0049)
     getActiveProductTokenEstimate: () => apiClient.get('/api/v1/products/active/token-estimate'),
@@ -159,16 +165,16 @@ export const api = {
     fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
     // Status change endpoints - use PATCH for generic status updates
     changeStatus: (id, newStatus) => apiClient.patch(`/api/v1/projects/${id}/`, { status: newStatus }),
-    // Specific action endpoints
-    activate: (id) => apiClient.post(`/api/v1/projects/${id}/activate`),
-    deactivate: (id) => apiClient.post(`/api/v1/projects/${id}/deactivate`),
+    // Specific action endpoints (Handover 0507: Added force and reason parameters)
+    activate: (id, force = false) => apiClient.post(`/api/v1/projects/${id}/activate`, { force }),
+    deactivate: (id, reason = null) => apiClient.post(`/api/v1/projects/${id}/deactivate`, { reason }),
     complete: (id) => apiClient.post(`/api/v1/projects/${id}/complete`),
     cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
     restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
     restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/restore-completed`),
-    // Handover 0062: Project launch and summary
+    // Handover 0507: Project launch and summary with config parameter support
     summary: (id) => apiClient.get(`/api/v1/projects/${id}/summary`),
-    launch: (id) => apiClient.post(`/api/v1/projects/${id}/launch`),
+    launch: (id, config = null) => apiClient.post(`/api/v1/projects/${id}/launch`, config),
     // Handover 0108: Staging cancellation
     cancelStaging: (id) => apiClient.post(`/api/v1/projects/${id}/cancel-staging`),
   },
@@ -406,6 +412,12 @@ export const api = {
     acknowledge: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/acknowledge`),
     reportProgress: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/progress`, data),
     complete: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/complete`, data),
+
+    // Orchestrator succession endpoints (Handover 0507)
+    triggerSuccession: (jobId, reason = 'manual', notes = null) =>
+      apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, { reason, notes }),
+    checkSuccessionStatus: (jobId) =>
+      apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
 
     // Message and communication endpoints (Handover 0066 - Kanban Dashboard)
     messages: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
