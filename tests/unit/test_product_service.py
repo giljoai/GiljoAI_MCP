@@ -620,3 +620,258 @@ class TestProductServiceErrorHandling:
         # Assert
         assert result["success"] is False
         assert "not found" in result["error"]
+
+
+
+class TestProductServiceConfigData:
+    """Test config_data field persistence - Handover 0500"""
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_config_data(self):
+        """Test config_data persists during product creation"""
+        # Arrange
+        db_manager = Mock()
+        session = AsyncMock()
+        
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+        
+        # Mock no existing product
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
+        session.add = Mock()
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+        
+        service = ProductService(db_manager, "test-tenant")
+        
+        config = {
+            "api_key": "test-key-123",
+            "settings": {"debug": True, "timeout": 30},
+            "tech_stack": {"python": "3.11", "framework": "FastAPI"}
+        }
+        
+        # Act
+        result = await service.create_product(
+            name="Test Product",
+            description="Product with config",
+            config_data=config
+        )
+        
+        # Assert
+        assert result["success"] is True
+        assert "product_id" in result
+        session.commit.assert_awaited_once()
+        
+        # Verify config_data was passed to Product constructor
+        session.add.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_product_without_config_data(self):
+        """Test product creation works without config_data"""
+        # Arrange
+        db_manager = Mock()
+        session = AsyncMock()
+        
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+        
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
+        session.add = Mock()
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+        
+        service = ProductService(db_manager, "test-tenant")
+        
+        # Act
+        result = await service.create_product(
+            name="Test Product No Config"
+        )
+        
+        # Assert
+        assert result["success"] is True
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_product_config_data(self):
+        """Test config_data updates correctly"""
+        # Arrange
+        db_manager = Mock()
+        session = AsyncMock()
+        
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+        
+        # Mock existing product
+        existing_product = Mock(spec=Product)
+        existing_product.id = str(uuid4())
+        existing_product.name = "Test Product"
+        existing_product.description = "Test"
+        existing_product.config_data = {"version": "1.0"}
+        existing_product.updated_at = datetime.now(timezone.utc)
+        
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=existing_product)
+        ))
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+        
+        service = ProductService(db_manager, "test-tenant")
+        
+        # Act
+        updated_config = {"version": "2.0", "new_field": "value"}
+        result = await service.update_product(
+            product_id=existing_product.id,
+            config_data=updated_config
+        )
+        
+        # Assert
+        assert result["success"] is True
+        assert existing_product.config_data == updated_config
+        session.commit.assert_awaited_once()
+
+
+class TestProductServiceVisionUpload:
+    """Test vision document upload with chunking - Handover 0500"""
+
+    @pytest.mark.asyncio
+    async def test_upload_small_vision_document(self):
+        """Test uploading vision document under token limit"""
+        # Arrange
+        db_manager = Mock()
+        session = AsyncMock()
+        
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+        
+        # Mock product exists
+        product = Mock(spec=Product)
+        product.id = str(uuid4())
+        product.name = "Test Product"
+        
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=product)
+        ))
+        session.commit = AsyncMock()
+        
+        # Mock vision document creation
+        with patch('src.giljo_mcp.services.product_service.VisionDocumentRepository') as MockRepo:
+            mock_repo_instance = Mock()
+            MockRepo.return_value = mock_repo_instance
+            
+            mock_doc = Mock()
+            mock_doc.id = str(uuid4())
+            mock_doc.document_name = "vision.md"
+            mock_repo_instance.create = AsyncMock(return_value=mock_doc)
+            
+            # Mock chunker
+            with patch('src.giljo_mcp.services.product_service.VisionDocumentChunker') as MockChunker:
+                mock_chunker_instance = Mock()
+                MockChunker.return_value = mock_chunker_instance
+                mock_chunker_instance.chunk_vision_document = AsyncMock(return_value={
+                    "success": True,
+                    "chunks_created": 1,
+                    "total_tokens": 150,
+                })
+                
+                service = ProductService(db_manager, "test-tenant")
+                
+                # Act
+                result = await service.upload_vision_document(
+                    product_id=product.id,
+                    content="# Vision Document\n\nThis is a small vision document.",
+                    filename="vision.md"
+                )
+        
+        # Assert
+        assert result["success"] is True
+        assert result["document_name"] == "vision.md"
+        assert result["chunks_created"] >= 1
+        assert result["total_tokens"] > 0
+
+    @pytest.mark.asyncio
+    async def test_upload_vision_product_not_found(self):
+        """Test vision upload fails for non-existent product"""
+        # Arrange
+        db_manager = Mock()
+        session = AsyncMock()
+        
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+        
+        # Mock product not found
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
+        
+        service = ProductService(db_manager, "test-tenant")
+        
+        # Act
+        result = await service.upload_vision_document(
+            product_id="non-existent-id",
+            content="# Vision",
+            filename="vision.md"
+        )
+        
+        # Assert
+        assert result["success"] is False
+        assert "error" in result
+        assert "not found" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_upload_vision_with_chunking_disabled(self):
+        """Test vision upload without auto-chunking"""
+        # Arrange
+        db_manager = Mock()
+        session = AsyncMock()
+        
+        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock()
+        ))
+        
+        # Mock product exists
+        product = Mock(spec=Product)
+        product.id = str(uuid4())
+        
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=product)
+        ))
+        session.commit = AsyncMock()
+        
+        # Mock vision document creation
+        with patch('src.giljo_mcp.services.product_service.VisionDocumentRepository') as MockRepo:
+            mock_repo_instance = Mock()
+            MockRepo.return_value = mock_repo_instance
+            
+            mock_doc = Mock()
+            mock_doc.id = str(uuid4())
+            mock_doc.document_name = "vision_no_chunk.md"
+            mock_repo_instance.create = AsyncMock(return_value=mock_doc)
+            
+            service = ProductService(db_manager, "test-tenant")
+            
+            # Act
+            result = await service.upload_vision_document(
+                product_id=product.id,
+                content="# Vision Document\n\nNo chunking.",
+                filename="vision_no_chunk.md",
+                auto_chunk=False
+            )
+        
+        # Assert
+        assert result["success"] is True
+        assert result["chunks_created"] == 0  # No chunking when disabled
