@@ -238,12 +238,19 @@ export const api = {
   },
 
   // Users (for tenant user listing and assignment)
+  // Handover 0506: Fixed paths to use /api/v1/users
   users: {
-    list: () => apiClient.get('/api/auth/users'),
+    list: () => apiClient.get('/api/v1/users/'),
+    get: (userId) => apiClient.get(`/api/v1/users/${userId}`),
+    update: (userId, updates) => apiClient.patch(`/api/v1/users/${userId}`, updates),
+    delete: (userId) => apiClient.delete(`/api/v1/users/${userId}`),
+    getMe: () => apiClient.get('/api/v1/users/me'),
+    changePassword: (oldPassword, newPassword) =>
+      apiClient.put('/api/v1/users/me/password', { oldPassword, newPassword }),
     // Field priority configuration (Handover 0048)
-    getFieldPriorityConfig: () => apiClient.get('/api/users/me/field-priority'),
-    updateFieldPriorityConfig: (config) => apiClient.put('/api/users/me/field-priority', config),
-    resetFieldPriorityConfig: () => apiClient.post('/api/users/me/field-priority/reset'),
+    getFieldPriorityConfig: () => apiClient.get('/api/v1/users/me/field-priority'),
+    updateFieldPriorityConfig: (config) => apiClient.put('/api/v1/users/me/field-priority', config),
+    resetFieldPriorityConfig: () => apiClient.post('/api/v1/users/me/field-priority/reset'),
   },
 
   // Vision Documents (Multi-Document Support - Handover 0043)
@@ -285,13 +292,27 @@ export const api = {
   },
 
   // Settings & Configuration
+  // Handover 0506: Added new settings endpoints (general, network, database, product-info, cookie-domain)
   settings: {
+    // Legacy config endpoints (kept for backward compatibility)
     get: () => apiClient.get('/api/v1/config/'),
     update: (data) => apiClient.put('/api/v1/config/', data),
     getProduct: () => apiClient.get('/api/v1/config/product/'),
-    // Database config and health
-    getDatabase: () => apiClient.get('/api/v1/config/database'),
     testDatabase: () => apiClient.get('/api/v1/config/health/database'),
+
+    // New settings endpoints (Handover 0506)
+    getGeneral: () => apiClient.get('/api/v1/settings/general'),
+    updateGeneral: (settings) => apiClient.put('/api/v1/settings/general', { settings }),
+
+    getNetwork: () => apiClient.get('/api/v1/settings/network'),
+    updateNetwork: (settings) => apiClient.put('/api/v1/settings/network', { settings }),
+
+    getDatabase: () => apiClient.get('/api/v1/settings/database'),
+
+    getProductInfo: () => apiClient.get('/api/v1/settings/product-info'),
+    getCookieDomain: () => apiClient.get('/api/v1/settings/cookie-domain'),
+
+    // User settings - cookie domain management
     getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),
     addCookieDomain: (domain) => apiClient.post('/api/v1/user/settings/cookie-domains', { domain }),
     removeCookieDomain: (domain) => apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),
