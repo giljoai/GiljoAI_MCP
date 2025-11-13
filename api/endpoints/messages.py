@@ -98,7 +98,7 @@ async def list_messages(
     This endpoint aggregates messages from all agent jobs in the project.
     """
     from api.app import state
-    from giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models import MCPAgentJob
     from sqlalchemy import select
 
     # Check if database is available (not in setup mode)

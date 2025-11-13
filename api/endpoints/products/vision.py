@@ -43,8 +43,7 @@ async def upload_vision_document(
     Handover 0500: Implemented vision upload with intelligent chunking.
     """
     from src.giljo_mcp.services.product_service import ProductService
-    from src.giljo_mcp.db_manager import DatabaseManager
-    
+
     logger.info(
         f"User {current_user.username} uploading vision document "
         f"'{file.filename}' for product {product_id}"
@@ -76,6 +75,7 @@ async def upload_vision_document(
         content_str = content.decode('utf-8')
 
         # Upload via ProductService
+        from src.giljo_mcp.database import DatabaseManager
         db_manager = DatabaseManager()
         product_service = ProductService(db_manager=db_manager, tenant_key=tenant_key)
 
@@ -292,7 +292,6 @@ async def get_vision_chunks(
     Handover 0500: Implemented vision chunks retrieval.
     """
     from src.giljo_mcp.repositories.context_repository import ContextRepository
-    from src.giljo_mcp.db_manager import DatabaseManager
     from sqlalchemy import select, and_
     from src.giljo_mcp.models import MCPContextIndex
 

@@ -94,7 +94,7 @@ class HealthCheckResponse(BaseModel):
 async def get_context_index(product_id: Optional[str] = Query(None, description="Product ID")):
     """Get the context index for intelligent querying"""
     try:
-        from giljo_mcp.tools.context import get_context_index
+        from src.giljo_mcp.tools.context import get_context_index
 
         result = await get_context_index(product_id=product_id)
 
@@ -120,7 +120,7 @@ async def get_vision(
 ):
     """Get the vision document (chunked if large)"""
     try:
-        from giljo_mcp.tools.context import get_vision
+        from src.giljo_mcp.tools.context import get_vision
 
         result = await get_vision(part=part, max_tokens=max_tokens)
 
@@ -142,7 +142,7 @@ async def get_vision(
 async def get_vision_index():
     """Get the vision document index"""
     try:
-        from giljo_mcp.tools.context import get_vision_index
+        from src.giljo_mcp.tools.context import get_vision_index
 
         result = await get_vision_index()
 
@@ -159,7 +159,7 @@ async def get_vision_index():
 async def get_product_settings(product_id: Optional[str] = Query(None, description="Product ID")):
     """Get all product settings for analysis"""
     try:
-        from giljo_mcp.tools.context import get_product_settings
+        from src.giljo_mcp.tools.context import get_product_settings
 
         result = await get_product_settings(product_id=product_id)
 
@@ -190,8 +190,8 @@ async def chunk_vision_document(
     from sqlalchemy import select
 
     from api.app import state
-    from giljo_mcp.context_management import ContextManagementSystem
-    from giljo_mcp.models import Product
+    from src.giljo_mcp.context_management import ContextManagementSystem
+    from src.giljo_mcp.models import Product
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -292,7 +292,7 @@ async def search_context(
     Multi-tenant isolation enforced via tenant_key.
     """
     from api.app import state
-    from giljo_mcp.context_management import ContextManagementSystem
+    from src.giljo_mcp.context_management import ContextManagementSystem
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -342,7 +342,7 @@ async def load_context_for_agent(
     Multi-tenant isolation enforced via tenant_key.
     """
     from api.app import state
-    from giljo_mcp.context_management import ContextManagementSystem
+    from src.giljo_mcp.context_management import ContextManagementSystem
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -396,7 +396,7 @@ async def get_token_stats(
     Multi-tenant isolation enforced via tenant_key.
     """
     from api.app import state
-    from giljo_mcp.context_management import ContextManagementSystem
+    from src.giljo_mcp.context_management import ContextManagementSystem
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -448,7 +448,7 @@ async def health_check(
     from sqlalchemy import func, select
 
     from api.app import state
-    from giljo_mcp.models import MCPContextIndex
+    from src.giljo_mcp.models import MCPContextIndex
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")

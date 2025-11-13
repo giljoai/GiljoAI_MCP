@@ -54,13 +54,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
 try:
-    from giljo_mcp.auth import AuthManager
-    from giljo_mcp.config_manager import get_config
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.models import Project
-    from giljo_mcp.system_prompts import SystemPromptService
-    from giljo_mcp.tenant import TenantManager
-    from giljo_mcp.tools.tool_accessor import ToolAccessor
+    from src.giljo_mcp.auth import AuthManager
+    from src.giljo_mcp.config_manager import get_config
+    from src.giljo_mcp.database import DatabaseManager
+    from src.giljo_mcp.models import Project
+    from src.giljo_mcp.system_prompts import SystemPromptService
+    from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
@@ -315,7 +315,7 @@ async def lifespan(app: FastAPI):
     # Start download token cleanup task (Handover 0100)
     async def cleanup_expired_download_tokens():
         """Background task to cleanup expired download tokens every 15 minutes"""
-        from giljo_mcp.download_tokens import TokenManager
+        from src.giljo_mcp.download_tokens import TokenManager
 
         while True:
             try:
@@ -407,8 +407,8 @@ async def lifespan(app: FastAPI):
 
         # Only start if enabled in config
         if health_config_dict.get('enabled', True):
-            from giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
-            from giljo_mcp.monitoring.health_config import HealthCheckConfig
+            from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
+            from src.giljo_mcp.monitoring.health_config import HealthCheckConfig
 
             # Build configuration from config.yaml
             timeout_config = health_config_dict.get('timeouts', {})
@@ -501,7 +501,7 @@ async def lifespan(app: FastAPI):
             logger.info("Running startup purge of expired deleted items...")
             from datetime import timedelta, timezone
             from sqlalchemy import select
-            from giljo_mcp.models import Product, Project
+            from src.giljo_mcp.models import Product, Project
 
             # Get all tenants that have deleted items
             async with state.db_manager.get_session_async() as session:
@@ -535,7 +535,7 @@ async def lifespan(app: FastAPI):
                     # Purge for each tenant
                     for tenant_key in all_tenants:
                         # Purge expired deleted projects
-                        from giljo_mcp.services.project_service import ProjectService
+                        from src.giljo_mcp.services.project_service import ProjectService
                         project_service = ProjectService(
                             db_manager=state.db_manager,
                             tenant_manager=state.tenant_manager
@@ -549,7 +549,7 @@ async def lifespan(app: FastAPI):
                             total_projects_purged += purged_count
 
                         # Purge expired deleted products
-                        from giljo_mcp.services.product_service import ProductService
+                        from src.giljo_mcp.services.product_service import ProductService
                         product_service = ProductService(
                             db_manager=state.db_manager,
                             tenant_key=tenant_key
@@ -766,7 +766,7 @@ def create_app() -> FastAPI:
 
     # Dynamic network adapter IP detection for CORS updates
     try:
-        from giljo_mcp.network_detector import AdapterIPDetector
+        from src.giljo_mcp.network_detector import AdapterIPDetector
 
         detector = AdapterIPDetector()
         ip_changed, current_ip, adapter_name = detector.detect_ip_change(config)
