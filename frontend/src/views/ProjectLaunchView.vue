@@ -1,19 +1,26 @@
 <template>
-  <v-container fluid class="pa-6">
-    <!-- Header Section (matches JobsView) -->
-    <v-row class="mb-4" v-if="!loading && !error">
-      <v-col cols="12">
-        <div class="mb-4">
-          <div class="d-flex align-center gap-4 mb-2">
-            <h1 class="text-h4">Project:</h1>
-            <h2 class="project-name">{{ project?.name || 'Loading...' }}</h2>
-          </div>
-          <p class="text-subtitle-1 text-medium-emphasis">
-            Project ID: {{ project?.id || 'N/A' }}
-          </p>
-        </div>
-      </v-col>
-    </v-row>
+  <div class="project-launch-container">
+    <!-- Sticky Header Section (matches JobsView) -->
+    <div class="sticky-header" v-if="!loading && !error">
+      <v-container fluid class="pa-6 pb-3">
+        <v-row class="mb-0">
+          <v-col cols="12">
+            <div>
+              <div class="d-flex align-center gap-4 mb-2">
+                <h1 class="text-h4">Project:</h1>
+                <h2 class="project-name">{{ project?.name || 'Loading...' }}</h2>
+              </div>
+              <p class="text-subtitle-1 text-medium-emphasis mb-0">
+                Project ID: {{ project?.id || 'N/A' }}
+              </p>
+            </div>
+          </v-col>
+        </v-row>
+      </v-container>
+    </div>
+
+    <!-- Scrollable Content Container -->
+    <v-container fluid class="pa-6 scrollable-content" :class="{ 'with-sticky-header': !loading && !error }">
 
     <!-- Loading State -->
     <v-row v-if="loading" class="justify-center py-12">
@@ -136,7 +143,8 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+    </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -264,6 +272,35 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Project Launch Container - Full height layout */
+.project-launch-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sticky Header - Always visible */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--v-theme-background, #fafafa);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Scrollable Content - Flexible scrolling area */
+.scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.scrollable-content.with-sticky-header {
+  padding-top: 0 !important;
+}
+
 /* Project name styling (matches JobsView) */
 .project-name {
   color: #FFC300;
@@ -276,5 +313,16 @@ onMounted(() => {
   h1.text-h4 {
     font-size: 1.5rem !important;
   }
+
+  .project-name {
+    font-size: 1.5rem;
+  }
+}
+
+/* Dark Theme Support */
+.v-theme--dark .sticky-header {
+  background: var(--v-theme-background, #1e1e1e);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 </style>
