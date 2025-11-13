@@ -27,7 +27,7 @@
           <div class="jobs-tab__agents-header mb-3">
             <div class="panel-header bg-success text-white d-inline-flex align-center">
               <v-icon size="small">mdi-account-group</v-icon>
-              <span class="mx-2">Active Agents</span>
+              <span>Active Agents</span>
               <v-chip size="x-small" color="white" text-color="success" class="font-weight-bold" density="compact">
                 {{ sortedAgents.length }}
               </v-chip>
@@ -624,6 +624,9 @@ onBeforeUnmount(() => {
       padding: 8px 10px;
       width: fit-content;
       border-radius: 4px;
+      white-space: nowrap;
+      flex-wrap: nowrap;
+      gap: 4px;
     }
   }
 
