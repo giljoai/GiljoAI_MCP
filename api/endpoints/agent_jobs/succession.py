@@ -21,7 +21,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.app import state
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, User
 from src.giljo_mcp.models.schemas import SuccessionRequest, SuccessionResponse, SuccessionStatusResponse
@@ -139,6 +138,7 @@ async def trigger_succession(
 
         # Emit WebSocket event for UI updates
         try:
+            from api.app import state  # Lazy import to avoid circular dependency
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_to_tenant(
                     tenant_key=current_user.tenant_key,
