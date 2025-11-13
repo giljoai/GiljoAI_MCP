@@ -22,8 +22,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_health_check_accessible(self, db_manager):
         """Test health_check method exists on ToolAccessor"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -38,8 +38,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_get_pending_jobs_accessible(self, db_manager):
         """Test get_pending_jobs method exists and has basic validation"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -55,8 +55,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_get_pending_jobs_validation(self, db_manager):
         """Test get_pending_jobs validates inputs"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -70,8 +70,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_acknowledge_job_validation(self, db_manager):
         """Test acknowledge_job validates inputs"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tenant_manager.set_current_tenant(f"tk_{uuid4().hex}")
@@ -86,8 +86,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_complete_job_validation(self, db_manager):
         """Test complete_job validates inputs"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tenant_manager.set_current_tenant(f"tk_{uuid4().hex}")
@@ -102,8 +102,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_report_error_validation(self, db_manager):
         """Test report_error validates inputs"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tenant_manager.set_current_tenant(f"tk_{uuid4().hex}")
@@ -118,8 +118,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_report_progress_validation(self, db_manager):
         """Test report_progress validates inputs"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tenant_manager.set_current_tenant(f"tk_{uuid4().hex}")
@@ -134,8 +134,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_get_orchestrator_instructions_accessible(self, db_manager):
         """Test get_orchestrator_instructions method exists"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -151,8 +151,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_spawn_agent_job_accessible(self, db_manager):
         """Test spawn_agent_job method exists"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -174,8 +174,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_get_agent_mission_accessible(self, db_manager):
         """Test get_agent_mission method exists"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -191,8 +191,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_orchestrate_project_accessible(self, db_manager):
         """Test orchestrate_project method exists"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -208,8 +208,8 @@ class TestOrchestrationToolsHTTPExposure:
     @pytest.mark.asyncio
     async def test_get_workflow_status_accessible(self, db_manager):
         """Test get_workflow_status method exists"""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)

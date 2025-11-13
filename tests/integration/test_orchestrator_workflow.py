@@ -20,7 +20,7 @@ class TestProjectProductAssociation:
     @pytest.mark.asyncio
     async def test_create_project_with_product_id(self, db_manager, tenant_manager):
         """Test that product_id is correctly saved and returned."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
         product_id = str(uuid4())
@@ -39,7 +39,7 @@ class TestProjectProductAssociation:
     @pytest.mark.asyncio
     async def test_list_projects_includes_product_id(self, db_manager, tenant_manager):
         """Test that list_projects returns product_id."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
         product_id = str(uuid4())
@@ -62,7 +62,7 @@ class TestProjectProductAssociation:
     @pytest.mark.asyncio
     async def test_project_status_includes_product_id(self, db_manager, tenant_manager):
         """Test that project_status returns product_id."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
         product_id = str(uuid4())
@@ -85,8 +85,8 @@ class TestAPISchemaValidation:
     @pytest.mark.asyncio
     async def test_agent_create_schema(self, test_client, db_manager):
         """Test agent creation with correct schema (agent_name field)."""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Create test project first
         tenant_manager = TenantManager()
@@ -112,8 +112,8 @@ class TestAPISchemaValidation:
     @pytest.mark.asyncio
     async def test_agent_create_rejects_wrong_field(self, test_client, db_manager):
         """Test that agent creation rejects 'name' field (should be 'agent_name')."""
-        from giljo_mcp.tenant import TenantManager
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Create test project first
         tenant_manager = TenantManager()
@@ -176,7 +176,7 @@ class TestOrchestratorWorkflow:
     @pytest.mark.asyncio
     async def test_complete_workflow(self, db_manager, tenant_manager):
         """Test the complete orchestrator workflow from project creation to team planning."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
         product_id = str(uuid4())
@@ -217,7 +217,7 @@ class TestOrchestratorWorkflow:
     @pytest.mark.asyncio
     async def test_context_budget_tracking(self, db_manager, tenant_manager):
         """Test that context budget is tracked correctly."""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
@@ -235,8 +235,8 @@ class TestOrchestratorWorkflow:
 @pytest.fixture
 async def db_manager():
     """Database manager fixture."""
-    from giljo_mcp.config_manager import get_config
-    from giljo_mcp.database import DatabaseManager
+    from src.giljo_mcp.config_manager import get_config
+    from src.giljo_mcp.database import DatabaseManager
 
     config = get_config()
     manager = DatabaseManager(database_url=config.database.url)
@@ -247,7 +247,7 @@ async def db_manager():
 @pytest.fixture
 def tenant_manager():
     """Tenant manager fixture."""
-    from giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tenant import TenantManager
 
     return TenantManager()
 
