@@ -147,23 +147,7 @@
                     </v-row>
                   </v-card-text>
 
-                  <v-card-actions>
-                    <v-tooltip location="top" content-class="branded-tooltip">
-                      <template v-slot:activator="{ props }">
-                        <v-btn
-                          icon
-                          size="small"
-                          variant="text"
-                          v-bind="props"
-                          @click="toggleProductActivation(product)"
-                          :style="product.is_active ? 'color: #ffc300' : ''"
-                        >
-                          <v-icon>{{ product.is_active ? 'mdi-stop' : 'mdi-play' }}</v-icon>
-                        </v-btn>
-                      </template>
-                      <span>{{ product.is_active ? 'Deactivate Product' : 'Activate Product' }}</span>
-                    </v-tooltip>
-                    <v-spacer></v-spacer>
+                  <v-card-actions class="justify-center">
                     <v-tooltip location="top" content-class="branded-tooltip">
                       <template v-slot:activator="{ props }">
                         <v-btn
@@ -178,6 +162,21 @@
                         </v-btn>
                       </template>
                       <span>View Product Details</span>
+                    </v-tooltip>
+                    <v-tooltip location="top" content-class="branded-tooltip">
+                      <template v-slot:activator="{ props }">
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          v-bind="props"
+                          @click="toggleProductActivation(product)"
+                          :style="product.is_active ? 'color: #ffc300' : ''"
+                        >
+                          <v-icon>{{ product.is_active ? 'mdi-stop' : 'mdi-play' }}</v-icon>
+                        </v-btn>
+                      </template>
+                      <span>{{ product.is_active ? 'Deactivate Product' : 'Activate Product' }}</span>
                     </v-tooltip>
                     <v-tooltip location="top" content-class="branded-tooltip">
                       <template v-slot:activator="{ props }">
