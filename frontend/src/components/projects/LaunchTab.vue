@@ -216,7 +216,7 @@
     <v-row class="agent-cards-row">
       <v-col cols="12">
         <v-card elevation="2">
-          <v-card-title class="panel-header bg-success text-white d-flex align-center">
+          <v-card-title class="panel-header panel-header-tight bg-success text-white d-flex align-center">
             <v-icon class="mr-2">mdi-account-group</v-icon>
             <span>Agent Team</span>
             <v-chip
@@ -948,6 +948,11 @@ defineExpose({
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 12px 16px;
+}
+
+/* Tight Panel Header (Agent Team) */
+.panel-header-tight {
+  padding: 2px 16px !important;
 }
 
 /* Description and Mission Panels */
