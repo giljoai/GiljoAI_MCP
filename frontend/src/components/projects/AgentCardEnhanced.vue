@@ -222,6 +222,13 @@
     <!-- Orchestrator special launch icons removed per UX request -->
     </v-card-text>
 
+    <!-- Succession Timeline (Handover 0509) - Shows instance chain for orchestrators -->
+    <succession-timeline
+      v-if="isOrchestrator && mode === 'jobs'"
+      :project-id="agent.project_id"
+      class="mt-2 mx-4"
+    />
+
     <!-- Action Button -->
     <v-card-actions class="pa-4 pt-0 agent-card-actions">
       <!-- Cancel Controls (Handover 0107) -->
@@ -283,18 +290,26 @@
 
       <!-- Orchestrator: Copy Execution Prompt removed - Launch button handles prompt copy -->
 
-      <!-- Orchestrator: Hand Over (Handover 0080a) -->
-      <v-btn
+      <!-- Orchestrator: Hand Over (Handover 0509) - Opens LaunchSuccessorDialog -->
+      <launch-successor-dialog
         v-if="mode === 'jobs' && isOrchestrator && agent.status === 'working'"
-        variant="outlined"
-        color="warning"
-        block
-        class="mt-2"
-        @click="$emit('hand-over', agent)"
+        :job-id="agent.id"
+        :current-job="agent"
+        @succession-triggered="onSuccessionTriggered"
       >
-        <v-icon start>mdi-hand-wave</v-icon>
-        Hand Over
-      </v-btn>
+        <template #activator="{ props: activatorProps }">
+          <v-btn
+            v-bind="activatorProps"
+            variant="outlined"
+            color="warning"
+            block
+            class="mt-2"
+          >
+            <v-icon start>mdi-hand-wave</v-icon>
+            Hand Over
+          </v-btn>
+        </template>
+      </launch-successor-dialog>
 
       <!-- Jobs Tab: Working State - Details -->
       <v-btn
@@ -368,6 +383,8 @@ import { getAgentColor, darkenColor, lightenColor } from '@/config/agentColors'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
+import SuccessionTimeline from './SuccessionTimeline.vue'
+import LaunchSuccessorDialog from './LaunchSuccessorDialog.vue'
 
 /**
  * AgentCardEnhanced Component
@@ -427,7 +444,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'continue-working'])
+const emit = defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'continue-working', 'refresh-jobs'])
 
 /**
  * Agent color configuration
@@ -675,6 +692,19 @@ const requestCancel = async () => {
 }
 
 // Removed forceStop method (Handover 0113 - atomic cancellation)
+
+/**
+ * Handover 0509: Succession event handler
+ * onSuccessionTriggered(successorData) - Handles succession-triggered event from LaunchSuccessorDialog
+ * Args: successorData - {successor_job_id, instance_number, launch_prompt}
+ * Emits: refresh-jobs to parent to reload job list and show new instance
+ */
+const onSuccessionTriggered = (successorData) => {
+  console.log('Successor created:', successorData)
+  showToast(`Successor instance ${successorData.instance_number} created`, 'success')
+  // Notify parent to refresh job list
+  emit('refresh-jobs')
+}
 
 /**
  * Lifecycle hooks for WebSocket event listeners
