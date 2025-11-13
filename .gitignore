@@ -159,3 +159,6 @@ installer/credentials/db_credentials_20251101_185129.txt
 installer/credentials/db_credentials_20251101_185835.txt
 installer/credentials/db_credentials_20251101_191524.txt
 installer/credentials/db_credentials_20251101_232218.txt
+
+# Archives (cleanup items, not for version control)
+docs/archive/0130_websocket_v1_backups/
