@@ -256,3 +256,86 @@ async def complete_message(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class BroadcastMessage(BaseModel):
+    project_id: str = Field(..., description="Project ID to broadcast to")
+    content: str = Field(..., description="Broadcast message content")
+    priority: str = Field("normal", description="Message priority")
+    from_agent: Optional[str] = Field(None, description="Sender name (defaults to 'user')")
+
+
+@router.post("/broadcast", response_model=dict)
+async def broadcast_message(broadcast: BroadcastMessage):
+    """Broadcast message to all active agents in a project"""
+    from api.app import state
+    from src.giljo_mcp.models import MCPAgentJob
+    from sqlalchemy import select
+
+    # Check if database is available
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        # Get all active agent jobs for the project
+        async with state.db_manager.get_session_async() as session:
+            query = select(MCPAgentJob).where(
+                MCPAgentJob.project_id == broadcast.project_id,
+                MCPAgentJob.status.in_(["pending", "working", "paused"])  # Active statuses
+            )
+            result = await session.execute(query)
+            active_jobs = result.scalars().all()
+
+            if not active_jobs:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No active agents found for project {broadcast.project_id}"
+                )
+
+            # Get agent names
+            agent_names = [job.agent_type for job in active_jobs]
+
+            # Send message to all active agents
+            message_result = await state.tool_accessor.send_message(
+                to_agents=agent_names,
+                content=broadcast.content,
+                project_id=broadcast.project_id,
+                message_type="broadcast",
+                priority=broadcast.priority,
+                from_agent=broadcast.from_agent or "user",
+            )
+
+            if not message_result.get("success"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=message_result.get("error", "Failed to send broadcast")
+                )
+
+            # Broadcast WebSocket notification
+            if state.websocket_manager:
+                await state.websocket_manager.broadcast_message_update(
+                    message_id=message_result["message_id"],
+                    project_id=broadcast.project_id,
+                    update_type="broadcast",
+                    message_data={
+                        "from_agent": broadcast.from_agent or "user",
+                        "to_agents": agent_names,
+                        "content": broadcast.content,
+                        "priority": broadcast.priority,
+                        "status": "pending",
+                        "recipient_count": len(agent_names),
+                    },
+                )
+
+            return {
+                "success": True,
+                "message_id": message_result["message_id"],
+                "recipient_count": len(agent_names),
+                "recipients": agent_names,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
