@@ -42,9 +42,9 @@ async def authenticated_client(api_client, db_manager):
         email="test@example.com",
         tenant_key="tenant_abc",
         is_active=True,
-        is_admin=False,
+        role="developer",
         created_at=datetime.now(timezone.utc),
-        hashed_password="hashed",
+        password_hash="hashed",
     )
 
     async def mock_get_current_user():

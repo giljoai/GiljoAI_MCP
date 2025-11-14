@@ -59,7 +59,7 @@ async def regular_user(db_session: AsyncSession):
         username="test_user",
         password_hash=bcrypt.hash("user_password"),
         email="user@test.com",
-        role="user",
+        role="developer",
         tenant_key="test_tenant",
         is_active=True,
     )
