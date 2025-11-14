@@ -131,6 +131,18 @@ const routes = [
     },
   },
   {
+    path: '/messages',
+    name: 'Messages',
+    component: () => import('@/views/MessagesView.vue'),
+    meta: {
+      layout: 'default',
+      title: 'Messages',
+      icon: 'mdi-message-text',
+      showInNav: true,
+      requiresAuth: true,
+    },
+  },
+  {
     path: '/settings',
     name: 'UserSettings',
     component: () => import('@/views/UserSettings.vue'),
