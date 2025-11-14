@@ -666,17 +666,25 @@ class UnifiedInstaller:
 
     def setup_database(self) -> Dict[str, Any]:
         """
-        Setup PostgreSQL database with correct credential flow
+        Setup PostgreSQL database using Alembic-first strategy (v3.1.0+)
+
+        PRODUCTION-GRADE APPROACH:
+        All schema changes MUST go through Alembic migrations.
+        NO direct create_all() calls - this ensures:
+        - Version control for schema changes
+        - Rollback safety
+        - Upgrade path for existing installations
+        - Consistent schema across environments
 
         Sequence:
         1. Create database and roles (DatabaseInstaller)
         2. Update .env with REAL credentials
         3. Reload environment variables
-        4. Create tables using DatabaseManager (MANDATORY)
-        5. Create setup_state (NO admin user - Handover 0034)
+        4. Run Alembic migrations to create schema (REPLACES create_all())
+        5. Seed initial data (SetupState ONLY - no admin user per Handover 0034)
 
         Returns:
-            Database setup result
+            Database setup result with migrations_applied list
         """
         try:
             # Ensure venv site-packages are available before imports
@@ -741,8 +749,25 @@ class UnifiedInstaller:
 
             self._print_info(f"Loaded DATABASE_URL from .env: {db_url.split('@')[0]}@...")
 
-            # STEP 5: Create tables using DatabaseManager (MANDATORY - always happens)
-            self._print_info("Creating database tables...")
+            # STEP 5: Run Alembic migrations to create schema (REPLACES create_all())
+            self._print_info("Running database migrations to create schema...")
+            migration_result = self.run_database_migrations()
+
+            if not migration_result["success"]:
+                self._print_error("Database migration failed")
+                for error in migration_result.get("errors", []):
+                    self._print_error(f"  • {error}")
+                result["success"] = False
+                result["migration_error"] = migration_result.get("error", "Unknown error")
+                return result
+
+            self._print_success("Database schema created via Alembic migrations")
+
+            # Store migration results in main result
+            result["migrations_applied"] = migration_result.get("migrations_applied", [])
+
+            # STEP 6: Seed initial data (SetupState ONLY - no admin user per Handover 0034)
+            self._print_info("Creating setup state...")
             import asyncio
             import sys
             from pathlib import Path
@@ -763,22 +788,10 @@ class UnifiedInstaller:
             # Store tenant key in instance variable for .env generation
             self.default_tenant_key = default_tenant_key
 
-            # Create tables using async DatabaseManager
-            async def create_tables_and_init():
+            async def seed_initial_data():
+                """Seed SetupState record for tracking installation."""
                 db_manager = DatabaseManager(db_url, is_async=True)
 
-                # Create all tables (SAME AS api/app.py:186)
-                await db_manager.create_tables_async()
-
-                # HANDOVER 0080: Run migration for orchestrator succession columns
-                # This handles existing installations with mcp_agent_jobs table
-                await self._run_handover_0080_migration_async(db_manager)
-
-                # HANDOVER 0088: Run migration for thin client metadata column
-                # Adds metadata JSONB column for storing field priorities and tool info
-                await self._run_handover_0088_migration_async(db_manager)
-
-                # Create setup_state ONLY (no admin user - Handover 0034)
                 async with db_manager.get_session_async() as session:
                     from sqlalchemy import select
 
@@ -793,36 +806,25 @@ class UnifiedInstaller:
                             tenant_key=default_tenant_key,
                             database_initialized=True,
                             database_initialized_at=datetime.now(timezone.utc),
-                            # REMOVED (Handover 0034):
-                            # default_password_active=True,
-                            # password_changed_at=None,
-                            setup_version="3.0.0",
+                            setup_version="3.1.0",  # Updated to track Alembic-first architecture
                             created_at=datetime.now(timezone.utc),
                             updated_at=datetime.now(timezone.utc),
                         )
                         session.add(setup_state)
                         await session.commit()
 
-                    # REMOVED (Handover 0041 Phase 2): Template seeding moved to create_first_admin endpoint
-                    # Templates are now seeded with the user's tenant_key instead of default_tenant_key
-                    # This ensures templates appear in the UI immediately after user creation
-
                 await db_manager.close_async()
                 return True
 
-            # Run async table creation
-            tables_created = asyncio.run(create_tables_and_init())
+            # Run async seeding
+            seeded = asyncio.run(seed_initial_data())
 
-            if tables_created:
-                self._print_success("Database tables created successfully")
+            if seeded:
                 self._print_success("Setup state initialized")
-                # REMOVED (Handover 0041 Phase 2): Template seeding moved to create_first_admin endpoint
-                # REMOVED (Handover 0034): Admin user creation messaging
-                result["tables_created"] = True
                 result["setup_state_created"] = True
-                result["admin_created"] = False  # Explicitly mark as not created
+                result["admin_created"] = False  # Explicitly mark as not created (Handover 0034)
             else:
-                self._print_error("Table creation failed")
+                self._print_error("Setup state creation failed")
                 result["success"] = False
                 return result
 
@@ -1493,251 +1495,17 @@ class UnifiedInstaller:
         print(guide)
         print()
 
-    async def _run_handover_0080_migration_async(self, db_manager) -> None:
-        """
-        Run Handover 0080 migration for orchestrator succession columns.
-
-        Adds new columns to mcp_agent_jobs table:
-        - instance_number (default 1)
-        - handover_to (nullable UUID)
-        - handover_summary (nullable JSONB)
-        - handover_context_refs (nullable JSON array)
-        - succession_reason (nullable VARCHAR)
-        - context_used (default 0)
-        - context_budget (default 150000)
-
-        Idempotent: Safe to run multiple times (skips if columns exist)
-        """
-        try:
-            async with db_manager.get_session_async() as session:
-                from sqlalchemy import text
-
-                # Check if migration needed (check for instance_number column)
-                check_query = text("""
-                    SELECT column_name
-                    FROM information_schema.columns
-                    WHERE table_name = 'mcp_agent_jobs'
-                    AND column_name = 'instance_number'
-                """)
-
-                result = await session.execute(check_query)
-                column_exists = result.fetchone() is not None
-
-                if column_exists:
-                    self._print_info("Handover 0080 migration already applied (skipping)")
-                    return
-
-                self._print_info("Applying Handover 0080 migration (orchestrator succession)...")
-
-                # Add new columns with defaults
-                migration_queries = [
-                    # Add instance_number column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS instance_number INTEGER DEFAULT 1 NOT NULL
-                    """),
-                    # Add handover_to column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS handover_to VARCHAR(36) NULL
-                    """),
-                    # Add handover_summary column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS handover_summary JSONB NULL
-                    """),
-                    # Add handover_context_refs column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS handover_context_refs TEXT[] NULL
-                    """),
-                    # Add succession_reason column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS succession_reason VARCHAR(100) NULL
-                    """),
-                    # Add context_used column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS context_used INTEGER DEFAULT 0 NOT NULL
-                    """),
-                    # Add context_budget column
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD COLUMN IF NOT EXISTS context_budget INTEGER DEFAULT 150000 NOT NULL
-                    """),
-                ]
-
-                # Execute all migration queries
-                for query in migration_queries:
-                    await session.execute(query)
-
-                # Create indexes
-                index_queries = [
-                    # Composite index for instance queries
-                    text("""
-                        CREATE INDEX IF NOT EXISTS idx_agent_jobs_instance
-                        ON mcp_agent_jobs(project_id, agent_type, instance_number)
-                    """),
-                    # Index for handover lookups
-                    text("""
-                        CREATE INDEX IF NOT EXISTS idx_agent_jobs_handover
-                        ON mcp_agent_jobs(handover_to)
-                    """),
-                ]
-
-                for query in index_queries:
-                    await session.execute(query)
-
-                # Add constraints
-                constraint_queries = [
-                    # Instance number must be positive
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_instance_positive
-                        CHECK (instance_number >= 1)
-                    """),
-                    # Succession reason constraint
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_succession_reason
-                        CHECK (succession_reason IS NULL OR
-                               succession_reason IN ('context_limit', 'manual', 'phase_transition'))
-                    """),
-                    # Context usage constraint
-                    text("""
-                        ALTER TABLE mcp_agent_jobs
-                        ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_context_usage
-                        CHECK (context_used >= 0 AND context_used <= context_budget)
-                    """),
-                ]
-
-                for query in constraint_queries:
-                    await session.execute(query)
-
-                await session.commit()
-
-                self._print_success("Handover 0080 migration completed successfully")
-                self._print_info("  Added 7 columns for orchestrator succession")
-                self._print_info("  Created 2 indexes for succession queries")
-                self._print_info("  Added 3 check constraints for data integrity")
-
-        except Exception as e:
-            self._print_error(f"Handover 0080 migration failed: {e}")
-            # Don't fail installation - just log error
-            import traceback
-
-            traceback.print_exc()
-
-    async def _run_handover_0088_migration_async(self, db_manager) -> None:
-        """
-        Run Handover 0088 migration for thin client job_metadata column.
-
-        Adds job_metadata JSONB column to mcp_agent_jobs table for storing:
-        - field_priorities (dict)
-        - user_id (string)
-        - tool (string)
-        - created_via (string)
-        - Other thin client metadata
-
-        Migration strategy:
-        1. Add job_metadata column with default empty JSON object
-        2. Create GIN index for performance
-        3. Migrate existing data from handover_summary if present
-        4. Non-destructive: handover_summary kept for succession feature
-
-        Idempotent: Safe to run multiple times (skips if column exists)
-        """
-        try:
-            async with db_manager.get_session_async() as session:
-                from sqlalchemy import text
-
-                # Check if migration needed (check for job_metadata column)
-                check_query = text("""
-                    SELECT column_name
-                    FROM information_schema.columns
-                    WHERE table_name = 'mcp_agent_jobs'
-                    AND column_name = 'job_metadata'
-                """)
-
-                result = await session.execute(check_query)
-                column_exists = result.fetchone() is not None
-
-                if column_exists:
-                    self._print_info("Handover 0088 migration already applied (skipping)")
-                    return
-
-                self._print_info("Applying Handover 0088 migration (thin client job_metadata)...")
-
-                # Add job_metadata column with default empty JSON
-                add_column_query = text("""
-                    ALTER TABLE mcp_agent_jobs
-                    ADD COLUMN job_metadata JSONB DEFAULT '{}'::jsonb NOT NULL
-                """)
-
-                await session.execute(add_column_query)
-
-                # Create GIN index for efficient JSONB queries
-                create_index_query = text("""
-                    CREATE INDEX IF NOT EXISTS idx_mcp_agent_jobs_job_metadata
-                    ON mcp_agent_jobs USING gin(job_metadata)
-                """)
-
-                await session.execute(create_index_query)
-
-                # Migrate existing data from handover_summary to job_metadata
-                # Only migrate thin client-specific fields (field_priorities, user_id, tool, created_via)
-                # Keep succession-related data in handover_summary intact
-                migrate_data_query = text("""
-                    UPDATE mcp_agent_jobs
-                    SET job_metadata = jsonb_build_object(
-                        'field_priorities', COALESCE(handover_summary->'field_priorities', '{}'::jsonb),
-                        'user_id', handover_summary->>'user_id',
-                        'tool', handover_summary->>'tool',
-                        'created_via', handover_summary->>'created_via'
-                    )
-                    WHERE job_metadata = '{}'::jsonb
-                    AND handover_summary IS NOT NULL
-                    AND (
-                        handover_summary ? 'field_priorities'
-                        OR handover_summary ? 'user_id'
-                        OR handover_summary ? 'tool'
-                        OR handover_summary ? 'created_via'
-                    )
-                """)
-
-                migrate_result = await session.execute(migrate_data_query)
-                rows_migrated = migrate_result.rowcount
-
-                await session.commit()
-
-                self._print_success("Handover 0088 migration completed successfully")
-                self._print_info("  Added job_metadata JSONB column with default empty object")
-                self._print_info("  Created GIN index for efficient JSONB queries")
-                if rows_migrated > 0:
-                    self._print_info(f"  Migrated thin client metadata from {rows_migrated} rows")
-                else:
-                    self._print_info("  No existing data to migrate")
-
-        except Exception as e:
-            self._print_error(f"Handover 0088 migration failed: {e}")
-            # Don't fail installation - just log error
-            import traceback
-
-            traceback.print_exc()
-
     def run_database_migrations(self) -> Dict[str, Any]:
         """
         Run Alembic database migrations (alembic upgrade head)
 
-        Executes all pending Alembic migrations after table creation.
-        This ensures CHECK constraints, defaults, and backfill logic are applied.
-
-        CRITICAL: Must run AFTER create_tables_async() to ensure tables exist.
+        PRODUCTION-GRADE APPROACH (v3.1.0+):
+        This is the PRIMARY method for schema creation and updates.
+        All schema changes MUST go through Alembic migrations.
 
         Handles both:
-        - Fresh installs (no existing alembic_version table)
-        - Upgrades (existing alembic_version table)
+        - Fresh installs (no existing alembic_version table) - runs all migrations
+        - Upgrades (existing alembic_version table) - runs only pending migrations
 
         Returns:
             Result dictionary with success status and details
@@ -1761,6 +1529,58 @@ class UnifiedInstaller:
                 self._print_error(f"Migrations directory not found at {migrations_dir}")
                 result["error"] = "Migrations directory missing"
                 return result
+
+            # Check database state before running migrations
+            import asyncio
+            import os
+
+            async def check_and_stamp_base():
+                """Check if alembic_version table exists, create and stamp if needed."""
+                try:
+                    from giljo_mcp.database import DatabaseManager
+                    from sqlalchemy import text
+
+                    db_url = os.getenv("DATABASE_URL")
+                    if not db_url:
+                        return False
+
+                    db_manager = DatabaseManager(db_url, is_async=True)
+
+                    async with db_manager.get_session_async() as session:
+                        # Check if alembic_version table exists
+                        check_query = text("""
+                            SELECT EXISTS (
+                                SELECT FROM information_schema.tables
+                                WHERE table_name = 'alembic_version'
+                            )
+                        """)
+                        result_check = await session.execute(check_query)
+                        table_exists = result_check.scalar()
+
+                        if not table_exists:
+                            self._print_info("Fresh install detected - will run all migrations from scratch")
+                            await db_manager.close_async()
+                            return True
+
+                        # Check if version is stamped
+                        version_query = text("SELECT version_num FROM alembic_version LIMIT 1")
+                        result_version = await session.execute(version_query)
+                        current_version = result_version.scalar()
+
+                        if current_version:
+                            self._print_info(f"Existing database detected - current version: {current_version}")
+                        else:
+                            self._print_info("Empty alembic_version table - will stamp and run migrations")
+
+                        await db_manager.close_async()
+                        return True
+
+                except Exception as e:
+                    self._print_warning(f"Could not check alembic version: {e}")
+                    return True  # Proceed with migrations anyway
+
+            # Check database state
+            asyncio.run(check_and_stamp_base())
 
             self._print_info("Running database migrations (alembic upgrade head)...")
 

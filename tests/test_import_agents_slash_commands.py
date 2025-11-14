@@ -70,7 +70,7 @@ def test_user(sync_db_session, test_tenant):
         username="testuser",
         email="test@example.com",
         tenant_key=test_tenant.tenant_key,
-        hashed_password="hashed_password_here",
+        password_hash="hashed_password_here",
     )
     sync_db_session.add(user)
     sync_db_session.commit()

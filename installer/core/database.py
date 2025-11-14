@@ -1027,12 +1027,31 @@ After installation, return here and run the installer again
 
     async def create_tables_async(self) -> Dict[str, Any]:
         """
-        Create database tables using SQLAlchemy models.
+        DEPRECATED (v3.1.0+): Create database tables using SQLAlchemy models.
+
+        This method is deprecated in favor of Alembic migrations.
+        It is kept ONLY for backwards compatibility with test suites.
+
+        For production installs, use run_database_migrations() in install.py instead.
+
+        IMPORTANT:
+        - Production code should NEVER call this method
+        - All schema changes MUST go through Alembic migrations
+        - This method will be removed in v4.0
 
         Returns:
-            Dict with success status and table count
+            Dict with success status, table count, and deprecation warning
         """
         result = {"success": False, "errors": [], "warnings": []}
+
+        # Add deprecation warning
+        deprecation_msg = (
+            "DEPRECATED: create_tables_async() is deprecated in v3.1.0+. "
+            "Use Alembic migrations (run_database_migrations) for production installs. "
+            "This method is kept only for test compatibility and will be removed in v4.0."
+        )
+        result["warnings"].append(deprecation_msg)
+        self.logger.warning(deprecation_msg)
 
         try:
             # Import DatabaseManager to create tables
@@ -1043,8 +1062,8 @@ After installation, return here and run the installer again
             db_url = f"postgresql://giljo_owner:{self.owner_password}@{self.pg_host}:{self.pg_port}/{self.db_name}"
             db_manager = DatabaseManager(db_url)
 
-            # Create all tables
-            self.logger.info("Creating database tables from SQLAlchemy models...")
+            # Create all tables (DEPRECATED - for test compatibility only)
+            self.logger.info("Creating database tables from SQLAlchemy models (DEPRECATED)...")
             Base.metadata.create_all(db_manager.engine)
 
             # Count tables created
