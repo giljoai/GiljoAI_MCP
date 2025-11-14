@@ -785,6 +785,7 @@ async def request_job_cancellation(
     tenant_key: str,
     job_id: str,
     reason: str,
+    db_manager: "DatabaseManager",
 ) -> dict:
     """
     Request graceful cancellation of an agent job (Handover 0107).
@@ -796,6 +797,7 @@ async def request_job_cancellation(
         tenant_key: Tenant key for isolation
         job_id: Job ID to cancel
         reason: Reason for cancellation (logged for audit trail)
+        db_manager: DatabaseManager instance (injected)
 
     Returns:
         dict: {
@@ -819,12 +821,13 @@ async def request_job_cancellation(
             raise ValueError("reason cannot be empty")
 
         # Import required modules
-        from api.websocket import websocket_manager
-
-        from .database import DatabaseManager
         from .models import MCPAgentJob
 
-        db_manager = DatabaseManager()
+        # Try to import websocket_manager, but make it optional for testing
+        try:
+            from api.websocket import websocket_manager
+        except (ImportError, AttributeError):
+            websocket_manager = None
 
         async with db_manager.get_session_async() as session:
             # Get job with tenant isolation
@@ -847,9 +850,9 @@ async def request_job_cancellation(
                     "message": f"Cannot cancel job in terminal state '{job.status}'",
                 }
 
-            # Set status to "cancelling"
+            # Set status to "cancelled" (Handover 0113: 7-state model, no "cancelling" state)
             old_status = job.status
-            job.status = "cancelling"
+            job.status = "cancelled"
 
             # Send cancel message via messages array
             cancel_message = {
@@ -869,22 +872,23 @@ async def request_job_cancellation(
             await session.commit()
             await session.refresh(job)
 
-            # Broadcast WebSocket event
-            try:
-                await websocket_manager.broadcast(
+            # Broadcast WebSocket event (optional - may be None in tests)
+            if websocket_manager:
+                try:
+                    await websocket_manager.broadcast(
                     {
                         "type": "job:status_changed",
                         "job_id": job_id,
                         "tenant_key": tenant_key,
                         "old_status": old_status,
-                        "new_status": "cancelling",
+                        "new_status": "cancelled",
                         "reason": reason,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
-                )
-            except Exception as ws_error:
-                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
-                # Non-critical - continue without WebSocket broadcast
+                    )
+                except Exception as ws_error:
+                    logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                    # Non-critical - continue without WebSocket broadcast
 
             logger.info(
                 f"[request_job_cancellation] Job {job_id} cancellation requested: {reason}, tenant={tenant_key}"
@@ -893,7 +897,7 @@ async def request_job_cancellation(
             return {
                 "success": True,
                 "job_id": job_id,
-                "status": "cancelling",
+                "status": "cancelled",
                 "message": f"Cancellation requested: {reason}",
             }
 
@@ -909,6 +913,7 @@ async def force_fail_job(
     tenant_key: str,
     job_id: str,
     reason: str,
+    db_manager: "DatabaseManager",
 ) -> dict:
     """
     Force-fail an agent job without waiting for graceful shutdown (Handover 0107).
@@ -920,6 +925,7 @@ async def force_fail_job(
         tenant_key: Tenant key for isolation
         job_id: Job ID to force-fail
         reason: Reason for forced failure (logged for audit trail)
+        db_manager: DatabaseManager instance (injected)
 
     Returns:
         dict: {
@@ -943,12 +949,13 @@ async def force_fail_job(
             raise ValueError("reason cannot be empty")
 
         # Import required modules
-        from api.websocket import websocket_manager
-
-        from .database import DatabaseManager
         from .models import MCPAgentJob
 
-        db_manager = DatabaseManager()
+        # Try to import websocket_manager, but make it optional for testing
+        try:
+            from api.websocket import websocket_manager
+        except (ImportError, AttributeError):
+            websocket_manager = None
 
         async with db_manager.get_session_async() as session:
             # Get job with tenant isolation
@@ -993,9 +1000,10 @@ async def force_fail_job(
             await session.commit()
             await session.refresh(job)
 
-            # Broadcast WebSocket event
-            try:
-                await websocket_manager.broadcast(
+            # Broadcast WebSocket event (optional - may be None in tests)
+            if websocket_manager:
+                try:
+                    await websocket_manager.broadcast(
                     {
                         "type": "job:status_changed",
                         "job_id": job_id,
@@ -1006,10 +1014,10 @@ async def force_fail_job(
                         "forced": True,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
-                )
-            except Exception as ws_error:
-                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
-                # Non-critical - continue without WebSocket broadcast
+                    )
+                except Exception as ws_error:
+                    logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                    # Non-critical - continue without WebSocket broadcast
 
             logger.warning(
                 f"[force_fail_job] Job {job_id} force-failed: {reason}, tenant={tenant_key}"

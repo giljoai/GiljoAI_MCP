@@ -3,18 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from fastapi.testclient import TestClient
-
-from api.app import app
-
 
 @pytest.mark.smoke
-def test_product_vision_workflow_smoke() -> None:
+@pytest.mark.asyncio
+async def test_product_vision_workflow_smoke(authenticated_client) -> None:
     """Smoke: create product → upload vision → verify chunking."""
-    client = TestClient(app)
+    client, user = authenticated_client
 
     # 1. Create product
-    response = client.post(
+    response = await client.post(
         "/api/v1/products/",
         json={
             "name": "Smoke Test Product",
@@ -29,7 +26,7 @@ def test_product_vision_workflow_smoke() -> None:
     # 2. Upload large vision document (should chunk)
     vision_md = "# Vision\n" + ("Test content " * 10000)
     files = {"file": ("vision.md", vision_md, "text/markdown")}
-    response = client.post(
+    response = await client.post(
         f"/api/v1/products/{product_id}/vision",
         files=files,
         data={"tenant_key": "smoke-tenant"},

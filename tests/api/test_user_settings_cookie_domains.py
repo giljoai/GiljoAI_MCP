@@ -55,12 +55,14 @@ async def regular_user(db_session: AsyncSession):
 
     from src.giljo_mcp.models import User
 
+    from uuid import uuid4
+    unique_suffix = uuid4().hex[:8]
     user = User(
-        username="test_user",
+        username=f"test_user_{unique_suffix}",
         password_hash=bcrypt.hash("user_password"),
-        email="user@test.com",
+        email=f"user_{unique_suffix}@test.com",
         role="developer",
-        tenant_key="test_tenant",
+        tenant_key=f"test_tenant_{unique_suffix}",
         is_active=True,
     )
     db_session.add(user)

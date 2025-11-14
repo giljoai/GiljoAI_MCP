@@ -101,26 +101,26 @@ async def auth_headers(db_manager, api_client) -> dict:
     from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.models import User
 
-    # Create a test user if it doesn't exist
+    # Create a unique test user for each test run (prevents fixture collisions)
+    from uuid import uuid4
+
     async with db_manager.get_session_async() as session:
-        # Check if test user exists
-        stmt = select(User).where(User.username == "test_user")
-        result = await session.execute(stmt)
-        user = result.scalars().first()
+        # Create test user with unique username to avoid conflicts
+        unique_suffix = uuid4().hex[:8]
+        username = f"test_user_{unique_suffix}"
 
-        if not user:
-            # Create test user with password hash (models.User uses password_hash + role)
-            password_hash = bcrypt.hash("test_password")
+        # Create test user with password hash (models.User uses password_hash + role)
+        password_hash = bcrypt.hash("test_password")
 
-            user = User(
-                username="test_user",
-                email="test@example.com",
-                password_hash=password_hash,
-                tenant_key="test_tenant_key",
-                role="developer",
-            )
-            session.add(user)
-            await session.commit()
+        user = User(
+            username=username,
+            email=f"test_{unique_suffix}@example.com",
+            password_hash=password_hash,
+            tenant_key=f"test_tenant_{unique_suffix}",
+            role="developer",
+        )
+        session.add(user)
+        await session.commit()
 
         # Ensure JWT secret available for test token creation
         os.environ.setdefault("JWT_SECRET", "test_secret_key")

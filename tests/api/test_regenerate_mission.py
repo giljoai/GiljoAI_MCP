@@ -37,11 +37,12 @@ async def authenticated_client_with_user(api_client, db_session):
     from src.giljo_mcp.auth.dependencies import get_current_active_user
     from src.giljo_mcp.models import User
 
+    unique_suffix = uuid4().hex[:8]
     test_user = User(
         id=str(uuid4()),
-        username="test_user",
-        email="test@example.com",
-        tenant_key="tenant_abc",
+        username=f"test_user_{unique_suffix}",
+        email=f"test_{unique_suffix}@example.com",
+        tenant_key=f"tenant_{unique_suffix}",
         is_active=True,
         role="developer",
         created_at=datetime.now(timezone.utc),
