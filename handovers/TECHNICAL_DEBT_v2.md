@@ -836,6 +836,435 @@ These items add significant value but can be completed after initial release.
 
 ---
 
+### 🤖 MEDIUM-0: Local LLM Stack Recommendation System
+**Status**: Not Started
+**Impact**: MEDIUM-HIGH - Improves UX, privacy-preserving, reduces API costs
+**Complexity**: MEDIUM
+**Effort**: 16-20 hours
+**Dependencies**: LM Studio installed (optional), Product vision upload system
+
+**Grouped with**: AI-powered UX improvements
+
+#### What This Enables
+
+**Privacy-Preserving Tech Stack Recommendations**:
+- "Recommend Configuration" button in product creation/edit flow
+- Local micro LLM (DeepSeek Coder 1.3B recommended) analyzes uploaded vision documents
+- Proposes appropriate tech stacks based on product requirements
+- Auto-fills fields: frontend_stack, backend_stack, database_type, testing_framework
+- User reviews and edits suggestions (not autonomous)
+- Zero API costs for this feature
+- Vision docs never leave local machine
+
+#### Problem Statement
+
+**Current User Pain**:
+- Users face blank fields when creating products
+- No guidance on appropriate tech stack choices
+- Vision documents uploaded but not leveraged for initial setup
+- Friction at product creation (requires tech expertise)
+
+**Proposed Solution**:
+- Analyze uploaded vision document chunks with local LLM
+- Generate structured recommendations from vision content
+- Auto-populate stack fields with sensible defaults
+- Graceful fallback if LM Studio not running
+
+#### Use Case Example
+
+```
+User uploads vision: "Real-time dashboard for IoT metrics,
+                      needs WebSocket support, time-series data"
+
+LM Studio (DeepSeek Coder 1.3B) analyzes chunks:
+↓
+Recommendations:
+  Frontend:  Vue 3 + Vuetify (component library for dashboards)
+  Backend:   Python FastAPI (async support for real-time WebSocket)
+  Database:  PostgreSQL + TimescaleDB (time-series optimized)
+  Testing:   pytest + Vitest
+  Reasoning: Real-time requirements suggest WebSocket stack,
+             TimescaleDB for efficient metric storage
+↓
+User reviews, accepts or modifies suggestions
+```
+
+#### Implementation Breakdown
+
+**Phase 1: Backend Stack Recommender (4-5 hours)**
+
+Create `src/giljo_mcp/stack_recommender.py`:
+
+```python
+class StackRecommender:
+    """Uses local LM Studio to recommend tech stack from vision docs"""
+
+    async def recommend_stack(
+        vision_chunks: List[str],
+        product_name: str,
+        tenant_id: int
+    ) -> Dict[str, str]:
+        """
+        Returns:
+            {
+                'frontend_stack': 'Vue 3 + Vuetify',
+                'backend_stack': 'Python FastAPI',
+                'database_type': 'PostgreSQL',
+                'testing_framework': 'pytest + Vitest',
+                'reasoning': 'Based on real-time requirements...'
+            }
+        """
+```
+
+**Key Features**:
+- LM Studio HTTP client (OpenAI-compatible API)
+- Smart chunk selection (prioritize stack-related keywords)
+- Context window management (2K token limit for micro LLMs)
+- Structured output parsing with validation
+- Fuzzy matching to canonical stack options
+
+**Phase 2: API Endpoint (2-3 hours)**
+
+Create `api/endpoints/stack_recommendation.py`:
+
+```python
+@router.post("/products/{product_id}/recommend-stack")
+async def recommend_tech_stack(product_id: int):
+    """
+    Generate stack recommendations from vision documents.
+
+    Workflow:
+    1. Load product + vision chunks
+    2. Check LM Studio availability (fast health check)
+    3. Call StackRecommender with relevant chunks
+    4. Validate and sanitize output
+    5. Return recommendations + fallback on error
+    """
+```
+
+**Error Handling**:
+- Health check before attempting (2s timeout)
+- Graceful fallback if LM Studio not running
+- Validation of LLM output (no hallucinated frameworks)
+- Timeout protection (45s hard cutoff)
+
+**Phase 3: Frontend Component (3-4 hours)**
+
+Create `frontend/src/components/products/StackRecommendationButton.vue`:
+
+**Features**:
+- "Recommend Configuration" button with loading state
+- Elapsed time indicator during CPU inference (30-60s typical)
+- Auto-fill form fields with recommendations
+- Display AI reasoning below fields
+- Warning if vision docs not uploaded yet
+- Fallback message if LM Studio unavailable
+
+**Phase 4: Configuration & Integration (2-3 hours)**
+
+**config.yaml**:
+```yaml
+lmstudio:
+  enabled: true  # User toggles in Admin Settings
+  base_url: "http://localhost:1234/v1"
+  model: "deepseek-coder-1.3b"  # User-selected model
+  timeout: 45
+  fallback_to_defaults: true
+```
+
+**Admin Settings → Integrations Tab**:
+- Toggle LM Studio integration
+- Model selection dropdown
+- Test connection button
+- Installation instructions link
+
+**Phase 5: Testing & Polish (2-3 hours)**
+
+**Unit Tests**:
+- Stack recommender prompt generation
+- Chunk selection logic (keyword scoring)
+- Output parsing and validation
+- Fuzzy matching for framework names
+
+**Integration Tests**:
+- Full workflow (vision → recommendation → form fill)
+- LM Studio unavailable scenario
+- Timeout handling
+- Multi-tenant isolation
+
+**Phase 6: Documentation (2 hours)**
+
+**User Guide** (`docs/user_guides/stack_recommendation_guide.md`):
+- How to install LM Studio
+- Recommended models (DeepSeek Coder 1.3B, StarCoder2 3B)
+- Expected inference times on CPU
+- Configuration steps
+- Troubleshooting common issues
+
+**Developer Guide**:
+- Adding new stack options
+- Customizing prompts
+- Model selection criteria
+
+#### Recommended Model: DeepSeek Coder 1.3B
+
+**Why This Model**:
+- ✅ **Code-Specialized**: Trained on code + tech documentation
+- ✅ **Stack Knowledge**: Understands framework ecosystems
+- ✅ **CPU Speed**: 20-40 tokens/sec on typical CPUs
+- ✅ **Small Footprint**: 0.9GB (Q4_K_M quantization)
+- ✅ **Structured Output**: Better format adherence than general models
+
+**Alternatives**:
+- **StarCoder2 3B**: Excellent structured output (12-25 tok/s)
+- **CodeLlama 7B**: Higher quality but slower (5-12 tok/s)
+- **Phi-2 2.7B**: General model fallback (adequate but less stack-aware)
+
+**Model Download** (via LM Studio UI):
+```
+deepseek-coder-1.3b-instruct.Q4_K_M.gguf
+```
+
+#### Risk Mitigation Strategies
+
+**Risk 1: LM Studio Not Running** (HIGH PROBABILITY)
+
+**Mitigation**:
+```python
+async def check_lmstudio_available() -> bool:
+    try:
+        response = await client.get(f"{base_url}/models", timeout=2.0)
+        return response.status_code == 200
+    except:
+        return False
+
+# Fast fail with helpful message
+if not await check_lmstudio_available():
+    return {
+        "success": False,
+        "error": "LM Studio not running",
+        "instructions": "Start LM Studio: lms server start",
+        "fallback_recommendations": {...}  # GiljoAI defaults
+    }
+```
+
+**Risk 2: Slow CPU Inference** (HIGH PROBABILITY)
+
+**Mitigation**:
+- Loading UX with elapsed time counter
+- Progress indicator: "Analyzing vision docs... (34s)"
+- Set expectations: "This may take 30-60 seconds on CPU"
+- Timeout after 45 seconds (hard cutoff)
+- Concurrency limit: max 2 simultaneous inferences
+
+**Risk 3: Hallucinated Output** (MEDIUM PROBABILITY)
+
+**Mitigation**:
+```python
+VALID_FRONTENDS = ['Vue 3', 'React', 'Angular', 'Svelte', 'Next.js']
+VALID_BACKENDS = ['Python FastAPI', 'Node.js', 'Django', 'Ruby on Rails']
+VALID_DATABASES = ['PostgreSQL', 'MySQL', 'MongoDB', 'SQLite']
+
+def fuzzy_match(value: str, valid_list: List[str]) -> str:
+    """Map LLM output to canonical options"""
+    # "reactjs" → "React"
+    # "fastapi" → "Python FastAPI"
+    # "postgres" → "PostgreSQL"
+```
+
+**Risk 4: Context Window Overflow** (MEDIUM PROBABILITY)
+
+**Mitigation**:
+- Smart chunk selection (prioritize stack-related keywords)
+- Limit to ~1500 tokens (safe for 2K context window)
+- Score chunks by relevance before selection
+- Keywords: frontend, backend, database, api, real-time, scalability
+
+**Risk 5: Multi-Tenant Concurrency** (LOW PROBABILITY, HIGH IMPACT)
+
+**Mitigation**:
+```python
+_semaphore = Semaphore(2)  # Max 2 concurrent LLM calls
+
+async with self._semaphore:
+    # Only 2 requests execute simultaneously
+    # Others queue (with timeout protection)
+```
+
+**Risk 6: Model Not Loaded** (MEDIUM PROBABILITY)
+
+**Mitigation**:
+```python
+async def check_lmstudio_ready() -> tuple[bool, str]:
+    models = await client.get(f"{base_url}/models")
+    if not models['data']:
+        return False, "No model loaded. Load a model in LM Studio first."
+    return True, models['data'][0]['id']
+```
+
+#### Files to Create
+
+**New Files**:
+1. `src/giljo_mcp/stack_recommender.py` (~280 lines)
+   - StackRecommender class
+   - Smart chunk selection
+   - Prompt generation
+   - Output parsing and validation
+   - Fuzzy matching logic
+
+2. `api/endpoints/stack_recommendation.py` (~180 lines)
+   - POST /products/{id}/recommend-stack endpoint
+   - Health checks and error handling
+   - Fallback logic
+
+3. `frontend/src/components/products/StackRecommendationButton.vue` (~220 lines)
+   - Recommendation button with loading UX
+   - Form field auto-fill
+   - Reasoning display
+   - Error messaging
+
+4. `tests/unit/test_stack_recommender.py` (~200 lines)
+   - Prompt generation tests
+   - Chunk selection tests
+   - Output parsing tests
+   - Validation tests
+
+5. `tests/integration/test_stack_recommendation_api.py` (~150 lines)
+   - End-to-end workflow tests
+   - Error scenario tests
+
+6. `docs/user_guides/stack_recommendation_guide.md` (~800 words)
+   - Installation guide
+   - Model recommendations
+   - Usage tutorial
+
+**Modified Files**:
+1. `config.yaml` (+8 lines)
+   - LM Studio configuration section
+
+2. `frontend/src/views/ProductsView.vue` (~50 lines added)
+   - Integrate StackRecommendationButton
+   - Wire up recommendations to form
+
+3. `api/app.py` (+2 lines)
+   - Register stack_recommendation router
+
+4. `frontend/src/components/AdminSettings.vue` (~60 lines added)
+   - LM Studio integration toggle
+   - Configuration UI in Integrations tab
+
+**Total**: ~1030 lines across 10 files (6 new, 4 modified)
+
+#### Success Criteria
+
+**Functional Requirements**:
+- ✅ Button triggers recommendation workflow
+- ✅ Vision chunks analyzed by local LLM
+- ✅ Structured recommendations returned
+- ✅ Form fields auto-populated (user can edit)
+- ✅ Graceful fallback if LM Studio unavailable
+- ✅ Loading UX shows elapsed time
+- ✅ Multi-tenant isolation maintained
+
+**Performance Requirements**:
+- ✅ Health check completes in <2 seconds
+- ✅ Recommendation completes in <45 seconds
+- ✅ Timeout protection prevents hanging
+- ✅ Concurrent request limit prevents CPU overload
+
+**UX Requirements**:
+- ✅ Clear loading indicators with time estimates
+- ✅ Helpful error messages with instructions
+- ✅ Recommendations displayed with reasoning
+- ✅ All fields remain editable after auto-fill
+- ✅ Fallback recommendations always provided
+
+**Security Requirements**:
+- ✅ Vision docs stay local (no cloud upload)
+- ✅ LM Studio runs on localhost only
+- ✅ Tenant isolation for recommendations
+- ✅ No sensitive data in prompts
+
+#### Benefits
+
+**Privacy**:
+- Vision documents analyzed locally (no cloud API)
+- No data leaves user's machine
+- GDPR/compliance-friendly
+
+**Cost**:
+- Zero API costs for this feature
+- One-time setup (LM Studio + model download)
+- Unlimited recommendations at no cost
+
+**User Experience**:
+- Reduces friction at product creation
+- Helps non-technical users choose appropriate stacks
+- Learns from their own vision documents
+- Provides educational reasoning for choices
+
+**Quality**:
+- DeepSeek Coder understands tech stacks better than general models
+- Context-aware recommendations (real-time → WebSocket, etc.)
+- Structured output more reliable than general LLMs
+
+**Flexibility**:
+- Works offline (no internet required after setup)
+- User can swap models (StarCoder, CodeLlama, etc.)
+- Recommendations editable (not autonomous)
+- Optional feature (graceful degradation)
+
+#### Effort Estimate
+
+| Phase | Task | Effort |
+|-------|------|--------|
+| 1 | Backend StackRecommender | 4-5h |
+| 2 | API Endpoint | 2-3h |
+| 3 | Frontend Component | 3-4h |
+| 4 | Configuration & Integration | 2-3h |
+| 5 | Testing & Polish | 2-3h |
+| 6 | Documentation | 2h |
+| **Total** | **Complete Implementation** | **16-20h** |
+
+#### Priority Justification
+
+**Why MEDIUM Priority**:
+- Improves UX significantly (reduces setup friction)
+- Privacy win (local-first AI)
+- Cost reduction (zero API spend)
+- Educational benefit (reasoning displayed)
+- Good use case for micro LLMs (structured task, small context)
+
+**Why Not HIGH Priority**:
+- Users can manually fill stack fields (workaround exists)
+- Optional feature (requires LM Studio installed)
+- Not blocking core orchestration workflows
+- Can be completed post-release
+
+**Recommended Timeline**: v3.1 or v3.2 (after core monitoring UI complete)
+
+#### Related Handovers
+
+- **Product Vision Upload System**: Existing infrastructure for vision docs
+- **Agent Template Management (0041)**: Similar pattern (AI-powered configuration)
+- **Admin Settings Integrations Tab (0027)**: LM Studio config UI location
+
+#### Comparison to Cloud-Based Alternative
+
+| Aspect | Local LLM (This Proposal) | Cloud API (e.g., GPT-4) |
+|--------|---------------------------|-------------------------|
+| **Privacy** | ✅ Vision docs stay local | ❌ Docs sent to cloud |
+| **Cost** | ✅ Zero (after setup) | ❌ $0.01-0.05 per request |
+| **Speed** | ⚠️ 30-60s on CPU | ✅ 3-5s cloud latency |
+| **Quality** | ⭐⭐⭐⭐ (code-focused model) | ⭐⭐⭐⭐⭐ (GPT-4 better) |
+| **Offline** | ✅ Works offline | ❌ Internet required |
+| **Setup** | ⚠️ LM Studio + model download | ✅ API key only |
+| **Compliance** | ✅ GDPR-friendly | ⚠️ Depends on vendor |
+
+**Verdict**: Local LLM is better fit for this use case (privacy, cost, good-enough quality)
+
+---
+
 ### 📝 MEDIUM-1: Developer Workflow Guide (Handover 0068)
 **Status**: Not Started
 **Impact**: MEDIUM - Improves onboarding
