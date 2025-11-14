@@ -37,6 +37,7 @@ async def api_client(db_manager):
     from api.app import app, state
     from src.giljo_mcp.auth import AuthManager
     from src.giljo_mcp.auth.dependencies import get_db_session
+    from src.giljo_mcp.tenant import TenantManager
 
     async def mock_get_db_session():
         """Provide test database session."""
@@ -45,6 +46,12 @@ async def api_client(db_manager):
 
     # Override database session dependency
     app.dependency_overrides[get_db_session] = mock_get_db_session
+
+    # Ensure global state has db_manager and tenant_manager for services like TemplateService
+    state.db_manager = db_manager
+    app.state.db_manager = db_manager
+    if state.tenant_manager is None:
+        state.tenant_manager = TenantManager()
 
     # Create mock config for AuthManager
     mock_config = MagicMock()
@@ -122,7 +129,7 @@ async def auth_headers(db_manager, api_client) -> dict:
         token = JWTManager.create_access_token(
             user_id=user.id,
             username=user.username,
-            role="user",
+            role="developer",
             tenant_key=user.tenant_key,
         )
 

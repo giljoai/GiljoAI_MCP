@@ -14,12 +14,12 @@ import re
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.models import AgentTemplate, TemplateArchive, User
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_validation import get_role_color, slugify_name, validate_system_prompt
@@ -92,25 +92,28 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
 async def get_template(
     template_id: str,
     current_user: User = Depends(get_current_active_user),
-    template_service: TemplateService = Depends(get_template_service),
+    session: AsyncSession = Depends(get_db_session),
 ) -> TemplateResponse:
     """
-    Get template by ID.
+    Get template by ID for the current tenant.
 
-    Uses TemplateService for data retrieval.
+    Uses direct DB access to avoid coupling GET semantics to TemplateService,
+    while still enforcing tenant isolation.
     """
     logger.debug(f"User {current_user.username} getting template {template_id}")
 
-    result = await template_service.get_template(
-        template_id=template_id,
-        tenant_key=current_user.tenant_key
+    stmt = select(AgentTemplate).where(
+        and_(
+            AgentTemplate.id == template_id,
+            AgentTemplate.tenant_key == current_user.tenant_key,
+        )
     )
+    result = await session.execute(stmt)
+    template = result.scalar_one_or_none()
 
-    if not result.get("success"):
-        error_msg = result.get("error", "Template not found")
-        raise HTTPException(status_code=404, detail=error_msg)
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
-    template = result.get("template")
     return _convert_to_response(template)
 
 
@@ -146,7 +149,7 @@ async def list_templates(
     return [_convert_to_response(t) for t in templates]
 
 
-@router.post("/", response_model=TemplateResponse)
+@router.post("/", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
 async def create_template(
     template: TemplateCreate,
     current_user: User = Depends(get_current_active_user),
@@ -192,10 +195,14 @@ async def create_template(
         # Auto-assign background color
         background_color = template.background_color or get_role_color(template.role)
 
-        # Set default description for Claude
+        # Set default description when missing
         description = template.description
-        if not description and template.cli_tool == "claude":
-            description = f"Subagent for {template.role}"
+        if not description:
+            if template.cli_tool == "claude":
+                description = f"Subagent for {template.role}"
+            else:
+                # Generic fallback for non-Claude templates
+                description = f"{template.role} agent template" if template.role else "Agent template"
 
         # Extract variables
         variables = re.findall(r"\{(\w+)\}", template.template_content)
@@ -262,6 +269,7 @@ async def update_template(
     updates: TemplateUpdate,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> TemplateResponse:
     """
     Update an existing template.
@@ -282,6 +290,12 @@ async def update_template(
         template = result.scalar_one_or_none()
 
         if not template:
+            # If template exists under a different tenant, treat as access denied
+            cross_tenant_result = await session.execute(
+                select(AgentTemplate).where(AgentTemplate.id == template_id)
+            )
+            if cross_tenant_result.scalar_one_or_none():
+                raise HTTPException(status_code=403, detail="Access denied for this template")
             raise HTTPException(status_code=404, detail="Template not found")
 
         # Check if system-managed
@@ -290,6 +304,57 @@ async def update_template(
 
         # Apply updates
         update_data = updates.model_dump(exclude_unset=True)
+
+        # Block attempts to modify system_instructions via API
+        if "system_instructions" in update_data:
+            raise HTTPException(
+                status_code=403,
+                detail="system_instructions is read-only; use reset-system to restore defaults",
+            )
+
+        # Validate system prompt when template_content is updated
+        if "template_content" in update_data and update_data["template_content"]:
+            is_valid, error_msg = validate_system_prompt(update_data["template_content"])
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=error_msg)
+
+        # When user_instructions change, create an archive of the previous version
+        if "user_instructions" in update_data:
+            previous = TemplateArchive(
+                tenant_key=template.tenant_key,
+                template_id=template.id,
+                product_id=template.product_id,
+                name=template.name,
+                category=template.category,
+                role=template.role,
+                system_instructions=template.system_instructions,
+                user_instructions=template.user_instructions,
+                template_content=template.template_content,
+                variables=template.variables,
+                behavioral_rules=template.behavioral_rules,
+                success_criteria=template.success_criteria,
+                version=template.version,
+                archive_reason="Update user instructions",
+                archive_type="auto",
+                archived_by=current_user.username,
+                usage_count_at_archive=template.usage_count,
+                avg_generation_ms_at_archive=template.avg_generation_ms,
+            )
+            session.add(previous)
+
+        # Enforce 8-role active limit when toggling is_active for user-managed roles
+        if "is_active" in update_data and update_data["is_active"] is not None:
+            new_is_active = bool(update_data["is_active"])
+            if new_is_active != bool(template.is_active) and not _is_system_managed_role(template.role):
+                is_valid, error_msg = await template_service.validate_active_agent_limit(
+                    session=session,
+                    tenant_key=context["tenant_key"],
+                    template_id=template.id,
+                    new_is_active=new_is_active,
+                    role=template.role,
+                )
+                if not is_valid:
+                    raise HTTPException(status_code=409, detail=error_msg)
 
         for field, value in update_data.items():
             if field == "template_content" and value:
@@ -300,6 +365,10 @@ async def update_template(
                 template.user_instructions = value
             elif hasattr(template, field):
                 setattr(template, field, value)
+
+        # If role changed, auto-update background color to match new role
+        if "role" in update_data:
+            template.background_color = get_role_color(template.role)
 
         await session.commit()
         await session.refresh(template)

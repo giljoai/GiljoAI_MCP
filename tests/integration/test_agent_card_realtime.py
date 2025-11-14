@@ -53,7 +53,7 @@ async def test_user_a(db_session):
         username=f"user_a_{uuid4().hex[:8]}",
         email=f"usera_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_a_{uuid4().hex[:8]}",
-        role="user",
+        role="developer",
         password_hash="hashed_password",
     )
     db_session.add(user)
