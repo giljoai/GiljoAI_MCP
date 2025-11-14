@@ -40,7 +40,14 @@ class AgentTemplate(Base):
 
     # Template identification
     name = Column(String(100), nullable=False)  # e.g., "orchestrator", "analyzer"
-    category = Column(String(50), nullable=False)  # 'role', 'project_type', 'custom'
+    # Default category is "role" for backward compatibility with older tests
+    # and data that did not explicitly set a category.
+    category = Column(
+        String(50),
+        nullable=False,
+        default="role",
+        server_default="role",
+    )  # 'role', 'project_type', 'custom'
     role = Column(String(50), nullable=True)  # AgentRole enum value
     project_type = Column(String(50), nullable=True)  # ProjectType enum value
 
@@ -48,6 +55,7 @@ class AgentTemplate(Base):
     system_instructions = Column(
         Text,
         nullable=False,
+        default="",
         comment="Protected MCP coordination instructions (non-editable by users)",
     )
     user_instructions = Column(
@@ -131,6 +139,9 @@ class TemplateArchive(Base):
     name = Column(String(100), nullable=False)
     category = Column(String(50), nullable=False)
     role = Column(String(50), nullable=True)
+    # Full system+user instructions snapshot for v3.1 dual-field support
+    system_instructions = Column(Text, nullable=True)
+    user_instructions = Column(Text, nullable=True)
     template_content = Column(Text, nullable=False)
     variables = Column(JSON, default=list)
     behavioral_rules = Column(JSON, default=list)
