@@ -34,10 +34,10 @@ async def test_user(db_session: AsyncSession) -> User:
         id=str(uuid4()),
         username=f"testuser_{uuid4().hex[:8]}",
         email=f"test_{uuid4().hex[:8]}@test.com",
-        hashed_password="test_hash",
+        password_hash="test_hash",
         tenant_key=f"tenant_{uuid4().hex[:8]}",
         is_active=True,
-        is_admin=False,
+        role="developer",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
@@ -64,6 +64,7 @@ async def orchestrator_template(db_session: AsyncSession, test_user: User) -> Ag
         name="Orchestrator",
         role="orchestrator",
         category="role",
+        system_instructions="SYSTEM: You are the orchestrator for {project_name}.",
         template_content="You are the orchestrator for {project_name}. Mission: {project_mission}",
         variables=["project_name", "project_mission"],
         behavioral_rules=["Delegate work", "Monitor progress", "Report status"],
@@ -93,6 +94,7 @@ async def system_orchestrator_template(db_session: AsyncSession) -> AgentTemplat
         name="System Orchestrator",
         role="orchestrator",
         category="role",
+        system_instructions="SYSTEM: You are the orchestrator for {project_name}",
         template_content="SYSTEM: You are the orchestrator for {project_name}",
         variables=["project_name"],
         behavioral_rules=["System rule 1", "System rule 2"],

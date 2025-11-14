@@ -223,4 +223,5 @@ markers = [
     "network: marks tests requiring network connectivity",
     "server_mode: marks tests requiring server mode",
     "deprecated: marks tests for deprecated functionality (Handover 0116)",
+    "smoke: marks lightweight critical-path smoke tests",
 ]

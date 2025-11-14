@@ -43,9 +43,9 @@ async def authenticated_client_with_user(api_client, db_session):
         email="test@example.com",
         tenant_key="tenant_abc",
         is_active=True,
-        is_admin=False,
+        role="developer",
         created_at=datetime.now(timezone.utc),
-        hashed_password="hashed",
+        password_hash="hashed",
         field_priority_config={
             "product_vision": 10,
             "project_description": 8,
