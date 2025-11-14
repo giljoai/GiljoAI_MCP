@@ -526,9 +526,9 @@ async def async_client(db_manager):
                 email="test@example.com",
                 tenant_key="test_tenant",
                 is_active=True,
-                is_admin=False,
+                role="developer",
                 created_at=datetime.now(timezone.utc),
-                hashed_password="hashed",
+                password_hash="hashed",
             )
 
         async def mock_get_db_session():

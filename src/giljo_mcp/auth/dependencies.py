@@ -81,6 +81,7 @@ async def get_current_user(
     request: Request,
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
     """
@@ -110,7 +111,11 @@ async def get_current_user(
     """
     # DIAGNOSTIC: Log incoming auth attempt
     logger.info(
-        f"[AUTH] get_current_user called - path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)}"
+        "[AUTH] get_current_user called - path: %s, cookie: %s, api_key: %s, auth_header: %s",
+        request.url.path,
+        bool(access_token),
+        bool(x_api_key),
+        bool(authorization),
     )
 
     # Try JWT cookie first (web users)
@@ -137,6 +142,31 @@ async def get_current_user(
             logger.warning(f"[AUTH] JWT verification failed: {e.detail}")
         except Exception as e:
             logger.error(f"[AUTH] JWT authentication error: {e}", exc_info=True)
+
+    # Try Authorization: Bearer <token> header (CLI / API clients)
+    bearer_token: Optional[str] = None
+    if authorization and authorization.lower().startswith("bearer "):
+        bearer_token = authorization.split(" ", 1)[1].strip()
+
+    if bearer_token and not access_token:
+        logger.info("[AUTH] Attempting Authorization Bearer JWT authentication")
+        try:
+            payload = JWTManager.verify_token(bearer_token)
+            user_id = payload["sub"]
+            from sqlalchemy import select
+
+            stmt = select(User).where(User.id == user_id, User.is_active == True)
+            result = await db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if user:
+                logger.info("[AUTH] Bearer JWT SUCCESS - User: %s, Tenant: %s", user.username, user.tenant_key)
+                return user
+            logger.warning("[AUTH] Bearer JWT FAILED - User not found: %s", user_id)
+        except HTTPException as e:
+            logger.warning("[AUTH] Bearer JWT verification failed: %s", e.detail)
+        except Exception as e:
+            logger.error("[AUTH] Bearer JWT authentication error: %s", e, exc_info=True)
 
     # Try API key header (MCP tools)
     if x_api_key:
@@ -246,6 +276,7 @@ async def get_current_user_optional(
     request: Request,
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
 ) -> Optional[User]:
     """
@@ -257,6 +288,7 @@ async def get_current_user_optional(
         request: FastAPI request
         access_token: JWT token from cookie
         x_api_key: API key from header
+        authorization: Authorization: Bearer <token> header
         db: Database session
 
     Returns:
@@ -271,6 +303,12 @@ async def get_current_user_optional(
                 return {"message": "Hello anonymous"}
     """
     try:
-        return await get_current_user(request, access_token, x_api_key, db)
+        return await get_current_user(
+            request=request,
+            access_token=access_token,
+            x_api_key=x_api_key,
+            authorization=authorization,
+            db=db,
+        )
     except HTTPException:
         return None

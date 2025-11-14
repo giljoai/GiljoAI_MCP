@@ -37,7 +37,7 @@ async def test_user(test_db):
         tenant_key="test-tenant-123",
         username="test_user",
         email="test@example.com",
-        hashed_password="hashed_password",
+        password_hash="hashed_password",
         is_active=True,
     )
 
@@ -285,7 +285,7 @@ class TestLaunchProjectEndpoint:
             tenant_key="other-tenant-999",  # Different tenant
             username="other_user",
             email="other@example.com",
-            hashed_password="hashed",
+            password_hash="hashed",
             is_active=True,
         )
 
