@@ -1,0 +1,346 @@
+<template>
+  <v-container fluid>
+    <!-- Filters & Search Bar -->
+    <v-row class="mb-4">
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="selectedAgent"
+          :items="agentOptions"
+          label="Filter by Agent"
+          clearable
+          variant="outlined"
+          density="compact"
+          prepend-inner-icon="mdi-filter"
+        />
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="selectedType"
+          :items="messageTypeOptions"
+          label="Message Type"
+          clearable
+          variant="outlined"
+          density="compact"
+          prepend-inner-icon="mdi-tag"
+        />
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="selectedStatus"
+          :items="statusOptions"
+          label="Status"
+          clearable
+          variant="outlined"
+          density="compact"
+          prepend-inner-icon="mdi-check-circle"
+        />
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-text-field
+          v-model="searchQuery"
+          label="Search messages..."
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          variant="outlined"
+          density="compact"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Message Timeline -->
+    <v-row>
+      <v-col cols="12">
+        <v-card variant="outlined">
+          <v-card-title class="d-flex align-center justify-space-between pa-4">
+            <div class="d-flex align-center">
+              <v-icon icon="mdi-message-text" size="24" class="mr-2" />
+              <span>Message History</span>
+              <v-chip
+                v-if="filteredMessages.length > 0"
+                size="small"
+                class="ml-2"
+                variant="flat"
+                color="primary"
+              >
+                {{ filteredMessages.length }}
+              </v-chip>
+            </div>
+            <div class="d-flex align-center">
+              <v-chip
+                size="small"
+                :color="wsConnected ? 'success' : 'error'"
+                variant="flat"
+              >
+                <v-icon
+                  :icon="wsConnected ? 'mdi-wifi' : 'mdi-wifi-off'"
+                  start
+                  size="16"
+                />
+                {{ wsConnected ? 'Live' : 'Disconnected' }}
+              </v-chip>
+              <v-btn
+                icon="mdi-refresh"
+                size="small"
+                variant="text"
+                class="ml-2"
+                :loading="loading"
+                @click="refreshMessages"
+              />
+            </div>
+          </v-card-title>
+
+          <v-divider />
+
+          <v-card-text class="pa-0">
+            <!-- Loading State -->
+            <div v-if="loading && messages.length === 0" class="text-center pa-8">
+              <v-progress-circular indeterminate color="primary" size="48" />
+              <p class="text-body-2 text-medium-emphasis mt-4">Loading messages...</p>
+            </div>
+
+            <!-- Error State -->
+            <v-alert
+              v-else-if="error"
+              type="error"
+              variant="tonal"
+              class="ma-4"
+            >
+              {{ error }}
+            </v-alert>
+
+            <!-- Empty State -->
+            <v-alert
+              v-else-if="filteredMessages.length === 0 && !loading"
+              type="info"
+              variant="tonal"
+              class="ma-4"
+            >
+              <template v-if="hasFilters">
+                No messages match your filters. Try adjusting your search criteria.
+              </template>
+              <template v-else>
+                No messages yet. Launch a project to see agent communications.
+              </template>
+            </v-alert>
+
+            <!-- Message List (Virtual Scroll) -->
+            <v-virtual-scroll
+              v-else
+              :items="filteredMessages"
+              :height="600"
+              item-height="120"
+            >
+              <template v-slot:default="{ item }">
+                <div class="px-4 pt-3">
+                  <MessageItem
+                    :message="item"
+                    :show-actions="false"
+                  />
+                </div>
+              </template>
+            </v-virtual-scroll>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useWebSocket } from '@/composables/useWebSocket'
+import api from '@/services/api'
+import MessageItem from './MessageItem.vue'
+import type { Message, MessageType, MessageStatus } from '@/types/message'
+
+interface Props {
+  projectId?: string
+}
+
+const props = defineProps<Props>()
+
+// State
+const messages = ref<Message[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// Filters
+const selectedAgent = ref<string | null>(null)
+const selectedType = ref<MessageType | null>(null)
+const selectedStatus = ref<MessageStatus | null>(null)
+const searchQuery = ref('')
+
+// WebSocket
+const { isConnected: wsConnected, on: onWebSocket, connect } = useWebSocket()
+
+// Filter options
+const agentOptions = computed(() => {
+  const agents = new Set<string>()
+  messages.value.forEach((msg) => {
+    const sender = msg.from || msg.from_agent
+    if (sender) agents.add(sender)
+    msg.to_agents?.forEach((agent) => agents.add(agent))
+  })
+  return Array.from(agents).sort().map((agent) => ({
+    title: agent,
+    value: agent,
+  }))
+})
+
+const messageTypeOptions = [
+  { title: 'Direct', value: 'direct' },
+  { title: 'Broadcast', value: 'broadcast' },
+  { title: 'System', value: 'system' },
+  { title: 'Info', value: 'info' },
+  { title: 'Error', value: 'error' },
+  { title: 'Success', value: 'success' },
+]
+
+const statusOptions = [
+  { title: 'Pending', value: 'pending' },
+  { title: 'Delivered', value: 'delivered' },
+  { title: 'Acknowledged', value: 'acknowledged' },
+  { title: 'Completed', value: 'completed' },
+  { title: 'Failed', value: 'failed' },
+]
+
+// Computed
+const hasFilters = computed(() => {
+  return !!(selectedAgent.value || selectedType.value || selectedStatus.value || searchQuery.value)
+})
+
+const filteredMessages = computed(() => {
+  let result = messages.value
+
+  // Filter by agent
+  if (selectedAgent.value) {
+    result = result.filter((msg) => {
+      const sender = msg.from || msg.from_agent
+      return (
+        sender === selectedAgent.value ||
+        msg.to_agents?.includes(selectedAgent.value) ||
+        msg.to_agent === selectedAgent.value
+      )
+    })
+  }
+
+  // Filter by type
+  if (selectedType.value) {
+    result = result.filter((msg) => {
+      const msgType = msg.type || msg.message_type
+      return msgType === selectedType.value
+    })
+  }
+
+  // Filter by status
+  if (selectedStatus.value) {
+    result = result.filter((msg) => msg.status === selectedStatus.value)
+  }
+
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter((msg) =>
+      msg.content.toLowerCase().includes(query)
+    )
+  }
+
+  return result
+})
+
+// Methods
+const fetchMessages = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const params: any = {}
+    if (props.projectId) {
+      params.project_id = props.projectId
+    }
+
+    const response = await api.messages.list(params)
+    messages.value = response.data
+  } catch (err: any) {
+    console.error('[MessagePanel] Error fetching messages:', err)
+    error.value = err.response?.data?.detail || err.message || 'Failed to load messages'
+  } finally {
+    loading.value = false
+  }
+}
+
+const refreshMessages = () => {
+  fetchMessages()
+}
+
+// WebSocket handlers
+const handleNewMessage = (data: any) => {
+  console.log('[MessagePanel] New message received:', data)
+
+  // Add new message to beginning of list
+  const newMessage: Message = {
+    id: data.message_id || data.id,
+    from: data.from_agent || data.from || 'unknown',
+    from_agent: data.from_agent || data.from,
+    to_agents: data.to_agents || [],
+    to_agent: data.to_agent,
+    content: data.content || '',
+    type: data.type || data.message_type || 'direct',
+    message_type: data.type || data.message_type,
+    priority: data.priority || 'normal',
+    status: data.status || 'pending',
+    created_at: data.timestamp || new Date().toISOString(),
+    recipient_count: data.recipient_count,
+  }
+
+  // Avoid duplicates
+  const exists = messages.value.some((msg) => msg.id === newMessage.id)
+  if (!exists) {
+    messages.value.unshift(newMessage)
+  }
+}
+
+const handleMessageUpdate = (data: any) => {
+  console.log('[MessagePanel] Message update received:', data)
+
+  const messageId = data.message_id || data.id
+  const index = messages.value.findIndex((msg) => msg.id === messageId)
+
+  if (index !== -1) {
+    // Update existing message
+    messages.value[index] = {
+      ...messages.value[index],
+      ...data.message_data,
+      status: data.message_data?.status || messages.value[index].status,
+    }
+  } else {
+    // New message not in list yet
+    handleNewMessage(data.message_data || data)
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  fetchMessages()
+
+  // Connect WebSocket if not already connected
+  if (!wsConnected.value) {
+    connect()
+  }
+
+  // Subscribe to message events
+  onWebSocket('message:new', handleNewMessage)
+  onWebSocket('message:broadcast', handleNewMessage)
+  onWebSocket('message:update', handleMessageUpdate)
+  onWebSocket('message:acknowledged', handleMessageUpdate)
+  onWebSocket('message:completed', handleMessageUpdate)
+})
+
+onUnmounted(() => {
+  // Cleanup handled by useWebSocket composable
+})
+</script>
+
+<style scoped>
+/* Component-specific styles */
+</style>
