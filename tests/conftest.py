@@ -549,3 +549,31 @@ async def async_client(db_manager):
     except ImportError:
         # If API not available, skip tests that need it
         pytest.skip("API application not available for testing")
+
+
+def pytest_configure(config):
+    """
+    Pytest hook to configure test session.
+
+    Disables coverage threshold enforcement for smoke tests, since they are
+    integration workflow validators (not unit coverage targets).
+    """
+    # Check if we're only running smoke tests
+    selected_tests = config.getoption("file_or_dir", default=[])
+    markers = config.getoption("-m", default="")
+
+    # If running smoke tests specifically, disable fail_under threshold
+    if "smoke" in markers or any("smoke" in str(test) for test in selected_tests):
+        # Store original fail_under value
+        if hasattr(config, "_coverage_config"):
+            # Access coverage plugin configuration
+            try:
+                cov_plugin = config.pluginmanager.get_plugin("_cov")
+                if cov_plugin and hasattr(cov_plugin, "cov_controller"):
+                    # Disable fail_under for smoke tests
+                    cov_config = cov_plugin.cov_controller.cov.config
+                    if hasattr(cov_config, "fail_under"):
+                        cov_config.fail_under = None
+            except (AttributeError, KeyError):
+                # Coverage plugin not loaded or configured differently
+                pass

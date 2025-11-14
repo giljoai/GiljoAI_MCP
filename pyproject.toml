@@ -110,6 +110,8 @@ omit = [
     "*/test_*.py",
     "*/__pycache__/*",
     "*/migrations/*",
+    # Smoke tests are integration workflow validators (not coverage targets)
+    "tests/smoke/*",
 ]
 
 [tool.coverage.report]
@@ -125,6 +127,8 @@ exclude_lines = [
     "pass",
     "except ImportError:",
     "if TYPE_CHECKING:",
+    # Smoke tests are integration workflow validators (not coverage targets)
+    "pragma: smoke test",
 ]
 
 [tool.mypy]
@@ -223,5 +227,5 @@ markers = [
     "network: marks tests requiring network connectivity",
     "server_mode: marks tests requiring server mode",
     "deprecated: marks tests for deprecated functionality (Handover 0116)",
-    "smoke: marks lightweight critical-path smoke tests",
+    "smoke: Smoke tests (integration workflows validating critical paths, exempt from coverage thresholds)",
 ]

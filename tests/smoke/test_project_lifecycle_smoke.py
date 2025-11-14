@@ -2,22 +2,14 @@
 from __future__ import annotations
 
 import pytest
-
-from fastapi.testclient import TestClient
-
-from api.app import app
+import pytest_asyncio
 
 
-@pytest.fixture
-def smoke_client() -> TestClient:
-    """FastAPI client for smoke tests."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def smoke_product(smoke_client: TestClient) -> dict:
+@pytest_asyncio.fixture
+async def smoke_product(authenticated_client):
     """Create product for smoke tests."""
-    response = smoke_client.post(
+    client, user = authenticated_client
+    response = await client.post(
         "/api/v1/products/",
         json={
             "name": "Smoke Product",
@@ -30,10 +22,13 @@ def smoke_product(smoke_client: TestClient) -> dict:
 
 
 @pytest.mark.smoke
-def test_project_lifecycle_smoke(smoke_client: TestClient, smoke_product: dict) -> None:
+@pytest.mark.asyncio
+async def test_project_lifecycle_smoke(authenticated_client, smoke_product: dict) -> None:
     """Smoke: create → activate → launch → deactivate."""
+    client, user = authenticated_client
+
     # 1. Create project
-    response = smoke_client.post(
+    response = await client.post(
         "/api/v1/projects/",
         json={
             "name": "Smoke Project",
@@ -47,21 +42,21 @@ def test_project_lifecycle_smoke(smoke_client: TestClient, smoke_product: dict) 
     project_id = project["id"]
 
     # 2. Activate project
-    response = smoke_client.post(
+    response = await client.post(
         f"/api/v1/projects/{project_id}/activate",
         json={"tenant_key": "smoke-tenant"},
     )
     assert response.status_code == 200, "Project activation failed"
 
     # 3. Launch orchestrator for project
-    response = smoke_client.post(
+    response = await client.post(
         f"/api/v1/projects/{project_id}/launch",
         json={"tenant_key": "smoke-tenant"},
     )
     assert response.status_code == 200, "Project launch failed"
 
     # 4. Deactivate project
-    response = smoke_client.post(
+    response = await client.post(
         f"/api/v1/projects/{project_id}/deactivate",
         json={"tenant_key": "smoke-tenant"},
     )

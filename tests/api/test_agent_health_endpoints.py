@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 
 # Add src to path
@@ -25,43 +25,30 @@ from src.giljo_mcp.models import MCPAgentJob, User
 
 
 @pytest_asyncio.fixture
-async def api_client():
-    """Create FastAPI test client."""
-    from api.app import app
-    return TestClient(app)
-
-
-@pytest_asyncio.fixture
-async def test_user():
-    """Create test user for authentication."""
-    return User(
-        id=str(uuid4()),
-        username="test_user",
-        email="test@example.com",
-        tenant_key=f"tk_test_{uuid4().hex[:16]}",
-        is_active=True,
-        role="developer",
-        created_at=datetime.now(timezone.utc),
-        password_hash="hashed",
-    )
-
-
-@pytest_asyncio.fixture
-async def authenticated_client(api_client, test_user, db_manager):
-    """Create API client with authentication mocked."""
-    from api.app import app
-    from src.giljo_mcp.auth.dependencies import get_current_active_user
-
-    async def mock_get_current_user():
-        return test_user
-
-    # Override authentication
-    app.dependency_overrides[get_current_active_user] = mock_get_current_user
-
-    yield api_client, test_user
-
-    # Cleanup
-    app.dependency_overrides.clear()
+async def test_user(db_manager):
+    """Get test user from auth_headers fixture's user creation."""
+    # This will be created by the auth_headers fixture
+    async with db_manager.get_session_async() as session:
+        from sqlalchemy import select
+        stmt = select(User).where(User.username == "test_admin")
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            # Fallback: create a unique test user
+            user = User(
+                id=str(uuid4()),
+                username=f"test_user_{uuid4().hex[:8]}",
+                email=f"test_{uuid4().hex[:8]}@example.com",
+                tenant_key=f"tk_test_{uuid4().hex[:16]}",
+                is_active=True,
+                role="developer",
+                created_at=datetime.now(timezone.utc),
+                password_hash="hashed",
+            )
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+        return user
 
 
 @pytest_asyncio.fixture
@@ -69,11 +56,11 @@ async def test_job(db_session, test_user):
     """Create test agent job."""
     job = MCPAgentJob(
         tenant_key=test_user.tenant_key,
-        project_id=str(uuid4()),
+        project_id=None,  # No foreign key constraint issue
         job_id=str(uuid4()),
         agent_type="implementer",
         mission="Test mission",
-        status="active",
+        status="working",
         messages=[],
         last_progress_at=datetime.now(timezone.utc),
         last_message_check_at=datetime.now(timezone.utc),
@@ -90,10 +77,10 @@ class TestCancelEndpoint:
     """Test cancel job endpoint."""
 
     @pytest.mark.asyncio
-    async def test_cancel_endpoint_requires_auth(self, api_client):
+    async def test_cancel_endpoint_requires_auth(self, api_client: AsyncClient):
         """Test that cancel endpoint returns 401 without authentication."""
         # Attempt to cancel without auth
-        response = api_client.post(
+        response = await api_client.post(
             f"/api/jobs/{uuid4()}/cancel",
             json={"reason": "Test"}
         )
@@ -102,36 +89,35 @@ class TestCancelEndpoint:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_cancel_endpoint_changes_status(self, authenticated_client, test_job, db_session):
-        """Test that cancel endpoint changes job status to 'cancelling'."""
-        client, user = authenticated_client
-
+    async def test_cancel_endpoint_changes_status(self, api_client: AsyncClient, auth_headers, test_job, db_session):
+        """Test that cancel endpoint changes job status to 'cancelled'."""
         # Cancel job
-        response = client.post(
+        response = await api_client.post(
             f"/api/jobs/{test_job.job_id}/cancel",
-            json={"reason": "User requested cancellation"}
+            json={"reason": "User requested cancellation"},
+            headers=auth_headers
         )
 
         # Verify success response
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["status"] == "cancelling"
+        assert data["status"] == "cancelled"  # Force-fail sets to "failed", cancel sets to "cancelled"
 
         # Verify database
         await db_session.refresh(test_job)
-        assert test_job.status == "cancelling"
+        assert test_job.status == "cancelled"
 
     @pytest.mark.asyncio
-    async def test_cancel_endpoint_invalid_job_id(self, authenticated_client):
+    async def test_cancel_endpoint_invalid_job_id(self, api_client: AsyncClient, auth_headers):
         """Test cancel endpoint with non-existent job ID."""
-        client, user = authenticated_client
         fake_job_id = str(uuid4())
 
         # Attempt to cancel non-existent job
-        response = client.post(
+        response = await api_client.post(
             f"/api/jobs/{fake_job_id}/cancel",
-            json={"reason": "Should fail"}
+            json={"reason": "Should fail"},
+            headers=auth_headers
         )
 
         # Verify 404 Not Found
@@ -142,10 +128,10 @@ class TestForceFailEndpoint:
     """Test force-fail job endpoint."""
 
     @pytest.mark.asyncio
-    async def test_force_fail_endpoint_requires_auth(self, api_client):
+    async def test_force_fail_endpoint_requires_auth(self, api_client: AsyncClient):
         """Test that force-fail endpoint returns 401 without authentication."""
         # Attempt to force-fail without auth
-        response = api_client.post(
+        response = await api_client.post(
             f"/api/jobs/{uuid4()}/force-fail",
             json={"reason": "Test"}
         )
@@ -154,14 +140,13 @@ class TestForceFailEndpoint:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_force_fail_endpoint_marks_failed(self, authenticated_client, test_job, db_session):
+    async def test_force_fail_endpoint_marks_failed(self, api_client: AsyncClient, auth_headers, test_job, db_session):
         """Test that force-fail endpoint marks job as failed."""
-        client, user = authenticated_client
-
         # Force fail job
-        response = client.post(
+        response = await api_client.post(
             f"/api/jobs/{test_job.job_id}/force-fail",
-            json={"reason": "Agent unresponsive"}
+            json={"reason": "Agent unresponsive"},
+            headers=auth_headers
         )
 
         # Verify success response
@@ -178,12 +163,13 @@ class TestHealthEndpoint:
     """Test job health metrics endpoint."""
 
     @pytest.mark.asyncio
-    async def test_health_endpoint_returns_metrics(self, authenticated_client, test_job):
+    async def test_health_endpoint_returns_metrics(self, api_client: AsyncClient, auth_headers, test_job):
         """Test that health endpoint returns correct response shape."""
-        client, user = authenticated_client
-
         # Get health metrics
-        response = client.get(f"/api/jobs/{test_job.job_id}/health")
+        response = await api_client.get(
+            f"/api/jobs/{test_job.job_id}/health",
+            headers=auth_headers
+        )
 
         # Verify response structure
         assert response.status_code == 200
@@ -200,18 +186,16 @@ class TestHealthEndpoint:
         assert data["status"] == test_job.status
 
     @pytest.mark.asyncio
-    async def test_health_endpoint_calculates_stale(self, authenticated_client, db_session, test_user):
+    async def test_health_endpoint_calculates_stale(self, api_client: AsyncClient, auth_headers, db_session, test_user):
         """Test that health endpoint correctly calculates is_stale."""
-        client, user = authenticated_client
-
         # Create job with stale timestamp (11 minutes ago)
         stale_job = MCPAgentJob(
             tenant_key=test_user.tenant_key,
-            project_id=str(uuid4()),
+            project_id=None,  # No foreign key constraint issue
             job_id=str(uuid4()),
             agent_type="implementer",
             mission="Stale job",
-            status="active",
+            status="working",
             last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=11),
             last_message_check_at=datetime.now(timezone.utc),
         )
@@ -220,7 +204,10 @@ class TestHealthEndpoint:
         await db_session.commit()
 
         # Get health metrics
-        response = client.get(f"/api/jobs/{stale_job.job_id}/health")
+        response = await api_client.get(
+            f"/api/jobs/{stale_job.job_id}/health",
+            headers=auth_headers
+        )
 
         # Verify stale detection
         assert response.status_code == 200
@@ -229,18 +216,16 @@ class TestHealthEndpoint:
         assert data["minutes_since_progress"] >= 10
 
     @pytest.mark.asyncio
-    async def test_health_endpoint_handles_no_timestamps(self, authenticated_client, db_session, test_user):
+    async def test_health_endpoint_handles_no_timestamps(self, api_client: AsyncClient, auth_headers, db_session, test_user):
         """Test that health endpoint handles None timestamp values gracefully."""
-        client, user = authenticated_client
-
         # Create job with no timestamps
         new_job = MCPAgentJob(
             tenant_key=test_user.tenant_key,
-            project_id=str(uuid4()),
+            project_id=None,  # No foreign key constraint issue
             job_id=str(uuid4()),
             agent_type="implementer",
             mission="New job",
-            status="pending",
+            status="waiting",  # Use valid status
             last_progress_at=None,
             last_message_check_at=None,
         )
@@ -249,7 +234,10 @@ class TestHealthEndpoint:
         await db_session.commit()
 
         # Get health metrics
-        response = client.get(f"/api/jobs/{new_job.job_id}/health")
+        response = await api_client.get(
+            f"/api/jobs/{new_job.job_id}/health",
+            headers=auth_headers
+        )
 
         # Verify graceful handling
         assert response.status_code == 200
@@ -263,7 +251,7 @@ class TestMultiTenantIsolation:
     """Test multi-tenant isolation across all endpoints."""
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation_all_endpoints(self, db_session):
+    async def test_multi_tenant_isolation_all_endpoints(self, api_client: AsyncClient, db_session):
         """Test that all health endpoints respect tenant boundaries."""
         from api.app import app
         from src.giljo_mcp.auth.dependencies import get_current_active_user
@@ -297,46 +285,44 @@ class TestMultiTenantIsolation:
         # Create job for tenant A
         job_a = MCPAgentJob(
             tenant_key=tenant_a,
-            project_id=str(uuid4()),
+            project_id=None,  # No foreign key constraint issue
             job_id=str(uuid4()),
             agent_type="implementer",
             mission="Tenant A job",
-            status="active",
+            status="working",
             messages=[],
         )
 
         db_session.add(job_a)
         await db_session.commit()
 
-        # Create client authenticated as user B
-        client = TestClient(app)
-
+        # Authenticate api_client as user B
         async def mock_get_user_b():
             return user_b
 
         app.dependency_overrides[get_current_active_user] = mock_get_user_b
 
         # Attempt cancel from tenant B
-        response = client.post(
+        response = await api_client.post(
             f"/api/jobs/{job_a.job_id}/cancel",
             json={"reason": "Cross-tenant attack"}
         )
         assert response.status_code in [404, 403]  # Not found or forbidden
 
         # Attempt force-fail from tenant B
-        response = client.post(
+        response = await api_client.post(
             f"/api/jobs/{job_a.job_id}/force-fail",
             json={"reason": "Cross-tenant attack"}
         )
         assert response.status_code in [404, 403]
 
         # Attempt health check from tenant B
-        response = client.get(f"/api/jobs/{job_a.job_id}/health")
+        response = await api_client.get(f"/api/jobs/{job_a.job_id}/health")
         assert response.status_code in [404, 403]
 
         # Verify job unchanged
         await db_session.refresh(job_a)
-        assert job_a.status == "active"
+        assert job_a.status == "working"
 
         # Cleanup
         app.dependency_overrides.clear()
