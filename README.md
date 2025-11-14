@@ -572,6 +572,23 @@ See `src/giljo_mcp/models/__init__.py` for complete documentation.
 
 ---
 
+### Smoke Tests for Critical Workflows (0511a)
+
+Run lightweight smoke tests before deployments to verify the most important backend workflows:
+
+```bash
+pytest tests/smoke -m smoke -v
+```
+
+These tests cover:
+- Product creation with vision upload + chunking
+- Project lifecycle (create → activate → launch → deactivate)
+- Orchestrator succession trigger
+- Multi-tenant isolation behaviour
+- Settings persistence for a test tenant
+
+---
+
 ## Support
 
 **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
