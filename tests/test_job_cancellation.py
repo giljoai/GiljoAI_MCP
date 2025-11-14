@@ -42,18 +42,17 @@ async def db_session(db_manager):
 
 @pytest_asyncio.fixture
 async def active_job(db_session):
-    """Create active test agent job."""
+    """Create working test agent job."""
     tenant_key = f"tk_test_{uuid4().hex[:16]}"
-    project_id = str(uuid4())
 
     job = MCPAgentJob(
         tenant_key=tenant_key,
-        project_id=project_id,
+        project_id=None,  # No project needed for unit tests
         job_id=str(uuid4()),
         agent_type="implementer",
         mission="Test mission",
-        status="active",
-        messages=[],
+        status="working",
+        messages=None,  # Will be initialized as empty JSONB array
     )
 
     db_session.add(job)
@@ -65,18 +64,17 @@ async def active_job(db_session):
 
 @pytest_asyncio.fixture
 async def pending_job(db_session):
-    """Create pending test agent job."""
+    """Create waiting test agent job."""
     tenant_key = f"tk_test_{uuid4().hex[:16]}"
-    project_id = str(uuid4())
 
     job = MCPAgentJob(
         tenant_key=tenant_key,
-        project_id=project_id,
+        project_id=None,  # No project needed for unit tests
         job_id=str(uuid4()),
         agent_type="implementer",
         mission="Test mission",
-        status="pending",
-        messages=[],
+        status="waiting",
+        messages=None,
     )
 
     db_session.add(job)
@@ -90,32 +88,34 @@ class TestCancellationRequest:
     """Test graceful cancellation request operations."""
 
     @pytest.mark.asyncio
-    async def test_request_cancellation_changes_status(self, db_session, active_job):
+    async def test_request_cancellation_changes_status(self, db_session, active_job, db_manager):
         """Test that request_job_cancellation changes status to 'cancelling'."""
         # Request cancellation
         result = await request_job_cancellation(
             job_id=active_job.job_id,
             reason="User requested cancellation",
-            tenant_key=active_job.tenant_key
+            tenant_key=active_job.tenant_key,
+            db_manager=db_manager,
         )
 
         # Verify result
         assert result["success"] is True
-        assert result["status"] == "cancelling"
+        assert result["status"] == "cancelled"
         assert result["job_id"] == active_job.job_id
 
         # Refresh and verify database
         await db_session.refresh(active_job)
-        assert active_job.status == "cancelling"
+        assert active_job.status == "cancelled"
 
     @pytest.mark.asyncio
-    async def test_request_cancellation_sends_message(self, db_session, active_job):
+    async def test_request_cancellation_sends_message(self, db_session, active_job, db_manager):
         """Test that cancellation request adds message to job.messages."""
         # Request cancellation
         await request_job_cancellation(
             job_id=active_job.job_id,
             reason="Testing cancellation message",
-            tenant_key=active_job.tenant_key
+            tenant_key=active_job.tenant_key,
+            db_manager=db_manager,
         )
 
         # Refresh and verify message added
@@ -125,142 +125,141 @@ class TestCancellationRequest:
         # Verify message structure
         cancel_message = active_job.messages[-1]
         assert cancel_message["type"] == "cancel"
-        assert cancel_message["priority"] == "high"
-        assert "Testing cancellation message" in cancel_message["content"]
+        assert cancel_message["priority"] == "critical"
+        assert "Testing cancellation message" in cancel_message["reason"]
 
     @pytest.mark.asyncio
-    async def test_request_cancellation_on_pending_job(self, db_session, pending_job):
+    async def test_request_cancellation_on_pending_job(self, db_session, pending_job, db_manager):
         """Test that pending jobs can also be cancelled."""
         # Request cancellation
         result = await request_job_cancellation(
             job_id=pending_job.job_id,
             reason="Cancel before start",
-            tenant_key=pending_job.tenant_key
+            tenant_key=pending_job.tenant_key,
+            db_manager=db_manager,
         )
 
         # Verify result
         assert result["success"] is True
-        assert result["status"] == "cancelling"
+        assert result["status"] == "cancelled"
 
         # Refresh and verify
         await db_session.refresh(pending_job)
-        assert pending_job.status == "cancelling"
+        assert pending_job.status == "cancelled"
 
     @pytest.mark.asyncio
-    async def test_cancel_completed_job_returns_error(self, db_session):
+    async def test_cancel_completed_job_returns_error(self, db_session, db_manager):
         """Test that cancelling a completed job returns error."""
         tenant_key = f"tk_test_{uuid4().hex[:16]}"
-        project_id = str(uuid4())
 
         # Create completed job
         completed_job = MCPAgentJob(
             tenant_key=tenant_key,
-            project_id=project_id,
+            project_id=None,
             job_id=str(uuid4()),
             agent_type="implementer",
             mission="Completed job",
             status="complete",
-            messages=[],
+            messages=None,
         )
 
         db_session.add(completed_job)
         await db_session.commit()
 
-        # Attempt to cancel
-        with pytest.raises(ValueError) as exc_info:
-            await request_job_cancellation(
-                job_id=completed_job.job_id,
-                reason="Should fail",
-                tenant_key=tenant_key
-            )
+        # Attempt to cancel (should NOT raise, but return success=False)
+        result = await request_job_cancellation(
+            job_id=completed_job.job_id,
+            reason="Should fail",
+            tenant_key=tenant_key,
+            db_manager=db_manager,
+        )
 
-        # Verify error message
-        assert "terminal state" in str(exc_info.value).lower()
+        # Verify result indicates cannot cancel terminal state
+        assert result["success"] is False
+        assert "terminal state" in result["message"].lower()
 
 
 class TestForceFailJob:
     """Test force-fail operations."""
 
     @pytest.mark.asyncio
-    async def test_force_fail_marks_failed(self, db_session, active_job):
+    async def test_force_fail_marks_failed(self, db_session, active_job, db_manager):
         """Test that force_fail_job marks job as failed."""
         # Force fail
         result = await force_fail_job(
             job_id=active_job.job_id,
-            error="Agent unresponsive",
-            tenant_key=active_job.tenant_key
+            reason="Agent unresponsive",
+            tenant_key=active_job.tenant_key,
+            db_manager=db_manager,
         )
 
-        # Verify result (force_fail_job returns the job object)
+        # Verify result (force_fail_job returns dict)
         assert result is not None
-        assert result.status == "failed"
+        assert result["success"] is True
+        assert result["status"] == "failed"
 
         # Refresh and verify database
         await db_session.refresh(active_job)
         assert active_job.status == "failed"
 
     @pytest.mark.asyncio
-    async def test_force_fail_logs_reason(self, db_session, active_job):
+    async def test_force_fail_logs_reason(self, db_session, active_job, db_manager):
         """Test that force-fail reason is logged in block_reason or messages."""
         # Force fail with specific reason
         await force_fail_job(
             job_id=active_job.job_id,
-            error="Force failed due to timeout after 15 minutes",
-            tenant_key=active_job.tenant_key
+            reason="Force failed due to timeout after 15 minutes",
+            tenant_key=active_job.tenant_key,
+            db_manager=db_manager,
         )
 
         # Refresh and verify reason is stored
         await db_session.refresh(active_job)
 
-        # Check block_reason or messages for the error
-        reason_found = False
-        if active_job.block_reason and "timeout after 15 minutes" in active_job.block_reason:
-            reason_found = True
-        elif active_job.messages:
-            for msg in active_job.messages:
-                if isinstance(msg, dict) and "timeout after 15 minutes" in msg.get("content", ""):
-                    reason_found = True
-                    break
+        # Check messages for the forced failure reason
+        assert len(active_job.messages) > 0, "No messages found"
 
-        assert reason_found, "Force-fail reason not found in block_reason or messages"
+        failure_message = active_job.messages[-1]
+        assert failure_message["type"] == "forced_failure"
+        assert "timeout after 15 minutes" in failure_message["reason"]
 
     @pytest.mark.asyncio
-    async def test_force_fail_cancelling_job(self, db_session):
-        """Test that force-fail works on jobs in 'cancelling' state."""
+    async def test_force_fail_cancelled_job(self, db_session, db_manager):
+        """Test that force-fail works on jobs in 'cancelled' state."""
         tenant_key = f"tk_test_{uuid4().hex[:16]}"
-        project_id = str(uuid4())
 
-        # Create job in cancelling state
-        cancelling_job = MCPAgentJob(
+        # Create job in cancelled state
+        cancelled_job = MCPAgentJob(
             tenant_key=tenant_key,
-            project_id=project_id,
+            project_id=None,
             job_id=str(uuid4()),
             agent_type="implementer",
-            mission="Cancelling job",
-            status="cancelling",
-            messages=[],
+            mission="Cancelled job",
+            status="cancelled",
+            messages=None,
         )
 
-        db_session.add(cancelling_job)
+        db_session.add(cancelled_job)
         await db_session.commit()
 
         # Force fail
         result = await force_fail_job(
-            job_id=cancelling_job.job_id,
-            error="Agent didn't respond to cancel request",
-            tenant_key=tenant_key
+            job_id=cancelled_job.job_id,
+            reason="Agent didn't respond to cancel request",
+            tenant_key=tenant_key,
+            db_manager=db_manager,
         )
 
         # Verify transitioned to failed
-        await db_session.refresh(cancelling_job)
-        assert cancelling_job.status == "failed"
+        await db_session.refresh(cancelled_job)
+        assert cancelled_job.status == "failed"
 
 
 class TestCancellationEdgeCases:
     """Test edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_cancel_invalid_job_returns_error(self, db_session):
+    async def test_cancel_invalid_job_returns_error(self, db_session, db_manager):
         """Test that cancelling non-existent job raises error."""
         tenant_key = f"tk_test_{uuid4().hex[:16]}"
         fake_job_id = str(uuid4())
@@ -270,14 +269,15 @@ class TestCancellationEdgeCases:
             await request_job_cancellation(
                 job_id=fake_job_id,
                 reason="Should fail",
-                tenant_key=tenant_key
+                tenant_key=tenant_key,
+                db_manager=db_manager,
             )
 
         # Verify error message indicates job not found
         assert "not found" in str(exc_info.value).lower() or "does not exist" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_force_fail_invalid_job_returns_error(self, db_session):
+    async def test_force_fail_invalid_job_returns_error(self, db_session, db_manager):
         """Test that force-failing non-existent job raises error."""
         tenant_key = f"tk_test_{uuid4().hex[:16]}"
         fake_job_id = str(uuid4())
@@ -286,8 +286,9 @@ class TestCancellationEdgeCases:
         with pytest.raises(ValueError) as exc_info:
             await force_fail_job(
                 job_id=fake_job_id,
-                error="Should fail",
-                tenant_key=tenant_key
+                reason="Should fail",
+                tenant_key=tenant_key,
+                db_manager=db_manager,
             )
 
         # Verify error message
@@ -298,21 +299,20 @@ class TestMultiTenantIsolation:
     """Test multi-tenant isolation in cancellation operations."""
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation_cancellation(self, db_session):
+    async def test_multi_tenant_isolation_cancellation(self, db_session, db_manager):
         """Test that users cannot cancel other tenants' jobs."""
         tenant_a = f"tk_test_{uuid4().hex[:16]}"
         tenant_b = f"tk_test_{uuid4().hex[:16]}"
-        project_id = str(uuid4())
 
         # Create job for tenant A
         job_a = MCPAgentJob(
             tenant_key=tenant_a,
-            project_id=project_id,
+            project_id=None,
             job_id=str(uuid4()),
             agent_type="implementer",
             mission="Tenant A job",
-            status="active",
-            messages=[],
+            status="working",
+            messages=None,
         )
 
         db_session.add(job_a)
@@ -323,30 +323,30 @@ class TestMultiTenantIsolation:
             await request_job_cancellation(
                 job_id=job_a.job_id,
                 reason="Cross-tenant attack",
-                tenant_key=tenant_b  # Wrong tenant!
+                tenant_key=tenant_b,  # Wrong tenant!
+                db_manager=db_manager,
             )
 
         # Verify error and job status unchanged
         await db_session.refresh(job_a)
-        assert job_a.status == "active"  # Still active, not cancelled
+        assert job_a.status == "working"  # Still working, not cancelled
         assert "not found" in str(exc_info.value).lower() or "access denied" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_multi_tenant_isolation_force_fail(self, db_session):
+    async def test_multi_tenant_isolation_force_fail(self, db_session, db_manager):
         """Test that users cannot force-fail other tenants' jobs."""
         tenant_a = f"tk_test_{uuid4().hex[:16]}"
         tenant_b = f"tk_test_{uuid4().hex[:16]}"
-        project_id = str(uuid4())
 
         # Create job for tenant A
         job_a = MCPAgentJob(
             tenant_key=tenant_a,
-            project_id=project_id,
+            project_id=None,
             job_id=str(uuid4()),
             agent_type="implementer",
             mission="Tenant A job",
-            status="active",
-            messages=[],
+            status="working",
+            messages=None,
         )
 
         db_session.add(job_a)
@@ -356,11 +356,12 @@ class TestMultiTenantIsolation:
         with pytest.raises(ValueError) as exc_info:
             await force_fail_job(
                 job_id=job_a.job_id,
-                error="Cross-tenant attack",
-                tenant_key=tenant_b  # Wrong tenant!
+                reason="Cross-tenant attack",
+                tenant_key=tenant_b,  # Wrong tenant!
+                db_manager=db_manager,
             )
 
         # Verify error and job status unchanged
         await db_session.refresh(job_a)
-        assert job_a.status == "active"  # Still active, not failed
+        assert job_a.status == "working"  # Still working, not failed
         assert "not found" in str(exc_info.value).lower() or "access denied" in str(exc_info.value).lower()

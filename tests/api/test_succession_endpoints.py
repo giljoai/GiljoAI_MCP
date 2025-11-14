@@ -48,13 +48,15 @@ def tenant_key():
 @pytest.fixture
 def auth_token(db_manager: DatabaseManager, tenant_key: str):
     """Create test user and return auth token."""
+    unique_suffix = uuid4().hex[:8]
+    username = f"test_user_{unique_suffix}"
     with db_manager.get_session() as session:
         # Create test user
         user = User(
             id=str(uuid4()),
             tenant_key=tenant_key,
-            username="test_user",
-            email="test@example.com",
+            username=username,
+            email=f"test_{unique_suffix}@example.com",
             is_active=True,
             is_superuser=False,
         )
@@ -66,7 +68,7 @@ def auth_token(db_manager: DatabaseManager, tenant_key: str):
     client = TestClient(app)
     response = client.post(
         "/api/auth/login",
-        data={"username": "test_user", "password": "testpassword123"},
+        data={"username": username, "password": "testpassword123"},
     )
     assert response.status_code == 200
     return response.json()["access_token"]
