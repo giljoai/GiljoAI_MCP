@@ -74,16 +74,18 @@ def upgrade() -> None:
 
     connection = op.get_bind()
 
-    # STEP 1: Analyze current state
-    # =============================
-    print("[0073-01] Step 1: Analyzing current state...")
+    # STEP 1: Check if table exists (fresh installs may not have mcp_agent_jobs yet)
+    # ================================================================================
+    print("[0073-01] Step 1: Checking if mcp_agent_jobs table exists...")
 
     # Check if table exists and has data (fresh installs may have empty table)
+    table_exists = False
     try:
         result = connection.execute(
             text("SELECT status, COUNT(*) as count FROM mcp_agent_jobs GROUP BY status ORDER BY status")
         )
         current_states = result.fetchall()
+        table_exists = True
 
         if current_states:
             print("[0073-01]   Current agent job status distribution:")
@@ -92,8 +94,12 @@ def upgrade() -> None:
         else:
             print("[0073-01]   - No existing jobs (fresh install or empty table)")
     except Exception as e:
-        print(f"[0073-01]   - Table query skipped (fresh install): {e}")
-        current_states = []
+        print(f"[0073-01]   - Table does not exist yet (fresh install): {e}")
+        print("[0073-01]   - Skipping migration (table will be created by later migration)")
+        print("=" * 80)
+        print("[Handover 0073-01] Migration skipped - table does not exist yet")
+        print("=" * 80 + "\n")
+        return  # Early return - skip this migration if table doesn't exist
 
     # STEP 2: Drop existing status constraint
     # ========================================
