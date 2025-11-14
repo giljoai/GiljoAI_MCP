@@ -36,10 +36,30 @@ def upgrade() -> None:
     2. Add partial unique index for enforcement
     """
 
-    # STEP 1: Identify and resolve conflicts
-    # ======================================
+    # STEP 0: Ensure is_active column exists on products
+    # ================================================
 
     connection = op.get_bind()
+
+    # For fresh installs, the products table may not yet have an is_active flag.
+    # For existing databases, this is idempotent thanks to IF NOT EXISTS.
+    connection.execute(
+        text(
+            """
+            ALTER TABLE products
+            ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT FALSE
+        """
+        )
+    )
+
+    # FIX: Commit DDL change to ensure column is visible before querying
+    # This is critical for fresh installs where the products table is empty.
+    # PostgreSQL may not reflect the DDL change within the same transaction,
+    # causing "column does not exist" errors when we immediately query it.
+    connection.commit()
+
+    # STEP 1: Identify and resolve conflicts
+    # ======================================
 
     # Find tenants with multiple active products
     result = connection.execute(
