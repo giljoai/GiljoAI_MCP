@@ -18,7 +18,8 @@ MAX_USER_INSTRUCTIONS_SIZE = 50 * 1024  # 50KB
 class TemplateCreate(BaseModel):
     """Request model for creating a template"""
 
-    name: str = Field(..., description="Template name")
+    # Name is optional; when omitted, the backend generates it from role/suffix.
+    name: Optional[str] = Field(None, description="Template name (optional, generated from role when omitted)")
     role: str = Field(..., description="Agent role")
     cli_tool: str = Field("claude", description="CLI tool: claude, codex, gemini, generic")
     custom_suffix: Optional[str] = Field(None, description="Custom suffix for name generation")
@@ -50,6 +51,9 @@ class TemplateUpdate(BaseModel):
     """Request model for updating a template"""
 
     # Editable fields
+    system_instructions: Optional[str] = Field(
+        None, description="System instructions are read-only via API; presence triggers a 403"
+    )
     user_instructions: Optional[str] = Field(None, description="User-customizable instructions (max 50KB)")
     name: Optional[str] = None
     role: Optional[str] = None

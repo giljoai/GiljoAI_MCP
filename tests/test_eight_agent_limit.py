@@ -28,7 +28,7 @@ async def test_user(db_session: AsyncSession) -> User:
         email="test@example.com",
         tenant_key="tenant-test-001",
         is_active=True,
-        hashed_password="test_hash",
+        password_hash="test_hash",
     )
     db_session.add(user)
     await db_session.commit()

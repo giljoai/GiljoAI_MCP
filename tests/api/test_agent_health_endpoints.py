@@ -40,9 +40,9 @@ async def test_user():
         email="test@example.com",
         tenant_key=f"tk_test_{uuid4().hex[:16]}",
         is_active=True,
-        is_admin=False,
+        role="developer",
         created_at=datetime.now(timezone.utc),
-        hashed_password="hashed",
+        password_hash="hashed",
     )
 
 
@@ -278,9 +278,9 @@ class TestMultiTenantIsolation:
             email="user_a@example.com",
             tenant_key=tenant_a,
             is_active=True,
-            is_admin=False,
+            role="developer",
             created_at=datetime.now(timezone.utc),
-            hashed_password="hashed",
+            password_hash="hashed",
         )
 
         user_b = User(
@@ -289,9 +289,9 @@ class TestMultiTenantIsolation:
             email="user_b@example.com",
             tenant_key=tenant_b,
             is_active=True,
-            is_admin=False,
+            role="developer",
             created_at=datetime.now(timezone.utc),
-            hashed_password="hashed",
+            password_hash="hashed",
         )
 
         # Create job for tenant A

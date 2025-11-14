@@ -55,7 +55,7 @@ async def regular_user(db_session):
         username="user",
         email="user@example.com",
         password_hash="hashed_password",
-        role="user",
+        role="developer",
         tenant_key="default",
         is_active=True,
         created_at=datetime.now(timezone.utc),
@@ -537,7 +537,7 @@ class TestFirstRunEdgeCases:
             username="localhost",
             email=None,
             password_hash=None,
-            role="user",  # System user is NOT admin
+            role="developer",  # System user is NOT admin
             tenant_key="default",
             is_active=True,
             is_system_user=True,

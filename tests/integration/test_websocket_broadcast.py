@@ -39,7 +39,7 @@ def test_user_a(db: Session):
         username=f"user_a_{uuid4().hex[:8]}",
         email=f"usera_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_a_{uuid4().hex[:8]}",
-        role="user",
+        role="developer",
         password_hash="hashed_password",
     )
     db.add(user)
@@ -55,7 +55,7 @@ def test_user_b(db: Session):
         username=f"user_b_{uuid4().hex[:8]}",
         email=f"userb_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_b_{uuid4().hex[:8]}",
-        role="user",
+        role="developer",
         password_hash="hashed_password",
     )
     db.add(user)
