@@ -44,7 +44,7 @@ def test_user(mock_db_session):
         username="test_user",
         email="test@example.com",
         password_hash="$2b$12$dummyhash",
-        role="user",
+        role="developer",
         is_active=True,
         is_system_user=False,
         tenant_key="default",

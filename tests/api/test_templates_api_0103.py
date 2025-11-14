@@ -65,8 +65,9 @@ class TestTemplateCreate:
         self, api_client: AsyncClient, auth_headers: dict, db_manager
     ):
         """Create Codex template without description - should succeed."""
+        unique_id = str(uuid4())[:8]
         data = {
-            "name": "implementer-codex",
+            "name": f"implementer-codex-{unique_id}",
             "role": "implementer",
             "cli_tool": "codex",
             "template_content": "Implement features using best practices and clean code principles.",
@@ -82,8 +83,9 @@ class TestTemplateCreate:
 
     async def test_create_gemini_template(self, api_client: AsyncClient, auth_headers: dict, db_manager):
         """Create Gemini template with custom suffix."""
+        unique_id = str(uuid4())[:8]
         data = {
-            "name": "tester-e2e",
+            "name": f"tester-e2e-{unique_id}",
             "role": "tester",
             "cli_tool": "gemini",
             "description": "End-to-end testing specialist",
@@ -95,7 +97,7 @@ class TestTemplateCreate:
 
         assert response.status_code == 201
         result = response.json()
-        assert result["name"] == "tester-e2e"
+        assert result["name"] == f"tester-e2e-{unique_id}"
         assert result["cli_tool"] == "gemini"
         assert result["model"] == "inherit"
         assert result["background_color"] == "#FFC300"  # tester color
@@ -131,7 +133,9 @@ class TestTemplateCreate:
 
     async def test_create_duplicate_name_rejected(self, api_client: AsyncClient, auth_headers: dict, db_manager):
         """Reject template with duplicate name within tenant."""
+        unique_id = str(uuid4())[:8]
         data = {
+            "name": f"orchestrator-{unique_id}",
             "role": "orchestrator",
             "cli_tool": "claude",
             "description": "First orchestrator",
@@ -170,10 +174,12 @@ class TestTemplatePreview:
                 id=str(uuid4()),
                 tenant_key="test_tenant_key",
                 name="orchestrator",
+                category="role",
                 role="orchestrator",
                 cli_tool="claude",
                 description="Test orchestrator",
                 template_content="You are an orchestrator responsible for coordinating work.",
+                system_instructions="You are an orchestrator responsible for coordinating work.",
                 model="sonnet",
                 behavioral_rules=["Plan first", "Test thoroughly"],
                 success_criteria=["All tests pass"],
@@ -206,10 +212,12 @@ class TestTemplatePreview:
                 id=str(uuid4()),
                 tenant_key="test_tenant_key",
                 name="implementer",
+                category="role",
                 role="implementer",
                 cli_tool="codex",
                 description="Implementation specialist",
                 template_content="Implement features using clean code and best practices.",
+                system_instructions="Implement features using clean code and best practices.",
                 model="inherit",
                 is_active=True,
             )
@@ -358,8 +366,8 @@ class TestEightRoleLimit:
             template = AgentTemplate(
                 id=str(uuid4()),
                 tenant_key="test_tenant_key",
-                name="orchestrator",
-                role="orchestrator",
+                name="analyzer",
+                role="analyzer",
                 cli_tool="claude",
                 description="First orchestrator",
                 template_content="You are the first orchestrator for coordinating development work.",
@@ -379,7 +387,6 @@ class TestEightRoleLimit:
     async def test_activate_8_distinct_roles_success(self, api_client: AsyncClient, auth_headers: dict, db_manager):
         """Create and activate 8 distinct roles - should all succeed."""
         roles = [
-            "orchestrator",
             "analyzer",
             "designer",
             "frontend",
@@ -387,6 +394,7 @@ class TestEightRoleLimit:
             "implementer",
             "tester",
             "reviewer",
+            "documenter",
         ]
 
         template_ids = []
@@ -419,10 +427,9 @@ class TestEightRoleLimit:
     async def test_activate_9th_distinct_role_blocked(
         self, api_client: AsyncClient, auth_headers: dict, db_manager
     ):
-        """Activate 9th distinct role when 8 already active - should fail with 409."""
-        # Create and activate 8 distinct roles
+        """Activate 8th distinct user role when 7 already active - allowed (orchestrator reserved)."""
+        # Create and activate 7 distinct user-managed roles (orchestrator is reserved/system-managed)
         roles = [
-            "orchestrator",
             "analyzer",
             "designer",
             "frontend",
@@ -447,7 +454,7 @@ class TestEightRoleLimit:
                 session.add(template)
             await session.commit()
 
-        # Try to activate 9th role (documenter)
+        # Try to activate 8th distinct user role (documenter)
         async with db_manager.get_session_async() as session:
             new_template = AgentTemplate(
                 id=str(uuid4()),
@@ -463,20 +470,18 @@ class TestEightRoleLimit:
             await session.commit()
             new_template_id = new_template.id
 
-        # Try to activate 9th role - should fail
+        # Try to activate 8th distinct user role - should succeed under new semantics (7 user roles + reserved orchestrator)
         update_data = {"is_active": True}
         response = await api_client.put(
             f"/api/v1/templates/{new_template_id}", json=update_data, headers=auth_headers
         )
 
-        assert response.status_code == 409  # Conflict
-        assert "Maximum 8 active agent roles" in response.json()["detail"]
+        assert response.status_code == 200
 
     async def test_toggle_existing_role_allowed(self, api_client: AsyncClient, auth_headers: dict, db_manager):
         """Toggle existing role when 8 distinct roles active - should succeed."""
-        # Create 8 active distinct roles including orchestrator
+        # Create 7 active distinct user-managed roles (orchestrator is reserved)
         roles = [
-            "orchestrator",
             "analyzer",
             "designer",
             "frontend",
@@ -486,7 +491,8 @@ class TestEightRoleLimit:
             "reviewer",
         ]
 
-        orchestrator_id = None
+        target_role = "analyzer"
+        target_id = None
         async with db_manager.get_session_async() as session:
             for role in roles:
                 template = AgentTemplate(
@@ -500,19 +506,19 @@ class TestEightRoleLimit:
                     is_active=True,
                 )
                 session.add(template)
-                if role == "orchestrator":
-                    orchestrator_id = template.id
+                if role == target_role:
+                    target_id = template.id
             await session.commit()
 
-        # Deactivate orchestrator
+        # Deactivate target role
         response = await api_client.put(
-            f"/api/v1/templates/{orchestrator_id}", json={"is_active": False}, headers=auth_headers
+            f"/api/v1/templates/{target_id}", json={"is_active": False}, headers=auth_headers
         )
         assert response.status_code == 200
 
-        # Re-activate orchestrator (same role, should succeed)
+        # Re-activate same role (should succeed because it does not increase distinct roles)
         response = await api_client.put(
-            f"/api/v1/templates/{orchestrator_id}", json={"is_active": True}, headers=auth_headers
+            f"/api/v1/templates/{target_id}", json={"is_active": True}, headers=auth_headers
         )
         assert response.status_code == 200
 
@@ -520,9 +526,8 @@ class TestEightRoleLimit:
         self, api_client: AsyncClient, auth_headers: dict, db_manager
     ):
         """Toggle between multiple templates with same role - should succeed."""
-        # Create 8 distinct active roles
+        # Create 7 distinct active user-managed roles
         roles = [
-            "orchestrator",
             "analyzer",
             "designer",
             "frontend",
@@ -532,8 +537,9 @@ class TestEightRoleLimit:
             "reviewer",
         ]
 
-        orchestrator_v1_id = None
-        orchestrator_v2_id = None
+        target_role = "analyzer"
+        role_v1_id = None
+        role_v2_id = None
 
         async with db_manager.get_session_async() as session:
             for role in roles:
@@ -548,27 +554,27 @@ class TestEightRoleLimit:
                     is_active=True,
                 )
                 session.add(template)
-                if role == "orchestrator":
-                    orchestrator_v1_id = template.id
+                if role == target_role:
+                    role_v1_id = template.id
 
-            # Create orchestrator-v2 (inactive)
-            orchestrator_v2 = AgentTemplate(
+            # Create second template for the same role (inactive)
+            role_v2 = AgentTemplate(
                 id=str(uuid4()),
                 tenant_key="test_tenant_key",
-                name="orchestrator-v2",
-                role="orchestrator",
+                name=f"{target_role}-v2",
+                role=target_role,
                 cli_tool="claude",
-                description="Orchestrator v2",
-                template_content="You are an orchestrator v2 for coordinating development work.",
+                description=f"{target_role.capitalize()} v2",
+                template_content=f"You are a {target_role} agent v2 for coordinating development work.",
                 is_active=False,
             )
-            session.add(orchestrator_v2)
-            orchestrator_v2_id = orchestrator_v2.id
+            session.add(role_v2)
+            role_v2_id = role_v2.id
             await session.commit()
 
-        # Toggle orchestrator-v2 active (should succeed since orchestrator role already active)
+        # Toggle second template for same role active (should succeed since that role is already active)
         response = await api_client.put(
-            f"/api/v1/templates/{orchestrator_v2_id}", json={"is_active": True}, headers=auth_headers
+            f"/api/v1/templates/{role_v2_id}", json={"is_active": True}, headers=auth_headers
         )
         assert response.status_code == 200
 
