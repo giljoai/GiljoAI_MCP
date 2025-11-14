@@ -19,6 +19,7 @@ Create Date: 2025-10-07 10:37:04.876016
 
 import json
 import logging
+import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Union
@@ -64,6 +65,7 @@ def migrate_legacy_setup_state() -> None:
 
         # Prepare data for insert
         setup_state_data = {
+            "id": str(uuid.uuid4()),  # Generate UUID for primary key
             "tenant_key": tenant_key,
             "completed": legacy_data.get("completed", False),
             "completed_at": legacy_data.get("completed_at"),
@@ -90,17 +92,17 @@ def migrate_legacy_setup_state() -> None:
         conn.execute(
             sa.text("""
                 INSERT INTO setup_state (
-                    tenant_key, completed, completed_at, setup_version, database_version,
+                    id, tenant_key, completed, completed_at, setup_version, database_version,
                     python_version, node_version, features_configured, tools_enabled,
                     config_snapshot, validation_passed, validation_failures, validation_warnings,
                     installer_version, install_mode, install_path, meta_data
                 )
                 VALUES (
-                    :tenant_key, :completed, :completed_at, :setup_version, :database_version,
-                    :python_version, :node_version, :features_configured::jsonb, :tools_enabled::jsonb,
-                    :config_snapshot::jsonb, :validation_passed, :validation_failures::jsonb,
-                    :validation_warnings::jsonb, :installer_version, :install_mode, :install_path,
-                    :meta_data::jsonb
+                    :id, :tenant_key, :completed, :completed_at, :setup_version, :database_version,
+                    :python_version, :node_version, :features_configured, :tools_enabled,
+                    :config_snapshot, :validation_passed, :validation_failures,
+                    :validation_warnings, :installer_version, :install_mode, :install_path,
+                    :meta_data
                 )
                 ON CONFLICT (tenant_key) DO NOTHING
             """),
