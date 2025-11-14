@@ -32,11 +32,12 @@ async def test_user(test_db):
     """Create a test user with tenant_key."""
     from src.giljo_mcp.models import User
 
+    unique_suffix = uuid4().hex[:8]
     user = User(
         id=str(uuid4()),
-        tenant_key="test-tenant-123",
-        username="test_user",
-        email="test@example.com",
+        tenant_key=f"test_tenant_{unique_suffix}",
+        username=f"test_user_{unique_suffix}",
+        email=f"test_{unique_suffix}@example.com",
         password_hash="hashed_password",
         is_active=True,
     )

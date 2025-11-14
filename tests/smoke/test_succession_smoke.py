@@ -2,23 +2,16 @@
 from __future__ import annotations
 
 import pytest
-
-from fastapi.testclient import TestClient
-
-from api.app import app
+import pytest_asyncio
 
 
-@pytest.fixture
-def succession_client() -> TestClient:
-    """FastAPI client for succession smoke tests."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def succession_project(succession_client: TestClient) -> dict:
+@pytest_asyncio.fixture
+async def succession_project(authenticated_client):
     """Create active project suitable for succession tests."""
+    client, user = authenticated_client
+
     # Create product
-    response = succession_client.post(
+    response = await client.post(
         "/api/v1/products/",
         json={
             "name": "Succession Product",
@@ -30,7 +23,7 @@ def succession_project(succession_client: TestClient) -> dict:
     product_id = response.json()["id"]
 
     # Create project
-    response = succession_client.post(
+    response = await client.post(
         "/api/v1/projects/",
         json={
             "name": "Succession Project",
@@ -44,7 +37,7 @@ def succession_project(succession_client: TestClient) -> dict:
     project_id = project["id"]
 
     # Activate project
-    response = succession_client.post(
+    response = await client.post(
         f"/api/v1/projects/{project_id}/activate",
         json={"tenant_key": "smoke-tenant"},
     )
@@ -54,11 +47,13 @@ def succession_project(succession_client: TestClient) -> dict:
 
 
 @pytest.mark.smoke
-def test_succession_smoke(succession_client: TestClient, succession_project: dict) -> None:
+@pytest.mark.asyncio
+async def test_succession_smoke(authenticated_client, succession_project: dict) -> None:
     """Smoke: trigger orchestrator succession for active project."""
+    client, user = authenticated_client
     project_id = succession_project["id"]
 
-    response = succession_client.post(
+    response = await client.post(
         "/api/v1/agent-jobs/trigger-succession",
         json={"project_id": project_id, "tenant_key": "smoke-tenant"},
     )

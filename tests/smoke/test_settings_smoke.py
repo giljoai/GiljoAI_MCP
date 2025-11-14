@@ -3,18 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from fastapi.testclient import TestClient
-
-from api.app import app
-
 
 @pytest.mark.smoke
-def test_settings_persistence_smoke() -> None:
+@pytest.mark.asyncio
+async def test_settings_persistence_smoke(authenticated_client) -> None:
     """Smoke: save settings → retrieve → verify."""
-    client = TestClient(app)
+    client, user = authenticated_client
 
     # 1. Update general settings
-    response = client.put(
+    response = await client.put(
         "/api/v1/settings/general",
         json={
             "tenant_key": "smoke-tenant",
@@ -28,7 +25,7 @@ def test_settings_persistence_smoke() -> None:
     assert response.status_code == 200, "Settings update failed"
 
     # 2. Retrieve settings
-    response = client.get(
+    response = await client.get(
         "/api/v1/settings/general",
         params={"tenant_key": "smoke-tenant"},
     )
