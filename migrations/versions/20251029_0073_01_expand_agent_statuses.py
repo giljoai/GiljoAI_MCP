@@ -78,14 +78,22 @@ def upgrade() -> None:
     # =============================
     print("[0073-01] Step 1: Analyzing current state...")
 
-    result = connection.execute(
-        text("SELECT status, COUNT(*) as count FROM mcp_agent_jobs GROUP BY status ORDER BY status")
-    )
-    current_states = result.fetchall()
+    # Check if table exists and has data (fresh installs may have empty table)
+    try:
+        result = connection.execute(
+            text("SELECT status, COUNT(*) as count FROM mcp_agent_jobs GROUP BY status ORDER BY status")
+        )
+        current_states = result.fetchall()
 
-    print("[0073-01]   Current agent job status distribution:")
-    for status, count in current_states:
-        print(f"[0073-01]     - {status}: {count} job(s)")
+        if current_states:
+            print("[0073-01]   Current agent job status distribution:")
+            for status, count in current_states:
+                print(f"[0073-01]     - {status}: {count} job(s)")
+        else:
+            print("[0073-01]   - No existing jobs (fresh install or empty table)")
+    except Exception as e:
+        print(f"[0073-01]   - Table query skipped (fresh install): {e}")
+        current_states = []
 
     # STEP 2: Drop existing status constraint
     # ========================================
