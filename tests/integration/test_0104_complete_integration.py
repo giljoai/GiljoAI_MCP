@@ -78,18 +78,18 @@ async def auth_headers_fixture(async_client: AsyncClient, test_db):
 
     manager = DatabaseManager()
 
-    async with manager.get_session_async() as session:
-        # Create admin user
-        admin = User(
-            id=str(uuid.uuid4()),
-            username="test_admin",
-            email="admin@test.com",
-            password_hash=bcrypt.hash("Test@Pass123"),
-            tenant_key="test-tenant",
-            is_active=True,
-            is_admin=True,
-            created_at=datetime.now(timezone.utc)
-        )
+        async with manager.get_session_async() as session:
+            # Create admin user
+            admin = User(
+                id=str(uuid.uuid4()),
+                username="test_admin",
+                email="admin@test.com",
+                tenant_key="test-tenant",
+                is_active=True,
+                role="admin",
+                password_hash=bcrypt.hash("Test@Pass123"),
+                created_at=datetime.now(timezone.utc)
+            )
         session.add(admin)
         await session.commit()
         await session.refresh(admin)

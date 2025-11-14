@@ -81,7 +81,7 @@ async def regular_user(db_session: AsyncSession) -> User:
         username="user_test",
         email="user@test.com",
         password_hash=auth_manager.hash_password("test_password"),
-        role="user",
+        role="developer",
         tenant_key="test_tenant",
         is_active=True,
     )
