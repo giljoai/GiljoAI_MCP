@@ -31,7 +31,7 @@ async def test_user(db_session: AsyncSession) -> User:
         username="test_network_user",
         email="test@example.com",
         password_hash="$2b$12$test_hash",  # Dummy hash
-        role="user",
+        role="developer",
         is_active=True,
         tenant_key="test_tenant",
     )
