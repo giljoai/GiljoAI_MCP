@@ -138,6 +138,14 @@
 
 
 
+
+    <!-- Agent Monitoring Section (Dashboard Agent Monitoring UI) -->
+    <v-row class="mt-6">
+      <v-col cols="12">
+        <AgentMonitoring />
+      </v-col>
+    </v-row>
+
     <!-- Historical Projects Section (Handover 0077 - Dashboard Integration) -->
     <v-row class="mt-4">
       <v-col cols="12">
@@ -368,6 +376,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
+import AgentMonitoring from '@/components/dashboard/AgentMonitoring.vue'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'

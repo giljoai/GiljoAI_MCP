@@ -225,8 +225,12 @@ export const api = {
     acknowledge: (id, agentName) =>
       apiClient.post(`/api/v1/messages/${id}/acknowledge/`, { agent_name: agentName }),
     complete: (id, result) => apiClient.post(`/api/v1/messages/${id}/complete/`, { result }),
-    broadcast: (projectId, content) =>
-      apiClient.post('/api/v1/messages/broadcast/', { project_id: projectId, content }),
+    broadcast: (projectId, content, priority = 'normal') =>
+      apiClient.post('/api/v1/messages/broadcast', {
+        project_id: projectId,
+        content: content,
+        priority: priority,
+      }),
   },
 
   // Tasks
