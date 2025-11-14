@@ -52,18 +52,14 @@ async def complete_project(
     logger.info(f"User {current_user.username} completing project {project_id}")
 
     # Complete via ProjectService
-    result = await project_service.complete_project(
-        project_id=project_id,
-        completion_summary=summary
-    )
+    result = await project_service.complete_project(project_id=project_id, completion_summary=summary)
 
     # Check for errors
     if not result.get("success"):
         error_msg = result.get("error", "Failed to complete project")
         if "not found" in error_msg.lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     logger.info(f"Completed project {project_id}")
 
@@ -86,7 +82,7 @@ async def complete_project(
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
@@ -109,14 +105,28 @@ async def close_out_project(
 
     Raises:
         HTTPException 404: Project not found
-        HTTPException 501: Not yet implemented
+        HTTPException 400: Close-out failed
     """
     logger.info(f"User {current_user.username} closing out project {project_id}")
 
-    # TODO: Add close_out_project to ProjectService
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="ProjectService.close_out_project not yet implemented"
+    # Close out project via ProjectService
+    result = await project_service.close_out_project(project_id=project_id, tenant_key=current_user.tenant_key)
+
+    # Check for errors
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to close out project")
+        if "not found" in error_msg.lower() or "access denied" in error_msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    logger.info(f"Closed out project {project_id}")
+
+    return ProjectCloseOutResponse(
+        success=result["success"],
+        message=result["message"],
+        agents_decommissioned=result["agents_decommissioned"],
+        decommissioned_agent_ids=result["decommissioned_agent_ids"],
+        project_status=result["project_status"],
     )
 
 
@@ -139,12 +149,26 @@ async def continue_working(
 
     Raises:
         HTTPException 404: Project not found
-        HTTPException 501: Not yet implemented
+        HTTPException 400: Invalid state transition
     """
     logger.info(f"User {current_user.username} resuming work on project {project_id}")
 
-    # TODO: Add continue_working to ProjectService
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="ProjectService.continue_working not yet implemented"
+    # Resume work via ProjectService
+    result = await project_service.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
+
+    # Check for errors
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to resume project")
+        if "not found" in error_msg.lower() or "access denied" in error_msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    logger.info(f"Resumed work on project {project_id}")
+
+    return ContinueWorkingResponse(
+        success=result["success"],
+        message=result["message"],
+        agents_resumed=result["agents_resumed"],
+        resumed_agent_ids=result["resumed_agent_ids"],
+        project_status=result["project_status"],
     )

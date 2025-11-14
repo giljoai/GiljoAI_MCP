@@ -8,8 +8,20 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+
+
+async def get_db_manager() -> DatabaseManager:
+    """
+    Get DatabaseManager instance from app state.
+
+    Returns the database manager from the FastAPI application state.
+    """
+    # Get db_manager from application state (set during startup)
+    from api.app import state
+    return state.db_manager
 
 
 def get_orchestration_service(
@@ -31,7 +43,7 @@ def get_orchestration_service(
     """
     # Import state lazily to avoid circular import
     from api.app import state
-    
+
     # OrchestrationService uses db_manager (not session) for its own session management
     return OrchestrationService(
         db_manager=state.db_manager,

@@ -862,6 +862,8 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
     # Handover 0124: Consolidated agent_jobs module (includes orchestration endpoints)
     app.include_router(agent_jobs.router)  # Prefix and tags defined in module __init__.py
+    # Handover 0107: Job operations (cancel, force-fail, health) at /api/jobs prefix
+    app.include_router(agent_jobs.jobs_router)  # Separate prefix for job operations
     app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])  # Handover 0109
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
