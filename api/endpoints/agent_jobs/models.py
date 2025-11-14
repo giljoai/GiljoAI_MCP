@@ -180,3 +180,48 @@ class JobListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ============================================================================
+# Job Operations Models (Handover 0107)
+# ============================================================================
+
+class CancelJobRequest(BaseModel):
+    """Request model for job cancellation."""
+
+    reason: str = Field(..., description="Reason for cancellation")
+
+
+class CancelJobResponse(BaseModel):
+    """Response model for job cancellation."""
+
+    success: bool
+    job_id: str
+    status: str
+    message: str
+
+
+class ForceFailJobRequest(BaseModel):
+    """Request model for force-failing a job."""
+
+    reason: str = Field(..., description="Reason for forced failure")
+
+
+class ForceFailJobResponse(BaseModel):
+    """Response model for force-failing a job."""
+
+    success: bool
+    job_id: str
+    status: str
+    message: str
+
+
+class JobHealthResponse(BaseModel):
+    """Response model for job health metrics."""
+
+    job_id: str
+    status: str
+    last_progress_at: Optional[datetime] = None
+    last_message_check_at: Optional[datetime] = None
+    minutes_since_progress: Optional[float] = None
+    is_stale: bool
