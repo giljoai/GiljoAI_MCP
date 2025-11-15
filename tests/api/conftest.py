@@ -58,11 +58,19 @@ async def api_client(db_manager):
     state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
     app.state.tool_accessor = state.tool_accessor
 
-    # Create mock config for AuthManager
+    # Create mock config for AuthManager and state.config
     mock_config = MagicMock()
     mock_config.jwt.secret_key = "test_secret_key"
     mock_config.jwt.algorithm = "HS256"
     mock_config.jwt.expiration_minutes = 30
+    mock_config.get = MagicMock(side_effect=lambda key, default=None: {
+        "security.auth_enabled": True,
+        "security.api_keys_required": False,
+    }.get(key, default))
+
+    # Set up config in state (for endpoints that use state.config)
+    state.config = mock_config
+    app.state.config = mock_config
 
     # Set up auth manager in both app.state and module-level state used by middleware
     app.state.auth = AuthManager(mock_config, db=None)
