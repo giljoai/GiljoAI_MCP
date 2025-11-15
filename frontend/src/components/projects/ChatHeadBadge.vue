@@ -131,7 +131,7 @@ const ariaLabel = computed(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/agent-colors.scss';
+@use '@/styles/agent-colors.scss' as *;
 
 .chat-head-badge {
   display: inline-flex;
