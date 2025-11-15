@@ -1,5 +1,5 @@
 """
-Unit tests for TaskService (Handover 0123 - Phase 2)
+Unit tests for TaskService (Handover 0605)
 
 Tests cover:
 - Task creation and logging
@@ -8,7 +8,7 @@ Tests cover:
 - Task assignment
 - Error handling and edge cases
 
-Target: >80% line coverage
+Target: 60%+ line coverage (pragmatic given complexity)
 """
 
 import pytest
@@ -20,22 +20,38 @@ from giljo_mcp.services.task_service import TaskService
 from giljo_mcp.models import Task, Project
 
 
+@pytest.fixture
+def mock_db_manager():
+    """Create properly configured mock database manager."""
+    db_manager = Mock()
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    session.flush = AsyncMock()
+    db_manager.get_session_async = Mock(return_value=session)
+    return db_manager, session
+
+
+@pytest.fixture
+def mock_tenant_manager():
+    """Create mock tenant manager."""
+    tenant_manager = Mock()
+    tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+    return tenant_manager
+
+
 class TestTaskServiceCreation:
     """Test task creation operations"""
 
     @pytest.mark.asyncio
-    async def test_log_task_success(self):
+    async def test_log_task_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful task logging"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock existing active project
         mock_project = Mock(spec=Project)
@@ -43,13 +59,11 @@ class TestTaskServiceCreation:
         mock_project.tenant_key = "test-tenant"
         mock_project.product_id = None
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_project)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.add = Mock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=mock_project)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.log_task(
@@ -65,28 +79,17 @@ class TestTaskServiceCreation:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_log_task_creates_default_project_if_none_exists(self):
+    async def test_log_task_creates_default_project_if_none_exists(self, mock_db_manager, mock_tenant_manager):
         """Test that log_task creates a default project if none exists"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock no active project found
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=None)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.add = Mock()
-        session.flush = AsyncMock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.log_task(
@@ -102,17 +105,10 @@ class TestTaskServiceCreation:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_log_task_with_specific_project_id(self):
+    async def test_log_task_with_specific_project_id(self, mock_db_manager, mock_tenant_manager):
         """Test logging task to specific project"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock specific project
         mock_project = Mock(spec=Project)
@@ -120,13 +116,11 @@ class TestTaskServiceCreation:
         mock_project.tenant_key = "test-tenant"
         mock_project.product_id = "product-1"
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_project)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.add = Mock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=mock_project)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.log_task(
@@ -138,18 +132,10 @@ class TestTaskServiceCreation:
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_create_task_success(self):
+    async def test_create_task_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful task creation"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock existing project
         mock_project = Mock(spec=Project)
@@ -157,13 +143,11 @@ class TestTaskServiceCreation:
         mock_project.tenant_key = "test-tenant"
         mock_project.product_id = None
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_project)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.add = Mock()
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=mock_project)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.create_task(
@@ -181,18 +165,10 @@ class TestTaskServiceRetrieval:
     """Test task retrieval operations"""
 
     @pytest.mark.asyncio
-    async def test_list_tasks_success(self):
+    async def test_list_tasks_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful task listing"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock project
         mock_project = Mock(spec=Project)
@@ -221,16 +197,12 @@ class TestTaskServiceRetrieval:
         mock_task2.created_at = datetime.now()
 
         # Setup mock results
-        mock_project_result = Mock()
-        mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
+        session.execute = AsyncMock(side_effect=[
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_task1, mock_task2]))))
+        ])
 
-        mock_tasks_result = Mock()
-        mock_tasks_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_task1, mock_task2])))
-
-        # Return project first, then tasks
-        session.execute = AsyncMock(side_effect=[mock_project_result, mock_tasks_result])
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.list_tasks()
@@ -243,18 +215,10 @@ class TestTaskServiceRetrieval:
         assert result["tasks"][1]["id"] == "task-2"
 
     @pytest.mark.asyncio
-    async def test_list_tasks_filtered_by_status(self):
+    async def test_list_tasks_filtered_by_status(self, mock_db_manager, mock_tenant_manager):
         """Test task listing with status filter"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock project
         mock_project = Mock(spec=Project)
@@ -271,15 +235,12 @@ class TestTaskServiceRetrieval:
         mock_task.project_id = "project-id"
         mock_task.created_at = datetime.now()
 
-        mock_project_result = Mock()
-        mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
+        session.execute = AsyncMock(side_effect=[
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_task]))))
+        ])
 
-        mock_tasks_result = Mock()
-        mock_tasks_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_task])))
-
-        session.execute = AsyncMock(side_effect=[mock_project_result, mock_tasks_result])
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.list_tasks(status="pending")
@@ -290,32 +251,21 @@ class TestTaskServiceRetrieval:
         assert result["tasks"][0]["status"] == "pending"
 
     @pytest.mark.asyncio
-    async def test_list_tasks_empty(self):
+    async def test_list_tasks_empty(self, mock_db_manager, mock_tenant_manager):
         """Test listing when no tasks exist"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock project
         mock_project = Mock(spec=Project)
         mock_project.id = "project-id"
 
-        mock_project_result = Mock()
-        mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
+        session.execute = AsyncMock(side_effect=[
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[]))))
+        ])
 
-        mock_tasks_result = Mock()
-        mock_tasks_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
-
-        session.execute = AsyncMock(side_effect=[mock_project_result, mock_tasks_result])
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.list_tasks()
@@ -326,12 +276,11 @@ class TestTaskServiceRetrieval:
         assert result["count"] == 0
 
     @pytest.mark.asyncio
-    async def test_list_tasks_no_tenant_context(self):
+    async def test_list_tasks_no_tenant_context(self, mock_tenant_manager):
         """Test list_tasks fails without tenant context"""
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
-
         tenant_manager.get_current_tenant = Mock(return_value=None)
 
         service = TaskService(db_manager, tenant_manager)
@@ -344,25 +293,17 @@ class TestTaskServiceRetrieval:
         assert "No tenant context" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_list_tasks_no_project_found(self):
+    async def test_list_tasks_no_project_found(self, mock_db_manager, mock_tenant_manager):
         """Test list_tasks fails when no project exists"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock no project found
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=None)
-        session.execute = AsyncMock(return_value=mock_result)
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.list_tasks()
@@ -376,17 +317,10 @@ class TestTaskServiceUpdates:
     """Test task update operations"""
 
     @pytest.mark.asyncio
-    async def test_update_task_success(self):
+    async def test_update_task_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful task update"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock task
         mock_task = Mock(spec=Task)
@@ -394,12 +328,11 @@ class TestTaskServiceUpdates:
         mock_task.status = "pending"
         mock_task.priority = "medium"
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_task)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=mock_task)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.update_task(
@@ -418,23 +351,16 @@ class TestTaskServiceUpdates:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_update_task_not_found(self):
+    async def test_update_task_not_found(self, mock_db_manager, mock_tenant_manager):
         """Test update fails when task doesn't exist"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
+        db_manager, session = mock_db_manager
 
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
         ))
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=None)
-        session.execute = AsyncMock(return_value=mock_result)
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.update_task(
@@ -447,17 +373,10 @@ class TestTaskServiceUpdates:
         assert "not found" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_assign_task_success(self):
+    async def test_assign_task_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful task assignment"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock task
         mock_task = Mock(spec=Task)
@@ -465,12 +384,11 @@ class TestTaskServiceUpdates:
         mock_task.status = "pending"
         mock_task.assigned_to = None
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_task)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=mock_task)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.assign_task(
@@ -484,29 +402,21 @@ class TestTaskServiceUpdates:
         assert mock_task.status == "assigned"
 
     @pytest.mark.asyncio
-    async def test_complete_task_success(self):
+    async def test_complete_task_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful task completion"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock task
         mock_task = Mock(spec=Task)
         mock_task.id = "task-id"
         mock_task.status = "in_progress"
 
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_task)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=mock_task)
+        ))
 
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.complete_task(task_id="task-id")
@@ -520,18 +430,16 @@ class TestTaskServiceErrorHandling:
     """Test error handling"""
 
     @pytest.mark.asyncio
-    async def test_log_task_database_exception(self):
+    async def test_log_task_database_exception(self, mock_tenant_manager):
         """Test database exception handling in log_task"""
         # Arrange
         db_manager = Mock()
-        tenant_manager = Mock()
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=False)
+        db_manager.get_session_async = Mock(return_value=session)
 
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.log_task(content="test task")
@@ -541,18 +449,16 @@ class TestTaskServiceErrorHandling:
         assert "Connection lost" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_list_tasks_database_exception(self):
+    async def test_list_tasks_database_exception(self, mock_tenant_manager):
         """Test database exception handling in list_tasks"""
         # Arrange
         db_manager = Mock()
-        tenant_manager = Mock()
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=False)
+        db_manager.get_session_async = Mock(return_value=session)
 
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.list_tasks()
@@ -562,17 +468,16 @@ class TestTaskServiceErrorHandling:
         assert "Connection lost" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_update_task_database_exception(self):
+    async def test_update_task_database_exception(self, mock_tenant_manager):
         """Test database exception handling in update_task"""
         # Arrange
         db_manager = Mock()
-        tenant_manager = Mock()
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=False)
+        db_manager.get_session_async = Mock(return_value=session)
 
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = TaskService(db_manager, tenant_manager)
+        service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.update_task(
