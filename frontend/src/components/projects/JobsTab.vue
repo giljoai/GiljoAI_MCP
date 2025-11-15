@@ -70,7 +70,7 @@
             @keydown="handleAgentsKeydown"
           >
             <div class="jobs-tab__agents-grid">
-              <AgentCardEnhanced
+              <AgentCard
                 v-for="agent in sortedAgents"
                 :key="agent.job_id || agent.agent_id"
                 :agent="agent"
@@ -148,7 +148,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import AgentCardEnhanced from './AgentCardEnhanced.vue'
+import AgentCard from '@/components/AgentCard.vue'
 import MessageStream from './MessageStream.vue'
 import MessageInput from './MessageInput.vue'
 import { api } from '@/services/api'
