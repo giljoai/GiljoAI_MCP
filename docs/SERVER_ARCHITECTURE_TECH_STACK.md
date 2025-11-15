@@ -1761,21 +1761,27 @@ logger = logging.getLogger("giljoai.api")
 
 ## Migration & Upgrades
 
-### Database Schema Management
+### Database Schema Management (Handover 0601)
 
-**v3.0 Table Creation**:
+**Single Baseline Migration Approach**:
 ```python
-# From install.py and api/app.py:204
-await state.db_manager.create_tables_async()
-
-# Uses Base.metadata.create_all() - NOT Alembic
-# All tables created directly from SQLAlchemy models
+# Fresh Install: Run baseline migration
+alembic upgrade head
+# Creates ALL 32 tables in single transaction (0.57 seconds)
+# Migration: migrations/versions/f504ea46e988_baseline_schema_all_27_tables.py
 ```
 
+**Migration Strategy**:
+- **One pristine baseline migration** - Generated from SQLAlchemy models (not manual)
+- **Fresh install time**: <1 second (vs 5+ minutes with old 44-migration chain)
+- **All 32 tables created**: From current model definitions
+- **pg_trgm extension**: Automatically installed in baseline migration
+- **Zero migration conflicts**: Single atomic operation (no chicken-and-egg errors)
+
 **Schema Evolution**:
-- **No Alembic migrations** - direct table creation
-- **Backward compatibility** maintained in model definitions
-- **Data migration scripts** in `scripts/` directory for major upgrades
+- **Future changes**: Create incremental migrations on top of baseline
+- **Alembic autogenerate**: Detects model changes and generates migrations
+- **Test both paths**: Fresh install AND incremental upgrade testing required
 
 ### Version Compatibility
 
