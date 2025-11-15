@@ -437,10 +437,10 @@ async def convert_task_to_project(
 
     if existing_active_project:
         logger.info(
-            f"Pausing existing active project {existing_active_project.id} "
+            f"Deactivating existing active project {existing_active_project.id} "
             f"before creating new project from task {task_id}"
         )
-        existing_active_project.status = "paused"
+        existing_active_project.status = "inactive"
         existing_active_project.updated_at = datetime.now(timezone.utc)
 
     # Create project
@@ -451,7 +451,7 @@ async def convert_task_to_project(
         mission="",  # Leave empty - orchestrator will generate mission during staging
         product_id=active_product.id,
         tenant_key=current_user.tenant_key,
-        status="active",
+        status="inactive",  # Projects start inactive, user activates when ready
     )
 
     db.add(project)
