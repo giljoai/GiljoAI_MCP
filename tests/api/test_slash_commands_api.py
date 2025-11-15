@@ -4,35 +4,62 @@ Tests the /api/slash/execute endpoint functionality
 """
 
 import pytest
+import pytest_asyncio
 from fastapi import status
 from sqlalchemy import select
 
 from src.giljo_mcp.models import MCPAgentJob, Project
 
 
-@pytest.fixture
-def mock_project(db_session, test_tenant):
+@pytest_asyncio.fixture
+async def test_tenant_key():
+    """Generate test tenant key"""
+    import uuid
+    return f"tk_test_{uuid.uuid4().hex[:16]}"
+
+
+@pytest_asyncio.fixture
+async def mock_product(db_session, test_tenant_key):
+    """Create test product"""
+    from src.giljo_mcp.models import Product
+
+    product = Product(
+        id="test-product-id",
+        name="Test Product",
+        description="Test product for slash command tests",
+        tenant_key=test_tenant_key,
+        is_active=True,
+    )
+    db_session.add(product)
+    await db_session.commit()
+    return product
+
+
+@pytest_asyncio.fixture
+async def mock_project(db_session, test_tenant_key, mock_product):
     """Create test project"""
     project = Project(
         id="test-project-id",
         name="Test Project",
-        tenant_key=test_tenant.tenant_key,
-        product_id="test-product-id",
+        description="Test project for slash command tests",
+        mission="Test mission for slash command tests",
+        tenant_key=test_tenant_key,
+        product_id=mock_product.id,
         status="active",
     )
     db_session.add(project)
-    db_session.commit()
+    await db_session.commit()
     return project
 
 
-@pytest.fixture
-def mock_orchestrator(db_session, test_tenant, mock_project):
+@pytest_asyncio.fixture
+async def mock_orchestrator(db_session, test_tenant_key, mock_project):
     """Create test orchestrator job"""
     orchestrator = MCPAgentJob(
         job_id="orch-test-12345",
         agent_type="orchestrator",
         status="working",
-        tenant_key=test_tenant.tenant_key,
+        tenant_key=test_tenant_key,
         project_id=mock_project.id,
         instance_number=1,
         context_used=50000,
@@ -40,16 +67,17 @@ def mock_orchestrator(db_session, test_tenant, mock_project):
         mission="Lead the test project",
     )
     db_session.add(orchestrator)
-    db_session.commit()
+    await db_session.commit()
     return orchestrator
 
 
 class TestSlashCommandExecute:
     """Tests for /api/slash/execute endpoint"""
 
-    def test_execute_gil_handover_success(self, client, auth_headers, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_execute_gil_handover_success(self, api_client, auth_headers, mock_orchestrator):
         """Test successful /gil_handover execution"""
-        response = client.post(
+        response = await api_client.post(
             "/api/slash/execute",
             headers=auth_headers,
             json={
@@ -69,14 +97,15 @@ class TestSlashCommandExecute:
         assert "handover_summary" in data
         assert "Instance 2" in data["message"]
 
-    def test_execute_nonexistent_command(self, client, auth_headers, test_tenant):
+    @pytest.mark.asyncio
+    async def test_execute_nonexistent_command(self, api_client, auth_headers, test_tenant_key):
         """Test executing nonexistent slash command"""
-        response = client.post(
+        response = await api_client.post(
             "/api/slash/execute",
             headers=auth_headers,
             json={
                 "command": "gil_nonexistent",
-                "tenant_key": test_tenant.tenant_key,
+                "tenant_key": test_tenant_key,
                 "arguments": {},
             },
         )
@@ -84,9 +113,10 @@ class TestSlashCommandExecute:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not found" in response.json()["detail"]
 
-    def test_execute_without_auth(self, client):
+    @pytest.mark.asyncio
+    async def test_execute_without_auth(self, api_client):
         """Test executing slash command without authentication"""
-        response = client.post(
+        response = await api_client.post(
             "/api/slash/execute",
             json={
                 "command": "gil_handover",
@@ -97,9 +127,10 @@ class TestSlashCommandExecute:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_execute_with_invalid_tenant(self, client, auth_headers, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_execute_with_invalid_tenant(self, api_client, auth_headers, mock_orchestrator):
         """Test executing slash command with wrong tenant key"""
-        response = client.post(
+        response = await api_client.post(
             "/api/slash/execute",
             headers=auth_headers,
             json={
@@ -118,9 +149,10 @@ class TestSlashCommandExecute:
 class TestTriggerSuccessionEndpoint:
     """Tests for /api/agent-jobs/{job_id}/trigger_succession endpoint"""
 
-    def test_trigger_succession_success(self, client, auth_headers, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_success(self, api_client, auth_headers, mock_orchestrator):
         """Test successful succession trigger via UI endpoint"""
-        response = client.post(
+        response = await api_client.post(
             f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession",
             headers=auth_headers,
         )
@@ -133,29 +165,31 @@ class TestTriggerSuccessionEndpoint:
         assert "launch_prompt" in data
         assert "handover_summary" in data
 
-    def test_trigger_succession_nonexistent_job(self, client, auth_headers):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_nonexistent_job(self, api_client, auth_headers):
         """Test triggering succession for nonexistent job"""
-        response = client.post(
+        response = await api_client.post(
             "/api/agent-jobs/nonexistent-job-id/trigger_succession",
             headers=auth_headers,
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_trigger_succession_non_orchestrator(self, client, auth_headers, db_session, test_tenant, mock_project):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_non_orchestrator(self, api_client, auth_headers, db_session, test_tenant_key, mock_project):
         """Test triggering succession for non-orchestrator agent"""
         # Create non-orchestrator agent
         frontend_agent = MCPAgentJob(
             job_id="frontend-test-12345",
             agent_type="frontend-dev",
             status="working",
-            tenant_key=test_tenant.tenant_key,
+            tenant_key=test_tenant_key,
             project_id=mock_project.id,
         )
         db_session.add(frontend_agent)
-        db_session.commit()
+        await db_session.commit()
 
-        response = client.post(
+        response = await api_client.post(
             f"/api/agent-jobs/{frontend_agent.job_id}/trigger_succession",
             headers=auth_headers,
         )
@@ -163,14 +197,15 @@ class TestTriggerSuccessionEndpoint:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not an orchestrator" in response.json()["detail"]
 
-    def test_trigger_succession_already_handed_over(self, client, auth_headers, db_session, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_already_handed_over(self, api_client, auth_headers, db_session, mock_orchestrator):
         """Test triggering succession for already handed over orchestrator"""
         # Mark orchestrator as handed over
         mock_orchestrator.status = "complete"
         mock_orchestrator.handover_to = "orch-successor-12345"
-        db_session.commit()
+        await db_session.commit()
 
-        response = client.post(
+        response = await api_client.post(
             f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession",
             headers=auth_headers,
         )
@@ -178,15 +213,17 @@ class TestTriggerSuccessionEndpoint:
         assert response.status_code == status.HTTP_409_CONFLICT
         assert "already been handed over" in response.json()["detail"]
 
-    def test_trigger_succession_without_auth(self, client, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_without_auth(self, api_client, mock_orchestrator):
         """Test triggering succession without authentication"""
-        response = client.post(f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession")
+        response = await api_client.post(f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_trigger_succession_creates_waiting_successor(self, client, auth_headers, db_session, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_creates_waiting_successor(self, api_client, auth_headers, db_session, mock_orchestrator):
         """Test that succession creates successor in waiting state"""
-        response = client.post(
+        response = await api_client.post(
             f"/api/agent-jobs/{mock_orchestrator.job_id}/trigger_succession",
             headers=auth_headers,
         )
@@ -197,7 +234,7 @@ class TestTriggerSuccessionEndpoint:
 
         # Verify successor exists and is in waiting state
         stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == successor_id)
-        result = db_session.execute(stmt)
+        result = await db_session.execute(stmt)
         successor = result.scalar_one()
 
         assert successor.status == "waiting"
@@ -205,11 +242,12 @@ class TestTriggerSuccessionEndpoint:
         assert successor.instance_number == 2
         assert successor.spawned_by == mock_orchestrator.job_id
 
-    def test_trigger_succession_marks_original_complete(self, client, auth_headers, db_session, mock_orchestrator):
+    @pytest.mark.asyncio
+    async def test_trigger_succession_marks_original_complete(self, api_client, auth_headers, db_session, mock_orchestrator):
         """Test that succession marks original orchestrator as complete"""
         original_job_id = mock_orchestrator.job_id
 
-        response = client.post(
+        response = await api_client.post(
             f"/api/agent-jobs/{original_job_id}/trigger_succession",
             headers=auth_headers,
         )
@@ -218,7 +256,7 @@ class TestTriggerSuccessionEndpoint:
 
         # Verify original orchestrator is complete
         db_session.expire(mock_orchestrator)
-        db_session.refresh(mock_orchestrator)
+        await db_session.refresh(mock_orchestrator)
 
         assert mock_orchestrator.status == "complete"
         assert mock_orchestrator.handover_to is not None
