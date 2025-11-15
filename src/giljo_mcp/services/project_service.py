@@ -111,6 +111,7 @@ class ProjectService:
                     tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project entity
+                now = datetime.utcnow()
                 project = Project(
                     name=name,
                     mission=mission,
@@ -120,10 +121,12 @@ class ProjectService:
                     status=status,
                     context_budget=context_budget,
                     context_used=0,
+                    updated_at=now,  # Explicitly set since DB schema may not have DEFAULT
                 )
 
                 session.add(project)
                 await session.commit()
+                await session.refresh(project)  # Load DB-generated fields (created_at, updated_at)
 
                 project_id = str(project.id)
 
@@ -137,7 +140,11 @@ class ProjectService:
                     "tenant_key": tenant_key,
                     "product_id": product_id,
                     "name": name,
+                    "description": description,
+                    "mission": mission,
                     "status": status,
+                    "created_at": project.created_at.isoformat() if project.created_at else None,
+                    "updated_at": project.updated_at.isoformat() if project.updated_at else None,
                 }
 
         except Exception as e:
