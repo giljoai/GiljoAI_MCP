@@ -8,7 +8,17 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.1+)**: Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.1+)**: Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+
+**Critical Remediation (v3.1.1)**: Handovers 0500-0515 completed major remediation after 0120-0130 refactoring:
+- ProductService vision upload with chunking (<25K tokens per chunk)
+- ProjectService lifecycle methods (activate, deactivate, summary, launch_orchestrator)
+- OrchestrationService with context tracking (context_used / context_budget for 90% auto-succession trigger)
+- Settings endpoints (general_settings, network_settings, product_info)
+- Vision upload error handling with user notifications via WebSocket
+- Succession UI components (SuccessionTimeline, LaunchSuccessorDialog) with manual handover support
+- Test suite restored (>80% coverage across services, endpoints, integration workflows)
+- E2E integration tests for critical workflows (product → vision → project → orchestrator)
 
 **Database Migrations (v3.1+)**: Single baseline migration approach (Handover 0601) • Fresh installs in <1 second • 32 tables from pristine SQLAlchemy models • See [Migration Strategy](docs/architecture/migration-strategy.md)
 
@@ -230,6 +240,66 @@ Task: "Update the create_product method in ProductService"
 - **Token Reduction**: MissionPlanner + AgentSelector + WorkflowEngine = 70% reduction
 - **Serena MCP**: Use Serena's symbolic tools for code navigation (find_symbol, get_symbols_overview, find_referencing_symbols) - REQUIRED for exploring codebase efficiently and avoiding full file reads
 
+## Service Layer Architecture (v3.1+)
+
+**Core Services** (all use AsyncSession for database access, multi-tenant isolation via tenant_key):
+- `ProductService` (src/giljo_mcp/services/product_service.py) - Product & vision document management with chunked uploads
+- `ProjectService` (src/giljo_mcp/services/project_service.py) - Project lifecycle operations (activate, deactivate, launch, summary)
+- `OrchestrationService` (src/giljo_mcp/services/orchestration_service.py) - Context tracking, succession management, orchestrator coordination
+- `SettingsService` (src/giljo_mcp/services/settings_service.py) - System settings persistence and retrieval
+- `AgentJobManager` (src/giljo_mcp/agent_job_manager.py) - Agent job lifecycle management
+
+**Service Pattern** (all services follow this pattern):
+- AsyncSession injection for database transactions
+- Multi-tenant isolation (tenant_key parameter)
+- Pydantic schemas for request/response validation
+- WebSocket event emission for real-time UI updates
+- Comprehensive error handling with domain-specific exceptions
+
+**Example Usage**:
+```python
+from src.giljo_mcp.services.project_service import ProjectService
+
+# Inject session and tenant
+service = ProjectService(session, tenant_key="user123")
+
+# Lifecycle operations
+await service.activate_project(project_id)
+await service.deactivate_all_projects_except(project_id)
+summary = await service.get_project_summary(project_id)
+```
+
+## Testing Strategy (v3.1+)
+
+**Unit Tests** (`tests/services/`):
+- ProductService: Vision upload, chunking (<25K tokens), config_data persistence
+- ProjectService: Lifecycle methods (activate/deactivate), Single Active Project constraint
+- OrchestrationService: Context tracking, succession triggers, handover summary generation
+- SettingsService: General settings, network settings, product info retrieval
+
+**Integration Tests** (`tests/integration/`):
+- Complete E2E workflows (product creation → vision upload → project activation → orchestrator launch)
+- Multi-tenant isolation verification (zero cross-tenant leakage)
+- Error condition handling (failed uploads, invalid transitions, succession failures)
+- WebSocket real-time updates (job status changes, completion events)
+
+**Coverage Target**: >80% across all services and endpoints (verified via pytest-cov)
+
+**Running Tests**:
+```bash
+# All tests with coverage
+pytest tests/ --cov=src/giljo_mcp --cov-report=html
+
+# Service layer only
+pytest tests/services/ -v
+
+# Integration tests only
+pytest tests/integration/ -v
+
+# Specific test file
+pytest tests/test_product_service.py -v
+```
+
 ## Development Workflow
 
 **Adding MCP Tool**: `src/giljo_mcp/tools/` → Register in `__init__.py` → Add tests
@@ -311,6 +381,40 @@ Task: "Update the create_product method in ProductService"
 
 **User Guide**: [docs/user_guides/orchestrator_succession_guide.md](docs/user_guides/orchestrator_succession_guide.md)
 **Developer Guide**: [docs/developer_guides/orchestrator_succession_developer_guide.md](docs/developer_guides/orchestrator_succession_developer_guide.md)
+
+## Context Tracking Pattern (Orchestrator Succession)
+
+**Implementation** (Handover 0502 - OrchestrationService):
+
+```python
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
+
+# Create orchestrator with context budget
+service = OrchestrationService(session, tenant_key)
+job = await service.create_orchestrator_job(
+    project_id=project_id,
+    mission=mission,
+    context_budget=200000  # tokens
+)
+
+# Update context usage on message sends
+await service.update_context_usage(job.id, additional_tokens=1500)
+
+# Auto-succession triggers at 90% threshold
+if (context_used / context_budget) >= 0.9:
+    successor = await service.trigger_succession(
+        job_id=job.id,
+        reason="context_limit"
+    )
+    # successor.handover_summary contains condensed context (<10K tokens)
+```
+
+**Key Features**:
+- Real-time context monitoring (context_used / context_budget tracked per message)
+- Automatic succession trigger at 90% capacity (configurable)
+- Handover summary generation (<10K tokens via mission condensation)
+- Full lineage tracking (spawned_by chain preserved across instances)
+- Manual succession via `/gil_handover` slash command or UI "Hand Over" button
 
 ## Platform Handler Architecture (v3.1.0+)
 
