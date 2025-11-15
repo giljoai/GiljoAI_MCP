@@ -110,14 +110,22 @@ Complete system restoration and validation for GiljoAI MCP. **Zero compromises**
 - notifications, permissions, roles, sessions, webhooks
 - workflow_states, websocket_connections
 
-### Migration Status (CRITICAL - Updated from Handover 0600 Audit)
+### Migration Status (CRITICAL - Updated from Handover 0601 Investigation)
 - **45 migrations** exist (complex dependency chain)
-- **BROKEN**: Migration chain fails at `20251029_0073_01`
+- **ARCHITECTURAL ISSUE**: Migration chain has chicken-and-egg conflict
+  - Migration `20251114` (position 44): Creates 14 tables with complete schemas
+  - Migrations 1-43: Incrementally ADD columns to these same tables
+  - **Conflict**: Moving 20251114 early causes "column already exists" errors
+  - **Impact**: Fresh installations IMPOSSIBLE (18/31 tables), cannot simply reorder
 - **Current version**: `20251026_224146` (October 2025)
-- **Tables created**: 18 of 31 (58% complete)
-- **Missing tables**: 14 critical tables (mcp_agent_jobs, vision_documents, etc.)
-- **Impact**: Fresh installations IMPOSSIBLE, core workflows NON-FUNCTIONAL
-- **Fix required**: Handover 0601 must be executed immediately to fix migration chain
+- **Missing tables**: 14 critical tables (mcp_agent_jobs, vision_documents, settings, etc.)
+- **Root cause**: Complete table creation at end of chain vs. incremental column additions throughout chain
+- **Fix required**: Handover 0601b - Migration Chain Architectural Refactor (16-20 hours)
+  - Split into minimal base schemas early + conditional backfill late
+  - Modify 15+ migrations to use conditional column additions (IF NOT EXISTS)
+  - Test both fresh install and incremental upgrade paths
+- **Workaround**: Use existing database for testing (skip fresh install validation temporarily)
+- **Status**: Handover 0601 investigation complete, architectural refactor required before Phase 1
 
 ---
 
