@@ -148,6 +148,10 @@ async def tenant_a_project(api_client: AsyncClient, tenant_a_token: str, db_mana
         session.add(project)
         await session.commit()
         await session.refresh(project)
+
+        # CRITICAL FIX: Clear cookies from tenant_a_token fixture to prevent persistence
+        api_client.cookies.clear()
+
         return project
 
 
@@ -180,6 +184,10 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_token: str, db_mana
         session.add(project)
         await session.commit()
         await session.refresh(project)
+
+        # CRITICAL FIX: Clear cookies from tenant_b_token fixture to prevent persistence
+        api_client.cookies.clear()
+
         return project
 
 
