@@ -8,16 +8,10 @@
 
 ```
 You are working on Project 600 (Complete System Restoration & Validation) for the GiljoAI MCP codebase.
-Execute on:  handovers/600/F:\GiljoAI_MCP\handovers\600\0600_comprehensive_system_audit.md
+
+**Your Handover**: handovers/600/[HANDOVER_NUMBER]_[HANDOVER_NAME].md
 
 **Project Root**: F:\GiljoAI_MCP
-
-**Your Handover folder**: handovers/600/F:\GiljoAI_MCP\handovers\600\
-
- Serena MCP saved significant time - Used get_symbols_overview and find_symbol instead of reading full files
-  - Production-grade code only - No TODO comments, no placeholders, no bandaids
-  - Token-efficient documentation - Inline comments optimized for AI agent consumption
-  - Existing patterns followed - Used VisionDocumentRepository and VisionDocumentChunker as designed
 
 **Serena MCP** (REQUIRED for code navigation):
 - Use `mcp__serena__get_symbols_overview` before reading files
@@ -89,7 +83,48 @@ EOF
 - Production-grade code only
 - Comprehensive error handling
 
-Execute the handover specification. Do not ask for permission - the handover file contains complete instructions.
+Execute the handover specification. Do not ask for permission - the handover file contains complete instructions. use subagents
+```
+
+---
+
+## Usage Instructions
+
+1. **Copy the prompt above**
+2. **Replace placeholders**:
+   - `[HANDOVER_NUMBER]` → e.g., `0600`, `0601`, `0602`, etc.
+   - `[HANDOVER_NAME]` → e.g., `comprehensive_system_audit`, `fix_migration_order`, etc.
+3. **Paste into Claude Code CLI**
+4. **Agent will execute directly on master branch**
+
+---
+
+## Examples
+
+### Example 1: Handover 0600 (System Audit)
+```
+You are working on Project 600 (Complete System Restoration & Validation) for the GiljoAI MCP codebase.
+
+**Your Handover**: handovers/600/0600_comprehensive_system_audit.md
+
+**Project Root**: F:\GiljoAI_MCP
+
+[... rest of template ...]
+
+Execute the handover specification. Do not ask for permission - the handover file contains complete instructions. use subagents
+```
+
+### Example 2: Handover 0601 (Fix Migration Order)
+```
+You are working on Project 600 (Complete System Restoration & Validation) for the GiljoAI MCP codebase.
+
+**Your Handover**: handovers/600/0601_fix_migration_order.md
+
+**Project Root**: F:\GiljoAI_MCP
+
+[... rest of template ...]
+
+Execute the handover specification. Do not ask for permission - the handover file contains complete instructions. use subagents
 ```
 
 ---

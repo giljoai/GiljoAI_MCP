@@ -47,7 +47,7 @@ You are working on Project 600 (Complete System Restoration & Validation) for th
 - Include test run output in PR description
 - Document any assumptions made due to lack of DB access
 
-Execute the handover specification. Do not ask for permission - the handover file contains complete instructions.
+Execute the handover specification. Do not ask for permission - the handover file contains complete instructions. use subagents
 ```
 
 ---
@@ -108,7 +108,7 @@ You are working on Project 600 (Complete System Restoration & Validation) for th
 - Include test run output in PR description
 - Document any assumptions made due to lack of DB access
 
-Execute the handover specification. Do not ask for permission - the handover file contains complete instructions.
+Execute the handover specification. Do not ask for permission - the handover file contains complete instructions. use subagents
 ```
 
 ### Example 2: Handover 0609 (Products API Validation)
@@ -153,7 +153,7 @@ You are working on Project 600 (Complete System Restoration & Validation) for th
 - Include test run output in PR description
 - Document any assumptions made due to lack of DB access
 
-Execute the handover specification. Do not ask for permission - the handover file contains complete instructions.
+Execute the handover specification. Do not ask for permission - the handover file contains complete instructions. use subagents
 ```
 
 ---
