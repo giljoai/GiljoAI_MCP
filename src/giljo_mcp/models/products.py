@@ -107,7 +107,7 @@ class Product(Base):
         Index(
             "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
         ),  # Soft delete support
-        CheckConstraint("vision_type IN ('file', 'inline', 'none')", name="ck_product_vision_type"),
+        # Handover 0128e: Removed CheckConstraint for deprecated vision_type field
         # Handover 0050: Enforce single active product per tenant (defense in depth)
         Index(
             "idx_product_single_active_per_tenant", "tenant_key", unique=True, postgresql_where=text("is_active = true")
