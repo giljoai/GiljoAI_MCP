@@ -240,7 +240,7 @@
           <v-card-text class="pa-4">
             <!-- Agent Cards Container -->
             <div v-if="agents.length > 0" class="agent-cards-container">
-              <AgentCardEnhanced
+              <AgentCard
                 v-for="agent in agents"
                 :key="agent.agent_id || agent.job_id"
                 :agent="agent"
@@ -342,7 +342,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import AgentCardEnhanced from './AgentCardEnhanced.vue'
+import AgentCard from '@/components/AgentCard.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
