@@ -120,33 +120,40 @@ async def get_template(
 @router.get("/", response_model=list[TemplateResponse])
 async def list_templates(
     current_user: User = Depends(get_current_active_user),
-    template_service: TemplateService = Depends(get_template_service),
+    session: AsyncSession = Depends(get_db_session),
     role: Optional[str] = Query(None, description="Filter by role"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
 ) -> list[TemplateResponse]:
     """
     List all templates for the current tenant.
 
-    Uses TemplateService for data retrieval.
-    Note: Filtering logic kept here temporarily until TemplateService supports it.
+    NOTE: Using direct DB query instead of TemplateService due to service returning
+    incomplete data (dicts instead of full ORM objects). This allows proper response
+    conversion with all fields populated.
     """
     logger.debug(f"User {current_user.username} listing templates")
 
-    result = await template_service.list_templates(tenant_key=current_user.tenant_key)
+    try:
+        from sqlalchemy import select
+        from src.giljo_mcp.models import AgentTemplate
 
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to list templates")
-        raise HTTPException(status_code=500, detail=error_msg)
+        # TENANT ISOLATION: Only return templates for current tenant
+        query = select(AgentTemplate).where(AgentTemplate.tenant_key == current_user.tenant_key)
 
-    templates = result.get("templates", [])
+        # Apply filters
+        if role:
+            query = query.where(AgentTemplate.role == role)
+        if is_active is not None:
+            query = query.where(AgentTemplate.is_active == is_active)
 
-    # Apply filters (TODO: Move to TemplateService)
-    if role:
-        templates = [t for t in templates if t.role == role]
-    if is_active is not None:
-        templates = [t for t in templates if t.is_active == is_active]
+        result = await session.execute(query)
+        templates = result.scalars().all()
 
-    return [_convert_to_response(t) for t in templates]
+        return [_convert_to_response(t) for t in templates]
+
+    except Exception as e:
+        logger.exception(f"Failed to list templates: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list templates: {str(e)}")
 
 
 @router.post("/", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
