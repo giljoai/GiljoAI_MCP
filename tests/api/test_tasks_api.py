@@ -296,7 +296,7 @@ class TestTaskCRUD:
         """Test POST /api/v1/tasks/ - Create with minimal required data."""
         response = await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Minimal Task"},
+            json={"title": "Minimal Task", "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
 
@@ -331,7 +331,8 @@ class TestTaskCRUD:
             json={
                 "title": "Task with Project",
                 "project_id": project["id"],
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
+                "status": "pending"
             },
             cookies={"access_token": tenant_a_token}
         )
@@ -346,7 +347,7 @@ class TestTaskCRUD:
         """Test POST /api/v1/tasks/ - 401 without authentication."""
         response = await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Unauthorized Task"}
+            json={"title": "Unauthorized Task", "status": "pending"}
         )
         assert response.status_code == 401
 
@@ -378,12 +379,12 @@ class TestTaskCRUD:
         # Create multiple tasks
         await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Product Task 1", "product_id": tenant_a_product["id"]},
+            json={"title": "Product Task 1", "product_id": tenant_a_product["id"], "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
         await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Product Task 2", "product_id": tenant_a_product["id"]},
+            json={"title": "Product Task 2", "product_id": tenant_a_product["id"], "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
 
@@ -407,7 +408,7 @@ class TestTaskCRUD:
         # Create task without product
         await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Task without Product"},
+            json={"title": "Task without Product", "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
 
@@ -657,7 +658,7 @@ class TestTaskCRUD:
         # Create task as regular user
         response = await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "User Task"},
+            json={"title": "User Task", "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
         task = response.json()
@@ -690,7 +691,7 @@ class TestTaskCRUD:
         # Create task to delete
         response = await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Task to Delete"},
+            json={"title": "Task to Delete", "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
         task = response.json()
@@ -828,7 +829,8 @@ class TestTaskConversion:
             json={
                 "title": "Task to Convert",
                 "description": "This will become a project",
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
+                "status": "pending"
             },
             cookies={"access_token": tenant_a_token}
         )
@@ -868,7 +870,8 @@ class TestTaskConversion:
             "/api/v1/tasks/",
             json={
                 "title": "Auto Named Project",
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
+                "status": "pending"
             },
             cookies={"access_token": tenant_a_token}
         )
@@ -892,7 +895,7 @@ class TestTaskConversion:
         # Create and convert task
         task_response = await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Already Converted", "product_id": tenant_a_product["id"]},
+            json={"title": "Already Converted", "product_id": tenant_a_product["id"], "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
         task = task_response.json()
@@ -926,7 +929,7 @@ class TestTaskConversion:
         # Create task
         task_response = await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "No Product Task"},
+            json={"title": "No Product Task", "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
         task = task_response.json()
@@ -1018,7 +1021,7 @@ class TestTaskSummary:
         # Create tasks for specific product
         await api_client.post(
             "/api/v1/tasks/",
-            json={"title": "Product Task", "product_id": tenant_a_product["id"]},
+            json={"title": "Product Task", "product_id": tenant_a_product["id"], "status": "pending"},
             cookies={"access_token": tenant_a_token}
         )
 
