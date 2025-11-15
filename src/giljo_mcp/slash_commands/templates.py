@@ -4,13 +4,13 @@ Slash command handlers for template installation and updates (/gil_fetch, /gil_u
 
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..downloads.token_manager import TokenManager
 from ..file_staging import FileStaging
 
 
-async def _stage_agent_templates(db_session, tenant_key: str) -> dict[str, Any]:
+async def _stage_agent_templates(db_session: AsyncSession, tenant_key: str) -> dict[str, Any]:
     token_mgr = TokenManager(db_session=db_session)
     token = await token_mgr.generate_token(
         tenant_key=tenant_key,
@@ -48,10 +48,10 @@ async def _stage_agent_templates(db_session, tenant_key: str) -> dict[str, Any]:
     }
 
 
-async def handle_gil_fetch(db_session: Session, tenant_key: str, **_: Any) -> dict[str, Any]:
+async def handle_gil_fetch(db_session: AsyncSession, tenant_key: str, **_: Any) -> dict[str, Any]:
     return await _stage_agent_templates(db_session, tenant_key)
 
 
-async def handle_gil_update(db_session: Session, tenant_key: str, **_: Any) -> dict[str, Any]:
+async def handle_gil_update(db_session: AsyncSession, tenant_key: str, **_: Any) -> dict[str, Any]:
     return await _stage_agent_templates(db_session, tenant_key)
 
