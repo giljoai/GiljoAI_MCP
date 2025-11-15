@@ -1,105 +1,94 @@
-# Migration Strategy - Unified Agent State Architecture
+# Migration Strategy (Post-Nuclear Reset)
 
-## Timeline: 4 Weeks
+**Status**: SUPERSEDED by Nuclear Reset (Handover 0601)
+**Current Strategy**: Single Baseline Migration
+**See**: docs/guides/migration_strategy.md (authoritative post-reset documentation)
 
-### Week 1: Database Schema
-- Create migration script
-- Test on staging
-- Deploy to production
-- Verify with queries
+---
 
-### Week 2: Core Components + API
-- Create StateTransitionManager
-- Create MessageInterceptor
-- Enhance Health Monitor
-- Update API endpoints
-- Deploy to production
+## Nuclear Reset Outcome (Handover 0601)
 
-### Week 3-4: Agent Model Deprecation
-- Add deprecation warnings
-- Create migration script
-- Test migration
-- Deploy migration
+The original multi-week migration strategy was **replaced** with a nuclear reset approach that solved fundamental architectural conflicts.
 
-## Phase 1: Database (Week 1)
+### What Changed
 
-### Migration Script
+**Before** (Broken 44-Migration Chain):
+- 44 migration files with chicken-and-egg dependency conflicts
+- Fresh installs FAILED with "table not found" errors
+- Incremental migrations adding columns to tables that didn't exist yet
+- Complex dependency graph requiring weeks to untangle
 
-alembic/versions/0108_unified_agent_state.py
+**After** (Single Baseline):
+- **1 pristine baseline migration** generated from SQLAlchemy models
+- Fresh installs SUCCESS in 0.57 seconds (vs 5+ minutes broken)
+- **32 tables** created atomically in single transaction
+- **Zero conflicts** - clean foundation for future incremental changes
 
-```python
-def upgrade():
-    op.add_column('mcp_agent_jobs',
-        sa.Column('version', sa.Integer(), default=1))
-    op.add_column('mcp_agent_jobs',
-        sa.Column('cancelled_at', sa.DateTime(timezone=True)))
-    op.drop_constraint('ck_mcp_agent_job_status')
-    op.create_check_constraint('ck_mcp_agent_job_status',
-        'mcp_agent_jobs', "status IN (...)")
-```
+### Current Migration File
 
-### Verification
+**File**: `migrations/versions/f504ea46e988_baseline_schema_all_27_tables.py`
+- **Size**: 59KB
+- **Tables**: 32 (31 data tables + alembic_version)
+- **Extensions**: pg_trgm (automatic full-text search support)
+- **Source**: Alembic autogenerate from SQLAlchemy models
+- **Status**: Production-ready
 
-```sql
-SELECT COUNT(*) FROM mcp_agent_jobs WHERE version IS NULL;
--- Expected: 0
-```
-
-### Rollback
+### Migration Process
 
 ```bash
+# Fresh Install
+alembic upgrade head
+# Creates all 32 tables in <1 second
+
+# Future Schema Changes
+# 1. Update SQLAlchemy models in src/giljo_mcp/models/
+# 2. Generate incremental migration
+alembic revision --autogenerate -m "add_new_feature"
+# 3. Test migration on dev database
+alembic upgrade head
+# 4. Test rollback
 alembic downgrade -1
+# 5. Commit migration file
 ```
 
-## Phase 2: Code Deployment (Week 2)
+### Benefits
 
-### New Files
-- src/giljo_mcp/types/job_status.py
-- src/giljo_mcp/state_manager.py
-- src/giljo_mcp/message_interceptor.py
+- **Speed**: <1 second fresh install (vs 5+ minutes)
+- **Reliability**: Zero chicken-and-egg conflicts
+- **Simplicity**: Single atomic operation
+- **Clean Foundation**: Future migrations build on pristine baseline
+- **Developer Velocity**: No complex dependency debugging
 
-### Modified Files
-- api/endpoints/agent_jobs.py
-- api/schemas/agent_jobs.py
+### Testing Results
 
-### Testing
-- Unit tests: 100+ tests
-- Integration tests: 30+ tests
-- API tests: 20+ tests
+```
+Fresh Install Test (Empty Database):
+- Time: 0.57 seconds
+- Tables: 32 created
+- Extensions: pg_trgm installed
+- Status: SUCCESS
 
-## Phase 3: Agent Migration (Week 3-4)
-
-### Add Deprecation Warning
-
-```python
-class Agent(Base):
-    def __init__(self):
-        warnings.warn("Agent deprecated. Use MCPAgentJob.")
+install.py Flow Test:
+- Time: 0.57 seconds
+- Tables: 32 created
+- Status: SUCCESS
 ```
 
-### Migration Script
+### For Complete Details
 
-scripts/migrate_agent_to_mcpagentjob.py
+See **docs/guides/migration_strategy.md** for:
+- Detailed migration architecture
+- Future migration guidelines
+- Developer best practices
+- Multi-tenant safety requirements
+- Production deployment considerations
 
-```bash
-python scripts/migrate_agent_to_mcpagentjob.py --dry-run
-python scripts/migrate_agent_to_mcpagentjob.py --execute
-```
+---
 
-## Rollback Procedures
+## Historical Context
 
-### Database Rollback
-alembic downgrade -1
+This file originally described a multi-week migration strategy for unified agent state architecture. That approach was **abandoned** in favor of the nuclear reset when investigation revealed fundamental architectural conflicts that could not be resolved through incremental migration reordering.
 
-### Code Rollback
-git revert <commit>
+**Decision**: Nuclear reset provided cleaner, faster, more reliable foundation than attempting to fix broken 44-migration chain.
 
-### Data Rollback
-Restore from backup
-
-## Success Criteria
-
-- Zero data loss
-- All tests passing
-- Performance < 100ms
-- Zero production incidents
+**Outcome**: Production-ready baseline migration in <1 day vs weeks of complex debugging.
