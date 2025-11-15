@@ -160,3 +160,79 @@ async def auth_headers(db_manager, api_client) -> dict:
 
         # Use Cookie header because dependencies expect JWT in cookie 'access_token'
         return {"Cookie": f"access_token={token}"}
+
+
+@pytest_asyncio.fixture
+async def admin_user(db_manager):
+    """
+    Admin user for testing admin-only endpoints.
+
+    This fixture:
+    - Creates a test admin user with unique credentials
+    - Generates proper tenant key for multi-tenant isolation
+    - Uses bcrypt password hashing
+    - Sets role to "admin" for admin-only endpoint testing
+    - Each test gets a unique admin user to prevent conflicts
+
+    Usage:
+        async def test_admin_endpoint(admin_user, admin_token):
+            # Use admin_token for authenticated admin requests
+            headers = {"Cookie": f"access_token={admin_token}"}
+            response = await api_client.get("/api/v1/admin-endpoint", headers=headers)
+            assert response.status_code == 200
+
+    Returns:
+        User: Admin user model instance with role="admin"
+    """
+    from uuid import uuid4
+
+    from src.giljo_mcp.models import User
+    from src.giljo_mcp.tenant import TenantManager
+
+    unique_id = uuid4().hex[:8]
+    tenant_key = TenantManager.generate_tenant_key(f"admin_{unique_id}")
+
+    async with db_manager.get_session_async() as session:
+        user = User(
+            username=f"admin_{unique_id}",
+            password_hash=bcrypt.hash("admin_password"),
+            email=f"admin_{unique_id}@test.com",
+            tenant_key=tenant_key,
+            role="admin",  # ADMIN ROLE for admin-only endpoints
+            is_active=True
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+@pytest_asyncio.fixture
+async def admin_token(admin_user):
+    """
+    Admin JWT token for authenticated API requests.
+
+    This fixture:
+    - Generates a valid JWT token for the admin_user
+    - Token includes admin role and tenant isolation
+    - Can be used in Cookie header for API authentication
+    - Follows same pattern as auth_headers fixture
+
+    Usage:
+        async def test_admin_endpoint(api_client, admin_token):
+            headers = {"Cookie": f"access_token={admin_token}"}
+            response = await api_client.get("/api/v1/settings", headers=headers)
+            assert response.status_code == 200
+
+    Returns:
+        str: JWT access token for admin user
+    """
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
+
+    jwt_manager = JWTManager()
+    return jwt_manager.create_access_token(
+        user_id=admin_user.id,
+        username=admin_user.username,
+        role=admin_user.role,
+        tenant_key=admin_user.tenant_key,
+    )
