@@ -84,11 +84,10 @@
         md="4"
         lg="3"
       >
-        <AgentStatusCard
+        <AgentCard
           :agent="agent"
-          @click="viewAgentDetails"
-          @cancel="handleCancelAgent"
-          @view-messages="viewMessages"
+          mode="jobs"
+          @view-details="viewAgentDetails"
         />
       </v-col>
 
@@ -192,7 +191,7 @@ import { useRouter } from 'vue-router'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-import AgentStatusCard from './AgentStatusCard.vue'
+import AgentCard from '@/components/AgentCard.vue'
 
 // Composables
 const router = useRouter()

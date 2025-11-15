@@ -29,7 +29,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useOrchestrationStore } from '@/stores/orchestration'
-import AgentCard from './AgentCard.vue'
+import AgentCard from '@/components/AgentCard.vue'
 import OrchestratorCard from './OrchestratorCard.vue'
 
 const props = defineProps({
