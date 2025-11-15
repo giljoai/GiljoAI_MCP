@@ -137,118 +137,6 @@ class TestContextServiceStubs:
         assert result["settings"]["product_id"] == "default"
 
 
-class TestContextServiceDeprecated:
-    """Test deprecated method responses"""
-
-    @pytest.mark.asyncio
-    async def test_discover_context_returns_deprecated_error(self):
-        """Test that discover_context returns deprecation message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.discover_context(
-            project_id="proj-123",
-            path="/some/path",
-            agent_role="implementer"
-        )
-
-        # Assert
-        assert "error" in result
-        assert result["error"] == "DEPRECATED"
-        assert "message" in result
-        assert "replacement" in result
-        assert "removal_version" in result
-        assert result["removal_version"] == "v3.2.0"
-
-    @pytest.mark.asyncio
-    async def test_get_file_context_returns_deprecated_error(self):
-        """Test that get_file_context returns deprecation message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.get_file_context(file_path="src/main.py")
-
-        # Assert
-        assert "error" in result
-        assert result["error"] == "DEPRECATED"
-        assert "message" in result
-        assert "Read tool" in result["reason"]
-        assert result["removal_version"] == "v3.2.0"
-
-    @pytest.mark.asyncio
-    async def test_search_context_returns_deprecated_error(self):
-        """Test that search_context returns deprecation message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.search_context(
-            query="class MyClass",
-            file_types=["*.py", "*.js"]
-        )
-
-        # Assert
-        assert "error" in result
-        assert result["error"] == "DEPRECATED"
-        assert "message" in result
-        assert "Grep tool" in result["reason"]
-        assert result["removal_version"] == "v3.2.0"
-
-    @pytest.mark.asyncio
-    async def test_get_context_summary_returns_deprecated_error(self):
-        """Test that get_context_summary returns deprecation message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.get_context_summary(project_id="proj-123")
-
-        # Assert
-        assert "error" in result
-        assert result["error"] == "DEPRECATED"
-        assert "message" in result
-        assert "get_agent_mission" in result["reason"]
-        assert result["removal_version"] == "v3.2.0"
-
-    @pytest.mark.asyncio
-    async def test_deprecated_methods_return_documentation_links(self):
-        """Test that all deprecated methods include documentation references"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act & Assert - discover_context
-        result1 = await service.discover_context()
-        assert "documentation" in result1
-        assert "Comprehensive_MCP_Analysis.md" in result1["documentation"]
-
-        # Act & Assert - get_file_context
-        result2 = await service.get_file_context("test.py")
-        assert "documentation" in result2
-        assert "Comprehensive_MCP_Analysis.md" in result2["documentation"]
-
-        # Act & Assert - search_context
-        result3 = await service.search_context("query")
-        assert "documentation" in result3
-        assert "Comprehensive_MCP_Analysis.md" in result3["documentation"]
-
-        # Act & Assert - get_context_summary
-        result4 = await service.get_context_summary()
-        assert "documentation" in result4
-        assert "Comprehensive_MCP_Analysis.md" in result4["documentation"]
-
-
 class TestContextServiceBehavior:
     """Test service behavior and initialization"""
 
@@ -289,22 +177,6 @@ class TestContextServiceBehavior:
         # Verify no database calls were made
         db_manager.get_session_async.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_deprecated_methods_dont_require_database(self):
-        """Test that deprecated methods don't access database"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act - Call all deprecated methods
-        await service.discover_context()
-        await service.get_file_context("test.py")
-        await service.search_context("query")
-        await service.get_context_summary()
-
-        # Assert - No database calls should be made
-        db_manager.get_session_async.assert_not_called()
 
 
 class TestContextServiceConsistency:
@@ -330,28 +202,3 @@ class TestContextServiceConsistency:
         for result in results:
             assert result["success"] is True
 
-    @pytest.mark.asyncio
-    async def test_all_deprecated_methods_return_consistent_format(self):
-        """Test that all deprecated methods return consistent error format"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        service = ContextService(db_manager, tenant_manager)
-
-        # Act
-        results = [
-            await service.discover_context(),
-            await service.get_file_context("test.py"),
-            await service.search_context("query"),
-            await service.get_context_summary(),
-        ]
-
-        # Assert - All should have same structure
-        for result in results:
-            assert "error" in result
-            assert result["error"] == "DEPRECATED"
-            assert "message" in result
-            assert "replacement" in result
-            assert "documentation" in result
-            assert "removal_version" in result
-            assert "reason" in result
