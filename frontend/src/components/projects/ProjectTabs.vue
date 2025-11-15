@@ -320,8 +320,8 @@ async function handleSendMessage(message, recipient) {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables.scss';
-@import '@/styles/agent-colors.scss';
+@use '@/styles/variables.scss' as *;
+@use '@/styles/agent-colors.scss' as *;
 
 .project-tabs-container {
   background: var(--color-bg-secondary);

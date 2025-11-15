@@ -176,7 +176,7 @@
         <!-- Status Column with Badge -->
         <template v-slot:item.status="{ item }">
           <StatusBadge
-            :status="item.status"
+            :status="normalizeStatus(item.status)"
             :project-id="item.id"
             @action="handleStatusAction"
           />
@@ -704,6 +704,14 @@ function toggleDateLocale() {
   localStorage.setItem('dateLocale', dateLocale.value)
 }
 
+// Normalize status values for UI (e.g., legacy 'paused' -> 'inactive')
+function normalizeStatus(status) {
+  if (status === 'paused') {
+    return 'inactive'
+  }
+  return status || 'inactive'
+}
+
 // Methods
 // Handover 0062: Activate project
 async function activateProject(projectId) {
@@ -839,11 +847,19 @@ function resetForm() {
 
 async function saveProject() {
   if (!formValid.value) {
-    console.warn('Form is not valid')
+    console.warn('[PROJECTS][CreateProject] Form is not valid', {
+      projectData: projectData.value
+    })
     return
   }
 
   try {
+    console.log('[PROJECTS][CreateProject] saveProject clicked', {
+      editing: !!editingProject.value,
+      activeProduct: activeProduct.value,
+      projectData: projectData.value
+    })
+
     if (editingProject.value) {
       // Update existing project
       const updateData = {
@@ -851,6 +867,8 @@ async function saveProject() {
         mission: projectData.value.mission,
         status: projectData.value.status,
       }
+
+      console.log('[PROJECTS][CreateProject] update payload', updateData)
 
       await projectStore.updateProject(editingProject.value.id, updateData)
       await projectStore.fetchProjects()
@@ -866,20 +884,24 @@ async function saveProject() {
         product_id: activeProduct.value?.id,
       }
 
+      console.log('[PROJECTS][CreateProject] create payload', createData)
+
       const result = await projectStore.createProject(createData)
+      console.log('[PROJECTS][CreateProject] createProject result', result)
       createdProjectId.value = result.id
 
       await projectStore.fetchProjects()
 
-      // Reset form but keep dialog open to show success
-      resetForm()
+      // Keep dialog open briefly to show success, then close and reset form
       setTimeout(() => {
         showCreateDialog.value = false
         createdProjectId.value = null
+        resetForm()
+        formValid.value = false
       }, 2000)
     }
   } catch (error) {
-    console.error('Failed to save project:', error)
+    console.error('[PROJECTS][CreateProject] Failed to save project:', error)
     alert(`Failed to save project: ${error.response?.data?.error || error.message}`)
   }
 }

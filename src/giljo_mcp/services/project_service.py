@@ -712,11 +712,11 @@ class ProjectService:
         self, project_id: str, force: bool = False, websocket_manager: Optional[Any] = None
     ) -> dict[str, Any]:
         """
-        Activate a staged or paused project.
+        Activate a project.
 
         State Transitions:
         - staging → active (initial launch)
-        - paused → active (resume)
+        - inactive → active (activate/resume)
 
         Enforces Single Active Project constraint: automatically deactivates
         any existing active project in the same product before activating the new one.
@@ -750,7 +750,7 @@ class ProjectService:
                     return {"success": False, "error": "Project not found"}
 
                 # Validate state transition
-                if project.status not in ["staging", "paused"] and not force:
+                if project.status not in ["staging", "inactive"] and not force:
                     return {"success": False, "error": f"Cannot activate project from status '{project.status}'"}
 
                 # Check for existing active project in same product (Single Active Project constraint)
@@ -769,8 +769,7 @@ class ProjectService:
 
                     if existing_active:
                         # Auto-deactivate existing active project
-                        existing_active.status = "paused"
-                        existing_active.paused_at = datetime.utcnow()
+                        existing_active.status = "inactive"
                         existing_active.updated_at = datetime.utcnow()
                         self._logger.info(
                             f"Auto-deactivated project {existing_active.id} due to Single Active Project constraint"
@@ -831,9 +830,9 @@ class ProjectService:
         self, project_id: str, reason: Optional[str] = None, websocket_manager: Optional[Any] = None
     ) -> dict[str, Any]:
         """
-        Deactivate (pause) an active project.
+        Deactivate an active project.
 
-        State Transition: active → paused
+        State Transition: active → inactive
 
         Args:
             project_id: Project UUID
@@ -867,8 +866,7 @@ class ProjectService:
                     return {"success": False, "error": f"Cannot deactivate project with status '{project.status}'"}
 
                 # Deactivate project
-                project.status = "paused"
-                project.paused_at = datetime.utcnow()
+                project.status = "inactive"
                 project.updated_at = datetime.utcnow()
 
                 # Store reason if provided
