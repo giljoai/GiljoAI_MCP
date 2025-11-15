@@ -134,7 +134,13 @@ async def tenant_a_product(api_client: AsyncClient, tenant_a_token: str):
         cookies={"access_token": tenant_a_token}
     )
     assert response.status_code == 200
-    return response.json()
+    product_data = response.json()
+
+    # CRITICAL FIX: Clear cookies after authenticated fixture setup
+    # This prevents cookie persistence to subsequent tests
+    api_client.cookies.clear()
+
+    return product_data
 
 
 @pytest.fixture
@@ -150,7 +156,13 @@ async def tenant_b_product(api_client: AsyncClient, tenant_b_token: str):
         cookies={"access_token": tenant_b_token}
     )
     assert response.status_code == 200
-    return response.json()
+    product_data = response.json()
+
+    # CRITICAL FIX: Clear cookies after authenticated fixture setup
+    # This prevents cookie persistence to subsequent tests
+    api_client.cookies.clear()
+
+    return product_data
 
 
 # ============================================================================
