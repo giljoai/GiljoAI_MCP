@@ -24,17 +24,10 @@ class TestMessageServiceSending:
     """Test message sending operations"""
 
     @pytest.mark.asyncio
-    async def test_send_message_success(self):
+    async def test_send_message_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful message sending"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock project
         mock_project = Mock(spec=Project)
@@ -44,10 +37,8 @@ class TestMessageServiceSending:
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_project)
         session.execute = AsyncMock(return_value=mock_result)
-        session.add = Mock()
-        session.commit = AsyncMock()
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.send_message(
@@ -65,23 +56,16 @@ class TestMessageServiceSending:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_send_message_project_not_found(self):
+    async def test_send_message_project_not_found(self, mock_db_manager, mock_tenant_manager):
         """Test send_message fails when project doesn't exist"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
         session.execute = AsyncMock(return_value=mock_result)
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.send_message(
@@ -95,17 +79,10 @@ class TestMessageServiceSending:
         assert "not found" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_broadcast_success(self):
+    async def test_broadcast_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful broadcast to all agents"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock agent jobs
         mock_job1 = Mock(spec=MCPAgentJob)
@@ -127,10 +104,8 @@ class TestMessageServiceSending:
         mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
 
         session.execute = AsyncMock(side_effect=[mock_jobs_result, mock_project_result])
-        session.add = Mock()
-        session.commit = AsyncMock()
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.broadcast(
@@ -144,23 +119,16 @@ class TestMessageServiceSending:
         assert result["type"] == "broadcast"
 
     @pytest.mark.asyncio
-    async def test_broadcast_no_agents(self):
+    async def test_broadcast_no_agents(self, mock_db_manager, mock_tenant_manager):
         """Test broadcast fails when no agents in project"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
         session.execute = AsyncMock(return_value=mock_result)
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.broadcast(
@@ -177,17 +145,10 @@ class TestMessageServiceRetrieval:
     """Test message retrieval operations"""
 
     @pytest.mark.asyncio
-    async def test_get_messages_success(self):
+    async def test_get_messages_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful message retrieval"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock messages
         mock_msg1 = Mock(spec=Message)
@@ -212,7 +173,7 @@ class TestMessageServiceRetrieval:
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_msg1, mock_msg2])))
         session.execute = AsyncMock(return_value=mock_result)
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.get_messages(
@@ -227,17 +188,10 @@ class TestMessageServiceRetrieval:
         assert len(result["messages"]) == 2
 
     @pytest.mark.asyncio
-    async def test_get_messages_filters_by_agent(self):
+    async def test_get_messages_filters_by_agent(self, mock_db_manager, mock_tenant_manager):
         """Test that get_messages only returns messages for specific agent"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock messages - only one for impl-1
         mock_msg1 = Mock(spec=Message)
@@ -262,7 +216,7 @@ class TestMessageServiceRetrieval:
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_msg1, mock_msg2])))
         session.execute = AsyncMock(return_value=mock_result)
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.get_messages(agent_name="impl-1")
@@ -273,12 +227,11 @@ class TestMessageServiceRetrieval:
         assert result["messages"][0]["id"] == "msg-1"
 
     @pytest.mark.asyncio
-    async def test_receive_messages_success(self):
+    async def test_receive_messages_success(self, mock_db_manager):
         """Test successful receive_messages via AgentMessageQueue"""
         # Arrange
-        db_manager = Mock()
+        db_manager, session = mock_db_manager
         tenant_manager = Mock()
-
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         # Mock the AgentMessageQueue
@@ -295,13 +248,7 @@ class TestMessageServiceRetrieval:
             mock_queue.get_messages = AsyncMock(return_value=mock_queue_result)
 
             mock_queue_class = Mock(return_value=mock_queue)
-            m.setattr("giljo_mcp.services.message_service.AgentMessageQueue", mock_queue_class)
-
-            session = AsyncMock()
-            db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=session),
-                __aexit__=AsyncMock()
-            ))
+            m.setattr("giljo_mcp.agent_message_queue.AgentMessageQueue", mock_queue_class)
 
             service = MessageService(db_manager, tenant_manager)
 
@@ -338,17 +285,10 @@ class TestMessageServiceStatusUpdates:
     """Test message status update operations"""
 
     @pytest.mark.asyncio
-    async def test_acknowledge_message_success(self):
+    async def test_acknowledge_message_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful message acknowledgment"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock message
         mock_message = Mock(spec=Message)
@@ -358,9 +298,8 @@ class TestMessageServiceStatusUpdates:
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_message)
         session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.acknowledge_message(
@@ -376,17 +315,10 @@ class TestMessageServiceStatusUpdates:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_acknowledge_message_already_acknowledged(self):
+    async def test_acknowledge_message_already_acknowledged(self, mock_db_manager, mock_tenant_manager):
         """Test acknowledging a message that's already acknowledged by this agent"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock message already acknowledged by impl-1
         mock_message = Mock(spec=Message)
@@ -396,9 +328,8 @@ class TestMessageServiceStatusUpdates:
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_message)
         session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.acknowledge_message(
@@ -412,23 +343,16 @@ class TestMessageServiceStatusUpdates:
         session.commit.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_acknowledge_message_not_found(self):
+    async def test_acknowledge_message_not_found(self, mock_db_manager, mock_tenant_manager):
         """Test acknowledging a non-existent message"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
         session.execute = AsyncMock(return_value=mock_result)
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.acknowledge_message(
@@ -441,17 +365,10 @@ class TestMessageServiceStatusUpdates:
         assert "not found" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_complete_message_success(self):
+    async def test_complete_message_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful message completion"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         # Mock message
         mock_message = Mock(spec=Message)
@@ -464,9 +381,8 @@ class TestMessageServiceStatusUpdates:
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_message)
         session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.complete_message(
@@ -486,23 +402,16 @@ class TestMessageServiceStatusUpdates:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_complete_message_not_found(self):
+    async def test_complete_message_not_found(self, mock_db_manager, mock_tenant_manager):
         """Test completing a non-existent message"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager, session = mock_db_manager
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
         session.execute = AsyncMock(return_value=mock_result)
 
-        service = MessageService(db_manager, tenant_manager)
+        service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.complete_message(
@@ -520,17 +429,10 @@ class TestMessageServiceErrorHandling:
     """Test error handling"""
 
     @pytest.mark.asyncio
-    async def test_send_message_database_exception(self):
+    async def test_send_message_database_exception(self, failing_db_manager, mock_tenant_manager):
         """Test database exception handling in send_message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = MessageService(db_manager, tenant_manager)
+        # Arrange - use failing_db_manager fixture
+        service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act
         result = await service.send_message(
@@ -544,17 +446,10 @@ class TestMessageServiceErrorHandling:
         assert "Connection lost" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_get_messages_database_exception(self):
+    async def test_get_messages_database_exception(self, failing_db_manager, mock_tenant_manager):
         """Test database exception handling in get_messages"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = MessageService(db_manager, tenant_manager)
+        # Arrange - use failing_db_manager fixture
+        service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act
         result = await service.get_messages(agent_name="impl-1")
@@ -564,17 +459,10 @@ class TestMessageServiceErrorHandling:
         assert "Connection lost" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_acknowledge_message_database_exception(self):
+    async def test_acknowledge_message_database_exception(self, failing_db_manager, mock_tenant_manager):
         """Test database exception handling in acknowledge_message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = MessageService(db_manager, tenant_manager)
+        # Arrange - use failing_db_manager fixture
+        service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act
         result = await service.acknowledge_message(
@@ -587,17 +475,10 @@ class TestMessageServiceErrorHandling:
         assert "Connection lost" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_complete_message_database_exception(self):
+    async def test_complete_message_database_exception(self, failing_db_manager, mock_tenant_manager):
         """Test database exception handling in complete_message"""
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
-
-        service = MessageService(db_manager, tenant_manager)
+        # Arrange - use failing_db_manager fixture
+        service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act
         result = await service.complete_message(
