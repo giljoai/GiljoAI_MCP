@@ -107,7 +107,7 @@ function fallbackCopyCommand(text) {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/agent-colors.scss';
+@use '@/styles/agent-colors.scss' as *;
 
 .launch-prompt-icons {
   display: flex;

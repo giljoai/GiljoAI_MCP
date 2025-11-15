@@ -557,7 +557,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/agent-colors.scss';
+@use '@/styles/agent-colors.scss' as *;
 
 .jobs-tab {
   width: 100%;

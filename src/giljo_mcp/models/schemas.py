@@ -11,7 +11,7 @@ Created: Handover 0501
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectSummaryResponse(BaseModel):
@@ -24,7 +24,7 @@ class ProjectSummaryResponse(BaseModel):
 
     id: str = Field(..., description="Project UUID")
     name: str = Field(..., description="Project name")
-    status: str = Field(..., description="Project status (staging/active/paused/completed/cancelled)")
+    status: str = Field(..., description="Project status (staging/active/inactive/completed/cancelled)")
     mission: Optional[str] = Field(None, description="Project mission statement")
 
     # Job metrics
@@ -51,9 +51,8 @@ class ProjectSummaryResponse(BaseModel):
     product_id: str = Field(..., description="Parent product UUID")
     product_name: str = Field(..., description="Parent product name")
 
-    class Config:
-        """Pydantic config for schema validation."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "abc-123-def-456",
                 "name": "Feature Development Sprint",
@@ -69,9 +68,10 @@ class ProjectSummaryResponse(BaseModel):
                 "activated_at": "2025-01-10T10:30:00Z",
                 "last_activity_at": "2025-01-13T14:22:00Z",
                 "product_id": "xyz-789",
-                "product_name": "Authentication Platform"
+                "product_name": "Authentication Platform",
             }
         }
+    )
 
 
 class ProjectLaunchResponse(BaseModel):
@@ -87,16 +87,16 @@ class ProjectLaunchResponse(BaseModel):
     launch_prompt: str = Field(..., description="Thin-client launch prompt for orchestrator")
     status: str = Field(..., description="Project status after launch")
 
-    class Config:
-        """Pydantic config for schema validation."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "project_id": "abc-123-def-456",
                 "orchestrator_job_id": "orch-job-789",
                 "launch_prompt": "Launch orchestrator for project...",
-                "status": "active"
+                "status": "active",
             }
         }
+    )
 
 
 class ProjectResponse(BaseModel):
@@ -126,10 +126,9 @@ class ProjectResponse(BaseModel):
     # Product relation
     product_id: str = Field(..., description="Parent product UUID")
 
-    class Config:
-        """Pydantic config for schema validation."""
-        from_attributes = True  # SQLAlchemy model compatibility
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "abc-123-def-456",
                 "name": "Feature Development Sprint",
@@ -142,9 +141,10 @@ class ProjectResponse(BaseModel):
                 "updated_at": "2025-01-13T14:22:00Z",
                 "activated_at": "2025-01-10T10:30:00Z",
                 "completed_at": None,
-                "product_id": "xyz-789"
+                "product_id": "xyz-789",
             }
-        }
+        },
+    )
 
 
 # ============================================================================
@@ -168,14 +168,14 @@ class SuccessionRequest(BaseModel):
         description="Optional notes about why succession was triggered"
     )
 
-    class Config:
-        """Pydantic config for schema validation."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "reason": "manual",
-                "notes": "Switching orchestrator for new project phase"
+                "notes": "Switching orchestrator for new project phase",
             }
         }
+    )
 
 
 class SuccessionResponse(BaseModel):
@@ -193,10 +193,9 @@ class SuccessionResponse(BaseModel):
     succession_reason: str = Field(..., description="Reason for succession")
     created_at: datetime = Field(..., description="Successor creation timestamp")
 
-    class Config:
-        """Pydantic config for schema validation."""
-        from_attributes = True  # SQLAlchemy model compatibility
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "current_job_id": "orch-job-123",
                 "successor_job_id": "orch-job-456",
@@ -204,9 +203,10 @@ class SuccessionResponse(BaseModel):
                 "launch_prompt": "Continue orchestration from instance 1...",
                 "handover_summary": "Project 60% complete, 3 active agents...",
                 "succession_reason": "manual",
-                "created_at": "2025-01-13T14:22:00Z"
+                "created_at": "2025-01-13T14:22:00Z",
             }
-        }
+        },
+    )
 
 
 class SuccessionStatusResponse(BaseModel):
@@ -225,9 +225,8 @@ class SuccessionStatusResponse(BaseModel):
     succession_reason: Optional[str] = Field(None, description="Reason for succession if triggered")
     instance_number: int = Field(..., description="Current instance number")
 
-    class Config:
-        """Pydantic config for schema validation."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "job_id": "orch-job-123",
                 "needs_succession": True,
@@ -236,6 +235,7 @@ class SuccessionStatusResponse(BaseModel):
                 "context_usage_pct": 92.5,
                 "handover_to": None,
                 "succession_reason": None,
-                "instance_number": 1
+                "instance_number": 1,
             }
         }
+    )
