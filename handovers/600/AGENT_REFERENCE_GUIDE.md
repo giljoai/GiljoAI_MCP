@@ -10,6 +10,27 @@ Complete system restoration and validation for GiljoAI MCP. **Zero compromises**
 
 ---
 
+## 🚨 CRITICAL AUDIT FINDINGS (Handover 0600 - 2025-11-14)
+
+**DATABASE MIGRATION CHAIN IS BROKEN**
+
+- **Status**: Only 18 of 31 tables exist in database
+- **Failed At**: Migration `20251029_0073_01`
+- **Current Version**: `20251026_224146`
+- **Missing**: 14 critical tables (mcp_agent_jobs, vision_documents, etc.)
+- **Impact**: Fresh installations IMPOSSIBLE, 0 of 8 workflows functional
+- **Required Action**: Execute Handover 0601 IMMEDIATELY before any other work
+
+**Audit Results Summary**:
+- API Endpoints: 204 decorators across 60 files ✅
+- Services: 10 services, 44+ methods documented ✅
+- Tests: 423 files categorized (Unit: 96, Integration: 84, API: 24) ✅
+- Coverage Baseline: Cannot establish (blocked by database failure) ⚠️
+
+**Deliverables**: See `handovers/600/0600_audit_report.md` for complete findings.
+
+---
+
 ## Core Principles
 
 1. **No Gentle Approach** - Can blow away test data, recreate databases, hard reset if needed
@@ -89,9 +110,14 @@ Complete system restoration and validation for GiljoAI MCP. **Zero compromises**
 - notifications, permissions, roles, sessions, webhooks
 - workflow_states, websocket_connections
 
-### Migration Status
-- **44 migrations** exist (complex dependency chain)
-- **20251114_create_missing_base_tables.py**: Creates 14 missing tables, runs at position 44 (TOO LATE - needs reordering to position 1)
+### Migration Status (CRITICAL - Updated from Handover 0600 Audit)
+- **45 migrations** exist (complex dependency chain)
+- **BROKEN**: Migration chain fails at `20251029_0073_01`
+- **Current version**: `20251026_224146` (October 2025)
+- **Tables created**: 18 of 31 (58% complete)
+- **Missing tables**: 14 critical tables (mcp_agent_jobs, vision_documents, etc.)
+- **Impact**: Fresh installations IMPOSSIBLE, core workflows NON-FUNCTIONAL
+- **Fix required**: Handover 0601 must be executed immediately to fix migration chain
 
 ---
 
