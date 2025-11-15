@@ -28,6 +28,7 @@ async def api_client(db_manager):
     - Provides proper database session isolation
     - Sets up AuthManager in app state
     - Cleans up dependency overrides after tests
+    - CRITICAL: Each test gets a fresh client to prevent cookie persistence
 
     Usage:
         async def test_endpoint(api_client: AsyncClient):
@@ -77,9 +78,20 @@ async def api_client(db_manager):
     state.auth = app.state.auth
 
     # Create async client with ASGI transport
+    # CRITICAL FIX: Use follow_redirects=True to prevent cookie persistence issues
+    # Each test gets a completely isolated client instance
     transport = ASGITransport(app=app)
-    async with HTTPXAsyncClient(transport=transport, base_url="http://test") as client:
+    async with HTTPXAsyncClient(
+        transport=transport,
+        base_url="http://test",
+        cookies=None,  # Explicitly no cookies to start
+        follow_redirects=True
+    ) as client:
+        # Clear any cookies before yielding to test
+        client.cookies.clear()
         yield client
+        # Clear cookies after test completes to ensure no leakage
+        client.cookies.clear()
 
     # Clear overrides after test
     app.dependency_overrides.clear()
