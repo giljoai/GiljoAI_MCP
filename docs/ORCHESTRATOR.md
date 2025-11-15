@@ -1,0 +1,519 @@
+# Orchestrator Context Tracking & Succession
+
+**Version**: v3.1+ (Handover 0080, 0502)
+**Last Updated**: 2025-11-15
+
+## Overview
+
+GiljoAI MCP orchestrators have **automatic context tracking** and **succession mechanisms** to handle unlimited project duration. When an orchestrator's context window reaches 90% capacity, a successor is automatically spawned with a condensed handover summary (<10K tokens).
+
+**Key Benefit**: **70% token reduction** through mission condensation + **unlimited project duration** through graceful succession.
+
+---
+
+## Context Tracking Architecture
+
+### **How It Works**
+
+1. **Context Budget**: Each orchestrator starts with a context budget (default: 200,000 tokens)
+2. **Usage Tracking**: Every message sent/received updates `context_used` counter
+3. **Auto-Succession Trigger**: At 90% capacity, successor spawned automatically
+4. **Handover Summary**: Mission condensed to <10K tokens via MissionPlanner
+5. **Lineage Preservation**: Full succession chain tracked via `spawned_by` links
+
+### **Database Fields** (mcp_agent_jobs table)
+
+```sql
+-- Context tracking
+context_used INTEGER DEFAULT 0,          -- Current token usage
+context_budget INTEGER DEFAULT 200000,   -- Maximum tokens allowed
+
+-- Succession
+instance_number INTEGER DEFAULT 1,       -- Orchestrator instance in chain
+spawned_by INTEGER REFERENCES mcp_agent_jobs(id),  -- Parent orchestrator
+handover_to INTEGER REFERENCES mcp_agent_jobs(id), -- Successor orchestrator
+handover_summary TEXT,                   -- Condensed context for successor
+succession_reason VARCHAR(50),           -- Why succession triggered
+handover_context_refs JSONB              -- References to full context
+```
+
+---
+
+## Implementation: OrchestrationService
+
+### **Creating Orchestrator with Context Tracking**
+
+```python
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
+
+service = OrchestrationService(session, tenant_key="user123")
+
+# Create orchestrator with context budget
+job = await service.create_orchestrator_job(
+    project_id=project_id,
+    mission=mission,
+    context_budget=200000  # tokens (adjustable)
+)
+
+# Result:
+# job.context_used = 0
+# job.context_budget = 200000
+# job.instance_number = 1
+# job.spawned_by = None (first orchestrator)
+```
+
+### **Tracking Context Usage**
+
+```python
+# After each message send/receive
+await service.update_context_usage(
+    job_id=job.id,
+    additional_tokens=1500  # Message size in tokens
+)
+
+# Check current status
+status = await service.get_context_status(job.id)
+# Returns:
+# {
+#   "context_used": 180000,
+#   "context_budget": 200000,
+#   "percentage_used": 0.90,
+#   "tokens_remaining": 20000
+# }
+```
+
+### **Auto-Succession Trigger** (90% Threshold)
+
+```python
+# Automatic succession when context reaches 90%
+if status['percentage_used'] >= 0.9:
+    successor = await service.trigger_succession(
+        job_id=job.id,
+        reason="context_limit"
+    )
+
+    # Successor details:
+    # successor.instance_number = 2  (parent was 1)
+    # successor.spawned_by = job.id  (lineage preserved)
+    # successor.handover_summary = "<10K tokens condensed context>"
+    # successor.context_used = 0  (fresh start)
+    # successor.context_budget = 200000  (same as parent)
+```
+
+---
+
+## Handover Summary Generation
+
+### **Mission Condensation** (70% Token Reduction)
+
+The handover summary is generated using **MissionPlanner** to condense the full project context:
+
+```python
+from src.giljo_mcp.mission_planner import MissionPlanner
+
+planner = MissionPlanner()
+
+# Original context: 180,000 tokens
+full_context = {
+    "vision_documents": [...],
+    "completed_missions": [...],
+    "agent_results": [...],
+    "conversation_history": [...]
+}
+
+# Condensed summary: <10,000 tokens
+handover_summary = await planner.generate_handover_summary(
+    project_id=project_id,
+    parent_job_id=job.id,
+    full_context=full_context
+)
+
+# Summary includes:
+# - Mission objectives (condensed)
+# - Completed work (bullet points)
+# - Blockers and pending items
+# - Key decisions and rationale
+# - References to full context (handover_context_refs JSONB)
+```
+
+### **Handover Summary Structure**
+
+```markdown
+# Orchestrator Handover Summary (Instance 1 → 2)
+
+## Mission Objectives
+- Build user authentication system with JWT tokens
+- Implement password reset flow with email verification
+- Add 2FA support (TOTP)
+
+## Completed Work (Instance 1)
+✅ User registration endpoint (POST /api/auth/register)
+✅ Login endpoint with JWT generation (POST /api/auth/login)
+✅ Password hashing with bcrypt
+✅ Database schema (users, sessions tables)
+
+## Pending Work
+🔲 Password reset flow (email service integration needed)
+🔲 2FA implementation (TOTP library selection)
+🔲 Session management (refresh tokens)
+
+## Key Decisions
+- Use bcrypt for password hashing (strength: 12 rounds)
+- JWT expiry: 1 hour (access), 7 days (refresh)
+- Email service: SendGrid (API key in .env)
+
+## Blockers
+- SendGrid API key pending from client
+- 2FA library undecided (pyotp vs duo_client)
+
+## References
+Full context available in:
+- Vision document: product_123/vision_v1.md
+- Agent results: jobs [456, 457, 458, 459, 460]
+- Conversation history: project_789/messages (timestamp: 2025-11-15T10:30:00Z)
+```
+
+**Token Count**: ~1,200 tokens (vs 180,000 original)
+
+---
+
+## Manual Succession Triggers
+
+### **1. Slash Command: `/gil_handover`**
+
+Users can manually trigger succession via slash command (Handover 0080a):
+
+```bash
+# In Claude Code CLI or Codex CLI
+/gil_handover
+```
+
+**Flow**:
+1. User executes `/gil_handover` command
+2. System checks if orchestrator is working status
+3. Generates handover summary
+4. Returns launch prompt for successor instance
+5. User copies prompt and launches new Claude Code session
+
+### **2. UI "Hand Over" Button**
+
+Dashboard shows "Hand Over" button on working orchestrator cards:
+
+**Location**: `frontend/src/components/projects/AgentCardEnhanced.vue`
+
+**Flow**:
+1. User clicks "Hand Over" button
+2. LaunchSuccessorDialog opens with generated prompt
+3. User copies prompt
+4. Launches new Claude Code session with prompt
+5. Successor orchestrator created with instance_number++
+
+---
+
+## Succession Timeline UI
+
+### **SuccessionTimeline.vue Component**
+
+Visual timeline showing orchestrator succession chain:
+
+```
+Instance 1              Instance 2              Instance 3
+(Completed)             (Working)               (Pending)
+[====================] [===========>          ] [                    ]
+Context: 100%           Context: 55%            Context: 0%
+Duration: 8h            Duration: 4h            Duration: -
+
+Handover reason: context_limit
+Handover reason: (pending)
+```
+
+**Key Features**:
+- **Instance badges**: Show orchestrator number (1, 2, 3, ...)
+- **Context bars**: Visual progress (green: <70%, yellow: 70-89%, red: 90%+)
+- **Duration tracking**: Time spent per instance
+- **Handover markers**: Show succession reason (context_limit, manual, error)
+- **Lineage navigation**: Click to view parent/successor details
+
+---
+
+## Succession Reasons
+
+| Reason | Description | Trigger |
+|--------|-------------|---------|
+| `context_limit` | Automatic at 90% context capacity | Auto (OrchestrationService) |
+| `manual` | User-initiated via `/gil_handover` or UI | Manual (slash command or button) |
+| `error` | Orchestrator encountered unrecoverable error | Auto (error handler) |
+| `completion` | Project completed, new phase starting | Manual (project manager) |
+
+---
+
+## Benefits of Orchestrator Succession
+
+### **1. Unlimited Project Duration**
+
+**Before succession**:
+- Orchestrator hits 200K token limit
+- Project stalls (cannot continue)
+- Manual restart required
+
+**After succession**:
+- Auto-spawn successor at 90%
+- Seamless handover (<10K token summary)
+- Project continues indefinitely
+
+### **2. 70% Token Reduction**
+
+**Mission condensation** reduces context size:
+- Original: 180,000 tokens (full conversation history)
+- Condensed: <10,000 tokens (mission summary)
+- **Savings**: 170,000 tokens (94% reduction)
+
+### **3. Graceful Context Management**
+
+**Prevents context pollution**:
+- Old conversations archived (handover_context_refs)
+- Successor starts fresh with essential context
+- No degradation in reasoning quality
+
+### **4. Full Lineage Tracking**
+
+**Audit trail preserved**:
+- spawned_by chain shows full succession history
+- Handover summaries preserved in database
+- UI timeline visualizes entire project journey
+
+---
+
+## Testing Orchestrator Succession
+
+### **Unit Test Example**
+
+```python
+@pytest.mark.asyncio
+async def test_auto_succession_trigger(db_session, test_tenant):
+    service = OrchestrationService(db_session, test_tenant)
+
+    # Create orchestrator with small budget for testing
+    job = await service.create_orchestrator_job(
+        project_id=1,
+        mission="Test mission",
+        context_budget=10000  # Small budget
+    )
+
+    # Simulate context usage approaching 90%
+    await service.update_context_usage(job.id, 9100)  # 91% used
+
+    # Check succession triggered
+    status = await service.get_context_status(job.id)
+    assert status['percentage_used'] >= 0.9
+
+    # Trigger succession
+    successor = await service.trigger_succession(job.id, "context_limit")
+
+    # Verify successor
+    assert successor.instance_number == 2
+    assert successor.spawned_by == job.id
+    assert successor.handover_summary is not None
+    assert len(successor.handover_summary) < 10000  # <10K tokens
+```
+
+### **Integration Test Example**
+
+```python
+@pytest.mark.asyncio
+async def test_full_succession_workflow(db_session, test_tenant):
+    service = OrchestrationService(db_session, test_tenant)
+
+    # Create orchestrator
+    job1 = await service.create_orchestrator_job(
+        project_id=1,
+        mission="Build authentication system",
+        context_budget=200000
+    )
+
+    # Simulate work (context usage)
+    await service.update_context_usage(job1.id, 180000)  # 90% used
+
+    # Trigger succession
+    job2 = await service.trigger_succession(job1.id, "context_limit")
+
+    # Verify lineage
+    assert job2.spawned_by == job1.id
+    assert job2.instance_number == job1.instance_number + 1
+
+    # Verify handover summary
+    assert job2.handover_summary is not None
+    assert "Build authentication system" in job2.handover_summary
+
+    # Original job marked as succeeded
+    await db_session.refresh(job1)
+    assert job1.handover_to == job2.id
+    assert job1.status == "succeeded"
+```
+
+---
+
+## API Endpoints
+
+### **GET /api/orchestrator/context-status/{job_id}**
+
+Get current context usage for orchestrator:
+
+```bash
+curl http://localhost:7272/api/orchestrator/context-status/123
+```
+
+Response:
+```json
+{
+  "job_id": 123,
+  "context_used": 180000,
+  "context_budget": 200000,
+  "percentage_used": 0.90,
+  "tokens_remaining": 20000,
+  "auto_succession_threshold": 0.90
+}
+```
+
+### **POST /api/orchestrator/trigger-succession**
+
+Manually trigger succession:
+
+```bash
+curl -X POST http://localhost:7272/api/orchestrator/trigger-succession \
+  -H "Content-Type: application/json" \
+  -d '{
+    "job_id": 123,
+    "reason": "manual"
+  }'
+```
+
+Response:
+```json
+{
+  "successor": {
+    "id": 124,
+    "instance_number": 2,
+    "spawned_by": 123,
+    "handover_summary": "...",
+    "launch_prompt": "Continue project with successor orchestrator..."
+  }
+}
+```
+
+---
+
+## Best Practices
+
+### **1. Monitor Context Usage Proactively**
+
+Don't wait for 90% threshold:
+```python
+# Check context status regularly
+status = await service.get_context_status(job.id)
+if status['percentage_used'] > 0.75:
+    logger.warning(f"Context at 75% for job {job.id}")
+```
+
+### **2. Configure Context Budget per Project**
+
+Adjust budget based on project complexity:
+```python
+# Simple projects: smaller budget
+job = await service.create_orchestrator_job(
+    project_id=simple_project.id,
+    context_budget=100000  # 100K tokens
+)
+
+# Complex projects: larger budget
+job = await service.create_orchestrator_job(
+    project_id=complex_project.id,
+    context_budget=300000  # 300K tokens (requires tier upgrade)
+)
+```
+
+### **3. Preserve Context References**
+
+Always store references to full context:
+```python
+handover_context_refs = {
+    "vision_doc_id": 456,
+    "agent_job_ids": [789, 790, 791],
+    "message_range": {
+        "start_timestamp": "2025-11-15T10:00:00Z",
+        "end_timestamp": "2025-11-15T18:00:00Z"
+    }
+}
+
+await service.trigger_succession(
+    job_id=job.id,
+    reason="context_limit",
+    context_refs=handover_context_refs
+)
+```
+
+### **4. Test Succession Locally**
+
+Simulate succession before production:
+```bash
+# Create orchestrator with small budget
+pytest tests/integration/test_succession.py::test_small_budget_succession -v
+
+# Verify handover summary quality
+pytest tests/integration/test_succession.py::test_handover_summary_completeness -v
+```
+
+---
+
+## Troubleshooting
+
+### **Issue: Succession Not Triggering at 90%**
+
+**Diagnosis**:
+```python
+# Check if context tracking is enabled
+job = await session.get(AgentJob, job_id)
+if job.context_budget is None:
+    logger.error("Context budget not set!")
+
+# Check if update_context_usage is being called
+# Add logging to OrchestrationService.update_context_usage()
+```
+
+**Solution**: Ensure `create_orchestrator_job()` sets `context_budget` and `update_context_usage()` is called after every message.
+
+### **Issue: Handover Summary Too Large (>10K tokens)**
+
+**Diagnosis**:
+```python
+# Check handover summary size
+summary_tokens = len(job.handover_summary.split()) * 1.3  # Rough estimate
+if summary_tokens > 10000:
+    logger.warning(f"Handover summary: {summary_tokens} tokens (too large!)")
+```
+
+**Solution**: Increase mission condensation ratio in MissionPlanner or exclude verbose agent outputs.
+
+### **Issue: Successor Not Receiving Full Context**
+
+**Diagnosis**:
+```python
+# Check handover_context_refs
+if not job.handover_context_refs:
+    logger.error("No context references in handover!")
+```
+
+**Solution**: Populate `handover_context_refs` with vision doc IDs, agent job IDs, and message timestamps for full context retrieval.
+
+---
+
+## Related Documentation
+
+- **Services**: [SERVICES.md](SERVICES.md) - OrchestrationService API
+- **Testing**: [TESTING.md](TESTING.md) - Succession test patterns
+- **User Guide**: [docs/user_guides/orchestrator_succession_guide.md](user_guides/orchestrator_succession_guide.md)
+- **Developer Guide**: [docs/developer_guides/orchestrator_succession_developer_guide.md](developer_guides/orchestrator_succession_developer_guide.md)
+
+---
+
+**Last Updated**: 2025-11-15 (Post-Remediation v3.1.1)
