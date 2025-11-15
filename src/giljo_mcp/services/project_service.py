@@ -419,13 +419,16 @@ class ProjectService:
     # Lifecycle Management
     # ============================================================================
 
-    async def complete_project(self, project_id: str, summary: Optional[str] = None) -> dict[str, Any]:
+    async def complete_project(
+        self, project_id: str, summary: Optional[str] = None, db_session: Optional[Any] = None
+    ) -> dict[str, Any]:
         """
         Mark a project as completed with completed_at timestamp.
 
         Args:
             project_id: Project UUID
             summary: Optional completion summary to store in metadata
+            db_session: Optional database session (for transaction management)
 
         Returns:
             Dict with success status or error
@@ -437,31 +440,51 @@ class ProjectService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                # Build update values
-                update_values = {
-                    "status": "completed",
-                    "completed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
-                }
+            # Build update values (common to both session types)
+            update_values = {
+                "status": "completed",
+                "completed_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
 
-                # Add summary to meta_data if provided
-                if summary:
-                    update_values["meta_data"] = {"summary": summary}
+            # Add summary to meta_data if provided
+            if summary:
+                update_values["meta_data"] = {"summary": summary}
 
-                result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
+            if db_session:
+                # Use provided session (caller manages transaction)
+                result = await db_session.execute(
+                    update(Project).where(Project.id == project_id).values(**update_values)
+                )
 
                 if result.rowcount == 0:
                     return {"success": False, "error": "Project not found"}
 
-                await session.commit()
-
-                self._logger.info(f"Completed project {project_id}")
+                # Note: Do NOT commit when using provided session (caller manages transaction)
+                self._logger.info(f"Completed project {project_id} (using provided session)")
 
                 return {
                     "success": True,
                     "message": f"Project {project_id} completed successfully",
                 }
+            else:
+                # Use our own session (we manage transaction)
+                async with self.db_manager.get_session_async() as session:
+                    result = await session.execute(
+                        update(Project).where(Project.id == project_id).values(**update_values)
+                    )
+
+                    if result.rowcount == 0:
+                        return {"success": False, "error": "Project not found"}
+
+                    await session.commit()
+
+                    self._logger.info(f"Completed project {project_id}")
+
+                    return {
+                        "success": True,
+                        "message": f"Project {project_id} completed successfully",
+                    }
 
         except Exception as e:
             self._logger.exception(f"Failed to complete project: {e}")
