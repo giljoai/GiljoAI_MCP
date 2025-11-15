@@ -422,7 +422,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/agent-colors.scss';
+@use '@/styles/agent-colors.scss' as *;
 
 .message-stream {
   display: flex;
