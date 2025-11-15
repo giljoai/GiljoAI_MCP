@@ -1012,3 +1012,15 @@ import axios from 'axios'
 **Status**: READY TO EXECUTE (standalone or after 0130c)
 **Duration**: 2-3 days
 **Success Factor**: Single source of truth for all API patterns
+
+
+---
+# INTEGRATION NOTE
+**Date**: 2025-11-15
+**Status**: INTEGRATED INTO 0515
+
+This work has been integrated into:
+- **Handover 0515**: Frontend Consolidation & WebSocket V2 Completion
+- **Specifically**: 0515b - Centralize API Calls
+
+See: /handovers/0515_frontend_consolidation_websocket_v2.md
