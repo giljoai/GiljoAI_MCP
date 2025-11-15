@@ -1,6 +1,6 @@
 <template>
   <v-card
-    class="agent-card-enhanced"
+    class="agent-card"
     :class="[
       `agent-card--${agent.agent_type}`,
       `status--${agent.status}`,
@@ -347,7 +347,7 @@
           <v-icon start>mdi-play-circle</v-icon>
           Continue Working
         </v-btn>
-        
+
         <v-btn
           v-if="isOrchestrator"
           variant="elevated"
@@ -379,18 +379,23 @@
 
 <script setup>
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { getAgentColor, darkenColor, lightenColor } from '@/config/agentColors'
+import { getAgentColor } from '@/config/agentColors'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-import SuccessionTimeline from './SuccessionTimeline.vue'
-import LaunchSuccessorDialog from './LaunchSuccessorDialog.vue'
+import SuccessionTimeline from '@/components/projects/SuccessionTimeline.vue'
+import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 
 /**
- * AgentCardEnhanced Component
+ * AgentCard Component (Consolidated - Handover 0515a)
  *
- * Production-grade reusable agent card for Handover 0077.
- * Works across both Launch Tab and Jobs Tab with different states.
+ * Unified agent card component replacing:
+ * - AgentCardEnhanced (projects)
+ * - AgentCard (orchestration)
+ * - AgentStatusCard (dashboard)
+ *
+ * Production-grade reusable agent card matching visual specs in handovers/Launch-Jobs_panels2/
+ * Works across Launch Tab, Jobs Tab, and Dashboard with different states.
  *
  * Props:
  * - agent: Agent job object (required)
@@ -405,6 +410,8 @@ import LaunchSuccessorDialog from './LaunchSuccessorDialog.vue'
  * - view-details: (agent) => void
  * - view-error: (agent) => void
  * - closeout-project: () => void
+ * - continue-working: (agent) => void
+ * - refresh-jobs: () => void
  */
 
 const props = defineProps({
@@ -571,7 +578,7 @@ const cardAriaLabel = computed(() => {
 })
 
 /**
- * Health Indicator Logic (Handover 0106)
+ * Health Indicator Logic (Handover 0107)
  * Only show health indicator when:
  * 1. Mode is 'jobs' (not 'launch')
  * 2. Agent is active/waiting/working (not completed/failed)
@@ -739,7 +746,7 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 @import '@/styles/agent-colors.scss';
 
-.agent-card-enhanced {
+.agent-card {
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
@@ -780,7 +787,7 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
 }
-  
+
   .agent-id-value {
     font-size: 10px !important;
     font-family: 'Courier New', monospace;
@@ -918,13 +925,13 @@ onBeforeUnmount(() => {
 
 /* Responsive */
 @media (max-width: 1200px) {
-  .agent-card-enhanced {
+  .agent-card {
     width: 240px !important;
   }
 }
 
 @media (max-width: 768px) {
-  .agent-card-enhanced {
+  .agent-card {
     width: 100% !important;
     max-width: 280px;
   }
