@@ -52,7 +52,7 @@ async def complete_project(
     logger.info(f"User {current_user.username} completing project {project_id}")
 
     # Complete via ProjectService
-    result = await project_service.complete_project(project_id=project_id, completion_summary=summary)
+    result = await project_service.complete_project(project_id=project_id, summary=summary)
 
     # Check for errors
     if not result.get("success"):

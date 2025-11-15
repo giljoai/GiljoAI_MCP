@@ -216,6 +216,7 @@ class OrchestrationService:
         project_id: str,
         tenant_key: str,
         parent_job_id: Optional[str] = None,
+        context_chunks: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """
         Create an agent job with thin client architecture.
@@ -227,6 +228,7 @@ class OrchestrationService:
             project_id: Project UUID
             tenant_key: Tenant key for isolation
             parent_job_id: Optional parent job UUID for spawned agents
+            context_chunks: Optional context chunks for the agent
 
         Returns:
             Dict with success status, agent_job_id, and agent_prompt
@@ -237,7 +239,8 @@ class OrchestrationService:
             ...     agent_name="impl-1",
             ...     mission="Implement feature X",
             ...     project_id="proj-123",
-            ...     tenant_key="tenant-abc"
+            ...     tenant_key="tenant-abc",
+            ...     context_chunks=["chunk1", "chunk2"]
             ... )
         """
         try:
@@ -258,6 +261,14 @@ class OrchestrationService:
 
                 # Create agent job with mission STORED in database
                 agent_job_id = str(uuid4())
+                metadata_dict = {
+                    "created_via": "thin_client_spawn",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "thin_client": True,
+                }
+                if context_chunks:
+                    metadata_dict["context_chunks"] = context_chunks
+
                 agent_job = MCPAgentJob(
                     job_id=agent_job_id,
                     project_id=project_id,
@@ -267,11 +278,7 @@ class OrchestrationService:
                     mission=mission,  # STORED HERE, not in prompt
                     spawned_by=parent_job_id,
                     status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
-                    metadata={
-                        "created_via": "thin_client_spawn",
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "thin_client": True,
-                    },
+                    metadata=metadata_dict,
                 )
 
                 # Set context tracking fields for orchestrators (Handover 0502)
