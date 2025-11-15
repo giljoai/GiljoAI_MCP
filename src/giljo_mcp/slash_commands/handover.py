@@ -8,7 +8,7 @@ import os
 from typing import Any, Optional
 
 from sqlalchemy import and_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import MCPAgentJob
 from ..orchestrator_succession import OrchestratorSuccessionManager
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_gil_handover(
-    db_session: Session,
+    db_session: AsyncSession,
     tenant_key: str,
     project_id: Optional[str] = None,
     orchestrator_job_id: Optional[str] = None,
@@ -59,7 +59,7 @@ async def handle_gil_handover(
                 MCPAgentJob.tenant_key == tenant_key,
             )
         )
-        result = db_session.execute(stmt)
+        result = await db_session.execute(stmt)
         orchestrator = result.scalar_one_or_none()
 
         if not orchestrator or orchestrator.agent_type != "orchestrator":
@@ -100,7 +100,7 @@ async def handle_gil_handover(
             orchestrator=orchestrator, successor=successor, handover_summary=handover_summary
         )
 
-        db_session.commit()
+        await db_session.commit()
 
         # Generate launch prompt
         launch_prompt = _generate_launch_prompt(
@@ -119,7 +119,7 @@ async def handle_gil_handover(
         }
 
     except Exception as e:
-        db_session.rollback()
+        await db_session.rollback()
         logger.error(f"Failed to create successor orchestrator: {e}", exc_info=True)
         return {
             "success": False,
@@ -130,7 +130,7 @@ async def handle_gil_handover(
 
 
 async def _get_active_orchestrator(
-    db_session: Session, tenant_key: str, project_id: Optional[str]
+    db_session: AsyncSession, tenant_key: str, project_id: Optional[str]
 ) -> Optional[MCPAgentJob]:
     """Get active orchestrator for project"""
     stmt = select(MCPAgentJob).where(
@@ -144,7 +144,7 @@ async def _get_active_orchestrator(
     if project_id:
         stmt = stmt.where(MCPAgentJob.project_id == project_id)
 
-    result = db_session.execute(stmt)
+    result = await db_session.execute(stmt)
     return result.scalar_one_or_none()
 
 
