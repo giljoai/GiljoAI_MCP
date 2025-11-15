@@ -388,7 +388,7 @@ async def estimate_mission_tokens(
 @router.get("/staging/{project_id}")
 async def generate_staging_prompt(
     project_id: str,
-    tool: str = Query("claude-code", regex="^(claude-code|codex|gemini)$"),
+    tool: str = Query("claude-code", pattern="^(claude-code|codex|gemini)$"),
     instance_number: int = Query(1, ge=1, description="Orchestrator instance number"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),

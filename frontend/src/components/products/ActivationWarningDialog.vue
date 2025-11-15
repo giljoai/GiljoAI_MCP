@@ -48,7 +48,7 @@
           <div class="font-weight-bold mb-2">Project Impact:</div>
           <strong>{{ currentActive.active_projects_count }}</strong>
           active project{{ currentActive.active_projects_count > 1 ? 's' : '' }}
-          under <strong>{{ currentActive.name }}</strong> will be paused.
+          under <strong>{{ currentActive.name }}</strong> will be deactivated.
 
           <div class="text-caption mt-2">
             Only one project can be active at a time. You can reactivate
