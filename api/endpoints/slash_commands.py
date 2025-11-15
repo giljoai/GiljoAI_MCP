@@ -61,6 +61,15 @@ async def execute_slash_command(request: SlashCommandRequest):
         # Import here to avoid circular dependency
         from api.app import state
 
+        # KNOWN ISSUE (Handover 0616): Architectural mismatch
+        # - This endpoint is async and requires async database operations
+        # - Slash command handlers expect sync Session (not AsyncSession)
+        # - Database manager is initialized with is_async=True
+        # - Calling get_session() in async context raises RuntimeError
+        #
+        # TODO: Refactor slash command handlers to use AsyncSession
+        # For now, handlers will fail with 500 error
+
         # Execute handler with database session (sync session for handlers)
         with state.db_manager.get_session() as session:
             result = await handler(
