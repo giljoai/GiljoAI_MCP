@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import and_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import AgentTemplate, Product, User
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_import_productagents(
-    db_session: Session,
+    db_session: AsyncSession,
     tenant_key: str,
     project_id: Optional[str] = None,
     **kwargs: Any,
@@ -63,7 +63,7 @@ async def handle_import_productagents(
 
         # Get user by tenant key
         user_stmt = select(User).where(User.tenant_key == tenant_key)
-        user_result = db_session.execute(user_stmt)
+        user_result = await db_session.execute(user_stmt)
         user = user_result.scalar_one_or_none()
 
         if not user:
@@ -80,7 +80,7 @@ async def handle_import_productagents(
                 Product.is_active == True,
             )
         )
-        product_result = db_session.execute(product_stmt)
+        product_result = await db_session.execute(product_stmt)
         product = product_result.scalar_one_or_none()
 
         if not product:
@@ -146,7 +146,7 @@ async def handle_import_productagents(
             .order_by(AgentTemplate.name)
         )
 
-        templates_result = db_session.execute(templates_stmt)
+        templates_result = await db_session.execute(templates_stmt)
         templates = templates_result.scalars().all()
 
         if not templates:
@@ -243,7 +243,7 @@ async def handle_import_productagents(
 
 
 async def handle_import_personalagents(
-    db_session: Session,
+    db_session: AsyncSession,
     tenant_key: str,
     project_id: Optional[str] = None,
     **kwargs: Any,
@@ -283,7 +283,7 @@ async def handle_import_personalagents(
 
         # Get user by tenant key
         user_stmt = select(User).where(User.tenant_key == tenant_key)
-        user_result = db_session.execute(user_stmt)
+        user_result = await db_session.execute(user_stmt)
         user = user_result.scalar_one_or_none()
 
         if not user:
@@ -323,7 +323,7 @@ async def handle_import_personalagents(
             .order_by(AgentTemplate.name)
         )
 
-        templates_result = db_session.execute(templates_stmt)
+        templates_result = await db_session.execute(templates_stmt)
         templates = templates_result.scalars().all()
 
         if not templates:
