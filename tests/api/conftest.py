@@ -53,6 +53,11 @@ async def api_client(db_manager):
     if state.tenant_manager is None:
         state.tenant_manager = TenantManager()
 
+    # Set up tool_accessor for message endpoints
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+    state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
+    app.state.tool_accessor = state.tool_accessor
+
     # Create mock config for AuthManager
     mock_config = MagicMock()
     mock_config.jwt.secret_key = "test_secret_key"
