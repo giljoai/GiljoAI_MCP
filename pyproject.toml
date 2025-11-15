@@ -226,6 +226,7 @@ markers = [
     "stress: marks tests as stress/performance tests",
     "network: marks tests requiring network connectivity",
     "server_mode: marks tests requiring server mode",
+    "security: marks tests as security-related tests",
     "deprecated: marks tests for deprecated functionality (Handover 0116)",
     "smoke: Smoke tests (integration workflows validating critical paths, exempt from coverage thresholds)",
 ]
