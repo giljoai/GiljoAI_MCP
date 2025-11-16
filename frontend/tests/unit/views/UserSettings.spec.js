@@ -212,6 +212,29 @@ describe('UserSettings.vue', () => {
     })
   })
 
+  describe('Integrations Tab Content', () => {
+    it('shows GitHub integration placeholder below Serena', async () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            TemplateManager: { template: '<div>Template Manager Mock</div>' }
+          }
+        }
+      })
+
+      if (wrapper.vm.activeTab !== undefined) {
+        wrapper.vm.activeTab = 'integrations'
+        await wrapper.vm.$nextTick()
+      }
+
+      const text = wrapper.text()
+      expect(text).toContain('Serena MCP')
+      expect(text).toContain('GitHub Integration')
+      expect(text).toContain('needs implementation')
+    })
+  })
+
   describe('General Settings Tab', () => {
     it('renders general settings fields', async () => {
       wrapper = mount(UserSettings, {

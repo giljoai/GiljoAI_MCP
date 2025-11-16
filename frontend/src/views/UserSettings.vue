@@ -549,6 +549,53 @@
                 </v-card>
               </v-card-text>
             </v-card>
+
+            <!-- GitHub Integration (placeholder) -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="40" rounded="0" class="mr-2">
+                    <v-icon size="28">mdi-github</v-icon>
+                  </v-avatar>
+                  <div class="flex-grow-1">
+                    <div class="d-flex align-center">
+                      <h3 class="text-h6 mb-0 mr-2">GitHub Integration</h3>
+                    </div>
+                    <p class="text-caption text-medium-emphasis mb-0">
+                      Placeholder – needs implementation
+                    </p>
+                  </div>
+                </div>
+
+                <p class="text-body-2 text-medium-emphasis mb-3">
+                  This toggle will tell GiljoAI that you are using GitHub as your
+                  primary source control provider so deeper repository-aware workflows
+                  can be enabled in a future release. <strong>(Needs implementation)</strong>
+                </p>
+
+                <v-card variant="tonal" class="mb-0">
+                  <v-card-text class="pa-3">
+                    <div class="d-flex align-center justify-between">
+                      <div class="flex-grow-1 d-flex align-center">
+                        <div class="text-subtitle-2 font-weight-medium mr-4">
+                          Enable GitHub Integration
+                        </div>
+                        <v-switch
+                          :model-value="false"
+                          disabled
+                          hide-details
+                          density="compact"
+                        >
+                          <template #label>
+                            <span class="text-caption text-medium-emphasis">needs implementation</span>
+                          </template>
+                        </v-switch>
+                      </div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-card-text>
+            </v-card>
           </v-card-text>
         </v-card>
       </v-window-item>
