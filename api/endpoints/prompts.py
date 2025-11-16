@@ -449,12 +449,18 @@ async def generate_staging_prompt(
         # Initialize thin client generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
+        # BUG FIX: Fetch user's field priority configuration from database
+        # Extract 'fields' dict from user's field_priority_config JSONB column
+        user_field_config = current_user.field_priority_config or {}
+        field_priorities = user_field_config.get("fields", {})
+
         # Generate thin prompt with user field priorities
         result = await generator.generate(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
             instance_number=instance_number,
+            field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
 
         # Broadcast WebSocket event for real-time UI update
