@@ -41,6 +41,7 @@ async def create_product(
             name=request.name,
             description=request.description,
             project_path=request.project_path,
+            config_data=request.config_data,
         )
 
         if not result["success"]:
@@ -57,6 +58,10 @@ async def create_product(
 
         product_data = product_result["product"]
 
+        # Normalize empty config_data to None for API contract consistency
+        config_data = product_data.get("config_data") or None
+        has_config_data = bool(config_data)
+
         return ProductResponse(
             id=product_data["id"],
             name=product_data["name"],
@@ -71,8 +76,8 @@ async def create_product(
             unresolved_tasks=product_data.get("unresolved_tasks", 0),
             unfinished_projects=product_data.get("unfinished_projects", 0),
             vision_documents_count=product_data.get("vision_documents_count", 0),
-            config_data=product_data.get("config_data"),
-            has_config_data=product_data.get("has_config_data", False),
+            config_data=config_data,
+            has_config_data=has_config_data,
             is_active=product_data.get("is_active", False),
         )
 
