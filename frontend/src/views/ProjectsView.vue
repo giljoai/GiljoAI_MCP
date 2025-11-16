@@ -130,7 +130,7 @@
             @click="launchProject(activeProject.id)"
             :title="isWorking(activeProject) ? 'View running jobs' : 'Launch active project'"
           >
-            {{ isWorking(activeProject) ? '🚀 Working' : '🚀 Launch Project' }}
+            {{ isWorking(activeProject) ? 'Working' : 'Launch Project' }}
           </v-btn>
 
           <v-divider v-if="hasActiveProject" vertical class="mx-1" style="height: 24px" />
@@ -155,7 +155,7 @@
             :disabled="deletedCount === 0"
             aria-label="View deleted projects"
           >
-            🗑️ Deleted ({{ deletedCount }})
+            Deleted ({{ deletedCount }})
           </v-btn>
 
           <v-divider vertical class="mx-1" style="height: 24px" />
@@ -167,7 +167,7 @@
             :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} date format`"
             prepend-icon="mdi-calendar"
           >
-            📅 {{ dateLocale }} Format
+            {{ dateLocale }} Format
           </v-btn>
         </div>
       </v-card-title>
