@@ -96,7 +96,6 @@ CCW Session 3: Branch ccw-0515c-websocket-v2
 | Handover | Description | Tool | Duration | Priority | When | Notes |
 |----------|-------------|------|----------|----------|------|-------|
 | **9999** | One-liner Install Polish | **CLI** | 1-2h | DEFERRED | Post-launch | Deferred - not urgent, current install.py is production-grade |
-| **0135** | Jobs Dynamic Link Fix | **CCW** | 2-3h | Low | If bug exists | Check if Jobs UI links work, fix if broken |
 
 ### Phase 3: Production Readiness (MIXED Parallel)
 
@@ -245,6 +244,7 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 | 0130a | WebSocket V2 | ⚠️ Partial | V2 built, not migrated |
 | 0130b | Flow WebSocket removal | ❌ Not done | Still exists |
 | 0130e | Inter-agent messaging | ✅ Complete | Code exists |
+| 0135 | Jobs Dynamic Link Fix | ✅ Complete | 3 endpoints implemented (completed/0135-C.md) |
 
 ### 🔴 OBSOLETE/SKIP (No longer relevant after refactoring/purge)
 
@@ -256,7 +256,6 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 | 0117 | Research task | Not implementation |
 | 0130c | Duplicate components | Merged into 0515 |
 | 0130d | Centralize API calls | Merged into 0515 |
-| 0135 | Jobs dynamic link fix | May be obsolete |
 | 0510 | Fix test suite | Replaced by test purge |
 | 0511a-d | Test scenarios | Tests purged instead |
 | 0600-0631 | Test validation | Superseded by purge |
