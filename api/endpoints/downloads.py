@@ -512,7 +512,8 @@ async def generate_download_token(
     try:
         access_token = request.cookies.get("access_token")
         x_api_key = request.headers.get("x-api-key")
-        current_user = await get_current_user(request, access_token, x_api_key, db)
+        authorization = request.headers.get("authorization")
+        current_user = await get_current_user(request, access_token, x_api_key, authorization, db)
     except HTTPException:
         logger.warning("Token generation failed: Authentication required")
         raise HTTPException(
