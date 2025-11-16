@@ -22,13 +22,8 @@
       <v-card-text class="pt-6">
         <!-- Tool Selection -->
         <v-alert type="info" variant="tonal" class="mb-6">
-          <div class="d-flex align-center">
-            <v-icon start>mdi-information</v-icon>
-            <div>
-              Generate configuration for your AI tool to connect to this GiljoAI MCP server.
-              Copy and paste the configuration, or download a complete setup guide.
-            </div>
-          </div>
+          Generate configuration for your AI tool to connect to this GiljoAI MCP server.
+          Copy and paste the configuration, or download a complete setup guide.
         </v-alert>
 
         <v-select
