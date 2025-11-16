@@ -109,11 +109,44 @@ Handovers 0120-0130 successfully modularized the codebase BUT left **23 critical
 
 ---
 
+## PHASE 1.5: 360 MEMORY MANAGEMENT (0135-0139)
+
+**Duration**: 5-8 days
+**Priority**: 🔴 P0 CRITICAL
+**Status**: Pending (blocked by 0515)
+
+### Goal: Enable orchestrators to access cumulative product knowledge
+
+**Days 1-2 (CLI)**:
+- 0135: Add product_memory JSONB column
+- 0136: Auto-initialize memory on product creation
+- Testing: Backward compatibility with existing products
+
+**Day 3 (CCW)**:
+- 0137: GitHub integration (API + settings UI)
+- Parallel with: CLI testing of 0136
+
+**Days 4-5 (CLI + CCW)**:
+- 0138: Project closeout MCP tool
+- 0139a+b: WebSocket events (parallel execution)
+
+**Success Criteria**:
+- ✅ Orchestrators receive product memory in context
+- ✅ Project closeouts stored with sequence numbers
+- ✅ GitHub commits tracked (when enabled)
+- ✅ Real-time WebSocket updates working
+- ✅ Manual summaries work (non-GitHub fallback)
+
+**Blocked By**: 0515 (Frontend Consolidation)
+**Blocks**: 0131a (Monitoring - needs to track memory events)
+
+---
+
 ## PHASE 2: PRODUCTION READINESS (0131)
 
 **Duration**: 1 week
 **Priority**: 🟡 P1 HIGH
-**Status**: Pending (blocked by 0515)
+**Status**: Pending (blocked by 0135-0139)
 
 ### Scope
 
@@ -179,7 +212,7 @@ Handovers 0120-0130 successfully modularized the codebase BUT left **23 critical
 
 ---
 
-## REVISED TIMELINE (Updated 2025-11-15)
+## REVISED TIMELINE (Updated 2025-11-16)
 
 | Week | Phase | Handovers | Status |
 |------|-------|-----------|--------|
@@ -187,12 +220,13 @@ Handovers 0120-0130 successfully modularized the codebase BUT left **23 critical
 | 2 | Phase 0C-D (Frontend + Testing) | 0507-0511 | ✅ Complete |
 | 3 | Phase 0E-F (Docs + Consolidation) | 0512-0515 | 🔄 0512/0514 Complete, 0513/0515 Pending |
 | 4 | Phase 1 (Frontend Consolidation) | 0515 | Pending |
-| 5 | Phase 2 (Production Readiness) | 0131a-d | Pending |
-| 6+ | **v3.0 LAUNCH** 🚀 | - | Target |
-| 7+ | Phase 3 (Feature Development) | 0131-0239 | Deferred |
+| 5 | Phase 1.5 (360 Memory Management) | 0135-0139 | Pending |
+| 6 | Phase 2 (Production Readiness) | 0131a-d | Pending |
+| 7+ | **v3.0 LAUNCH** 🚀 | - | Target |
+| 8+ | Phase 3 (Feature Development) | 0131-0239 | Deferred |
 
 **Remediation Complete**: 2025-11-15 (Handovers 0500-0515)
-**Launch Target**: Week 6 (after Phase 0-2 complete)
+**Launch Target**: Week 7 (after Phase 0-2 complete)
 **Feature Development**: Post-launch (v3.2 milestone)
 
 ---
@@ -222,9 +256,10 @@ Handovers 0120-0130 successfully modularized the codebase BUT left **23 critical
 - ✅ 0514: Roadmap Rewrites (this document + REFACTORING_ROADMAP)
 - 🔄 0515: Frontend Consolidation & WebSocket v2 (pending)
 
-### Deferred (0515, 0131)
+### Deferred (0515, 0135-0139, 0131)
 - ⏸️ 0515: Frontend Consolidation (pending 0500-0514)
-- ⏸️ 0131a-d: Production Readiness (pending 0515)
+- ⏸️ 0135-0139: 360 Memory Management (pending 0515)
+- ⏸️ 0131a-d: Production Readiness (pending 0135-0139)
 
 ### Future (0131-0239)
 - 📅 0131-0239: Feature Development (v3.2+ milestone)

@@ -576,7 +576,6 @@ async def handle_tools_list(
         },
         # Handover 0083: core /gil_* commands
         {"name": "gil_fetch", "description": "Stage agent templates and return download URL", "inputSchema": {"type": "object", "properties": {}}},
-        {"name": "gil_update", "description": "Update agent templates (alias of fetch)", "inputSchema": {"type": "object", "properties": {}}},
         {"name": "gil_activate", "description": "Activate a project and ensure orchestrator exists", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
         {"name": "gil_launch", "description": "Launch project execution after staging", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
     ]
@@ -665,7 +664,6 @@ async def handle_tools_call(
         "gil_handover": state.tool_accessor.gil_handover,
         # Handover 0083 - core /gil_* commands
         "gil_fetch": state.tool_accessor.gil_fetch,
-        "gil_update": state.tool_accessor.gil_update,
         "gil_activate": state.tool_accessor.gil_activate,
         "gil_launch": state.tool_accessor.gil_launch,
     }

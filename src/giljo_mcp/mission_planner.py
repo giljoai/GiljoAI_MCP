@@ -31,6 +31,15 @@ from .repositories.context_repository import ContextRepository
 logger = logging.getLogger(__name__)
 
 
+# Default field priorities for context building (Fix #1: Handover 0XXX)
+# Applied when user has no custom field_priority_config
+# Ensures meaningful context even for new users who haven't customized priorities
+DEFAULT_FIELD_PRIORITIES = {
+    "codebase_summary": 6,  # Moderate detail (50% token reduction)
+    "architecture": 4,      # Abbreviated detail (70% token reduction)
+}
+
+
 class MissionPlanner:
     """
     Generate mission plans from product vision analysis.
@@ -631,6 +640,31 @@ Success Criteria:
         # Default to empty dict if not provided
         if field_priorities is None:
             field_priorities = {}
+
+        # Fix #1: Apply default field priorities when user has no config
+        # This ensures meaningful context even for new users who haven't customized priorities
+        # User-provided priorities take precedence via dict merge
+        if not field_priorities:
+            # Empty dict - use defaults
+            effective_priorities = DEFAULT_FIELD_PRIORITIES.copy()
+            logger.debug(
+                "No user field priorities configured - applying defaults",
+                extra={
+                    "default_priorities": DEFAULT_FIELD_PRIORITIES,
+                    "operation": "build_context_with_priorities",
+                },
+            )
+        else:
+            # User has configured priorities - use them (no defaults)
+            # This maintains user control and avoids unexpected behavior
+            effective_priorities = field_priorities
+            logger.debug(
+                "Using user-configured field priorities",
+                extra={
+                    "user_priorities": field_priorities,
+                    "operation": "build_context_with_priorities",
+                },
+            )
 
         # Structured logging for debugging and analytics
         logger.info(

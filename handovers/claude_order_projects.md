@@ -77,6 +77,43 @@ CCW Session 3: Branch ccw-0513-handover-docs → Create docs
 | **0515d** | Remove flowWebSocket.js | **CLI** | 2-3h | - | 0515c done | Delete old WebSocket files |
 | **0515e** | Integration Testing | **CLI** | 4-6h | - | All 0515 done | Test components, API, WebSocket |
 
+### Phase 2.75: 360 Memory Management (NEW - P0 Core Feature)
+
+**Purpose**: Provide orchestrators with historical product context and learning accumulation
+
+| Handover | Description | Tool | Duration | Parallel Group | Dependencies |
+|----------|-------------|------|----------|----------------|--------------|
+| **0135** | Database Schema - product_memory JSONB | **CLI** | 1d | - | After 0515 |
+| **0136** | Memory Initialization - Auto-seed on creation | **CLI** | 1d | - | After 0135 |
+| **0137** | GitHub Integration - Backend + UI | **CCW** | 1d | Group F | After 0135 |
+| **0138** | Project Closeout - MCP Tool | **CLI** | 1.5d | - | After 0136, 0137 |
+| **0139a** | WebSocket Events - Backend emission | **CLI** | 0.5d | - | After 0138 |
+| **0139b** | WebSocket Events - Frontend listeners | **CCW** | 0.5d | Group G | After 0138 |
+
+**Execution**:
+```bash
+# Week 3.5, Days 1-2: CLI database foundation
+CLI: 0135 (Schema) → 0136 (Initialization)
+
+# Week 3.5, Day 3: CCW parallel with CLI testing
+CCW Session: 0137 (GitHub backend) while CLI validates 0136
+
+# Week 3.5, Days 4-5: MCP tool + WebSocket
+CLI: 0138 (Closeout tool)
+CLI + CCW Parallel: 0139a (backend) + 0139b (frontend)
+```
+
+**Why Before Monitoring**:
+- Monitoring (0131a) should track memory update events
+- Core feature vs observability tool
+- Enables context-aware orchestrators immediately
+
+**Feature Impact**:
+- Orchestrators see project history and learned patterns
+- GitHub commit tracking (or manual summaries)
+- Real-time memory updates via WebSocket
+- Sequential history for "what happened when"
+
 **Note**: Full details in `/handovers/0515_frontend_consolidation_websocket_v2.md`
 
 **Execution**:
@@ -143,6 +180,8 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 | **A** | 0512, 0513, 0514 | CCW | ✅ YES | Pure documentation, no dependencies |
 | **B1** | 0515a, 0515b | CCW | ✅ YES | Different components, minimal overlap |
 | **B2** | 0515c | CCW | ❌ NO | Depends on B1 completion |
+| **F** | 0137 | CCW | ⚠️ PARTIAL | Can overlap with 0136 testing |
+| **G** | 0139a, 0139b | CLI+CCW | ✅ YES | Backend/frontend parallel |
 | **C** | 0131b, 0131c | CCW | ✅ YES | Independent features |
 | **D** | 0131a | CLI | ❌ NO | Requires live system |
 | **E** | 0131d | CCW | ⚠️ WAIT | Best after monitoring setup |
@@ -188,12 +227,17 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 - **Thursday**: CLI cleanup (0515d) and testing (0515e)
 - **Friday**: Buffer/fixes
 
-### Week 3: Production Ready
+### Week 3: 360 Memory Management
+- **Monday-Tuesday**: CLI for 0135, 0136 (database schema and initialization)
+- **Wednesday**: CCW for 0137 (GitHub integration backend)
+- **Thursday-Friday**: CLI for 0138 (MCP closeout tool) + CLI/CCW parallel for 0139a+b (WebSocket events)
+
+### Week 4: Production Ready
 - **Monday-Tuesday**: CLI for 0131a + 2 CCW (0131b, 0131c)
 - **Wednesday-Thursday**: CCW for 0131d
 - **Friday**: Final integration testing
 
-### Week 4: Launch v3.0 🎉
+### Week 5: Launch v3.0 🎉
 
 ---
 
@@ -364,8 +408,9 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 ### What We ARE Doing
 1. **Updating documentation** - Critical for maintenance
 2. **Consolidating frontend** - Reduce technical debt
-3. **Adding production readiness** - Monitoring, security, deployment
-4. **Launching v3.0** - Get user feedback early
+3. **Building 360 context awareness** - Product memory and learning accumulation
+4. **Adding production readiness** - Monitoring, security, deployment
+5. **Launching v3.0** - Get user feedback early
 
 ---
 

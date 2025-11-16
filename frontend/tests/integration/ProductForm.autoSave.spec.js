@@ -624,6 +624,97 @@ describe('ProductForm Auto-Save Integration', () => {
     })
   })
 
+  describe('Regression: Edit existing product preserves config_data from backend', () => {
+    it('should not wipe architecture/features/test_config when an edit draft exists in cache', async () => {
+      const vm = wrapper.vm
+
+      // Simulate existing product from backend with full config_data
+      const existingProduct = {
+        id: 'prod-config-test',
+        name: 'Config Product',
+        description: 'Has rich config',
+        vision_path: '',
+        project_path: '',
+        config_data: {
+          tech_stack: {
+            languages: 'Python 3.11+, TypeScript 5.0+',
+            frontend: 'React 18',
+            backend: 'FastAPI',
+            database: 'PostgreSQL',
+            infrastructure: 'Docker',
+          },
+          architecture: {
+            pattern: 'Modular Monolith',
+            api_style: 'REST + WebSocket',
+            design_patterns: 'Repository, DI, Factory',
+            notes: 'Local-first architecture notes',
+          },
+          features: {
+            core: 'Contacts CRUD, photo uploads, fuzzy search',
+          },
+          test_config: {
+            strategy: 'Hybrid',
+            coverage_target: 85,
+            frameworks: 'pytest, Vitest, Cypress',
+          },
+        },
+      }
+
+      // Simulate a stale cached draft that *would* normally wipe other fields
+      const draftData = {
+        data: {
+          name: 'Config Product (draft)',
+          description: 'Draft description',
+          configData: {
+            tech_stack: {
+              languages: 'Python 3.11+, TypeScript 5.0+ (draft)',
+            },
+            // Note: architecture/features/test_config missing or empty here
+          },
+        },
+        timestamp: Date.now(),
+        version: '1.0',
+      }
+
+      localStorage.setItem(
+        'product_form_draft_prod-config-test',
+        JSON.stringify(draftData),
+      )
+
+      // Call editProduct, which should populate form from backend product
+      // and, with the current behavior, should NOT restore cached draft values.
+      await vm.editProduct(existingProduct)
+      await flushPromises()
+
+      const formCfg = vm.productForm.configData
+
+      // Tech stack comes from backend initially (not overwritten by draft)
+      expect(formCfg.tech_stack.languages).toBe(
+        existingProduct.config_data.tech_stack.languages,
+      )
+
+      // Most importantly: architecture/features/test_config from backend must be preserved
+      expect(formCfg.architecture.pattern).toBe(
+        existingProduct.config_data.architecture.pattern,
+      )
+      expect(formCfg.architecture.api_style).toBe(
+        existingProduct.config_data.architecture.api_style,
+      )
+      expect(formCfg.features.core).toBe(
+        existingProduct.config_data.features.core,
+      )
+      expect(formCfg.test_config.strategy).toBe(
+        existingProduct.config_data.test_config.strategy,
+      )
+      expect(formCfg.test_config.coverage_target).toBe(
+        existingProduct.config_data.test_config.coverage_target,
+      )
+      expect(formCfg.test_config.frameworks).toBe(
+        existingProduct.config_data.test_config.frameworks,
+      )
+    })
+  })
+
   describe('Critical Scenario 14: Form Validation with Tab Indicators', () => {
     it('should show all validation indicators correctly', async () => {
       const vm = wrapper.vm
