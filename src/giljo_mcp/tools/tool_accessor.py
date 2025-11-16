@@ -823,7 +823,7 @@ class ToolAccessor:
             # 6. Return natural language instructions for AI agents
             return {
                 "success": True,
-                "instructions": f"Download the slash commands from {download_url}, extract the zip file, and install the contents to your ~/.claude/commands/ folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window.",
+                "instructions": f"Download the slash commands from {download_url}, extract the zip file, and install the contents to your ~/.claude/commands/ folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window. The user must restart their CLI tool. After restart verify the slash commands appear by initiating with '/'.",
                 "download_url": download_url,
                 "expires_minutes": 15,
                 "unlimited_downloads": True,
