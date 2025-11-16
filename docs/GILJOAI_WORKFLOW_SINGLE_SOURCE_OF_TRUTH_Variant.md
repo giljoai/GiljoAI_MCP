@@ -239,6 +239,8 @@ After first login, navigate to **User Settings** for initial configuration:
 
 ### 3.2 MCP CLI Setup Workflow
 
+**Implementation Status**: ✅ **WORKS** - Tested and verified (generates prompt with API/Bearer key)
+
 **Purpose**: Connect Claude Code CLI, Codex CLI, or Gemini CLI to GiljoAI MCP Server
 
 ```
@@ -285,6 +287,8 @@ After first login, navigate to **User Settings** for initial configuration:
 
 ### 3.3 Slash Command Setup Workflow
 
+**Implementation Status**: ⚠️ **WORKS (mechanically)** - Prompt generation and download work, but needs further definition of required slash commands
+
 **Purpose**: Install GiljoAI slash commands into CLI tool
 
 ```
@@ -330,6 +334,8 @@ After first login, navigate to **User Settings** for initial configuration:
 
 ### 3.4 Agent Template Export (Claude Code CLI Only)
 
+**Implementation Status**: ✅ **WORKS** - Tested and verified (generates agent template export prompt)
+
 **Purpose**: Install agent templates for Claude Code subagent system
 
 ```
@@ -372,6 +378,8 @@ After first login, navigate to **User Settings** for initial configuration:
 
 ### 3.5 Serena MCP Integration Setup
 
+**Implementation Status**: ⚠️ **UI EXISTS** - Toggle and advanced settings integrated, but no verification yet that it impacts prompt generation for agents/orchestrator when enabled
+
 **Purpose**: Enable Serena's symbolic code navigation tools
 
 ```
@@ -410,6 +418,8 @@ After first login, navigate to **User Settings** for initial configuration:
 **When Enabled**: Orchestrator and agents receive instructions about Serena symbolic code navigation tools
 
 ### 3.6 Context Priority Configuration
+
+**Implementation Status**: ⚠️ **UI EXISTS** - Drag & drop field prioritization works, but unknown how the priority schema impacts actual prompt elevation based on user preference
 
 **Purpose**: Configure which product fields are prioritized during perpetual context management
 
@@ -1773,11 +1783,19 @@ any → cancel → cancelled
 
 **Access**: All authenticated users
 
-**Setup Tab**:
-- MCP tool integration prompts
-- Slash command setup
-- Agent template import
-- (Static prompts - copy/paste)
+**Implementation Status Summary**:
+- ✅ Setup Tab: MCP, Agent Import UI fully functional
+- ⚠️ Setup Tab: Slash Command UI works mechanically, needs definition
+- ⚠️ Serena Integration: UI exists, prompt impact unverified
+- ⚠️ Context Priority: UI exists, priority schema behavior unknown
+- ℹ️ Agents, Appearance, Notifications, System tabs: Not tested
+
+**Setup Tab (Integrations)**:
+- ✅ **MCP Setup UI**: Generate prompt with API/Bearer key - WORKS
+- ⚠️ **Slash Command Setup UI**: Generate download prompt - WORKS (mechanically), needs further definition of required slash commands
+- ✅ **Agent Import UI**: Generate agent template export prompt - WORKS
+- ⚠️ **Serena Toggle UI**: Enable/disable with advanced settings - UI EXISTS, but no verification that it impacts prompt generation for agents/orchestrator when enabled
+- (All are static prompts - copy/paste)
 
 **Agents Tab**:
 - Agent Template Manager
@@ -1787,8 +1805,7 @@ any → cancel → cancelled
 - Compare with defaults
 
 **Context Tab**:
-- Field Priority Configuration
-- Drag & drop prioritization
+- ⚠️ **Field Priority Configuration**: Drag & drop prioritization - UI EXISTS, but unknown how priority schema works in relation to actual elevation in prompts based on user preference
 - Context budget settings
 - Used as context source during orchestration
 
