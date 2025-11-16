@@ -79,19 +79,30 @@ All 23 implementation gaps from 0120-0130 refactoring have been fixed:
 
 ### High Priority (Build on Remediation Learnings)
 
-**0135: Project Export/Import** (4-5 days) - 🟡 P1
+**0135-0139: 360 Memory Management** (5-8 days) - 🔴 P0 ✅ ADDED TO EXECUTION PLAN
+- **0135**: Database schema - Add product_memory JSONB column with GIN indexing
+- **0136**: Product memory initialization - Auto-initialize on product creation
+- **0137**: GitHub integration backend - API endpoints, credential validation, artifact commits
+- **0138**: Project closeout MCP tool - Extract learnings, update memory, trigger GitHub
+- **0139**: WebSocket events - Real-time memory updates in frontend UI
+- **Why now**: Core feature for persistent product knowledge, enables learning accumulation
+- **Impact**: Products build knowledge over time, automatic GitHub preservation
+- **Tool**: CLI (database, services, API) + CCW (frontend, WebSocket)
+- **Handover Docs**: See `handovers/0135_360_memory_*.md` (5 detailed handovers)
+
+**0140: Project Export/Import** (4-5 days) - 🟡 P1
 - Export project data (JSON, ZIP with code + docs + logs)
 - Import archived projects
 - Multi-tenant support (assign new tenant_id)
 - **Why**: Users want portability, enables collaboration
 
-**0136: Vision Document Search** (3-4 days) - 🟡 P1
+**0141: Vision Document Search** (3-4 days) - 🟡 P1
 - Full-text search across vision documents
 - Semantic search using embeddings
 - Filter by product, project, date
 - **Why**: Large vision docs hard to navigate (>10K tokens)
 
-**0137: Mission Plan Versioning** (3-4 days) - 🟡 P1
+**0142: Mission Plan Versioning** (3-4 days) - 🟡 P1
 - Track mission plan iterations
 - Compare versions side-by-side
 - Rollback to previous version
@@ -101,7 +112,7 @@ All 23 implementation gaps from 0120-0130 refactoring have been fixed:
 
 ### Medium Priority (UI/UX Enhancements)
 
-**0140-0149: UI/UX Enhancements** (2-3 weeks) - 🟢 P2
+**0143-0149: UI/UX Enhancements** (2-3 weeks) - 🟢 P2
 - Context prioritization UX (0112) - collapsible sections, syntax highlighting
 - Agent card enhancements - progress bars, real-time status
 - Dashboard theming - dark mode, custom colors
@@ -158,28 +169,40 @@ All 23 implementation gaps from 0120-0130 refactoring have been fixed:
 
 ---
 
-### Phase 2: High-Value Features (0135-0137) - 2-3 weeks
+### Phase 2: High-Value Features (0135-0142) - 3-4 weeks
 
-**Week 3-4: Export/Import + Search**
+**Week 3-4: 360 Memory Management (0135-0139)**
+- Tool: CLI (database, services, API) + CCW (frontend, WebSocket)
+- Duration: 5-8 days
+- Deliverable: Complete memory management system with GitHub integration
+- **Sub-phases**:
+  - 0135: Database schema (1 day)
+  - 0136: Memory initialization (1 day)
+  - 0137: GitHub backend (2 days)
+  - 0138: Project closeout tool (1-2 days)
+  - 0139: WebSocket events (1 day)
+
+**Week 5-6: Export/Import + Search (0140-0141)**
 - Tool: Mix (CLI for DB, CCW for endpoints/UI)
-- Duration: 2 weeks
+- Duration: 1-2 weeks
 - Deliverable: Project portability, vision search
 
-**Week 5: Mission Plan Versioning**
+**Week 7: Mission Plan Versioning (0142)**
 - Tool: CLI (database) + CCW (UI)
 - Duration: 3-4 days
 - Deliverable: Version tracking, comparison, rollback
 
 **Success Criteria**:
-- ✅ Projects can be exported/imported
-- ✅ Vision documents searchable
-- ✅ Mission plans versioned
+- ✅ 360 Memory Management operational (0135-0139)
+- ✅ Projects can be exported/imported (0140)
+- ✅ Vision documents searchable (0141)
+- ✅ Mission plans versioned (0142)
 
 ---
 
-### Phase 3: UI/UX Polish (0140-0149) - 2-3 weeks
+### Phase 3: UI/UX Polish (0143-0149) - 2-3 weeks
 
-**Week 6-7: UI Enhancements**
+**Week 8-9: UI Enhancements**
 - Tool: CCW (pure frontend)
 - Parallelization: 3-4 CCW branches
 - Deliverable: Context UX, agent cards, theming, accessibility
@@ -239,12 +262,18 @@ All 23 implementation gaps from 0120-0130 refactoring have been fixed:
 - ✅ Agent template versioning operational (0131)
 - ✅ Slash commands expanded (0133)
 - ✅ WebSocket resilience improved (0134)
-- ✅ Project export/import working (0135)
-- ✅ Vision search functional (0136)
-- ✅ Mission plan versioning active (0137)
+- ✅ 360 Memory Management complete (0135-0139):
+  - Database schema with product_memory JSONB column
+  - Auto-initialization on product creation
+  - GitHub integration with auto-commit
+  - Project closeout MCP tool
+  - Real-time WebSocket events
+- ✅ Project export/import working (0140)
+- ✅ Vision search functional (0141)
+- ✅ Mission plan versioning active (0142)
 
 ### v3.1 Polish (Phase 3)
-- ✅ UI/UX enhancements complete (0140-0149)
+- ✅ UI/UX enhancements complete (0143-0149)
 - ✅ Accessibility compliant (WCAG 2.1 AA)
 - ✅ Performance optimized (0150-0159)
 
@@ -282,9 +311,19 @@ All 23 implementation gaps from 0120-0130 refactoring have been fixed:
 0131 (Template Versioning) → 0133 (Slash Commands)
                            → 0134 (WebSocket v3)
                            ↓
-                        0135 (Export/Import) → 0136 (Vision Search) → 0137 (Mission Versioning)
+                        0135 (360 Memory: DB Schema)
                            ↓
-                        0140-0149 (UI/UX) → 0150-0159 (Performance)
+                        0136 (360 Memory: Initialization)
+                           ↓
+                        0137 (360 Memory: GitHub Backend)
+                           ↓
+                        0138 (360 Memory: Project Closeout)
+                           ↓
+                        0139 (360 Memory: WebSocket Events)
+                           ↓
+                        0140 (Export/Import) → 0141 (Vision Search) → 0142 (Mission Versioning)
+                           ↓
+                        0143-0149 (UI/UX) → 0150-0159 (Performance)
                            ↓
                         0200-0209 (Infrastructure)
                            ↓
