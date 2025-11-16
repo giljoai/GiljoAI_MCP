@@ -237,10 +237,10 @@ const actionDefinitions = {
 
 // Context-Aware Action Mapping
 const actionsByStatus = {
-  inactive: ['activate', 'delete'],
-  active: ['deactivate', 'complete', 'cancel', 'delete'],
-  completed: ['reopen', 'delete'],
-  cancelled: ['reopen', 'delete']
+  inactive: ['activate', 'complete', 'cancel'],
+  active: ['deactivate', 'complete', 'cancel'],
+  completed: ['reopen'],
+  cancelled: ['reopen']
 }
 
 // Computed

@@ -8,17 +8,6 @@
           Manage orchestration projects for: <strong style="color: #ffc300">{{ activeProduct?.name || 'No Active Product' }}</strong>
         </p>
       </v-col>
-      <v-col cols="auto">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="showCreateDialog = true"
-          :disabled="!activeProduct"
-          aria-label="Create new project"
-        >
-          New Project
-        </v-btn>
-      </v-col>
     </v-row>
 
     <!-- No Active Product Alert -->
@@ -106,63 +95,98 @@
               aria-label="Search projects by name"
             ></v-text-field>
           </v-col>
-          <v-col cols="auto">
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-delete-restore"
-              :text="deletedCount > 0 ? `View Deleted (${deletedCount})` : 'View Deleted'"
-              @click="showDeletedDialog = true"
-              :disabled="deletedCount === 0"
-              aria-label="View deleted projects"
-            >
-            </v-btn>
-          </v-col>
         </v-row>
 
-        <!-- Status Filter Chips with Date Format Toggle -->
-        <div class="d-flex gap-2 flex-wrap align-center justify-space-between">
-          <div class="d-flex gap-2 flex-wrap align-center">
-            <v-chip
-              v-for="status in filterOptions"
-              :key="status.value"
-              :color="filterStatus === status.value ? 'primary' : 'default'"
-              :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
-              @click="filterStatus = status.value"
-              :aria-label="`Filter by ${status.label}`"
-              class="cursor-pointer"
-            >
-              {{ status.label }} ({{ status.count }})
-            </v-chip>
-          </div>
-
-          <!-- Date Format Toggle (Right Aligned) -->
-          <v-btn
-            size="small"
-            variant="outlined"
-            @click="toggleDateLocale"
-            :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} date format`"
-            prepend-icon="mdi-calendar"
+        <!-- Status Filter Chips -->
+        <div class="d-flex gap-2 flex-wrap align-center">
+          <v-chip
+            v-for="status in filterOptions"
+            :key="status.value"
+            :color="filterStatus === status.value ? 'primary' : 'default'"
+            :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
+            @click="filterStatus = status.value"
+            :aria-label="`Filter by ${status.label}`"
+            class="cursor-pointer"
           >
-            {{ dateLocale }} Format
-          </v-btn>
+            {{ status.label }} ({{ status.count }})
+          </v-chip>
         </div>
       </v-card-text>
     </v-card>
 
     <!-- Projects Table -->
     <v-card v-if="activeProduct">
-      <v-data-table
-        :headers="headers"
-        :items="sortedProjects"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="currentPage"
-        @update:page="currentPage = $event"
-        :sort-by="sortConfig"
-        @update:sort-by="sortConfig = $event"
-        class="elevation-0"
-        item-key="id"
-      >
+      <!-- Project List Header Bar -->
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-h6">Project List</span>
+
+        <div class="d-flex align-center ga-2">
+          <!-- Launch Project Button (only when exactly 1 active project) -->
+          <v-btn
+            v-if="hasActiveProject"
+            color="#ffc300"
+            variant="flat"
+            prepend-icon="mdi-rocket-launch"
+            @click="launchProject(activeProject.id)"
+            :title="isWorking(activeProject) ? 'View running jobs' : 'Launch active project'"
+          >
+            {{ isWorking(activeProject) ? '🚀 Working' : '🚀 Launch Project' }}
+          </v-btn>
+
+          <v-divider v-if="hasActiveProject" vertical class="mx-1" style="height: 24px" />
+
+          <!-- New Project Button -->
+          <v-btn
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-plus"
+            @click="showCreateDialog = true"
+            :disabled="!activeProduct"
+            aria-label="Create new project"
+          >
+            New Project
+          </v-btn>
+
+          <!-- Deleted Projects Button -->
+          <v-btn
+            variant="outlined"
+            prepend-icon="mdi-delete-restore"
+            @click="showDeletedDialog = true"
+            :disabled="deletedCount === 0"
+            aria-label="View deleted projects"
+          >
+            🗑️ Deleted ({{ deletedCount }})
+          </v-btn>
+
+          <v-divider vertical class="mx-1" style="height: 24px" />
+
+          <!-- Date Format Toggle -->
+          <v-btn
+            variant="outlined"
+            @click="toggleDateLocale"
+            :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} date format`"
+            prepend-icon="mdi-calendar"
+          >
+            📅 {{ dateLocale }} Format
+          </v-btn>
+        </div>
+      </v-card-title>
+
+      <!-- Scrollable Table Container -->
+      <div class="project-list-container">
+        <v-data-table
+          :headers="headers"
+          :items="sortedProjects"
+          :loading="loading"
+          :items-per-page="itemsPerPage"
+          :page="currentPage"
+          @update:page="currentPage = $event"
+          :sort-by="sortConfig"
+          @update:sort-by="sortConfig = $event"
+          class="elevation-0"
+          item-key="id"
+          fixed-header
+        >
         <!-- Name Column with ID -->
         <template v-slot:item.name="{ item }">
           <div class="py-2">
@@ -175,11 +199,13 @@
 
         <!-- Status Column with Badge -->
         <template v-slot:item.status="{ item }">
-          <StatusBadge
-            :status="normalizeStatus(item.status)"
-            :project-id="item.id"
-            @action="handleStatusAction"
-          />
+          <v-chip
+            :color="getStatusColor(normalizeStatus(item.status))"
+            size="small"
+            variant="tonal"
+          >
+            {{ normalizeStatus(item.status) }}
+          </v-chip>
         </template>
 
         <!-- Product Column -->
@@ -213,31 +239,12 @@
         <!-- Actions Column -->
         <template v-slot:item.actions="{ item }">
           <div class="d-flex align-center justify-end ga-1">
-            <!-- Activate Button (only for inactive projects) -->
-            <v-btn
-              v-if="item.status === 'inactive'"
-              size="small"
-              color="success"
-              variant="tonal"
-              @click="activateProject(item.id)"
-              title="Activate project"
-            >
-              <v-icon start size="small">mdi-play</v-icon>
-              Activate
-            </v-btn>
-
-            <!-- Launch Button (only for active projects) -->
-            <v-btn
-              v-if="item.status === 'active'"
-              size="small"
-              color="#ffc300"
-              variant="flat"
-              @click="launchProject(item.id)"
-              :title="isWorking(item) ? 'View running jobs' : 'Launch project'"
-            >
-              <v-icon start size="small">mdi-rocket-launch</v-icon>
-              {{ isWorking(item) ? 'Working' : 'Launch' }}
-            </v-btn>
+            <!-- Status Badge Dropdown (for activate/deactivate/complete/cancel) -->
+            <StatusBadge
+              :status="normalizeStatus(item.status)"
+              :project-id="item.id"
+              @action="handleStatusAction"
+            />
 
             <!-- Menu for other actions -->
             <v-menu>
@@ -284,6 +291,7 @@
           </div>
         </template>
       </v-data-table>
+      </div>
     </v-card>
 
     <!-- Create/Edit Dialog -->
@@ -678,6 +686,16 @@ const deletedProjects = computed(() => projectStore.deletedProjects)
 
 const deletedCount = computed(() => deletedProjects.value.length)
 
+// Launch button visibility - only show when exactly 1 active project exists
+const hasActiveProject = computed(() => {
+  return activeProductProjects.value.filter(p => p.status === 'active').length === 1
+})
+
+// Get the single active project
+const activeProject = computed(() => {
+  return activeProductProjects.value.find(p => p.status === 'active')
+})
+
 // Format date with locale support (US: MM-DD-YYYY HH:MM, EU: DD-MM-YYYY HH:MM)
 function formatDateShort(dateStr) {
   if (!dateStr) return '—'
@@ -710,6 +728,17 @@ function normalizeStatus(status) {
     return 'inactive'
   }
   return status || 'inactive'
+}
+
+// Get color for status chip
+function getStatusColor(status) {
+  const colors = {
+    active: 'success',
+    inactive: 'grey',
+    completed: 'info',
+    cancelled: 'warning'
+  }
+  return colors[status] || 'default'
 }
 
 // Methods
@@ -935,7 +964,31 @@ onMounted(async () => {
   border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
+.border-b {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 .rounded {
   border-radius: 4px;
+}
+
+/* Scrollable project list container */
+.project-list-container {
+  height: calc(100vh - 520px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Ensure table headers are sticky */
+.project-list-container :deep(.v-data-table__thead) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: white;
+}
+
+/* Remove default table wrapper overflow to allow container scroll */
+.project-list-container :deep(.v-table__wrapper) {
+  overflow: visible !important;
 }
 </style>
