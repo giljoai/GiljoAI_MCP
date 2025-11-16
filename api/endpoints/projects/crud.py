@@ -80,6 +80,7 @@ async def create_project(
         description=result.get("description"),
         mission=result.get("mission", ""),
         status=result["status"],
+        staging_status=None,  # New projects start with null staging_status
         product_id=project.product_id,
         created_at=result.get("created_at"),
         updated_at=result.get("updated_at"),
@@ -136,6 +137,7 @@ async def list_projects(
             description=proj.get("description"),
             mission=proj.get("mission", ""),
             status=proj.get("status"),
+            staging_status=proj.get("staging_status"),
             product_id=proj.get("product_id"),
             created_at=proj.get("created_at"),
             updated_at=proj.get("updated_at"),
@@ -194,6 +196,7 @@ async def get_deleted_projects(
             description=proj.get("description"),
             mission=proj.get("mission", ""),
             status=proj.get("status"),
+            staging_status=proj.get("staging_status"),
             product_id=proj.get("product_id"),
             created_at=proj.get("created_at"),
             updated_at=proj.get("updated_at"),

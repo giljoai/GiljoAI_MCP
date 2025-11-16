@@ -34,7 +34,6 @@
     <v-row v-else-if="error" class="mb-4">
       <v-col cols="12">
         <v-alert type="error" variant="tonal" closable @click:close="error = null">
-          <v-icon start>mdi-alert-circle</v-icon>
           <div>
             <p class="font-weight-bold">Error Loading Project</p>
             <p class="text-body-2">{{ error }}</p>
