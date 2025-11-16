@@ -1,5 +1,5 @@
 """
-Slash command handlers for template installation and updates (/gil_fetch, /gil_update)
+Slash command handlers for template installation and updates (/gil_fetch, /gil_update_agents)
 """
 
 from typing import Any
@@ -52,6 +52,6 @@ async def handle_gil_fetch(db_session: AsyncSession, tenant_key: str, **_: Any) 
     return await _stage_agent_templates(db_session, tenant_key)
 
 
-async def handle_gil_update(db_session: AsyncSession, tenant_key: str, **_: Any) -> dict[str, Any]:
+async def handle_gil_update_agents(db_session: AsyncSession, tenant_key: str, **_: Any) -> dict[str, Any]:
     return await _stage_agent_templates(db_session, tenant_key)
 
