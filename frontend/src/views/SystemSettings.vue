@@ -347,6 +347,49 @@
               </v-card-text>
             </v-card>
 
+            <!-- GitHub Integration (placeholder) -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="48" class="mr-4">
+                    <v-icon size="32">mdi-github</v-icon>
+                  </v-avatar>
+                  <div>
+                    <h3 class="text-h6">GitHub Integration</h3>
+                    <p class="text-caption text-medium-emphasis mb-0">
+                      Placeholder – needs implementation
+                    </p>
+                  </div>
+                </div>
+
+                <p class="text-body-2 mb-3">
+                  This toggle will allow GiljoAI to know that you are using GitHub
+                  as your primary source control provider and enable deeper repository-aware
+                  workflows. <strong>(Needs implementation)</strong>
+                </p>
+
+                <div class="d-flex align-center">
+                  <div class="mr-4">
+                    <div class="text-subtitle-2 font-weight-medium">Enable GitHub Integration</div>
+                    <div class="text-caption text-medium-emphasis">
+                      Placeholder toggle – wiring and backend support still required.
+                    </div>
+                  </div>
+                  <v-switch
+                    color="primary"
+                    :model-value="false"
+                    disabled
+                    hide-details
+                    class="ml-auto"
+                  >
+                    <template #label>
+                      <span class="text-caption text-medium-emphasis">needs implementation</span>
+                    </template>
+                  </v-switch>
+                </div>
+              </v-card-text>
+            </v-card>
+
             <!-- More Coming Soon -->
             <v-card variant="outlined" color="surface-variant">
               <v-card-text class="text-center py-6">
