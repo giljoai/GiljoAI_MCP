@@ -84,7 +84,7 @@ Use **Claude Code CLI (Local)** when tasks require:
 - Complex queries requiring EXPLAIN ANALYZE
 - Multi-tenant isolation testing
 
-**Handovers**: 0500, 0501, 0502, 0510
+**Handovers**: 0500, 0501, 0502, 0510, 0135, 0136
 
 ```bash
 # Typical CLI workflow for DB tasks
@@ -160,7 +160,7 @@ git clean -fdx  # Remove untracked files
 - Debugging MCP server connectivity
 - Validating multi-tenant isolation in MCP tools
 
-**Handovers**: 0083, 0095 (MCP endpoints), 0141-0145 (slash commands)
+**Handovers**: 0083, 0095 (MCP endpoints), 0138 (closeout tool), 0141-0145 (slash commands)
 
 ```bash
 # MCP tool development workflow
@@ -205,7 +205,7 @@ Use **Claude Code Web (Cloud)** when tasks:
 - Vuetify theming and customization
 - Frontend routing and navigation
 
-**Handovers**: 0507-0509, 0114, 0112, 0130c, 0130d, 0515
+**Handovers**: 0507-0509, 0114, 0112, 0130c, 0130d, 0515, 0137 (GitHub backend UI), 0139b (WebSocket listeners)
 
 **Parallelization**: Can run 2-3 frontend handovers simultaneously on separate CCW branches.
 
@@ -428,6 +428,25 @@ Iteration 2:
 - **Group 1 (Phase 1)**: 4 parallel CCW branches (0503-0506) - 12h sequential → 4h wall-clock (300% speedup)
 - **Group 2 (Phase 2)**: 3 parallel CCW branches (0507-0509) - 7h sequential → 6h wall-clock (17% speedup)
 - **Group 3 (Phase 4)**: 3 parallel CCW branches (0512-0514) - 14h sequential → 10h wall-clock (40% speedup)
+
+### 360 Memory Management: Handovers 0135-0139
+
+| Handover | Title | Tool | Duration | Parallel? | Reason |
+|----------|-------|------|----------|-----------|--------|
+| **0135** | Database Schema (product_memory JSONB) | **CLI** | 1d | ❌ No (DB) | Alembic migration, GIN index, multi-tenant testing |
+| **0136** | Memory Initialization | **CLI** | 1d | ❌ No (DB) | ProductService.create_product() modification, backward compat |
+| **0137** | GitHub Integration Backend | **CCW** | 1d | ✅ Yes (Group F) | Pure FastAPI + Vue UI enablement, no DB during dev |
+| **0138** | Project Closeout MCP Tool | **CLI** | 1.5d | ❌ No (MCP) | MCP tool registration, orchestrator workflow testing |
+| **0139a** | WebSocket Event Emission | **CLI** | 0.5d | ⚠️ Partial (Group G) | Service layer event emission, tenant isolation |
+| **0139b** | Frontend WebSocket Listeners | **CCW** | 0.5d | ⚠️ Partial (Group G) | Vue components, event handlers, toast notifications |
+
+**Parallelization Strategy**:
+- **Group F**: 0137 (CCW) can overlap with 0136 (CLI) testing phase
+- **Group G**: 0139a (CLI) + 0139b (CCW) can run simultaneously
+
+**Dependency Chain**: 0135 → 0136 → 0137 → 0138 → 0139a+b
+
+**Wall-Clock Time**: 5 days (vs 5.5 days sequential) through strategic parallelization
 
 ### Complete Execution Plan: Handovers 0083-0239
 

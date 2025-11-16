@@ -8,7 +8,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.1+)**: Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.1+)**: 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Critical Remediation (v3.1.1)**: Handovers 0500-0515 completed major remediation after 0120-0130 refactoring:
 - Vision upload with chunking (<25K tokens per chunk)
@@ -147,6 +147,52 @@ PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT *
 - Handover summary generation (<10K tokens via mission condensation)
 - Full lineage tracking (spawned_by chain preserved across instances)
 - Manual succession via `/gil_handover` slash command or UI "Hand Over" button
+
+## 360 Memory Management
+
+**See [docs/360_MEMORY_MANAGEMENT.md](docs/360_MEMORY_MANAGEMENT.md)** for complete documentation.
+
+**Purpose**: Provide orchestrators with cumulative product knowledge and project history.
+
+**Key Features**:
+- Product memory stored in `Product.product_memory` JSONB column
+- Sequential project history with auto-incrementing sequence numbers
+- GitHub integration for commit tracking (optional)
+- Manual summaries for non-GitHub users (mini-git fallback)
+- Real-time WebSocket updates when memory changes
+
+**Data Structure**:
+```json
+{
+  "product_memory": {
+    "objectives": [...],
+    "decisions": [...],
+    "context": {...},
+    "knowledge_base": {...},
+    "sequential_history": [
+      {
+        "sequence": 1,
+        "type": "project_closeout",
+        "project_id": "uuid",
+        "summary": "...",
+        "git_commits": [...],
+        "timestamp": "2025-11-16T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+**MCP Tool**:
+- `close_project_and_update_memory(project_id, summary, key_outcomes, decisions_made)`
+- Called by orchestrator at project completion
+- Automatically fetches GitHub commits if integration enabled
+- Emits WebSocket event for real-time UI updates
+
+**GitHub Integration**:
+- Toggle: My Settings → Integrations → GitHub Integration
+- Stored in: `Product.product_memory.git_integration`
+- Fallback: Manual summaries when GitHub disabled
 
 ## Testing Strategy
 

@@ -356,6 +356,32 @@ The application as such should work on the same machine as a developer with loca
 
 It would be wonderful to expand the orchestration portion to be ran as CPU or GPU micro LLM to trigger agents or activate agents on the user's workstation but we may have to end up in an Electron app or something similar in the future instead.
 
+## 360 Memory Management
+
+**Vision**: Products accumulate knowledge automatically, providing orchestrators with historical context and learned patterns.
+
+**User Benefit**:
+- No manual knowledge management required
+- Orchestrators get smarter over time (learn from past projects)
+- Project learnings never lost
+- GitHub integration or manual summaries (user choice)
+
+**Technical Implementation**:
+- Product memory in JSONB column (flexible schema)
+- Sequential history tracking (ordered timeline)
+- Real-time updates via WebSocket
+- MCP tool for orchestrator closeouts
+
+**Example Use Case**:
+1. Project 1: "Setup" - Orchestrator establishes architecture (FastAPI + React)
+2. Project 2: "Features" - New orchestrator sees Project 1 decisions, builds on them
+3. Project 3: "Optimization" - Orchestrator understands full history, optimizes accordingly
+
+**Why This Matters**:
+- Each orchestrator instance is stateless
+- Without memory, every project starts from zero context
+- With memory, projects build cumulative intelligence
+
 # Integrations
 
 Today we have a Serena MCP integration and is a wonderful tool and we must make sure we promote it properly in settings It really helps this application do its work and the agents do their work.  Another potential is to allow for local LLM potentially through climb or even through Ollama LMStudo Or other tools.
