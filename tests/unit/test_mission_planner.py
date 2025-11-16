@@ -739,3 +739,146 @@ class TestMissionPlanner:
         assert hasattr(planner, "_count_tokens")
         assert hasattr(planner, "analyze_requirements")
         assert hasattr(planner, "generate_missions")
+
+    # === Fix #1: Default Field Priorities Tests ===
+
+    @pytest.mark.asyncio
+    async def test_empty_field_priorities_uses_defaults(
+        self, mission_planner, sample_product, sample_project
+    ):
+        """When no user priorities configured, should use sensible defaults.
+
+        Critical Issue: field_priorities defaulting to {} causes all optional fields
+        to be excluded. This test verifies that when empty dict is passed,
+        the system applies DEFAULT_FIELD_PRIORITIES to include important context
+        like codebase_summary and architecture.
+        """
+        # Arrange: Empty field priorities (simulating user with no config)
+        field_priorities = {}
+
+        # Act: Build context with empty priorities
+        context = await mission_planner._build_context_with_priorities(
+            product=sample_product,
+            project=sample_project,
+            field_priorities=field_priorities,
+            user_id="test_user_123"
+        )
+
+        # Assert: Default fields should be included
+        # Codebase summary should be included at moderate level (priority 6)
+        assert "## Codebase" in context, "Codebase summary missing with empty priorities"
+
+        # Architecture should be included at abbreviated level (priority 4)
+        assert "## Architecture" in context, "Architecture missing with empty priorities"
+
+        # Mandatory fields always present
+        assert "## Product" in context
+        assert "## Product Vision" in context
+        assert "## Project Description" in context
+
+    @pytest.mark.asyncio
+    async def test_user_field_priorities_override_defaults(
+        self, mission_planner, sample_product, sample_project
+    ):
+        """User-configured priorities should override defaults.
+
+        When user explicitly sets field priorities, those should take precedence
+        over default priorities, allowing full customization.
+        """
+        # Arrange: User wants FULL detail for codebase_summary (priority 10)
+        user_priorities = {"codebase_summary": 10}
+
+        # Act: Build context with user priorities
+        context = await mission_planner._build_context_with_priorities(
+            product=sample_product,
+            project=sample_project,
+            field_priorities=user_priorities,
+            user_id="test_user_123"
+        )
+
+        # Assert: Codebase should be included at FULL detail
+        assert "## Codebase" in context
+        # With priority 10, full codebase should be present (not abbreviated)
+        # We'll verify this by checking the content is substantial
+        codebase_section_start = context.find("## Codebase")
+        codebase_section_end = context.find("##", codebase_section_start + 1)
+        if codebase_section_end == -1:
+            codebase_section_end = len(context)
+        codebase_content = context[codebase_section_start:codebase_section_end]
+
+        # Full detail should include all content from sample_project.codebase_summary
+        assert len(codebase_content) > 100, "Codebase should have full detail with priority 10"
+
+    @pytest.mark.asyncio
+    async def test_defaults_do_not_affect_mandatory_fields(
+        self, mission_planner, sample_product, sample_project
+    ):
+        """Mandatory fields always included regardless of priorities.
+
+        Product name, product vision, and project description are MANDATORY
+        and should always be included at full detail, even with empty priorities.
+        """
+        # Arrange: Empty priorities
+        field_priorities = {}
+
+        # Act: Build context
+        context = await mission_planner._build_context_with_priorities(
+            product=sample_product,
+            project=sample_project,
+            field_priorities=field_priorities,
+            user_id="test_user_123"
+        )
+
+        # Assert: All mandatory fields present at full detail
+        assert "## Product" in context
+        assert sample_product.name in context
+
+        assert "## Product Vision" in context
+        assert sample_product.primary_vision_text in context
+
+        assert "## Project Description" in context
+        assert sample_project.description in context
+
+    @pytest.mark.asyncio
+    async def test_default_priority_values_are_reasonable(
+        self, mission_planner, sample_product, sample_project
+    ):
+        """Verify default priority values produce balanced context.
+
+        Default priorities should be:
+        - codebase_summary: 6 (moderate detail)
+        - architecture: 4 (abbreviated detail)
+
+        This ensures ~50% token reduction for optional fields while
+        maintaining useful context.
+        """
+        # Arrange: Empty priorities to trigger defaults
+        field_priorities = {}
+
+        # Mock the _get_detail_level to verify it's called with correct priorities
+        original_get_detail_level = mission_planner._get_detail_level
+        detail_level_calls = []
+
+        def mock_get_detail_level(priority):
+            result = original_get_detail_level(priority)
+            detail_level_calls.append((priority, result))
+            return result
+
+        with patch.object(mission_planner, '_get_detail_level', side_effect=mock_get_detail_level):
+            # Act: Build context
+            context = await mission_planner._build_context_with_priorities(
+                product=sample_product,
+                project=sample_project,
+                field_priorities=field_priorities,
+                user_id="test_user_123"
+            )
+
+        # Assert: Verify detail levels called with default priorities
+        # Should have calls for codebase_summary (6) and architecture (4)
+        priority_values = [call[0] for call in detail_level_calls]
+
+        # Default codebase priority should be 6 (moderate)
+        assert 6 in priority_values, "Default codebase_summary priority should be 6"
+
+        # Default architecture priority should be 4 (abbreviated)
+        assert 4 in priority_values, "Default architecture priority should be 4"

@@ -26,3 +26,32 @@ During staging,  The orchestrator should get one prompt thing prompt that tells 
 
          STEP #
 Name of step goes here
+
+
+360 MEMORY MANAGEMENT REQUIREMENTS:
+
+User Perspective:
+- When project completes, orchestrator should save learnings automatically
+- User should see notification when memory is updated
+- GitHub commits should be tracked if integration enabled
+- Manual summaries should work if GitHub not used
+
+Orchestrator Perspective:
+- Fetch product memory at startup (via get_orchestrator_instructions)
+- Review sequential history to understand "what happened before"
+- Use decisions/patterns to inform current project
+- At project end, call close_project_and_update_memory()
+
+Technical Requirements:
+- Product.product_memory JSONB column (not in config_data)
+- Sequential numbering (1, 2, 3, ...) for chronological order
+- GitHub API integration (optional, not required)
+- WebSocket events for real-time UI updates
+- Multi-tenant isolation (memory per product per tenant)
+
+Success Criteria:
+- Fresh product: Orchestrator asks for details (empty memory)
+- Established product: Orchestrator sees history, builds on it
+- GitHub enabled: Commits tracked automatically
+- GitHub disabled: Manual summaries work (mini-git)
+- UI updates: User sees memory added in real-time
