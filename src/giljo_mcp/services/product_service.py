@@ -181,6 +181,10 @@ class ProductService:
                         "error": "Product not found"
                     }
 
+                # Normalize config_data so that an empty dict is treated as "no config"
+                # for API consumers, while preserving the raw structure for internal use.
+                config_data = product.config_data or None
+
                 product_data = {
                     "id": str(product.id),
                     "name": product.name,
@@ -188,8 +192,8 @@ class ProductService:
                     "vision_path": product.primary_vision_path,  # Using new VisionDocument relationship
                     "project_path": product.project_path,
                     "is_active": product.is_active,
-                    "config_data": product.config_data,
-                    "has_config_data": bool(product.config_data),
+                    "config_data": config_data,
+                    "has_config_data": bool(config_data),
                     "created_at": product.created_at.isoformat() if product.created_at else None,
                     "updated_at": product.updated_at.isoformat() if product.updated_at else None,
                 }
@@ -250,6 +254,8 @@ class ProductService:
 
                 product_list = []
                 for product in products:
+                    config_data = product.config_data or None
+
                     product_data = {
                         "id": str(product.id),
                         "name": product.name,
@@ -257,8 +263,8 @@ class ProductService:
                         "vision_path": product.primary_vision_path,  # Using new VisionDocument relationship
                         "project_path": product.project_path,
                         "is_active": product.is_active,
-                        "config_data": product.config_data,
-                        "has_config_data": bool(product.config_data),
+                        "config_data": config_data,
+                        "has_config_data": bool(config_data),
                         "created_at": product.created_at.isoformat() if product.created_at else None,
                         "updated_at": product.updated_at.isoformat() if product.updated_at else None,
                     }
