@@ -236,17 +236,20 @@
           }}
         </template>
 
-        <!-- Actions Column -->
+        <!-- Actions Column (StatusBadge only) -->
         <template v-slot:item.actions="{ item }">
-          <div class="d-flex align-center justify-end ga-1">
-            <!-- Status Badge Dropdown (for activate/deactivate/complete/cancel) -->
+          <div class="d-flex align-center justify-center">
             <StatusBadge
               :status="normalizeStatus(item.status)"
               :project-id="item.id"
               @action="handleStatusAction"
             />
+          </div>
+        </template>
 
-            <!-- Menu for other actions -->
+        <!-- Menu Column (separate) -->
+        <template v-slot:item.menu="{ item }">
+          <div class="d-flex align-center justify-center">
             <v-menu>
               <template v-slot:activator="{ props }">
                 <v-btn
@@ -609,7 +612,8 @@ const headers = [
   { title: 'Agents', key: 'agents', sortable: false, width: '10%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '15%' },
-  { title: 'Actions', key: 'actions', sortable: false, width: '8%', align: 'end' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '120px', align: 'center' },
+  { title: '', key: 'menu', sortable: false, width: '50px', align: 'center' },
 ]
 
 // Computed properties
