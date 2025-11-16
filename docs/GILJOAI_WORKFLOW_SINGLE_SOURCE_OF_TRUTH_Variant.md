@@ -711,13 +711,13 @@ After first login, navigate to **User Settings** for initial configuration:
 ### 5.3 Project Modification & States
 
 **Project States**:
-- `inactive`: Created but not selected
+- `inactive`: Created but not selected (default state)
 - `active`: Currently selected for work
 - `staging`: Orchestrator generating mission (transient)
 - `running`: Jobs in progress
-- `paused`: Temporarily stopped (can reactivate)
 - `completed`: All work finished
 - `cancelled`: Stopped permanently (can restore)
+- `deleted`: Soft-deleted (10-day expiry before purge)
 
 **State Transitions**:
 ```
@@ -725,10 +725,12 @@ inactive → activate() → active → launch() → staging
 staging → (orchestrator done) → running
 running → complete() → completed
 running → cancel() → cancelled
-active → deactivate() → paused
-paused → activate() → active
+active → deactivate() → inactive
+inactive → activate() → active (resume work)
 cancelled → restore() → inactive
 ```
+
+**Note**: "paused" status was removed in Handover 0071 (Oct 2025). Use "inactive" instead.
 
 **Important**:
 - Cancelled/Completed/Deactivated projects keep ALL data (mission, agents, messages)
