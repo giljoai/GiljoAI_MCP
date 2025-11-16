@@ -430,8 +430,14 @@ class ToolAccessor:
 
                 product = None
                 if project.product_id:
+                    # FIX: Eager load vision_documents to avoid lazy loading in async context
+                    # The primary_vision_text property accesses self.vision_documents
+                    from sqlalchemy.orm import selectinload
+
                     result = await session.execute(
-                        select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
+                        select(Product)
+                        .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
+                        .options(selectinload(Product.vision_documents))
                     )
                     product = result.scalar_one_or_none()
 
