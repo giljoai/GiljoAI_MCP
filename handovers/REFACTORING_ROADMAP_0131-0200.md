@@ -208,7 +208,7 @@ All 23 implementation gaps from 0120-0130 refactoring have been fixed:
 ### Phase 5: Launch Prep (0200-0239) - 4-6 weeks
 
 **Infrastructure (0200-0209)** - 1-2 weeks
-- One-liner install (already done, Handover 0100)
+- One-liner install (deferred to 9999 - not urgent, install.py already production-grade)
 - Docker Compose + Kubernetes
 - Monitoring (Prometheus + Grafana)
 - Backup & recovery
