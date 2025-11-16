@@ -95,7 +95,7 @@ CCW Session 3: Branch ccw-0515c-websocket-v2
 
 | Handover | Description | Tool | Duration | Priority | When | Notes |
 |----------|-------------|------|----------|----------|------|-------|
-| **0100** | One-liner Install Polish | **CLI** | 1-2h | Medium | After 0515 | Verify install.py works with new DB baseline |
+| **9999** | One-liner Install Polish | **CLI** | 1-2h | DEFERRED | Post-launch | Deferred - not urgent, current install.py is production-grade |
 | **0135** | Jobs Dynamic Link Fix | **CCW** | 2-3h | Low | If bug exists | Check if Jobs UI links work, fix if broken |
 
 ### Phase 3: Production Readiness (MIXED Parallel)
@@ -228,7 +228,6 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 | Handover | Title | Evidence | Location |
 |----------|-------|----------|----------|
 | 0083-0093 | Various features | ✅ Harmonized | completed/harmonized/ |
-| 0100 | One-liner installation | ✅ Implemented | install.py exists |
 | 0120 | Message Queue Consolidation | ✅ Complete | Code verified |
 | 0121 | ToolAccessor Phase 1 | ✅ Complete | tool_accessor.py exists |
 | 0122 | Orchestration Documentation | ✅ Complete | Docs exist |
@@ -261,6 +260,12 @@ CCW Session 3: Branch ccw-0131d-deployment-guide
 | 0510 | Fix test suite | Replaced by test purge |
 | 0511a-d | Test scenarios | Tests purged instead |
 | 0600-0631 | Test validation | Superseded by purge |
+
+### 🔵 DEFERRED TO END OF QUEUE (Not critical, truly last priority)
+
+| Handover | Title | Reason to Defer |
+|----------|-------|-----------------|
+| 9999 | One-liner installation | Not urgent, install.py already production-grade, uvx incompatible with server apps |
 
 ### 🟡 RELEVANT NOW (Should execute in order)
 
