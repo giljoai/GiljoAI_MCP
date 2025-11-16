@@ -183,9 +183,53 @@ From handover spec, checking each criterion:
 
 ---
 
+## Orphaned Test File Found & Removed
+
+### Discovery (Thanks to User!)
+
+**Orphaned Test**: `frontend/tests/composables/useWebSocket.spec.js`
+
+**Problem**:
+- Line 11: `import websocketService from '@/services/websocket'` (file doesn't exist)
+- Tests old composable API incompatible with V2
+- 366 lines of tests for deprecated implementation
+
+**Action Taken**: ✅ **REMOVED** via `git rm`
+
+**Rationale**:
+1. References non-existent `@/services/websocket.js`
+2. Tests old API (`on()`, `off()`, `disconnect()`) - V2 has different API
+3. Would need complete rewrite for V2
+4. Better to write fresh tests in 0515e with V2 understanding
+
+**New Tests Needed** (for 0515e):
+- WebSocket V2 store tests (`useWebSocketStore`)
+- V2 composable tests (`useWebSocketV2`)
+- Subscription management tests
+- Reconnection logic tests
+- Memory leak prevention (100+ cycles)
+
+---
+
 ## Recommendations
 
-### 1. Update Documentation Comments
+### 1. Write New V2 Tests (Handover 0515e)
+
+**Priority**: HIGH
+
+Create comprehensive test suite for WebSocket V2:
+- `frontend/tests/stores/websocket.spec.js` - Test V2 store
+- `frontend/tests/composables/useWebSocketV2.spec.js` - Test V2 composable
+- `frontend/tests/integration/websocket-realtime.spec.js` - E2E tests
+
+**Coverage Goals**:
+- Connection management (connect, reconnect, disconnect)
+- Subscription tracking (subscribe, unsubscribe, cleanup)
+- Message routing (send, receive, toast notifications)
+- Memory leak prevention (1000+ mount/unmount cycles)
+- Offline support (message queue)
+
+### 2. Update Documentation Comments
 
 **File**: `frontend/src/stores/websocketIntegrations.js`
 
@@ -203,15 +247,16 @@ From handover spec, checking each criterion:
 
 **Priority**: Low (cosmetic only)
 
-### 2. Archive 0515c Handover
+### 3. Archive 0515c Handover
 
 **Action**: Move `handovers/0515c_websocket_v2_migration_CCW.md` to `handovers/completed/`
 
 **Reason**: 0515c appears to be complete (V2 is implemented and old files removed)
 
-### 3. Skip to 0515e Integration Testing
+### 4. Execute 0515e Integration Testing
 
-**Next Step**: Execute handover 0515e (Integration Testing) to validate:
+**Next Step**: Execute handover 0515e (Integration Testing) with focus on:
+- Writing new V2 test suite
 - All WebSocket V2 features work correctly
 - Real-time updates functional
 - No memory leaks
@@ -221,11 +266,16 @@ From handover spec, checking each criterion:
 
 ## File Changes Summary
 
-**Files Modified**: 0
-**Files Deleted**: 0 (already deleted previously)
-**Files Created**: 1 (this completion document)
+**Files Modified**: 1
+- `handovers/completed/0515d_remove_old_websocket_files_COMPLETE.md` (updated with orphaned test findings)
 
-**Git Changes**: None (working tree clean)
+**Files Deleted**: 1
+- `frontend/tests/composables/useWebSocket.spec.js` (orphaned test for old WebSocket implementation)
+
+**Files Created**: 1
+- `handovers/completed/0515d_remove_old_websocket_files_COMPLETE.md` (this completion document)
+
+**Git Changes**: Orphaned test file removed
 
 ---
 
