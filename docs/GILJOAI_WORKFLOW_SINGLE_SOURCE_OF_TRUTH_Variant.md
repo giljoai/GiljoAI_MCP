@@ -317,10 +317,12 @@ After first login, navigate to **User Settings** for initial configuration:
          ▼
 ┌──────────────────────────────┐
 │ Slash commands now available:│
-│ /gil_create_task             │
-│ /gil_activate_project        │
+│ /task                        │
 │ /gil_handover                │
+│                              │
 │ (Requires MCP connection)    │
+│ Note: /gil_activate_project  │
+│ not implemented              │
 └──────────────────────────────┘
 ```
 
@@ -693,30 +695,40 @@ cancelled → restore() → inactive
 
 ## 6. Task Management Workflow
 
-### 6.1 Task Creation Flow
+**Implementation Status**: ✅ **100% COMPLETE (Web Application)**
+
+**User Testing Confirmation** (Single Tenant, Admin Role):
+- ✅ Task creation via web UI - WORKS
+- ✅ NULL product tagging (tasks without active product) - WORKS
+- ✅ Task filtering by product/NULL - WORKS
+- ✅ Task conversion to project - WORKS
+- ✅ Converted tasks appear in project list - WORKS
+
+**Multi-Tenant Testing**: Not tested, but code enforces tenant isolation at all layers
+
+**CLI Commands**: See Section 6.4 for CLI task creation via MCP (separate feature)
+
+---
+
+### 6.1 Task Creation Flow (Web Application)
 
 ```
 ┌──────────────────┐
 │ Create Task      │
-│ (Web or Slash)   │
+│ (Web UI)         │
 └────────┬─────────┘
          │
-    ┌────▼──────────────┐
-    │ Via Web UI        │ Via Slash Command
-    │                   │
-    ▼                   ▼
-┌─────────────┐   ┌──────────────────┐
-│ Task Name   │   │ /gil_create_task │
-│ Settings    │   │ "content here"   │
-│ • Priority  │   │                  │
-│ • Status    │   │ → Dumps to list  │
-│ • Desc      │   │ → Random name    │
-└──────┬──────┘   │ → Default        │
-       │          │   settings       │
-       │          └──────┬───────────┘
-       └─────────────────┘
-                  │
-                  ▼
+         ▼
+┌─────────────────────┐
+│ Task Form:          │
+│ • Task Name         │
+│ • Priority          │
+│ • Status            │
+│ • Description       │
+│ • Category          │
+└──────┬──────────────┘
+       │
+       ▼
 ┌───────────────────────────────────────┐
 │ Active Product?                       │
 └────────┬──────────────────────────────┘
@@ -744,6 +756,8 @@ cancelled → restore() → inactive
 │   show when product      │
 │   active                 │
 │ • NULL tasks show always │
+│ • Filterable by status   │
+│ • Filterable by priority │
 └──────────────────────────┘
 ```
 
@@ -778,6 +792,85 @@ cancelled → restore() → inactive
 ```
 
 **Constraint**: Can only convert tasks to projects when a product is active
+
+### 6.3 Task List and Filtering (Web UI)
+
+**Filter Options**:
+```
+┌────────────────────────────────┐
+│ Task List Filters:             │
+│                                │
+│ [x] Product Tasks              │ Tasks for active product only
+│ [ ] All Tasks (NULL)           │ Tasks with no product assignment
+│ [ ] Created by Me              │ My created tasks only
+│                                │
+│ Status: [All ▼]                │ pending, in_progress, completed
+│ Priority: [All ▼]              │ low, medium, high, critical
+│ Project: [All ▼]               │ Filter by project
+└────────────────────────────────┘
+```
+
+**Tested Functionality** (User Confirmed):
+- ✅ NULL-tagged tasks appear when "All Tasks (NULL)" selected
+- ✅ Product-tagged tasks filtered correctly
+- ✅ Status and priority filters work
+- ✅ Tasks display in list with all metadata
+
+### 6.4 CLI Task Commands (MCP Integration)
+
+**Status**: ⚠️ **PARTIAL - `/task` exists, project commands missing**
+
+#### 6.4.1 Existing CLI Command: `/task`
+
+**Implementation**: ✅ **COMPLETE**
+**Location**: `src/giljo_mcp/tools/task.py` lines 979-1092
+**Type**: MCP `@mcp.prompt()` decorator
+
+**Usage**:
+```bash
+# From Claude Code CLI (with MCP server connected):
+/task Fix authentication bug in login flow
+
+# Multi-line task:
+/task Implement dark mode
+Add theme toggle to settings
+Support system preference detection
+```
+
+**Features**:
+- ✅ Auto-detects priority from keywords (critical, urgent, low, etc.)
+- ✅ Auto-detects category (bug, feature, docs, testing, refactoring)
+- ✅ NULL-tags if no active product
+- ✅ First line becomes title, rest becomes description
+- ✅ Returns task ID for reference
+
+**Example Output**:
+```
+✅ Task created: 'Fix authentication bug in login flow'
+Priority: high
+Category: bug
+ID: abc-def-123-456
+Scope: Unassigned (visible in all products)
+
+Use 'assign_task_to_agent' to auto-spawn an agent job for this task.
+```
+
+#### 6.4.2 Missing CLI Commands (Handover 0038 - Never Implemented)
+
+**Status**: ❌ **NOT IMPLEMENTED**
+
+These commands were planned but never built:
+
+| Command | Purpose | Status |
+|---------|---------|--------|
+| `/gil_fetch_agents` | Install agent templates from server | ❌ Not implemented |
+| `/gil_activate_project <alias>` | Activate project and create mission | ❌ Not implemented |
+| `/gil_launch_project <alias>` | Launch orchestrator with agents | ❌ Not implemented |
+| `/gil_update_agents` | Update agent templates | ❌ Not implemented |
+
+**Impact**: Users must use web dashboard for project activation/launch workflows. The `/task` command is a convenience for quick task creation from CLI but is not required.
+
+**Workaround**: All project orchestration functionality works via web UI (100% complete).
 
 ---
 
