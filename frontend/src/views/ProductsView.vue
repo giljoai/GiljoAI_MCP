@@ -2407,37 +2407,13 @@ watch(showDialog, (isOpen) => {
       const initialSnapshot = JSON.parse(JSON.stringify(productForm.value))
       const differs = JSON.stringify(cached) !== JSON.stringify(initialSnapshot)
 
-      // Disable modal prompts. Silent policy:
-      // - Editing existing product: auto-restore only if draft differs and is fresh (<= TTL)
-      // - New product: do not auto-restore; clear any existing cached draft
-      if (editingProduct.value) {
-        if (differs && ageMinutes <= TTL_MINUTES) {
-          // Handover 0084: Preserve current productForm values, only restore cached changes
-          // This ensures new fields like projectPath don't get lost from old caches
-          // Merge strategy: Only restore cached values if they are defined and not empty
-          const mergedForm = { ...productForm.value }
-
-          // Restore cached values, but preserve current values if cached is undefined/empty
-          Object.keys(cached).forEach(key => {
-            if (cached[key] !== undefined && cached[key] !== '') {
-              mergedForm[key] = cached[key]
-            }
-          })
-
-          // Explicitly preserve projectPath if not in cache or empty in cache
-          if (!cached.projectPath && productForm.value.projectPath) {
-            mergedForm.projectPath = productForm.value.projectPath
-          }
-
-          productForm.value = mergedForm
-          showToast({ message: 'Draft restored', type: 'info', duration: 2000 })
-        } else {
-          autoSave.value.clearCache()
-        }
-      } else {
-        // New product flow: never restore cached drafts
-        autoSave.value.clearCache()
-      }
+      // Updated policy:
+      // - Editing existing product: DO NOT restore cached drafts at all. Always
+      //   trust the latest values loaded from the backend to avoid wiping valid
+      //   config_data (architecture, features, test_config) when only tech stack
+      //   was edited previously.
+      // - New product: still do not auto-restore (clean slate).
+      autoSave.value.clearCache()
     }
   } else {
     // Dialog closed - cleanup auto-save
