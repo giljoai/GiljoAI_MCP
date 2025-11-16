@@ -323,6 +323,47 @@ PHASE 5: AGENT EXECUTION
                              ├─► Reports consolidated team status to user
                              └─► Initiates project closeout workflow when all agents complete
                                   └─► **Handover 0073**: Git commit, push, documentation, agent decommissioning
+                                  └─► **Handover 0138 (360 Memory)**: Project closeout with memory update
+
+
+PHASE 6: PROJECT CLOSEOUT & MEMORY UPDATE (NEW - 360 Memory Management)
+═══════════════════════════════════════════════════════════════════════════════
+
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │  Implementation Tab → Project Completion                              │
+    └─────────────┬────────────────────────────────────────────────────────┘
+                  │
+                  ├──► [18] All Agents Report Completion
+                  │          └─► All sub-agents reach status="complete"
+                  │          └─► Orchestrator verifies deliverables
+                  │          └─► UI shows: All agent cards display "Completed"
+                  │
+                  └──► [19] Orchestrator Calls Project Closeout MCP Tool
+                             └─► ✅ MCP tool: close_project_and_update_memory()
+                                   │
+                                   ├──► [A] Generate Project Summary
+                                   │      └─► What was accomplished (2-3 sentences)
+                                   │      └─► Key outcomes (bullet list)
+                                   │      └─► Important decisions made
+                                   │      └─► Files created/modified
+                                   │
+                                   ├──► [B] Fetch GitHub Commits (if enabled)
+                                   │      └─► Check Product.product_memory.git_integration
+                                   │      └─► If enabled: Fetch commits since project start
+                                   │      └─► If disabled: Use manual summary only
+                                   │
+                                   ├──► [C] Update Product Memory
+                                   │      └─► Append to Product.product_memory.sequential_history[]
+                                   │      └─► Assign next sequence number (auto-increment)
+                                   │      └─► Store project summary, outcomes, decisions
+                                   │      └─► Attach GitHub commits (if available)
+                                   │      └─► Timestamp: ISO 8601 format
+                                   │
+                                   └──► [D] Emit WebSocket Event
+                                          └─► Event type: "product:memory_updated"
+                                          └─► Payload: {product_id, sequence, summary}
+                                          └─► UI shows: Toast notification "Product memory updated"
+                                          └─► Future orchestrators: Will see this in their context
 
 
 COMMUNICATION LAYER (Throughout Execution)
