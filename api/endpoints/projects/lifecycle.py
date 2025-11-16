@@ -42,7 +42,7 @@ async def activate_project(
 
     State Transitions:
     - staging → active (initial launch)
-    - paused → active (resume)
+    - inactive → active (resume)
 
     Automatically deactivates other active projects in same product (Single Active Project constraint).
 
@@ -108,9 +108,9 @@ async def deactivate_project(
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectResponse:
     """
-    Deactivate (pause) an active project.
+    Deactivate an active project.
 
-    State Transition: active → paused
+    State Transition: active → inactive
 
     Args:
         project_id: Project UUID
@@ -119,7 +119,7 @@ async def deactivate_project(
         project_service: Project service (from dependency)
 
     Returns:
-        ProjectResponse with paused project
+        ProjectResponse with inactive project
 
     Raises:
         HTTPException 404: Project not found
