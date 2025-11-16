@@ -34,8 +34,7 @@
             class="mb-6"
           />
 
-          <v-alert type="info" variant="tonal" class="mb-3" :icon="false">
-            <v-icon start>mdi-information</v-icon>
+          <v-alert type="info" variant="tonal" class="mb-3">
             Password changes are handled by an administrator.
             You can reset your 4‑digit recovery PIN below.
           </v-alert>

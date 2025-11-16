@@ -17,13 +17,8 @@
 
     <v-card-text>
       <!-- Empty State -->
-      <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4" :icon="false">
-        <div class="d-flex align-center">
-          <v-icon start>mdi-information</v-icon>
-          <div>
-            No API keys created yet. Generate a new integration key to connect AI tools like Claude Code, Codex, or other external applications.
-          </div>
-        </div>
+      <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4">
+        No API keys created yet. Generate a new integration key to connect AI tools like Claude Code, Codex, or other external applications.
       </v-alert>
 
       <!-- API Keys Table -->

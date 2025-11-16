@@ -48,7 +48,6 @@
 
         <!-- Instructions -->
         <v-alert type="info" variant="tonal" class="mb-4">
-          <v-icon start>mdi-information</v-icon>
           <div>
             <strong>Next steps after download:</strong>
             <ol class="mt-2 ml-4">
@@ -68,7 +67,6 @@
           closable
           @click:close="downloadSuccess = false"
         >
-          <v-icon start>mdi-check-circle</v-icon>
           Script downloaded successfully! Follow the instructions above to complete installation.
         </v-alert>
       </v-card-text>
@@ -102,7 +100,6 @@
         <!-- Share Links Display -->
         <div v-if="shareLinks">
           <v-alert type="success" variant="tonal" class="mb-4">
-            <v-icon start>mdi-check-circle</v-icon>
             <div>
               <strong>Share links generated successfully!</strong>
               <div class="text-caption mt-1">
@@ -250,7 +247,6 @@ Questions? Let me know!
 
               <!-- Config File Locations -->
               <v-alert type="info" variant="tonal">
-                <v-icon start>mdi-file-document-outline</v-icon>
                 <div>
                   <strong>Configuration file locations:</strong>
                   <ul class="mt-2 ml-4">
