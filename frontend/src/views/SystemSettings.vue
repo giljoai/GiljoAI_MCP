@@ -50,7 +50,7 @@
             </v-alert>
 
             <!-- Server Configuration -->
-            <h3 class="text-h6 mb-3">Server Configuration</h3>
+            <h3 class="text-h6 mb-3">Server Configuration from Installation</h3>
 
             <v-text-field
               :model-value="networkSettings.externalHost"
@@ -61,18 +61,7 @@
               persistent-hint
               class="mb-4"
               data-test="external-host-field"
-            >
-              <template v-slot:append>
-                <v-btn
-                  icon="mdi-content-copy"
-                  size="small"
-                  variant="text"
-                  @click="copyExternalHost"
-                  title="Copy External Host"
-                  data-test="copy-external-host-btn"
-                />
-              </template>
-            </v-text-field>
+            />
 
             <v-text-field
               :model-value="networkSettings.apiPort"
@@ -99,17 +88,17 @@
             <!-- CORS Origins Management -->
             <v-divider class="my-6" />
 
-            <h3 class="text-h6 mb-3">CORS Allowed Origins</h3>
+            <h3 class="text-h6 mb-3 text-medium-emphasis">CORS Allowed Origins</h3>
 
-            <p class="text-body-2 mb-3">
-              Manage which origins can make cross-origin requests to the API server.
-              Add frontend URLs hosted on different domains or ports.
-            </p>
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <strong>Foundation implementation exists.</strong> Reserved for future use when frontend and backend are hosted on separate domains (e.g., SaaS deployments).
+              Not needed for current single-server installations where frontend and backend run together.
+            </v-alert>
 
-            <div data-test="cors-origins-section">
-              <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4">
-                <v-list-item v-for="(origin, index) in corsOrigins" :key="index">
-                  <v-list-item-title>{{ origin }}</v-list-item-title>
+            <div data-test="cors-origins-section" class="disabled-section">
+              <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4" disabled>
+                <v-list-item v-for="(origin, index) in corsOrigins" :key="index" disabled>
+                  <v-list-item-title class="text-medium-emphasis">{{ origin }}</v-list-item-title>
 
                   <template v-slot:append>
                     <v-btn
@@ -118,6 +107,7 @@
                       variant="text"
                       @click="copyOrigin(origin)"
                       title="Copy Origin"
+                      disabled
                     />
                     <v-btn
                       v-if="!isDefaultOrigin(origin)"
@@ -127,13 +117,14 @@
                       color="error"
                       @click="removeOrigin(index)"
                       title="Remove Origin"
+                      disabled
                     />
                   </template>
                 </v-list-item>
               </v-list>
 
               <v-alert v-else type="info" variant="outlined" class="mb-4">
-                No CORS origins configured. Add origins to enable cross-origin API access.
+                <span class="text-medium-emphasis">No CORS origins configured. Foundation ready for future SaaS deployments.</span>
               </v-alert>
 
               <v-text-field
@@ -141,11 +132,12 @@
                 label="Add New Origin"
                 variant="outlined"
                 placeholder="http://192.168.1.100:7274"
-                hint="Format: http://hostname:port or http://ip:port"
+                hint="Disabled for single-server installations"
                 persistent-hint
                 :append-icon="'mdi-plus'"
                 @click:append="addOrigin"
                 @keyup.enter="addOrigin"
+                disabled
               />
             </div>
 
@@ -172,7 +164,7 @@
               <v-icon start>mdi-refresh</v-icon>
               Reload
             </v-btn>
-            <v-btn color="primary" :disabled="!networkSettingsChanged" @click="saveNetworkSettings">
+            <v-btn color="primary" disabled>
               Save Changes
             </v-btn>
           </v-card-actions>
@@ -915,13 +907,6 @@ async function loadNetworkSettings() {
     networkSettings.value.apiPort = 7272
     networkSettings.value.frontendPort = 7274
     corsOrigins.value = []
-  }
-}
-
-function copyExternalHost() {
-  if (networkSettings.value.externalHost) {
-    navigator.clipboard.writeText(networkSettings.value.externalHost)
-    console.log('[SYSTEM SETTINGS] External host copied to clipboard:', networkSettings.value.externalHost)
   }
 }
 
