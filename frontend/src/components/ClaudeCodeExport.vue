@@ -162,7 +162,7 @@ async function generateAgentTemplateInstructions(installType = 'product') {
       : '.claude/agents (in your current project folder)'
 
     // Generate natural language instructions (matching slash commands format)
-    const instructions = `Download the agent templates from ${downloadUrl}, extract the zip file, and install the contents to your ${targetFolder} folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window.`
+    const instructions = `Download the agent templates from ${downloadUrl}, extract the zip file, and install the contents to your ${targetFolder} folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window. The user must restart Claude Code. After restart verify the agents appear with /agents command.`
 
     return instructions
   } catch (error) {
