@@ -229,11 +229,13 @@
 
         <!-- Completed Date Column -->
         <template v-slot:item.completed_at="{ item }">
-          {{
-            item.status === 'completed' || item.status === 'cancelled'
-              ? formatDateShort(item.completed_at || item.updated_at)
-              : '—'
-          }}
+          <div class="text-center">
+            {{
+              item.status === 'completed' || item.status === 'cancelled'
+                ? formatDateShort(item.completed_at || item.updated_at)
+                : '—'
+            }}
+          </div>
         </template>
 
         <!-- Actions Column (StatusBadge only) -->
@@ -611,7 +613,7 @@ const headers = [
   { title: 'Product', key: 'product', sortable: false, width: '15%' },
   { title: 'Agents', key: 'agents', sortable: false, width: '10%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
-  { title: 'Completed', key: 'completed_at', sortable: true, width: '15%' },
+  { title: 'Completed', key: 'completed_at', sortable: true, width: '15%', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, width: '120px', align: 'center' },
   { title: '', key: 'menu', sortable: false, width: '50px', align: 'center' },
 ]
