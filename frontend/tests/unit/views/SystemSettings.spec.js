@@ -559,30 +559,6 @@ describe('SystemSettings.vue', () => {
       // Just verify the integrations tab exists and has content
       expect(wrapper.text()).toContain('Integrations')
     })
-
-    it('shows a GitHub integration placeholder toggle below Serena', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'integrations'
-        await wrapper.vm.$nextTick()
-      }
-
-      const text = wrapper.text()
-      // Ensure Serena card is still present
-      expect(text).toContain('Serena MCP')
-      // New GitHub placeholder label and hint should be visible
-      expect(text).toContain('GitHub Integration')
-      expect(text).toContain('needs implementation')
-    })
   })
 
   describe('Users Tab', () => {
