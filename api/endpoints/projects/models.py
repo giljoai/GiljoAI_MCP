@@ -52,6 +52,7 @@ class ProjectResponse(BaseModel):
     description: Optional[str] = None
     mission: str
     status: str
+    staging_status: Optional[str] = None
     product_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
