@@ -1105,7 +1105,7 @@ class ToolAccessor:
             logger.exception(f"gil_fetch failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def gil_update(self) -> dict[str, Any]:
+    async def gil_update_agents(self) -> dict[str, Any]:
         return await self.gil_fetch()
 
     async def gil_activate(self, project_id: str) -> dict[str, Any]:
