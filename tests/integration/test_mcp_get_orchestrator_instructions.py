@@ -393,6 +393,110 @@ class TestGetOrchestratorInstructionsMCP:
         assert "Python, FastAPI, PostgreSQL" in condensed_mission
         assert "\n\n" in condensed_mission  # Parts separated by double newline
 
+    async def test_with_vision_documents_no_lazy_loading_error(self, db_manager):
+        """
+        Test 13: get_orchestrator_instructions handles products with vision documents
+        without lazy loading errors (greenlet_spawn error).
+
+        BUG FIX: This test verifies the fix for SQLAlchemy async context error.
+        The Product model has a primary_vision_text property that accesses
+        self.vision_documents, which triggers lazy loading in async context.
+
+        Solution: Eager load vision_documents relationship when fetching Product.
+        """
+        from src.giljo_mcp.models import VisionDocument
+        from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_key = f"test_tenant_{uuid4().hex[:8]}"
+
+        async with db_manager.get_session_async() as session:
+            # Create product
+            product = Product(
+                tenant_key=tenant_key,
+                name="Test Product with Vision",
+                description="Product with vision documents",
+                is_active=True,
+            )
+            session.add(product)
+            await session.flush()
+
+            # Create vision document for the product
+            vision_doc = VisionDocument(
+                tenant_key=tenant_key,
+                product_id=product.id,
+                document_name="Primary Vision",
+                document_type="vision",
+                vision_document="This is the primary vision content for testing.",
+                storage_type="inline",
+                is_active=True,
+                display_order=1,
+            )
+            session.add(vision_doc)
+            await session.flush()
+
+            # Create project for that product
+            project = Project(
+                tenant_key=tenant_key,
+                product_id=product.id,
+                name="Test Project",
+                description="Test project with vision documents",
+                mission="Test mission",
+                status="active",
+                context_budget=150000,
+                context_used=0,
+            )
+            session.add(project)
+            await session.flush()
+
+            # Create orchestrator job
+            orchestrator_id = str(uuid4())
+            orchestrator = MCPAgentJob(
+                job_id=orchestrator_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                agent_type="orchestrator",
+                mission="Orchestrate test project with vision",
+                status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
+                context_budget=150000,
+                context_used=0,
+                instance_number=1,
+                job_metadata={
+                    "field_priorities": {"core_features": 10, "vision": 9},
+                    "user_id": "test_user_123",
+                },
+            )
+            session.add(orchestrator)
+
+            await session.commit()
+
+            # Store IDs for later use
+            orchestrator_id_str = orchestrator_id
+            tenant_key_str = tenant_key
+
+        # ACT: Call get_orchestrator_instructions
+        # This should NOT raise greenlet error when accessing product.primary_vision_text
+        tenant_manager = TenantManager()
+        tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+        result = await tool_accessor.get_orchestrator_instructions(
+            orchestrator_id=orchestrator_id_str, tenant_key=tenant_key_str
+        )
+
+        # ASSERT: Should return success without errors
+        assert "error" not in result
+        assert "orchestrator_id" in result
+        assert result["orchestrator_id"] == orchestrator_id_str
+
+        # Mission should be populated (may include vision content or fallback)
+        assert "mission" in result
+        assert isinstance(result["mission"], str)
+        assert len(result["mission"]) > 0
+
+        # Should have thin_client flag
+        assert "thin_client" in result
+        assert result["thin_client"] is True
+
 
 @pytest.mark.asyncio
 class TestMCPToolAccessibility:
