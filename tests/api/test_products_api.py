@@ -206,6 +206,74 @@ class TestProductCRUD:
         assert "updated_at" in data
 
     @pytest.mark.asyncio
+    async def test_create_product_saves_tech_stack_config(
+        self, api_client: AsyncClient, tenant_a_token: str
+    ):
+        """
+        Creating a product with nested tech_stack config_data should persist all fields.
+
+        This guards the behavior relied on by the ProductsView wizard and the
+        (i) configuration popover on the agent card.
+        """
+        payload = {
+            "name": "Tech Stack Product",
+            "description": "Product with rich tech stack config",
+            "project_path": "/path/to/project",
+            "config_data": {
+                "tech_stack": {
+                    "languages": "Python 3.11+, JavaScript ES2023, TypeScript 5.0+",
+                    "frontend": "React 18, Vite 5, Tailwind CSS",
+                    "backend": "FastAPI 0.104+, SQLAlchemy 2.0+",
+                    "database": "SQLite 3.35+, PostgreSQL 13+",
+                    "infrastructure": "Docker, Nginx, GitHub Actions",
+                },
+                "architecture": {
+                    "pattern": "Modular monolith with service layer",
+                    "api_style": "REST + WebSocket",
+                    "design_patterns": "Repository, DI, Factory, Strategy",
+                    "notes": "Local-first, async/await throughout backend",
+                },
+                "features": {
+                    "core": "Contacts CRUD, photo uploads, fuzzy search",
+                },
+                "test_config": {
+                    "strategy": "Hybrid",
+                    "coverage_target": 85,
+                    "frameworks": "pytest, pytest-asyncio, Cypress",
+                },
+            },
+        }
+
+        response = await api_client.post(
+            "/api/v1/products/",
+            json=payload,
+            cookies={"access_token": tenant_a_token},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Basic persistence checks
+        assert data["name"] == payload["name"]
+        assert data["description"] == payload["description"]
+        assert data["has_config_data"] is True
+
+        cfg = data["config_data"]
+        assert cfg is not None
+
+        # Tech stack should round-trip exactly for all fields
+        assert cfg["tech_stack"]["languages"] == payload["config_data"]["tech_stack"]["languages"]
+        assert cfg["tech_stack"]["frontend"] == payload["config_data"]["tech_stack"]["frontend"]
+        assert cfg["tech_stack"]["backend"] == payload["config_data"]["tech_stack"]["backend"]
+        assert cfg["tech_stack"]["database"] == payload["config_data"]["tech_stack"]["database"]
+        assert cfg["tech_stack"]["infrastructure"] == payload["config_data"]["tech_stack"]["infrastructure"]
+
+        # A couple of other critical fields should also be present
+        assert cfg["features"]["core"] == payload["config_data"]["features"]["core"]
+        assert cfg["test_config"]["strategy"] == payload["config_data"]["test_config"]["strategy"]
+        assert cfg["test_config"]["coverage_target"] == payload["config_data"]["test_config"]["coverage_target"]
+
+    @pytest.mark.asyncio
     async def test_create_product_minimal_data(
         self, api_client: AsyncClient, tenant_a_token: str
     ):
@@ -372,6 +440,59 @@ class TestProductCRUD:
         assert data["project_path"] == "/new/path"
         assert data["config_data"] == {"updated": "data"}
         assert data["has_config_data"] is True
+
+    @pytest.mark.asyncio
+    async def test_update_product_saves_tech_stack_config(
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
+    ):
+        """
+        Updating an existing product with tech_stack config_data should persist nested fields.
+
+        This ensures the edit flow does not drop tech stack information used by the UI.
+        """
+        payload = {
+            "config_data": {
+                "tech_stack": {
+                    "languages": "Python 3.11+, TypeScript 5.0+",
+                    "frontend": "React 18 + Tailwind",
+                    "backend": "FastAPI 0.104+",
+                    "database": "PostgreSQL 13+",
+                    "infrastructure": "Docker Compose, GitHub Actions",
+                },
+                "features": {
+                    "core": "Rich contact management with fuzzy search",
+                },
+                "test_config": {
+                    "strategy": "Hybrid",
+                    "coverage_target": 85,
+                    "frameworks": "pytest, Vitest, Cypress",
+                },
+            }
+        }
+
+        response = await api_client.put(
+            f"/api/v1/products/{tenant_a_product['id']}",
+            json=payload,
+            cookies={"access_token": tenant_a_token},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        cfg = data["config_data"]
+        assert cfg is not None
+        assert data["has_config_data"] is True
+
+        # Tech stack round-trip
+        assert cfg["tech_stack"]["languages"] == payload["config_data"]["tech_stack"]["languages"]
+        assert cfg["tech_stack"]["frontend"] == payload["config_data"]["tech_stack"]["frontend"]
+        assert cfg["tech_stack"]["backend"] == payload["config_data"]["tech_stack"]["backend"]
+        assert cfg["tech_stack"]["database"] == payload["config_data"]["tech_stack"]["database"]
+        assert cfg["tech_stack"]["infrastructure"] == payload["config_data"]["tech_stack"]["infrastructure"]
+
+        # Sanity check a couple of non-tech fields
+        assert cfg["features"]["core"] == payload["config_data"]["features"]["core"]
+        assert cfg["test_config"]["strategy"] == payload["config_data"]["test_config"]["strategy"]
 
     @pytest.mark.asyncio
     async def test_update_product_partial(
