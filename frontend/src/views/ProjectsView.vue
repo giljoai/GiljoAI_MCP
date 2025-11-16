@@ -215,10 +215,14 @@
           </span>
         </template>
 
-        <!-- Agents Column -->
-        <template v-slot:item.agents="{ item }">
-          <v-chip size="small" variant="outlined">
-            {{ item.agent_count || 0 }}
+        <!-- Staged Column -->
+        <template v-slot:item.staged="{ item }">
+          <v-chip
+            :color="isProjectStaged(item) ? 'success' : 'default'"
+            size="small"
+            variant="tonal"
+          >
+            {{ isProjectStaged(item) ? 'Yes' : 'No' }}
           </v-chip>
         </template>
 
@@ -611,7 +615,7 @@ const headers = [
   { title: 'Name', key: 'name', sortable: true, width: '25%' },
   { title: 'Status', key: 'status', sortable: true, width: '12%' },
   { title: 'Product', key: 'product', sortable: false, width: '15%' },
-  { title: 'Agents', key: 'agents', sortable: false, width: '10%', align: 'center' },
+  { title: 'Staged', key: 'staged', sortable: false, width: '10%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '15%', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, width: '120px', align: 'center' },
@@ -691,6 +695,14 @@ const statusCounts = computed(() => {
 const deletedProjects = computed(() => projectStore.deletedProjects)
 
 const deletedCount = computed(() => deletedProjects.value.length)
+
+// Helper function to determine if project is staged
+// A project is considered "staged" if:
+// 1. Has agents assigned (agent_count > 0), OR
+// 2. staging_status field is set to 'staged'
+const isProjectStaged = (project) => {
+  return (project.agent_count > 0) || (project.staging_status === 'staged')
+}
 
 // Launch button visibility - only show when exactly 1 active project exists
 const hasActiveProject = computed(() => {
