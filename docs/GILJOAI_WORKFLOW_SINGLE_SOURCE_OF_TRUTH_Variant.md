@@ -449,6 +449,50 @@ After first login, navigate to **User Settings** for initial configuration:
 
 ## 4. Product Management Workflow
 
+**Implementation Status**: ✅ **100% COMPLETE (Backend + Frontend)**
+
+**Backend Verification** (Code Analysis):
+- ✅ Product CRUD endpoints - `api/endpoints/products/crud.py`
+  - POST /products/ (lines 28-84) - Product creation with name, description, project_path
+  - GET /products/ (lines 86-135) - List all products with metrics
+  - GET /products/{id} (lines 174-222) - Get single product
+  - PUT /products/{id} (lines 224-284) - Update product
+- ✅ Product lifecycle endpoints - `api/endpoints/products/lifecycle.py`
+  - POST /products/{id}/activate (lines 31-108) - One-active constraint enforced
+  - POST /products/{id}/deactivate (lines 110-166)
+  - DELETE /products/{id} (lines 168-203) - Soft delete
+  - POST /products/{id}/restore (lines 205-261)
+  - GET /products/{id}/cascade-impact (lines 263-303) - Deletion impact analysis
+- ✅ Vision document upload with chunking - `api/endpoints/products/vision.py`
+  - POST /products/{id}/vision (lines 28-140) - Upload with auto-chunking
+  - File validation: <10MB, .md/.txt/.markdown only
+  - **Chunking**: max_tokens=25000 (confirmed in code!)
+  - Uses `VisionDocumentChunker` for intelligent semantic boundary chunking
+  - GET /products/{id}/vision (lines 142-209) - List vision documents
+  - DELETE /products/{id}/vision/{doc_id} (lines 211-275) - Delete document + chunks
+- ✅ Tech stack / config_data storage - `src/giljo_mcp/models/products.py`
+  - config_data field (JSONB, lines 84-89) - Stores: architecture, tech_stack, features, test_config
+  - GIN index for JSONB performance (line 106)
+  - Helper methods: has_config_data, get_config_field() with dot notation
+
+**Frontend Verification** (User Testing + Git Commit):
+- ✅ Product creation UI flow - User confirmed: "works great in the application UI"
+- ✅ Product config fields persistence - Fixed in commit 8e6fb79f (Nov 16, 2025)
+  - Issue: Auto-save cache was overwriting backend config_data values
+  - Fix: Disabled draft restoration for existing products, always trust backend
+  - All tech stack and config fields now persist correctly across edits
+
+**User Testing Confirmation** (Single Tenant, Admin Role):
+- ✅ Product creation form - WORKS
+- ✅ Tech stack fields (architecture, features, test_config) - WORKS (post-8e6fb79f)
+- ✅ Vision document upload - WORKS
+- ✅ Product activation (one-active constraint) - WORKS
+- ✅ Product editing without data loss - WORKS (fixed)
+
+**Multi-Tenant Testing**: Not tested, but code enforces tenant isolation at all layers
+
+---
+
 ### 4.1 Product Creation Flow
 
 ```
