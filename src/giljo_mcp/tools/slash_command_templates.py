@@ -89,13 +89,13 @@ This will:
 Call the tool now to begin.
 """
 
-GIL_UPDATE_MD = """---
-name: gil_update
+GIL_UPDATE_AGENTS_MD = """---
+name: gil_update_agents
 description: Update GiljoAI agent templates to the latest version
 allowed-tools: ["mcp__giljo-mcp__*"]
 ---
 
-Use the mcp__giljo-mcp__gil_update tool to refresh your installed agent templates to the latest versions.
+Use the mcp__giljo-mcp__gil_update_agents tool to refresh your installed agent templates to the latest versions.
 
 This will:
 1. Generate a secure one-time download link
@@ -154,7 +154,7 @@ def get_all_templates() -> dict[str, str]:
         "gil_import_personalagents.md": GIL_IMPORT_PERSONALAGENTS_MD,
         "gil_handover.md": GIL_HANDOVER_MD,
         "gil_fetch.md": GIL_FETCH_MD,
-        "gil_update.md": GIL_UPDATE_MD,
+        "gil_update_agents.md": GIL_UPDATE_AGENTS_MD,
         "gil_activate.md": GIL_ACTIVATE_MD,
         "gil_launch.md": GIL_LAUNCH_MD,
     }
