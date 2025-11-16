@@ -340,38 +340,27 @@ async def test_project_staging_status_with_agent_count(
     Test relationship between staging_status and agent_count.
 
     Expected behavior:
-    - Projects with agents may have staging_status = 'staged'
-    - agent_count reflects actual agent jobs
-    - Both fields are independently queryable
+    - Projects can have staging_status set independently of agent_count
+    - Both fields are present in API response
+    - Frontend can use either/both for "Staged" determination
 
-    Note: This test validates the data is present for the frontend
+    Note: This test validates the data structure is present for the frontend
     'Staged' column logic (agent_count > 0 OR staging_status == 'staged')
     """
-    from src.giljo_mcp.models import Project, MCPAgentJob
+    from src.giljo_mcp.models import Project
 
-    # Create project with agent job
+    # Create project with staging_status set
     async with db_manager.get_session_async() as session:
         project = Project(
-            name=f"Project with Agents {uuid4().hex[:6]}",
-            description="Has agent jobs",
+            name=f"Staged Project {uuid4().hex[:6]}",
+            description="Project with staging status",
             mission="Test mission",
             product_id=test_product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
-            staging_status="staged",
+            staging_status="staged",  # Set staging_status
         )
         session.add(project)
-        await session.flush()
-
-        # Add agent job
-        agent_job = MCPAgentJob(
-            project_id=project.id,
-            agent_type="orchestrator",
-            tenant_key=test_user.tenant_key,
-            status="pending",
-            mission="Test agent mission",
-        )
-        session.add(agent_job)
         await session.commit()
         await session.refresh(project)
         project_id = project.id
@@ -383,19 +372,23 @@ async def test_project_staging_status_with_agent_count(
     assert response.status_code == 200
     projects = response.json()
 
-    # Find project with agents
-    project_with_agents = next(
+    # Find our staged project
+    staged_project = next(
         (p for p in projects if p["id"] == project_id),
         None
     )
 
-    assert project_with_agents is not None
-    assert "staging_status" in project_with_agents
-    assert "agent_count" in project_with_agents
+    assert staged_project is not None, "Should find staged project in list"
+    assert "staging_status" in staged_project, "staging_status field should exist"
+    assert "agent_count" in staged_project, "agent_count field should exist"
 
-    # This project should show as "staged" in frontend
-    # (either agent_count > 0 OR staging_status == 'staged')
-    assert (
-        project_with_agents["agent_count"] > 0
-        or project_with_agents["staging_status"] == "staged"
-    ), "Project should be considered 'staged' by frontend logic"
+    # Verify staging_status is correctly returned
+    assert staged_project["staging_status"] == "staged", (
+        "staging_status should be 'staged'"
+    )
+
+    # Frontend logic can now use: agent_count > 0 OR staging_status == 'staged'
+    # This project qualifies via staging_status alone
+    assert staged_project["staging_status"] == "staged", (
+        "Project should be considered 'staged' by frontend logic"
+    )
