@@ -60,6 +60,9 @@ Version History:
     1.1 (2025-10-27): Token budget increase (Handover 0049)
         - Increased token budget from 1500 to 2000 tokens
         - Supports richer product configuration data
+    1.2 (2025-11-17): Agent templates integration (Handover 0306)
+        - Added "agent_templates" field (Priority 2)
+        - Enables agent roster in orchestrator context
 
 Related:
     - Handover 0042: Product Configuration Free-Text Migration
@@ -72,7 +75,7 @@ from typing import Any, Dict
 
 
 DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
-    "version": "1.0",
+    "version": "1.1",
     "token_budget": 2000,
     "fields": {
         # Priority 1: Critical - Always Included
@@ -87,6 +90,7 @@ DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
         "tech_stack.database": 2,
         "architecture.api_style": 2,
         "test_config.strategy": 2,
+        "agent_templates": 2,  # High Priority - Agent roster with capabilities
         # Priority 3: Medium Priority
         # Additional context and best practices
         "tech_stack.infrastructure": 3,
