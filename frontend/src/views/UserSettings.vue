@@ -755,44 +755,42 @@ const tokenBudget = ref(2000)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
 
-// All available fields (Handover 0052, 0302)
+// All available fields (Handover 0052, 0302, 0303, 0306, 0311)
 const ALL_AVAILABLE_FIELDS = [
-  'architecture.api_style',
-  'architecture.design_patterns',
-  'architecture.notes',
-  'architecture.pattern',
-  'features.core',
-  'tech_stack.backend',
-  'tech_stack.database',
-  'tech_stack.deployment',    // Handover 0302
-  'tech_stack.frontend',
+  'product_vision',
   'tech_stack.languages',
-  'tech_stack.testing',        // Handover 0302
-  'test_config.coverage_target',
-  'test_config.frameworks',
-  'test_config.strategy',
+  'tech_stack.backend',
+  'tech_stack.frontend',
+  'tech_stack.database',
+  'tech_stack.deployment',
+  'tech_stack.testing',
+  'config_data.architecture',
+  'config_data.test_methodology',
+  'config_data.coding_standards',
+  'config_data.deployment_strategy',
+  'agent_templates',
+  'product_memory.learnings',
 ]
 
 // Real-time token calculation state (Handover 0049)
 const activeProductTokens = ref(null)
 const loadingTokenEstimate = ref(false)
 
-// Field labels mapping for display (Handover 0302)
+// Field labels mapping for display (Handover 0302, 0303, 0306, 0311)
 const fieldLabels = {
-  'tech_stack.languages': 'Programming Languages',
-  'tech_stack.backend': 'Backend Stack',
-  'tech_stack.frontend': 'Frontend Stack',
-  'tech_stack.database': 'Databases',
-  'tech_stack.deployment': 'Deployment Tools',      // Handover 0302
-  'tech_stack.testing': 'Testing Frameworks',       // Handover 0302
-  'architecture.pattern': 'Architecture Pattern',
-  'architecture.api_style': 'API Style',
-  'architecture.design_patterns': 'Design Patterns',
-  'architecture.notes': 'Architecture Notes',
-  'features.core': 'Core Features',
-  'test_config.strategy': 'Testing Strategy',
-  'test_config.frameworks': 'Testing Frameworks',
-  'test_config.coverage_target': 'Coverage Target',
+  'product_vision': 'Product Vision',
+  'tech_stack.languages': 'Tech Stack: Languages',
+  'tech_stack.backend': 'Tech Stack: Backend',
+  'tech_stack.frontend': 'Tech Stack: Frontend',
+  'tech_stack.database': 'Tech Stack: Database',
+  'tech_stack.deployment': 'Tech Stack: Deployment',
+  'tech_stack.testing': 'Tech Stack: Testing',
+  'config_data.architecture': 'System Architecture',
+  'config_data.test_methodology': 'Test Methodology',
+  'config_data.coding_standards': 'Coding Standards',
+  'config_data.deployment_strategy': 'Deployment Strategy',
+  'agent_templates': 'Available Agent Templates',
+  'product_memory.learnings': '360 Memory (Historical Context)',
 }
 
 // Settings object
