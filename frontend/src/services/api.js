@@ -149,6 +149,9 @@ export const api = {
     // Soft delete recovery endpoints
     getDeletedProducts: () => apiClient.get('/api/v1/products/deleted'),
     restoreProduct: (id) => apiClient.post(`/api/v1/products/${id}/restore`),
+    // Git integration endpoints (Handover 013B)
+    getGitIntegration: (id) => apiClient.get(`/api/v1/products/${id}/git-integration`),
+    updateGitIntegration: (id, settings) => apiClient.post(`/api/v1/products/${id}/git-integration`, settings),
   },
 
   // Projects
