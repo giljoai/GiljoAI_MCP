@@ -103,3 +103,38 @@ GET /api/v1/products/{product_id}/github/settings
 
 Ready for:
 - ✅ Handover 0138: Project Closeout (use GitHub settings to fetch commits)
+
+---
+
+## 🔄 REFACTOR UPDATE (Handover 013B - 2025-11-16)
+
+**Architecture Change**: Git integration refactored to remove server-side GitHub API calls.
+
+**Reason**: User clarified that CLI agents (Claude Code, Codex, Gemini) already have git access through the user's local credentials (GitHub Desktop on Windows, SSH keys on Linux/Mac). Server should NOT manage git operations.
+
+**Changes Made**:
+1. **Deprecated**: `update_github_settings()` method → Replaced with `update_git_integration()`
+2. **Removed**: URL validation (no longer needed - CLI agents handle git)
+3. **Removed**: `repo_url` field (CLI agents use project's git repo)
+4. **Simplified**: Data structure now stores only toggle + optional configs
+
+**New Data Structure** (`product_memory.git_integration`):
+```json
+{
+  "enabled": true,
+  "commit_limit": 20,        // Used in prompt injection
+  "default_branch": "main"   // Used in git log commands
+}
+```
+
+**New Method**: `update_git_integration(product_id, enabled, commit_limit, default_branch)`
+
+**Tests**: 7 new tests in `test_git_integration_refactor.py` - all passing
+
+**Impact**:
+- ✅ Simpler architecture (no GitHub API dependency)
+- ✅ Cross-platform compatible (uses user's git setup)
+- ✅ No credential management needed
+- ✅ Prompt injection replaces API calls
+
+**See**: Handover 013B for full refactor details
