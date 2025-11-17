@@ -1137,7 +1137,7 @@ class ProjectService:
         """
         Update project fields.
 
-        Updates all provided fields (name, description, mission, config_data).
+        Updates all provided fields (name, description, mission).
         This is the fixed version that handles multiple fields, not just mission.
 
         Args:
@@ -1172,7 +1172,7 @@ class ProjectService:
                     return {"success": False, "error": "Project not found"}
 
                 # Update allowed fields
-                allowed_fields = {"name", "description", "mission", "config_data"}
+                allowed_fields = {"name", "description", "mission"}
                 for field, value in updates.items():
                     if field in allowed_fields:
                         setattr(project, field, value)
@@ -1207,7 +1207,6 @@ class ProjectService:
                         "status": project.status,
                         "mission": project.mission,
                         "description": project.description,
-                        "config_data": project.config_data or {},
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,
