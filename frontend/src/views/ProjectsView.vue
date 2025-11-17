@@ -444,7 +444,8 @@
 
         <v-card-text>
           Are you sure you want to delete project <strong>"{{ projectToDelete?.name }}"</strong>?
-          This action cannot be undone.
+          This will move the project to <strong>Deleted Projects</strong> for 10 days.
+          It can be restored from there during that time. After 10 days it will be permanently purged.
         </v-card-text>
 
         <v-card-actions>

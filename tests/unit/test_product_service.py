@@ -752,3 +752,164 @@ class TestProductServiceVisionUpload:
         # Assert
         assert result["success"] is True
         assert result["chunks_created"] == 0  # No chunking when disabled
+
+
+class TestProductServiceProductMemory:
+    """
+    Test suite for product_memory JSONB column in ProductService.
+
+    Handover 0135: 360 Memory Management - Database Schema
+    Tests written FIRST following TDD principles.
+    """
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_product_memory(self, mock_db_manager):
+        """
+        BEHAVIOR: Product created with custom product_memory preserves the structure
+
+        GIVEN: Custom product_memory data provided
+        WHEN: Product is created via ProductService
+        THEN: Custom memory structure is persisted exactly
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        # Mock no existing product
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
+
+        custom_memory = {
+            "github": {
+                "enabled": True,
+                "repo_url": "https://github.com/custom/repo",
+                "auto_commit": True
+            },
+            "learnings": [
+                {
+                    "timestamp": "2025-11-16T10:00:00Z",
+                    "summary": "Initial learning entry",
+                    "tags": ["setup", "configuration"]
+                }
+            ],
+            "context": {
+                "summary": "Custom product context",
+                "token_count": 5000
+            }
+        }
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Custom Memory Product",
+            description="Testing custom memory initialization",
+            product_memory=custom_memory
+        )
+
+        # ASSERT
+        assert result is not None
+        assert result["product_memory"] == custom_memory
+        assert result["product_memory"]["github"]["enabled"] is True
+        assert result["product_memory"]["github"]["repo_url"] == "https://github.com/custom/repo"
+        assert len(result["product_memory"]["learnings"]) == 1
+        assert result["product_memory"]["context"]["token_count"] == 5000
+
+    @pytest.mark.asyncio
+    async def test_create_product_without_product_memory(self, mock_db_manager):
+        """
+        BEHAVIOR: Product created without product_memory gets default structure
+
+        GIVEN: No product_memory data provided
+        WHEN: Product is created via ProductService
+        THEN: Default structure {"github": {}, "learnings": [], "context": {}} is applied
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        # Mock no existing product
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=None)
+        ))
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Default Memory Product",
+            description="Testing default memory initialization"
+            # Note: No product_memory parameter provided
+        )
+
+        # ASSERT
+        assert result is not None
+        assert "product_memory" in result
+        assert result["product_memory"] == {
+            "github": {},
+            "learnings": [],
+            "context": {}
+        }
+
+    @pytest.mark.asyncio
+    async def test_update_product_product_memory(self, mock_db_manager):
+        """
+        BEHAVIOR: Product memory updates persist correctly
+
+        GIVEN: Existing product with product_memory
+        WHEN: product_memory is updated via ProductService
+        THEN: Updated memory structure persists
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+        product_id = str(uuid4())
+
+        # Mock existing product with initial memory
+        existing_product = Mock()
+        existing_product.id = product_id
+        existing_product.name = "Existing Product"
+        existing_product.description = "Test"
+        existing_product.tenant_key = "test-tenant"
+        existing_product.product_memory = {
+            "github": {},
+            "learnings": [],
+            "context": {}
+        }
+        existing_product.config_data = {}
+        existing_product.is_active = False
+        existing_product.deleted_at = None
+
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=existing_product)
+        ))
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # Updated memory with GitHub integration
+        updated_memory = {
+            "github": {
+                "enabled": True,
+                "repo_url": "https://github.com/updated/repo"
+            },
+            "learnings": [
+                {
+                    "timestamp": "2025-11-16T11:00:00Z",
+                    "summary": "Updated learning"
+                }
+            ],
+            "context": {
+                "summary": "Updated context"
+            }
+        }
+
+        # ACT
+        result = await service.update_product(
+            product_id=product_id,
+            product_memory=updated_memory
+        )
+
+        # ASSERT
+        assert result is not None
+        # Verify the mock object was updated
+        assert existing_product.product_memory == updated_memory
+        assert existing_product.product_memory["github"]["enabled"] is True
+        assert len(existing_product.product_memory["learnings"]) == 1
