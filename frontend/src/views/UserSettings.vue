@@ -550,48 +550,129 @@
               </v-card-text>
             </v-card>
 
-            <!-- GitHub Integration (placeholder) -->
+            <!-- Git + 360 Memory Integration (Handover 013B) -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text>
                 <div class="d-flex align-center mb-3">
-                  <v-avatar size="40" rounded="0" class="mr-2">
-                    <v-icon size="28">mdi-github</v-icon>
+                  <v-avatar size="40" rounded="0" class="mr-2" color="grey-darken-2">
+                    <v-icon size="28" color="white">mdi-github</v-icon>
                   </v-avatar>
                   <div class="flex-grow-1">
                     <div class="d-flex align-center">
-                      <h3 class="text-h6 mb-0 mr-2">GitHub Integration</h3>
+                      <h3 class="text-h6 mb-0 mr-2">Git + 360 Memory</h3>
+                      <v-tooltip location="top" max-width="400">
+                        <template #activator="{ props }">
+                          <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+                        </template>
+                        <div>
+                          <strong>Cumulative product knowledge tracking</strong>
+                          <p class="mt-2 mb-0">
+                            When enabled, GiljoAI captures git commit history at project closeout
+                            and stores it in 360 Memory. This provides orchestrators with cumulative
+                            context across all projects, including what was built, decisions made,
+                            and implementation patterns used.
+                          </p>
+                          <p class="mt-2 mb-0 text-caption">
+                            <strong>Note:</strong> Git must be configured on your system with access
+                            to your repositories.
+                          </p>
+                        </div>
+                      </v-tooltip>
                     </div>
-                    <p class="text-caption text-medium-emphasis mb-0">
-                      Placeholder – needs implementation
-                    </p>
+                    <p class="text-caption text-medium-emphasis mb-0">Track git commits in 360 Memory for orchestrator context</p>
                   </div>
                 </div>
 
                 <p class="text-body-2 text-medium-emphasis mb-3">
-                  This toggle will tell GiljoAI that you are using GitHub as your
-                  primary source control provider so deeper repository-aware workflows
-                  can be enabled in a future release. <strong>(Needs implementation)</strong>
+                  Enable to automatically include git commit history in project summaries. Commits are stored in product memory for future orchestrator reference.
                 </p>
 
+                <div class="d-flex align-center mb-3">
+                  <v-btn
+                    variant="text"
+                    size="small"
+                    color="light-blue"
+                    href="https://docs.github.com/en/get-started/quickstart/set-up-git"
+                    target="_blank"
+                  >
+                    <v-icon start>mdi-book-open-variant</v-icon>
+                    GitHub Setup Guide
+                  </v-btn>
+                </div>
+
+                <!-- Git Integration Controls -->
                 <v-card variant="tonal" class="mb-0">
                   <v-card-text class="pa-3">
-                    <div class="d-flex align-center justify-between">
+                    <div class="d-flex align-center justify-between mb-3">
                       <div class="flex-grow-1 d-flex align-center">
-                        <div class="text-subtitle-2 font-weight-medium mr-4">
-                          Enable GitHub Integration
-                        </div>
+                        <div class="text-subtitle-2 font-weight-medium mr-4">Enable Git Integration</div>
                         <v-switch
-                          :model-value="false"
-                          disabled
+                          v-model="gitIntegration.enabled"
+                          @update:model-value="onGitToggle"
+                          :loading="savingGitIntegration"
                           hide-details
                           density="compact"
-                        >
-                          <template #label>
-                            <span class="text-caption text-medium-emphasis">needs implementation</span>
-                          </template>
-                        </v-switch>
+                          class="git-toggle-inline"
+                        />
                       </div>
+                      <v-btn
+                        color="primary"
+                        variant="flat"
+                        size="small"
+                        width="120"
+                        @click="saveGitIntegration"
+                        :disabled="savingGitIntegration"
+                        :loading="savingGitIntegration"
+                      >
+                        Save
+                      </v-btn>
                     </div>
+
+                    <!-- Info Alert (shown when enabled) -->
+                    <v-alert
+                      v-if="gitIntegration.enabled"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-3"
+                    >
+                      <div class="text-body-2">
+                        <strong>Requirement:</strong> Git must be configured with access to your repositories
+                        on your system (Windows/Linux/macOS). GiljoAI uses your local git
+                        credentials - no server-side authentication needed.
+                      </div>
+                    </v-alert>
+
+                    <!-- Advanced Settings (collapsible) -->
+                    <v-expansion-panels v-if="gitIntegration.enabled" variant="accordion" class="mt-0">
+                      <v-expansion-panel>
+                        <v-expansion-panel-title>
+                          <v-icon start size="small">mdi-cog</v-icon>
+                          Advanced Settings
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                          <v-text-field
+                            v-model.number="gitIntegration.commit_limit"
+                            label="Commit Limit"
+                            type="number"
+                            min="1"
+                            max="100"
+                            hint="Number of commits to include in orchestrator prompts"
+                            persistent-hint
+                            density="compact"
+                            class="mb-3"
+                          />
+                          <v-text-field
+                            v-model="gitIntegration.default_branch"
+                            label="Default Branch"
+                            placeholder="e.g., main, master, develop"
+                            hint="Leave empty for repository default"
+                            persistent-hint
+                            density="compact"
+                          />
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
                   </v-card-text>
                 </v-card>
               </v-card-text>
@@ -648,6 +729,14 @@ const serenaConfig = ref({
   max_range_lines: 180,
   context_halo: 12,
 })
+
+// Git Integration state (Handover 013B)
+const gitIntegration = ref({
+  enabled: false,
+  commit_limit: 20,
+  default_branch: 'main'
+})
+const savingGitIntegration = ref(false)
 
 // Field Priority Configuration state (Handover 0048, 0052)
 const priority1Fields = ref([])
@@ -1045,6 +1134,9 @@ onMounted(async () => {
 
   // Fetch real-time token estimate from active product (Handover 0049)
   await fetchActiveProductTokenEstimate()
+
+  // Load git integration settings (Handover 013B)
+  await loadGitIntegration()
 })
 
 // Watch priority fields for changes and recalculate tokens with debounce (Handover 0049)
@@ -1091,6 +1183,82 @@ async function saveSerenaConfig(payload, done) {
     if (typeof done === 'function') done()
   }
 }
+
+// Git Integration handlers (Handover 013B)
+async function loadGitIntegration() {
+  try {
+    // Load product info to get the active product ID
+    await settingsStore.loadProductInfo()
+
+    if (!settingsStore.productInfo?.id) {
+      console.warn('[USER SETTINGS] No active product found - git integration disabled')
+      return
+    }
+
+    const response = await api.products.getGitIntegration(settingsStore.productInfo.id)
+    gitIntegration.value = {
+      enabled: response.data.enabled || false,
+      commit_limit: response.data.commit_limit || 20,
+      default_branch: response.data.default_branch || 'main'
+    }
+    console.log('[USER SETTINGS] Git integration loaded:', gitIntegration.value)
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to load git integration:', error)
+    // Set defaults on error
+    gitIntegration.value = {
+      enabled: false,
+      commit_limit: 20,
+      default_branch: 'main'
+    }
+  }
+}
+
+function onGitToggle(enabled) {
+  console.log('[USER SETTINGS] Git integration toggled:', enabled)
+  // If disabled, reset to defaults
+  if (!enabled) {
+    gitIntegration.value.commit_limit = 20
+    gitIntegration.value.default_branch = 'main'
+  }
+}
+
+async function saveGitIntegration() {
+  if (!settingsStore.productInfo?.id) {
+    console.error('[USER SETTINGS] No active product - cannot save git integration')
+    return
+  }
+
+  savingGitIntegration.value = true
+  try {
+    const response = await api.products.updateGitIntegration(
+      settingsStore.productInfo.id,
+      {
+        enabled: gitIntegration.value.enabled,
+        commit_limit: gitIntegration.value.commit_limit || 20,
+        default_branch: gitIntegration.value.default_branch || 'main'
+      }
+    )
+
+    // Update local state with response
+    gitIntegration.value = {
+      enabled: response.data.enabled,
+      commit_limit: response.data.commit_limit,
+      default_branch: response.data.default_branch
+    }
+
+    console.log('[USER SETTINGS] Git integration saved successfully')
+
+    // Show success notification (you can add toast notification here if available)
+    console.log('[USER SETTINGS] ✓ Git integration settings saved')
+
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to save git integration:', error)
+    // Show error notification
+    console.error('[USER SETTINGS] ✗ Failed to save git integration:', error.message)
+  } finally {
+    savingGitIntegration.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -1102,6 +1270,11 @@ async function saveSerenaConfig(payload, done) {
 }
 /* Make Serena toggle inline */
 .serena-toggle-inline {
+  flex: 0 0 auto;
+}
+
+/* Make Git toggle inline (Handover 013B) */
+.git-toggle-inline {
   flex: 0 0 auto;
 }
 
