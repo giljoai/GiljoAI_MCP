@@ -60,9 +60,9 @@ Implement the complete context management system as originally architected in th
 
 ---
 
-## Scope Breakdown: Sub-Handovers 0301-0308
+## Scope Breakdown: Sub-Handovers 0301-0311
 
-This master handover is divided into 8 focused sub-handovers:
+This master handover is divided into 11 focused sub-handovers (0301-0308 original scope + 0306-0308 renumbered + 0311 added for 360 Memory integration):
 
 ### 0301: UI/Backend Priority Mapping Fix (CRITICAL)
 **Duration**: 1-2 days
@@ -132,7 +132,25 @@ This master handover is divided into 8 focused sub-handovers:
 - Relevance scoring integration with priority system
 - Comprehensive integration tests
 
-### 0308: Comprehensive Testing & Documentation
+### 0308: Frontend Field Labels & Tooltips
+**Duration**: 1 day
+**Priority**: P2
+**Scope**:
+- User-facing field descriptions in priority UI
+- Helpful tooltips explaining each context source
+- Example use cases for different priority levels
+- Accessibility improvements (ARIA labels, keyboard navigation)
+
+### 0309: Token Estimation Improvements
+**Duration**: 1 day
+**Priority**: P2
+**Scope**:
+- More accurate token counting with tiktoken
+- Preview token usage before mission launch
+- Token budget warnings in UI
+- Analytics on token reduction effectiveness
+
+### 0310: Integration Testing & Documentation
 **Duration**: 2 days
 **Priority**: P1
 **Scope**:
@@ -141,6 +159,18 @@ This master handover is divided into 8 focused sub-handovers:
 - Performance benchmarks (token counting, extraction, truncation)
 - Documentation updates (CONTEXT_MANAGEMENT_SYSTEM.md, FIELD_PRIORITIES_SYSTEM.md)
 - User guide updates with correct priority mapping
+
+### 0311: 360 Memory + Git Integration (NEW - Added 2025-11-16)
+**Duration**: 1-2 days
+**Priority**: P1 (9th context source from PDF spec)
+**Scope**:
+- Extract learnings from `product_memory.learnings` array (handovers 0135-0139)
+- Inject git instructions when `product_memory.git_integration.enabled = true` (handover 013B)
+- Priority-based detail levels: full (all learnings + details), moderate (last 5 + outcomes), abbreviated (last 3 summary), minimal (last 1 summary)
+- Add "360 Memory" field to priority UI
+- Integration with `_build_context_with_priorities()` method
+- 8+ unit tests + 4+ integration tests
+- Complete 9th context source from Giljo Vision Book PDF (Slide 9)
 
 ---
 
@@ -469,11 +499,15 @@ token_budget = user.field_priority_config.get("token_budget", 2000)
   - User leaves unassigned → Backend receives priority 0 → Field excluded
   - Validation prevents invalid priorities (must be 0-10)
 
-- **Context Sources**:
+- **Context Sources** (9 total from PDF spec):
+  - Product name and vision (existing)
   - Tech stack extractor: languages, backend, frontend, database, infrastructure
   - Architecture extractor: patterns, API style, design patterns
   - Test config extractor: strategy, frameworks, coverage targets
   - Feature priority extractor: core, nice-to-have, future
+  - Agent templates in context string
+  - Project description (existing)
+  - **360 Memory + Git integration** (handover 0311): learnings history + git instructions
   - All extractors support full, abbreviated, minimal, exclude detail levels
 
 - **Token Budget**:
