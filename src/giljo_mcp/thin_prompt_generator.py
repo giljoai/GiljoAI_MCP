@@ -93,6 +93,8 @@ class ThinClientPromptGenerator:
         Handover 0088: Now uses metadata JSONB column instead of handover_summary
         for storing field_priorities, user_id, tool, and other thin client data.
 
+        Handover (Git + 360 Memory): Injects 360 memory and git integration sections.
+
         Args:
             project_id: Project UUID
             user_id: Optional user ID for tracking
@@ -115,6 +117,9 @@ class ThinClientPromptGenerator:
 
         if not project:
             raise ValueError(f"Project {project_id} not found")
+
+        # Fetch product for context injection
+        product = await self._fetch_product(project_id)
 
         # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
         # This prevents duplicate orchestrator creation on every "Stage Project" button click
@@ -198,14 +203,25 @@ class ThinClientPromptGenerator:
                 f"(instance #{instance_number})"
             )
 
-        # Generate thin prompt
-        thin_prompt = self._build_thin_prompt(
-            orchestrator_id=orchestrator_id,
-            project_id=project_id,
-            project_name=project.name,
-            instance_number=instance_number,
-            tool=tool
-        )
+        # Generate thin prompt WITH 360 memory and git integration
+        if product:
+            thin_prompt = self._build_thin_prompt_with_memory(
+                orchestrator_id=orchestrator_id,
+                project_id=project_id,
+                project_name=project.name,
+                instance_number=instance_number,
+                tool=tool,
+                product=product
+            )
+        else:
+            # Fallback to base prompt if product not found
+            thin_prompt = self._build_thin_prompt(
+                orchestrator_id=orchestrator_id,
+                project_id=project_id,
+                project_name=project.name,
+                instance_number=instance_number,
+                tool=tool
+            )
 
         # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
         estimated_tokens = len(thin_prompt) // 4
@@ -306,6 +322,233 @@ Logs: ~/.giljo_mcp/logs/mcp_adapter.log
 
 Begin by verifying MCP connection, then fetch context and CREATE the mission plan.
 """
+
+    def _inject_360_memory(self, product) -> str:
+        """
+        Inject 360 Memory System context into prompt.
+
+        ALWAYS included in orchestrator prompts to provide cumulative product knowledge.
+
+        Args:
+            product: Product model with product_memory JSONB field
+
+        Returns:
+            Formatted 360 memory section (always present, even if no learnings)
+
+        Examples:
+            With learnings:
+                ## 360 Memory System
+                Product has 5 previous project learnings.
+                Review these to inform decisions and avoid past mistakes.
+
+            Without learnings:
+                ## 360 Memory System
+                No previous project learnings yet. You're starting fresh.
+        """
+        if not product or not product.product_memory:
+            return """
+## 360 Memory System
+No previous project learnings available. Starting fresh.
+"""
+
+        learnings = product.product_memory.get("learnings", [])
+        context_data = product.product_memory.get("context", {})
+        objectives = context_data.get("objectives", []) if isinstance(context_data, dict) else []
+
+        learning_count = len(learnings)
+
+        # Build memory section
+        memory_lines = ["\n## 360 Memory System"]
+
+        if learning_count > 0:
+            memory_lines.append(f"Product has {learning_count} previous project learnings.")
+            memory_lines.append("Review these to inform decisions and avoid past mistakes.")
+        else:
+            memory_lines.append("No previous project learnings yet. You're starting fresh.")
+
+        # Add objectives if available
+        if objectives:
+            memory_lines.append("\nProduct Objectives:")
+            for obj in objectives[:3]:  # Limit to top 3 objectives
+                memory_lines.append(f"- {obj}")
+
+        memory_lines.append("\nAccess via: product_memory.learnings and product_memory.context")
+
+        return "\n".join(memory_lines)
+
+    def _inject_git_instructions(self, product) -> str:
+        """
+        Inject Git integration instructions into prompt (CONDITIONAL).
+
+        Only included when product.product_memory.git_integration.enabled = True.
+        Provides git command instructions for agents to run locally using user's credentials.
+
+        Args:
+            product: Product model with product_memory JSONB field
+
+        Returns:
+            Formatted git integration section (empty string if disabled)
+
+        Examples:
+            Git enabled:
+                ## Git Integration
+                Use git commands for additional context:
+                - git log --oneline -20 main
+                - git log --since="1 week ago" --pretty=format:"%h - %s (%an, %ar)"
+
+            Git disabled:
+                "" (empty string)
+        """
+        if not product or not product.product_memory:
+            return ""
+
+        git_config = product.product_memory.get("git_integration", {})
+
+        # Return empty string if git integration disabled or not configured
+        if not git_config.get("enabled", False):
+            return ""
+
+        # Extract config with defaults
+        commit_limit = git_config.get("commit_limit", 20)
+        default_branch = git_config.get("default_branch", "")
+
+        # Build branch reference (only if specified)
+        branch_ref = f" {default_branch}" if default_branch else ""
+
+        # Build git instructions section
+        git_lines = [
+            "\n## Git Integration",
+            "Use git commands for additional context:",
+            f"- git log --oneline -{commit_limit}{branch_ref}",
+            '- git log --since="1 week ago" --pretty=format:"%h - %s (%an, %ar)"',
+            "- git show --stat HEAD~5..HEAD",
+            "",
+            "Combine git history with 360 Memory for full context."
+        ]
+
+        return "\n".join(git_lines)
+
+    async def _fetch_product(self, project_id: str) -> Optional[Any]:
+        """
+        Fetch product for a given project.
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Product model or None if not found
+        """
+        from src.giljo_mcp.models.products import Product
+        from src.giljo_mcp.models.projects import Project as ProjectModel
+
+        # Fetch project first
+        project_stmt = select(ProjectModel).where(
+            and_(
+                ProjectModel.id == project_id,
+                ProjectModel.tenant_key == self.tenant_key
+            )
+        )
+        project_result = await self.db.execute(project_stmt)
+        project = project_result.scalar_one_or_none()
+
+        if not project:
+            return None
+
+        # Fetch product via project.product_id
+        product_stmt = select(Product).where(
+            and_(
+                Product.id == project.product_id,
+                Product.tenant_key == self.tenant_key
+            )
+        )
+        product_result = await self.db.execute(product_stmt)
+        product = product_result.scalar_one_or_none()
+
+        return product
+
+    async def _fetch_project(self, project_id: str) -> Optional[Any]:
+        """
+        Fetch project by ID.
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Project model or None if not found
+        """
+        from src.giljo_mcp.models.projects import Project as ProjectModel
+
+        project_stmt = select(ProjectModel).where(
+            and_(
+                ProjectModel.id == project_id,
+                ProjectModel.tenant_key == self.tenant_key
+            )
+        )
+        project_result = await self.db.execute(project_stmt)
+        project = project_result.scalar_one_or_none()
+
+        return project
+
+    def _build_thin_prompt_with_memory(
+        self,
+        orchestrator_id: str,
+        project_id: str,
+        project_name: str,
+        instance_number: int,
+        tool: str,
+        product
+    ) -> str:
+        """
+        Build thin client prompt WITH 360 Memory and Git integration injections.
+
+        This extends _build_thin_prompt with context injection.
+
+        Args:
+            orchestrator_id: Orchestrator job UUID
+            project_id: Project UUID
+            project_name: Project display name
+            instance_number: Orchestrator instance number
+            tool: AI coding tool (claude-code, codex, gemini, universal)
+            product: Product model for context injection
+
+        Returns:
+            Enhanced thin prompt with memory and git sections
+        """
+        # Get base prompt (existing logic)
+        base_prompt = self._build_thin_prompt(
+            orchestrator_id=orchestrator_id,
+            project_id=project_id,
+            project_name=project_name,
+            instance_number=instance_number,
+            tool=tool
+        )
+
+        # Inject 360 Memory (ALWAYS)
+        memory_section = self._inject_360_memory(product)
+
+        # Inject Git integration (CONDITIONAL)
+        git_section = self._inject_git_instructions(product)
+
+        # Insert injections BEFORE "YOUR ROLE" section
+        # This places context EARLY in the prompt for maximum impact
+        insertion_marker = "YOUR ROLE: PROJECT STAGING"
+
+        if insertion_marker in base_prompt:
+            # Split at marker and insert context
+            before_role, after_role = base_prompt.split(insertion_marker, 1)
+            enhanced_prompt = (
+                before_role +
+                memory_section +
+                git_section +
+                "\n" +
+                insertion_marker +
+                after_role
+            )
+        else:
+            # Fallback: append at end if marker not found
+            enhanced_prompt = base_prompt + memory_section + git_section
+
+        return enhanced_prompt
 
     async def _get_user_field_priorities(self, user_id: str) -> Dict[str, int]:
         """
