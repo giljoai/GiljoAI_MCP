@@ -676,8 +676,9 @@ class ProjectService:
                         "error": f"Cannot resume project from status '{project.status}'. Project must be completed.",
                     }
 
-                # Reopen project
-                project.status = "active"
+                # Reopen project in inactive state.
+                # This avoids violating the Single Active Project per product constraint.
+                project.status = "inactive"
                 project.completed_at = None
                 project.updated_at = datetime.utcnow()
 
@@ -708,7 +709,7 @@ class ProjectService:
                     "message": "Project resumed successfully",
                     "agents_resumed": len(resumed_ids),
                     "resumed_agent_ids": resumed_ids,
-                    "project_status": "active",
+                    "project_status": "inactive",
                 }
 
         except Exception as e:
