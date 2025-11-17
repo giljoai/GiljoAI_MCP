@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
+import { useWebSocketStore } from './websocket'
 
 export const useProductStore = defineStore('products', () => {
   // State
@@ -12,6 +13,9 @@ export const useProductStore = defineStore('products', () => {
   const productMetrics = ref({})
   const activeProduct = ref(null)
   const activeProductLoading = ref(false)
+
+  // WebSocket event handlers (store references for cleanup)
+  const wsUnsubscribers = ref([])
 
   // Getters
   const hasProducts = computed(() => products.value.length > 0)
@@ -268,6 +272,146 @@ export const useProductStore = defineStore('products', () => {
     localStorage.removeItem('currentProductId')
   }
 
+  // ============================================
+  // WEBSOCKET EVENT HANDLERS (Handover 0139b)
+  // ============================================
+
+  /**
+   * Handle product:memory:updated event
+   * Updates product memory when backend emits changes
+   */
+  function handleProductMemoryUpdated(payload) {
+    if (!payload?.product_id) {
+      console.warn('[PRODUCTS] product:memory:updated missing product_id', payload)
+      return
+    }
+
+    const product = products.value.find((p) => p.id === payload.product_id)
+    if (product && payload.data?.product_memory) {
+      // Update product memory
+      product.product_memory = payload.data.product_memory
+
+      // Also update currentProduct if it matches
+      if (currentProduct.value?.id === payload.product_id) {
+        currentProduct.value.product_memory = payload.data.product_memory
+      }
+
+      console.log('[PRODUCTS] Product memory updated for product:', payload.product_id)
+    }
+  }
+
+  /**
+   * Handle product:learning:added event
+   * Appends new learning to sequential_history
+   */
+  function handleProductLearningAdded(payload) {
+    if (!payload?.product_id) {
+      console.warn('[PRODUCTS] product:learning:added missing product_id', payload)
+      return
+    }
+
+    const product = products.value.find((p) => p.id === payload.product_id)
+    if (product && payload.data?.learning) {
+      // Initialize sequential_history if missing
+      if (!product.product_memory) {
+        product.product_memory = {}
+      }
+      if (!product.product_memory.sequential_history) {
+        product.product_memory.sequential_history = []
+      }
+
+      // Append new learning
+      product.product_memory.sequential_history.push(payload.data.learning)
+
+      // Also update currentProduct if it matches
+      if (currentProduct.value?.id === payload.product_id) {
+        if (!currentProduct.value.product_memory) {
+          currentProduct.value.product_memory = {}
+        }
+        if (!currentProduct.value.product_memory.sequential_history) {
+          currentProduct.value.product_memory.sequential_history = []
+        }
+        currentProduct.value.product_memory.sequential_history.push(payload.data.learning)
+      }
+
+      console.log('[PRODUCTS] Learning added to product:', payload.product_id)
+    }
+  }
+
+  /**
+   * Handle product:github:settings:changed event
+   * Updates GitHub integration settings in product memory
+   */
+  function handleProductGitHubSettingsChanged(payload) {
+    if (!payload?.product_id) {
+      console.warn('[PRODUCTS] product:github:settings:changed missing product_id', payload)
+      return
+    }
+
+    const product = products.value.find((p) => p.id === payload.product_id)
+    if (product && payload.data?.git_integration) {
+      // Initialize product_memory if missing
+      if (!product.product_memory) {
+        product.product_memory = {}
+      }
+
+      // Update GitHub integration settings
+      product.product_memory.git_integration = payload.data.git_integration
+
+      // Also update currentProduct if it matches
+      if (currentProduct.value?.id === payload.product_id) {
+        if (!currentProduct.value.product_memory) {
+          currentProduct.value.product_memory = {}
+        }
+        currentProduct.value.product_memory.git_integration = payload.data.git_integration
+      }
+
+      console.log('[PRODUCTS] GitHub settings updated for product:', payload.product_id)
+    }
+  }
+
+  /**
+   * Initialize WebSocket event listeners
+   * Registers handlers for product memory events
+   */
+  function initializeWebSocketListeners() {
+    const wsStore = useWebSocketStore()
+
+    // Register event handlers and store unsubscribe functions
+    wsUnsubscribers.value.push(
+      wsStore.on('product:memory:updated', handleProductMemoryUpdated)
+    )
+    wsUnsubscribers.value.push(
+      wsStore.on('product:learning:added', handleProductLearningAdded)
+    )
+    wsUnsubscribers.value.push(
+      wsStore.on('product:github:settings:changed', handleProductGitHubSettingsChanged)
+    )
+
+    console.log('[PRODUCTS] WebSocket event listeners initialized')
+  }
+
+  /**
+   * Cleanup WebSocket event listeners
+   * Unregisters all handlers to prevent memory leaks
+   */
+  function cleanupWebSocketListeners() {
+    // Call all unsubscribe functions
+    wsUnsubscribers.value.forEach((unsubscribe) => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe()
+      }
+    })
+    wsUnsubscribers.value = []
+
+    console.log('[PRODUCTS] WebSocket event listeners cleaned up')
+  }
+
+  // Initialize WebSocket listeners when store is created
+  // Note: In Pinia, we can't use onMounted/onUnmounted directly in the store
+  // Instead, we'll initialize listeners immediately and rely on the component lifecycle
+  initializeWebSocketListeners()
+
   return {
     // State
     products,
@@ -298,5 +442,8 @@ export const useProductStore = defineStore('products', () => {
     fetchActiveProduct,
     initializeFromStorage,
     clearProductData,
+
+    // WebSocket event handlers
+    cleanupWebSocketListeners,
   }
 })
