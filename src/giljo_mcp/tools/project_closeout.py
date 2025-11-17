@@ -118,13 +118,211 @@ async def emit_websocket_event(
     )
 
 
+async def close_project_and_update_memory(
+    project_id: str,
+    summary: str,
+    key_outcomes: List[str],
+    decisions_made: List[str],
+    tenant_key: str,
+    db_manager: DatabaseManager,
+) -> Dict[str, Any]:
+    """
+    Close project and update product memory with learnings.
+
+    This tool is called by the orchestrator when a project completes.
+    It stores a learning entry in product_memory.learnings with:
+    - Sequential numbering (auto-incrementing)
+    - Project summary and outcomes
+    - GitHub commits if integration enabled
+    - Timestamp for historical tracking
+
+    Args:
+        project_id: UUID of the project being closed
+        summary: User-provided summary of project work
+        key_outcomes: List of key achievements/outcomes
+        decisions_made: List of important decisions made
+        tenant_key: Tenant isolation key
+        db_manager: Database manager instance
+
+    Returns:
+        Success/error response with learning_id and sequence number
+
+    Example:
+        >>> result = await close_project_and_update_memory(
+        ...     project_id="abc-123",
+        ...     summary="Implemented JWT authentication",
+        ...     key_outcomes=["Secure token storage"],
+        ...     decisions_made=["Chose JWT over sessions"],
+        ...     tenant_key="tk_xyz",
+        ...     db_manager=db_manager
+        ... )
+        >>> print(result)
+        {
+            "success": true,
+            "learning_id": "learning_1",
+            "sequence": 1,
+            "product_id": "product-uuid"
+        }
+    """
+    try:
+        # Validation
+        if not project_id:
+            return {
+                "success": False,
+                "error": "project_id is required"
+            }
+
+        if not summary or not summary.strip():
+            return {
+                "success": False,
+                "error": "summary is required and cannot be empty"
+            }
+
+        if not tenant_key:
+            return {
+                "success": False,
+                "error": "tenant_key is required"
+            }
+
+        async with db_manager.get_session_async() as session:
+            # 1. Fetch project
+            project_query = select(Project).where(
+                Project.id == project_id,
+                Project.tenant_key == tenant_key,
+            )
+            project_result = await session.execute(project_query)
+            project = project_result.scalar_one_or_none()
+
+            if not project:
+                return {
+                    "success": False,
+                    "error": f"Project {project_id} not found or access denied for tenant"
+                }
+
+            # 2. Fetch product
+            if not project.product_id:
+                return {
+                    "success": False,
+                    "error": f"Project {project_id} is not associated with a product"
+                }
+
+            product_query = select(Product).where(
+                Product.id == project.product_id,
+                Product.tenant_key == tenant_key,
+            )
+            product_result = await session.execute(product_query)
+            product = product_result.scalar_one_or_none()
+
+            if not product:
+                return {
+                    "success": False,
+                    "error": f"Product {project.product_id} not found or access denied for tenant"
+                }
+
+            # 3. Ensure product_memory is initialized
+            if not product.product_memory:
+                product.product_memory = {
+                    "github": {},
+                    "learnings": [],
+                    "context": {}
+                }
+
+            # 4. Calculate next sequence number
+            existing_learnings = product.product_memory.get("learnings", [])
+            next_sequence = 1
+            if existing_learnings:
+                max_sequence = max(
+                    learning.get("sequence", 0)
+                    for learning in existing_learnings
+                )
+                next_sequence = max_sequence + 1
+
+            # 5. Fetch GitHub commits if integration enabled
+            git_commits = []
+            github_config = product.product_memory.get("github", {})
+            if (
+                github_config.get("enabled") is True
+                and github_config.get("repo_url")
+            ):
+                try:
+                    git_commits = await fetch_github_commits(
+                        repo_url=github_config["repo_url"],
+                        access_token=github_config.get("access_token"),
+                        since=project.created_at,
+                        until=project.updated_at or datetime.now(timezone.utc),
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to fetch GitHub commits for product {product.id}: {e}. "
+                        "Using manual summary only."
+                    )
+
+            # 6. Create learning entry
+            learning_entry = {
+                "sequence": next_sequence,
+                "type": "project_closeout",
+                "project_id": str(project.id),
+                "project_name": project.name,
+                "summary": summary.strip(),
+                "key_outcomes": key_outcomes,
+                "decisions_made": decisions_made,
+                "git_commits": git_commits,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+            # 7. Append to learnings array (create new dict to trigger SQLAlchemy change detection)
+            updated_memory = dict(product.product_memory)
+            updated_learnings = list(updated_memory.get("learnings", []))
+            updated_learnings.append(learning_entry)
+            updated_memory["learnings"] = updated_learnings
+            product.product_memory = updated_memory
+
+            # 8. Update product timestamp
+            product.updated_at = datetime.now(timezone.utc)
+
+            # 9. Commit changes
+            await session.commit()
+            await session.refresh(product)
+
+            logger.info(
+                f"Added learning entry (sequence {next_sequence}) to product {product.id} "
+                f"for project {project.id}"
+            )
+
+            # 10. Emit WebSocket event for real-time UI updates
+            await emit_websocket_event(
+                event_type="product_memory_updated",
+                product_id=str(product.id),
+                data={
+                    "learning_id": f"learning_{next_sequence}",
+                    "sequence": next_sequence,
+                    "project_id": str(project.id),
+                }
+            )
+
+            return {
+                "success": True,
+                "learning_id": f"learning_{next_sequence}",
+                "sequence": next_sequence,
+                "product_id": str(product.id),
+                "github_commits_count": len(git_commits),
+            }
+
+    except Exception as e:
+        logger.exception(f"Failed to close project and update memory: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 def register_project_closeout_tools(
     mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
 ):
     """Register project closeout tools with the MCP server"""
 
     @mcp.tool()
-    async def close_project_and_update_memory(
+    async def close_project_and_update_memory_wrapper(
         project_id: str,
         summary: str,
         key_outcomes: List[str],
@@ -132,188 +330,15 @@ def register_project_closeout_tools(
         tenant_key: str,
     ) -> Dict[str, Any]:
         """
-        Close project and update product memory with learnings.
+        MCP wrapper for close_project_and_update_memory.
 
-        This tool is called by the orchestrator when a project completes.
-        It stores a learning entry in product_memory.learnings with:
-        - Sequential numbering (auto-incrementing)
-        - Project summary and outcomes
-        - GitHub commits if integration enabled
-        - Timestamp for historical tracking
-
-        Args:
-            project_id: UUID of the project being closed
-            summary: User-provided summary of project work
-            key_outcomes: List of key achievements/outcomes
-            decisions_made: List of important decisions made
-            tenant_key: Tenant isolation key
-
-        Returns:
-            Success/error response with learning_id and sequence number
-
-        Example:
-            >>> result = await close_project_and_update_memory(
-            ...     project_id="abc-123",
-            ...     summary="Implemented JWT authentication",
-            ...     key_outcomes=["Secure token storage"],
-            ...     decisions_made=["Chose JWT over sessions"],
-            ...     tenant_key="tk_xyz"
-            ... )
-            >>> print(result)
-            {
-                "success": true,
-                "learning_id": "learning_1",
-                "sequence": 1,
-                "product_id": "product-uuid"
-            }
+        Automatically injects db_manager dependency.
         """
-        try:
-            # Validation
-            if not project_id:
-                return {
-                    "success": False,
-                    "error": "project_id is required"
-                }
-
-            if not summary or not summary.strip():
-                return {
-                    "success": False,
-                    "error": "summary is required and cannot be empty"
-                }
-
-            if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "tenant_key is required"
-                }
-
-            async with db_manager.get_session_async() as session:
-                # 1. Fetch project
-                project_query = select(Project).where(
-                    Project.id == project_id,
-                    Project.tenant_key == tenant_key,
-                )
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-
-                if not project:
-                    return {
-                        "success": False,
-                        "error": f"Project {project_id} not found or access denied for tenant"
-                    }
-
-                # 2. Fetch product
-                if not project.product_id:
-                    return {
-                        "success": False,
-                        "error": f"Project {project_id} is not associated with a product"
-                    }
-
-                product_query = select(Product).where(
-                    Product.id == project.product_id,
-                    Product.tenant_key == tenant_key,
-                )
-                product_result = await session.execute(product_query)
-                product = product_result.scalar_one_or_none()
-
-                if not product:
-                    return {
-                        "success": False,
-                        "error": f"Product {project.product_id} not found or access denied for tenant"
-                    }
-
-                # 3. Ensure product_memory is initialized
-                if not product.product_memory:
-                    product.product_memory = {
-                        "github": {},
-                        "learnings": [],
-                        "context": {}
-                    }
-
-                # 4. Calculate next sequence number
-                existing_learnings = product.product_memory.get("learnings", [])
-                next_sequence = 1
-                if existing_learnings:
-                    max_sequence = max(
-                        learning.get("sequence", 0)
-                        for learning in existing_learnings
-                    )
-                    next_sequence = max_sequence + 1
-
-                # 5. Fetch GitHub commits if integration enabled
-                git_commits = []
-                github_config = product.product_memory.get("github", {})
-                if (
-                    github_config.get("enabled") is True
-                    and github_config.get("repo_url")
-                ):
-                    try:
-                        git_commits = await fetch_github_commits(
-                            repo_url=github_config["repo_url"],
-                            access_token=github_config.get("access_token"),
-                            since=project.created_at,
-                            until=project.updated_at or datetime.now(timezone.utc),
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to fetch GitHub commits for product {product.id}: {e}. "
-                            "Using manual summary only."
-                        )
-
-                # 6. Create learning entry
-                learning_entry = {
-                    "sequence": next_sequence,
-                    "type": "project_closeout",
-                    "project_id": str(project.id),
-                    "project_name": project.name,
-                    "summary": summary.strip(),
-                    "key_outcomes": key_outcomes,
-                    "decisions_made": decisions_made,
-                    "git_commits": git_commits,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-
-                # 7. Append to learnings array (create new dict to trigger SQLAlchemy change detection)
-                updated_memory = dict(product.product_memory)
-                updated_learnings = list(updated_memory.get("learnings", []))
-                updated_learnings.append(learning_entry)
-                updated_memory["learnings"] = updated_learnings
-                product.product_memory = updated_memory
-
-                # 8. Update product timestamp
-                product.updated_at = datetime.now(timezone.utc)
-
-                # 9. Commit changes
-                await session.commit()
-                await session.refresh(product)
-
-                logger.info(
-                    f"Added learning entry (sequence {next_sequence}) to product {product.id} "
-                    f"for project {project.id}"
-                )
-
-                # 10. Emit WebSocket event for real-time UI updates
-                await emit_websocket_event(
-                    event_type="product_memory_updated",
-                    product_id=str(product.id),
-                    data={
-                        "learning_id": f"learning_{next_sequence}",
-                        "sequence": next_sequence,
-                        "project_id": str(project.id),
-                    }
-                )
-
-                return {
-                    "success": True,
-                    "learning_id": f"learning_{next_sequence}",
-                    "sequence": next_sequence,
-                    "product_id": str(product.id),
-                    "github_commits_count": len(git_commits),
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to close project and update memory: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+        return await close_project_and_update_memory(
+            project_id=project_id,
+            summary=summary,
+            key_outcomes=key_outcomes,
+            decisions_made=decisions_made,
+            tenant_key=tenant_key,
+            db_manager=db_manager,
+        )
