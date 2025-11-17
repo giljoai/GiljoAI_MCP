@@ -1202,3 +1202,39 @@ class ToolAccessor:
         except Exception as e:
             logger.exception(f"gil_launch failed: {e}")
             return {"success": False, "error": str(e)}
+
+    async def close_project_and_update_memory(
+        self,
+        project_id: str,
+        summary: str,
+        key_outcomes: list[str],
+        decisions_made: list[str],
+        tenant_key: str,
+    ) -> dict[str, Any]:
+        """
+        Close project and update product memory with learnings (Handover 0138).
+
+        This method wraps the project_closeout MCP tool for use via ToolAccessor.
+        See project_closeout.py for implementation details.
+
+        Args:
+            project_id: UUID of the project being closed
+            summary: User-provided summary of project work
+            key_outcomes: List of key achievements/outcomes
+            decisions_made: List of important decisions made
+            tenant_key: Tenant isolation key
+
+        Returns:
+            Success/error response with learning_id and sequence number
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory as tool_func
+
+        # Inject dependencies into the tool function call
+        return await tool_func(
+            project_id=project_id,
+            summary=summary,
+            key_outcomes=key_outcomes,
+            decisions_made=decisions_made,
+            tenant_key=tenant_key,
+            db_manager=self.db_manager,
+        )
