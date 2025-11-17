@@ -1,96 +1,93 @@
-═══════════════════════════════════════════════════════════════════
- GILJOAI HANDOVER QUICK LAUNCH - COPY-PASTE READY
-═══════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════
+  EXECUTION ORDER - Context Management System v2.0
+═══════════════════════════════════════════════════════════════
 
+PHASE 1: Architecture Design (1-2 days)
+─────────────────────────────────────────
+1. handovers/0312_context_architecture_v2_design.md
+   ├─ Design 2-dimensional model (Priority × Depth)
+   ├─ Define MCP tool contracts (6 tools)
+   ├─ Create UI mockups
+   └─ Est: 1-2 days | Tool: Claude Code (CLI) | Agent: System Architect
 
-Execute handover F:\GiljoAI_MCP\handovers\0301_fix_priority_mapping_ui_backend.md with production-grade quality.
+PHASE 2: Priority System Refactor (3-4 days)
+─────────────────────────────────────────────
+2. handovers/0313_implement_priority_system.md
+   ├─ Refactor priority semantics (emphasis vs trimming)
+   ├─ Update UI (13 cards → 6 cards)
+   ├─ Emit priority metadata (not trimmed content)
+   ├─ Dependencies: 0312 complete
+   └─ Est: 3-4 days | Tool: Claude Code (CLI) | Agent: TDD Implementor
 
-CRITICAL REQUIREMENTS:
+PHASE 3: Depth Controls (4-5 days)
+───────────────────────────────────
+3. handovers/0314_implement_depth_controls.md
+   ├─ Add depth_config JSONB column to users table
+   ├─ Create depth configuration UI
+   ├─ Implement token calculator
+   ├─ Dependencies: 0313 complete
+   └─ Est: 4-5 days | Tool: Claude Code (CLI) | Agent: Database Expert + TDD
 
-YOU MUST ## USE CLAUDE CODE INTEGRATED SUBAGENTS ##
+PHASE 4: MCP Thin Client (5-6 days)
+────────────────────────────────────
+4. handovers/0315_refactor_mcp_thin_client.md
+   ├─ Create 6 MCP tools (get_vision_document, get_360_memory, etc.)
+   ├─ Refactor to thin prompts (<600 tokens)
+   ├─ Reuse v1.0 extraction methods (60-80% code reuse)
+   ├─ Dependencies: 0314 complete
+   └─ Est: 5-6 days | Tool: Claude Code (CLI) | Agent: TDD + Backend Tester
 
-1. TDD DISCIPLINE (Non-Negotiable):
-   - Write tests FIRST (Red phase - tests must fail initially)
-   - Implement MINIMAL code to make tests pass (Green phase)
-   - Refactor if needed (Refactor phase)
-   - Test BEHAVIOR (what code does), not IMPLEMENTATION (how it does it)
-   - Use descriptive test names: test_extraction_returns_full_detail_at_priority_10
-   - Avoid testing internal implementation details
-   - Coverage target: >80% for new code
+PHASE 5: Enhancements (2-3 days)
+─────────────────────────────────
+5. handovers/0309_token_estimation_improvements.md (ADAPTED)
+   ├─ Update for depth-based estimation
+   ├─ Real-time token calculator
+   ├─ Dependencies: 0315 complete
+   └─ Est: 2-3 days | Tool: Claude Code (CLI) | Agent: Frontend Tester
 
-2. ARCHITECTURAL DISCIPLINE:
-   - Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md FIRST
-   - Build on existing patterns (ProductService, ProjectService, etc.)
-   - Do NOT reinvent methods that already exist
-   - Use existing service layer patterns (AsyncSession, multi-tenant isolation, Pydantic schemas)
-   - Follow established conventions (see 013A section 2.1-2.6 for area-specific patterns)
-   - Reuse existing fixtures from tests/conftest.py
+PHASE 6: Integration Testing (3-4 days)
+────────────────────────────────────────
+6. handovers/0310_integration_testing_validation.md (ADAPTED)
+   ├─ Test 2-dimensional model
+   ├─ Validate MCP integration
+   ├─ E2E workflow testing
+   ├─ Dependencies: 0309 complete
+   └─ Est: 3-4 days | Tool: Claude Code (CLI) | Agent: Backend Integration Tester
 
-3. CODE QUALITY STANDARDS:
-   - Production-grade code from the start (no bandaids, no "fix later" comments)
-   - Follow existing patterns in F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
-   - Clean code: No zombie code, no commented-out blocks (delete, don't comment)
-   - Cross-platform: Use pathlib.Path() for all file operations
-   - Multi-tenant isolation: Include tenant_key in all DB queries
-   - Error handling: Comprehensive, domain-specific exceptions
-   - Logging: Structured metadata (extra={...}) for all significant operations
+═══════════════════════════════════════════════════════════════
+  TOTAL ESTIMATED TIME: 18-24 days (3-4 weeks)
+═══════════════════════════════════════════════════════════════
 
-4. EXECUTION WORKFLOW:
-   Phase 1 - Read & Understand (15-20 min):
-     - Read complete handover document
-     - Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
-     - Identify existing patterns to reuse
-     - Identify integration points (which services, which endpoints)
+SUPERSEDED HANDOVERS (Moved to /superseded - NOT EXECUTED):
+────────────────────────────────────────────────────────────
+❌ handovers/superseded/0304_enforce_token_budget_limit.md
+❌ handovers/superseded/0307_backend_default_field_priorities.md
+❌ handovers/superseded/0308_frontend_field_labels_tooltips.md
 
-   Phase 2 - Write Tests FIRST (Red - 30-40% of time):
-     - Create test file: tests/unit/test_{feature_name}.py
-     - Write failing unit tests for all new methods
-     - Create integration test file: tests/integration/test_{feature_name}_integration.py
-     - Write failing integration tests for end-to-end behavior
-     - Run tests: pytest tests/ -v (all should fail RED ❌)
+Reason: v1.0 architecture pivot to v2.0 (Priority × Depth model)
 
-   Phase 3 - Implement (Green - 40-50% of time):
-     - Write MINIMAL code to make tests pass
-     - Follow service layer pattern if backend work
-     - Follow component pattern if frontend work
-     - Run tests iteratively: pytest tests/ -v (all should pass GREEN ✅)
+COMPLETED HANDOVERS (v1.0 - Code REUSED in v2.0):
+──────────────────────────────────────────────────
+✅ handovers/completed/0301_fix_priority_mapping_ui_backend-C.md
+✅ handovers/completed/0302_implement_tech_stack_context_extraction-C.md
+✅ handovers/completed/0303_implement_product_config_fields_extraction-C.md
+✅ handovers/completed/0305_integrate_vision_document_chunking-C.md
+✅ handovers/completed/0306_agent_templates_in_context_string-C.md
+✅ handovers/completed/0311_integrate_360_memory_context-C.md
 
-   Phase 4 - Refactor & Polish (10-20% of time):
-     - Extract common patterns into helpers
-     - Optimize for performance (minimize DB queries, string operations)
-     - Add comprehensive docstrings (Google style)
-     - Add structured logging with metadata
-     - Run tests: pytest tests/ -v (still GREEN ✅)
+Code Reuse: 60-80% of v1.0 work directly reused in v2.0 MCP tools
 
-   Phase 5 - Validate & Document (10% of time):
-     - Run full test suite: pytest tests/ --cov=src/giljo_mcp
-     - Verify >80% coverage for new code
-     - Update relevant documentation (SERVICES.md, CONTEXT_MANAGEMENT_SYSTEM.md, etc.)
-     - Git commit with descriptive message
+═══════════════════════════════════════════════════════════════
+  USAGE INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
 
-5. DELIVERABLES:
-   - All tests passing (Green ✅)
-   - >80% code coverage for new code
-   - Clean implementation (no commented code, no TODOs)
-   - Documentation updated
-   - Git commit ready for review
+To execute a handover using this template:
 
-6. CRITICAL CHECKS (Before Committing):
-   ✓ Read 013A_code_review_architecture_status.md? (verify you reused existing patterns)
-   ✓ Tests written FIRST? (TDD Red → Green → Refactor)
-   ✓ All tests passing? (pytest tests/ -v)
-   ✓ Coverage >80%? (pytest --cov)
-   ✓ Multi-tenant isolation verified? (tenant_key in all queries)
-   ✓ Cross-platform paths? (pathlib.Path, no hardcoded F:\)
-   ✓ Production-grade? (no bandaids, no quick fixes)
-   ✓ Documentation updated?
+1. Copy handover path (e.g., handovers/0312_context_architecture_v2_design.md)
+2. Use LAUNCH_PROMPT_TEMPLATE.md to generate agent instructions
+3. Pass to recommended subagent (see "Agent:" field above)
+4. Follow TDD discipline (RED → GREEN → REFACTOR)
+5. Mark handover complete when all tests passing
 
-SHOW ME:
-- Test file(s) created (with descriptive test names)
-- Implementation file(s) modified
-- Test results (all passing)
-- Coverage report (>80% for new code)
-- Git commit summary
-
-BEGIN EXECUTION NOW.
-
+NOTE: Execute in sequence (0312 → 0313 → 0314 → 0315 → 0309 → 0310)
+Dependencies must complete before proceeding to next handover.
