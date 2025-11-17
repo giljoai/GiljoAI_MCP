@@ -377,3 +377,158 @@ Single agent, comprehensive testing.
 ---
 
 **End of Execution Roadmap**
+
+---
+
+## v2.0 Architecture Evolution (November 2025)
+
+### Background: Why v2.0?
+
+After completing handovers 0301-0311 (v1.0), user feedback revealed an architectural mismatch:
+
+**Issue**: v1.0 conflated two separate concerns:
+1. **Prioritization** (what's important to emphasize)
+2. **Token Budget Management** (how much context to send)
+
+Users wanted to say "Architecture is CRITICAL" without forcing 100% of tokens. They wanted granular control over token usage (depth) independent of importance (priority).
+
+**Solution**: Refactor to 2-dimensional model (Priority × Depth)
+
+---
+
+### v1.0 Summary (COMPLETED - Foundational Work)
+
+**Completed Handovers** (Nov 17, 2025):
+- ✅ **0301**: Fix priority mapping UI-backend bug (REUSED in 0313)
+- ✅ **0302**: Tech stack context extraction (REUSED in 0315)
+- ✅ **0303**: Product config fields extraction (REUSED in 0315)
+- ✅ **0305**: Vision document chunking (REUSED in 0314, 0315)
+- ✅ **0306**: Agent templates in context (REUSED in 0315)
+- ✅ **0311**: 360 Memory + Git integration (REUSED in 0314, 0315)
+
+**Achievement**: 8/9 context sources implemented, 77% token reduction, 30+ tests passing
+
+**Code Quality**: Clean implementation, zero orphan code, comprehensive test coverage
+
+**Status**: v1.0 code is production-ready and will be reused (60-80%) in v2.0
+
+---
+
+### Superseded Handovers (Moved to /superseded)
+
+These handovers were designed for v1.0 architecture but are no longer needed in v2.0:
+
+- ❌ **0304**: Token budget enforcement → Replaced by v2.0 token calculator (feedback-only)
+- ❌ **0307**: Backend default field priorities → Replaced by 0313 (priority refactor)
+- ❌ **0308**: Frontend field labels & tooltips → Replaced by 0314 (depth UI)
+
+**Note**: These handovers were never implemented (still in planning when architecture pivot identified).
+
+---
+
+### v2.0 Execution Roadmap
+
+**Execute in this order**:
+
+#### Phase 1: Architecture Design (1-2 days)
+**0312**: Context Architecture v2.0 Design
+- Define 2-dimensional model (Priority × Depth)
+- Design MCP tool contracts
+- Create UI mockups for depth configuration
+- Document migration strategy
+
+**Estimated Time**: 1-2 days
+**Assignee**: System Architect Agent
+**Dependencies**: None
+
+---
+
+#### Phase 2: Priority System Refactor (3-4 days)
+**0313**: Implement Priority System
+- Refactor priority semantics (emphasis vs trimming)
+- Update UserSettings.vue (13 cards → 6 cards)
+- Update mission_planner.py to emit priority metadata
+- Migrate v1.0 priorities to v2.0 format
+
+**Estimated Time**: 3-4 days
+**Assignee**: TDD Implementor Agent
+**Dependencies**: 0312 complete
+
+---
+
+#### Phase 3: Depth Controls Implementation (4-5 days)
+**0314**: Implement Depth Controls
+- Add depth_config JSONB column to users table
+- Create depth configuration UI (6 rows, per-source controls)
+- Implement token calculator (display-only)
+- Apply depth settings to context extraction
+
+**Estimated Time**: 4-5 days
+**Assignee**: Database Expert + TDD Implementor Agents
+**Dependencies**: 0313 complete
+
+---
+
+#### Phase 4: MCP Thin Client Refactor (5-6 days)
+**0315**: Refactor MCP Thin Client
+- Create 6 MCP tools (get_vision_document, get_360_memory, etc.)
+- Refactor thin_prompt_generator.py (fat → thin prompts)
+- Reuse v1.0 extraction methods in MCP tools
+- Test E2E workflow (thin → MCP → orchestrator)
+
+**Estimated Time**: 5-6 days
+**Assignee**: TDD Implementor + Backend Tester Agents
+**Dependencies**: 0314 complete
+
+---
+
+#### Phase 5: Enhancements (2-3 days)
+**0309**: Token Estimation Improvements (ADAPTED for v2.0)
+- Update for depth-based estimation
+- Real-time token calculator
+- Per-source token breakdown
+
+**Estimated Time**: 2-3 days
+**Assignee**: Frontend Tester Agent
+**Dependencies**: 0315 complete
+
+---
+
+#### Phase 6: Integration Testing (3-4 days)
+**0310**: Integration Testing & Validation (ADAPTED for v2.0)
+- Test 2-dimensional model (Priority × Depth)
+- Validate MCP tool integration
+- E2E workflow testing
+- Performance benchmarking
+
+**Estimated Time**: 3-4 days
+**Assignee**: Backend Integration Tester Agent
+**Dependencies**: 0309 complete
+
+---
+
+### Total v2.0 Timeline
+
+**Total Estimated Time**: 18-24 days (3-4 weeks)
+
+**Breakdown**:
+- Design: 1-2 days
+- Implementation: 12-15 days
+- Testing: 5-7 days
+
+**Code Reuse**: 60-80% of v1.0 code (900 production lines, 3,840 test lines)
+
+**Risk**: LOW (refactoring on solid foundation, comprehensive test coverage)
+
+---
+
+### v2.0 Success Criteria
+
+- [ ] 2-dimensional model operational (Priority × Depth)
+- [ ] 6 MCP tools created for on-demand context fetching
+- [ ] Thin prompts <600 tokens (vs v1.0 fat prompts 3,500+ tokens)
+- [ ] Per-source depth controls in UI
+- [ ] Token calculator provides accurate estimates
+- [ ] v1.0 → v2.0 migration seamless (backward compatible)
+- [ ] All tests passing (>80% coverage maintained)
+- [ ] Token reduction still achieves 70%+ (via depth controls)

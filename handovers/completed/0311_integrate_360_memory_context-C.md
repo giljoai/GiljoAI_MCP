@@ -812,3 +812,47 @@ All tests passing. Production ready. Part of v3.1 Context Management System (Con
 **Priority**: P1 - HIGH (9th context source from PDF spec)
 **Status**: Ready for Execution
 **Estimated Completion**: 8-12 hours with TDD and documentation
+
+
+---
+
+## v2.0 Architecture Status
+
+**Date**: November 17, 2025
+**Status**: v1.0 Complete - Code REUSED in v2.0 Refactor
+
+### What Changed in v2.0
+
+After completing this handover as part of v1.0, an architectural pivot was identified:
+
+**Issue**: v1.0 conflated prioritization (importance) with token trimming (budget management)
+**Solution**: Refactor to 2-dimensional model (Priority × Depth)
+
+### Code Reuse in v2.0
+
+**This handover's work is being REUSED** in the following v2.0 handovers:
+
+- ✅ **Handover 0313** (Priority System): Reuses priority validation and UI patterns
+- ✅ **Handover 0314** (Depth Controls): Reuses extraction methods
+- ✅ **Handover 0315** (MCP Thin Client): Reuses 60-80% of extraction logic
+
+### Preserved Work
+
+**Production Code** (REUSED):
+- All extraction methods (`_format_tech_stack`, `_extract_config_field`, etc.)
+- Bug fixes (auth header, priority validation)
+- Test coverage (30+ tests adapted for v2.0)
+
+**Architecture** (EVOLVED):
+- Priority semantics changed (trimming → emphasis)
+- Depth controls added (per-source chunking)
+- MCP thin client (fat → thin prompts)
+
+### Why No Rollback
+
+**Code Quality**: Implementation was sound, only architectural approach changed
+**Test Coverage**: All tests reused with updated assertions
+**Production Ready**: v1.0 code is stable and serves as foundation for v2.0
+
+**Conclusion**: This handover's work is valuable and preserved in v2.0 architecture.
+
