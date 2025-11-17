@@ -31,12 +31,19 @@ from .repositories.context_repository import ContextRepository
 logger = logging.getLogger(__name__)
 
 
-# Default field priorities for context building (Fix #1: Handover 0XXX)
+# Default field priorities for context building (Handover 0302, 0303)
 # Applied when user has no custom field_priority_config
 # Ensures meaningful context even for new users who haven't customized priorities
 DEFAULT_FIELD_PRIORITIES = {
     "codebase_summary": 6,  # Moderate detail (50% token reduction)
-    "architecture": 4,      # Abbreviated detail (70% token reduction)
+    "architecture": 4,  # Abbreviated detail (70% token reduction) - Legacy
+    "tech_stack": 8,  # Moderate-high detail (tech stack is critical context)
+    "product_memory.learnings": 7,  # Moderate: Last 5 learnings with outcomes (Handover 0311)
+    # Config data fields (Handover 0303)
+    "config_data.architecture": 4,  # Abbreviated detail (70% token reduction)
+    "config_data.test_methodology": 6,  # Moderate - important for agents
+    "config_data.coding_standards": 5,  # Moderate - quality guidelines
+    "config_data.deployment_strategy": 3,  # Lower - not always needed
 }
 
 
@@ -101,6 +108,12 @@ class MissionPlanner:
         "test_config.strategy": "Testing Strategy",
         "test_config.frameworks": "Testing Frameworks",
         "test_config.coverage_target": "Coverage Target",
+        # Config data fields (Handover 0303)
+        "config_data.architecture": "System Architecture",
+        "config_data.test_methodology": "Test Methodology",
+        "config_data.agent_execution_methodologies": "Agent Execution Methods",
+        "config_data.deployment_strategy": "Deployment Strategy",
+        "config_data.coding_standards": "Coding Standards",
     }
 
     def _extract_keywords(self, text: str) -> list[str]:
@@ -536,14 +549,80 @@ Success Criteria:
             - "exclude": Omitted entirely (0 tokens)
         """
         if priority >= 10:
-            return "full"        # 0% token reduction
+            return "full"  # 0% token reduction
         if priority >= 7:
-            return "moderate"    # 25% token reduction
+            return "moderate"  # 25% token reduction
         if priority >= 4:
-            return "abbreviated" # 50% token reduction
+            return "abbreviated"  # 50% token reduction
         if priority >= 1:
-            return "minimal"     # 80% token reduction
-        return "exclude"         # 100% token reduction (omitted)
+            return "minimal"  # 80% token reduction
+        return "exclude"  # 100% token reduction (omitted)
+
+    def _extract_config_field(self, product: Product, field_name: str, detail_level: str) -> Optional[str]:
+        """
+        Extract arbitrary config_data field with detail level applied.
+
+        Supports both string and dict values in config_data JSONB.
+        Replaces hardcoded architecture extraction (backward compatible).
+
+        Args:
+            product: Product instance with config_data
+            field_name: Field key in config_data (e.g., "test_methodology")
+            detail_level: Token reduction level ("full", "abbreviated", "minimal")
+
+        Returns:
+            Formatted field text with detail level applied, or None if field missing
+
+        Examples:
+            >>> # String value
+            >>> config_data = {"test_methodology": "TDD with pytest"}
+            >>> _extract_config_field(product, "test_methodology", "full")
+            "TDD with pytest"
+
+            >>> # Dict value (like architecture)
+            >>> config_data = {"architecture": {"pattern": "MVC", "api": "REST"}}
+            >>> _extract_config_field(product, "architecture", "full")
+            "MVC; REST"
+        """
+        if not product.config_data or not isinstance(product.config_data, dict):
+            return None
+
+        # Get field value from config_data
+        field_value = product.config_data.get(field_name)
+        if not field_value:
+            return None
+
+        # Handle string values (most common)
+        if isinstance(field_value, str):
+            field_text = field_value
+
+        # Handle dict values (like architecture with subfields)
+        elif isinstance(field_value, dict):
+            # Combine all non-empty dict values
+            parts = [str(v) for v in field_value.values() if v]
+            field_text = "; ".join(parts)
+
+        # Handle list values
+        elif isinstance(field_value, list):
+            field_text = ", ".join(str(item) for item in field_value)
+
+        # Handle other JSON types
+        else:
+            field_text = str(field_value)
+
+        if not field_text.strip():
+            return None
+
+        # Apply detail level token reduction
+        if detail_level == "minimal":
+            # 20% of original (truncate to first 100 chars)
+            return field_text[:100] + ("..." if len(field_text) > 100 else "")
+        elif detail_level == "abbreviated":
+            # 50% of original (truncate to first 250 chars)
+            return field_text[:250] + ("..." if len(field_text) > 250 else "")
+        else:  # "full"
+            # 100% - no reduction
+            return field_text
 
     def _abbreviate_codebase_summary(self, codebase_text: Optional[str]) -> str:
         """Reduce codebase summary to 50% tokens."""
@@ -613,8 +692,87 @@ Success Criteria:
             )
         return result
 
+    def _format_tech_stack(self, tech_stack: dict, detail_level: str) -> str:
+        """
+        Format tech stack dictionary into readable markdown.
+
+        Applies detail level reduction to optimize token usage.
+
+        Args:
+            tech_stack: Dict with categories like {"languages": [...], "backend": [...]}
+            detail_level: "full", "moderate", "abbreviated", or "minimal"
+
+        Returns:
+            Formatted markdown string with tech stack information
+
+        Detail Level Behavior:
+            full: All categories, all values
+            moderate: All categories, first 3 values per category
+            abbreviated: Primary categories only (languages, backend, frontend, database)
+            minimal: Languages + first backend/frontend only (80% reduction)
+
+        Example:
+            >>> _format_tech_stack(
+            ...     {"languages": ["Python", "TypeScript"], "backend": ["FastAPI"]},
+            ...     "full"
+            ... )
+            "**Languages**: Python, TypeScript\\n**Backend**: FastAPI"
+        """
+        if not tech_stack or not isinstance(tech_stack, dict):
+            return ""
+
+        # Category display order (Handover 0302)
+        category_order = ["languages", "backend", "frontend", "database", "deployment", "testing"]
+
+        # Filter categories based on detail level
+        if detail_level == "minimal":
+            # Languages + primary backend/frontend only (80% reduction)
+            allowed_categories = ["languages", "backend", "frontend"]
+        elif detail_level == "abbreviated":
+            # Primary categories only (50% reduction)
+            allowed_categories = ["languages", "backend", "frontend", "database"]
+        else:
+            # Full or moderate - show all categories
+            allowed_categories = category_order
+
+        formatted_lines = []
+
+        for category in category_order:
+            if category not in allowed_categories:
+                continue
+
+            values = tech_stack.get(category, [])
+            if not values:
+                continue  # Skip empty categories
+
+            # Apply value condensation based on detail level
+            if detail_level == "minimal":
+                # Show only first value for backend/frontend
+                if category in ["backend", "frontend"]:
+                    values = values[:1]
+                # Show all languages (critical)
+            elif detail_level == "moderate":
+                # Show first 3 values per category
+                values = values[:3]
+            # full/abbreviated show all values in allowed categories
+
+            # Format category name (capitalize first letter)
+            category_label = category.replace("_", " ").capitalize()
+
+            # Join values with commas
+            values_str = ", ".join(values)
+
+            formatted_lines.append(f"**{category_label}**: {values_str}")
+
+        return "\n".join(formatted_lines)
+
     async def _build_context_with_priorities(
-        self, product: Product, project: Project, field_priorities: dict = None, user_id: Optional[str] = None, include_serena: bool = False
+        self,
+        product: Product,
+        project: Project,
+        field_priorities: dict = None,
+        user_id: Optional[str] = None,
+        include_serena: bool = False,
     ) -> str:
         """
         Build context respecting user's field priorities for 70% token reduction.
@@ -850,13 +1008,45 @@ Success Criteria:
                         },
                     )
 
+        # === Tech Stack Section ===
+        # Extract from product.config_data (JSONB field) - Handover 0302
+        tech_stack_priority = field_priorities.get("tech_stack", 0)
+        if tech_stack_priority > 0 and product.config_data:
+            tech_stack_detail = self._get_detail_level(tech_stack_priority)
+
+            # Extract tech_stack dict from config_data
+            tech_stack_data = product.config_data.get("tech_stack", {})
+
+            if tech_stack_data and isinstance(tech_stack_data, dict):
+                # Format using specialized formatter
+                formatted_tech_stack = self._format_tech_stack(tech_stack_data, tech_stack_detail)
+
+                if formatted_tech_stack:
+                    formatted_section = f"## Tech Stack\n{formatted_tech_stack}"
+                    context_sections.append(formatted_section)
+                    tech_stack_tokens = self._count_tokens(formatted_section)
+                    total_tokens += tech_stack_tokens
+
+                    # Calculate original tokens for reduction metrics
+                    original_tech_stack = self._format_tech_stack(tech_stack_data, "full")
+                    tokens_before_reduction += self._count_tokens(f"## Tech Stack\n{original_tech_stack}")
+
+                    logger.debug(
+                        f"Tech stack: {tech_stack_tokens} tokens (priority={tech_stack_priority}, detail={tech_stack_detail})",
+                        extra={
+                            "field": "tech_stack",
+                            "priority": tech_stack_priority,
+                            "detail_level": tech_stack_detail,
+                            "tokens": tech_stack_tokens,
+                        },
+                    )
+
         # === MANDATORY: Serena Codebase Context (if enabled) ===
         # Serena integration is controlled by user toggle in My Settings → Integrations
         # When enabled, provides intelligent codebase symbols/structure overview
         if include_serena:
             serena_context = await self._fetch_serena_codebase_context(
-                project_id=str(project.id),
-                tenant_key=product.tenant_key
+                project_id=str(project.id), tenant_key=product.tenant_key
             )
             if serena_context:
                 formatted_serena = f"## Codebase Context (Serena)\n{serena_context}"
@@ -880,6 +1070,48 @@ Success Criteria:
                         "operation": "build_context_with_priorities",
                     },
                 )
+
+        # === CONTEXT SOURCE 9: 360 Memory + Git Integration ===
+        # 360 Memory provides historical context from previous projects (Handovers 0135-0139)
+        # Git integration adds CLI command instructions for commit history (Handover 013B)
+        # Both are controlled by field priorities and user toggles
+
+        # 360 Memory extraction (priority-based)
+        learnings_priority = field_priorities.get("product_memory.learnings", 0)
+        if learnings_priority > 0:
+            learnings_context = await self._extract_product_learnings(product, learnings_priority, max_entries=10)
+            if learnings_context:
+                context_sections.append(learnings_context)
+                learnings_tokens = self._count_tokens(learnings_context)
+                total_tokens += learnings_tokens
+
+                logger.debug(
+                    f"Added 360 Memory context: {learnings_tokens} tokens (priority={learnings_priority})",
+                    extra={
+                        "field": "product_memory.learnings",
+                        "priority": learnings_priority,
+                        "tokens": learnings_tokens,
+                        "product_id": str(product.id),
+                    },
+                )
+
+        # Git integration (toggle-based, not priority-driven)
+        git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
+        if git_config.get("enabled"):
+            git_instructions = self._inject_git_instructions(git_config)
+            context_sections.append(git_instructions)
+            git_tokens = self._count_tokens(git_instructions)
+            total_tokens += git_tokens
+
+            logger.debug(
+                f"Added Git instructions: {git_tokens} tokens",
+                extra={
+                    "field": "git_integration",
+                    "priority": "TOGGLE",
+                    "tokens": git_tokens,
+                    "product_id": str(product.id),
+                },
+            )
 
         # === Token Reduction Metrics ===
         # Calculate and log token reduction percentage for analytics
@@ -905,6 +1137,194 @@ Success Criteria:
 
         # Join all sections with double newlines for readability
         return "\n\n".join(context_sections)
+
+    async def _extract_product_learnings(self, product: Product, priority: int, max_entries: int = 10) -> str:
+        """
+        Extract learnings from product_memory.learnings array with priority-based detail levels.
+
+        This method implements the 9th context source from the PDF spec (Handover 0311).
+        Learnings are historical project outcomes stored in 360 Memory system (Handovers 0135-0139).
+
+        Priority-based detail levels:
+        - 10 (full): All learnings (up to max_entries) with summary + outcomes + decisions
+        - 7-9 (moderate): Last 5 learnings with summary + outcomes
+        - 4-6 (abbreviated): Last 3 learnings with summary only
+        - 1-3 (minimal): Last 1 learning with summary only
+        - 0 (exclude): Return empty string
+
+        Args:
+            product: Product model with product_memory JSONB field containing learnings array
+            priority: Field priority (0-10 scale) controlling detail level
+            max_entries: Maximum learnings to include for full detail (default: 10)
+
+        Returns:
+            Formatted markdown string with historical context, or empty string if excluded/no data
+
+        Multi-Tenant Isolation:
+            Product is already tenant-filtered by upstream code. No additional filtering needed.
+
+        Token Budget:
+            - Minimal (priority 1-3): ~100-200 tokens
+            - Abbreviated (priority 4-6): ~300-500 tokens
+            - Moderate (priority 7-9): ~400-600 tokens
+            - Full (priority 10): ~800-1200 tokens (varies with learning count)
+
+        Example:
+            learnings_context = await planner._extract_product_learnings(
+                product=product,
+                priority=7,  # Moderate detail
+                max_entries=10
+            )
+        """
+        # Priority 0: Exclude entirely
+        if priority == 0:
+            return ""
+
+        # Check if product has learnings
+        if not product.product_memory:
+            return ""
+
+        learnings = product.product_memory.get("learnings", [])
+        if not learnings:
+            return ""
+
+        # Sort by sequence descending (most recent first)
+        sorted_learnings = sorted(learnings, key=lambda x: x.get("sequence", 0), reverse=True)
+
+        # Determine detail level based on priority
+        detail_level = self._get_detail_level(priority)
+
+        # Determine how many entries to include based on detail level
+        if detail_level == "minimal":
+            entries_to_show = sorted_learnings[:1]
+        elif detail_level == "abbreviated":
+            entries_to_show = sorted_learnings[:3]
+        elif detail_level == "moderate":
+            entries_to_show = sorted_learnings[:5]
+        else:  # full
+            entries_to_show = sorted_learnings[:max_entries]
+
+        # Build formatted context
+        sections = ["## Historical Context (360 Memory)\n"]
+        sections.append(
+            f"Product has {len(learnings)} previous project(s) in learning history. "
+            f"Showing {len(entries_to_show)} most recent:\n"
+        )
+
+        # Format each learning entry
+        for entry in entries_to_show:
+            seq = entry.get("sequence", "?")
+            project_name = entry.get("project_name", "Unknown Project")
+            timestamp = entry.get("timestamp", "")[:10]  # YYYY-MM-DD only
+            summary = entry.get("summary", "")
+
+            # Add learning header and summary
+            sections.append(f"### Learning #{seq} - {project_name} ({timestamp})")
+            sections.append(f"{summary}\n")
+
+            # Add outcomes for moderate and full detail levels
+            if detail_level in ["moderate", "full"]:
+                outcomes = entry.get("key_outcomes", [])
+                if outcomes:
+                    sections.append("**Key Outcomes:**")
+                    for outcome in outcomes:
+                        sections.append(f"- {outcome}")
+                    sections.append("")
+
+            # Add decisions for full detail level only
+            if detail_level == "full":
+                decisions = entry.get("decisions_made", [])
+                if decisions:
+                    sections.append("**Decisions Made:**")
+                    for decision in decisions:
+                        sections.append(f"- {decision}")
+                    sections.append("")
+
+        # Add guidance note
+        sections.append(
+            "\n**Note**: Use these learnings to inform your decisions, "
+            "avoid repeating past mistakes, and build on successful patterns.\n"
+        )
+
+        result = "\n".join(sections)
+
+        logger.debug(
+            f"Extracted 360 Memory learnings: {len(entries_to_show)} entries, "
+            f"{self._count_tokens(result)} tokens (detail={detail_level})",
+            extra={
+                "product_id": str(product.id),
+                "priority": priority,
+                "detail_level": detail_level,
+                "entries_shown": len(entries_to_show),
+                "total_learnings": len(learnings),
+                "tokens": self._count_tokens(result),
+            },
+        )
+
+        return result
+
+    def _inject_git_instructions(self, git_config: dict) -> str:
+        """
+        Inject git command instructions when Git integration is enabled.
+
+        This method adds INSTRUCTIONS for CLI agents to run git commands using the user's
+        local credentials. It does NOT fetch commits (that happens in CLI execution).
+
+        Related Handover: 013B (Git integration refactor - simplified toggle model)
+
+        Args:
+            git_config: Git integration config from product_memory.git_integration
+                       Expected keys: enabled (bool), commit_limit (int), default_branch (str)
+
+        Returns:
+            Formatted markdown string with git command examples and guidance (~250 tokens)
+
+        Token Budget:
+            Fixed ~250 tokens (minimal variation based on config values)
+
+        Example:
+            git_config = {
+                "enabled": True,
+                "commit_limit": 20,
+                "default_branch": "main"
+            }
+            git_instructions = planner._inject_git_instructions(git_config)
+        """
+        commit_limit = git_config.get("commit_limit", 20)
+
+        instructions = [
+            "## Git Integration\n",
+            "You have access to git commands for additional historical context. "
+            "Use these commands to see recent work:\n",
+            "**Recommended Commands:**",
+            "```bash",
+            "# Recent commit history",
+            f"git log --oneline -{commit_limit}",
+            "",
+            "# Recent changes with author and date",
+            'git log --since="1 week ago" --pretty=format:"%h - %s (%an, %ar)"',
+            "",
+            "# Current branch status",
+            "git branch --show-current",
+            "git status --short",
+            "",
+            "# See what changed in recent commits",
+            "git show --stat HEAD~5..HEAD",
+            "```\n",
+            "**Important**: Combine git history with 360 Memory learnings above for complete context.\n",
+        ]
+
+        result = "\n".join(instructions)
+
+        logger.debug(
+            f"Injected Git instructions: {self._count_tokens(result)} tokens",
+            extra={
+                "commit_limit": commit_limit,
+                "tokens": self._count_tokens(result),
+            },
+        )
+
+        return result
 
     async def analyze_requirements(self, product: Product, project_description: str) -> RequirementAnalysis:
         """
@@ -1187,7 +1607,9 @@ Complexity: {analysis.complexity}
             dependencies=None,  # Will be populated in generate_missions
         )
 
-    def _detect_agent_dependencies(self, mission_content: str, agent_role: str, all_agent_roles: list[str]) -> list[str]:
+    def _detect_agent_dependencies(
+        self, mission_content: str, agent_role: str, all_agent_roles: list[str]
+    ) -> list[str]:
         """
         Detect which agents this agent depends on based on mission content.
 
@@ -1529,9 +1951,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
             mission = missions[agent_config.role]
 
             # Detect dependencies from mission content
-            detected_deps = self._detect_agent_dependencies(
-                mission.content, agent_config.role, all_agent_roles
-            )
+            detected_deps = self._detect_agent_dependencies(mission.content, agent_config.role, all_agent_roles)
 
             if detected_deps:
                 # Inject dependency coordination code into mission content
