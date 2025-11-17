@@ -133,9 +133,34 @@ class PasswordChangeResponse(BaseModel):
 class FieldPriorityConfig(BaseModel):
     """Request/Response model for field priority configuration"""
 
-    fields: dict[str, int] = Field(..., description="Field paths mapped to priority (1-3)")
+    fields: dict[str, int] = Field(
+        ...,
+        description="Field paths mapped to priority (0, 4, 7, or 10) - backend scale"
+    )
     token_budget: int = Field(1500, description="Maximum tokens for config_data section")
     version: str = Field("1.0", description="Config schema version")
+
+    @field_validator("fields")
+    @classmethod
+    def validate_priority_values(cls, v: dict[str, int]) -> dict[str, int]:
+        """
+        Ensure priority values are in correct backend scale (0, 4, 7, 10).
+
+        Handover 0301: Field Priority Mapping Fix
+        Valid priorities:
+        - 0: exclude (unassigned - 100% token reduction)
+        - 4: abbreviated (Priority 3 - 50% token reduction)
+        - 7: moderate (Priority 2 - 25% token reduction)
+        - 10: full (Priority 1 - 0% token reduction)
+        """
+        valid_priorities = {0, 4, 7, 10}
+        for field_path, priority in v.items():
+            if priority not in valid_priorities:
+                raise ValueError(
+                    f"Invalid priority {priority} for field '{field_path}'. "
+                    f"Must be one of: 0 (exclude), 4 (abbreviated), 7 (moderate), 10 (full)"
+                )
+        return v
 
 
 # Helper Functions
