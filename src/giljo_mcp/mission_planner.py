@@ -107,6 +107,7 @@ class MissionPlanner:
         "features.core": "Core Features",
         "test_config.strategy": "Testing Strategy",
         "test_config.frameworks": "Testing Frameworks",
+        "agent_templates": "Available Agent Templates",
         "test_config.coverage_target": "Coverage Target",
         # Config data fields (Handover 0303)
         "config_data.architecture": "System Architecture",
@@ -692,6 +693,238 @@ Success Criteria:
             )
         return result
 
+    async def _get_relevant_vision_chunks(
+        self,
+        session,
+        product,
+        project,
+        max_tokens: int = 10000
+    ) -> list[dict]:
+        """
+        Retrieve relevant vision chunks based on project description.
+
+        This method implements intelligent chunk selection to reduce context size
+        while maintaining relevance. Uses keyword-based ranking to prioritize
+        chunks that match the project's focus.
+
+        Args:
+            session: Database session for chunk queries
+            product: Product model with vision documents
+            project: Project model with description (used for relevance ranking)
+            max_tokens: Maximum tokens to include from chunks (default: 10K)
+
+        Returns:
+            List of chunk dicts with 'content' and 'relevance_score' keys.
+            Empty list if no chunks found or vision not chunked.
+
+        Multi-Tenant Isolation:
+            Queries filter by product.tenant_key and product.id automatically.
+
+        Algorithm:
+            1. Check if product has chunked vision documents
+            2. Query mcp_context_index for chunks linked to vision_document_id
+            3. Rank chunks by relevance to project.description
+            4. Return top N chunks within token budget
+
+        Example:
+            chunks = await planner._get_relevant_vision_chunks(
+                session=session,
+                product=product,
+                project=project,
+                max_tokens=8000
+            )
+            # Returns: [
+            #   {'content': '...', 'relevance_score': 0.85, 'tokens': 1200},
+            #   {'content': '...', 'relevance_score': 0.72, 'tokens': 950},
+            # ]
+        """
+        from sqlalchemy import select
+        from src.giljo_mcp.models.context import MCPContextIndex
+
+        # Check if product has chunked vision documents
+        if not product.vision_documents:
+            logger.debug("No vision documents found", extra={
+                "product_id": str(product.id),
+                "operation": "get_relevant_vision_chunks"
+            })
+            return []
+
+        # Get active chunked vision documents
+        chunked_docs = [
+            doc for doc in product.vision_documents
+            if doc.is_active and doc.chunked and doc.chunk_count > 0
+        ]
+
+        if not chunked_docs:
+            logger.debug("No chunked vision documents found", extra={
+                "product_id": str(product.id),
+                "total_docs": len(product.vision_documents),
+                "operation": "get_relevant_vision_chunks"
+            })
+            return []
+
+        # Get vision_document_ids for query
+        vision_doc_ids = [doc.id for doc in chunked_docs]
+
+        # Query chunks from mcp_context_index
+        stmt = select(MCPContextIndex).where(
+            MCPContextIndex.tenant_key == product.tenant_key,
+            MCPContextIndex.vision_document_id.in_(vision_doc_ids),
+        ).order_by(MCPContextIndex.chunk_order)
+
+        result = await session.execute(stmt)
+        chunks = result.scalars().all()
+
+        if not chunks:
+            logger.warning("Chunks marked but not found in database", extra={
+                "product_id": str(product.id),
+                "vision_doc_ids": vision_doc_ids,
+                "operation": "get_relevant_vision_chunks"
+            })
+            return []
+
+        logger.info(f"Retrieved {len(chunks)} chunks for relevance ranking", extra={
+            "product_id": str(product.id),
+            "project_id": str(project.id),
+            "chunk_count": len(chunks),
+            "operation": "get_relevant_vision_chunks"
+        })
+
+        # Rank chunks by relevance to project description
+        ranked_chunks = self._rank_chunk_relevance(
+            chunks=chunks,
+            project_description=project.description or ""
+        )
+
+        # Select top chunks within token budget
+        selected_chunks = []
+        total_tokens = 0
+
+        for chunk_data in ranked_chunks:
+            chunk_tokens = self._count_tokens(chunk_data['content'])
+
+            if total_tokens + chunk_tokens > max_tokens:
+                logger.debug(f"Token budget reached: {total_tokens}/{max_tokens}", extra={
+                    "total_tokens": total_tokens,
+                    "max_tokens": max_tokens,
+                    "chunks_selected": len(selected_chunks),
+                    "operation": "get_relevant_vision_chunks"
+                })
+                break
+
+            chunk_data['tokens'] = chunk_tokens
+            selected_chunks.append(chunk_data)
+            total_tokens += chunk_tokens
+
+        logger.info(
+            f"Selected {len(selected_chunks)} chunks ({total_tokens} tokens)",
+            extra={
+                "product_id": str(product.id),
+                "project_id": str(project.id),
+                "chunks_selected": len(selected_chunks),
+                "total_chunks": len(chunks),
+                "total_tokens": total_tokens,
+                "max_tokens": max_tokens,
+                "reduction_pct": ((len(chunks) - len(selected_chunks)) / len(chunks) * 100) if chunks else 0,
+                "operation": "get_relevant_vision_chunks"
+            }
+        )
+
+        return selected_chunks
+
+    def _rank_chunk_relevance(
+        self,
+        chunks: list,
+        project_description: str
+    ) -> list[dict]:
+        """
+        Rank chunks by relevance to project description using keyword matching.
+
+        Algorithm:
+            1. Extract keywords from project description (lowercase, dedupe)
+            2. For each chunk, count keyword matches in content
+            3. Calculate relevance score: matches / total_keywords
+            4. Sort chunks by score (descending)
+
+        Args:
+            chunks: List of MCPContextIndex model instances
+            project_description: Project description text for keyword extraction
+
+        Returns:
+            List of dicts sorted by relevance (highest first):
+            [
+                {'content': '...', 'relevance_score': 0.85, 'chunk_id': '...'},
+                {'content': '...', 'relevance_score': 0.72, 'chunk_id': '...'},
+            ]
+
+        Future Enhancement:
+            - Use semantic embeddings (sentence-transformers)
+            - TF-IDF scoring
+            - Named entity recognition
+        """
+        import re
+
+        # Extract keywords from project description
+        # Remove common stop words and punctuation
+        stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during',
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+            'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might',
+            'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she',
+            'it', 'we', 'they', 'them', 'their', 'what', 'which', 'who', 'when',
+            'where', 'why', 'how'
+        }
+
+        # Tokenize and clean project description
+        words = re.findall(r'\b\w+\b', project_description.lower())
+        keywords = [w for w in words if w not in stop_words and len(w) > 2]
+
+        if not keywords:
+            # No keywords - return chunks in original order with neutral score
+            logger.debug("No keywords extracted from project description", extra={
+                "project_description_length": len(project_description),
+                "operation": "rank_chunk_relevance"
+            })
+            return [
+                {'content': chunk.content, 'relevance_score': 0.5, 'chunk_id': chunk.chunk_id}
+                for chunk in chunks
+            ]
+
+        logger.debug(f"Extracted {len(keywords)} keywords for ranking", extra={
+            "keywords": keywords[:10],  # First 10 for logging
+            "total_keywords": len(keywords),
+            "operation": "rank_chunk_relevance"
+        })
+
+        # Score each chunk
+        scored_chunks = []
+        for chunk in chunks:
+            chunk_text = (chunk.content or "").lower()
+            matches = sum(1 for keyword in keywords if keyword in chunk_text)
+            relevance_score = matches / len(keywords) if keywords else 0
+
+            scored_chunks.append({
+                'content': chunk.content,
+                'relevance_score': relevance_score,
+                'chunk_id': chunk.chunk_id,
+                'matches': matches
+            })
+
+        # Sort by relevance (descending)
+        scored_chunks.sort(key=lambda x: x['relevance_score'], reverse=True)
+
+        logger.debug(
+            f"Ranked {len(scored_chunks)} chunks (top score: {scored_chunks[0]['relevance_score']:.2f})",
+            extra={
+                "total_chunks": len(scored_chunks),
+                "top_score": scored_chunks[0]['relevance_score'] if scored_chunks else 0,
+                "operation": "rank_chunk_relevance"
+            }
+        )
+
+        return scored_chunks
+
     def _format_tech_stack(self, tech_stack: dict, detail_level: str) -> str:
         """
         Format tech stack dictionary into readable markdown.
@@ -884,23 +1117,84 @@ Success Criteria:
 
         # === MANDATORY: Product Vision (ALWAYS included - non-negotiable) ===
         # Vision document is foundational context that orchestrator needs
-        vision_text = product.primary_vision_text
-        if vision_text:
-            formatted_vision = f"## Product Vision\n{vision_text}"
-            context_sections.append(formatted_vision)
-            vision_tokens = self._count_tokens(formatted_vision)
-            total_tokens += vision_tokens
-            tokens_before_reduction += vision_tokens
+        # NEW: Use chunked vision if available, fallback to full text
 
-            logger.debug(
-                f"Product vision: {vision_tokens} tokens (MANDATORY - full content)",
-                extra={
-                    "field": "product_vision",
-                    "priority": "MANDATORY",
-                    "detail_level": "full",
-                    "tokens": vision_tokens,
-                },
-            )
+        vision_priority = field_priorities.get("product_vision", 10)  # Default: MANDATORY
+        if vision_priority > 0:
+            # Check if vision is chunked
+            product_has_chunks = any(
+                doc.is_active and doc.chunked and doc.chunk_count > 0
+                for doc in product.vision_documents
+            ) if product.vision_documents else False
+
+            if product_has_chunks:
+                # Use relevant chunks based on project description
+                vision_chunks = await self._get_relevant_vision_chunks(
+                    session=self.db_manager.session,
+                    product=product,
+                    project=project,
+                    max_tokens=10000  # Vision section token budget
+                )
+
+                if vision_chunks:
+                    # Combine chunks into formatted section
+                    chunk_texts = [chunk['content'] for chunk in vision_chunks]
+                    vision_text = "\n\n".join(chunk_texts)
+                    formatted_vision = f"## Product Vision (Relevant Sections)\n{vision_text}"
+
+                    context_sections.append(formatted_vision)
+                    vision_tokens = self._count_tokens(formatted_vision)
+                    total_tokens += vision_tokens
+                    tokens_before_reduction += self._count_tokens(
+                        f"## Product Vision\n{product.primary_vision_text}"
+                    )
+
+                    logger.info(
+                        f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
+                        extra={
+                            "field": "product_vision",
+                            "priority": vision_priority,
+                            "detail_level": "chunked",
+                            "tokens": vision_tokens,
+                            "chunks_used": len(vision_chunks),
+                            "relevance_scores": [c['relevance_score'] for c in vision_chunks],
+                        }
+                    )
+                else:
+                    # Chunks marked but not found - fallback to full text
+                    logger.warning(
+                        "Vision marked as chunked but no chunks returned - using full text",
+                        extra={
+                            "product_id": str(product.id),
+                            "operation": "build_context_with_priorities"
+                        }
+                    )
+                    vision_text = product.primary_vision_text
+                    if vision_text:
+                        formatted_vision = f"## Product Vision\n{vision_text}"
+                        context_sections.append(formatted_vision)
+                        vision_tokens = self._count_tokens(formatted_vision)
+                        total_tokens += vision_tokens
+                        tokens_before_reduction += vision_tokens
+            else:
+                # Not chunked - use full text (original behavior)
+                vision_text = product.primary_vision_text
+                if vision_text:
+                    formatted_vision = f"## Product Vision\n{vision_text}"
+                    context_sections.append(formatted_vision)
+                    vision_tokens = self._count_tokens(formatted_vision)
+                    total_tokens += vision_tokens
+                    tokens_before_reduction += vision_tokens
+
+                    logger.debug(
+                        f"Product vision (full text): {vision_tokens} tokens (not chunked)",
+                        extra={
+                            "field": "product_vision",
+                            "priority": "MANDATORY",
+                            "detail_level": "full",
+                            "tokens": vision_tokens,
+                        }
+                    )
 
         # === MANDATORY: Project Description (ALWAYS included - non-negotiable) ===
         desc_text = project.description or ""
