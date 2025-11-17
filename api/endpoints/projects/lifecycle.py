@@ -23,7 +23,7 @@ from src.giljo_mcp.models.schemas import ProjectLaunchResponse
 from src.giljo_mcp.services.project_service import ProjectService
 
 from .dependencies import get_project_service
-from .models import ProjectResponse, StagingCancellationResponse
+from .models import ProjectResponse, StagingCancellationResponse, ProjectDeleteResponse
 
 
 logger = logging.getLogger(__name__)
@@ -351,6 +351,45 @@ async def cancel_project_staging(
         message_count=proj.get("message_count", 0),
         agents=[]
     )
+
+
+@router.delete("/{project_id}", response_model=ProjectDeleteResponse)
+async def delete_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectDeleteResponse:
+    """
+    Soft delete a project.
+
+    Marks the project as status='deleted' and sets deleted_at. Purging after 10 days
+    is handled by ProjectService.purge_expired_deleted_projects().
+    """
+    logger.info(f"User {current_user.username} deleting project {project_id}")
+
+    try:
+        result = await project_service.delete_project(project_id)
+
+        if not result.get("success"):
+            error_msg = result.get("error", "Failed to delete project")
+            if "not found" in error_msg.lower():
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+        return ProjectDeleteResponse(
+            success=True,
+            message=result.get("message", "Project deleted successfully"),
+            deleted_at=result.get("deleted_at"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete project: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete project: {str(e)}",
+        )
 
 
 @router.post("/{project_id}/launch", response_model=ProjectLaunchResponse)

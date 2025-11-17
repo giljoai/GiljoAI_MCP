@@ -88,6 +88,14 @@ class Product(Base):
         comment="Rich project configuration: architecture, tech_stack, features, etc.",
     )
 
+    # 360 Memory Management storage (Handover 0135)
+    product_memory = Column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{\"github\": {}, \"learnings\": [], \"context\": {}}'::jsonb"),
+        comment="360 Memory: GitHub integration, learnings, context summaries (Handover 0135)",
+    )
+
     # Relationships
     projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
@@ -104,6 +112,7 @@ class Product(Base):
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
+        Index("idx_product_memory_gin", "product_memory", postgresql_using="gin"),  # Handover 0135: GIN index for product_memory
         Index(
             "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
         ),  # Soft delete support
@@ -135,6 +144,51 @@ class Product(Base):
 
         keys = field_path.split(".")
         value = self.config_data
+
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return default
+
+        return value
+
+    # Handover 0135: Product Memory helper methods
+    @property
+    def has_product_memory(self) -> bool:
+        """Check if product has product_memory populated beyond defaults"""
+        if not self.product_memory:
+            return False
+        # Consider it populated if any top-level key has data beyond empty defaults
+        has_github = bool(self.product_memory.get("github", {}))
+        has_learnings = len(self.product_memory.get("learnings", [])) > 0
+        has_context = bool(self.product_memory.get("context", {}))
+        return has_github or has_learnings or has_context
+
+    def get_memory_field(self, field_path: str, default: Any = None) -> Any:
+        """
+        Get memory field using dot notation (e.g., 'github.enabled')
+
+        Args:
+            field_path: Dot-separated path (e.g., 'github.enabled' or 'context.summary')
+            default: Default value if field not found
+
+        Returns:
+            Field value or default
+
+        Examples:
+            >>> product.get_memory_field('github.enabled')
+            True
+            >>> product.get_memory_field('github.repo_url')
+            'https://github.com/user/repo'
+            >>> product.get_memory_field('learnings')
+            [{"timestamp": "...", "summary": "..."}]
+        """
+        if not self.product_memory:
+            return default
+
+        keys = field_path.split(".")
+        value = self.product_memory
 
         for key in keys:
             if isinstance(value, dict) and key in value:

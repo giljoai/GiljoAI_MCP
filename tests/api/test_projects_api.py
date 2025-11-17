@@ -412,6 +412,55 @@ class TestProjectCRUD:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_delete_project_soft_delete_happy_path(
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
+    ):
+        """Test DELETE /api/v1/projects/{project_id} - Soft delete successfully."""
+        # Create a project to delete
+        create_response = await api_client.post(
+            "/api/v1/projects/",
+            json={
+                "name": "Project to Delete",
+                "description": "Test delete flow",
+                "mission": "Test mission",
+                "product_id": tenant_a_product["id"],
+            },
+            cookies={"access_token": tenant_a_token},
+        )
+        assert create_response.status_code == 201
+        project = create_response.json()
+
+        # Soft delete it
+        delete_response = await api_client.delete(
+            f"/api/v1/projects/{project['id']}",
+            cookies={"access_token": tenant_a_token},
+        )
+
+        assert delete_response.status_code == 200
+        data = delete_response.json()
+        assert data["success"] is True
+        assert "message" in data
+        assert "deleted_at" in data
+
+        # Verify project no longer appears in regular list
+        list_response = await api_client.get(
+            "/api/v1/projects/",
+            cookies={"access_token": tenant_a_token},
+        )
+        assert list_response.status_code == 200
+        project_ids = [p["id"] for p in list_response.json()]
+        assert project["id"] not in project_ids
+
+        # Verify project appears in deleted projects list
+        deleted_response = await api_client.get(
+            "/api/v1/projects/deleted",
+            cookies={"access_token": tenant_a_token},
+        )
+        assert deleted_response.status_code == 200
+        deleted_ids = [p["id"] for p in deleted_response.json()]
+        assert project["id"] in deleted_ids
+
+    @pytest.mark.asyncio
     async def test_update_project_happy_path(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
     ):
