@@ -511,16 +511,39 @@ Success Criteria:
             return ""
 
     def _get_detail_level(self, priority: int) -> str:
-        """Map priority (1-10) to detail level."""
+        """
+        Map priority (0-10 scale) to detail level.
+
+        IMPORTANT: UI layer must map visual priorities to this scale (Handover 0301):
+        - UI "Priority 1 (Always Included)" -> 10 -> "full" (0% token reduction)
+        - UI "Priority 2 (High Priority)"    -> 7  -> "moderate" (25% token reduction)
+        - UI "Priority 3 (Medium Priority)"  -> 4  -> "abbreviated" (50% token reduction)
+        - UI "Unassigned"                    -> 0  -> "exclude" (100% token reduction)
+
+        See: frontend/src/views/UserSettings.vue (PRIORITY_* constants, line ~714)
+
+        Args:
+            priority: Field importance weight (0-10)
+
+        Returns:
+            Detail level string: "full", "moderate", "abbreviated", "minimal", "exclude"
+
+        Detail Levels:
+            - "full": Complete content (~100% of original tokens)
+            - "moderate": Slightly condensed (~75% of original tokens)
+            - "abbreviated": Significantly condensed (~50% of original tokens)
+            - "minimal": Key points only (~20% of original tokens)
+            - "exclude": Omitted entirely (0 tokens)
+        """
         if priority >= 10:
-            return "full"
+            return "full"        # 0% token reduction
         if priority >= 7:
-            return "moderate"
+            return "moderate"    # 25% token reduction
         if priority >= 4:
-            return "abbreviated"
+            return "abbreviated" # 50% token reduction
         if priority >= 1:
-            return "minimal"
-        return "exclude"
+            return "minimal"     # 80% token reduction
+        return "exclude"         # 100% token reduction (omitted)
 
     def _abbreviate_codebase_summary(self, codebase_text: Optional[str]) -> str:
         """Reduce codebase summary to 50% tokens."""
