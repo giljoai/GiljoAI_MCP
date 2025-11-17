@@ -193,3 +193,28 @@ class GitHubSettingsResponse(BaseModel):
     last_sync: Optional[str] = Field(
         None, description="ISO timestamp of last sync with GitHub"
     )
+
+
+# ============================================================================
+# Git Integration Settings (Handover 013B - Simplified)
+# ============================================================================
+
+
+class GitIntegrationRequest(BaseModel):
+    """Request model for updating Git integration settings (Handover 013B)"""
+
+    enabled: bool = Field(..., description="Whether Git integration is enabled")
+    commit_limit: int = Field(
+        20, ge=1, le=100, description="Max commits to include in prompts (1-100)"
+    )
+    default_branch: str = Field(
+        "main", description="Default branch name (e.g., main, master, develop)"
+    )
+
+
+class GitIntegrationResponse(BaseModel):
+    """Response model for Git integration settings (Handover 013B)"""
+
+    enabled: bool = Field(..., description="Whether Git integration is enabled")
+    commit_limit: int = Field(..., description="Max commits to include in prompts")
+    default_branch: str = Field(..., description="Default branch name")
