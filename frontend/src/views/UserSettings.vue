@@ -755,7 +755,7 @@ const tokenBudget = ref(2000)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
 
-// All available fields (Handover 0052)
+// All available fields (Handover 0052, 0302)
 const ALL_AVAILABLE_FIELDS = [
   'architecture.api_style',
   'architecture.design_patterns',
@@ -764,9 +764,10 @@ const ALL_AVAILABLE_FIELDS = [
   'features.core',
   'tech_stack.backend',
   'tech_stack.database',
+  'tech_stack.deployment',    // Handover 0302
   'tech_stack.frontend',
-  'tech_stack.infrastructure',
   'tech_stack.languages',
+  'tech_stack.testing',        // Handover 0302
   'test_config.coverage_target',
   'test_config.frameworks',
   'test_config.strategy',
@@ -776,13 +777,14 @@ const ALL_AVAILABLE_FIELDS = [
 const activeProductTokens = ref(null)
 const loadingTokenEstimate = ref(false)
 
-// Field labels mapping for display
+// Field labels mapping for display (Handover 0302)
 const fieldLabels = {
   'tech_stack.languages': 'Programming Languages',
   'tech_stack.backend': 'Backend Stack',
   'tech_stack.frontend': 'Frontend Stack',
   'tech_stack.database': 'Databases',
-  'tech_stack.infrastructure': 'Infrastructure',
+  'tech_stack.deployment': 'Deployment Tools',      // Handover 0302
+  'tech_stack.testing': 'Testing Frameworks',       // Handover 0302
   'architecture.pattern': 'Architecture Pattern',
   'architecture.api_style': 'API Style',
   'architecture.design_patterns': 'Design Patterns',

@@ -955,56 +955,54 @@ Success Criteria:
                     },
                 )
 
-        # === Architecture Section ===
-        # Extract from product.config_data (JSONB field)
-        arch_priority = field_priorities.get("architecture", 0)
-        if arch_priority > 0 and product.config_data:
-            arch_detail = self._get_detail_level(arch_priority)
+        # === Config Data Fields Section (Handover 0303) ===
+        # Generic extraction for all config_data fields that are prioritized
+        # Replaces hardcoded architecture extraction with scalable pattern
+        config_fields_to_extract = [
+            "architecture",  # System architecture
+            "test_methodology",  # Testing approach (TDD, BDD, etc.)
+            "coding_standards",  # Code quality standards
+            "deployment_strategy",  # Deployment approach
+            "agent_execution_methodologies",  # How agents should execute work
+        ]
 
-            # Architecture can be in multiple places in config_data
-            arch_text = ""
-            if isinstance(product.config_data, dict):
-                # Try "architecture" key first (freeform text)
-                arch_value = product.config_data.get("architecture", "")
+        for field_name in config_fields_to_extract:
+            # Check both old key format (backward compat) and new config_data.* format
+            field_key = f"config_data.{field_name}"
+            legacy_key = field_name if field_name == "architecture" else None
 
-                # Check if architecture is a string or dict
-                if isinstance(arch_value, str):
-                    arch_text = arch_value
-                elif isinstance(arch_value, dict):
-                    # Structured architecture fields - combine them
-                    pattern = arch_value.get("pattern", "")
-                    api_style = arch_value.get("api_style", "")
-                    design_patterns = arch_value.get("design_patterns", "")
-                    notes = arch_value.get("notes", "")
-                    parts = [p for p in [pattern, api_style, design_patterns, notes] if p]
-                    arch_text = "\n".join(parts)
+            # Try new format first, then fall back to legacy
+            field_priority = field_priorities.get(field_key, 0)
+            if field_priority == 0 and legacy_key:
+                field_priority = field_priorities.get(legacy_key, 0)
 
-            if arch_text and isinstance(arch_text, str):
-                if arch_detail == "full" or arch_detail == "moderate":
-                    formatted_arch = arch_text
-                elif arch_detail == "abbreviated":
-                    # Extract first paragraph only
-                    paragraphs = arch_text.split("\n\n")
-                    formatted_arch = paragraphs[0] if paragraphs else arch_text
-                else:  # minimal
-                    # Extract first sentence only
-                    sentences = arch_text.split(". ")
-                    formatted_arch = sentences[0] + "." if sentences else arch_text
+            if field_priority > 0:
+                field_detail = self._get_detail_level(field_priority)
+                field_text = self._extract_config_field(product, field_name, field_detail)
 
-                if formatted_arch:
-                    formatted_section = f"## Architecture\n{formatted_arch}"
+                if field_text:
+                    # Get human-readable label
+                    field_label = self.FIELD_LABELS.get(field_key, field_name.replace("_", " ").title())
+
+                    # Add to context sections
+                    formatted_section = f"## {field_label}\n{field_text}"
                     context_sections.append(formatted_section)
-                    arch_tokens = self._count_tokens(formatted_section)
-                    total_tokens += arch_tokens
-                    tokens_before_reduction += self._count_tokens(f"## Architecture\n{arch_text}")
+
+                    field_tokens = self._count_tokens(formatted_section)
+                    total_tokens += field_tokens
+
+                    # Track token metrics (use full text for "before" comparison)
+                    full_text = self._extract_config_field(product, field_name, "full")
+                    if full_text:
+                        tokens_before_reduction += self._count_tokens(f"## {field_label}\n{full_text}")
 
                     logger.debug(
-                        f"Architecture: {arch_tokens} tokens (priority={arch_priority}, detail={arch_detail})",
+                        f"{field_label}: {field_tokens} tokens (priority={field_priority}, detail={field_detail})",
                         extra={
-                            "field": "architecture",
-                            "priority": arch_priority,
-                            "detail_level": arch_detail,
-                            "tokens": arch_tokens,
+                            "field": field_key,
+                            "priority": field_priority,
+                            "detail_level": field_detail,
+                            "tokens": field_tokens,
                         },
                     )
 
