@@ -75,29 +75,29 @@ from typing import Any, Dict
 
 
 DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
-    "version": "1.1",
+    "version": "1.3",
     "token_budget": 2000,
     "fields": {
-        # Priority 1: Critical - Always Included
+        # Priority 10 (full detail): Critical - Always Included
         # Core technical foundation that defines the product
-        "tech_stack.languages": 1,
-        "tech_stack.backend": 1,
-        "tech_stack.frontend": 1,
-        "architecture.pattern": 1,
-        "features.core": 1,
-        # Priority 2: High Priority
+        "tech_stack.languages": 10,
+        "tech_stack.backend": 10,
+        "tech_stack.frontend": 10,
+        "architecture.pattern": 10,
+        "features.core": 10,
+        # Priority 7 (moderate detail): High Priority
         # Important context for development decisions
-        "tech_stack.database": 2,
-        "architecture.api_style": 2,
-        "test_config.strategy": 2,
-        "agent_templates": 2,  # High Priority - Agent roster with capabilities
-        # Priority 3: Medium Priority
+        "tech_stack.database": 7,
+        "architecture.api_style": 7,
+        "test_config.strategy": 7,
+        "agent_templates": 7,  # High Priority - Agent roster with capabilities
+        # Priority 4 (abbreviated detail): Medium Priority
         # Additional context and best practices
-        "tech_stack.infrastructure": 3,
-        "architecture.design_patterns": 3,
-        "architecture.notes": 3,
-        "test_config.frameworks": 3,
-        "test_config.coverage_target": 3,
+        "tech_stack.infrastructure": 4,
+        "architecture.design_patterns": 4,
+        "architecture.notes": 4,
+        "test_config.frameworks": 4,
+        "test_config.coverage_target": 4,
     },
 }
 
@@ -107,13 +107,13 @@ def get_fields_by_priority(priority_level: int) -> list[str]:
     Get all field paths matching the specified priority level.
 
     Args:
-        priority_level: Priority tier (1=critical, 2=high, 3=medium)
+        priority_level: Priority tier (0, 4, 7, or 10)
 
     Returns:
         List of field paths (e.g., ['tech_stack.languages', ...])
 
     Example:
-        >>> critical_fields = get_fields_by_priority(1)
+        >>> critical_fields = get_fields_by_priority(10)
         >>> print(critical_fields)
         ['tech_stack.languages', 'tech_stack.backend', ...]
     """
@@ -130,30 +130,32 @@ def get_priority_for_field(field_path: str) -> int | None:
         field_path: Dot-notation field path (e.g., 'tech_stack.languages')
 
     Returns:
-        Priority level (1-3) or None if field not in priority configuration
+        Priority level (0, 4, 7, or 10) or None if field not in priority configuration
 
     Example:
         >>> priority = get_priority_for_field('tech_stack.database')
         >>> print(priority)
-        2
+        7
     """
     return DEFAULT_FIELD_PRIORITY["fields"].get(field_path)
 
 
 def validate_field_priorities() -> bool:
     """
-    Validate that all priority values are within acceptable range (1-3).
+    Validate that all priority values are within acceptable range (0, 4, 7, 10).
 
     Returns:
         True if all priorities are valid, False otherwise
 
     Raises:
-        ValueError: If any priority value is not in range 1-3
+        ValueError: If any priority value is not in {0, 4, 7, 10}
     """
+    valid_priorities = {0, 4, 7, 10}
     for field_path, priority in DEFAULT_FIELD_PRIORITY["fields"].items():
-        if not isinstance(priority, int) or priority < 1 or priority > 3:
+        if priority not in valid_priorities:
             raise ValueError(
-                f"Invalid priority {priority} for field '{field_path}'. Priority must be integer between 1 and 3."
+                f"Invalid priority {priority} for field '{field_path}'. "
+                f"Must be one of: 0 (exclude), 4 (abbreviated), 7 (moderate), 10 (full)"
             )
     return True
 
