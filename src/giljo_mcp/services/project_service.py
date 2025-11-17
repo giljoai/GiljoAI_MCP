@@ -782,6 +782,12 @@ class ProjectService:
                             f"Auto-deactivated project {existing_active.id} due to Single Active Project constraint"
                         )
 
+                        # IMPORTANT: Flush deactivation before activating the new project to
+                        # satisfy the unique index idx_project_single_active_per_product.
+                        # Otherwise Postgres may see two active projects for the same product
+                        # in a single flush and raise a unique violation.
+                        await session.flush()
+
                 # Activate project
                 project.status = "active"
                 project.updated_at = datetime.utcnow()
