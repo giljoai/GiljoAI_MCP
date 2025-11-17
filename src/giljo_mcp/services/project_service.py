@@ -19,7 +19,7 @@ Design Principles:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -333,8 +333,15 @@ class ProjectService:
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
                 # TENANT ISOLATION: Only return projects for the specified tenant
                 query = select(Project).where(Project.tenant_key == tenant_key)
+
                 if status:
+                    # Explicit status filter, including deleted if requested
                     query = query.where(Project.status == status)
+                    if status == "deleted":
+                        query = query.where(Project.deleted_at.isnot(None))
+                else:
+                    # Default listing excludes soft-deleted projects
+                    query = query.where(Project.deleted_at.is_(None))
 
                 result = await session.execute(query)
                 projects = result.scalars().all()
@@ -1485,6 +1492,61 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # ============================================================================
     # Maintenance & Cleanup Methods
     # ============================================================================
+
+    async def delete_project(self, project_id: str) -> dict[str, Any]:
+        """
+        Soft delete a project.
+
+        Sets status='deleted' and deleted_at timestamp for the current tenant's project.
+        Actual purge is handled separately by purge_expired_deleted_projects().
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Dict with success status, message, and deleted_at timestamp or error.
+        """
+        try:
+            # Get current tenant from context
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            async with self.db_manager.get_session_async() as session:
+                stmt = select(Project).where(
+                    and_(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key,
+                        Project.deleted_at.is_(None),
+                    )
+                )
+                result = await session.execute(stmt)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found or already deleted"}
+
+                now = datetime.now(timezone.utc)
+                project.status = "deleted"
+                project.deleted_at = now
+                project.updated_at = now
+
+                await session.commit()
+
+                self._logger.info(
+                    f"Soft deleted project {project_id} for tenant {tenant_key} "
+                    f"at {project.deleted_at.isoformat() if project.deleted_at else 'unknown time'}"
+                )
+
+                return {
+                    "success": True,
+                    "message": "Project deleted successfully",
+                    "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to delete project: {e}")
+            return {"success": False, "error": str(e)}
 
     async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> dict[str, Any]:
         """
