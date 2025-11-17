@@ -145,8 +145,8 @@ async def get_current_user(
 
     # Try Authorization: Bearer <token> header (CLI / API clients)
     bearer_token: Optional[str] = None
-    if authorization and authorization.lower().startswith("bearer "):
-        bearer_token = authorization.split(" ", 1)[1].strip()
+    if authorization and str(authorization).lower().startswith("bearer "):
+        bearer_token = str(authorization).split(" ", 1)[1].strip()
 
     if bearer_token and not access_token:
         logger.info("[AUTH] Attempting Authorization Bearer JWT authentication")
