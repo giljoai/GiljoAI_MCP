@@ -1,0 +1,96 @@
+═══════════════════════════════════════════════════════════════════
+ GILJOAI HANDOVER QUICK LAUNCH - COPY-PASTE READY
+═══════════════════════════════════════════════════════════════════
+
+
+Execute handover F:\GiljoAI_MCP\handovers\0301_fix_priority_mapping_ui_backend.md with production-grade quality.
+
+CRITICAL REQUIREMENTS:
+
+YOU MUST ## USE CLAUDE CODE INTEGRATED SUBAGENTS ##
+
+1. TDD DISCIPLINE (Non-Negotiable):
+   - Write tests FIRST (Red phase - tests must fail initially)
+   - Implement MINIMAL code to make tests pass (Green phase)
+   - Refactor if needed (Refactor phase)
+   - Test BEHAVIOR (what code does), not IMPLEMENTATION (how it does it)
+   - Use descriptive test names: test_extraction_returns_full_detail_at_priority_10
+   - Avoid testing internal implementation details
+   - Coverage target: >80% for new code
+
+2. ARCHITECTURAL DISCIPLINE:
+   - Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md FIRST
+   - Build on existing patterns (ProductService, ProjectService, etc.)
+   - Do NOT reinvent methods that already exist
+   - Use existing service layer patterns (AsyncSession, multi-tenant isolation, Pydantic schemas)
+   - Follow established conventions (see 013A section 2.1-2.6 for area-specific patterns)
+   - Reuse existing fixtures from tests/conftest.py
+
+3. CODE QUALITY STANDARDS:
+   - Production-grade code from the start (no bandaids, no "fix later" comments)
+   - Follow existing patterns in F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+   - Clean code: No zombie code, no commented-out blocks (delete, don't comment)
+   - Cross-platform: Use pathlib.Path() for all file operations
+   - Multi-tenant isolation: Include tenant_key in all DB queries
+   - Error handling: Comprehensive, domain-specific exceptions
+   - Logging: Structured metadata (extra={...}) for all significant operations
+
+4. EXECUTION WORKFLOW:
+   Phase 1 - Read & Understand (15-20 min):
+     - Read complete handover document
+     - Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+     - Identify existing patterns to reuse
+     - Identify integration points (which services, which endpoints)
+
+   Phase 2 - Write Tests FIRST (Red - 30-40% of time):
+     - Create test file: tests/unit/test_{feature_name}.py
+     - Write failing unit tests for all new methods
+     - Create integration test file: tests/integration/test_{feature_name}_integration.py
+     - Write failing integration tests for end-to-end behavior
+     - Run tests: pytest tests/ -v (all should fail RED ❌)
+
+   Phase 3 - Implement (Green - 40-50% of time):
+     - Write MINIMAL code to make tests pass
+     - Follow service layer pattern if backend work
+     - Follow component pattern if frontend work
+     - Run tests iteratively: pytest tests/ -v (all should pass GREEN ✅)
+
+   Phase 4 - Refactor & Polish (10-20% of time):
+     - Extract common patterns into helpers
+     - Optimize for performance (minimize DB queries, string operations)
+     - Add comprehensive docstrings (Google style)
+     - Add structured logging with metadata
+     - Run tests: pytest tests/ -v (still GREEN ✅)
+
+   Phase 5 - Validate & Document (10% of time):
+     - Run full test suite: pytest tests/ --cov=src/giljo_mcp
+     - Verify >80% coverage for new code
+     - Update relevant documentation (SERVICES.md, CONTEXT_MANAGEMENT_SYSTEM.md, etc.)
+     - Git commit with descriptive message
+
+5. DELIVERABLES:
+   - All tests passing (Green ✅)
+   - >80% code coverage for new code
+   - Clean implementation (no commented code, no TODOs)
+   - Documentation updated
+   - Git commit ready for review
+
+6. CRITICAL CHECKS (Before Committing):
+   ✓ Read 013A_code_review_architecture_status.md? (verify you reused existing patterns)
+   ✓ Tests written FIRST? (TDD Red → Green → Refactor)
+   ✓ All tests passing? (pytest tests/ -v)
+   ✓ Coverage >80%? (pytest --cov)
+   ✓ Multi-tenant isolation verified? (tenant_key in all queries)
+   ✓ Cross-platform paths? (pathlib.Path, no hardcoded F:\)
+   ✓ Production-grade? (no bandaids, no quick fixes)
+   ✓ Documentation updated?
+
+SHOW ME:
+- Test file(s) created (with descriptive test names)
+- Implementation file(s) modified
+- Test results (all passing)
+- Coverage report (>80% for new code)
+- Git commit summary
+
+BEGIN EXECUTION NOW.
+

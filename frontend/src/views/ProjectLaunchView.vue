@@ -206,7 +206,17 @@ function handleEditDescription() {
 }
 
 function handleEditMission(missionData) {
-  showNotification('Mission editing coming soon', 'info', 'mdi-information')
+  if (!project.value) return
+
+  projectData.value = {
+    name: project.value.name,
+    description: project.value.description || '',
+    // Use the latest orchestrator mission text if provided from LaunchTab
+    mission: missionData || project.value.mission || '',
+    context_budget: project.value.context_budget || 150000,
+  }
+
+  showEditDialog.value = true
 }
 
 function handleEditAgentMission(agentData) {
