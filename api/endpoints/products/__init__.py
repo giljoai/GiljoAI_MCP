@@ -10,13 +10,14 @@ Module Structure:
 - crud.py: CRUD operations (create, list, get, update, list deleted)
 - lifecycle.py: Lifecycle management (activate, deactivate, delete, restore, cascade impact, token estimate)
 - vision.py: Vision document operations (upload, get chunks)
+- github.py: GitHub integration settings (Handover 0137)
 
 All routers use /api/v1/products prefix and Products tag.
 """
 
 from fastapi import APIRouter
 
-from . import crud, lifecycle, vision
+from . import crud, github, lifecycle, vision
 
 
 # Create main router for products module
@@ -26,5 +27,6 @@ router = APIRouter(prefix="/api/v1/products", tags=["Products"])
 router.include_router(crud.router)
 router.include_router(lifecycle.router)
 router.include_router(vision.router)
+router.include_router(github.router)
 
 __all__ = ["router"]

@@ -76,6 +76,17 @@ class DeletedProjectResponse(BaseModel):
     purge_date: datetime
 
 
+class ProjectDeleteResponse(BaseModel):
+    """Response model for project soft delete."""
+
+    success: bool = Field(..., description="Whether the delete operation succeeded")
+    message: str = Field(..., description="Human-readable result message")
+    deleted_at: Optional[datetime] = Field(
+        None,
+        description="Timestamp when project was marked as deleted (soft delete)",
+    )
+
+
 # ============================================================================
 # Summary/Status Models
 # ============================================================================

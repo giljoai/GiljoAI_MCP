@@ -849,6 +849,154 @@ class ProductService:
             self._logger.exception(f"Failed to get cascade impact: {e}")
             return {"success": False, "error": str(e)}
 
+    async def update_github_settings(
+        self,
+        product_id: str,
+        enabled: bool,
+        repo_url: Optional[str] = None,
+        auto_commit: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Update GitHub integration settings for a product.
+
+        Settings are stored in product_memory.github field with structure:
+        {
+            "enabled": bool,
+            "repo_url": str | None,
+            "auto_commit": bool,
+            "last_sync": ISO timestamp (optional)
+        }
+
+        Args:
+            product_id: Product UUID
+            enabled: Whether GitHub integration is enabled
+            repo_url: GitHub repository URL (HTTPS or SSH format)
+            auto_commit: Whether to auto-commit changes
+
+        Returns:
+            Dict with success status and settings or error
+
+        Validation:
+            - repo_url is required when enabled=True
+            - repo_url must be valid GitHub URL (HTTPS or SSH)
+            - When disabled, repo_url is set to None
+
+        Example:
+            >>> result = await service.update_github_settings(
+            ...     product_id="abc-123",
+            ...     enabled=True,
+            ...     repo_url="https://github.com/user/repo",
+            ...     auto_commit=True
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Verify product exists
+                stmt = select(Product).where(
+                    and_(
+                        Product.id == product_id,
+                        Product.tenant_key == self.tenant_key,
+                        Product.deleted_at.is_(None)
+                    )
+                )
+                result = await session.execute(stmt)
+                product = result.scalar_one_or_none()
+
+                if not product:
+                    return {
+                        "success": False,
+                        "error": "Product not found"
+                    }
+
+                # Validate repo_url when integration is enabled
+                if enabled:
+                    if not repo_url:
+                        return {
+                            "success": False,
+                            "error": "repo_url is required when enabling GitHub integration"
+                        }
+
+                    # Validate GitHub URL format
+                    if not self._is_valid_github_url(repo_url):
+                        return {
+                            "success": False,
+                            "error": "Invalid GitHub repository URL. Must be HTTPS (https://github.com/...) or SSH (git@github.com:...) format"
+                        }
+
+                # Ensure product_memory exists
+                if not product.product_memory:
+                    product.product_memory = {"github": {}, "learnings": [], "context": {}}
+
+                # Update GitHub settings
+                if enabled:
+                    product.product_memory["github"] = {
+                        "enabled": True,
+                        "repo_url": repo_url,
+                        "auto_commit": auto_commit,
+                        "last_sync": datetime.now(timezone.utc).isoformat()
+                    }
+                else:
+                    # Disable integration
+                    product.product_memory["github"] = {
+                        "enabled": False,
+                        "repo_url": None,
+                        "auto_commit": False
+                    }
+
+                product.updated_at = datetime.now(timezone.utc)
+
+                # Force SQLAlchemy to detect JSONB change (skip in tests with mock objects)
+                try:
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(product, "product_memory")
+                except AttributeError:
+                    # Mock object in tests - flag_modified will fail
+                    pass
+
+                await session.commit()
+                await session.refresh(product)
+
+                self._logger.info(
+                    f"Updated GitHub settings for product {product_id}: enabled={enabled}"
+                )
+
+                return {
+                    "success": True,
+                    "settings": product.product_memory["github"]
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to update GitHub settings: {e}")
+            return {"success": False, "error": str(e)}
+
+    @staticmethod
+    def _is_valid_github_url(url: str) -> bool:
+        """
+        Validate GitHub repository URL format.
+
+        Accepts:
+        - HTTPS: https://github.com/user/repo
+        - SSH: git@github.com:user/repo.git
+
+        Args:
+            url: URL to validate
+
+        Returns:
+            True if valid GitHub URL, False otherwise
+        """
+        import re
+
+        if not url:
+            return False
+
+        # HTTPS format: https://github.com/user/repo or https://github.com/user/repo.git
+        https_pattern = r"^https://github\.com/[\w\-]+/[\w\-\.]+(?:\.git)?$"
+
+        # SSH format: git@github.com:user/repo.git or git@github.com:user/repo
+        ssh_pattern = r"^git@github\.com:[\w\-]+/[\w\-\.]+(?:\.git)?$"
+
+        return bool(re.match(https_pattern, url) or re.match(ssh_pattern, url))
+
     async def upload_vision_document(
         self,
         product_id: str,
