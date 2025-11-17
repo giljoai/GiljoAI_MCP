@@ -13,6 +13,13 @@
 - **[First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md)** - Step-by-step onboarding from install to dashboard
 - **[MCP-over-HTTP Integration](MCP_OVER_HTTP_INTEGRATION.md)** - Connecting Claude Code via HTTP transport (zero dependencies)
 
+### 📌 Single Source of Truth (SSoT) Documents
+
+**Authoritative references for critical workflows** - These documents are maintained as the definitive source for their topics:
+
+- **[SSoT Index](SSoT_INDEX.md)** - Master index of all SSoT documents
+- **[Orchestrator Context Flow SSoT](ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow from user setup to agent execution (13 context cards, 77% token reduction, 9 context sources)
+
 **New Implementation Features** (October 2025):
 
 - **[AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT.md)** - Multi-AI tool support via user settings (Claude, CODEX, Gemini)

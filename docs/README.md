@@ -29,6 +29,13 @@ GiljoAI MCP is evolving into a **sophisticated agentic project management platfo
 4. **[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)** - System architecture
 5. **[guides/STARTUP_SIMPLIFICATION.md](guides/STARTUP_SIMPLIFICATION.md)** - Unified startup process
 
+### 📌 Single Source of Truth (SSoT) Documents
+
+**Authoritative references for critical workflows**:
+
+- **[SSoT Index](SSoT_INDEX.md)** - Master index of all SSoT documents
+- **[Orchestrator Context Flow SSoT](ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow (13 context cards, 77% token reduction)
+
 **Quick Start Guides**:
 - **[manuals/QUICK_START.md](manuals/QUICK_START.md)** - Get started in 5 minutes
 - **[guides/USER_GUIDE.md](guides/USER_GUIDE.md)** - End-user guide
