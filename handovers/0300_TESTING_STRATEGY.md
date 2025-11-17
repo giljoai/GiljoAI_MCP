@@ -3,7 +3,7 @@
 **Feature**: Context Management System Testing Framework
 **Status**: Active Reference Document
 **Priority**: P0 - CRITICAL
-**Scope**: All handovers 0300-0310
+**Scope**: All handovers 0300-0311 (0311 added 2025-11-16)
 **Created**: 2025-11-16
 **Last Updated**: 2025-11-16
 
@@ -535,10 +535,25 @@ For each handover, manual verification steps:
 - [ ] Compare estimate vs actual context tokens
 - [ ] Verify within 5% accuracy
 
+### Handover 0311: 360 Memory + Git Integration (Added 2025-11-16)
+- [ ] Create product with 5+ project learnings in product_memory.learnings
+- [ ] Set "360 Memory" field priority to 10 (full)
+- [ ] Generate context and verify ALL learnings with outcomes + decisions included
+- [ ] Change priority to 7 (moderate), verify last 5 learnings with outcomes only
+- [ ] Change priority to 4 (abbreviated), verify last 3 learnings summary only
+- [ ] Change priority to 1 (minimal), verify last 1 learning summary only
+- [ ] Set priority to 0 (exclude), verify NO 360 Memory in context
+- [ ] Enable Git integration toggle at /settings → Integrations
+- [ ] Generate context and verify git command instructions included
+- [ ] Disable Git toggle, verify git instructions NOT included
+- [ ] Enable both 360 Memory (priority 7) + Git, verify BOTH included and combined correctly
+- [ ] Verify token counting includes 360 Memory + Git in budget
+
 ### Handover 0310: E2E Validation
 - [ ] Complete full workflow: signup → create product → configure priorities → generate context
 - [ ] Stage project and verify orchestrator receives correct context
 - [ ] Verify multi-tenant isolation (create second tenant, verify no cross-contamination)
+- [ ] Verify ALL 9 context sources operational (including 360 Memory + Git)
 
 ---
 
@@ -698,4 +713,8 @@ pytest tests/unit/test_mission_planner_priority.py::test_full_priority_all_field
 
 **Last Updated**: 2025-11-16
 **Status**: Active Reference Document
+**Version**: 1.1 (Added 0311 test requirements)
 **Next Review**: After Handover 0310 completion
+
+**Changelog**:
+- **v1.1 (2025-11-16)**: Added test requirements for handover 0311 (360 Memory + Git integration)
