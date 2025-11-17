@@ -71,6 +71,7 @@ class ProductService:
         description: Optional[str] = None,
         project_path: Optional[str] = None,
         config_data: Optional[Dict[str, Any]] = None,
+        product_memory: Optional[Dict[str, Any]] = None,  # Handover 0135
     ) -> Dict[str, Any]:
         """
         Create a new product.
@@ -80,6 +81,7 @@ class ProductService:
             description: Product description
             project_path: File system path to product folder
             config_data: Rich configuration data (architecture, tech_stack, etc.)
+            product_memory: 360 Memory data (GitHub, learnings, context) - Handover 0135
 
         Returns:
             Dict with success status and product details or error
@@ -110,6 +112,13 @@ class ProductService:
                     }
 
                 # Create product
+                # Handover 0135: Initialize product_memory with default structure
+                default_memory = {
+                    "github": {},
+                    "learnings": [],
+                    "context": {}
+                }
+
                 product = Product(
                     id=str(uuid4()),
                     tenant_key=self.tenant_key,
@@ -117,6 +126,7 @@ class ProductService:
                     description=description,
                     project_path=project_path,
                     config_data=config_data or {},
+                    product_memory=product_memory or default_memory,  # Handover 0135
                     is_active=False,  # Products start inactive
                     created_at=datetime.now(timezone.utc),
                 )
@@ -133,6 +143,7 @@ class ProductService:
                     "name": product.name,
                     "description": product.description,
                     "is_active": product.is_active,
+                    "product_memory": product.product_memory,  # Handover 0135
                     "created_at": product.created_at.isoformat() if product.created_at else None,
                 }
 
@@ -181,6 +192,9 @@ class ProductService:
                         "error": "Product not found"
                     }
 
+                # Handover 0136: Ensure product_memory is initialized (backward compatibility)
+                await self._ensure_product_memory_initialized(session, product)
+
                 # Normalize config_data so that an empty dict is treated as "no config"
                 # for API consumers, while preserving the raw structure for internal use.
                 config_data = product.config_data or None
@@ -194,6 +208,7 @@ class ProductService:
                     "is_active": product.is_active,
                     "config_data": config_data,
                     "has_config_data": bool(config_data),
+                    "product_memory": product.product_memory,  # Handover 0136
                     "created_at": product.created_at.isoformat() if product.created_at else None,
                     "updated_at": product.updated_at.isoformat() if product.updated_at else None,
                 }
@@ -254,6 +269,9 @@ class ProductService:
 
                 product_list = []
                 for product in products:
+                    # Handover 0136: Ensure product_memory is initialized (backward compatibility)
+                    await self._ensure_product_memory_initialized(session, product)
+
                     config_data = product.config_data or None
 
                     product_data = {
@@ -265,6 +283,7 @@ class ProductService:
                         "is_active": product.is_active,
                         "config_data": config_data,
                         "has_config_data": bool(config_data),
+                        "product_memory": product.product_memory,  # Handover 0136
                         "created_at": product.created_at.isoformat() if product.created_at else None,
                         "updated_at": product.updated_at.isoformat() if product.updated_at else None,
                     }
@@ -296,7 +315,7 @@ class ProductService:
 
         Args:
             product_id: Product UUID
-            **updates: Fields to update (name, description, project_path, config_data, etc.)
+            **updates: Fields to update (name, description, project_path, config_data, product_memory, etc.)
 
         Returns:
             Dict with success status and updated product or error
@@ -305,7 +324,8 @@ class ProductService:
             >>> result = await service.update_product(
             ...     "abc-123",
             ...     description="Updated description",
-            ...     config_data={"tech_stack": {"python": "3.11"}}
+            ...     config_data={"tech_stack": {"python": "3.11"}},
+            ...     product_memory={"github": {"enabled": True}}  # Handover 0135
             ... )
         """
         try:
@@ -1024,6 +1044,89 @@ class ProductService:
     # ============================================================================
     # Private Helper Methods
     # ============================================================================
+
+    async def _ensure_product_memory_initialized(
+        self,
+        session: AsyncSession,
+        product: Product
+    ) -> None:
+        """
+        Ensure product_memory is initialized with default structure (Handover 0136).
+
+        This method provides backward compatibility for products that may have:
+        - NULL product_memory (edge case, shouldn't happen with migration)
+        - Empty dict {} (incomplete initialization)
+        - Partial memory structure (e.g., only "github" key)
+
+        The method is idempotent - safe to call multiple times.
+
+        Args:
+            session: Async database session
+            product: Product instance to check/initialize
+
+        Side Effects:
+            - Updates product.product_memory if incomplete
+            - Commits changes to database if modifications made
+
+        Example:
+            >>> await self._ensure_product_memory_initialized(session, product)
+            >>> assert product.product_memory == {"github": {}, "learnings": [], "context": {}}
+        """
+        # Default structure per Handover 0135
+        default_structure = {
+            "github": {},
+            "learnings": [],
+            "context": {}
+        }
+
+        # Check if product_memory needs initialization
+        needs_update = False
+
+        if product.product_memory is None:
+            # NULL case - replace with default
+            product.product_memory = default_structure
+            needs_update = True
+            self._logger.debug(
+                f"Product {product.id}: Initialized NULL product_memory"
+            )
+        elif not isinstance(product.product_memory, dict):
+            # Invalid type - replace with default
+            product.product_memory = default_structure
+            needs_update = True
+            self._logger.warning(
+                f"Product {product.id}: Replaced invalid product_memory type "
+                f"({type(product.product_memory)}) with default structure"
+            )
+        elif not product.product_memory:
+            # Empty dict - replace with default
+            product.product_memory = default_structure
+            needs_update = True
+            self._logger.debug(
+                f"Product {product.id}: Initialized empty dict product_memory"
+            )
+        else:
+            # Partial structure - ensure all required keys exist
+            # Create a copy to ensure SQLAlchemy detects the change
+            updated_memory = dict(product.product_memory)
+            for key, default_value in default_structure.items():
+                if key not in updated_memory:
+                    updated_memory[key] = default_value
+                    needs_update = True
+                    self._logger.debug(
+                        f"Product {product.id}: Added missing '{key}' key to product_memory"
+                    )
+
+            if needs_update:
+                product.product_memory = updated_memory
+
+        # Commit changes if modifications were made
+        if needs_update:
+            product.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            await session.refresh(product)
+            self._logger.info(
+                f"Product {product.id}: Updated product_memory structure"
+            )
 
     async def _get_product_metrics(
         self,
