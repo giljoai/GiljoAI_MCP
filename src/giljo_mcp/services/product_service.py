@@ -869,6 +869,11 @@ class ProductService:
         auto_commit: bool = False,
     ) -> Dict[str, Any]:
         """
+        DEPRECATED: Use update_git_integration() instead (Handover 013B).
+        
+        This method is kept for backward compatibility but should not be used.
+        It will be removed in a future version.
+        
         Update GitHub integration settings for a product.
 
         Settings are stored in product_memory.github field with structure:
@@ -928,12 +933,7 @@ class ProductService:
                             "error": "repo_url is required when enabling GitHub integration"
                         }
 
-                    # Validate GitHub URL format
-                    if not self._is_valid_github_url(repo_url):
-                        return {
-                            "success": False,
-                            "error": "Invalid GitHub repository URL. Must be HTTPS (https://github.com/...) or SSH (git@github.com:...) format"
-                        }
+                        # URL validation removed (Handover 013B - handled by CLI agents)
 
                 # Ensure product_memory exists
                 if not product.product_memory:
@@ -990,33 +990,115 @@ class ProductService:
             self._logger.exception(f"Failed to update GitHub settings: {e}")
             return {"success": False, "error": str(e)}
 
-    @staticmethod
-    def _is_valid_github_url(url: str) -> bool:
+    async def update_git_integration(
+        self,
+        product_id: str,
+        enabled: bool,
+        commit_limit: int = 20,
+        default_branch: str = "main",
+    ) -> Dict[str, Any]:
         """
-        Validate GitHub repository URL format.
+        Update Git integration settings for a product (Handover 013B - Simplified).
 
-        Accepts:
-        - HTTPS: https://github.com/user/repo
-        - SSH: git@github.com:user/repo.git
+        Settings are stored in product_memory.git_integration field with structure:
+        {
+            "enabled": bool,
+            "commit_limit": int,  # Max commits to show in prompts
+            "default_branch": str  # Default branch name (e.g., "main", "master")
+        }
+
+        REMOVED: GitHub API integration, URL validation
+        Git operations are handled by CLI agents (Claude Code, Codex, Gemini).
 
         Args:
-            url: URL to validate
+            product_id: Product UUID
+            enabled: Whether git integration is enabled
+            commit_limit: Max commits to include in prompts (default: 20)
+            default_branch: Default branch name (default: "main")
 
         Returns:
-            True if valid GitHub URL, False otherwise
+            Dict with success status and settings or error
+
+        Example:
+            >>> result = await service.update_git_integration(
+            ...     product_id="abc-123",
+            ...     enabled=True,
+            ...     commit_limit=30,
+            ...     default_branch="develop"
+            ... )
         """
-        import re
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Verify product exists
+                stmt = select(Product).where(
+                    and_(
+                        Product.id == product_id,
+                        Product.tenant_key == self.tenant_key,
+                        Product.deleted_at.is_(None)
+                    )
+                )
+                result = await session.execute(stmt)
+                product = result.scalar_one_or_none()
 
-        if not url:
-            return False
+                if not product:
+                    return {
+                        "success": False,
+                        "error": "Product not found"
+                    }
 
-        # HTTPS format: https://github.com/user/repo or https://github.com/user/repo.git
-        https_pattern = r"^https://github\.com/[\w\-]+/[\w\-\.]+(?:\.git)?$"
+                # Ensure product_memory exists
+                if not product.product_memory:
+                    product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
 
-        # SSH format: git@github.com:user/repo.git or git@github.com:user/repo
-        ssh_pattern = r"^git@github\.com:[\w\-]+/[\w\-\.]+(?:\.git)?$"
+                # Update Git integration settings
+                if enabled:
+                    product.product_memory["git_integration"] = {
+                        "enabled": True,
+                        "commit_limit": commit_limit,
+                        "default_branch": default_branch,
+                    }
+                else:
+                    # Disable integration - clear all config
+                    product.product_memory["git_integration"] = {
+                        "enabled": False,
+                    }
 
-        return bool(re.match(https_pattern, url) or re.match(ssh_pattern, url))
+                product.updated_at = datetime.now(timezone.utc)
+
+                # Force SQLAlchemy to detect JSONB change
+                try:
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(product, "product_memory")
+                except AttributeError:
+                    # Mock object in tests - flag_modified will fail
+                    pass
+
+                await session.commit()
+                await session.refresh(product)
+
+                self._logger.info(
+                    f"Updated git integration for product {product_id}: enabled={enabled}"
+                )
+
+                # Handover 013B: Emit WebSocket event for git settings change
+                await self._emit_websocket_event(
+                    event_type="product:git:settings:changed",
+                    data={
+                        "product_id": product_id,
+                        "settings": product.product_memory["git_integration"]
+                    }
+                )
+
+                return {
+                    "success": True,
+                    "settings": product.product_memory["git_integration"]
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to update git integration: {e}")
+            return {"success": False, "error": str(e)}
+
+
 
     async def upload_vision_document(
         self,
