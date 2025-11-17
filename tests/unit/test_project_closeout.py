@@ -21,6 +21,38 @@ from giljo_mcp.models.projects import Project
 from giljo_mcp.services.product_service import ProductService
 
 
+def create_mock_db_session(project_mock, product_mock):
+    """
+    Helper function to create properly mocked async database session.
+
+    Returns tuple of (mock_session, mock_db_manager) configured to return
+    the given project and product mocks when queried.
+    """
+    mock_session = AsyncMock()
+    mock_db_manager = MagicMock()
+    mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
+
+    # Mock database queries to return actual objects (not coroutines)
+    call_counter = {'count': 0}
+
+    async def mock_execute_side_effect(*args, **kwargs):
+        mock_result = MagicMock()  # Use MagicMock not AsyncMock for result
+        # Track which call this is (project, then product)
+        if call_counter['count'] == 0:
+            mock_result.scalar_one_or_none.return_value = project_mock
+        else:
+            mock_result.scalar_one_or_none.return_value = product_mock
+
+        call_counter['count'] += 1
+        return mock_result
+
+    mock_session.execute.side_effect = mock_execute_side_effect
+    mock_session.commit = AsyncMock()
+    mock_session.refresh = AsyncMock()
+
+    return mock_session, mock_db_manager
+
+
 @pytest.fixture
 def sample_product_id():
     """Sample product UUID"""
@@ -84,18 +116,9 @@ class TestProjectCloseoutBasics:
         WHEN: close_project_and_update_memory() is called
         THEN: Learning entry is appended to product_memory.learnings with sequence number 1
         """
-        # This test will fail until we implement the MCP tool
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mock_session = AsyncMock()
-        mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
-
-        # Mock database queries
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,  # First call: get project
-            mock_product,  # Second call: get product
-        ]
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         # Call the tool
         result = await close_project_and_update_memory(
@@ -143,14 +166,7 @@ class TestProjectCloseoutBasics:
             {"sequence": 2, "type": "project_closeout", "summary": "Second project"},
         ]
 
-        mock_session = AsyncMock()
-        mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,
-            mock_product,
-        ]
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         result = await close_project_and_update_memory(
             project_id=str(mock_project.id),
@@ -191,14 +207,7 @@ class TestGitHubIntegration:
             "access_token": "ghp_testtoken123",
         }
 
-        mock_session = AsyncMock()
-        mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,
-            mock_product,
-        ]
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         # Mock GitHub API response
         mock_commits = [
@@ -249,14 +258,7 @@ class TestGitHubIntegration:
         # GitHub integration disabled (default state)
         assert mock_product.product_memory["github"] == {}
 
-        mock_session = AsyncMock()
-        mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,
-            mock_product,
-        ]
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         result = await close_project_and_update_memory(
             project_id=str(mock_project.id),
@@ -418,14 +420,7 @@ class TestWebSocketEvents:
         """
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mock_session = AsyncMock()
-        mock_db_manager = MagicMock()
-        mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,
-            mock_product,
-        ]
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         with patch("giljo_mcp.tools.project_closeout.emit_websocket_event") as mock_emit:
             result = await close_project_and_update_memory(

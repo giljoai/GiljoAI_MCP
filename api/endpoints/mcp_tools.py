@@ -64,6 +64,7 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "list_projects": state.tool_accessor.list_projects,
             "get_project": state.tool_accessor.get_project,
             "close_project": state.tool_accessor.close_project,
+            "close_project_and_update_memory": state.tool_accessor.close_project_and_update_memory,
             "update_project_mission": state.tool_accessor.update_project_mission,
             # Message tools
             "send_message": state.tool_accessor.send_message,

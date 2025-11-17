@@ -171,7 +171,8 @@ export const api = {
     complete: (id) => apiClient.post(`/api/v1/projects/${id}/complete`),
     cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
     restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
-    restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/restore-completed`),
+    // Completed projects are resumed via the continue-working endpoint
+    restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/continue-working`),
     // Handover 0507: Project launch and summary with config parameter support
     summary: (id) => apiClient.get(`/api/v1/projects/${id}/summary`),
     launch: (id, config = null) => apiClient.post(`/api/v1/projects/${id}/launch`, config),
