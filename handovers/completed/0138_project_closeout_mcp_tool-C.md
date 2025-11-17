@@ -95,3 +95,27 @@ Implemented MCP tool for project closeout workflow. Orchestrators can now store 
 Ready for:
 - ✅ Handover 0139: WebSocket Events (emit when memory updated)
 - Frontend: Display learning timeline (see TECHNICAL_DEBT_v2.md ENHANCEMENT 1)
+
+---
+
+## 🔄 REFACTOR UPDATE (Handover 013B - 2025-11-16)
+
+**Architecture Change**: Removed GitHub API commit fetching from project closeout.
+
+**Reason**: Git operations now handled by CLI agents (Claude Code, Codex, Gemini) using user's local credentials, not server-side API calls.
+
+**Changes Made**:
+1. **Deleted**: `fetch_github_commits()` function (73 lines + httpx import)
+2. **Removed**: GitHub commit fetching from `close_project_and_update_memory()`
+3. **Removed**: `git_commits` field from learning entries
+4. **Simplified**: Learnings now store summary + outcomes + decisions only
+
+**Impact**:
+- ✅ No external API dependencies
+- ✅ Simpler learning data structure
+- ✅ CLI agents fetch git history via prompts (when git integration enabled)
+- ✅ Manual summaries work same as before
+
+**Tests**: 6 new tests verify no GitHub API calls - all passing
+
+**See**: Handover 013B for full refactor details
