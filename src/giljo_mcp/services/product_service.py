@@ -1347,3 +1347,84 @@ class ProductService:
             "vision_documents_count": vision_documents_count,
             "has_vision": vision_documents_count > 0,
         }
+
+    async def add_learning_to_product_memory(
+        self,
+        session: AsyncSession,
+        product_id: str,
+        learning_entry: dict[str, Any],
+    ) -> Product:
+        """
+        Add learning entry to product_memory.learnings (Handover 0138).
+
+        This helper method provides a clean interface for adding learning entries
+        to product memory. It handles:
+        - Auto-incrementing sequence numbers
+        - SQLAlchemy change detection (creates new dict)
+        - Ensures product_memory is initialized
+
+        Args:
+            session: Async database session
+            product_id: Product UUID
+            learning_entry: Learning entry dict (without sequence - will be auto-assigned)
+
+        Returns:
+            Updated Product instance
+
+        Raises:
+            ValueError: If product not found or learning_entry invalid
+
+        Example:
+            >>> learning = {
+            ...     "type": "project_closeout",
+            ...     "project_id": "abc-123",
+            ...     "summary": "Implemented auth",
+            ...     "timestamp": "2025-11-16T10:00:00Z"
+            ... }
+            >>> product = await service.add_learning_to_product_memory(
+            ...     session, product_id, learning
+            ... )
+            >>> assert product.product_memory["learnings"][-1]["sequence"] == 1
+        """
+        # Fetch product
+        query = select(Product).where(
+            Product.id == product_id,
+            Product.tenant_key == self.tenant_key,
+        )
+        result = await session.execute(query)
+        product = result.scalar_one_or_none()
+
+        if not product:
+            raise ValueError(f"Product {product_id} not found")
+
+        # Ensure product_memory initialized
+        await self._ensure_product_memory_initialized(session, product)
+
+        # Calculate next sequence number
+        existing_learnings = product.product_memory.get("learnings", [])
+        next_sequence = 1
+        if existing_learnings:
+            max_sequence = max(
+                learning.get("sequence", 0)
+                for learning in existing_learnings
+            )
+            next_sequence = max_sequence + 1
+
+        # Add sequence to learning entry
+        learning_with_sequence = {**learning_entry, "sequence": next_sequence}
+
+        # Append to learnings (create new dict for SQLAlchemy change detection)
+        updated_memory = dict(product.product_memory)
+        updated_learnings = list(updated_memory.get("learnings", []))
+        updated_learnings.append(learning_with_sequence)
+        updated_memory["learnings"] = updated_learnings
+        product.product_memory = updated_memory
+
+        # Update timestamp
+        product.updated_at = datetime.now(timezone.utc)
+
+        self._logger.info(
+            f"Added learning entry (sequence {next_sequence}) to product {product_id}"
+        )
+
+        return product
