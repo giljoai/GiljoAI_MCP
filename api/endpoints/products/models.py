@@ -21,6 +21,9 @@ class ProductCreate(BaseModel):
     config_data: Optional[Dict[str, Any]] = Field(
         None, description="Rich configuration data (JSONB)"
     )
+    product_memory: Optional[Dict[str, Any]] = Field(
+        None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
+    )
 
 
 class ProductUpdate(BaseModel):
@@ -31,6 +34,9 @@ class ProductUpdate(BaseModel):
     project_path: Optional[str] = None
     config_data: Optional[Dict[str, Any]] = Field(
         None, description="Rich configuration data (JSONB)"
+    )
+    product_memory: Optional[Dict[str, Any]] = Field(
+        None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
 
 
@@ -54,6 +60,10 @@ class ProductResponse(BaseModel):
     is_active: bool = Field(False, description="Whether this product is currently active")
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
+    )
+    product_memory: Optional[Dict[str, Any]] = Field(
+        default_factory=lambda: {"github": {}, "learnings": [], "context": {}},
+        description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
 
 
@@ -150,3 +160,36 @@ class CascadeImpact(BaseModel):
     unresolved_tasks: int = Field(..., description="Number of unresolved tasks")
     vision_documents_count: int = Field(..., description="Number of vision documents")
     total_chunks: int = Field(..., description="Total number of context chunks")
+
+
+# ============================================================================
+# GitHub Integration Settings (Handover 0137)
+# ============================================================================
+
+
+class GitHubSettingsRequest(BaseModel):
+    """Request model for updating GitHub integration settings"""
+
+    enabled: bool = Field(..., description="Whether GitHub integration is enabled")
+    repo_url: Optional[str] = Field(
+        None,
+        description="GitHub repository URL (HTTPS or SSH format). Required when enabled=True",
+    )
+    auto_commit: bool = Field(
+        False, description="Whether to automatically commit changes to GitHub"
+    )
+
+
+class GitHubSettingsResponse(BaseModel):
+    """Response model for GitHub integration settings"""
+
+    enabled: bool = Field(..., description="Whether GitHub integration is enabled")
+    repo_url: Optional[str] = Field(
+        None, description="GitHub repository URL (HTTPS or SSH format)"
+    )
+    auto_commit: bool = Field(
+        ..., description="Whether to automatically commit changes to GitHub"
+    )
+    last_sync: Optional[str] = Field(
+        None, description="ISO timestamp of last sync with GitHub"
+    )
