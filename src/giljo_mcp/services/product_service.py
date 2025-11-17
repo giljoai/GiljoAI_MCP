@@ -49,16 +49,18 @@ class ProductService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_key: str):
+    def __init__(self, db_manager: DatabaseManager, tenant_key: str, websocket_manager=None):
         """
         Initialize ProductService with database and tenant isolation.
 
         Args:
             db_manager: Database manager for async database operations
             tenant_key: Tenant key for multi-tenant isolation
+            websocket_manager: Optional WebSocket manager for event emission (Handover 0139a)
         """
         self.db_manager = db_manager
         self.tenant_key = tenant_key
+        self._websocket_manager = websocket_manager  # Handover 0139a: WebSocket events
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     # ============================================================================
@@ -357,6 +359,16 @@ class ProductService:
                 await session.refresh(product)
 
                 self._logger.info(f"Updated product {product_id}")
+
+                # Handover 0139a: Emit WebSocket event if product_memory was updated
+                if "product_memory" in updates:
+                    await self._emit_websocket_event(
+                        event_type="product:memory:updated",
+                        data={
+                            "product_id": product_id,
+                            "product_memory": product.product_memory
+                        }
+                    )
 
                 return {
                     "success": True,
@@ -960,6 +972,15 @@ class ProductService:
                     f"Updated GitHub settings for product {product_id}: enabled={enabled}"
                 )
 
+                # Handover 0139a: Emit WebSocket event for GitHub settings change
+                await self._emit_websocket_event(
+                    event_type="product:github:settings:changed",
+                    data={
+                        "product_id": product_id,
+                        "settings": product.product_memory["github"]
+                    }
+                )
+
                 return {
                     "success": True,
                     "settings": product.product_memory["github"]
@@ -1188,6 +1209,68 @@ class ProductService:
             raise
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid project path: {e}")
+
+    # ============================================================================
+    # WebSocket Event Emission (Handover 0139a)
+    # ============================================================================
+
+    async def _emit_websocket_event(
+        self,
+        event_type: str,
+        data: Dict[str, Any]
+    ) -> None:
+        """
+        Emit WebSocket event to tenant clients (Handover 0139a).
+
+        This helper method provides graceful degradation - events are emitted
+        if WebSocket manager is available, but operations don't fail if it's not.
+
+        Args:
+            event_type: Event type (e.g., "product:memory:updated")
+            data: Event payload data
+
+        Side Effects:
+            - Broadcasts event to all tenant clients via WebSocket
+            - Logs warning if WebSocket fails (doesn't crash operation)
+
+        Example:
+            >>> await self._emit_websocket_event(
+            ...     "product:memory:updated",
+            ...     {"product_id": "abc-123", "product_memory": {...}}
+            ... )
+        """
+        if not self._websocket_manager:
+            # No WebSocket manager - gracefully skip event emission
+            self._logger.debug(
+                f"No WebSocket manager available for event: {event_type}"
+            )
+            return
+
+        try:
+            # Add timestamp to event data
+            event_data_with_timestamp = {
+                **data,
+                "tenant_key": self.tenant_key,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+
+            # Broadcast to tenant clients
+            await self._websocket_manager.broadcast_to_tenant(
+                tenant_key=self.tenant_key,
+                event_type=event_type,
+                data=event_data_with_timestamp
+            )
+
+            self._logger.debug(
+                f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}"
+            )
+
+        except Exception as e:
+            # Log error but don't fail the operation
+            self._logger.warning(
+                f"Failed to emit WebSocket event {event_type}: {e}",
+                exc_info=True
+            )
 
     # ============================================================================
     # Private Helper Methods
@@ -1425,6 +1508,15 @@ class ProductService:
 
         self._logger.info(
             f"Added learning entry (sequence {next_sequence}) to product {product_id}"
+        )
+
+        # Handover 0139a: Emit WebSocket event for learning addition
+        await self._emit_websocket_event(
+            event_type="product:learning:added",
+            data={
+                "product_id": product_id,
+                "learning": learning_with_sequence
+            }
         )
 
         return product
