@@ -101,6 +101,21 @@ class User(Base):
         JSONB, nullable=True, default=None, comment="User-customizable field priority for agent mission generation"
     )
 
+    # Depth Configuration (Handover 0314)
+    depth_config = Column(
+        JSONB,
+        nullable=False,
+        default={
+            "vision_chunking": "moderate",
+            "memory_last_n_projects": 3,
+            "git_commits": 25,
+            "agent_template_detail": "standard",
+            "tech_stack_sections": "all",
+            "architecture_depth": "overview"
+        },
+        comment="User depth configuration for context granularity (Handover 0314)"
+    )
+
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
 
