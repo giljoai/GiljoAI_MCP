@@ -201,7 +201,7 @@
                     </v-chip>
                   </template>
                 </draggable>
-                <div v-if="unassignedFields.length === 0" class="text-caption text-medium-emphasis text-center py-4">
+                <div v-if="priority4Fields.length === 0" class="text-caption text-medium-emphasis text-center py-4">
                   <v-icon size="large" color="grey-lighten-1" class="mb-2">mdi-check-circle-outline</v-icon>
                   <div>All categories are included (none excluded)</div>
                 </div>
@@ -1120,7 +1120,12 @@ async function fetchActiveProductTokenEstimate() {
       console.log('[USER SETTINGS] Active product token estimate loaded:', activeProductTokens.value)
     }
   } catch (error) {
-    console.warn('[USER SETTINGS] Failed to fetch active product token estimate:', error.response?.status || error.message)
+    // Suppress noisy 500 error from v1.0 endpoint with v2.0 data (Handover 0313)
+    if (error.response?.status === 500) {
+      console.log('[USER SETTINGS] Token estimate not available (v1.0 endpoint, v2.0 data) - using fallback')
+    } else {
+      console.warn('[USER SETTINGS] Failed to fetch active product token estimate:', error.response?.status || error.message)
+    }
     // Graceful fallback: use generic calculation (already implemented in computed property)
     activeProductTokens.value = null
     console.log('[USER SETTINGS] Using fallback generic token calculation')
