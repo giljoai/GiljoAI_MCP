@@ -15,6 +15,7 @@ export interface DepthConfig {
   architecture_depth: 'overview' | 'detailed';
   product_core_enabled: boolean;  // Handover 0316: New field
   testing_config_depth: 'none' | 'basic' | 'full';  // Handover 0316: New field
+  project_context_enabled: boolean;  // Handover 0316: Missing field (9th category)
 }
 
 export interface TokenEstimate {
@@ -74,6 +75,10 @@ export class DepthTokenEstimator {
       none: 0,
       basic: 150,
       full: 400,
+    },
+    project_context_enabled: {
+      true: 80,   // Handover 0316: Project name, alias, mission, status
+      false: 0,
     },
   };
 

@@ -785,38 +785,47 @@ const priority4Fields = ref([])  // EXCLUDED (replaces unassignedFields)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
 
-// All available fields (Handover 0313: v2.0 - 6 categories)
+// All available fields (Handover 0316: v2.0 - 9 categories for complete alignment)
 const ALL_AVAILABLE_FIELDS = [
   'product_core',
   'vision_documents',
   'agent_templates',
   'project_context',
   'memory_360',
-  'git_history'
+  'git_history',
+  'tech_stack',        // Handover 0316: Added missing badge
+  'architecture',      // Handover 0316: Added missing badge
+  'testing_config'     // Handover 0316: Added missing badge
 ]
 
 // Real-time token calculation state (Handover 0049)
 const activeProductTokens = ref(null)
 const loadingTokenEstimate = ref(false)
 
-// Field labels mapping for display (Handover 0313: v2.0)
+// Field labels mapping for display (Handover 0316: v2.0 - 9 categories)
 const fieldLabels = {
   'product_core': 'Product Core',
   'vision_documents': 'Vision Documents',
   'agent_templates': 'Agent Templates',
   'project_context': 'Project Context',
   'memory_360': '360 Memory',
-  'git_history': 'Git History'
+  'git_history': 'Git History',
+  'tech_stack': 'Tech Stack',             // Handover 0316: Added
+  'architecture': 'Architecture',          // Handover 0316: Added
+  'testing_config': 'Testing'              // Handover 0316: Added
 }
 
-// Field descriptions (Handover 0313: v2.0)
+// Field descriptions (Handover 0316: v2.0 - 9 categories)
 const fieldDescriptions = {
-  'product_core': 'Product description and tech stack (languages, backend, frontend, database, infrastructure)',
+  'product_core': 'Product description and basic metadata (name, description, core features)',
   'vision_documents': 'Chunked vision document uploads (product vision, features, roadmap)',
   'agent_templates': 'Active agent behavior configurations',
-  'project_context': 'Project description, user notes, architecture notes',
+  'project_context': 'Project description, alias, mission, and current status',
   'memory_360': 'Cumulative project history (learnings, decisions, sequential closeouts)',
-  'git_history': 'Recent commits from git integration (optional)'
+  'git_history': 'Recent commits from git integration (optional)',
+  'tech_stack': 'Technology stack details (languages, frameworks, databases, infrastructure)',  // Handover 0316: Added
+  'architecture': 'Architecture patterns, design principles, and API style',                    // Handover 0316: Added
+  'testing_config': 'Quality standards, testing strategy, coverage targets, and frameworks'      // Handover 0316: Added
 }
 
 // Settings object
