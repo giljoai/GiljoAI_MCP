@@ -1266,7 +1266,154 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             logger.exception(f"Failed to get help documentation: {e}")
             return {"success": False, "error": str(e)}
 
-    logger.info("Context and discovery tools registered")
+    # ========== NEW: Thin Client Context Fetching Tools (Handover 0315) ==========
+    # These tools support on-demand context fetching with user-configured depth levels
+
+    @mcp.tool()
+    async def fetch_vision_document(
+        product_id: str,
+        tenant_key: str,
+        chunking: str = "moderate",
+        offset: int = 0,
+        limit: int = None
+    ) -> dict[str, Any]:
+        """
+        Fetch vision document chunks with configurable depth and pagination (Handover 0315 Amendment).
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            chunking: Depth level ("none", "light", "moderate", "heavy")
+            offset: Number of chunks to skip (for pagination)
+            limit: Max chunks to return (None = use chunking default)
+
+        Returns:
+            Vision chunks with metadata and pagination fields (has_more, next_offset)
+        """
+        from .context.get_vision_document import get_vision_document
+        return await get_vision_document(product_id, tenant_key, chunking, offset, limit, db_manager)
+
+    @mcp.tool()
+    async def fetch_360_memory(
+        product_id: str,
+        tenant_key: str,
+        last_n_projects: int = 3,
+        offset: int = 0,
+        limit: int = None
+    ) -> dict[str, Any]:
+        """
+        Fetch 360 memory (sequential project history) with configurable depth and pagination (Handover 0315 Amendment).
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            last_n_projects: Number of recent projects to consider (1, 3, 5, 10)
+            offset: Number of projects to skip (for pagination)
+            limit: Max projects to return (None = return all up to last_n_projects)
+
+        Returns:
+            Sequential history with metadata and pagination fields (has_more, next_offset)
+        """
+        from .context.get_360_memory import get_360_memory
+        return await get_360_memory(product_id, tenant_key, last_n_projects, offset, limit, db_manager)
+
+    @mcp.tool()
+    async def fetch_git_history(
+        product_id: str,
+        tenant_key: str,
+        commits: int = 25,
+        offset: int = 0,
+        limit: int = None
+    ) -> dict[str, Any]:
+        """
+        Fetch git commit history with configurable depth (Handover 0315 Amendment).
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            commits: Number of recent commits to return (10, 25, 50, 100)
+            offset: Reserved for future pagination (currently ignored)
+            limit: Reserved for future pagination (currently ignored)
+
+        Returns:
+            Git commits with metadata (pagination_supported=False)
+        """
+        from .context.get_git_history import get_git_history
+        return await get_git_history(product_id, tenant_key, commits, offset, limit, db_manager)
+
+    @mcp.tool()
+    async def fetch_agent_templates(
+        product_id: str,
+        tenant_key: str,
+        detail: str = "standard",
+        offset: int = 0,
+        limit: int = None
+    ) -> dict[str, Any]:
+        """
+        Fetch agent templates with configurable detail level (Handover 0315 Amendment).
+
+        Args:
+            product_id: Product UUID (for context)
+            tenant_key: Tenant isolation key
+            detail: Detail level ("minimal", "standard", "full")
+            offset: Reserved for future pagination (currently ignored)
+            limit: Reserved for future pagination (currently ignored)
+
+        Returns:
+            Agent templates with metadata (pagination_supported=False)
+        """
+        from .context.get_agent_templates import get_agent_templates
+        return await get_agent_templates(product_id, tenant_key, detail, offset, limit, db_manager)
+
+    @mcp.tool()
+    async def fetch_tech_stack(
+        product_id: str,
+        tenant_key: str,
+        sections: str = "all",
+        offset: int = 0,
+        limit: int = None
+    ) -> dict[str, Any]:
+        """
+        Fetch tech stack information with configurable sections (Handover 0315 Amendment).
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            sections: Section level ("required" or "all")
+            offset: Reserved for future pagination (currently ignored)
+            limit: Reserved for future pagination (currently ignored)
+
+        Returns:
+            Tech stack data with metadata (pagination_supported=False)
+        """
+        from .context.get_tech_stack import get_tech_stack
+        return await get_tech_stack(product_id, tenant_key, sections, offset, limit, db_manager)
+
+    @mcp.tool()
+    async def fetch_architecture(
+        product_id: str,
+        tenant_key: str,
+        depth: str = "overview",
+        offset: int = 0,
+        limit: int = None
+    ) -> dict[str, Any]:
+        """
+        Fetch architecture documentation with configurable depth (Handover 0315 Amendment).
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            depth: Depth level ("overview" or "detailed")
+            offset: Reserved for future pagination (currently ignored)
+            limit: Reserved for future pagination (currently ignored)
+
+        Returns:
+            Architecture notes with metadata (pagination_supported=False)
+        """
+        from .context.get_architecture import get_architecture
+        return await get_architecture(product_id, tenant_key, depth, offset, limit, db_manager)
+
+    logger.info("Context and discovery tools registered (including 6 thin client context tools)")
 
 
 # Expose MCP tools as importable async functions for API endpoints
