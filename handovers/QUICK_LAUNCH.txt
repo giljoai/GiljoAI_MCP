@@ -1,5 +1,5 @@
 
-Execute handover "F:\GiljoAI_MCP\handovers\0312_context_architecture_v2_design.md" with production-grade quality.
+Execute handover "F:\GiljoAI_MCP\handovers\0313_priority_system_refactor.md" with production-grade quality.
 
 CRITICAL REQUIREMENTS:
 
@@ -239,7 +239,8 @@ These handovers were designed for v1.0 architecture but are no longer needed in 
 - [ ] Token calculator provides accurate estimates
 - [ ] v1.0 → v2.0 migration seamless (backward compatible)
 - [ ] All tests passing (>80% coverage maintained)
-- [ ] Context prioritization still achieves 70%+ (via depth controls)
+- [ ] Priority system supports 4 levels (CRITICAL/IMPORTANT/NICE/EXCLUDED)
+- [ ] Depth controls operational (per-source granularity)
 
 ═══════════════════════════════════════════════════════════════
   EXECUTION ORDER - Context Management System v2.0
@@ -255,29 +256,29 @@ PHASE 1: Architecture Design (1-2 days)
 
 PHASE 2: Priority System Refactor (3-4 days)
 ─────────────────────────────────────────────
-2. handovers/0313_implement_priority_system.md
-   ├─ Refactor priority semantics (emphasis vs trimming)
-   ├─ Update UI (13 cards → 6 cards)
-   ├─ Emit priority metadata (not trimmed content)
+2. handovers/0313_priority_system_refactor.md
+   ├─ Refactor priority semantics (10/7/4 → 1/2/3/4)
+   ├─ Update UI (13 cards → 6 category cards)
+   ├─ Drag-and-drop priority ordering
    ├─ Dependencies: 0312 complete
    └─ Est: 3-4 days | Tool: Claude Code (CLI) | Agent: TDD Implementor
 
 PHASE 3: Depth Controls (4-5 days)
 ───────────────────────────────────
-3. handovers/0314_implement_depth_controls.md
+3. handovers/0314_depth_controls_implementation.md
    ├─ Add depth_config JSONB column to users table
-   ├─ Create depth configuration UI
-   ├─ Implement token calculator
+   ├─ Create depth configuration UI (per-source settings)
+   ├─ Implement token calculator (real-time estimates)
    ├─ Dependencies: 0313 complete
    └─ Est: 4-5 days | Tool: Claude Code (CLI) | Agent: Database Expert + TDD
 
 PHASE 4: MCP Thin Client (5-6 days)
 ────────────────────────────────────
-4. handovers/0315_refactor_mcp_thin_client.md
+4. handovers/0315_mcp_thin_client_refactor.md
    ├─ Create 6 MCP tools (get_vision_document, get_360_memory, etc.)
-   ├─ Refactor to thin prompts (<600 tokens)
+   ├─ Implement thin prompt generator (<600 tokens)
    ├─ Reuse v1.0 extraction methods (60-80% code reuse)
-   ├─ Dependencies: 0314 complete
+   ├─ Dependencies: 0313 + 0314 complete
    └─ Est: 5-6 days | Tool: Claude Code (CLI) | Agent: TDD + Backend Tester
 
 PHASE 5: Enhancements (2-3 days)
