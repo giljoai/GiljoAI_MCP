@@ -8,7 +8,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.1+)**: 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.1+)**: Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Critical Remediation (v3.1.1)**: Handovers 0500-0515 completed major remediation after 0120-0130 refactoring:
 - Vision upload with chunking (<25K tokens per chunk)
@@ -63,6 +63,41 @@ log_file = 'F:/logs/app.log'
 ```
 
 **Always use**: `pathlib.Path()` • `Path.cwd()` • Relative paths in configs
+
+## Context Management (v2.0)
+
+GiljoAI uses a 2-dimensional context management model:
+
+**Priority Dimension** (WHAT to fetch):
+- Priority 1 (CRITICAL) - Always included
+- Priority 2 (IMPORTANT) - High priority
+- Priority 3 (NICE_TO_HAVE) - Medium priority
+- Priority 4 (EXCLUDED) - Never included
+
+**Depth Dimension** (HOW MUCH detail):
+- Product Core: include/exclude (~100 tokens)
+- Vision Documents: none/light/moderate/heavy (0-30K tokens)
+- Tech Stack: required/all (200-400 tokens)
+- Architecture: overview/detailed (300-1.5K tokens)
+- Testing: none/basic/full (0-400 tokens)
+- 360 Memory: 1/3/5/10 projects (500-5K tokens)
+- Git History: 10/25/50/100 commits (500-5K tokens)
+- Agent Templates: minimal/standard/full (400-2.4K tokens)
+
+**9 MCP Context Tools** (with Context Configurator badges):
+1. `fetch_product_context` - Product name, description, features → **"Product Core" badge**
+2. `fetch_vision_document` - Vision document chunks (paginated) → **"Vision Documents" badge**
+3. `fetch_tech_stack` - Programming languages, frameworks, databases → **"Tech Stack" badge**
+4. `fetch_architecture` - Architecture patterns, API style, design patterns → **"Architecture" badge**
+5. `fetch_testing_config` - Quality standards, strategy, frameworks → **"Testing" badge**
+6. `fetch_360_memory` - Project closeout summaries (paginated) → **"360 Memory" badge**
+7. `fetch_git_history` - Aggregated git commits from all projects → **"Git History" badge**
+8. `fetch_agent_templates` - Agent template library → **"Agent Templates" badge**
+9. `fetch_project_context` - Current project metadata → **"Project Context" badge**
+
+**Configuration**:
+- Priority: My Settings → Context → Field Priority Configuration
+- Depth: My Settings → Context → Depth Configuration
 
 ## Thin Client Architecture (v3.1+ Handover 0088)
 
