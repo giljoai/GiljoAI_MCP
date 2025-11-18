@@ -156,29 +156,6 @@ async def handle_tools_list(
             },
         },
         {
-            "name": "list_projects",
-            "description": "List all projects with optional status filter",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "enum": ["active", "completed", "archived"],
-                        "description": "Optional status filter",
-                    }
-                },
-            },
-        },
-        {
-            "name": "get_project",
-            "description": "Get detailed project information",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Project ID"}},
-                "required": ["project_id"],
-            },
-        },
-        {
             "name": "switch_project",
             "description": "Switch to a different project context",
             "inputSchema": {
@@ -187,15 +164,7 @@ async def handle_tools_list(
                 "required": ["project_id"],
             },
         },
-        {
-            "name": "close_project",
-            "description": "Close an active project",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Project ID to close"}},
-                "required": ["project_id"],
-            },
-        },
+        
         {
             "name": "update_project_mission",
             "description": "PERSIST orchestrator-created mission plan to Project.mission field",
@@ -335,12 +304,7 @@ async def handle_tools_list(
                 "required": ["task_id"],
             },
         },
-        # Template Management Tools
-        {
-            "name": "list_templates",
-            "description": "List available agent templates",
-            "inputSchema": {"type": "object", "properties": {}},
-        },
+        # Template Management Tools (read-only via MCP)
         {
             "name": "get_template",
             "description": "Get a specific agent template",
@@ -348,30 +312,6 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {"template_name": {"type": "string", "description": "Template name"}},
                 "required": ["template_name"],
-            },
-        },
-        {
-            "name": "create_template",
-            "description": "Create a new agent template",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Template name"},
-                    "content": {"type": "object", "description": "Template content"},
-                },
-                "required": ["name", "content"],
-            },
-        },
-        {
-            "name": "update_template",
-            "description": "Update an existing template",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "template_name": {"type": "string", "description": "Template name"},
-                    "updates": {"type": "object", "description": "Updates to apply"},
-                },
-                "required": ["template_name", "updates"],
             },
         },
         # Health & Status Tools
@@ -617,10 +557,7 @@ async def handle_tools_call(
     tool_map = {
         # Project Management
         "create_project": state.tool_accessor.create_project,
-        "list_projects": state.tool_accessor.list_projects,
-        "get_project": state.tool_accessor.get_project,
         "switch_project": state.tool_accessor.switch_project,
-        "close_project": state.tool_accessor.close_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
         # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
@@ -636,11 +573,8 @@ async def handle_tools_call(
         "update_task": state.tool_accessor.update_task,
         "assign_task": state.tool_accessor.assign_task,
         "complete_task": state.tool_accessor.complete_task,
-        # Template Management
-        "list_templates": state.tool_accessor.list_templates,
+        # Template Management (read-only via MCP)
         "get_template": state.tool_accessor.get_template,
-        "create_template": state.tool_accessor.create_template,
-        "update_template": state.tool_accessor.update_template,
         # Agent Coordination (Handover 0045)
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
         "acknowledge_job": state.tool_accessor.acknowledge_job,
