@@ -2,6 +2,7 @@
 Execute handover "F:\GiljoAI_MCP\handovers\0313_priority_system_refactor.md" with production-grade quality.
 
 CRITICAL REQUIREMENTS:
+AFTER PLANNING YOU MUST USE CLAUDE CODE CLI Subagnets as a skill to deliver these results.  Each agent has its own context window and can work in parallel.
 
 1. TDD DISCIPLINE (Non-Negotiable):
    - Write tests FIRST (Red phase - tests must fail initially)

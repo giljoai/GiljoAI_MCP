@@ -68,9 +68,9 @@ This allows users to customize agent behavior at different scopes: globally (ten
 
 We have one primary and important agent called the Orchestrator. The orchestrator is a well-prompted and templated staging agent in this application and as a project gets launched its job is to aggregate all contexts around the product and the project description, harmonize the mission, divide up the jobs and assign them to the proper agents. The orchestrator is also or should also be the primary interface for the developer and all other subagents should report to the orchestrator.
 
-## 70% Token Reduction Achievement (Handover 0088)
+## Context Prioritization and Orchestration (Handover 0088)
 
-The orchestrator achieves **70% token reduction** through intelligent context management:
+The orchestrator achieves **strong context prioritization and orchestration** through intelligent context management:
 - **Mission Planner** (`mission_planner.py`) - Generates condensed missions from vision docs, avoiding context duplication
 - **Agent Selector** (`agent_selector.py`) - Smart agent selection based on capabilities, assigning only necessary agents
 - **Workflow Engine** (`workflow_engine.py`) - Coordinates waterfall/parallel execution, preventing redundant context loading
@@ -310,7 +310,7 @@ Users can configure **which product fields** get included in missions and at wha
 
 Default token budget per mission: **2000 tokens** (configurable). The orchestrator intelligently includes fields based on priority until the budget is reached, ensuring the most important context always makes it into the mission prompt.
 
-This smart prioritization is how we achieve 70% token reduction while maintaining context quality - we include what matters most, not everything.
+This smart prioritization is how we keep context within tool limits while maintaining context quality - we include what matters most, not everything.
 
 # MCP Integration (Native Support - Handover 0069)
 
