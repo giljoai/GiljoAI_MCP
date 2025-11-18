@@ -697,6 +697,62 @@ CREATE TABLE agent_template_history (
 
 ---
 
+## Context Management Architecture (v2.0)
+
+### Overview
+GiljoAI's context management system uses a 2-dimensional model to give users fine-grained control over what context orchestrators receive and how detailed that context should be.
+
+### Architecture Diagram
+```
+┌─────────────────────────────────────────────────┐
+│           User Configuration (My Settings)       │
+├─────────────────────────────────────────────────┤
+│  Priority Config (WHAT)  │  Depth Config (HOW)  │
+│  - Field-level control   │  - Token management  │
+│  - 1/2/3/4 levels        │  - 8 depth controls  │
+└────────────┬────────────────────────┬────────────┘
+             │                        │
+             ▼                        ▼
+┌─────────────────────────────────────────────────┐
+│         Thin Client Prompt Generator             │
+│   (Generates ~600 token prompts with MCP calls)  │
+└────────────┬────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────┐
+│            9 MCP Context Tools                   │
+│  (On-demand fetching, multi-tenant isolated)     │
+├─────────────────────────────────────────────────┤
+│  Product Context │ Vision Docs │ Tech Stack     │
+│  Architecture    │ Testing     │ 360 Memory     │
+│  Git History     │ Templates   │ Project        │
+└────────────┬────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────┐
+│         Database (PostgreSQL + JSONB)            │
+│  Product.config_data │ Product.product_memory   │
+│  VisionDocument      │ MCPContextIndex          │
+└─────────────────────────────────────────────────┘
+```
+
+### Data Flow
+1. User configures priority (1-4) and depth (per source) in My Settings
+2. Orchestrator spawned with thin prompt (~600 tokens)
+3. Orchestrator calls MCP tools based on priority/depth config
+4. Tools fetch data from database (filtered by tenant_key)
+5. Tools return structured data within token limits (24K max per call)
+6. Orchestrator receives context and proceeds with mission
+
+### Key Features
+- **Pagination Support**: Vision and 360 memory paginated for large content
+- **Multi-Tenant Isolation**: All tools filter by tenant_key
+- **Token Budgeting**: Real-time estimation prevents context overflow
+- **Backward Compatible**: Legacy context paths maintained
+- **Performance**: <100ms average response time per tool
+
+---
+
 ## Component Architecture
 
 ### API Server Structure
