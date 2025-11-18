@@ -47,16 +47,20 @@
           <v-card-text>
 
             <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-              Controls which product configuration fields are prioritized when generating
-              AI agent missions. Fields are included top-to-bottom until token budget ({{ tokenBudget }}) is reached.
+              <strong>v2.0 Context Priority System:</strong> Controls which context categories are fetched when generating
+              AI agent missions. Categories are fetched in priority order: CRITICAL (1) → IMPORTANT (2) → NICE_TO_HAVE (3).
+              EXCLUDED (4) categories are never fetched. Drag and drop categories between priority levels.
             </v-alert>
 
             <!-- Priority 1 Card -->
             <v-card variant="outlined" class="mb-4">
               <v-card-title class="d-flex align-center">
                 <v-icon color="error" start>mdi-numeric-1-circle</v-icon>
-                Priority 1 - Always Included
+                Priority 1 - CRITICAL (Always Fetch)
               </v-card-title>
+              <v-card-subtitle class="text-caption">
+                Always fetched, highest priority - essential for orchestrator operation
+              </v-card-subtitle>
               <v-card-text>
                 <draggable
                   v-model="priority1Fields"
@@ -81,7 +85,7 @@
                   </template>
                 </draggable>
                 <div v-if="priority1Fields.length === 0" class="text-caption text-medium-emphasis">
-                  No fields assigned to Priority 1
+                  No categories assigned to CRITICAL priority
                 </div>
               </v-card-text>
             </v-card>
@@ -90,8 +94,11 @@
             <v-card variant="outlined" class="mb-4">
               <v-card-title class="d-flex align-center">
                 <v-icon color="warning" start>mdi-numeric-2-circle</v-icon>
-                Priority 2 - High Priority
+                Priority 2 - IMPORTANT (Fetch if Budget Allows)
               </v-card-title>
+              <v-card-subtitle class="text-caption">
+                Fetched if token budget allows - critical product context
+              </v-card-subtitle>
               <v-card-text>
                 <draggable
                   v-model="priority2Fields"
@@ -116,7 +123,7 @@
                   </template>
                 </draggable>
                 <div v-if="priority2Fields.length === 0" class="text-caption text-medium-emphasis">
-                  No fields assigned to Priority 2
+                  No categories assigned to IMPORTANT priority
                 </div>
               </v-card-text>
             </v-card>
@@ -125,8 +132,11 @@
             <v-card variant="outlined" class="mb-4">
               <v-card-title class="d-flex align-center">
                 <v-icon color="info" start>mdi-numeric-3-circle</v-icon>
-                Priority 3 - Medium Priority
+                Priority 3 - NICE_TO_HAVE (Fetch if Budget Remaining)
               </v-card-title>
+              <v-card-subtitle class="text-caption">
+                Fetched only if budget remaining - historical context
+              </v-card-subtitle>
               <v-card-text>
                 <draggable
                   v-model="priority3Fields"
@@ -151,26 +161,26 @@
                   </template>
                 </draggable>
                 <div v-if="priority3Fields.length === 0" class="text-caption text-medium-emphasis">
-                  No fields assigned to Priority 3
+                  No categories assigned to NICE_TO_HAVE priority
                 </div>
               </v-card-text>
             </v-card>
 
-            <!-- Unassigned Fields Card -->
-            <v-card variant="outlined" class="mb-4 unassigned-card">
+            <!-- Priority 4 - EXCLUDED (Never Fetch) Card -->
+            <v-card variant="outlined" class="mb-4 excluded-card">
               <v-card-title class="d-flex align-center">
-                <v-icon color="grey" start>mdi-tray-arrow-down</v-icon>
-                Unassigned Fields
+                <v-icon color="grey" start>mdi-numeric-4-circle</v-icon>
+                Priority 4 - EXCLUDED (Never Fetch)
                 <v-chip size="small" variant="outlined" color="grey" class="ml-2">
                   0 tokens
                 </v-chip>
               </v-card-title>
               <v-card-subtitle class="text-caption">
-                Fields not included in AI agent missions
+                Categories not included in AI agent missions
               </v-card-subtitle>
               <v-card-text>
                 <draggable
-                  v-model="unassignedFields"
+                  v-model="priority4Fields"
                   group="fields"
                   item-key="id"
                   handle=".drag-handle"
@@ -181,7 +191,7 @@
                     <v-chip
                       class="ma-1 drag-handle"
                       closable
-                      @click:close="removeField(element, 'unassigned')"
+                      @click:close="removeField(element, 'priority_4')"
                       style="cursor: move;"
                       color="grey"
                       variant="outlined"
@@ -193,7 +203,7 @@
                 </draggable>
                 <div v-if="unassignedFields.length === 0" class="text-caption text-medium-emphasis text-center py-4">
                   <v-icon size="large" color="grey-lighten-1" class="mb-2">mdi-check-circle-outline</v-icon>
-                  <div>All fields are assigned to priorities</div>
+                  <div>All categories are included (none excluded)</div>
                 </div>
               </v-card-text>
             </v-card>
@@ -707,17 +717,19 @@ import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDia
 import draggable from 'vuedraggable'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
+import { useWebSocketStore } from '@/stores/websocket'
 
-// Field Priority Constants (Handover 0301: UI-Backend Mapping Fix)
-// These values must match backend MissionPlanner._get_detail_level() expected ranges
-// See: src/giljo_mcp/mission_planner.py:512
-const PRIORITY_ALWAYS_INCLUDED = 10  // UI "Priority 1" -> "full" detail - 0% context prioritization
-const PRIORITY_HIGH = 7              // UI "Priority 2" -> "moderate" detail - 25% context prioritization
-const PRIORITY_MEDIUM = 4            // UI "Priority 3" -> "abbreviated" detail - 50% context prioritization
-const PRIORITY_EXCLUDE = 0           // Unassigned -> "exclude" - 100% context prioritization (omitted)
+// Field Priority Constants (Handover 0313: v2.0 Priority System Refactor)
+// v1.0: Priority = token reduction level (10/7/4/0)
+// v2.0: Priority = fetch order / mandatory flag (1/2/3/4)
+const PRIORITY_CRITICAL = 1      // v2.0: Always fetch, highest priority
+const PRIORITY_IMPORTANT = 2     // v2.0: Fetch if budget allows
+const PRIORITY_NICE = 3          // v2.0: Fetch if budget remaining
+const PRIORITY_EXCLUDED = 4      // v2.0: Never fetch
 
 // Stores and Theme
 const settingsStore = useSettingsStore()
+const wsStore = useWebSocketStore()
 const theme = useTheme()
 const router = useRouter()
 
@@ -746,51 +758,46 @@ const gitIntegration = ref({
 })
 const savingGitIntegration = ref(false)
 
-// Field Priority Configuration state (Handover 0048, 0052)
-const priority1Fields = ref([])
-const priority2Fields = ref([])
-const priority3Fields = ref([])
-const unassignedFields = ref([]) // Handover 0052: Unassigned category
-const tokenBudget = ref(2000)
+// Field Priority Configuration state (Handover 0313: v2.0)
+const priority1Fields = ref([])  // CRITICAL
+const priority2Fields = ref([])  // IMPORTANT
+const priority3Fields = ref([])  // NICE_TO_HAVE
+const priority4Fields = ref([])  // EXCLUDED (replaces unassignedFields)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
 
-// All available fields (Handover 0052, 0302, 0303, 0306, 0311)
+// All available fields (Handover 0313: v2.0 - 6 categories)
 const ALL_AVAILABLE_FIELDS = [
-  'product_vision',
-  'tech_stack.languages',
-  'tech_stack.backend',
-  'tech_stack.frontend',
-  'tech_stack.database',
-  'tech_stack.deployment',
-  'tech_stack.testing',
-  'config_data.architecture',
-  'config_data.test_methodology',
-  'config_data.coding_standards',
-  'config_data.deployment_strategy',
+  'product_core',
+  'vision_documents',
   'agent_templates',
-  'product_memory.learnings',
+  'project_context',
+  'memory_360',
+  'git_history'
 ]
 
 // Real-time token calculation state (Handover 0049)
 const activeProductTokens = ref(null)
 const loadingTokenEstimate = ref(false)
 
-// Field labels mapping for display (Handover 0302, 0303, 0306, 0311)
+// Field labels mapping for display (Handover 0313: v2.0)
 const fieldLabels = {
-  'product_vision': 'Product Vision',
-  'tech_stack.languages': 'Tech Stack: Languages',
-  'tech_stack.backend': 'Tech Stack: Backend',
-  'tech_stack.frontend': 'Tech Stack: Frontend',
-  'tech_stack.database': 'Tech Stack: Database',
-  'tech_stack.deployment': 'Tech Stack: Deployment',
-  'tech_stack.testing': 'Tech Stack: Testing',
-  'config_data.architecture': 'System Architecture',
-  'config_data.test_methodology': 'Test Methodology',
-  'config_data.coding_standards': 'Coding Standards',
-  'config_data.deployment_strategy': 'Deployment Strategy',
-  'agent_templates': 'Available Agent Templates',
-  'product_memory.learnings': '360 Memory (Historical Context)',
+  'product_core': 'Product Core',
+  'vision_documents': 'Vision Documents',
+  'agent_templates': 'Agent Templates',
+  'project_context': 'Project Context',
+  'memory_360': '360 Memory',
+  'git_history': 'Git History'
+}
+
+// Field descriptions (Handover 0313: v2.0)
+const fieldDescriptions = {
+  'product_core': 'Product description and tech stack (languages, backend, frontend, database, infrastructure)',
+  'vision_documents': 'Chunked vision document uploads (product vision, features, roadmap)',
+  'agent_templates': 'Active agent behavior configurations',
+  'project_context': 'Project description, user notes, architecture notes',
+  'memory_360': 'Cumulative project history (learnings, decisions, sequential closeouts)',
+  'git_history': 'Recent commits from git integration (optional)'
 }
 
 // Settings object
@@ -922,21 +929,21 @@ const activeProductName = computed(() => {
   return activeProductTokens.value?.name || 'No Active Product'
 })
 
-// Field Priority Configuration computed properties (Handover 0048, 0052)
+// Field Priority Configuration computed properties (Handover 0313: v2.0)
 const estimatedTokens = computed(() => {
-  // Handover 0052: Prefer real token data from active product (when available)
-  // This provides accurate token counts based on actual field values, not just field counts
   if (activeProductTokens.value?.total_tokens !== undefined) {
     return activeProductTokens.value.total_tokens
   }
-
-  // Fallback: Use static estimates based on field counts (for drag-and-drop preview)
-  // Only used when no active product exists or API call failed
-  const p1 = priority1Fields.value.length * 50
-  const p2 = priority2Fields.value.length * 30
-  const p3 = priority3Fields.value.length * 20
-  // Unassigned fields contribute 0 tokens (explicitly excluded)
+  // Fallback calculation based on category counts
+  const p1 = priority1Fields.value.length * 80   // CRITICAL categories have more content
+  const p2 = priority2Fields.value.length * 60   // IMPORTANT categories
+  const p3 = priority3Fields.value.length * 40   // NICE_TO_HAVE categories
+  // priority4 (EXCLUDED) contributes 0 tokens
   return p1 + p2 + p3 + 500 // +500 for mission overhead
+})
+
+const tokenBudget = computed(() => {
+  return activeProductTokens.value?.token_budget || 2000
 })
 
 const tokenPercentage = computed(() => {
@@ -949,9 +956,13 @@ const tokenIndicatorColor = computed(() => {
   return 'success'
 })
 
-// Field Priority Configuration Methods (Handover 0048)
+// Field Priority Configuration Methods (Handover 0313: v2.0)
 function getFieldLabel(fieldPath) {
   return fieldLabels[fieldPath] || fieldPath
+}
+
+function getFieldDescription(fieldPath) {
+  return fieldDescriptions[fieldPath] || ''
 }
 
 function onPriorityChange() {
@@ -979,19 +990,18 @@ function removeField(field, priority) {
       priority3Fields.value.splice(index, 1)
       removed = true
     }
-  } else if (priority === 'unassigned') {
-    // Handover 0052: Remove from unassigned (no-op, just mark changed)
-    const index = unassignedFields.value.indexOf(field)
+  } else if (priority === 'priority_4') {
+    const index = priority4Fields.value.indexOf(field)
     if (index > -1) {
-      unassignedFields.value.splice(index, 1)
+      priority4Fields.value.splice(index, 1)
       removed = true
     }
   }
 
-  // Handover 0052: Move to unassigned instead of deleting
-  if (removed && priority !== 'unassigned') {
-    if (!unassignedFields.value.includes(field)) {
-      unassignedFields.value.push(field)
+  // Handover 0313: Move to EXCLUDED (priority_4) instead of deleting
+  if (removed && priority !== 'priority_4') {
+    if (!priority4Fields.value.includes(field)) {
+      priority4Fields.value.push(field)
     }
   }
 
@@ -1003,33 +1013,31 @@ function removeField(field, priority) {
 async function saveFieldPriority() {
   savingFieldPriority.value = true
   try {
-    // Convert frontend arrays to backend format
-    // Handover 0301: Map UI priorities to backend scale using constants
-    // Ensures UI priorities match backend MissionPlanner._get_detail_level() thresholds
-    const fieldsConfig = {}
+    // Handover 0313: v2.0 schema uses 'priorities' dict (not 'fields')
+    const prioritiesConfig = {}
     priority1Fields.value.forEach(field => {
-      fieldsConfig[field] = PRIORITY_ALWAYS_INCLUDED  // 10 -> "full" detail
+      prioritiesConfig[field] = PRIORITY_CRITICAL  // 1
     })
     priority2Fields.value.forEach(field => {
-      fieldsConfig[field] = PRIORITY_HIGH  // 7 -> "moderate" detail
+      prioritiesConfig[field] = PRIORITY_IMPORTANT  // 2
     })
     priority3Fields.value.forEach(field => {
-      fieldsConfig[field] = PRIORITY_MEDIUM  // 4 -> "abbreviated" detail
+      prioritiesConfig[field] = PRIORITY_NICE  // 3
     })
-    // Unassigned fields NOT included - backend treats missing fields as PRIORITY_EXCLUDE (0)
+    priority4Fields.value.forEach(field => {
+      prioritiesConfig[field] = PRIORITY_EXCLUDED  // 4
+    })
 
     const config = {
-      version: '1.0',
-      token_budget: tokenBudget.value,
-      fields: fieldsConfig
+      version: '2.0',
+      priorities: prioritiesConfig  // v2.0: 'priorities' not 'fields'
+      // No token_budget in v2.0 (moved to depth controls in Handover 0314)
     }
 
     await settingsStore.updateFieldPriorityConfig(config)
     fieldPriorityHasChanges.value = false
-    console.log('[USER SETTINGS] Field priority config saved successfully')
+    console.log('[USER SETTINGS] Field priority config saved successfully (v2.0)')
 
-    // Handover 0052: Refresh token estimate from active product after save
-    // This ensures the token indicator reflects the new field priority configuration
     await fetchActiveProductTokenEstimate()
   } catch (error) {
     console.error('[USER SETTINGS] Failed to save field priority config:', error)
@@ -1044,7 +1052,7 @@ async function resetFieldPriorityToDefaults() {
     await settingsStore.resetFieldPriorityConfig()
     await loadFieldPriorityConfig()
     fieldPriorityHasChanges.value = false
-    console.log('[USER SETTINGS] Field priority config reset to defaults')
+    console.log('[USER SETTINGS] Field priority config reset to defaults (v2.0)')
 
     // Handover 0052: Refresh token estimate from active product after reset
     await fetchActiveProductTokenEstimate()
@@ -1061,36 +1069,41 @@ async function loadFieldPriorityConfig() {
     const config = settingsStore.fieldPriorityConfig
 
     if (config) {
-      tokenBudget.value = config.token_budget || 2000
-
-      // Convert backend format to frontend arrays
+      // Handover 0313: v2.0 schema uses 'priorities' dict
       priority1Fields.value = []
       priority2Fields.value = []
       priority3Fields.value = []
+      priority4Fields.value = []
 
-      Object.entries(config.fields || {}).forEach(([field, priority]) => {
+      Object.entries(config.priorities || {}).forEach(([field, priority]) => {
         if (priority === 1) {
           priority1Fields.value.push(field)
         } else if (priority === 2) {
           priority2Fields.value.push(field)
         } else if (priority === 3) {
           priority3Fields.value.push(field)
+        } else if (priority === 4) {
+          priority4Fields.value.push(field)
         }
       })
 
-      // Handover 0052: Compute unassigned fields
+      // Compute EXCLUDED fields (those not assigned to 1/2/3)
       const assignedSet = new Set([
         ...priority1Fields.value,
         ...priority2Fields.value,
         ...priority3Fields.value,
+        ...priority4Fields.value,
       ])
-      unassignedFields.value = ALL_AVAILABLE_FIELDS.filter(
+
+      // Any fields not explicitly set default to EXCLUDED
+      const unassignedFields = ALL_AVAILABLE_FIELDS.filter(
         field => !assignedSet.has(field)
       )
+      priority4Fields.value.push(...unassignedFields)
 
       fieldPriorityHasChanges.value = false
-      console.log('[USER SETTINGS] Field priority config loaded successfully')
-      console.log(`[USER SETTINGS] Unassigned fields: ${unassignedFields.value.length}`)
+      console.log('[USER SETTINGS] Field priority config loaded successfully (v2.0)')
+      console.log(`[USER SETTINGS] EXCLUDED fields: ${priority4Fields.value.length}`)
     }
   } catch (error) {
     console.error('[USER SETTINGS] Failed to load field priority config:', error)
@@ -1147,21 +1160,34 @@ onMounted(async () => {
 
   // Load git integration settings (Handover 013B)
   await loadGitIntegration()
+
+  // Handover 0313: WebSocket listener for real-time priority config updates
+  wsStore.on('priority_config_updated', handlePriorityConfigUpdate)
 })
 
-// Watch priority fields for changes and recalculate tokens with debounce (Handover 0049)
+// WebSocket event handler for priority_config_updated (Handover 0313: v2.0)
+function handlePriorityConfigUpdate(data) {
+  console.log('[USER SETTINGS] Received priority_config_updated event:', data)
+
+  // Reload field priority config from server to ensure UI is in sync
+  loadFieldPriorityConfig()
+
+  // Refresh token estimate to reflect new configuration
+  fetchActiveProductTokenEstimate()
+
+  console.log('[USER SETTINGS] Field priority config reloaded from WebSocket event')
+}
+
+// Watch priority fields for changes and recalculate tokens with debounce (Handover 0313: v2.0)
 let tokenCalculationTimeout
 watch(
-  () => [priority1Fields.value, priority2Fields.value, priority3Fields.value],
+  () => [priority1Fields.value, priority2Fields.value, priority3Fields.value, priority4Fields.value],
   () => {
-    // Clear previous timeout to implement debounce
     if (tokenCalculationTimeout) {
       clearTimeout(tokenCalculationTimeout)
     }
 
-    // Debounce token recalculation (500ms)
     tokenCalculationTimeout = setTimeout(() => {
-      // Token recalculation happens automatically via computed property
       console.log('[USER SETTINGS] Token estimate recalculated (debounced)')
     }, 500)
   },
@@ -1313,14 +1339,14 @@ async function saveGitIntegration() {
 }
 
 /* Handover 0052: Unassigned card styling */
-.unassigned-card {
+.excluded-card {
   border-style: dashed !important;
   border-width: 2px;
   border-color: rgba(var(--v-theme-on-surface), 0.3);
   background-color: rgba(var(--v-theme-surface-variant), 0.05);
 }
 
-.unassigned-card .v-card-title {
+.excluded-card .v-card-title {
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
