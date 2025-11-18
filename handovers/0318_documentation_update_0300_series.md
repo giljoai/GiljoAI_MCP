@@ -84,23 +84,25 @@ GiljoAI uses a 2-dimensional context management model:
 - Priority 4 (EXCLUDED) - Never included
 
 **Depth Dimension** (HOW MUCH detail):
-- Vision Documents: none/light/moderate/heavy (0-24K tokens)
-- 360 Memory: 1/3/5/10 projects
-- Git History: 10/25/50/100 commits
-- Agent Templates: minimal/standard/full
-- Tech Stack: required/all
-- Architecture: overview/detailed
+- Product Core: include/exclude (~100 tokens)
+- Vision Documents: none/light/moderate/heavy (0-30K tokens)
+- Tech Stack: required/all (200-400 tokens)
+- Architecture: overview/detailed (300-1.5K tokens)
+- Testing: none/basic/full (0-400 tokens)
+- 360 Memory: 1/3/5/10 projects (500-5K tokens)
+- Git History: 10/25/50/100 commits (500-5K tokens)
+- Agent Templates: minimal/standard/full (400-2.4K tokens)
 
-**9 MCP Context Tools**:
-1. `fetch_product_context` - Product name, description, features
-2. `fetch_vision_document` - Vision document chunks (paginated)
-3. `fetch_tech_stack` - Programming languages, frameworks, databases
-4. `fetch_architecture` - Architecture patterns, API style, design patterns
-5. `fetch_testing_config` - Quality standards, strategy, frameworks
-6. `fetch_360_memory` - Project closeout summaries (paginated)
-7. `fetch_git_history` - Aggregated git commits
-8. `fetch_agent_templates` - Agent template library
-9. `fetch_project_context` - Current project metadata
+**9 MCP Context Tools** (with Context Configurator badges):
+1. `fetch_product_context` - Product name, description, features → **"Product Core" badge**
+2. `fetch_vision_document` - Vision document chunks (paginated) → **"Vision Documents" badge**
+3. `fetch_tech_stack` - Programming languages, frameworks, databases → **"Tech Stack" badge**
+4. `fetch_architecture` - Architecture patterns, API style, design patterns → **"Architecture" badge**
+5. `fetch_testing_config` - Quality standards, strategy, frameworks → **"Testing" badge**
+6. `fetch_360_memory` - Project closeout summaries (paginated) → **"360 Memory" badge**
+7. `fetch_git_history` - Aggregated git commits from all projects → **"Git History" badge**
+8. `fetch_agent_templates` - Agent template library → **"Agent Templates" badge**
+9. `fetch_project_context` - Current project metadata → **"Project Context" badge**
 
 **Configuration**:
 - Priority: My Settings → Context → Field Priority Configuration
@@ -126,7 +128,7 @@ GiljoAI's context management system uses a 2-dimensional model to give users fin
 ├─────────────────────────────────────────────────┤
 │  Priority Config (WHAT)  │  Depth Config (HOW)  │
 │  - Field-level control   │  - Token management  │
-│  - 1/2/3/4 levels        │  - 6 depth controls  │
+│  - 1/2/3/4 levels        │  - 8 depth controls  │
 └────────────┬────────────────────────┬────────────┘
              │                        │
              ▼                        ▼
