@@ -12,7 +12,7 @@ GiljoAI MCP is evolving into a **sophisticated agentic project management platfo
 
 **Vision Documents**:
 - **[Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md](Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Complete strategic vision
-- **[Vision/TOKEN_REDUCTION_ARCHITECTURE.md](Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - 70% token reduction strategy
+- **[Vision/TOKEN_REDUCTION_ARCHITECTURE.md](Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - context prioritization and orchestration strategy
 - **[Vision/MULTI_AGENT_COORDINATION_PATTERNS.md](Vision/MULTI_AGENT_COORDINATION_PATTERNS.md)** - Agent orchestration patterns
 
 **Implementation Roadmap**: 5 major projects over 7 weeks to achieve full agentic capabilities (see vision documents for details)
@@ -34,7 +34,7 @@ GiljoAI MCP is evolving into a **sophisticated agentic project management platfo
 **Authoritative references for critical workflows**:
 
 - **[SSoT Index](SSoT_INDEX.md)** - Master index of all SSoT documents
-- **[Orchestrator Context Flow SSoT](ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow (13 context cards, 77% token reduction)
+- **[Orchestrator Context Flow SSoT](ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow (13 context cards, 77% context prioritization)
 
 **Quick Start Guides**:
 - **[manuals/QUICK_START.md](manuals/QUICK_START.md)** - Get started in 5 minutes

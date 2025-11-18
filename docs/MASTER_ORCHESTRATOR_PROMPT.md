@@ -59,7 +59,7 @@
 The **Master Orchestrator Staging Prompt System** is the core intelligence engine that transforms GiljoAI from a collection of components into a production-ready AI agent orchestration platform. It generates comprehensive, token-efficient prompts that enable AI agents to:
 
 1. **Discover context via MCP** (product, vision, priorities, templates)
-2. **Create condensed missions** (70% token reduction)
+2. **Create condensed missions** (context prioritization and orchestration)
 3. **Select optimal agents** (intelligent allocation, max 8 types)
 4. **Coordinate workflows** (multi-agent communication protocols)
 5. **Execute within budget** (20K token limit with safety buffer)
@@ -78,7 +78,7 @@ The **Master Orchestrator Staging Prompt System** is the core intelligence engin
 - MCP-based context discovery (remote-safe)
 - 20K token budget with intelligent overflow handling
 - Dynamic field priorities (user-configured)
-- 70% token reduction via intelligent condensation
+- context prioritization and orchestration via intelligent condensation
 - Multi-tool support (Claude Code, Codex, Gemini)
 - Production-grade error handling
 

@@ -530,7 +530,7 @@ class TestProductInfo:
 
         # Verify expected features are present
         assert "Multi-tenant orchestration" in features
-        assert "70% token reduction" in features
+        assert "context prioritization and orchestration" in features
         assert "Orchestrator succession" in features
         assert "Agent template management" in features
 

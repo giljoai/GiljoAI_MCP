@@ -23,7 +23,7 @@
 - ❌ **Agents cannot report progress** back to orchestrator
 - ❌ **No inter-agent coordination** (breaks multi-agent workflows)
 - ❌ **Message UI is non-functional** (users cannot see agent communications)
-- ❌ **70% token reduction feature degraded** (relies on message-based coordination)
+- ❌ **context prioritization and orchestration feature degraded** (relies on message-based coordination)
 
 **Solution**: Wire together the existing components, fix the message flow pipeline, and restore full messaging functionality with comprehensive testing.
 

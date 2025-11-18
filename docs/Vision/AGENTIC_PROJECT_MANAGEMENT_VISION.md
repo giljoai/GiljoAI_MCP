@@ -25,7 +25,7 @@
 This document provides the **strategic vision** for GiljoAI MCP's agentic capabilities. For additional context, see:
 
 - **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of entire product vision
-- **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on achieving 70% token savings
+- **[Context Orchestration Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on context prioritization and orchestration for agentic coding
 - **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Implementation patterns for agent orchestration
 - **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - 5-project implementation timeline
 - **[Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md)** - v3.0 unified architecture overview
@@ -41,7 +41,7 @@ This document provides the **strategic vision** for GiljoAI MCP's agentic capabi
 
 GiljoAI MCP is evolving from a **multi-tenant task management system with manual workflows** into a **sophisticated agentic project management platform** that automatically orchestrates teams of specialized AI agents to tackle complex software development projects.
 
-This document outlines the strategic vision, architectural patterns, and implementation roadmap to achieve true multi-agent orchestration with 70% token reduction and 95% reliability.
+This document outlines the strategic vision, architectural patterns, and implementation roadmap to achieve true multi-agent orchestration with context prioritization and orchestration and 95% reliability.
 
 ---
 
@@ -52,7 +52,7 @@ This document outlines the strategic vision, architectural patterns, and impleme
 **What We Have**:
 - Multi-tenant task management infrastructure
 - Manual workflow tools for agent coordination
-- Role-based context filtering (~40% token reduction)
+- Role-based context filtering (~40% context prioritization)
 - Template system for prompt generation
 - Real-time dashboard for task monitoring
 - WebSocket communication layer
@@ -69,7 +69,7 @@ This document outlines the strategic vision, architectural patterns, and impleme
 
 ### Target Vision: Sophisticated Agentic System
 
-**Core Capability**: An intelligent orchestration layer that automatically spawns, coordinates, and manages teams of specialized AI agents, achieving massive token reduction while maintaining perfect context awareness.
+**Core Capability**: An intelligent orchestration layer that automatically spawns, coordinates, and manages teams of specialized AI agents, achieving massive context prioritization while maintaining perfect context awareness.
 
 **Key Features**:
 
@@ -88,7 +88,7 @@ This document outlines the strategic vision, architectural patterns, and impleme
 3. **Orchestrator-Driven Summarization**
    - Orchestrator reads full project context
    - Creates condensed missions for each agent type
-   - 70% token reduction through intelligent summarization
+   - context prioritization and orchestration through intelligent summarization
    - Maintains perfect context awareness
 
 4. **Multi-Agent Coordination**
@@ -372,7 +372,7 @@ async def agent_monitor_websocket():
 
 ### Year 1 (2025)
 - Complete 5-project implementation
-- Achieve 70% token reduction
+- Achieve context prioritization and orchestration
 - Support 10+ agent types
 - Handle 100K+ line codebases
 

@@ -153,7 +153,7 @@ The following valuable content from the Original is **not present** in the Varia
    - Dedicated section explaining how instructions are stored
    - SQL examples for database queries
    - Thin prompt vs full context comparison
-   - Token reduction mechanics explanation
+   - Context prioritization mechanics explanation
    - Field priority token management
    - **Impact**: Important for understanding the architecture
 
@@ -191,7 +191,7 @@ The following valuable content from the Original is **not present** in the Varia
 - How instructions are stored in database
 - SQL query examples
 - Thin prompt vs full context mechanics
-- Token reduction explanation
+- Context prioritization explanation
 - Field priority token management
 
 **Why**: Essential for developers understanding the thin client architecture.

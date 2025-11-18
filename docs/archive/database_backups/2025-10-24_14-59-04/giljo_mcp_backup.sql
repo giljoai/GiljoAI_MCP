@@ -556,7 +556,7 @@ COMMENT ON COLUMN public.mcp_context_summary.condensed_mission IS 'Orchestrator-
 -- Name: COLUMN mcp_context_summary.reduction_percent; Type: COMMENT; Schema: public; Owner: giljo_user
 --
 
-COMMENT ON COLUMN public.mcp_context_summary.reduction_percent IS 'Token reduction percentage achieved';
+COMMENT ON COLUMN public.mcp_context_summary.reduction_percent IS 'Context prioritization percentage achieved';
 
 
 --

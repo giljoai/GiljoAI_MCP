@@ -10,7 +10,7 @@
 ## Problem Statement
 
 **Current State**: Claude Code integration tools exist but depth and effectiveness unverified.  
-**Vision**: Seamless sub-agent delegation achieving 70% token reduction and 95% reliability.  
+**Vision**: Seamless sub-agent delegation achieving context prioritization and orchestration and 95% reliability.  
 **Gap**: **VERIFICATION NEEDED** - Integration infrastructure exists but real-world performance claims unvalidated.
 
 ## Evidence Analysis
@@ -62,7 +62,7 @@ CLAUDE_CODE_AGENT_TYPES = {
 - Real-time coordination mechanisms
 
 #### Token Reduction Claims
-**Question**: Is the claimed 70% token reduction achievable in practice?  
+**Question**: Is the claimed context prioritization and orchestration achievable in practice?  
 **Evidence Needed**:
 - Benchmarking data comparing manual vs sub-agent approaches
 - Context usage measurements
@@ -150,7 +150,7 @@ async def test_claude_code_integration():
 3. **Refactoring**: "Migrate database from SQLite to PostgreSQL"
 
 **Expected Results** (Vision Claims):
-- 70% token reduction vs manual approach
+- context prioritization and orchestration vs manual approach
 - 95% success rate for agent coordination
 - 30% less coordination code required
 
@@ -305,7 +305,7 @@ async def test_real_agent_spawning():
 ```python
 # tests/performance/test_token_reduction.py
 async def test_token_reduction_claims():
-    """Verify claimed 70% token reduction"""
+    """Verify claimed context prioritization and orchestration"""
     
     # Measure manual approach
     manual_tokens = await measure_manual_orchestration(BENCHMARK_TASK)
@@ -323,13 +323,13 @@ async def test_token_reduction_claims():
 
 ### Best Case (FULLY IMPLEMENTED)
 - All integration code working as documented
-- Token reduction claims validated
+- Context prioritization claims validated
 - Reliability metrics confirmed
 - **Action**: Document and mark COMPLETE
 
 ### Likely Case (PARTIALLY IMPLEMENTED)  
 - Basic integration exists but missing pieces
-- Token reduction achievable but not optimized
+- Context prioritization achievable but not optimized
 - Some reliability issues
 - **Action**: Create targeted implementation plan
 
@@ -343,7 +343,7 @@ async def test_token_reduction_claims():
 
 ### Technical Validation
 1. **Integration Works**: Successfully spawn Claude Code sub-agents
-2. **Token Efficiency**: Achieve >50% token reduction (aim for 70%)  
+2. **Token Efficiency**: Achieve >50% context prioritization (aim for 70%)  
 3. **Reliability**: >90% success rate for agent coordination
 4. **Error Handling**: Graceful degradation when integration fails
 
@@ -470,7 +470,7 @@ async def test_token_reduction_claims():
 - Manual workflow tools exist and mostly function
 - NO automated sub-agent spawning capability
 - Claims of automation and 70% reduction unsubstantiated
-- ~40% token reduction from role-based filtering is REAL
+- ~40% context prioritization from role-based filtering is REAL
 
 **Path Forward**:
 - **Option A**: Implement 5 major projects to achieve vision (7 weeks)

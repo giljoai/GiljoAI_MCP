@@ -4,7 +4,7 @@ Integration tests for hierarchical context loading workflow.
 Tests the complete flow:
 1. Orchestrator gets FULL config_data
 2. Worker agents get FILTERED config_data based on role
-3. Context token reduction is significant (60%+ for focused workers)
+3. Context context prioritization is significant (60%+ for focused workers)
 4. Multi-agent coordination maintains proper context boundaries
 """
 
@@ -254,10 +254,10 @@ class TestWorkerAgentFilteredContext:
 
 
 class TestContextTokenReduction:
-    """Test that filtering achieves significant token reduction"""
+    """Test that filtering achieves significant context prioritization"""
 
     def test_implementer_token_reduction(self, sample_product):
-        """Test implementer config has significant token reduction"""
+        """Test implementer config has significant context prioritization"""
         full_config = get_full_config(sample_product)
         filtered_config = get_filtered_config("implementer-1", sample_product)
 
@@ -267,16 +267,16 @@ class TestContextTokenReduction:
         # Should have at least 30% field reduction
         assert field_reduction >= 0.3, f"Field reduction: {field_reduction:.1%}"
 
-        # Calculate approximate token reduction
+        # Calculate approximate context prioritization
         full_tokens = estimate_tokens(full_config)
         filtered_tokens = estimate_tokens(filtered_config)
         token_reduction = (full_tokens - filtered_tokens) / full_tokens
 
-        # Should have significant token reduction
-        assert token_reduction > 0.2, f"Token reduction: {token_reduction:.1%}"
+        # Should have significant context prioritization
+        assert token_reduction > 0.2, f"Context prioritization: {token_reduction:.1%}"
 
     def test_tester_token_reduction(self, sample_product):
-        """Test tester config has significant token reduction"""
+        """Test tester config has significant context prioritization"""
         full_config = get_full_config(sample_product)
         filtered_config = get_filtered_config("tester-1", sample_product)
 
@@ -286,7 +286,7 @@ class TestContextTokenReduction:
         assert field_reduction >= 0.4, f"Field reduction: {field_reduction:.1%}"
 
     def test_documenter_token_reduction(self, sample_product):
-        """Test documenter config has significant token reduction"""
+        """Test documenter config has significant context prioritization"""
         full_config = get_full_config(sample_product)
         filtered_config = get_filtered_config("documenter-1", sample_product)
 
@@ -295,7 +295,7 @@ class TestContextTokenReduction:
         assert field_reduction >= 0.4, f"Field reduction: {field_reduction:.1%}"
 
     def test_all_workers_reduce_tokens(self, sample_product):
-        """Test that all worker roles achieve token reduction"""
+        """Test that all worker roles achieve context prioritization"""
         full_config = get_full_config(sample_product)
         worker_roles = ["implementer", "tester", "documenter", "analyzer", "reviewer"]
 

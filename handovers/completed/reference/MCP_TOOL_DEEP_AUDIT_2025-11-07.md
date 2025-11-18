@@ -51,7 +51,7 @@ These tools are **verified in use** through code analysis and flow documentation
 2. ✅ **get_orchestrator_instructions**
    - **File**: tools/orchestration.py:833 (duplicate at 1102)
    - **HTTP**: mcp_http.py:600-640
-   - **Usage**: Step 2 - Fetch condensed mission (70% token reduction)
+   - **Usage**: Step 2 - Fetch condensed mission (context prioritization and orchestration)
    - **Evidence**: thin_prompt_generator.py:286 + orchestrator.py:877
    - **CRITICAL**: This is where field priorities and vision chunking happen
 
@@ -285,7 +285,7 @@ These tools are **needed for complete vision** but either missing or returning s
     - **Status**: Returns placeholder data
     - **Evidence**: Handover 0091 flags this as returning empty
     - **Vision Need**: "orchestrator first kicks off... merges all context depth"
-    - **Priority**: HIGH - 70% token reduction depends on this
+    - **Priority**: HIGH - context prioritization and orchestration depends on this
 
 29. 🔴 **search_context** (STUB)
     - **File**: context.py (implicit in tool_accessor.py:1214)
@@ -730,7 +730,7 @@ These tools are **implemented but never used** in flows, prompts, or vision.
    - search_context returning empty data
    - get_context_summary returning empty data
    - get_file_context returning empty data
-   - **Impact**: 70% token reduction feature partially broken
+   - **Impact**: context prioritization and orchestration feature partially broken
    - **Action**: Implement properly OR remove from HTTP exposure
 
 2. **Create /task Slash Command**
@@ -812,7 +812,7 @@ These tools are **implemented but never used** in flows, prompts, or vision.
 2. **Fix & Test Context Tools**
    - Implement discover_context properly
    - Test with real product data
-   - Verify token reduction calculations
+   - Verify context prioritization calculations
 
 3. **Test Closeout Workflow**
    - Enhance close_project

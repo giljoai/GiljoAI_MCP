@@ -31,7 +31,7 @@ STARTUP SEQUENCE:
 1. Verify MCP
 2. Fetch mission
 3. PERSIST mission
-4. Execute mission (70% token reduction applied)  ← AMBIGUOUS!
+4. Execute mission (context prioritization and orchestration applied)  ← AMBIGUOUS!
 5. Coordinate agents via MCP tools
 
 Begin by verifying MCP connection, then fetch and persist your mission.

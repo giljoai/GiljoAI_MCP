@@ -126,7 +126,7 @@ Begin by fetching your mission.`,
     expect(chip.text()).toContain('70% Token Reduction Active')
 
     // Verify accessibility
-    expect(chip.attributes('aria-label')).toBe('Thin client architecture with 70% token reduction active')
+    expect(chip.attributes('aria-label')).toBe('Thin client architecture with context prioritization and orchestration active')
   })
 
   /**
@@ -188,7 +188,7 @@ Begin by fetching your mission.`,
     const alertText = alert.text()
     expect(alertText).toContain('Thin Client Architecture Benefits')
     expect(alertText).toContain('Mission fetched dynamically via MCP')
-    expect(alertText).toContain('70% token reduction ACTIVE')
+    expect(alertText).toContain('context prioritization and orchestration ACTIVE')
     expect(alertText).toContain('Lower API costs')
     expect(alertText).toContain('Real-time mission updates possible')
     expect(alertText).toContain('get_orchestrator_instructions()')

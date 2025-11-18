@@ -11,9 +11,9 @@
 
 ## Executive Summary
 
-This document defines the comprehensive testing strategy for the **Context Management System (0300 series)**, ensuring the field priority system, token budget enforcement, vision chunking, and agent templates work cohesively to deliver 70% token reduction with user transparency and control.
+This document defines the comprehensive testing strategy for the **Context Management System (0300 series)**, ensuring the field priority system, token budget enforcement, vision chunking, and agent templates work cohesively to deliver context prioritization and orchestration with user transparency and control.
 
-**Why This Matters**: Testing validates not just individual components, but the entire workflow from user configuration → context generation → orchestrator execution. This strategy ensures production-grade quality, prevents regressions, and provides confidence in the 70% token reduction promise.
+**Why This Matters**: Testing validates not just individual components, but the entire workflow from user configuration → context generation → orchestrator execution. This strategy ensures production-grade quality, prevents regressions, and provides confidence in the context prioritization and orchestration promise.
 
 **Coverage Target**: >80% across all `mission_planner.py` methods, with 100% coverage on critical paths (priority mapping, budget enforcement, chunking).
 

@@ -35,7 +35,7 @@ via the `X-Tenant-Key` header.
 | `/products/{id}/chunk-vision` | POST | Chunk and index vision document | Yes |
 | `/search` | GET | Search context by keywords | Yes |
 | `/load-for-agent` | POST | Load context for specific agent | Yes |
-| `/products/{id}/token-stats` | GET | Get token reduction statistics | Yes |
+| `/products/{id}/token-stats` | GET | Get context prioritization statistics | Yes |
 | `/health` | GET | System health check | Yes |
 
 ## Authentication
@@ -96,7 +96,7 @@ for efficient retrieval.
 | chunks_created | integer | Number of chunks created |
 | total_tokens | integer | Total tokens across all chunks |
 | original_size | integer | Original document size in characters |
-| reduction_percentage | float | null | Token reduction percentage (if applicable) |
+| reduction_percentage | float | null | Context prioritization percentage (if applicable) |
 | message | string | null | Success or error message |
 
 **Error Responses**:
@@ -332,7 +332,7 @@ data.chunks.forEach(chunk => {
 | total_chunks | integer | Number of chunks returned |
 | total_tokens | integer | Total tokens (guaranteed <= max_tokens) |
 | average_relevance | float | Average relevance score across chunks |
-| reduction_percentage | float | null | Token reduction if tracked |
+| reduction_percentage | float | null | Context prioritization if tracked |
 
 **Example - Curl**:
 ```bash
@@ -421,7 +421,7 @@ console.log(`Loaded ${data.total_chunks} chunks with avg relevance ${data.averag
 
 **Endpoint**: `GET /api/v1/context/products/{product_id}/token-stats`
 
-**Purpose**: Get token reduction statistics for a product.
+**Purpose**: Get context prioritization statistics for a product.
 
 **Path Parameters**:
 - `product_id` (string, required): Product ID
@@ -445,7 +445,7 @@ console.log(`Loaded ${data.total_chunks} chunks with avg relevance ${data.averag
 | product_id | string | Product ID |
 | original_tokens | integer | Total tokens in all chunks |
 | condensed_tokens | integer | Condensed tokens (if summarization used) |
-| reduction_percentage | float | Token reduction percentage |
+| reduction_percentage | float | Context prioritization percentage |
 | chunks_count | integer | Total number of chunks |
 
 **Error Responses**:
@@ -911,7 +911,7 @@ results = load_context_for_agents('prod-abc-123', 'tk_acme_corp', agents_and_mis
 import requests
 
 def monitor_token_reduction(product_id, tenant_key):
-    """Monitor token reduction statistics"""
+    """Monitor context prioritization statistics"""
 
     url = f'http://localhost:7272/api/v1/context/products/{product_id}/token-stats'
     headers = {'X-Tenant-Key': tenant_key}
@@ -1008,7 +1008,7 @@ class ContextManagementClient:
         return response.json()
 
     def get_token_stats(self, product_id: str) -> Dict:
-        """Get token reduction statistics"""
+        """Get context prioritization statistics"""
         url = f"{self.base_url}/products/{product_id}/token-stats"
         response = requests.get(url, headers=self.headers, timeout=5)
         response.raise_for_status()

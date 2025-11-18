@@ -7,7 +7,7 @@
 
 GiljoAI MCP orchestrators have **automatic context tracking** and **succession mechanisms** to handle unlimited project duration. When an orchestrator's context window reaches 90% capacity, a successor is automatically spawned with a condensed handover summary (<10K tokens).
 
-**Key Benefit**: **70% token reduction** through mission condensation + **unlimited project duration** through graceful succession.
+**Key Benefit**: **context prioritization and orchestration** through mission condensation + **unlimited project duration** through graceful succession.
 
 ---
 

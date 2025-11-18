@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The Context Management System (0300 series) implements the complete field priority and token reduction system as specified in the Giljo Vision Book. This roadmap provides dependency analysis, execution phasing, resource allocation, and risk mitigation strategies.
+The Context Management System (0300 series) implements the complete field priority and context prioritization system as specified in the Giljo Vision Book. This roadmap provides dependency analysis, execution phasing, resource allocation, and risk mitigation strategies.
 
 **Critical Path**: 0301 → {0302, 0303, 0306, 0307, 0308, 0311} → 0304 → 0305 → 0309 → 0310
 
@@ -331,7 +331,7 @@ Single agent, comprehensive testing.
 - All 9 context sources implemented
 - Token budget enforced (<5% violations)
 - Vision chunking active
-- Token reduction: 70% average
+- Context prioritization: 70% average
 
 ### Performance (<200ms)
 - Individual extractor: <50ms
@@ -346,7 +346,7 @@ Single agent, comprehensive testing.
 ### Cost Savings
 - Mission size: <2000 tokens
 - Savings: >$100/month at scale
-- Efficiency: 70% token reduction
+- Efficiency: context prioritization and orchestration
 
 ---
 
@@ -406,7 +406,7 @@ Users wanted to say "Architecture is CRITICAL" without forcing 100% of tokens. T
 - ✅ **0306**: Agent templates in context (REUSED in 0315)
 - ✅ **0311**: 360 Memory + Git integration (REUSED in 0314, 0315)
 
-**Achievement**: 8/9 context sources implemented, 77% token reduction, 30+ tests passing
+**Achievement**: 8/9 context sources implemented, 77% context prioritization, 30+ tests passing
 
 **Code Quality**: Clean implementation, zero orphan code, comprehensive test coverage
 
@@ -531,4 +531,4 @@ These handovers were designed for v1.0 architecture but are no longer needed in 
 - [ ] Token calculator provides accurate estimates
 - [ ] v1.0 → v2.0 migration seamless (backward compatible)
 - [ ] All tests passing (>80% coverage maintained)
-- [ ] Token reduction still achieves 70%+ (via depth controls)
+- [ ] Context prioritization still achieves 70%+ (via depth controls)
