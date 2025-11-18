@@ -14,7 +14,6 @@ from typing import Any, Optional
 import jwt
 from cryptography.fernet import Fernet
 from fastapi import Request
-from fastmcp import FastMCP
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config_manager import get_config
@@ -551,122 +550,6 @@ def create_auth_middleware(auth_manager: AuthManager):
     return auth_middleware
 
 
-def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager: AuthManager):
-    """Register authentication management tools"""
-
-    @mcp.tool()
-    async def generate_api_key(name: str) -> dict[str, Any]:
-        """
-        Generate a new API key for network access
-
-        Args:
-            name: Name/description for the API key
-
-        Returns:
-            Generated API key
-        """
-
-        try:
-            api_key = auth_manager.generate_api_key(name)
-
-            # Store in database for persistence
-            async with db_manager.get_session() as session:
-                config = Configuration(
-                    key=f"api_key_{name}",
-                    value=api_key,
-                    category="auth",
-                    created_at=datetime.now(timezone.utc),
-                )
-                session.add(config)
-                await session.commit()
-
-            return {
-                "success": True,
-                "api_key": api_key,
-                "name": name,
-                "message": "Store this key securely - it won't be shown again",
-            }
-
-        except Exception as e:
-            logger.exception(f"Failed to generate API key: {e}")
-            return {"success": False, "error": str(e)}
-
-    @mcp.tool()
-    async def revoke_api_key(api_key: str) -> dict[str, Any]:
-        """
-        Revoke an API key
-
-        Args:
-            api_key: The API key to revoke
-
-        Returns:
-            Revocation confirmation
-        """
-        try:
-            # Load and update API keys
-            api_keys_file = Path.home() / ".giljo-mcp" / "api_keys.json"
-
-            if not api_keys_file.exists():
-                return {"success": False, "error": "No API keys found"}
-
-            # Decrypt existing keys
-            try:
-                encrypted_data = api_keys_file.read_bytes()
-                decrypted_data = auth_manager.cipher.decrypt(encrypted_data)
-                api_keys = json.loads(decrypted_data.decode())
-            except Exception:
-                # Try plaintext for migration
-                api_keys = json.loads(api_keys_file.read_text())
-
-            if api_key not in api_keys:
-                return {"success": False, "error": "API key not found"}
-
-            # Mark as inactive
-            api_keys[api_key]["active"] = False
-            api_keys[api_key]["revoked_at"] = datetime.now(timezone.utc).isoformat()
-
-            # Encrypt and save updated keys
-            plaintext_data = json.dumps(api_keys, indent=2).encode()
-            encrypted_data = auth_manager.cipher.encrypt(plaintext_data)
-            api_keys_file.write_bytes(encrypted_data)
-
-            # Update in memory
-            auth_manager.api_keys = api_keys
-
-            return {"success": True, "api_key": api_key, "status": "revoked"}
-
-        except Exception as e:
-            logger.exception(f"Failed to revoke API key: {e}")
-            return {"success": False, "error": str(e)}
-
-    @mcp.tool()
-    async def generate_jwt_token(
-        user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600
-    ) -> dict[str, Any]:
-        """
-        Generate JWT token for network access
-
-        Args:
-            user_id: User identifier
-            tenant_key: Optional tenant key to include in token
-            expires_in: Token expiration time in seconds
-
-        Returns:
-            Generated JWT token
-        """
-
-        try:
-            token = auth_manager.generate_jwt_token(user_id, tenant_key, expires_in)
-
-            return {
-                "success": True,
-                "token": token,
-                "user_id": user_id,
-                "expires_in": expires_in,
-            }
-
-        except Exception as e:
-            logger.exception(f"Failed to generate JWT token: {e}")
-            return {"success": False, "error": str(e)}
-
-    logger.info("Authentication tools registered")
+def register_auth_tools(*args, **kwargs):  # Backward-compat stub
+    """Removed: stdio-based FastMCP auth tools are no longer supported (HTTP-only)."""
+    raise NotImplementedError("FastMCP/stdio tool registration has been removed; use HTTP endpoints.")

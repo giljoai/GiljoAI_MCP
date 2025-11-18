@@ -49,7 +49,7 @@ class ServerConfig:
     # MCP Server - always bind all interfaces
     mcp_host: str = "0.0.0.0"
     mcp_port: int = 6001
-    mcp_transport: str = "stdio"
+    mcp_transport: str = "http"
 
     # REST API - always bind all interfaces
     api_host: str = "0.0.0.0"
@@ -1017,7 +1017,7 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
         "version": "3.0.0",
         "server": {
             "debug": False,
-            "mcp": {"host": "0.0.0.0", "port": 6001, "transport": "stdio"},
+            "mcp": {"host": "0.0.0.0", "port": 6001, "transport": "http"},
             "api": {"host": "0.0.0.0", "port": 6002, "cors_enabled": True},
             "websocket": {"enabled": True, "port": 6003},
             "dashboard": {
