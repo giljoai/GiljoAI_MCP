@@ -785,47 +785,45 @@ const priority4Fields = ref([])  // EXCLUDED (replaces unassignedFields)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
 
-// All available fields (Handover 0316: v2.0 - 9 categories for complete alignment)
+// All available fields (Handover 0319: v3.0 - Updated badge order)
+// Note: project_context is now locked and always included, not in priority list
 const ALL_AVAILABLE_FIELDS = [
   'product_core',
   'vision_documents',
-  'agent_templates',
-  'project_context',
+  'tech_stack',        // Handover 0319: Moved up in order
+  'architecture',      // Handover 0319: Moved up in order
+  'testing_config',    // Handover 0319: Moved up in order
+  'agent_templates',   // Handover 0319: Moved down in order
   'memory_360',
   'git_history',
-  'tech_stack',        // Handover 0316: Added missing badge
-  'architecture',      // Handover 0316: Added missing badge
-  'testing_config'     // Handover 0316: Added missing badge
 ]
 
 // Real-time token calculation state (Handover 0049)
 const activeProductTokens = ref(null)
 const loadingTokenEstimate = ref(false)
 
-// Field labels mapping for display (Handover 0316: v2.0 - 9 categories)
+// Field labels mapping for display (Handover 0319: v3.0 - 8 categories, project_context locked)
 const fieldLabels = {
   'product_core': 'Product Core',
   'vision_documents': 'Vision Documents',
+  'tech_stack': 'Tech Stack',
+  'architecture': 'Architecture',
+  'testing_config': 'Testing',
   'agent_templates': 'Agent Templates',
-  'project_context': 'Project Context',
   'memory_360': '360 Memory',
   'git_history': 'Git History',
-  'tech_stack': 'Tech Stack',             // Handover 0316: Added
-  'architecture': 'Architecture',          // Handover 0316: Added
-  'testing_config': 'Testing'              // Handover 0316: Added
 }
 
-// Field descriptions (Handover 0316: v2.0 - 9 categories)
+// Field descriptions (Handover 0319: v3.0 - 8 categories, project_context locked)
 const fieldDescriptions = {
   'product_core': 'Product description and basic metadata (name, description, core features)',
   'vision_documents': 'Chunked vision document uploads (product vision, features, roadmap)',
+  'tech_stack': 'Technology stack details (languages, frameworks, databases, dependencies)',
+  'architecture': 'Architecture patterns, design principles, API style, and notes',
+  'testing_config': 'Quality standards, testing strategy, and frameworks',
   'agent_templates': 'Active agent behavior configurations',
-  'project_context': 'Project description, alias, mission, and current status',
   'memory_360': 'Cumulative project history (learnings, decisions, sequential closeouts)',
   'git_history': 'Recent commits from git integration (optional)',
-  'tech_stack': 'Technology stack details (languages, frameworks, databases, infrastructure)',  // Handover 0316: Added
-  'architecture': 'Architecture patterns, design principles, and API style',                    // Handover 0316: Added
-  'testing_config': 'Quality standards, testing strategy, coverage targets, and frameworks'      // Handover 0316: Added
 }
 
 // Settings object
