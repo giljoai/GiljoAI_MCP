@@ -35,6 +35,7 @@ from src.giljo_mcp.auth.dependencies import (
     require_admin,
 )
 from src.giljo_mcp.models import User
+from api.dependencies.websocket import get_websocket_dependency
 
 
 logger = logging.getLogger(__name__)
@@ -131,35 +132,78 @@ class PasswordChangeResponse(BaseModel):
 
 
 class FieldPriorityConfig(BaseModel):
-    """Request/Response model for field priority configuration"""
+    """
+    Request/Response model for field priority configuration v2.0.
 
-    fields: dict[str, int] = Field(
+    Handover 0313: Priority System Refactor
+    - v1.0: Priority = token reduction level (10/7/4/0)
+    - v2.0: Priority = fetch order / mandatory flag (1/2/3/4)
+
+    Valid categories: product_core, vision_documents, agent_templates,
+                     project_context, memory_360, git_history
+
+    Valid priorities:
+    - 1: CRITICAL (always fetch, highest priority)
+    - 2: IMPORTANT (fetch if budget allows)
+    - 3: NICE_TO_HAVE (fetch if budget remaining)
+    - 4: EXCLUDED (never fetch)
+    """
+
+    priorities: dict[str, int] = Field(
         ...,
-        description="Field paths mapped to priority (0, 4, 7, or 10) - backend scale"
+        description="Category names mapped to priority (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)"
     )
-    token_budget: int = Field(1500, description="Maximum tokens for config_data section")
-    version: str = Field("1.0", description="Config schema version")
+    version: str = Field("2.0", description="Config schema version")
 
-    @field_validator("fields")
+    @field_validator("priorities")
     @classmethod
     def validate_priority_values(cls, v: dict[str, int]) -> dict[str, int]:
         """
-        Ensure priority values are in correct backend scale (0, 4, 7, 10).
+        Validate priority configuration.
 
-        Handover 0301: Field Priority Mapping Fix
-        Valid priorities:
-        - 0: exclude (unassigned - 100% context prioritization)
-        - 4: abbreviated (Priority 3 - 50% context prioritization)
-        - 7: moderate (Priority 2 - 25% context prioritization)
-        - 10: full (Priority 1 - 0% context prioritization)
+        Rules:
+        1. Priority values must be in range [1, 4]
+        2. At least one category must have Priority 1 (CRITICAL)
+        3. Cannot have all categories as EXCLUDED (Priority 4)
+        4. Valid categories only: product_core, vision_documents, agent_templates,
+                                  project_context, memory_360, git_history
         """
-        valid_priorities = {0, 4, 7, 10}
-        for field_path, priority in v.items():
+        valid_priorities = {1, 2, 3, 4}
+        valid_categories = {
+            "product_core",
+            "vision_documents",
+            "agent_templates",
+            "project_context",
+            "memory_360",
+            "git_history",
+        }
+
+        # Validate priority range
+        for category, priority in v.items():
             if priority not in valid_priorities:
                 raise ValueError(
-                    f"Invalid priority {priority} for field '{field_path}'. "
-                    f"Must be one of: 0 (exclude), 4 (abbreviated), 7 (moderate), 10 (full)"
+                    f"Invalid priority {priority} for category '{category}'. "
+                    f"Must be one of: 1 (CRITICAL), 2 (IMPORTANT), 3 (NICE_TO_HAVE), 4 (EXCLUDED)"
                 )
+
+        # Validate category names
+        invalid_categories = set(v.keys()) - valid_categories
+        if invalid_categories:
+            raise ValueError(
+                f"Invalid category names: {invalid_categories}. "
+                f"Valid categories: {valid_categories}"
+            )
+
+        # Ensure at least one CRITICAL category
+        critical_categories = [cat for cat, pri in v.items() if pri == 1]
+        if not critical_categories:
+            raise ValueError("At least one category must have Priority 1 (CRITICAL)")
+
+        # Ensure not all EXCLUDED
+        all_excluded = all(pri == 4 for pri in v.values())
+        if all_excluded:
+            raise ValueError("Cannot exclude all categories. At least one must be Priority 1, 2, or 3")
+
         return v
 
 
@@ -623,25 +667,31 @@ async def get_field_priority_config(
     current_user: User = Depends(get_current_active_user),
 ) -> FieldPriorityConfig:
     """
-    Get user's field priority configuration or default.
+    Get user's field priority configuration or default (v2.0).
 
     Returns the authenticated user's custom field priority configuration if set,
-    otherwise returns the system default configuration.
+    otherwise returns the system default v2.0 configuration.
+
+    Handover 0313: Priority System Refactor (v1.0 → v2.0)
+    - v1.0: Priority = token reduction level (10/7/4/0)
+    - v2.0: Priority = fetch order / mandatory flag (1/2/3/4)
 
     Args:
         current_user: Current authenticated user
 
     Returns:
-        FieldPriorityConfig: User's custom config or system defaults
+        FieldPriorityConfig: User's custom config or system defaults (v2.0)
 
-    Example Response:
+    Example Response (v2.0):
         {
-            "version": "1.0",
-            "token_budget": 1500,
-            "fields": {
-                "tech_stack.languages": 1,
-                "tech_stack.backend": 1,
-                ...
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "agent_templates": 1,
+                "vision_documents": 2,
+                "project_context": 2,
+                "memory_360": 3,
+                "git_history": 4
             }
         }
     """
@@ -652,7 +702,7 @@ async def get_field_priority_config(
         logger.debug(f"Returning custom field priority config for user {current_user.username}")
         return FieldPriorityConfig(**current_user.field_priority_config)
 
-    # Return system defaults if no custom config
+    # Return system defaults if no custom config (v2.0)
     logger.debug(f"Returning default field priority config for user {current_user.username}")
     from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 
@@ -664,86 +714,89 @@ async def update_field_priority_config(
     config: FieldPriorityConfig,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
+    ws_dependency: "WebSocketDependency" = Depends(get_websocket_dependency),
 ) -> FieldPriorityConfig:
     """
-    Update user's field priority configuration.
+    Update user's field priority configuration (v2.0).
 
-    Validates field paths and priority values before saving. All fields must be
-    valid configuration paths, and all priorities must be integers 1-3.
+    Validates category names and priority values before saving. Emits WebSocket
+    event for real-time UI synchronization across clients.
+
+    Handover 0313: Priority System Refactor (v1.0 → v2.0)
+    - v1.0 removed: field validation, token budget validation
+    - v2.0 added: category validation, CRITICAL requirement, WebSocket emission
 
     Args:
-        config: New field priority configuration
+        config: New field priority configuration (v2.0)
         current_user: Current authenticated user
         db: Database session
+        ws_dependency: WebSocket manager for event emission
 
     Returns:
         FieldPriorityConfig: Updated configuration
 
     Raises:
-        HTTPException: 400 if invalid field path or priority value
+        HTTPException: 422 if Pydantic validation fails (invalid priority, no CRITICAL, etc.)
 
-    Example Request:
+    Example Request (v2.0):
         {
-            "version": "1.0",
-            "token_budget": 2000,
-            "fields": {
-                "tech_stack.languages": 1,
-                "tech_stack.backend": 1,
-                "tech_stack.database": 2
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "agent_templates": 1,
+                "vision_documents": 2,
+                "project_context": 2,
+                "memory_360": 3,
+                "git_history": 4
             }
         }
     """
-    logger.debug(f"User {current_user.username} updating field priority config")
+    logger.debug(
+        f"User {current_user.username} updating field priority config to v{config.version}",
+        extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key, "config_version": config.version},
+    )
 
-    # Validate fields are valid configuration paths
-    valid_fields = {
-        "tech_stack.languages",
-        "tech_stack.backend",
-        "tech_stack.frontend",
-        "tech_stack.database",
-        "tech_stack.infrastructure",
-        "architecture.pattern",
-        "architecture.api_style",
-        "architecture.design_patterns",
-        "architecture.notes",
-        "features.core",
-        "test_config.strategy",
-        "test_config.frameworks",
-        "test_config.coverage_target",
-    }
-
-    # Validate all provided fields
-    for field in config.fields.keys():
-        if field not in valid_fields:
-            logger.warning(f"User {current_user.username} provided invalid field: {field}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid field: {field}. Must be one of: {', '.join(sorted(valid_fields))}",
-            )
-
-    # Validate all priority values are 1-3
-    for field, priority in config.fields.items():
-        if not isinstance(priority, int) or priority < 1 or priority > 3:
-            logger.warning(f"User {current_user.username} provided invalid priority {priority} for field {field}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid priority {priority} for field '{field}'. Priority must be integer between 1 and 3.",
-            )
-
-    # Validate token budget is positive
-    if config.token_budget < 100:
-        logger.warning(f"User {current_user.username} provided invalid token budget: {config.token_budget}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token budget must be at least 100 tokens",
-        )
+    # Pydantic validation already enforced (1-4 range, CRITICAL requirement, valid categories)
+    # No additional validation needed - Pydantic schema handles all rules
 
     # Update user's config (store as dict for JSONB column)
     current_user.field_priority_config = config.model_dump()
     await db.commit()
     await db.refresh(current_user)
 
-    logger.info(f"Updated field priority config for user: {current_user.username}")
+    logger.info(
+        f"Updated field priority config for user: {current_user.username}",
+        extra={
+            "user_id": str(current_user.id),
+            "tenant_key": current_user.tenant_key,
+            "priorities": config.priorities,
+        },
+    )
+
+    # Emit WebSocket event for real-time UI synchronization
+    try:
+        await ws_dependency.broadcast_to_tenant(
+            tenant_key=current_user.tenant_key,
+            event_type="priority_config_updated",
+            data={
+                "user_id": str(current_user.id),
+                "timestamp": current_user.updated_at.isoformat() if current_user.updated_at else None,
+                "priorities": config.priorities,
+                "version": config.version,
+            },
+            schema_version="2.0",
+        )
+        logger.debug(
+            f"WebSocket event 'priority_config_updated' emitted for user {current_user.username}",
+            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key},
+        )
+    except Exception as e:
+        # Don't fail request if WebSocket emission fails
+        logger.warning(
+            f"Failed to emit WebSocket event for priority config update: {e}",
+            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key, "error": str(e)},
+        )
+
     return config
 
 
