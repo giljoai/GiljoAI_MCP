@@ -19,7 +19,7 @@ from src.giljo_mcp.models.projects import Project
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_all_9_context_tools_importable():
-    """Test all 9 context tools can be imported without errors."""
+    """Test all 9 context tools can be imported without errors (Handover 0316 alignment fix)."""
     from src.giljo_mcp.tools.context_tools import (
         get_360_memory,
         get_agent_templates,
@@ -32,16 +32,23 @@ async def test_all_9_context_tools_importable():
         get_vision_document
     )
 
-    # Verify all are modules with callable functions
-    assert callable(get_360_memory)
-    assert callable(get_agent_templates)
-    assert callable(get_architecture)
-    assert callable(get_git_history)
-    assert callable(get_product_context)
-    assert callable(get_project)
-    assert callable(get_tech_stack)
-    assert callable(get_testing)
-    assert callable(get_vision_document)
+    # Verify all 9 tools are callable functions
+    tools = [
+        get_360_memory,
+        get_agent_templates,
+        get_architecture,
+        get_git_history,
+        get_product_context,
+        get_project,
+        get_tech_stack,
+        get_testing,
+        get_vision_document
+    ]
+
+    for tool in tools:
+        assert callable(tool), f"{tool.__name__} is not callable"
+
+    assert len(tools) == 9, f"Expected 9 context tools, found {len(tools)}"
 
 
 @pytest.mark.integration
