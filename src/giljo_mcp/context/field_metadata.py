@@ -13,6 +13,7 @@ Handover 0319: Initial implementation for granular field selection.
 """
 
 from typing import Any, Dict, List, Optional
+import copy
 
 # Field metadata defining available fields per category
 # Each field has: key, label, tokens (estimated)
@@ -231,3 +232,126 @@ def estimate_tokens_for_selection(
             total += category_fields[field_key].get("tokens", 0)
 
     return total
+
+
+def migrate_depth_config_v2_to_v3(depth_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Migrate v2 depth configuration to v3 schema with granular field selection.
+
+    v2 format (Handover 0314):
+        {
+            "vision_chunking": "moderate",
+            "memory_last_n_projects": 3,
+            "git_commits": 25,
+            "agent_template_detail": "standard",
+            "tech_stack_sections": "all",
+            "architecture_depth": "overview"
+        }
+
+    v3 format (Handover 0319):
+        {
+            "schema_version": "3.0",
+            "vision_chunking": "moderate",
+            "memory_last_n_projects": 3,
+            "git_commits": 25,
+            "agent_template_detail": "standard",
+            "field_selections": {
+                "tech_stack": {
+                    "languages": true,
+                    "frameworks": true,
+                    "databases": true,
+                    "dependencies": true
+                },
+                "architecture": {
+                    "pattern": true,
+                    "design_patterns": true,
+                    "api_style": true,
+                    "notes": true,
+                    "layers": true,
+                    "components": true
+                },
+                "testing": {
+                    "quality_standards": true,
+                    "strategy": true,
+                    "frameworks": true
+                }
+            }
+        }
+
+    Args:
+        depth_config: v2 depth configuration
+
+    Returns:
+        v3 depth configuration with field selections
+    """
+    # Check if already migrated
+    if depth_config.get("schema_version") == "3.0":
+        return depth_config
+
+    # Create v3 config
+    v3_config = {
+        "schema_version": "3.0",
+        # Preserve existing depth settings
+        "vision_chunking": depth_config.get("vision_chunking", "moderate"),
+        "memory_last_n_projects": depth_config.get("memory_last_n_projects", 3),
+        "git_commits": depth_config.get("git_commits", 25),
+        "agent_template_detail": depth_config.get("agent_template_detail", "standard"),
+    }
+
+    # Convert depth values to field selections
+    tech_stack_depth = depth_config.get("tech_stack_sections", "all")
+    architecture_depth = depth_config.get("architecture_depth", "overview")
+
+    # Migrate tech_stack
+    v3_config["field_selections"] = {
+        "tech_stack": migrate_v2_to_v3_fields("tech_stack", tech_stack_depth),
+        "architecture": migrate_v2_to_v3_fields("architecture", architecture_depth),
+        # Testing defaults to all fields (no v2 depth control for testing)
+        "testing": get_default_field_selection("testing"),
+    }
+
+    return v3_config
+
+
+def is_v3_schema(depth_config: Optional[Dict[str, Any]]) -> bool:
+    """
+    Check if depth configuration is v3.0 schema.
+
+    Args:
+        depth_config: Depth configuration dict
+
+    Returns:
+        True if v3.0 schema, False otherwise
+    """
+    if not depth_config:
+        return False
+    return depth_config.get("schema_version") == "3.0"
+
+
+def get_field_selections(depth_config: Optional[Dict[str, Any]]) -> Dict[str, Dict[str, bool]]:
+    """
+    Get field selections from depth config, with auto-migration if needed.
+
+    Args:
+        depth_config: Depth configuration (v2 or v3)
+
+    Returns:
+        Field selections dict
+    """
+    if not depth_config:
+        # Return default selections for all categories
+        return {
+            "tech_stack": get_default_field_selection("tech_stack"),
+            "architecture": get_default_field_selection("architecture"),
+            "testing": get_default_field_selection("testing"),
+        }
+
+    # Migrate if needed
+    if not is_v3_schema(depth_config):
+        depth_config = migrate_depth_config_v2_to_v3(depth_config)
+
+    return depth_config.get("field_selections", {
+        "tech_stack": get_default_field_selection("tech_stack"),
+        "architecture": get_default_field_selection("architecture"),
+        "testing": get_default_field_selection("testing"),
+    })
