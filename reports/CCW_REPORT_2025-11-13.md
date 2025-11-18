@@ -84,7 +84,7 @@
 | Project Lifecycle | ✅ WORKING | Complete, cancel, restore all working |
 | Vision Upload + Chunking | ✅ WORKING | 25K token chunks, auto-semantic splitting |
 | Orchestrator Succession | ✅ WORKING | Auto-triggers at 90% context usage |
-| Agent Spawning | ✅ WORKING | Thin-client architecture with 70% token reduction |
+| Agent Spawning | ✅ WORKING | Thin-client architecture with context prioritization and orchestration |
 | Message Passing | ✅ WORKING | Inter-agent communication functional |
 
 ### 5. **Frontend - CLEAN ARCHITECTURE**
@@ -104,7 +104,7 @@
 - ✅ Agent template export with token-based download
 - ✅ MCP integration (Claude Code, Codex CLI, Gemini CLI)
 - ✅ 86 MCP tools across 14,254 lines of code
-- ✅ 70% token reduction achieved (thin client architecture)
+- ✅ context prioritization and orchestration achieved (thin client architecture)
 - ✅ Real-time WebSocket updates with tenant broadcast
 - ✅ Project launch and staging workflow
 - ✅ Agent job execution with lifecycle management
@@ -225,7 +225,7 @@
 
 **Strengths:**
 - Multi-tenant isolation enforced at 6 layers (database, MCP, API, job manager, message queue, WebSocket)
-- Thin client architecture achieving 70% token reduction
+- Thin client architecture achieving context prioritization and orchestration
 - Service layer pattern consistently applied
 - Database models properly organized (12 domain files)
 
@@ -518,7 +518,7 @@ Handover 0116 migrated Agent → MCPAgentJob but integration tests weren't updat
 - 6 default agent templates
 - Agent template export (token-based)
 - MCP integration (86 tools across 14,254 lines)
-- 70% token reduction achieved
+- context prioritization and orchestration achieved
 - WebSocket real-time updates
 - All core workflows operational
 

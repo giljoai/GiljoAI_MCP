@@ -11,12 +11,12 @@
 
 ## Quick Links to Harmonized Documents
 
-- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey with token reduction explanation
-- **[TOKEN_REDUCTION_ARCHITECTURE.md](../Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - Complete token reduction strategy
+- **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey with context prioritization explanation
+- **[TOKEN_REDUCTION_ARCHITECTURE.md](../Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - Complete context prioritization strategy
 - **[STAGE_PROJECT_FEATURE.md](../STAGE_PROJECT_FEATURE.md)** - Production implementation
 
 **Token Reduction Achievement** (Handover 0088):
-- **70% token reduction** verified and documented
+- **context prioritization and orchestration** verified and documented
 - Field priorities enable user control over mission token budgets
 - See Simple_Vision.md for complete explanation
 
@@ -38,7 +38,7 @@
 
 ## Overview
 
-The **Field Priority System** is the core mechanism that achieves **70% token reduction** in GiljoAI MCP mission generation. It allows users to control which product configuration fields are included in agent missions and at what level of detail, directly reducing API costs while maintaining mission quality.
+The **Field Priority System** is the core mechanism that achieves **context prioritization and orchestration** in GiljoAI MCP mission generation. It allows users to control which product configuration fields are included in agent missions and at what level of detail, directly reducing API costs while maintaining mission quality.
 
 ### Key Capabilities
 
@@ -46,7 +46,7 @@ The **Field Priority System** is the core mechanism that achieves **70% token re
 - **Intelligent Abbreviation**: Smart content summarization based on priority
 - **Token Budget Control**: Set maximum token budget for missions
 - **Multi-Field Support**: 12+ configurable product fields
-- **Real-Time Metrics**: Track token reduction percentage
+- **Real-Time Metrics**: Track context prioritization percentage
 
 ### Business Value
 
@@ -184,7 +184,7 @@ async def _build_context_with_priorities(
     user_id: Optional[str] = None
 ) -> str:
     """
-    Build context respecting user's field priorities for 70% token reduction.
+    Build context respecting user's field priorities for context prioritization and orchestration.
 
     Args:
         product: Product model with vision document and config_data
@@ -484,7 +484,7 @@ Reduction % = ((Original Tokens - Final Tokens) / Original Tokens) × 100
 
 ### Aggressive Configuration
 
-For maximum token reduction:
+For maximum context prioritization:
 
 ```python
 field_priorities = {

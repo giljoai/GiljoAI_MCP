@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This test report verifies that the `get_orchestrator_instructions` MCP tool is properly exposed and accessible via the Model Context Protocol (MCP). This tool is the **foundation** of Handover 0088's thin client architecture, enabling 70% token reduction.
+This test report verifies that the `get_orchestrator_instructions` MCP tool is properly exposed and accessible via the Model Context Protocol (MCP). This tool is the **foundation** of Handover 0088's thin client architecture, enabling context prioritization and orchestration.
 
 **Result**: ✅ **ALL TESTS PASSED**
 
@@ -18,7 +18,7 @@ The tool is properly:
 2. Registered in HTTP endpoint tool_map
 3. Exposed via MCP protocol (orchestration.py)
 4. Called by thin client prompts
-5. Documented for 70% token reduction
+5. Documented for context prioritization and orchestration
 
 ---
 
@@ -130,7 +130,7 @@ assert 'thin client' in content.lower() or '70%' in content
 - File: `F:\GiljoAI_MCP\src\giljo_mcp\tools\orchestration.py`
 - Decorator: `@mcp.tool()` present
 - Function: `async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]`
-- Documentation: Includes "70% token reduction" and "thin client architecture"
+- Documentation: Includes "context prioritization and orchestration" and "thin client architecture"
 
 **MCP Registration Process**:
 1. FastMCP server initialized in `orchestration.py`
@@ -186,7 +186,7 @@ MCP CONNECTION:
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
 2. Fetch mission: mcp__giljo-mcp__get_orchestrator_instructions('orch-abc123def456', 'tenant-key-123')
-3. Execute mission (70% token reduction applied)
+3. Execute mission (context prioritization and orchestration applied)
 4. Coordinate agents via MCP tools
 
 CONNECTION TROUBLESHOOTING:
@@ -201,7 +201,7 @@ Begin by verifying MCP connection, then fetch your mission.
 [OK] Thin prompt calls get_orchestrator_instructions
 [OK] Uses correct MCP prefix: mcp__giljo-mcp__
 [OK] Passes required parameters: orchestrator_id, tenant_key
-[OK] Documents 70% token reduction feature
+[OK] Documents context prioritization and orchestration feature
 ```
 
 ---
@@ -254,7 +254,7 @@ Begin by verifying MCP connection, then fetch your mission.
 │    - Fetches orchestrator from MCPAgentJob table                │
 │    - Fetches project and product                                │
 │    - Uses MissionPlanner to apply field priorities              │
-│    - Returns condensed mission (70% token reduction)            │
+│    - Returns condensed mission (context prioritization and orchestration)            │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
@@ -275,7 +275,7 @@ Begin by verifying MCP connection, then fetch your mission.
 ┌─────────────────────────────────────────────────────────────────┐
 │ 7. Orchestrator Receives Mission                                │
 │    - Gets condensed mission (~6K tokens, not ~20K)              │
-│    - 70% token reduction ACTIVE                                 │
+│    - context prioritization and orchestration ACTIVE                                 │
 │    - Begins project orchestration                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -335,7 +335,7 @@ async def get_orchestrator_instructions(
     orchestrator_id: str,
     tenant_key: str
 ) -> dict[str, Any]:
-    """Fetch orchestrator mission with 70% token reduction"""
+    """Fetch orchestrator mission with context prioritization and orchestration"""
     try:
         async with self.db_manager.get_session_async() as session:
             from giljo_mcp.models import MCPAgentJob, Project, Product, AgentTemplate
@@ -463,7 +463,7 @@ async def get_orchestrator_instructions(
 - ✅ Input validation (empty checks)
 - ✅ Error handling (NOT_FOUND, VALIDATION_ERROR, INTERNAL_ERROR)
 - ✅ MissionPlanner integration (field priorities)
-- ✅ Token reduction (70% via field priorities)
+- ✅ Context prioritization (70% via field priorities)
 - ✅ Agent template inclusion
 - ✅ Comprehensive logging
 
@@ -584,10 +584,10 @@ pytest tests/integration/test_mcp_get_orchestrator_instructions.py \
 **Status**: PENDING
 **Priority**: MEDIUM
 
-Add telemetry to track actual token reduction:
+Add telemetry to track actual context prioritization:
 ```python
 logger.info(
-    f"Token reduction: {original_tokens} → {reduced_tokens} "
+    f"Context prioritization: {original_tokens} → {reduced_tokens} "
     f"({reduction_percent}% saved)"
 )
 ```
@@ -629,7 +629,7 @@ await ws_manager.broadcast_to_tenant(
 2. ✅ **HTTP endpoint** maps the tool (line 101)
 3. ✅ **MCP registration** via `@mcp.tool()` decorator
 4. ✅ **Thin prompt** calls the tool correctly
-5. ✅ **Token reduction** is active (70% verified)
+5. ✅ **Context prioritization** is active (70% verified)
 
 ### Thin Client Architecture: OPERATIONAL ✅
 
@@ -647,7 +647,7 @@ mcp__giljo-mcp__get_orchestrator_instructions('orch-id', 'tenant-key')
 
 ### 70% Token Reduction: VERIFIED ✅
 
-The token reduction mechanism is active:
+The context prioritization mechanism is active:
 - Fat prompt: ~20,000 tokens
 - Thin prompt + condensed mission: ~6,050 tokens
 - Reduction: **70%** ✅
@@ -684,7 +684,7 @@ This MCP tool is ready for production use:
 [OK] Thin prompt calls get_orchestrator_instructions
 [OK] Uses correct MCP prefix: mcp__giljo-mcp__
 [OK] Passes required parameters: orchestrator_id, tenant_key
-[OK] Documents 70% token reduction feature
+[OK] Documents context prioritization and orchestration feature
 
 [SUCCESS] Thin client prompt correctly calls get_orchestrator_instructions
 ```

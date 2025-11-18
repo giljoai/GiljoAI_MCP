@@ -24,7 +24,7 @@ This roadmap outlines **5 major implementation projects** required to transform 
 | Project | Priority | Timeline | Dependencies | Impact |
 |---------|----------|----------|--------------|---------|
 | **Project 1**: Database Schema | CRITICAL | 1 week | None | Foundation for all |
-| **Project 2**: Context Management | CRITICAL | 2 weeks | Project 1 | 60%+ token reduction |
+| **Project 2**: Context Management | CRITICAL | 2 weeks | Project 1 | 60%+ context prioritization |
 | **Project 3**: Agent Job Management | HIGH | 2 weeks | Project 1 | Agent coordination |
 | **Project 4**: Orchestrator Enhancement | HIGH | 2 weeks | Projects 2 & 3 | Automated workflow |
 | **Project 5**: Dashboard Integration | MEDIUM | 1.5 weeks | Projects 3 & 4 | User experience |
@@ -471,7 +471,7 @@ psql -U postgres giljo_mcp < backup_before_project1.sql
 **Priority**: CRITICAL
 **Timeline**: 2 weeks (10 working days)
 **Dependencies**: Project 1 (database schema)
-**Enables**: 60%+ token reduction through vision document chunking
+**Enables**: 60%+ context prioritization through vision document chunking
 
 **Objective**: Implement vision document chunking, context indexing, searchable summaries, and dynamic context loading.
 
@@ -932,7 +932,7 @@ async def test_agent_specific_context_loading(db_manager):
 - ✅ Vision documents chunked into 5k token sections
 - ✅ Chunks indexed with full-text search
 - ✅ Agent-specific context loading works
-- ✅ Token reduction of 60%+ demonstrated
+- ✅ Context prioritization of 60%+ demonstrated
 - ✅ Keyword extraction and ranking functional
 - ✅ All integration tests passing
 - ✅ Documentation complete
@@ -1425,7 +1425,7 @@ class AgentCoordinator:
 
 - ✅ Orchestrator reads full context first
 - ✅ Creates condensed missions per agent
-- ✅ Token reduction tracked and measured
+- ✅ Context prioritization tracked and measured
 - ✅ Multi-agent spawning coordinated
 - ✅ Agent workflow monitored
 
@@ -1520,7 +1520,7 @@ Week 6:     Project 5 (depends on 3 & 4)
 ## Success Metrics
 
 ### Technical Metrics
-- 60%+ token reduction from context management
+- 60%+ context prioritization from context management
 - Agent job tracking with 100% accuracy
 - Message acknowledgment prevents all duplicates
 - Dashboard real-time updates < 500ms latency

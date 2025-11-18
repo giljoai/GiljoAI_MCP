@@ -155,7 +155,7 @@ class TestTokenUsageReduction:
     """Test token usage reduction through filtering"""
 
     def test_implementer_token_reduction_percentage(self, large_config_product):
-        """Test implementer achieves significant token reduction"""
+        """Test implementer achieves significant context prioritization"""
         full_config = get_full_config(large_config_product)
         filtered_config = get_filtered_config("implementer-1", large_config_product)
 
@@ -174,7 +174,7 @@ class TestTokenUsageReduction:
         assert reduction_pct >= 40, f"Expected 40%+ reduction, got {reduction_pct:.1f}%"
 
     def test_tester_token_reduction_percentage(self, large_config_product):
-        """Test tester achieves significant token reduction"""
+        """Test tester achieves significant context prioritization"""
         full_config = get_full_config(large_config_product)
         filtered_config = get_filtered_config("tester-qa-1", large_config_product)
 
@@ -192,7 +192,7 @@ class TestTokenUsageReduction:
         assert reduction_pct >= 50, f"Expected 50%+ reduction, got {reduction_pct:.1f}%"
 
     def test_documenter_token_reduction_percentage(self, large_config_product):
-        """Test documenter achieves significant token reduction"""
+        """Test documenter achieves significant context prioritization"""
         full_config = get_full_config(large_config_product)
         filtered_config = get_filtered_config("documenter-1", large_config_product)
 
@@ -209,7 +209,7 @@ class TestTokenUsageReduction:
         assert reduction_pct >= 50, f"Expected 50%+ reduction, got {reduction_pct:.1f}%"
 
     def test_all_workers_achieve_target_reduction(self, large_config_product):
-        """Test all worker roles achieve target token reduction"""
+        """Test all worker roles achieve target context prioritization"""
         full_config = get_full_config(large_config_product)
         full_tokens = estimate_tokens(full_config)
 

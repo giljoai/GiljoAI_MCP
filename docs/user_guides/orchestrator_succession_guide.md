@@ -45,7 +45,7 @@ Think of it like a relay race: when one orchestrator agent approaches the limit 
 
 4. **Cost Efficiency**
    - Fresh context windows reduce token waste
-   - 70% token reduction compared to replaying full context
+   - context prioritization and orchestration compared to replaying full context
    - Intelligent compression keeps only critical state
 
 ## How to Recognize Succession Events

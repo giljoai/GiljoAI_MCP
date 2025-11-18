@@ -7,7 +7,7 @@ Tests cover:
 - Vision document chunking and indexing
 - Context search functionality
 - Agent context loading
-- Token reduction statistics
+- Context prioritization statistics
 - Multi-tenant isolation
 - Error handling
 - Performance characteristics
@@ -339,7 +339,7 @@ class TestContextAPIEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_token_stats_success(self, client, headers, sample_product):
-        """Test getting token reduction statistics"""
+        """Test getting context prioritization statistics"""
         await client.post(
             f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )

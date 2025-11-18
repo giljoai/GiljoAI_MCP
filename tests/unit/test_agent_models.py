@@ -171,7 +171,7 @@ class TestMCPContextSummary:
         context_summary = MCPContextSummary(
             tenant_key="test-tenant",
             product_id=sample_product.id,
-            full_content="This is the complete original content that needs summarization for token reduction.",
+            full_content="This is the complete original content that needs summarization for context prioritization.",
             condensed_mission="Create summarized version of content",
             full_token_count=1000,
             condensed_token_count=300,
@@ -194,7 +194,7 @@ class TestMCPContextSummary:
         assert context_summary.created_at is not None
 
     def test_mcp_context_summary_reduction_calculation(self, db_session, sample_product):
-        """Test token reduction percentage calculation."""
+        """Test context prioritization percentage calculation."""
         # Test various reduction scenarios
         test_cases = [
             (1000, 300, 70.0),  # 70% reduction

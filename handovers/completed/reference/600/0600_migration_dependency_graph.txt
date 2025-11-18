@@ -15,7 +15,7 @@ Path: F:\GiljoAI_MCP\migrations\versions\20251114_create_missing_base_tables.py
     2. download_tokens - Secure file download token management
     3. git_configs - Git repository configuration per product
     4. optimization_rules - Serena MCP optimization rules
-    5. optimization_metrics - Serena MCP token savings tracking
+    5. optimization_metrics - Serena MCP context efficiency metrics tracking
     
     Phase 2 - Product-Dependent:
     6. vision_documents - Multi-vision document storage (FK: products)
@@ -30,7 +30,7 @@ Path: F:\GiljoAI_MCP\migrations\versions\20251114_create_missing_base_tables.py
     
     Phase 4 - Cross-Dependent:
     13. mcp_context_index - Chunked vision documents for RAG (FK: vision_documents, products)
-    14. mcp_context_summary - Condensed missions for token reduction (FK: products)
+    14. mcp_context_summary - Condensed missions for context prioritization (FK: products)
     
     Safety features:
     - IF NOT EXISTS clauses (safe on fresh AND existing databases)

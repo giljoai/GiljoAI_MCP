@@ -156,7 +156,7 @@ async def test_extract_learnings_moderate_detail_priority_7(
     Expected behavior:
     - Include only last 5 learnings (most recent)
     - Include summary + outcomes (NO decisions)
-    - Token reduction compared to full detail
+    - Context prioritization compared to full detail
     """
     product = product_with_learnings(10)
 
@@ -187,7 +187,7 @@ async def test_extract_learnings_abbreviated_priority_5(
     Expected behavior:
     - Include only last 3 learnings
     - Include summary only (NO outcomes, NO decisions)
-    - Significant token reduction
+    - Significant context prioritization
     """
     product = product_with_learnings(10)
 
@@ -217,7 +217,7 @@ async def test_extract_learnings_minimal_priority_2(
     Expected behavior:
     - Include only 1 learning (most recent)
     - Include summary only
-    - Maximum token reduction (minimal context)
+    - Maximum context prioritization (minimal context)
     """
     product = product_with_learnings(10)
 
@@ -315,7 +315,7 @@ async def test_extract_learnings_token_count_by_priority(
     tokens_abbreviated = mission_planner._count_tokens(result_abbreviated)
     tokens_minimal = mission_planner._count_tokens(result_minimal)
 
-    # Verify token reduction cascade
+    # Verify context prioritization cascade
     assert tokens_full > tokens_moderate, "Full should have more tokens than moderate"
     assert tokens_moderate > tokens_abbreviated, "Moderate should have more tokens than abbreviated"
     assert tokens_abbreviated > tokens_minimal, "Abbreviated should have more tokens than minimal"

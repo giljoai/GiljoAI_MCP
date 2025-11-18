@@ -195,7 +195,7 @@ Versioning uses URL-based approach (e.g., /api/v1/users) for backward compatibil
     auth_section_count = context.count("authentication") + context.count("JWT") + context.count("OAuth2")
     assert auth_section_count > 0
 
-    # 8. Verify token reduction
+    # 8. Verify context prioritization
     full_text_tokens = planner._count_tokens(vision_content)
     context_tokens = planner._count_tokens(context)
 

@@ -70,7 +70,7 @@ The orchestration system follows a clean 4-layer architecture:
 │ │ JobCoordinator        │  │ MissionPlanner               │ │
 │ │ (498 lines)           │  │ (1,564 lines)                │ │
 │ │ • Parallel spawning   │  │ • Mission generation         │ │
-│ │ • Dependency chains   │  │ • 70% token reduction        │ │
+│ │ • Dependency chains   │  │ • context prioritization and orchestration        │ │
 │ │ • Result aggregation  │  │ • Dependency detection       │ │
 │ └───────────────────────┘  └──────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
@@ -94,7 +94,7 @@ The orchestration system follows a clean 4-layer architecture:
 | **ProjectOrchestrator** | Project lifecycle, agent spawning with multi-tool routing, context tracking, main workflow | 2,013 | AgentJobManager, MissionPlanner, WorkflowEngine, AgentMessageQueue, AgentSelector | Project, MCPAgentJob, Product, AgentTemplate, Message, Job | ACTIVE |
 | **AgentJobManager** | Job lifecycle (7-state system), status transitions, task sync, cancellation | 1,031 | DatabaseManager, Job/MCPAgentJob/Task models | Job, MCPAgentJob, Task | ACTIVE |
 | **AgentMessageQueue** | ACID message queue, priority routing, circuit breakers, DLQ, crash recovery | 1,308 | DatabaseManager, TenantManager, Message/MCPAgentJob models | Message, MCPAgentJob | ACTIVE |
-| **MissionPlanner** | Mission generation with 70% token reduction, field priorities, dependency detection | 1,564 | DatabaseManager, ContextRepository, Product/Project/User, tiktoken, Serena | Product, Project, User, Context chunks | ACTIVE |
+| **MissionPlanner** | Mission generation with context prioritization and orchestration, field priorities, dependency detection | 1,564 | DatabaseManager, ContextRepository, Product/Project/User, tiktoken, Serena | Product, Project, User, Context chunks | ACTIVE |
 | **JobCoordinator** | Multi-agent coordination (parallel, chains, trees), result aggregation | 498 | AgentJobManager, AgentJobRepository, MessageQueue | Job | ACTIVE |
 | **WorkflowEngine** | Workflow execution (waterfall/parallel), retry logic, failure recovery | 463 | AgentJobManager, JobCoordinator, AgentJobRepository | Job | ACTIVE |
 
@@ -327,7 +327,7 @@ class MessagePriority(Enum):
 
 **Location:** `src/giljo_mcp/mission_planner.py`
 **Size:** 1,564 lines
-**Role:** Mission generation with 70% token reduction
+**Role:** Mission generation with context prioritization and orchestration
 
 #### Token Optimization Strategy
 
@@ -347,7 +347,7 @@ class MessagePriority(Enum):
 - Regex patterns: "wait for", "depends on", "after", "requires", etc.
 - Automatic coordination code injection
 
-**Result:** Achieves **70% token reduction** while maintaining mission quality
+**Result:** Achieves **context prioritization and orchestration** while maintaining mission quality
 
 #### Key Methods
 

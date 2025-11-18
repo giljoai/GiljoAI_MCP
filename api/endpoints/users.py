@@ -148,10 +148,10 @@ class FieldPriorityConfig(BaseModel):
 
         Handover 0301: Field Priority Mapping Fix
         Valid priorities:
-        - 0: exclude (unassigned - 100% token reduction)
-        - 4: abbreviated (Priority 3 - 50% token reduction)
-        - 7: moderate (Priority 2 - 25% token reduction)
-        - 10: full (Priority 1 - 0% token reduction)
+        - 0: exclude (unassigned - 100% context prioritization)
+        - 4: abbreviated (Priority 3 - 50% context prioritization)
+        - 7: moderate (Priority 2 - 25% context prioritization)
+        - 10: full (Priority 1 - 0% context prioritization)
         """
         valid_priorities = {0, 4, 7, 10}
         for field_path, priority in v.items():

@@ -13,7 +13,7 @@
 - **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification & agent flow (code-verified)
 
 **Key Handover References**:
-- Handover 0088: 70% token reduction architecture
+- Handover 0088: context prioritization and orchestration architecture
 - Handover 0102: Agent template export system (15-minute token TTL)
 - Handover 0073: Project closeout workflow
 
@@ -23,8 +23,8 @@
 
 This is the **executive summary** of GiljoAI MCP's vision. For detailed technical information, see:
 
-- **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision for multi-agent orchestration with 70% token reduction
-- **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on achieving massive token savings through intelligent context management
+- **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision for multi-agent orchestration with context prioritization and orchestration
+- **[Context Orchestration Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on context prioritization and orchestration for agentic coding
 - **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Proven patterns for orchestrating specialized AI agent teams
 - **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - 5-project implementation plan (Handovers 0017-0021)
 
@@ -105,7 +105,7 @@ GiljoAI MCP is evolving from a multi-tenant task management system into a **soph
 
 **Orchestrator Intelligence**:
 - Orchestrator reads full context once, creates condensed missions for each agent
-- 70% token reduction through intelligent summarization (Handover 0088)
+- context prioritization and orchestration through intelligent summarization (Handover 0088)
 - Each agent gets exactly what they need, nothing more
 - Role-based hierarchical context loading filters irrelevant information
 - Implementation patterns in [Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)
@@ -132,7 +132,7 @@ GiljoAI MCP is evolving from a multi-tenant task management system into a **soph
 ### Proven Results from AKE-MCP
 
 The patterns implemented in GiljoAI MCP are based on proven results from AKE-MCP:
-- **70% token reduction** vs traditional approaches
+- **context prioritization and orchestration** vs traditional approaches
 - **95% reliability** in agent coordination
 - **4x faster** through parallel execution
 - **Unlimited scale** through vision chunking and context management

@@ -323,7 +323,7 @@ class MissionOptimizationInjector:
 
     async def estimate_optimization_impact(self, agent_role: str, context_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Estimate the token savings impact of optimization rules.
+        Estimate the context-efficiency impact of optimization rules.
 
         Returns:
             Dictionary with estimated savings percentages and impacts

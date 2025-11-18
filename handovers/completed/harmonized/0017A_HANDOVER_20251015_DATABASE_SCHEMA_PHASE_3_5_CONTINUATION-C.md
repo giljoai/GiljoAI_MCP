@@ -35,7 +35,7 @@ Establish database foundation for agentic project management by creating 4 new t
 - **MCPContextSummary Model** - Condensed missions:
   - Tracks orchestrator-created token-reduced missions
   - Full content + condensed mission storage
-  - Token reduction percentage tracking
+  - Context prioritization percentage tracking
   - Located: `src/giljo_mcp/models.py:1432-1467`
 
 - **MCPAgentJob Model** - Agent job coordination:
@@ -356,7 +356,7 @@ def test_mcp_context_index_creation():
     pass
 
 def test_mcp_context_summary_reduction_calculation():
-    """Test token reduction percentage calculation."""
+    """Test context prioritization percentage calculation."""
     pass
 
 def test_mcp_agent_job_status_workflow():
@@ -565,7 +565,7 @@ When all phases complete:
   - Vision upload endpoint with EnhancedChunker integration for automatic chunking
   - Agent job management endpoints (create, update status, add messages, acknowledge)
   - Context search endpoint with PostgreSQL full-text search capability
-  - Token reduction statistics and analytics endpoints
+  - Context prioritization statistics and analytics endpoints
   - Router properly registered in `api/app.py` with OpenAPI documentation tags
 
 - **Phase 5: Testing & Validation** - COMPLETE

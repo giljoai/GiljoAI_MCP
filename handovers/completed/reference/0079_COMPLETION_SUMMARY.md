@@ -486,7 +486,7 @@ All limitations have documented workarounds in technical documentation.
 - ✅ User-configured field priorities applied dynamically
 - ✅ MCP-based context discovery (remote-safe)
 - ✅ Multi-tool support (Claude Code, Codex, Gemini)
-- ✅ 70% token reduction through intelligent condensation
+- ✅ context prioritization and orchestration through intelligent condensation
 - ✅ Production-grade error handling and logging
 - ✅ User visibility via token estimate toast notifications
 

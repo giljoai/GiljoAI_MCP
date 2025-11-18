@@ -1111,7 +1111,7 @@ context_sharing = true
 1. Codex spawns specialized sub-agents for different tasks
 2. GiljoAI MCP coordinates agent state and memory
 3. Context sharing enables seamless handoffs
-4. 70% token reduction through intelligent coordination
+4. context prioritization and orchestration through intelligent coordination
 
 ## Verification
 - Restart Codex CLI
@@ -1193,7 +1193,7 @@ Add to your Gemini CLI settings.json file:
 2. GiljoAI MCP coordinates agent state and memory
 3. Enhanced reasoning with multi-modal capabilities
 4. Context sharing enables seamless handoffs
-5. 70% token reduction through intelligent coordination
+5. context prioritization and orchestration through intelligent coordination
 
 ## Multi-Modal Features
 - Code analysis with visual diagrams

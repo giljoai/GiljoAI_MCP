@@ -11,11 +11,11 @@
 
 ## Overview
 
-This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context priority cards translate into orchestrator prompts, how token reduction is achieved (77% reduction from 15K-30K baseline to 3,500 tokens), and how agents receive re-prioritized context based on their specific mission.
+This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context priority cards translate into orchestrator prompts, how context prioritization is achieved (77% reduction from 15K-30K baseline to 3,500 tokens), and how agents receive re-prioritized context based on their specific mission.
 
 **Purpose**: Document the complete end-to-end flow from user setup → orchestrator launch → context building → agent spawning → completion.
 
-**Key Achievement**: **70-77% token reduction** through intelligent priority-based context extraction and thin client architecture.
+**Key Achievement**: **70-77% context prioritization** through intelligent priority-based context extraction and thin client architecture.
 
 ---
 
@@ -703,7 +703,7 @@ def _inject_serena_tools(self, priority: int) -> str:
         # Moderate: core tools with descriptions
         return """## Serena MCP Tools Available
 
-**Symbolic Code Navigation** (60-90% token reduction):
+**Symbolic Code Navigation** (60-90% context prioritization):
 - find_symbol(name_path, relative_path) - Find classes, functions, methods
 - get_symbols_overview(relative_path) - Get file structure
 - find_referencing_symbols(name_path, relative_path) - Find usages
@@ -712,7 +712,7 @@ def _inject_serena_tools(self, priority: int) -> str:
 **Pattern Search**:
 - search_for_pattern(substring_pattern, relative_path) - Regex search in codebase
 
-**Important**: Use symbolic tools (find_symbol) instead of reading full files for 60-90% token savings.
+**Important**: Use symbolic tools (find_symbol) instead of reading full files to dramatically reduce unnecessary context streaming and keep agents within healthy token budgets.
 """
 
     elif priority >= 4:
@@ -720,12 +720,12 @@ def _inject_serena_tools(self, priority: int) -> str:
         return """## Serena MCP Tools
 
 Symbolic navigation tools available: find_symbol, get_symbols_overview, find_referencing_symbols,
-replace_symbol_body, search_for_pattern. Use these for 60-90% token reduction.
+replace_symbol_body, search_for_pattern. Use these for 60-90% context prioritization.
 """
 
     else:
         # Minimal: brief note
-        return "## Serena MCP Tools\nSymbolic code navigation available (60-90% token savings)."
+        return "## Serena MCP Tools\nSymbolic code navigation available for efficient context usage."
 ```
 
 **Example Output** (Priority 6 - Abbreviated):
@@ -733,7 +733,7 @@ replace_symbol_body, search_for_pattern. Use these for 60-90% token reduction.
 ## Serena MCP Tools
 
 Symbolic navigation tools available: find_symbol, get_symbols_overview, find_referencing_symbols,
-replace_symbol_body, search_for_pattern. Use these for 60-90% token reduction.
+replace_symbol_body, search_for_pattern. Use these for 60-90% context prioritization.
 ```
 
 **Token Count**: ~200 tokens
@@ -1206,7 +1206,7 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 - Launch prompt: ~100 tokens ("Use get_orchestrator_instructions(job_id=123)")
 - Agent fetches context on demand: 3,500 tokens
 - Context re-prioritized per agent type
-- Total savings: **70-77% token reduction**
+- Total savings: **70-77% context prioritization**
 
 **Additional Benefits**:
 1. **Dynamic Prioritization**: User can change priorities mid-project, agents fetch updated context

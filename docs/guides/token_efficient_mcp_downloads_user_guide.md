@@ -34,7 +34,7 @@ GiljoAI MCP now provides **HTTP download endpoints** for slash commands and agen
 
 **New Approach (Download):**
 - Downloading ZIP files: **~500 tokens total**
-- Token reduction: **97%**
+- Context prioritization: **97%**
 - Cost: Minimal (HTTP request overhead only)
 
 ### What Can You Download?

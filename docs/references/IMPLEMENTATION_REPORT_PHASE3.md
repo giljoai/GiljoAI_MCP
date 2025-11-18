@@ -287,7 +287,7 @@ except Exception as e:
 
 4. **SerenaOptimizer** (Existing)
    - Used: inject_optimization_rules()
-   - Purpose: Token reduction (70% reduction achieved)
+   - Purpose: Context prioritization (70% reduction achieved)
 
 5. **DatabaseManager**
    - Used: get_session_async() for async queries

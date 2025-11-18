@@ -424,7 +424,7 @@ async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tena
 
 @router.get("/context/stats/{product_id}", response_model=TokenReductionStats)
 async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(get_tenant_key)):
-    """Get token reduction statistics for a product."""
+    """Get context prioritization statistics for a product."""
     from api.app import state
 
     if not state.db_manager:

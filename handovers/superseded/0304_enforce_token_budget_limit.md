@@ -27,7 +27,7 @@ total_tokens += codebase_tokens
 # Line 779-828: Architecture added WITHOUT budget check
 total_tokens += arch_tokens
 
-# Line 861-866: Token reduction metrics LOGGED but NOT ENFORCED
+# Line 861-866: Context prioritization metrics LOGGED but NOT ENFORCED
 logger.info(f"Context built: {total_tokens} tokens ({reduction_pct:.1f}% reduction)")
 ```
 
@@ -36,7 +36,7 @@ logger.info(f"Context built: {total_tokens} tokens ({reduction_pct:.1f}% reducti
 **Impact**:
 - Orchestrator missions exceed Claude API limits (200K context window wasted)
 - Field priorities meaningless (all fields included regardless of priority)
-- Token reduction claims (70%) false (no actual enforcement)
+- Context prioritization claims (70%) false (no actual enforcement)
 - Cost overruns (paying for massive context without benefit)
 
 ---

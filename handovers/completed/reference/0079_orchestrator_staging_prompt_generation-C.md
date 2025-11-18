@@ -18,7 +18,7 @@ A comprehensive prompt generation engine that creates 2000-3000 line orchestrato
 - MCP-based context discovery (remote-safe, no local file reads)
 - Dynamic field priorities (user-configured via My Settings)
 - 20K token budget management (Claude 25K limit - 5K safety)
-- 70% token reduction through intelligent condensation
+- context prioritization and orchestration through intelligent condensation
 - Multi-tool support (Claude Code, Codex, Gemini)
 - Production-grade error handling
 
@@ -772,7 +772,7 @@ THE HEART OF GILJOAI IS NOW BEATING! 🎉
 **Impact:**
 - Transforms hardcoded 6-line placeholder into sophisticated 2000-3000 line orchestrator prompt
 - Enables "THE HEART OF GILJOAI" - core AI agent orchestration capability
-- 70% token reduction through intelligent condensation
+- context prioritization and orchestration through intelligent condensation
 - Production-grade error handling and logging
 - User visibility via token estimate toast notifications
 

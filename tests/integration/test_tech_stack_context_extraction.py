@@ -239,7 +239,7 @@ class TestTechStackContextExtraction:
             product=sample_product_with_tech_stack, project=sample_project, field_priorities={"tech_stack": 1}
         )
 
-        # Verify token reduction
+        # Verify context prioritization
         tokens_full = mission_planner._count_tokens(context_full)
         tokens_minimal = mission_planner._count_tokens(context_minimal)
 
@@ -247,7 +247,7 @@ class TestTechStackContextExtraction:
 
         # Expect ~80% reduction for minimal (60% minimum to allow variance)
         reduction_pct = ((tokens_full - tokens_minimal) / tokens_full) * 100
-        assert reduction_pct >= 30, f"Expected at least 30% token reduction, got {reduction_pct:.1f}%"
+        assert reduction_pct >= 30, f"Expected at least 30% context prioritization, got {reduction_pct:.1f}%"
 
     @pytest.mark.asyncio
     async def test_tech_stack_missing_config_graceful_degradation(self, mission_planner, db_session):

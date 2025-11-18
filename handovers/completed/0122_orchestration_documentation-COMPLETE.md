@@ -45,7 +45,7 @@ Successfully documented the 6 orchestration modules (6,877 lines total), created
 - Clean 4-layer architecture: Controller → Execution → Coordination → Foundation
 - No circular dependencies
 - Multi-tool routing (Claude/Codex/Gemini)
-- 70% token reduction through field priorities
+- context prioritization and orchestration through field priorities
 - ACID message queue with circuit breakers
 - 7-state job lifecycle system
 - Automatic dependency detection and code injection
@@ -188,7 +188,7 @@ This demonstrates **mature, documented evolution** with clear tracking.
 | orchestrator.py | 2,013 | Project lifecycle, multi-tool routing, context tracking, main workflow | ACTIVE |
 | agent_job_manager.py | 1,031 | 7-state job lifecycle, task sync, cancellation | ACTIVE |
 | agent_message_queue.py | 1,308 | ACID queue, priority routing, circuit breakers, DLQ | ACTIVE |
-| mission_planner.py | 1,564 | Mission generation, 70% token reduction, dependency detection | ACTIVE |
+| mission_planner.py | 1,564 | Mission generation, context prioritization and orchestration, dependency detection | ACTIVE |
 | job_coordinator.py | 498 | Multi-agent coordination, parallel spawning, result aggregation | ACTIVE |
 | workflow_engine.py | 463 | Workflow execution (waterfall/parallel), retry logic | ACTIVE |
 | **Total** | **6,877** | **Complete orchestration system** | **ACTIVE** |

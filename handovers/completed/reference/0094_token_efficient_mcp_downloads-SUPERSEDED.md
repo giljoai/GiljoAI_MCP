@@ -146,7 +146,7 @@ async def gil_import_productagents(project_id: str = None):
     Download and install agent templates to current project.
 
     New approach: Downloads ZIP via HTTP and extracts locally.
-    97% token reduction vs writing files directly.
+    97% context prioritization vs writing files directly.
     """
     # 1. Verify API key in environment
     api_key = os.environ.get('GILJO_API_KEY')

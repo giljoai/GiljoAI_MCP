@@ -440,7 +440,7 @@ async def list_mcp_tools():
             },
             {
                 "name": "get_orchestrator_instructions",
-                "description": "Fetch orchestrator mission with 70% token reduction (thin client architecture)",
+                "description": "Fetch orchestrator mission with context prioritization and orchestration (thin client architecture)",
                 "arguments": {
                     "orchestrator_id": "string (UUID) REQUIRED - Orchestrator job UUID",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
@@ -507,7 +507,7 @@ async def list_mcp_tools():
             },
             {
                 "name": "orchestrate_project",
-                "description": "Execute complete project orchestration workflow (70% token reduction)",
+                "description": "Execute complete project orchestration workflow (context prioritization and orchestration)",
                 "arguments": {
                     "project_id": "string (UUID) REQUIRED - Project UUID",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
