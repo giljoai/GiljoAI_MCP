@@ -116,7 +116,7 @@ PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT *
 - **Password Reset**: Recovery PIN system - 4-digit PIN with rate limiting (Handover 0023)
 - **Default Password**: "GiljoMCP" for admin resets only (never admin/admin)
 - **Agent Jobs**: Use AgentJobManager for lifecycle, AgentCommunicationQueue for messaging
-- **Token Reduction**: MissionPlanner + AgentSelector + WorkflowEngine = 70% reduction
+- **Context Management v2.0**: 2-dimensional model (Priority × Depth) - orchestrator fetches context via MCP tools based on user configuration
 - **Serena MCP**: Use Serena's symbolic tools for code navigation (find_symbol, get_symbols_overview, find_referencing_symbols) - REQUIRED for exploring codebase efficiently and avoiding full file reads
 
 ## Service Layer Architecture & Patterns
