@@ -18,7 +18,7 @@ All endpoints enforce role-based access control and multi-tenant isolation.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Dict, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -205,6 +205,65 @@ class FieldPriorityConfig(BaseModel):
             raise ValueError("Cannot exclude all categories. At least one must be Priority 1, 2, or 3")
 
         return v
+
+
+class DepthConfig(BaseModel):
+    """
+    Depth configuration for context extraction granularity (Handover 0314).
+
+    Controls HOW MUCH detail to extract from each context source.
+    Orthogonal to priority system (which controls WHAT to fetch).
+
+    Valid values per field:
+    - vision_chunking: none, light, moderate, heavy
+    - memory_last_n_projects: 1, 3, 5, 10
+    - git_commits: 10, 25, 50, 100
+    - agent_template_detail: minimal, standard, full
+    - tech_stack_sections: required, all
+    - architecture_depth: overview, detailed
+    """
+
+    vision_chunking: Literal["none", "light", "moderate", "heavy"] = Field(
+        default="moderate",
+        description="Vision document chunking level (affects token usage)"
+    )
+    memory_last_n_projects: Literal[1, 3, 5, 10] = Field(
+        default=3,
+        description="Number of recent projects to include in 360 memory"
+    )
+    git_commits: Literal[10, 25, 50, 100] = Field(
+        default=25,
+        description="Number of recent git commits to include"
+    )
+    agent_template_detail: Literal["minimal", "standard", "full"] = Field(
+        default="standard",
+        description="Detail level for agent templates"
+    )
+    tech_stack_sections: Literal["required", "all"] = Field(
+        default="all",
+        description="Tech stack sections to include"
+    )
+    architecture_depth: Literal["overview", "detailed"] = Field(
+        default="overview",
+        description="Architecture documentation depth"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "vision_chunking": "moderate",
+                "memory_last_n_projects": 3,
+                "git_commits": 25,
+                "agent_template_detail": "standard",
+                "tech_stack_sections": "all",
+                "architecture_depth": "overview"
+            }
+        }
+
+
+class UpdateDepthConfigRequest(BaseModel):
+    """Request to update user depth configuration."""
+    depth_config: DepthConfig
 
 
 # Helper Functions
@@ -842,6 +901,185 @@ async def reset_field_priority_config(
     from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 
     return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
+
+
+# Depth Configuration Endpoints (Handover 0314)
+
+
+@router.get("/me/context/depth", response_model=Dict[str, Any])
+async def get_depth_config(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+) -> Dict[str, Any]:
+    """
+    Get user's depth configuration with token estimates.
+
+    Returns the authenticated user's depth configuration (or defaults) along with
+    estimated token usage for each source and total.
+
+    Handover 0314: Context Management v2.0 - Depth Controls
+    - Controls HOW MUCH detail to extract from each context source
+    - Orthogonal to priority system (which controls WHAT to fetch)
+
+    Args:
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Dict with depth_config and token_estimate fields
+
+    Example Response:
+        {
+            "depth_config": {
+                "vision_chunking": "moderate",
+                "memory_last_n_projects": 3,
+                "git_commits": 25,
+                "agent_template_detail": "standard",
+                "tech_stack_sections": "all",
+                "architecture_depth": "overview"
+            },
+            "token_estimate": {
+                "total": 21450,
+                "per_source": {
+                    "vision_chunking": 17500,
+                    "memory_last_n_projects": 1500,
+                    "git_commits": 1250,
+                    "agent_template_detail": 800,
+                    "tech_stack_sections": 400,
+                    "architecture_depth": 300
+                }
+            }
+        }
+    """
+    from src.giljo_mcp.services.depth_token_estimator import DepthTokenEstimator
+
+    logger.debug(f"User {current_user.username} retrieving depth config")
+
+    # Get depth config (from user or defaults)
+    depth_config = current_user.depth_config or {
+        "vision_chunking": "moderate",
+        "memory_last_n_projects": 3,
+        "git_commits": 25,
+        "agent_template_detail": "standard",
+        "tech_stack_sections": "all",
+        "architecture_depth": "overview"
+    }
+
+    # Calculate token estimates
+    total_estimate = DepthTokenEstimator.estimate_total(depth_config)
+    per_source_estimate = DepthTokenEstimator.estimate_per_source(depth_config)
+
+    logger.debug(
+        f"Returning depth config for user {current_user.username}",
+        extra={"total_tokens": total_estimate}
+    )
+
+    return {
+        "depth_config": depth_config,
+        "token_estimate": {
+            "total": total_estimate,
+            "per_source": per_source_estimate
+        }
+    }
+
+
+@router.put("/me/context/depth", response_model=Dict[str, Any])
+async def update_depth_config(
+    depth_request: UpdateDepthConfigRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+    ws_dependency: "WebSocketDependency" = Depends(get_websocket_dependency)
+) -> Dict[str, Any]:
+    """
+    Update user's depth configuration.
+
+    Validates depth settings via Pydantic schema and saves to database.
+    Emits WebSocket event for real-time UI synchronization.
+
+    Handover 0314: Context Management v2.0 - Depth Controls
+
+    Args:
+        depth_request: New depth configuration
+        current_user: Current authenticated user
+        db: Database session
+        ws_dependency: WebSocket manager for event emission
+
+    Returns:
+        Dict with updated depth_config and token estimates
+
+    Raises:
+        HTTPException: 422 if Pydantic validation fails (invalid depth values)
+
+    Example Request:
+        {
+            "depth_config": {
+                "vision_chunking": "heavy",
+                "memory_last_n_projects": 5,
+                "git_commits": 50,
+                "agent_template_detail": "full",
+                "tech_stack_sections": "all",
+                "architecture_depth": "detailed"
+            }
+        }
+    """
+    from src.giljo_mcp.services.depth_token_estimator import DepthTokenEstimator
+
+    logger.debug(
+        f"User {current_user.username} updating depth config",
+        extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key}
+    )
+
+    # Update user's depth config (store as dict for JSONB column)
+    current_user.depth_config = depth_request.depth_config.model_dump()
+    await db.commit()
+    await db.refresh(current_user)
+
+    # Calculate token estimates
+    total_estimate = DepthTokenEstimator.estimate_total(current_user.depth_config)
+    per_source_estimate = DepthTokenEstimator.estimate_per_source(current_user.depth_config)
+
+    logger.info(
+        f"Updated depth config for user: {current_user.username}",
+        extra={
+            "user_id": str(current_user.id),
+            "tenant_key": current_user.tenant_key,
+            "total_tokens": total_estimate
+        }
+    )
+
+    # Emit WebSocket event for real-time UI synchronization
+    try:
+        await ws_dependency.broadcast_to_tenant(
+            tenant_key=current_user.tenant_key,
+            event_type="depth_config_updated",
+            data={
+                "user_id": str(current_user.id),
+                "depth_config": current_user.depth_config,
+                "token_estimate": {
+                    "total": total_estimate,
+                    "per_source": per_source_estimate
+                }
+            },
+            schema_version="1.0"
+        )
+        logger.debug(
+            f"WebSocket event 'depth_config_updated' emitted for user {current_user.username}",
+            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key}
+        )
+    except Exception as e:
+        # Don't fail request if WebSocket emission fails
+        logger.warning(
+            f"Failed to emit WebSocket event for depth config update: {e}",
+            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key, "error": str(e)}
+        )
+
+    return {
+        "depth_config": current_user.depth_config,
+        "token_estimate": {
+            "total": total_estimate,
+            "per_source": per_source_estimate
+        }
+    }
 
 
 # AI Tools Configurator Endpoint (relocated from /setup/ai-tools)
