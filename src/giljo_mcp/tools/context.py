@@ -1413,7 +1413,74 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         from .context_tools.get_architecture import get_architecture
         return await get_architecture(product_id, tenant_key, depth, offset, limit, db_manager)
 
-    logger.info("Context and discovery tools registered (including 6 thin client context tools)")
+    @mcp.tool()
+    async def fetch_product_context(
+        product_id: str,
+        tenant_key: str,
+        include_metadata: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Fetch general product information (Product Core).
+
+        Returns product name, description, features, and metadata.
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            include_metadata: Include meta_data JSONB field (default: False)
+
+        Returns:
+            Product context with core information
+        """
+        from .context_tools.get_product_context import get_product_context
+        return await get_product_context(product_id, tenant_key, include_metadata, db_manager)
+
+    @mcp.tool()
+    async def fetch_project_context(
+        project_id: str,
+        tenant_key: str,
+        include_summary: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Fetch current project context.
+
+        Returns project name, description, mission, status, and optional summary.
+        NOTE: context_budget excluded (deprecated as of v3.1).
+
+        Args:
+            project_id: Project UUID
+            tenant_key: Tenant isolation key
+            include_summary: Include orchestrator_summary if completed (default: False)
+
+        Returns:
+            Project context with current status
+        """
+        from .context_tools.get_project import get_project
+        return await get_project(project_id, tenant_key, include_summary, db_manager)
+
+    @mcp.tool()
+    async def fetch_testing_config(
+        product_id: str,
+        tenant_key: str,
+        depth: str = "full",
+    ) -> dict[str, Any]:
+        """
+        Fetch testing strategy and quality standards.
+
+        Returns quality standards, strategy, coverage targets, and frameworks.
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            depth: Detail level ("none", "basic", "full")
+
+        Returns:
+            Testing configuration and quality standards
+        """
+        from .context_tools.get_testing import get_testing
+        return await get_testing(product_id, tenant_key, depth, db_manager)
+
+    logger.info("Context and discovery tools registered (including 9 thin client context tools)")
 
 
 # Expose MCP tools as importable async functions for API endpoints
