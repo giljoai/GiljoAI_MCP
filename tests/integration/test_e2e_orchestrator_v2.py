@@ -694,7 +694,7 @@ fields to each agent, reducing token usage by up to 60% for specialized roles.
             print("\n[SUCCESS] ALL TESTS PASSED - PRODUCTION READY")
             print("\nKey Achievements:")
             print("  [PASS] Role-based filtering working correctly")
-            print("  [PASS] Token reduction targets met")
+            print("  [PASS] Context prioritization targets met")
             print("  [PASS] Multi-tenant isolation verified")
             print("  [PASS] Performance targets achieved")
             print("  [PASS] No regressions detected")

@@ -2,7 +2,7 @@
 Integration tests for field priority mapping (UI -> Backend).
 
 CRITICAL BUG FIX: UI sends 1/2/3 but backend expects 10/7/4 for correct detail levels.
-Before fix: All priorities map to "minimal" (80% token reduction)
+Before fix: All priorities map to "minimal" (80% context prioritization)
 After fix: Priorities map to "full"/"moderate"/"abbreviated" as intended
 
 Handover: 0301
@@ -27,7 +27,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_10_maps_to_full_detail(self):
         """
-        Priority 10 should map to "full" detail level (0% token reduction).
+        Priority 10 should map to "full" detail level (0% context prioritization).
         This is what UI SHOULD send for Priority 1 (Always Included).
         """
         detail_level = self.planner._get_detail_level(10)
@@ -35,7 +35,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_7_maps_to_moderate_detail(self):
         """
-        Priority 7 should map to "moderate" detail level (25% token reduction).
+        Priority 7 should map to "moderate" detail level (25% context prioritization).
         This is what UI SHOULD send for Priority 2 (High Priority).
         """
         detail_level = self.planner._get_detail_level(7)
@@ -43,7 +43,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_4_maps_to_abbreviated_detail(self):
         """
-        Priority 4 should map to "abbreviated" detail level (50% token reduction).
+        Priority 4 should map to "abbreviated" detail level (50% context prioritization).
         This is what UI SHOULD send for Priority 3 (Medium Priority).
         """
         detail_level = self.planner._get_detail_level(4)
@@ -51,7 +51,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_0_maps_to_exclude(self):
         """
-        Priority 0 should map to "exclude" (100% token reduction - omitted).
+        Priority 0 should map to "exclude" (100% context prioritization - omitted).
         This is for unassigned fields.
         """
         detail_level = self.planner._get_detail_level(0)
@@ -59,7 +59,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_1_maps_to_minimal_THIS_IS_THE_BUG(self):
         """
-        Priority 1 currently maps to "minimal" detail level (80% token reduction).
+        Priority 1 currently maps to "minimal" detail level (80% context prioritization).
 
         This is the BUG - UI sends 1 for Priority 1, which maps to "minimal" instead of "full".
         This test documents the CURRENT BROKEN behavior.
@@ -74,7 +74,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_2_maps_to_minimal_THIS_IS_THE_BUG(self):
         """
-        Priority 2 currently maps to "minimal" detail level (80% token reduction).
+        Priority 2 currently maps to "minimal" detail level (80% context prioritization).
 
         This is the BUG - UI sends 2 for Priority 2, which maps to "minimal" instead of "moderate".
         This test documents the CURRENT BROKEN behavior.
@@ -89,7 +89,7 @@ class TestFieldPriorityMapping:
 
     def test_priority_3_maps_to_minimal_THIS_IS_THE_BUG(self):
         """
-        Priority 3 currently maps to "minimal" detail level (80% token reduction).
+        Priority 3 currently maps to "minimal" detail level (80% context prioritization).
 
         This is the BUG - UI sends 3 for Priority 3, which maps to "minimal" instead of "abbreviated".
         This test documents the CURRENT BROKEN behavior.

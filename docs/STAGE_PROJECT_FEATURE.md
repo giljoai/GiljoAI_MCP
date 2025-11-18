@@ -5,7 +5,7 @@
 **Handovers**: 0086A (Phases 1-2), 0086B (Phases 3-6)
 **Last Updated**: 2025-01-05 (Harmonized)
 **Migration Notice (0088 – Completed)**: Stage Project now uses a thin‑client design that returns a ~10‑line identity prompt and fetches missions via MCP tools. This page reflects the 0086 baseline with 0088 changes noted. See guides/thin_client_migration_guide.md.
-**Business Impact**: Enables commercial product launch with 70% token reduction
+**Business Impact**: Enables commercial product launch with context prioritization and orchestration
 **Harmonization Status**: ✅ Aligned with codebase
 
 ---
@@ -33,7 +33,7 @@
 
 ## Executive Summary
 
-The **Stage Project** feature is the cornerstone of GiljoAI MCP's commercial viability. It transforms raw product vision documents into optimized, agent-specific missions through intelligent field prioritization and context management. This system achieves **70% token reduction** compared to unoptimized mission generation, directly reducing API costs and improving AI agent performance.
+The **Stage Project** feature is the cornerstone of GiljoAI MCP's commercial viability. It transforms raw product vision documents into optimized, agent-specific missions through intelligent field prioritization and context management. This system achieves **context prioritization and orchestration** compared to unoptimized mission generation, directly reducing API costs and improving AI agent performance.
 
 ### Core Value Proposition
 
@@ -130,7 +130,7 @@ See: guides/thin_client_migration_guide.md
 ## Legacy vs Thin Client (0079 → 0088)
 
 - 0079 (legacy): Generated large, self‑contained staging prompts (“fat prompts”).
-- 0088 (pending): Uses thin prompts that fetch missions via MCP tools; supports dynamic updates and upholds token reduction.
+- 0088 (pending): Uses thin prompts that fetch missions via MCP tools; supports dynamic updates and upholds context prioritization.
 
 Current status: Legacy behavior documented for continuity; migration guide documents the thin client approach and API changes.
 
@@ -196,7 +196,7 @@ async def _build_context_with_priorities(
     user_id: Optional[str] = None
 ) -> str:
     """
-    Build context respecting user's field priorities for 70% token reduction.
+    Build context respecting user's field priorities for context prioritization and orchestration.
 
     Process:
     1. Get priority level for each field (1-10)
@@ -358,7 +358,7 @@ onUnmounted(() => {
    - Multi-tenant isolation validation
 
 3. **Performance Benchmarks**
-   - 70% token reduction validated
+   - context prioritization and orchestration validated
    - WebSocket broadcasts <100ms (1000 clients)
    - Mission generation <2 seconds
    - Zero memory leaks (1000 cycles)
@@ -477,7 +477,7 @@ async def _fetch_serena_codebase_context(
    - Budget alerts when approaching limits
 
 5. **Analytics Dashboard**
-   - Token reduction trends over time
+   - Context prioritization trends over time
    - Per-project efficiency metrics
    - Cost savings visualization
 
@@ -530,7 +530,7 @@ F:\GiljoAI_MCP\tests\integration\test_stage_project_workflow.py
 
 ## Conclusion
 
-The **Stage Project** feature represents a production-grade, commercially viable system that achieves the core promise of GiljoAI MCP: **intelligent agent orchestration with 70% token reduction**. Through careful architectural decisions, comprehensive testing, and adherence to production-grade patterns, this feature provides a solid foundation for enterprise deployment and commercialization.
+The **Stage Project** feature represents a production-grade, commercially viable system that achieves the core promise of GiljoAI MCP: **intelligent agent orchestration with context prioritization and orchestration**. Through careful architectural decisions, comprehensive testing, and adherence to production-grade patterns, this feature provides a solid foundation for enterprise deployment and commercialization.
 
 **Status**: Production-Ready ✅
 **Commercial Impact**: High - Enables monetization and competitive differentiation

@@ -1,12 +1,12 @@
 """
 Test Field Priority System in MissionPlanner.
 
-Tests the _build_context_with_priorities() method that achieves 70% token reduction
+Tests the _build_context_with_priorities() method that achieves context prioritization and orchestration
 through intelligent field prioritization and content abbreviation.
 
 Coverage:
     - Priority-based detail level mapping (full, moderate, abbreviated, minimal, exclude)
-    - Token reduction validation (target: 70% reduction)
+    - Context prioritization validation (target: 70% reduction)
     - Multi-tenant isolation enforcement
     - Comprehensive logging and metrics
     - Edge cases (empty fields, missing data, invalid priorities)
@@ -183,10 +183,10 @@ async def test_full_priority_all_fields(mission_planner, sample_product, sample_
 @pytest.mark.asyncio
 async def test_70_percent_token_reduction(mission_planner, sample_product, sample_project, tenant_key):
     """
-    Test 2: Abbreviated priorities achieve 70% token reduction target.
+    Test 2: Abbreviated priorities achieve context prioritization and orchestration target.
 
     Validates:
-        - Token reduction >= 70% with low priorities
+        - Context prioritization >= 70% with low priorities
         - Content is abbreviated but remains coherent
         - Critical information preserved
         - Token counting accuracy
@@ -210,19 +210,19 @@ async def test_70_percent_token_reduction(mission_planner, sample_product, sampl
         product=sample_product, project=sample_project, field_priorities=full_priorities, user_id="test_user_123"
     )
 
-    # Calculate token reduction
+    # Calculate context prioritization
     abbreviated_tokens = mission_planner._count_tokens(abbreviated_result)
     full_tokens = mission_planner._count_tokens(full_result)
     reduction_pct = ((full_tokens - abbreviated_tokens) / full_tokens) * 100
 
-    # Verify significant token reduction achieved
+    # Verify significant context prioritization achieved
     # Note: 70% reduction is a product-wide target across many missions
     # Individual test cases may show lower reduction based on content structure
     # This test validates the mechanism works correctly
     assert reduction_pct >= 15.0, f"Expected >=15% reduction, got {reduction_pct:.1f}%"
     assert abbreviated_tokens < full_tokens, "Abbreviated version should be smaller"
 
-    # Validate token reduction occurred (logged via mission_planner logger)
+    # Validate context prioritization occurred (logged via mission_planner logger)
 
     # Verify critical information preserved
     assert "Product Vision" in abbreviated_result
@@ -238,7 +238,7 @@ async def test_priority_zero_excludes_field(mission_planner, sample_product, sam
         - Priority 0 = "exclude" detail level
         - Excluded fields not in output
         - Remaining fields unaffected
-        - Token reduction from exclusion
+        - Context prioritization from exclusion
     """
     field_priorities = {
         "product_vision": 10,
@@ -272,7 +272,7 @@ async def test_minimal_priority_preserves_key_info(mission_planner, sample_produ
     Validates:
         - Priority 1-3 = "minimal" detail level
         - First paragraph/sentence extraction
-        - 80% token reduction target
+        - 80% context prioritization target
         - Key overview preserved
     """
     field_priorities = {
@@ -294,7 +294,7 @@ async def test_minimal_priority_preserves_key_info(mission_planner, sample_produ
     # Project description: first sentence only
     assert "Implement core e-commerce functionality" in result
 
-    # Verify massive token reduction
+    # Verify massive context prioritization
     full_priorities = {"product_vision": 10, "project_description": 10, "codebase_summary": 10, "architecture": 10}
     full_result = await mission_planner._build_context_with_priorities(
         sample_product, sample_project, full_priorities, "test_user_123"
@@ -390,7 +390,7 @@ async def test_moderate_priority_detail_level(mission_planner, sample_product, s
 
     Validates:
         - Priority 7-9 = "moderate" detail level
-        - 25% token reduction (vs full)
+        - 25% context prioritization (vs full)
         - Balance between completeness and brevity
         - Vision document truncated to 75%
     """
@@ -586,7 +586,7 @@ async def test_mixed_priorities_selective_abbreviation(mission_planner, sample_p
         - Different fields can have different priorities
         - Each field abbreviated independently
         - Correct detail level applied per field
-        - Token reduction proportional to priorities
+        - Context prioritization proportional to priorities
     """
     field_priorities = {
         "product_vision": 10,  # full

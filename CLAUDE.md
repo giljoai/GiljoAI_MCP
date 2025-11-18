@@ -4,7 +4,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 ## What We're Building
 
-**GiljoAI Agent Orchestration MCP Server** - Multi-tenant server orchestrating specialized AI agents for complex software development. 70% token reduction through intelligent agent coordination.
+**GiljoAI Agent Orchestration MCP Server** - Multi-tenant server orchestrating specialized AI agents for complex software development. context prioritization and orchestration through intelligent agent coordination.
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
@@ -66,12 +66,12 @@ log_file = 'F:/logs/app.log'
 
 ## Thin Client Architecture (v3.1+ Handover 0088)
 
-**CRITICAL**: Thin client prompt generation for 70% token reduction.
+**CRITICAL**: Thin client prompt generation for context prioritization and orchestration.
 
 - ✅ Use `ThinClientPromptGenerator` for new development
 - ✅ Prompts are ~10 lines (not 3000)
 - ✅ Mission fetched via `get_orchestrator_instructions()` MCP tool
-- ✅ Field priorities applied (70% token reduction ACTIVE)
+- ✅ Field priorities applied (context prioritization and orchestration ACTIVE)
 - ⚠️ `OrchestratorPromptGenerator` DEPRECATED (remove in v4.0)
 
 **Migration**: Replace fat prompt calls with thin prompt generator.

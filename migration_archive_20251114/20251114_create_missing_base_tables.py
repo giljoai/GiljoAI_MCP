@@ -11,7 +11,7 @@ Phase 1 - Independent Tables (no foreign keys):
 2. download_tokens - Secure file download token management
 3. git_configs - Git repository configuration per product
 4. optimization_rules - Serena MCP optimization rules
-5. optimization_metrics - Serena MCP token savings tracking
+5. optimization_metrics - Serena MCP context efficiency metrics tracking
 
 Phase 2 - Product-Dependent:
 6. vision_documents - Multi-vision document storage (FK: products)
@@ -26,7 +26,7 @@ Phase 3 - Project-Dependent:
 
 Phase 4 - Cross-Dependent:
 13. mcp_context_index - Chunked vision documents for RAG (FK: vision_documents, products)
-14. mcp_context_summary - Condensed missions for token reduction (FK: products)
+14. mcp_context_summary - Condensed missions for context prioritization (FK: products)
 
 Safety features:
 - IF NOT EXISTS clauses (safe on fresh AND existing databases)
@@ -223,7 +223,7 @@ def upgrade() -> None:
                 CONSTRAINT ck_optimization_metric_tokens_saved CHECK (tokens_saved >= 0)
             );
 
-            COMMENT ON TABLE optimization_metrics IS 'Tracks token savings from Serena MCP optimizations for analytics';
+            COMMENT ON TABLE optimization_metrics IS 'Tracks context efficiency metrics from Serena MCP optimizations for analytics';
 
             CREATE INDEX IF NOT EXISTS idx_optimization_metric_tenant ON optimization_metrics(tenant_key);
             CREATE INDEX IF NOT EXISTS idx_optimization_metric_type ON optimization_metrics(operation_type);
@@ -588,7 +588,7 @@ def upgrade() -> None:
                 )
             );
 
-            COMMENT ON TABLE mcp_context_summary IS 'Orchestrator-created condensed missions for 70% token reduction';
+            COMMENT ON TABLE mcp_context_summary IS 'Orchestrator-created condensed missions for context prioritization and orchestration';
             COMMENT ON COLUMN mcp_context_summary.full_content IS 'Original full context before condensation';
             COMMENT ON COLUMN mcp_context_summary.condensed_mission IS 'Orchestrator-generated condensed mission';
 

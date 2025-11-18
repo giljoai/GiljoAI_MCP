@@ -34,7 +34,7 @@ if vision_text:
 **Impact**:
 - Large vision documents (>25K tokens) blow mission planner context budget
 - Irrelevant vision content included in every agent mission
-- 70% token reduction goal undermined by unfiltered vision inclusion
+- context prioritization and orchestration goal undermined by unfiltered vision inclusion
 - Chunking infrastructure unused (wasted development effort from Handover 0043)
 
 **User Experience**:
@@ -107,7 +107,7 @@ if vision_text:
 - [ ] **Task 4.1**: Run all tests (`pytest tests/ -v`)
 - [ ] **Task 4.2**: Verify >80% coverage for new code
 - [ ] **Task 4.3**: Manual testing with real chunked vision documents
-- [ ] **Task 4.4**: Check logs for token reduction metrics
+- [ ] **Task 4.4**: Check logs for context prioritization metrics
 
 ## Success Criteria
 
@@ -327,7 +327,7 @@ async def test_mission_planner_uses_relevant_chunks(test_db_session, test_produc
     # (Database/UI/Deployment should have lower priority or be excluded)
     # This is the key difference - chunked vision includes only relevant parts
 
-    # 7. Verify token reduction
+    # 7. Verify context prioritization
     full_text_tokens = planner._count_tokens(vision_content)
     context_tokens = planner._count_tokens(context)
 
@@ -802,7 +802,7 @@ stmt = select(ContextIndex).where(
 **Coverage**:
 - E2E workflow: Create product → Chunk vision → Build context
 - Verify relevant chunks selected (not full text)
-- Verify token reduction achieved
+- Verify context prioritization achieved
 - Multi-tenant isolation (two products, different tenants)
 - Fallback to full text when not chunked
 
@@ -895,7 +895,7 @@ stmt = select(ContextIndex).where(
 - Vision context: Relevant chunks only (e.g., 8K tokens)
 - Context building time: ~2-3 seconds (chunk query adds <100ms)
 - Token budget: Enforced (<10K tokens for vision)
-- Token reduction: 60-70% for chunked visions
+- Context prioritization: 60-70% for chunked visions
 
 ## Related Documentation
 
@@ -933,7 +933,7 @@ stmt = select(ContextIndex).where(
 - Graceful degradation confirmed for non-chunked documents
 
 ### Token Reduction Impact
-Vision chunking achieves 60-70% token reduction for large vision documents:
+Vision chunking achieves 60-context prioritization and orchestration for large vision documents:
 - Before: Full vision text (30K tokens typical)
 - After: Top 3-5 relevant chunks (~8K tokens)
 - Relevance ranking ensures critical content preserved

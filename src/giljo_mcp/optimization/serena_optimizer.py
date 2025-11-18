@@ -1,7 +1,7 @@
 """
 SerenaOptimizer - Intelligent optimization layer for Serena MCP operations
 
-Achieves 60-90% token reduction through:
+Achieves 60-90% context prioritization through:
 1. Enforcing symbolic operations over file reads
 2. Auto-injecting max_answer_chars limits
 3. Context-aware rule adjustments
@@ -67,7 +67,7 @@ class TokenUsageTracker:
         return result_size * multiplier
 
     def calculate_savings(self, optimized_tokens: int, unoptimized_tokens: int) -> int:
-        """Calculate token savings"""
+        """Calculate context-efficiency metrics"""
         return max(0, unoptimized_tokens - optimized_tokens)
 
     def calculate_savings_percentage(self, optimized_tokens: int, unoptimized_tokens: int) -> float:
@@ -315,7 +315,7 @@ ALWAYS prefer this workflow:
 
         content += """
 ### 🎖️ TOKEN EFFICIENCY TARGETS
-• **Target**: 60-90% token reduction vs naive file reading
+• **Target**: 60-90% context prioritization vs naive file reading
 • **Monitor**: Context usage with /giljo-context-status
 • **Alert**: Request handoff at 80% context usage
 • **Report**: Log optimization savings to orchestrator
@@ -344,7 +344,7 @@ ALWAYS prefer this workflow:
         """Record optimization operation for tracking"""
 
         try:
-            # Calculate token savings
+            # Calculate context-efficiency metrics
             optimized_tokens = self.token_tracker.estimate_tokens("x" * result_size)
             unoptimized_tokens = self.token_tracker.estimate_tokens_unoptimized(
                 operation_type, params_size, result_size
@@ -377,7 +377,7 @@ ALWAYS prefer this workflow:
             # Don't raise - tracking failures shouldn't break operations
 
     async def generate_savings_report(self, agent_id: str) -> Dict[str, Any]:
-        """Generate comprehensive token savings report for agent"""
+        """Generate comprehensive context-usage analytics report for agent"""
 
         try:
             async with self.db_manager.get_session_async() as session:
@@ -438,7 +438,7 @@ ALWAYS prefer this workflow:
             }
 
     def estimate_token_savings(self, operation_type: OperationType, result_size: int) -> int:
-        """Estimate token savings for a given operation"""
+        """Estimate context-efficiency impact for a given operation"""
 
         optimized_tokens = self.token_tracker.estimate_tokens("x" * result_size)
         unoptimized_tokens = self.token_tracker.estimate_tokens_unoptimized(operation_type, 0, result_size)

@@ -1,7 +1,7 @@
 """
 Orchestration MCP Tools - Extended for Slash Command Support
 
-Provides MCP tools for intelligent multi-agent orchestration with 70% token reduction.
+Provides MCP tools for intelligent multi-agent orchestration with context prioritization and orchestration.
 Exposes orchestration capabilities via Model Context Protocol for agent coordination.
 
 This module also provides tools that act as "prompt generators" for slash command workflows,
@@ -61,7 +61,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             - selected_agents: List of agent types selected
             - spawned_jobs: List of spawned job IDs
             - workflow_result: Workflow execution result
-            - token_reduction: Token reduction metrics
+            - token_reduction: Context prioritization metrics
 
         Example:
             {
@@ -862,7 +862,7 @@ The agent templates are now being updated...
 
     # ========================================================================
     # Thin Client MCP Tools (Handover 0088)
-    # Enable 70% token reduction via thin client architecture
+    # Enable context prioritization and orchestration via thin client architecture
     # ========================================================================
 
     @mcp.tool()
@@ -909,7 +909,7 @@ The agent templates are now being updated...
         - Project.description: User-written requirements (INPUT - what needs to be done)
         - Product context: Product vision and architecture (INPUT - system context)
         - Agent templates: Available specialists (INPUT - who can do the work)
-        - Condensed content: 70% token reduction via field priorities
+        - Condensed content: context prioritization and orchestration via field priorities
 
         ORCHESTRATOR'S JOB:
         1. READ returned Project.description (user requirements)
@@ -1025,7 +1025,7 @@ The agent templates are now being updated...
                     )
                     product = result.scalar_one_or_none()
 
-                # Use MissionPlanner to build condensed mission (70% token reduction)
+                # Use MissionPlanner to build condensed mission (context prioritization and orchestration)
                 from giljo_mcp.mission_planner import MissionPlanner
 
                 # MissionPlanner requires DatabaseManager (not AsyncSession)

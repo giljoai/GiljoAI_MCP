@@ -35,7 +35,7 @@ These files represent the original multi-terminal orchestration approach:
 - Synchronous control
 - Platform agnostic
 - 2-week timeline to MVP
-- 70% token reduction
+- context prioritization and orchestration
 
 ## Historical Context
 

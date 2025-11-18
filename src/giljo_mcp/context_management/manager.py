@@ -6,7 +6,7 @@ Handover 0018: Production-grade context management orchestration.
 Features:
 - Complete workflow: chunk → index → load → summarize
 - Multi-tenant isolation
-- Token reduction tracking
+- Context prioritization tracking
 - Production-grade error handling
 """
 
@@ -27,7 +27,7 @@ class ContextManagementSystem:
     Main context management system orchestrator.
 
     Coordinates all context management components for complete
-    vision document workflow with token reduction tracking.
+    vision document workflow with context prioritization tracking.
     """
 
     def __init__(self, db_manager, target_chunk_size: int = 5000):
@@ -114,7 +114,7 @@ class ContextManagementSystem:
         self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
     ) -> Dict[str, Any]:
         """
-        Create condensed mission and track token reduction.
+        Create condensed mission and track context prioritization.
 
         Args:
             tenant_key: Tenant key for multi-tenant isolation
@@ -131,7 +131,7 @@ class ContextManagementSystem:
 
     def get_token_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Get token reduction statistics.
+        Get context prioritization statistics.
 
         Args:
             tenant_key: Tenant key for multi-tenant isolation

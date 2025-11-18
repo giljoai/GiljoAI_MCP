@@ -93,7 +93,7 @@ class MCPContextIndex(Base):
     """
     MCP Context Index model - stores chunked vision documents for agentic RAG.
 
-    Handover 0017: Enables full-text search on vision document chunks for token reduction.
+    Handover 0017: Enables full-text search on vision document chunks for context prioritization.
     Chunks are created by EnhancedChunker from vision_document or vision_path content.
 
     Multi-tenant isolation: All queries filter by tenant_key.
@@ -144,7 +144,7 @@ class MCPContextSummary(Base):
     """
     MCP Context Summary model - tracks orchestrator-created condensed missions.
 
-    Handover 0017: Enables 70% token reduction by condensing full context into missions.
+    Handover 0017: Enables context prioritization and orchestration by condensing full context into missions.
     Orchestrator creates condensed versions of vision chunks for agent spawning.
 
     Multi-tenant isolation: All queries filter by tenant_key.
@@ -160,7 +160,7 @@ class MCPContextSummary(Base):
     condensed_mission = Column(Text, nullable=False, comment="Orchestrator-generated condensed mission")
     full_token_count = Column(Integer, nullable=True)
     condensed_token_count = Column(Integer, nullable=True)
-    reduction_percent = Column(Float, nullable=True, comment="Token reduction percentage achieved")
+    reduction_percent = Column(Float, nullable=True, comment="Context prioritization percentage achieved")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

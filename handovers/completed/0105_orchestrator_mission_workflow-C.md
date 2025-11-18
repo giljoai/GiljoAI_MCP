@@ -481,7 +481,7 @@ waiting → active → working → completed/failed/blocked
 ## Related Handovers
 
 - **0106**: Agent Template Hardcoded Rules (NEW - see investigation doc)
-- **0088**: Thin Client Architecture (70% token reduction)
+- **0088**: Thin Client Architecture (context prioritization and orchestration)
 - **0102**: Download Token System
 - **0103**: Multi-CLI Support (Claude, Codex, Gemini)
 - **0041**: Agent Template Management

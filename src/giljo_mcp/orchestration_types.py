@@ -217,7 +217,7 @@ class WorkflowResult:
         failed: List of stage names that failed
         status: Overall workflow status ('completed', 'partial', 'failed')
         duration_seconds: Total workflow duration in seconds
-        token_reduction_achieved: Optional token reduction percentage achieved
+        token_reduction_achieved: Optional context prioritization percentage achieved
     """
 
     completed: list[StageResult]

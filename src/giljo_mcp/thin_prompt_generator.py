@@ -4,7 +4,7 @@ Thin Client Prompt Generator (Handover 0088)
 REPLACES: OrchestratorPromptGenerator (prompt_generator.py)
 
 KEY DIFFERENCE: Generates ~10 line prompts with identity only.
-Orchestrators fetch missions via MCP tools (70% token reduction enabled).
+Orchestrators fetch missions via MCP tools (context prioritization and orchestration enabled).
 
 Author: GiljoAI Development Team
 Date: 2025-11-02
@@ -42,7 +42,7 @@ class ThinClientPromptGenerator:
     """
     Generates thin client prompts for orchestrators.
 
-    CRITICAL: This enables the 70% token reduction feature.
+    CRITICAL: This enables the context prioritization and orchestration feature.
 
     Architecture:
     - Prompt contains only identity (~10 lines, 50 tokens)
@@ -60,7 +60,7 @@ class ThinClientPromptGenerator:
 
     Benefits:
     - Professional UX (copy 10 lines, not 3000)
-    - 70% token reduction ACTIVE (applied by MCP tool)
+    - context prioritization and orchestration ACTIVE (applied by MCP tool)
     - Dynamic mission updates possible
     - Commercial-grade appearance
 
@@ -152,7 +152,7 @@ class ThinClientPromptGenerator:
             )
 
             # Store project mission as placeholder
-            # IMPORTANT: The REAL condensed mission (with 70% token reduction) is generated
+            # IMPORTANT: The REAL condensed mission (with context prioritization and orchestration) is generated
             # by the MCP tool get_orchestrator_instructions() when the orchestrator calls it.
             # This placeholder ensures the job exists in the database for MCP lookup.
             placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
@@ -306,7 +306,7 @@ STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
 2. Fetch context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
    └─► Returns: Project.description (user requirements), Product context, Agent templates
-3. CREATE MISSION: Analyze requirements → Generate execution plan (70% token reduction)
+3. CREATE MISSION: Analyze requirements → Generate execution plan (context prioritization and orchestration)
 4. PERSIST MISSION: mcp__giljo-mcp__update_project_mission('{project_id}', your_created_mission)
    └─► Saves to Project.mission field for UI display
 5. SPAWN AGENTS: mcp__giljo-mcp__spawn_agent_job() to create specialist agent jobs

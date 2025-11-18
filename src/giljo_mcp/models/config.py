@@ -531,7 +531,7 @@ class OptimizationRule(Base):
 
 class OptimizationMetric(Base):
     """
-    Optimization Metric model - tracks token savings from Serena MCP optimizations.
+    Optimization Metric model - tracks context efficiency metrics from Serena MCP optimizations.
 
     Records every optimization operation to measure effectiveness and calculate savings.
     Enables performance analytics and optimization rule refinement.

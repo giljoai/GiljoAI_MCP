@@ -12,12 +12,12 @@
 
 ## Quick Links to Harmonized Documents
 
-- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey & token reduction explanation
+- **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey & context prioritization explanation
 - **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
 - **[TOKEN_REDUCTION_ARCHITECTURE.md](Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - Detailed architecture
 
 **Token Reduction Achievement** (Handover 0088):
-- **70% token reduction** vs traditional approaches
+- **context prioritization and orchestration** vs traditional approaches
 - Intelligent context chunking and dynamic loading
 - Role-based hierarchical context filtering
 
@@ -38,8 +38,8 @@
 ## Overview
 
 The Context Management System provides production-grade vision document chunking, indexing,
-and dynamic context loading to achieve significant token reduction for AI agents. This system
-enables the GiljoAI MCP to deliver on its promise of 70% token reduction through intelligent
+and dynamic context loading to achieve significant context prioritization for AI agents. This system
+enables the GiljoAI MCP to deliver on its promise of context prioritization and orchestration through intelligent
 context management.
 
 ### Key Features
@@ -90,7 +90,7 @@ graph TD
 1. **Chunking Phase**: Vision document → VisionDocumentChunker → Chunks with metadata
 2. **Indexing Phase**: Chunks → ContextIndexer → PostgreSQL with full-text search
 3. **Loading Phase**: Agent query → DynamicContextLoader → Relevant chunks within token budget
-4. **Tracking Phase**: Usage data → ContextSummarizer → Token reduction metrics
+4. **Tracking Phase**: Usage data → ContextSummarizer → Context prioritization metrics
 
 ## Core Components
 
@@ -237,10 +237,10 @@ ROLE_PATTERNS = {
 
 **Location**: `src/giljo_mcp/context_management/summarizer.py`
 
-**Purpose**: Track token reduction and create condensed missions.
+**Purpose**: Track context prioritization and create condensed missions.
 
 **Key Features**:
-- Token reduction calculation
+- Context prioritization calculation
 - Statistics tracking
 - Mission condensation tracking
 - Performance metrics
@@ -300,7 +300,7 @@ context = cms.load_context_for_agent(
     max_tokens=10000
 )
 
-# Get token reduction stats
+# Get context prioritization stats
 stats = cms.get_token_reduction_stats(
     tenant_key="tk_acme_corp",
     product_id="prod-123"
@@ -309,7 +309,7 @@ stats = cms.get_token_reduction_stats(
 
 ## Token Reduction Strategy
 
-The system achieves 60-70% token reduction through multiple strategies:
+The system achieves 60-context prioritization and orchestration through multiple strategies:
 
 ### 1. Vision Document Chunking
 
@@ -375,7 +375,7 @@ The Context Management System is exposed via REST API endpoints. See the complet
 | `/api/v1/context/products/{id}/chunk-vision` | POST | Chunk and index vision document |
 | `/api/v1/context/search` | GET | Search context by keywords |
 | `/api/v1/context/load-for-agent` | POST | Load context for specific agent |
-| `/api/v1/context/products/{id}/token-stats` | GET | Get token reduction statistics |
+| `/api/v1/context/products/{id}/token-stats` | GET | Get context prioritization statistics |
 | `/api/v1/context/health` | GET | Health check |
 
 ### Example: Complete Workflow
@@ -702,7 +702,7 @@ for chunk in security_chunks:
 
 **DO**:
 - Monitor chunk creation and storage
-- Track token reduction metrics
+- Track context prioritization metrics
 - Log search performance
 - Set up database indexes properly
 - Use connection pooling

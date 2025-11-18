@@ -1159,7 +1159,7 @@ src/giljo_mcp/models.py                MCPAgentJob (NEW 7-state)
 
 Related Handovers:
 ══════════════════════════════════════════════════════════
-handovers/0088_thin_client_architecture.md     70% token reduction
+handovers/0088_thin_client_architecture.md     context prioritization and orchestration
 handovers/0113_unified_agent_state_system.md   7-state model
 handovers/0116_agent_model_migration.md        Eliminate dual models
 handovers/start_to_finish_agent_FLOW.md        Complete workflow

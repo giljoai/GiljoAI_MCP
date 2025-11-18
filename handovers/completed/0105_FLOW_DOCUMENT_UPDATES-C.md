@@ -28,7 +28,7 @@
      └─► Orchestrator startup sequence (Handover 0105):
           ├─► Step 1: Verify MCP connection via health_check()
           ├─► Step 2: Fetch mission via get_orchestrator_instructions()
-          │    └─► Returns condensed mission (70% token reduction)
+          │    └─► Returns condensed mission (context prioritization and orchestration)
           ├─► Step 3: PERSIST mission via update_project_mission()
           │    └─► Saves mission to Project.mission field in database
           ├─► Step 4: WebSocket broadcast fires (project:mission_updated)

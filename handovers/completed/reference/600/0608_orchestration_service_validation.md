@@ -15,7 +15,7 @@
 
 **Previous Handovers**: Handover 0602 established test baseline.
 
-**This Handover**: Create comprehensive unit and integration tests for OrchestrationService, achieving 80%+ coverage while validating mission planning (condensed missions), agent selection (capability matching), workflow execution (waterfall/parallel coordination), and AgentJobManager integration for 70% token reduction.
+**This Handover**: Create comprehensive unit and integration tests for OrchestrationService, achieving 80%+ coverage while validating mission planning (condensed missions), agent selection (capability matching), workflow execution (waterfall/parallel coordination), and AgentJobManager integration for context prioritization and orchestration.
 
 ---
 
@@ -23,7 +23,7 @@
 
 - **Objective 1**: Create comprehensive unit tests for all OrchestrationService methods (80%+ coverage)
 - **Objective 2**: Create integration tests for MissionPlanner, AgentSelector, WorkflowEngine integration
-- **Objective 3**: Validate mission condensation (70% token reduction from vision docs)
+- **Objective 3**: Validate mission condensation (context prioritization and orchestration from vision docs)
 - **Objective 4**: Test agent selection based on capability matching
 - **Objective 5**: Verify workflow coordination (waterfall and parallel execution)
 - **Objective 6**: Ensure AgentJobManager integration for job lifecycle
@@ -77,7 +77,7 @@
 def test_generate_mission_plan_70_percent_reduction(
     self, orchestration_service, sample_vision_data, test_tenant_key
 ):
-    """Test mission plan achieves 70% token reduction"""
+    """Test mission plan achieves context prioritization and orchestration"""
     # Arrange: Vision data with known token count (e.g., 10,000 tokens)
     vision_text = sample_vision_data["vision_text"]
     original_tokens = estimate_tokens(vision_text)  # ~10,000 tokens
@@ -256,7 +256,7 @@ pytest tests/integration/test_orchestration_service.py -v
 
 ### CCW (Cloud) Execution
 - Create branch: `0608-orchestration-service-tests`
-- Test 70% token reduction (critical feature)
+- Test context prioritization and orchestration (critical feature)
 - Test both waterfall and parallel workflows
 - Verify AgentJobManager integration
 

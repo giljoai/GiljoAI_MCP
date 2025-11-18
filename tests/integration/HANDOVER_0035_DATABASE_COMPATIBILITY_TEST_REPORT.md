@@ -175,7 +175,7 @@ Index("idx_mcp_context_searchable", "searchable_vector", postgresql_using="gin")
 **What Breaks Without pg_trgm**:
 1. ❌ **GIN index creation FAILS** during `Base.metadata.create_all()`
 2. ❌ **Full-text search queries FAIL** at runtime
-3. ❌ **Context retrieval FAILS** (70% token reduction feature unusable)
+3. ❌ **Context retrieval FAILS** (context prioritization and orchestration feature unusable)
 
 **Error Without pg_trgm**:
 ```

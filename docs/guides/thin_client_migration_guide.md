@@ -39,7 +39,7 @@ Handover 0088 replaces 3000-line "fat prompts" with 10-line "thin prompts" that 
 The old approach generated 2000-3000 line prompts with the entire mission embedded directly:
 
 **Issues**:
-- ❌ Defeats 70% token reduction feature
+- ❌ Defeats context prioritization and orchestration feature
 - ❌ Terrible user experience (copying 3000 lines)
 - ❌ Immutable missions (can't update after launch)
 - ❌ High API costs (30K tokens upfront)
@@ -50,7 +50,7 @@ The old approach generated 2000-3000 line prompts with the entire mission embedd
 The new approach generates ~10 line prompts with identity only:
 
 **Benefits**:
-- ✅ 70% token reduction ACTIVE
+- ✅ context prioritization and orchestration ACTIVE
 - ✅ Professional UX (copy 10 lines, not 3000)
 - ✅ Dynamic missions (can refetch updates)
 - ✅ Lower API costs (50 tokens upfront, 6K via MCP)
@@ -260,7 +260,7 @@ result = await generator.generate(
 )
 ```
 
-**Impact**: Without `user_id`, field priorities are ignored and 70% token reduction is lost.
+**Impact**: Without `user_id`, field priorities are ignored and context prioritization and orchestration is lost.
 
 ---
 
@@ -342,7 +342,7 @@ python -m pytest tests/api/test_thin_prompt_endpoint.py -v
 # Test E2E workflow
 python -m pytest tests/thin_prompt/test_thin_client_e2e.py -v
 
-# Test token reduction
+# Test context prioritization
 python -m pytest tests/thin_prompt/test_token_reduction.py -v
 ```
 

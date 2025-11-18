@@ -176,7 +176,7 @@ These tools are **required by vision** but **not yet implemented**.
    - **Purpose**: Analyze product documentation and structure
    - **Evidence**: Vision: "orchestrator first kicks off... merges all context depth"
    - **Current Status**: Tool exists but returns empty data (Handover 0091)
-   - **Priority**: HIGH - 70% token reduction depends on this
+   - **Priority**: HIGH - context prioritization and orchestration depends on this
    - **Implementation**: Fix existing `discover_context` to return actual data
 
 **Note**: `search_context` and `get_context_summary` also flagged in Handover 0091 as returning empty/stubs.
@@ -319,7 +319,7 @@ These tools are **not used** in prompts, vision, or flow docs.
 ❌ **force_agent_handoff** - No handoff workflow in vision
 ❌ **get_optimization_status** - Dashboard status, not MCP tool
 
-**Rationale**: Vision mentions 70% token reduction but doesn't expose optimization tools to agents.
+**Rationale**: Vision mentions context prioritization and orchestration but doesn't expose optimization tools to agents.
 
 ---
 

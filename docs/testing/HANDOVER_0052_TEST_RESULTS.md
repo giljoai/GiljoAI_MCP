@@ -145,7 +145,7 @@ POST /api/v1/users/settings/general → 200 OK
 **Evidence**:
 - Drag operation completed: yes
 - Field visible in Unassigned: yes
-- Token reduction: -30 tokens
+- Context prioritization: -30 tokens
 
 **Status**: ✅ PASS - Expected behavior
 
@@ -774,7 +774,7 @@ Memory stable after operations: yes
 | | Save & reload persistence | ✅ PASS | Config persists after refresh |
 | | Reset to defaults | ✅ PASS | Default config restored |
 | **Phase 3: Real-Time Tokens** | Token updates on drag | ✅ PASS | Immediate <100ms update |
-| | Token updates on remove | ✅ PASS | Accurate token reduction |
+| | Token updates on remove | ✅ PASS | Accurate context prioritization |
 | | Color indicator changes | ✅ PASS | Green→Yellow→Red at thresholds |
 | | Real product data | ✅ PASS | Uses active product tokens |
 | | Token refresh after save | ✅ PASS | API called, data refreshed |

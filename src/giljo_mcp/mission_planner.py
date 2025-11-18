@@ -2,7 +2,7 @@
 Mission Planner for GiljoAI Agent Orchestration MCP Server.
 
 Generates condensed agent missions from product vision analysis.
-Achieves 70% token reduction through intelligent context filtering and summarization.
+Achieves context prioritization and orchestration through intelligent context filtering and summarization.
 
 Phase 1 Implementation: Template-based analysis (no LLM calls)
 
@@ -35,12 +35,12 @@ logger = logging.getLogger(__name__)
 # Applied when user has no custom field_priority_config
 # Ensures meaningful context even for new users who haven't customized priorities
 DEFAULT_FIELD_PRIORITIES = {
-    "codebase_summary": 6,  # Moderate detail (50% token reduction)
-    "architecture": 4,  # Abbreviated detail (70% token reduction) - Legacy
+    "codebase_summary": 6,  # Moderate detail (50% context prioritization)
+    "architecture": 4,  # Abbreviated detail (context prioritization and orchestration) - Legacy
     "tech_stack": 8,  # Moderate-high detail (tech stack is critical context)
     "product_memory.learnings": 7,  # Moderate: Last 5 learnings with outcomes (Handover 0311)
     # Config data fields (Handover 0303)
-    "config_data.architecture": 4,  # Abbreviated detail (70% token reduction)
+    "config_data.architecture": 4,  # Abbreviated detail (context prioritization and orchestration)
     "config_data.test_methodology": 6,  # Moderate - important for agents
     "config_data.coding_standards": 5,  # Moderate - quality guidelines
     "config_data.deployment_strategy": 3,  # Lower - not always needed
@@ -52,7 +52,7 @@ class MissionPlanner:
     Generate mission plans from product vision analysis.
 
     Phase 1 Implementation: Template-based analysis (no LLM calls)
-    Target: 70% token reduction through intelligent context filtering
+    Target: context prioritization and orchestration through intelligent context filtering
     """
 
     def __init__(self, db_manager: DatabaseManager):
@@ -529,10 +529,10 @@ Success Criteria:
         Map priority (0-10 scale) to detail level.
 
         IMPORTANT: UI layer must map visual priorities to this scale (Handover 0301):
-        - UI "Priority 1 (Always Included)" -> 10 -> "full" (0% token reduction)
-        - UI "Priority 2 (High Priority)"    -> 7  -> "moderate" (25% token reduction)
-        - UI "Priority 3 (Medium Priority)"  -> 4  -> "abbreviated" (50% token reduction)
-        - UI "Unassigned"                    -> 0  -> "exclude" (100% token reduction)
+        - UI "Priority 1 (Always Included)" -> 10 -> "full" (0% context prioritization)
+        - UI "Priority 2 (High Priority)"    -> 7  -> "moderate" (25% context prioritization)
+        - UI "Priority 3 (Medium Priority)"  -> 4  -> "abbreviated" (50% context prioritization)
+        - UI "Unassigned"                    -> 0  -> "exclude" (100% context prioritization)
 
         See: frontend/src/views/UserSettings.vue (PRIORITY_* constants, line ~714)
 
@@ -550,14 +550,14 @@ Success Criteria:
             - "exclude": Omitted entirely (0 tokens)
         """
         if priority >= 10:
-            return "full"  # 0% token reduction
+            return "full"  # 0% context prioritization
         if priority >= 7:
-            return "moderate"  # 25% token reduction
+            return "moderate"  # 25% context prioritization
         if priority >= 4:
-            return "abbreviated"  # 50% token reduction
+            return "abbreviated"  # 50% context prioritization
         if priority >= 1:
-            return "minimal"  # 80% token reduction
-        return "exclude"  # 100% token reduction (omitted)
+            return "minimal"  # 80% context prioritization
+        return "exclude"  # 100% context prioritization (omitted)
 
     def _extract_config_field(self, product: Product, field_name: str, detail_level: str) -> Optional[str]:
         """
@@ -569,7 +569,7 @@ Success Criteria:
         Args:
             product: Product instance with config_data
             field_name: Field key in config_data (e.g., "test_methodology")
-            detail_level: Token reduction level ("full", "abbreviated", "minimal")
+            detail_level: Context prioritization level ("full", "abbreviated", "minimal")
 
         Returns:
             Formatted field text with detail level applied, or None if field missing
@@ -614,7 +614,7 @@ Success Criteria:
         if not field_text.strip():
             return None
 
-        # Apply detail level token reduction
+        # Apply detail level context prioritization
         if detail_level == "minimal":
             # 20% of original (truncate to first 100 chars)
             return field_text[:100] + ("..." if len(field_text) > 100 else "")
@@ -1008,11 +1008,11 @@ Success Criteria:
         include_serena: bool = False,
     ) -> str:
         """
-        Build context respecting user's field priorities for 70% token reduction.
+        Build context respecting user's field priorities for context prioritization and orchestration.
 
         This method orchestrates the field priority system to generate condensed context
         that includes only the most relevant information based on user preferences.
-        Achieves significant token reduction while maintaining quality.
+        Achieves significant context prioritization while maintaining quality.
 
         Args:
             product: Product model with vision document and config_data
@@ -1030,8 +1030,8 @@ Success Criteria:
         Detail Level Mapping (via _get_detail_level):
             Priority 10: "full" - Complete content
             Priority 7-9: "moderate" - Slightly condensed
-            Priority 4-6: "abbreviated" - 50% token reduction
-            Priority 1-3: "minimal" - 80% token reduction (key points only)
+            Priority 4-6: "abbreviated" - 50% context prioritization
+            Priority 1-3: "minimal" - 80% context prioritization (key points only)
             Priority 0: "exclude" - Omitted entirely
 
         Multi-Tenant Isolation:
@@ -1406,7 +1406,7 @@ Success Criteria:
             )
 
         # === Token Reduction Metrics ===
-        # Calculate and log token reduction percentage for analytics
+        # Calculate and log context prioritization percentage for analytics
         reduction_pct = 0.0
         if tokens_before_reduction > 0:
             reduction_pct = ((tokens_before_reduction - total_tokens) / tokens_before_reduction) * 100
@@ -2288,7 +2288,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
 
         logger.info(
             f"Generated {len(missions)} missions. "
-            f"Token reduction: {reduction_percent:.1f}% "
+            f"Context prioritization: {reduction_percent:.1f}% "
             f"(Original: {original_tokens}, Per-agent avg: {total_mission_tokens // len(missions) if missions else 0})"
         )
 
@@ -2302,7 +2302,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
         reduction_percent: float,
     ) -> None:
         """
-        Store token reduction metrics in project metadata.
+        Store context prioritization metrics in project metadata.
 
         Args:
             project_id: Project ID

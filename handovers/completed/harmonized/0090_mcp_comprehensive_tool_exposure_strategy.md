@@ -61,7 +61,7 @@ async def check_succession_status(job_id, tenant_key) -> dict
 - `report_error` - Report blocking errors
 
 **Orchestration Tools** (4 tools - Handover 0088):
-- `orchestrate_project` - Full 70% token reduction workflow
+- `orchestrate_project` - Full context prioritization and orchestration workflow
 - `get_agent_mission` - Thin-client mission retrieval
 - `spawn_agent_job` - Create agent with mission
 - `get_workflow_status` - Monitor all agents

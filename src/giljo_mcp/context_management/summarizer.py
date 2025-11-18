@@ -1,5 +1,5 @@
 """
-Context Summarizer - Token reduction tracking and optimization.
+Context Summarizer - Context prioritization tracking and optimization.
 
 Handover 0018: Production-grade summarization with token metrics.
 
@@ -25,7 +25,7 @@ class ContextSummarizer:
     """
     Context summarizer with token tracking.
 
-    Tracks token reduction when condensing full context into missions.
+    Tracks context prioritization when condensing full context into missions.
     Simple implementation for Phase 1 - can be enhanced with LLM later.
     """
 
@@ -52,7 +52,7 @@ class ContextSummarizer:
         self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
     ) -> Dict[str, any]:
         """
-        Create summary and track token reduction.
+        Create summary and track context prioritization.
 
         Args:
             tenant_key: Tenant key for multi-tenant isolation
@@ -96,7 +96,7 @@ class ContextSummarizer:
 
     def get_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> Dict[str, any]:
         """
-        Get token reduction statistics.
+        Get context prioritization statistics.
 
         Args:
             tenant_key: Tenant key for multi-tenant isolation

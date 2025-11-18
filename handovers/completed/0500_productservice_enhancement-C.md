@@ -31,7 +31,7 @@ Implement production-grade vision document upload with intelligent chunking (<25
 **Evidence**: productfixes_session.md lines 267-273
 - Endpoint stub created during Handover 0126 but never implemented
 - Users cannot upload vision documents
-- Feature critical for 70% token reduction (mission condensation)
+- Feature critical for context prioritization and orchestration (mission condensation)
 
 **Root Cause**: "Modularize first, implement later" approach left stub endpoint:
 ```python

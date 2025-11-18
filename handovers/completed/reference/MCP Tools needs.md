@@ -13,7 +13,7 @@
 **Tool Categories**: 19 source files
 **Architecture**: Multi-tenant with orchestration focus
 
-The GiljoAI MCP server provides 90 production-grade tools across 19 categories, enabling multi-agent orchestration with 70% token reduction through thin client architecture. Tools are organized by functional domain with comprehensive multi-tenant isolation.
+The GiljoAI MCP server provides 90 production-grade tools across 19 categories, enabling multi-agent orchestration with context prioritization and orchestration through thin client architecture. Tools are organized by functional domain with comprehensive multi-tenant isolation.
 
 ---
 
@@ -75,7 +75,7 @@ These tools are accessible via REST API endpoints for external agents:
 **Source**: `src/giljo_mcp/tools/orchestration.py`
 
 1. **orchestrate_project** ❌
-   - Complete project orchestration workflow with 70% token reduction
+   - Complete project orchestration workflow with context prioritization and orchestration
    - Parameters: project_id, tenant_key
    - Returns: mission_plan, selected_agents, spawned_jobs, workflow_result
 
@@ -125,7 +125,7 @@ These tools are accessible via REST API endpoints for external agents:
     - Returns: status, server, version, timestamp
 
 11. **get_orchestrator_instructions** ❌
-    - Fetch orchestrator mission with 70% token reduction (Handover 0088)
+    - Fetch orchestrator mission with context prioritization and orchestration (Handover 0088)
     - Parameters: orchestrator_id, tenant_key
     - Returns: condensed mission, context_budget, agent_templates, field_priorities
 
@@ -676,7 +676,7 @@ These tools are accessible via REST API endpoints for external agents:
    - Returns: suggestions list
 
 3. **apply_token_reduction** ❌
-   - Apply token reduction strategies
+   - Apply context prioritization strategies
    - Parameters: tenant_key, strategy
    - Returns: reduction results
 
@@ -707,7 +707,7 @@ All tools enforce strict tenant isolation:
 - WebSocket events scoped to tenant
 
 ### Thin Client Architecture (Handover 0088)
-Key tools support 70% token reduction:
+Key tools support context prioritization and orchestration:
 - **get_orchestrator_instructions**: Condensed mission with field priorities
 - **get_agent_mission**: Agent-specific mission fetching
 - **spawn_agent_job**: Thin prompt generation (~10 lines vs 3000 lines)
@@ -775,7 +775,7 @@ Status update tools broadcast real-time events:
 ## Performance Characteristics
 
 ### Token Efficiency
-- **Thin Client**: 70% token reduction via mission fetching
+- **Thin Client**: context prioritization and orchestration via mission fetching
 - **Chunking**: Large documents split for optimal context usage
 - **Field Priorities**: Selective content loading
 
