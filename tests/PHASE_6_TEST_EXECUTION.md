@@ -10,7 +10,7 @@ This guide provides instructions for executing the comprehensive integration and
 2. **Performance Tests:** `tests/performance/test_token_reduction.py` (11 tests)
 3. **Validation Tests:** `tests/integration/test_upgrade_validation.py` (15 tests)
 
-**Total: 45 tests covering template integration, config workflows, token reduction, and validation.**
+**Total: 45 tests covering template integration, config workflows, context prioritization, and validation.**
 
 ---
 

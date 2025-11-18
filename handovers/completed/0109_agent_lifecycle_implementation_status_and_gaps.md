@@ -92,7 +92,7 @@ This handover documents the comprehensive investigation of the complete agent li
            ├─> Product.description (product context - INPUT)
            ├─> Vision documents (architecture context - INPUT)
            ├─> Agent templates (available specialists - INPUT)
-           └─> 70% token reduction applied via field priorities
+           └─> context prioritization and orchestration applied via field priorities
 
 6. ORCHESTRATOR CREATES MISSION
    └─> Analyzes requirements and creates execution plan
@@ -833,7 +833,7 @@ async def get_execution_prompt(
 
 ### Related Handovers
 
-- **Handover 0088**: Thin Client Architecture (70% token reduction)
+- **Handover 0088**: Thin Client Architecture (context prioritization and orchestration)
 - **Handover 0105**: Claude Code Subagent Toggle UI ← **ACTION: Review for existing sub-agent logic**
 - **Handover 0073**: Static Agent Grid
 - **Handover 0107**: Agent Monitoring & Cancellation

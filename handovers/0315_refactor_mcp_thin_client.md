@@ -73,4 +73,4 @@ Refactor from fat prompts (embedded context) to thin prompts (MCP-fetched contex
 - [ ] MCP tools reuse 60-80% of v1.0 extraction code
 - [ ] E2E workflow tested (thin → MCP → orchestrator)
 - [ ] All tests passing (>80% coverage)
-- [ ] Token reduction still achieves 70%+ (via depth controls)
+- [ ] Context prioritization still achieves 70%+ (via depth controls)

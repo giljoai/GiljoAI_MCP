@@ -19,7 +19,7 @@
 **Impact**: Without this fix, users can accidentally disable agent coordination, causing:
 - Agents that never acknowledge jobs
 - No progress reporting (succession breaks)
-- 70% token reduction fails
+- context prioritization and orchestration fails
 - Complete system coordination collapse
 
 ---
@@ -587,7 +587,7 @@ alembic downgrade -1
 
 - **0105**: Orchestrator Mission Workflow (references this)
 - **0041**: Agent Template Management (original implementation)
-- **0088**: Thin Client Architecture (70% token reduction)
+- **0088**: Thin Client Architecture (context prioritization and orchestration)
 
 ---
 

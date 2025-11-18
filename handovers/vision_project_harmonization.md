@@ -144,7 +144,7 @@
   2. ✅ WebSocket real-time updates
   3. ✅ Orchestrator as central coordinator
   4. ✅ Mission generation by orchestrator
-  5. ✅ Token reduction strategy (70%)
+  5. ✅ Context prioritization strategy (70%)
 
   ---
   🎯 SPECIFIC FINDINGS
@@ -374,7 +374,7 @@ Templates: orchestrator, analyzer, designer, frontend, backend, tester
 
 #### **In Simple_Vision.md (Missing Technical Details)**:
 - ❌ No mention of download token system (Handover 0102)
-- ❌ No mention of 70% token reduction architecture (Handover 0088)
+- ❌ No mention of context prioritization and orchestration architecture (Handover 0088)
 - ❌ No verification of actual endpoint names (`/activate` vs `/stage`)
 - ❌ No mention of job status lifecycle (`waiting → active → complete`)
 - ❌ Limited security documentation
@@ -492,7 +492,7 @@ Users configure via My Settings → MCP Configuration
 
 ### **Priority 2: Missing Cross-References**
 
-- Simple_Vision.md should reference Handovers 0088 (token reduction), 0102 (download tokens)
+- Simple_Vision.md should reference Handovers 0088 (context prioritization), 0102 (download tokens)
 - Flow doc should reference Simple_Vision.md for user journey context
 
 ### **Priority 3: Status Field Documentation**
@@ -509,7 +509,7 @@ Users configure via My Settings → MCP Configuration
 2. ✅ Clarify "staging" conceptually happens during "activation"
 3. ✅ Add job status lifecycle documentation
 4. ✅ Verify and correct agent template names
-5. ✅ Add reference to 70% token reduction architecture
+5. ✅ Add reference to context prioritization and orchestration architecture
 
 ### **For start_to_finish_agent_FLOW.md**:
 1. ✅ Add user journey summary at top

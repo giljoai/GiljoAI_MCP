@@ -54,7 +54,7 @@ Based on comprehensive document analysis, the MCP tools fall into 5 strategic ca
 **Current Tools**: get_pending_jobs, acknowledge_job, spawn_agent_job, get_agent_mission, report_progress, complete_job, report_error, send_message, receive_messages, list_messages
 
 ### 5. Context Management Tools
-**Purpose**: Token reduction through intelligent context retrieval
+**Purpose**: Context prioritization through intelligent context retrieval
 
 **Current Tools**: None (Serena MCP handles this - correct architecture)
 

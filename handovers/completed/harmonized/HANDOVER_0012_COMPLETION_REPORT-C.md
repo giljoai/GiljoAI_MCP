@@ -11,11 +11,11 @@
 
 ## Executive Summary
 
-Handover 0012 set out to verify the depth and effectiveness of GiljoAI MCP's Claude Code integration, specifically investigating claims of automated sub-agent spawning, 70% token reduction, and 95% reliability. After comprehensive four-phase verification, **the findings reveal a significant gap between documented claims and actual implementation**.
+Handover 0012 set out to verify the depth and effectiveness of GiljoAI MCP's Claude Code integration, specifically investigating claims of automated sub-agent spawning, context prioritization and orchestration, and 95% reliability. After comprehensive four-phase verification, **the findings reveal a significant gap between documented claims and actual implementation**.
 
 **Key Findings**:
 - **No automated sub-agent spawning exists** - only manual workflow tracking infrastructure
-- **Token reduction claims misleading** - ~40% reduction comes from role-based config filtering, not automation
+- **Context prioritization claims misleading** - ~40% reduction comes from role-based config filtering, not automation
 - **Valuable infrastructure exists** but is limited to prompt generation and manual coordination
 - **AKE-MCP discovery** - found working implementation patterns that align with user's actual vision
 
@@ -26,7 +26,7 @@ Handover 0012 set out to verify the depth and effectiveness of GiljoAI MCP's Cla
 ## Original Claims vs Reality
 
 ### Claim 1: Automated Sub-Agent Spawning
-**Documentation Claim**: "Seamless sub-agent delegation achieving 70% token reduction"
+**Documentation Claim**: "Seamless sub-agent delegation achieving context prioritization and orchestration"
 
 **Reality**:
 - ❌ **No automated spawning mechanism exists**
@@ -42,7 +42,7 @@ Handover 0012 set out to verify the depth and effectiveness of GiljoAI MCP's Cla
 - Manual copy-paste workflow only
 
 ### Claim 2: 70% Token Reduction
-**Documentation Claim**: "70% token reduction vs manual approach"
+**Documentation Claim**: "context prioritization and orchestration vs manual approach"
 
 **Reality**:
 - ⚠️ **~40% reduction** from hierarchical role-based config loading
@@ -124,12 +124,12 @@ Handover 0012 set out to verify the depth and effectiveness of GiljoAI MCP's Cla
 
 ### Phase 3: Deep-Researcher - Performance Claims Analysis
 **Agent**: Deep-Researcher
-**Focus**: Validate token reduction and reliability metrics
+**Focus**: Validate context prioritization and reliability metrics
 
 **Token Reduction Investigation**:
 - Analyzed `load_hierarchical_context()` implementation
 - Measured role-based filtering: **~40% reduction**
-- Searched for sub-agent token savings: **None found**
+- Searched for sub-agent context-efficiency metrics: **None found**
 - **Conclusion**: 70% claim unsubstantiated
 
 **Performance Analysis**:
@@ -712,7 +712,7 @@ Based on AKE-MCP discovery and user's actual vision, GiljoAI MCP requires **5 ma
 - Vision documents chunked automatically
 - Context searchable by keywords
 - Agent-specific context loading works
-- 60%+ token reduction demonstrated
+- 60%+ context prioritization demonstrated
 
 ### Project 3: Agent Job Management System
 **Priority**: HIGH
@@ -765,7 +765,7 @@ Based on AKE-MCP discovery and user's actual vision, GiljoAI MCP requires **5 ma
    - Orchestrator reads full context
    - Generates condensed missions per agent type
    - Stores summarization in `mcp_context_summary`
-   - Tracks token reduction metrics
+   - Tracks context prioritization metrics
 
 2. **AgentSpawner**
    - Create agent jobs from condensed missions
@@ -786,7 +786,7 @@ Based on AKE-MCP discovery and user's actual vision, GiljoAI MCP requires **5 ma
 
 **Success Criteria**:
 - Orchestrator creates condensed missions from full context
-- Token reduction measured and tracked
+- Context prioritization measured and tracked
 - Multi-agent workflow coordinated
 - Agent spawning systematic
 
@@ -814,7 +814,7 @@ Based on AKE-MCP discovery and user's actual vision, GiljoAI MCP requires **5 ma
 3. **ContextViewer.vue**
    - Display vision document chunks
    - Show context assignment per agent
-   - Visualize token reduction metrics
+   - Visualize context prioritization metrics
    - Context search interface
 
 4. **API Endpoints**
@@ -867,7 +867,7 @@ Based on AKE-MCP discovery and user's actual vision, GiljoAI MCP requires **5 ma
 ### Phase 5: Validation (Week 7)
 1. Comprehensive integration testing
 2. Performance benchmarking
-3. Token reduction validation
+3. Context prioritization validation
 4. Documentation updates
 
 ---
@@ -953,7 +953,7 @@ Handover 0012 verification reveals that GiljoAI MCP has **excellent foundational
 **Current Reality**:
 - ✅ Solid multi-tenant task management
 - ✅ Manual workflow tools functional
-- ✅ ~40% token reduction from role-based filtering
+- ✅ ~40% context prioritization from role-based filtering
 - ❌ No automated sub-agent spawning
 - ❌ No vision document chunking/indexing
 - ❌ No agent job management

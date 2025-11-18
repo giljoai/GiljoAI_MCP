@@ -2,7 +2,7 @@
 Token Reduction Comparison Tests (Handover 0088)
 
 Compares fat prompts (old) vs thin client prompts (new) to validate
-70% token reduction is achieved.
+context prioritization and orchestration is achieved.
 
 This test validates the CORE VALUE PROPOSITION of this handover.
 """
@@ -21,7 +21,7 @@ class TestTokenReductionComparison:
 
     async def test_fat_vs_thin_comparison(self, db_session):
         """
-        CRITICAL TEST: Validate 70%+ token reduction.
+        CRITICAL TEST: Validate 70%+ context prioritization.
 
         Compares:
         - Fat prompt: Embedded mission (old approach)
@@ -240,10 +240,10 @@ class TestTokenReductionComparison:
         # CRITICAL ASSERTIONS
         assert thin_prompt_tokens < 200, f"Thin prompt too large: {thin_prompt_tokens} tokens"
         assert total_thin_tokens < fat_tokens, "Thin approach must use fewer tokens"
-        assert reduction_percent >= 50, f"Token reduction should be ≥50%, got {reduction_percent:.1f}%"
+        assert reduction_percent >= 50, f"Context prioritization should be ≥50%, got {reduction_percent:.1f}%"
 
         # Document the win
-        print(f"✅ SUCCESS: Achieved {reduction_percent:.1f}% token reduction")
+        print(f"✅ SUCCESS: Achieved {reduction_percent:.1f}% context prioritization")
         print(
             f"   User experience improved: Copy {len(thin_result.prompt.split())} words instead of {len(fat_prompt_simulation.split())} words"
         )

@@ -99,8 +99,8 @@ const ALL_AVAILABLE_FIELDS = [
 3. ✅ **Test detail levels apply correctly**
    - Priority 10: Full hierarchical structure
    - Priority 7-9: Moderate condensation
-   - Priority 4-6: 50% token reduction
-   - Priority 1-3: 80% token reduction
+   - Priority 4-6: 50% context prioritization
+   - Priority 1-3: 80% context prioritization
 
 4. ✅ **Test tech stack excluded when priority=0**
    - No "Tech Stack" section in context
@@ -284,7 +284,7 @@ class TestTechStackContextExtraction:
             field_priorities={"tech_stack": 1}
         )
 
-        # Verify token reduction
+        # Verify context prioritization
         tokens_full = mission_planner._count_tokens(context_full)
         tokens_minimal = mission_planner._count_tokens(context_minimal)
 
@@ -586,16 +586,16 @@ def test_format_tech_stack_full():
 **Current** (line 37-40):
 ```python
 DEFAULT_FIELD_PRIORITIES = {
-    "codebase_summary": 6,  # Moderate detail (50% token reduction)
-    "architecture": 4,      # Abbreviated detail (70% token reduction)
+    "codebase_summary": 6,  # Moderate detail (50% context prioritization)
+    "architecture": 4,      # Abbreviated detail (context prioritization and orchestration)
 }
 ```
 
 **Updated**:
 ```python
 DEFAULT_FIELD_PRIORITIES = {
-    "codebase_summary": 6,  # Moderate detail (50% token reduction)
-    "architecture": 4,      # Abbreviated detail (70% token reduction)
+    "codebase_summary": 6,  # Moderate detail (50% context prioritization)
+    "architecture": 4,      # Abbreviated detail (context prioritization and orchestration)
     "tech_stack": 8,        # Moderate-high detail (tech stack is critical context)
 }
 ```
@@ -808,7 +808,7 @@ Complete test suite as defined in Phase 1.
 - ✅ All tests pass (100% test coverage for new code)
 - ✅ Tech stack fields available in User Settings
 - ✅ Tech stack appears in agent mission context
-- ✅ Token reduction targets met (50%/80% for abbreviated/minimal)
+- ✅ Context prioritization targets met (50%/80% for abbreviated/minimal)
 - ✅ No regression in existing tests
 - ✅ Logging confirms tech stack extraction
 - ✅ Frontend drag-and-drop works seamlessly
@@ -824,7 +824,7 @@ Complete test suite as defined in Phase 1.
 
 ### Medium Risk
 - ⚠️ Frontend changes require npm rebuild
-- ⚠️ Token reduction logic needs validation
+- ⚠️ Context prioritization logic needs validation
 
 ### Mitigation Strategies
 - Run full test suite before commit
@@ -945,7 +945,7 @@ Complete test suite as defined in Phase 1.
 - Detail levels match specification (25%/50%/80% reduction)
 
 ### Token Reduction Impact
-Tech stack now contributes to 77% overall token reduction:
+Tech stack now contributes to 77% overall context prioritization:
 - Full: All 6 categories (~300 tokens)
 - Moderate: All categories, first 3 items (~200 tokens)
 - Abbreviated: 4 primary categories (~150 tokens)

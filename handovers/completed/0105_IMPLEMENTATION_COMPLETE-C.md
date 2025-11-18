@@ -125,7 +125,7 @@ const props = defineProps({
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
 2. Fetch mission: mcp__giljo-mcp__get_orchestrator_instructions(...)
-3. Execute mission (70% token reduction applied)
+3. Execute mission (context prioritization and orchestration applied)
 4. Coordinate agents via MCP tools
 
 Begin by verifying MCP connection, then fetch your mission.
@@ -139,7 +139,7 @@ STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
 2. Fetch mission: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{tenant_key}')
 3. PERSIST mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission_from_step_2)
-4. Execute mission (70% token reduction applied)
+4. Execute mission (context prioritization and orchestration applied)
 5. Coordinate agents via MCP tools
 
 CRITICAL: Step 3 saves mission to Project.mission for UI display. Required for workflow.

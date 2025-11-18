@@ -17,12 +17,12 @@ Create → Acknowledge → Post messages → Complete/Fail → Verify status
 
 ## Test Coverage
 **File**: `tests/e2e/test_orchestration_workflows.py` (12+ tests)
-- Full orchestrator workflow, MissionPlanner 70% token reduction, AgentSelector capability matching, WorkflowEngine coordination, Agent job lifecycle, WebSocket events
+- Full orchestrator workflow, MissionPlanner context prioritization and orchestration, AgentSelector capability matching, WorkflowEngine coordination, Agent job lifecycle, WebSocket events
 
 ## Success Criteria
 - [ ] Workflows 4-5 pass
 - [ ] WebSocket events verified
-- [ ] 70% token reduction confirmed
+- [ ] context prioritization and orchestration confirmed
 - [ ] 12+ tests passing
 
 ## Deliverables

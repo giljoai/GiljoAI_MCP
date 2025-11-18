@@ -5,7 +5,7 @@ Tests the NEW thin client prompt generator that generates ~10 line prompts
 with MCP tool references instead of embedding 3000-line fat prompts.
 
 Target: 85%+ code coverage
-Priority: CRITICAL - Enables 70% token reduction feature
+Priority: CRITICAL - Enables context prioritization and orchestration feature
 """
 
 from uuid import uuid4
@@ -51,7 +51,7 @@ class TestThinClientGeneratorBasic:
             tenant_key=tenant_key,
             name="Test Product",
             description="Test product for thin prompt testing",
-            vision_document="This is a test product vision document with sufficient content to test token reduction.",
+            vision_document="This is a test product vision document with sufficient content to test context prioritization.",
         )
         db_session.add(product)
 

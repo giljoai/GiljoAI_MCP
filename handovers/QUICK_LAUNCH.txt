@@ -1,3 +1,246 @@
+
+Execute handover "F:\GiljoAI_MCP\handovers\0312_context_architecture_v2_design.md" with production-grade quality.
+
+CRITICAL REQUIREMENTS:
+
+1. TDD DISCIPLINE (Non-Negotiable):
+   - Write tests FIRST (Red phase - tests must fail initially)
+   - Implement MINIMAL code to make tests pass (Green phase)
+   - Refactor if needed (Refactor phase)
+   - Test BEHAVIOR (what code does), not IMPLEMENTATION (how it does it)
+   - Use descriptive test names: test_extraction_returns_full_detail_at_priority_10
+   - Avoid testing internal implementation details
+   - Coverage target: >80% for new code
+
+2. ARCHITECTURAL DISCIPLINE:
+   - Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md FIRST
+   - Build on existing patterns (ProductService, ProjectService, etc.)
+   - Do NOT reinvent methods that already exist
+   - Use existing service layer patterns (AsyncSession, multi-tenant isolation, Pydantic schemas)
+   - Follow established conventions (see 013A section 2.1-2.6 for area-specific patterns)
+   - Reuse existing fixtures from tests/conftest.py
+  
+
+3. CODE QUALITY STANDARDS:
+   - Production-grade code from the start (no bandaids, no "fix later" comments)
+   - Follow existing patterns in F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+   - Clean code: No zombie code, no commented-out blocks (delete, don't comment)
+   - Cross-platform: Use pathlib.Path() for all file operations
+   - Multi-tenant isolation: Include tenant_key in all DB queries
+   - Error handling: Comprehensive, domain-specific exceptions
+   - Logging: Structured metadata (extra={...}) for all significant operations
+
+4. EXECUTION WORKFLOW:
+   Phase 1 - Read & Understand (15-20 min):
+     - Read complete handover document
+     - Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+     - Identify existing patterns to reuse
+     - Identify integration points (which services, which endpoints)
+
+   Phase 2 - Write Tests FIRST (Red - 30-40% of time):
+     - Create test file: tests/unit/test_{feature_name}.py
+     - Write failing unit tests for all new methods
+     - Create integration test file: tests/integration/test_{feature_name}_integration.py
+     - Write failing integration tests for end-to-end behavior
+     - Run tests: pytest tests/ -v (all should fail RED ❌)
+
+   Phase 3 - Implement (Green - 40-50% of time):
+     - Write MINIMAL code to make tests pass
+     - Follow service layer pattern if backend work
+     - Follow component pattern if frontend work
+     - Run tests iteratively: pytest tests/ -v (all should pass GREEN ✅)
+
+   Phase 4 - Refactor & Polish (10-20% of time):
+     - Extract common patterns into helpers
+     - Optimize for performance (minimize DB queries, string operations)
+     - Add comprehensive docstrings (Google style)
+     - Add structured logging with metadata
+     - Run tests: pytest tests/ -v (still GREEN ✅)
+
+   Phase 5 - Validate & Document (10% of time):
+     - Run full test suite: pytest tests/ --cov=src/giljo_mcp
+     - Verify >80% coverage for new code
+     - Update relevant documentation 
+     - Git commit with descriptive message
+
+5. DELIVERABLES:
+   - All tests passing (Green ✅)
+   - >80% code coverage for new code
+   - Clean implementation (no commented code, no TODOs)
+   - Documentation updated
+   - Git commit ready for review
+
+6. CRITICAL CHECKS (Before Committing):
+   ✓ Read 013A_code_review_architecture_status.md? (verify you reused existing patterns)
+   ✓ Tests written FIRST? (TDD Red → Green → Refactor)
+   ✓ All tests passing? (pytest tests/ -v)
+   ✓ Coverage >80%? (pytest --cov)
+   ✓ Multi-tenant isolation verified? (tenant_key in all queries)
+   ✓ Cross-platform paths? (pathlib.Path, no hardcoded F:\)
+   ✓ Production-grade? (no bandaids, no quick fixes)
+   ✓ Documentation updated?
+
+SHOW ME:
+- Test file(s) created (with descriptive test names)
+- Implementation file(s) modified
+- Test results (all passing)
+- Coverage report (>80% for new code)
+- Git commit summary
+
+
+## v2.0 Architecture Evolution (November 2025)
+
+### Background: Why v2.0?
+
+After completing handovers 0301-0311 (v1.0), user feedback revealed an architectural mismatch:
+
+**Issue**: v1.0 conflated two separate concerns:
+1. **Prioritization** (what's important to emphasize)
+2. **Token Budget Management** (how much context to send)
+
+Users wanted to say "Architecture is CRITICAL" without forcing 100% of tokens. They wanted granular control over token usage (depth) independent of importance (priority).
+
+**Solution**: Refactor to 2-dimensional model (Priority × Depth)
+
+---
+
+### v1.0 Summary (COMPLETED - Foundational Work)
+
+**Completed Handovers** (Nov 17, 2025):
+- ✅ **0301**: Fix priority mapping UI-backend bug (REUSED in 0313)
+- ✅ **0302**: Tech stack context extraction (REUSED in 0315)
+- ✅ **0303**: Product config fields extraction (REUSED in 0315)
+- ✅ **0305**: Vision document chunking (REUSED in 0314, 0315)
+- ✅ **0306**: Agent templates in context (REUSED in 0315)
+- ✅ **0311**: 360 Memory + Git integration (REUSED in 0314, 0315)
+
+**Achievement**: 8/9 context sources implemented, 77% context prioritization, 30+ tests passing
+
+**Code Quality**: Clean implementation, zero orphan code, comprehensive test coverage
+
+**Status**: v1.0 code is production-ready and will be reused (60-80%) in v2.0
+
+---
+
+### Superseded Handovers (Moved to /superseded)
+
+These handovers were designed for v1.0 architecture but are no longer needed in v2.0:
+
+- ❌ **0304**: Token budget enforcement → Replaced by v2.0 token calculator (feedback-only)
+- ❌ **0307**: Backend default field priorities → Replaced by 0313 (priority refactor)
+- ❌ **0308**: Frontend field labels & tooltips → Replaced by 0314 (depth UI)
+
+**Note**: These handovers were never implemented (still in planning when architecture pivot identified).
+
+---
+
+### v2.0 Execution Roadmap
+
+**Execute in this order**:
+
+#### Phase 1: Architecture Design (1-2 days)
+**0312**: Context Architecture v2.0 Design
+- Define 2-dimensional model (Priority × Depth)
+- Design MCP tool contracts
+- Create UI mockups for depth configuration
+- Document migration strategy
+
+**Estimated Time**: 1-2 days
+**Assignee**: System Architect Agent
+**Dependencies**: None
+
+---
+
+#### Phase 2: Priority System Refactor (3-4 days)
+**0313**: Implement Priority System
+- Refactor priority semantics (emphasis vs trimming)
+- Update UserSettings.vue (13 cards → 6 cards)
+- Update mission_planner.py to emit priority metadata
+- Migrate v1.0 priorities to v2.0 format
+
+**Estimated Time**: 3-4 days
+**Assignee**: TDD Implementor Agent
+**Dependencies**: 0312 complete
+
+---
+
+#### Phase 3: Depth Controls Implementation (4-5 days)
+**0314**: Implement Depth Controls
+- Add depth_config JSONB column to users table
+- Create depth configuration UI (6 rows, per-source controls)
+- Implement token calculator (display-only)
+- Apply depth settings to context extraction
+
+**Estimated Time**: 4-5 days
+**Assignee**: Database Expert + TDD Implementor Agents
+**Dependencies**: 0313 complete
+
+---
+
+#### Phase 4: MCP Thin Client Refactor (5-6 days)
+**0315**: Refactor MCP Thin Client
+- Create 6 MCP tools (get_vision_document, get_360_memory, etc.)
+- Refactor thin_prompt_generator.py (fat → thin prompts)
+- Reuse v1.0 extraction methods in MCP tools
+- Test E2E workflow (thin → MCP → orchestrator)
+
+**Estimated Time**: 5-6 days
+**Assignee**: TDD Implementor + Backend Tester Agents
+**Dependencies**: 0314 complete
+
+---
+
+#### Phase 5: Enhancements (2-3 days)
+**0309**: Token Estimation Improvements (ADAPTED for v2.0)
+- Update for depth-based estimation
+- Real-time token calculator
+- Per-source token breakdown
+
+**Estimated Time**: 2-3 days
+**Assignee**: Frontend Tester Agent
+**Dependencies**: 0315 complete
+
+---
+
+#### Phase 6: Integration Testing (3-4 days)
+**0310**: Integration Testing & Validation (ADAPTED for v2.0)
+- Test 2-dimensional model (Priority × Depth)
+- Validate MCP tool integration
+- E2E workflow testing
+- Performance benchmarking
+
+**Estimated Time**: 3-4 days
+**Assignee**: Backend Integration Tester Agent
+**Dependencies**: 0309 complete
+
+---
+
+### Total v2.0 Timeline
+
+**Total Estimated Time**: 18-24 days (3-4 weeks)
+
+**Breakdown**:
+- Design: 1-2 days
+- Implementation: 12-15 days
+- Testing: 5-7 days
+
+**Code Reuse**: 60-80% of v1.0 code (900 production lines, 3,840 test lines)
+
+**Risk**: LOW (refactoring on solid foundation, comprehensive test coverage)
+
+---
+
+### v2.0 Success Criteria
+
+- [ ] 2-dimensional model operational (Priority × Depth)
+- [ ] 6 MCP tools created for on-demand context fetching
+- [ ] Thin prompts <600 tokens (vs v1.0 fat prompts 3,500+ tokens)
+- [ ] Per-source depth controls in UI
+- [ ] Token calculator provides accurate estimates
+- [ ] v1.0 → v2.0 migration seamless (backward compatible)
+- [ ] All tests passing (>80% coverage maintained)
+- [ ] Context prioritization still achieves 70%+ (via depth controls)
+
 ═══════════════════════════════════════════════════════════════
   EXECUTION ORDER - Context Management System v2.0
 ═══════════════════════════════════════════════════════════════
@@ -91,3 +334,5 @@ To execute a handover using this template:
 
 NOTE: Execute in sequence (0312 → 0313 → 0314 → 0315 → 0309 → 0310)
 Dependencies must complete before proceeding to next handover.
+
+BEGIN EXECUTION NOW.

@@ -1897,7 +1897,7 @@ any → cancel → cancelled
 **Solution:** GiljoAI manages perpetual context through:
 
 1. **Database-driven instructions** - Full context not in prompts
-2. **Thin client architecture** - 70% token reduction ACTIVE
+2. **Thin client architecture** - context prioritization and orchestration ACTIVE
 3. **Field priority system** - User controls what context is included
 4. **Orchestrator succession** - Auto-handoff at 90% capacity
 5. **Message queue** - Async communication doesn't consume context

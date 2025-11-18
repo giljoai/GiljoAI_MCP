@@ -45,7 +45,7 @@ User → Orchestrator → AgentCommunicationQueue → Agent polls queue → Agen
 # From your codebase
 mission = await orchestrator.generate_mission_from_vision(
     vision_content=project.vision,
-    condensation_level=0.7  # Your token reduction
+    condensation_level=0.7  # Your context prioritization
 )
 ```
 

@@ -2,7 +2,7 @@
 Unit tests for MissionPlanner class.
 
 Tests all methods of the MissionPlanner class which generates condensed agent missions
-from product vision documents with 70% token reduction target.
+from product vision documents with context prioritization and orchestration target.
 
 Following TDD principles: Tests written BEFORE implementation.
 """
@@ -607,7 +607,7 @@ class TestMissionPlanner:
             assert role in mission.content.lower()
 
         # The key insight: for large vision documents (50K+ tokens), sending condensed
-        # role-specific missions achieves massive token reduction.
+        # role-specific missions achieves massive context prioritization.
         # For small test fixtures, the template overhead is acceptable
         # because it provides structure and clarity.
 
@@ -849,7 +849,7 @@ class TestMissionPlanner:
         - codebase_summary: 6 (moderate detail)
         - architecture: 4 (abbreviated detail)
 
-        This ensures ~50% token reduction for optional fields while
+        This ensures ~50% context prioritization for optional fields while
         maintaining useful context.
         """
         # Arrange: Empty priorities to trigger defaults

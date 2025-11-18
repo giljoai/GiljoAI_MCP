@@ -164,7 +164,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
       // Check that token stats and educational content don't exist
       expect(wrapper.text()).not.toContain('Token Efficiency Breakdown')
       expect(wrapper.text()).not.toContain('Thin Client Architecture Benefits')
-      expect(wrapper.text()).not.toContain('70% token reduction')
+      expect(wrapper.text()).not.toContain('context prioritization and orchestration')
     })
 
     it('should show project description in middle panel', () => {

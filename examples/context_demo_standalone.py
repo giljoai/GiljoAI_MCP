@@ -1,7 +1,7 @@
 """
 Context Management System Standalone Demonstration
 
-Handover 0018: Shows token reduction metrics without database dependencies.
+Handover 0018: Shows context prioritization metrics without database dependencies.
 """
 
 import sys
@@ -39,7 +39,7 @@ def demo_tiktoken_accuracy():
 
 
 def demo_token_reduction():
-    """Demonstrate 70% token reduction."""
+    """Demonstrate context prioritization and orchestration."""
     print("\n" + "=" * 70)
     print("DEMO 2: Token Reduction - Achieving 70% Reduction Goal")
     print("=" * 70)
@@ -91,7 +91,7 @@ Vision document chunking with semantic boundaries:
 - Semantic chunking using EnhancedChunker (5000 tokens per chunk)
 - PostgreSQL full-text search for chunk retrieval
 - Role-based dynamic context loading
-- Token reduction tracking and optimization
+- Context prioritization tracking and optimization
 
 ### Frontend Dashboard
 Vue 3 application with Vuetify components:
@@ -134,7 +134,7 @@ Unified architecture binding to all interfaces (0.0.0.0):
 
 ## Token Reduction Strategy
 
-Achieving 70% token reduction through:
+Achieving context prioritization and orchestration through:
 1. Vision document chunking with semantic boundaries
 2. Role-based context selection (only relevant chunks)
 3. Condensed mission generation for agent spawning
@@ -158,7 +158,7 @@ Achieving 70% token reduction through:
 """
 
     condensed_mission = """
-Implement GiljoAI MCP: Multi-tenant agent orchestration with 70% token reduction.
+Implement GiljoAI MCP: Multi-tenant agent orchestration with context prioritization and orchestration.
 
 Stack: Python/FastAPI/PostgreSQL/Vue3. Key features:
 - 6 specialized agents (Orchestrator, Analyzer, Architect, Implementer, Tester, Reviewer)
@@ -267,7 +267,7 @@ def main():
     print("\nKey Features:")
     print("  - Accurate token counting (tiktoken cl100k_base)")
     print("  - Semantic boundary preservation")
-    print("  - 70%+ token reduction capability")
+    print("  - 70%+ context prioritization capability")
     print("  - Multi-tenant isolation ready")
     print("  - Production-grade code quality")
     print("  - Comprehensive test coverage")

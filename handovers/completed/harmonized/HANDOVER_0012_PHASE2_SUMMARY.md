@@ -60,7 +60,7 @@ Integration tests prove that GiljoAI MCP has **ZERO automated sub-agent spawning
 5. ❌ **Event loop integration** - No async task spawning
 6. ❌ **Task queue** - No orchestration queue
 
-**Impact**: Claims of "70% token reduction via automated sub-agent spawning" are **UNSUBSTANTIATED**.
+**Impact**: Claims of "context prioritization and orchestration via automated sub-agent spawning" are **UNSUBSTANTIATED**.
 
 ---
 
@@ -123,7 +123,7 @@ Integration tests prove that GiljoAI MCP has **ZERO automated sub-agent spawning
 
 | Claim | Status | Evidence |
 |-------|--------|----------|
-| "70% token reduction via automated sub-agent spawning" | ❌ UNSUBSTANTIATED | NO automation exists |
+| "context prioritization and orchestration via automated sub-agent spawning" | ❌ UNSUBSTANTIATED | NO automation exists |
 | "95% reliability through hybrid orchestration" | 🔍 NEEDS ANALYSIS | Phase 4 testing required |
 | "30% less code via delegation" | 🔍 NEEDS ANALYSIS | Phase 3 metrics required |
 
@@ -170,7 +170,7 @@ Integration tests prove that GiljoAI MCP has **ZERO automated sub-agent spawning
 
 **Integration testing provides irrefutable evidence**:
 
-The GiljoAI MCP Claude Code integration is a **manual workflow tracking framework**, NOT an automated sub-agent spawning system. Claims of automated 70% token reduction are unsubstantiated because the automation infrastructure simply doesn't exist.
+The GiljoAI MCP Claude Code integration is a **manual workflow tracking framework**, NOT an automated sub-agent spawning system. Claims of automated context prioritization and orchestration are unsubstantiated because the automation infrastructure simply doesn't exist.
 
 **Test Evidence**: 6 out of 6 negative tests passed, confirming complete absence of automation components.
 

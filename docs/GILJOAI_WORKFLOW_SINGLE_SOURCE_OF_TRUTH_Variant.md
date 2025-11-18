@@ -1849,7 +1849,7 @@ any → cancel → cancelled
 
 ### 13.2 Perpetual Context Management
 
-**Not** "70% token reduction" → **Now** "Perpetual context and conveniences"
+**Not** "context prioritization and orchestration" → **Now** "Perpetual context and conveniences"
 
 **Concept**: Manage unlimited project context across long-running work without hitting limits
 

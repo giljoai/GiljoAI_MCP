@@ -711,10 +711,10 @@ import api from '@/services/api'
 // Field Priority Constants (Handover 0301: UI-Backend Mapping Fix)
 // These values must match backend MissionPlanner._get_detail_level() expected ranges
 // See: src/giljo_mcp/mission_planner.py:512
-const PRIORITY_ALWAYS_INCLUDED = 10  // UI "Priority 1" -> "full" detail - 0% token reduction
-const PRIORITY_HIGH = 7              // UI "Priority 2" -> "moderate" detail - 25% token reduction
-const PRIORITY_MEDIUM = 4            // UI "Priority 3" -> "abbreviated" detail - 50% token reduction
-const PRIORITY_EXCLUDE = 0           // Unassigned -> "exclude" - 100% token reduction (omitted)
+const PRIORITY_ALWAYS_INCLUDED = 10  // UI "Priority 1" -> "full" detail - 0% context prioritization
+const PRIORITY_HIGH = 7              // UI "Priority 2" -> "moderate" detail - 25% context prioritization
+const PRIORITY_MEDIUM = 4            // UI "Priority 3" -> "abbreviated" detail - 50% context prioritization
+const PRIORITY_EXCLUDE = 0           // Unassigned -> "exclude" - 100% context prioritization (omitted)
 
 // Stores and Theme
 const settingsStore = useSettingsStore()

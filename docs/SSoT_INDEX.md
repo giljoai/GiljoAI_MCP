@@ -20,7 +20,7 @@
 - The 13 context priority cards (user configuration)
 - Complete orchestrator launch flow (step-by-step)
 - Priority-based context extraction (9 context sources)
-- Token reduction metrics (77% reduction, 3,500 tokens vs 15K-30K baseline)
+- Context prioritization metrics (77% reduction, 3,500 tokens vs 15K-30K baseline)
 - Agent-specific context re-prioritization
 - Complete flow diagram (user → orchestrator → agents → completion)
 
@@ -32,7 +32,7 @@
 **When to Use**:
 - Understanding the complete orchestrator workflow
 - Debugging context building issues
-- Explaining token reduction to stakeholders
+- Explaining context prioritization to stakeholders
 - Training new developers on context management
 - Designing new context sources
 

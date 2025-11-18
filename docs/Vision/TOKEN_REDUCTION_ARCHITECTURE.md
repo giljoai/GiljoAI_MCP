@@ -14,13 +14,13 @@
 - **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & product vision
 - **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
 
-**Achievement**: **70% token reduction** verified and documented in Handover 0088
+**Achievement**: **context prioritization and orchestration** verified and documented in Handover 0088
 
 ---
 
 ## Related Documentation
 
-This document provides **technical implementation details** for GiljoAI MCP's token reduction strategies. For broader context, see:
+This document provides **technical implementation details** for GiljoAI MCP's context prioritization strategies. For broader context, see:
 
 - **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of product vision
 - **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic context and business value
@@ -38,7 +38,7 @@ This document provides **technical implementation details** for GiljoAI MCP's to
 
 ## Overview
 
-This document details the sophisticated token reduction architecture that enables GiljoAI MCP to achieve **70% token reduction** compared to traditional AI assistant approaches, while maintaining superior context awareness and coordination.
+This document details the sophisticated context prioritization architecture that enables GiljoAI MCP to achieve **context prioritization and orchestration** compared to traditional AI assistant approaches, while maintaining superior context awareness and coordination.
 
 ---
 
@@ -160,7 +160,7 @@ class OrchestratorSummarizer:
                 token_count=self._count_tokens(requirements)
             )
 
-        # 4. Track token reduction
+        # 4. Track context prioritization
         reduction = self._calculate_reduction(full_context, missions)
 
         return missions
@@ -393,7 +393,7 @@ Token Reduction: 90% on subsequent requests (no re-reading)
 3. **Hierarchical Loading**: Additional 30% reduction
 4. **Dynamic Discovery**: Load only what's needed when needed
 
-**Combined Effect**: 70% average token reduction with better context quality
+**Combined Effect**: 70% average context prioritization with better context quality
 
 ---
 
@@ -475,9 +475,9 @@ class ContextCache:
 
 ## Conclusion
 
-The token reduction architecture transforms the economics and capabilities of AI-assisted development:
+The context prioritization architecture transforms the economics and capabilities of AI-assisted development:
 
-- **70% token reduction** through intelligent context management
+- **context prioritization and orchestration** through intelligent context management
 - **Better context quality** through focused missions
 - **Unlimited scale** through chunking and indexing
 - **Faster execution** through parallel agents
@@ -487,4 +487,4 @@ This architecture makes previously impossible projects feasible and cost-effecti
 
 ---
 
-*This document describes the token reduction architecture based on proven patterns from AKE-MCP and planned enhancements for GiljoAI MCP.*
+*This document describes the context prioritization architecture based on proven patterns from AKE-MCP and planned enhancements for GiljoAI MCP.*

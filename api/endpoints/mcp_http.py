@@ -211,7 +211,7 @@ async def handle_tools_list(
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
-            "description": "Fetch orchestrator mission with 70% token reduction (thin client architecture)",
+            "description": "Fetch orchestrator mission with context prioritization and orchestration (thin client architecture)",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -457,7 +457,7 @@ async def handle_tools_list(
         # Orchestration Tools (Handover 0088)
         {
             "name": "orchestrate_project",
-            "description": "Complete project orchestration workflow with 70% token reduction",
+            "description": "Complete project orchestration workflow with context prioritization and orchestration",
             "inputSchema": {
                 "type": "object",
                 "properties": {

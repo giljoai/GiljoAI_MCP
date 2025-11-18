@@ -11,14 +11,14 @@
 
 ## Executive Summary
 
-**CRITICAL PROBLEM**: The Stage Project feature currently generates "fat prompts" (2000-3000 lines) that embed the entire mission content directly into the launch prompt. This completely defeats the purpose of our 70% token reduction feature and creates a terrible user experience (copying 3000 lines into Claude Code CLI).
+**CRITICAL PROBLEM**: The Stage Project feature currently generates "fat prompts" (2000-3000 lines) that embed the entire mission content directly into the launch prompt. This completely defeats the purpose of our context prioritization and orchestration feature and creates a terrible user experience (copying 3000 lines into Claude Code CLI).
 
 **ROOT CAUSE**: The `OrchestratorPromptGenerator` in `src/giljo_mcp/prompt_generator.py` was designed to generate comprehensive, self-contained prompts for orchestrators. However, this violates the thin client architecture pattern that MCP was designed to enable.
 
-**SOLUTION**: Implemented a "thin client" pattern where launch prompts contain only identity information (~10 lines) and orchestrators fetch their missions dynamically via MCP tools. This restores the 70% token reduction and provides a professional user experience.
+**SOLUTION**: Implemented a "thin client" pattern where launch prompts contain only identity information (~10 lines) and orchestrators fetch their missions dynamically via MCP tools. This restores the context prioritization and orchestration and provides a professional user experience.
 
 **BUSINESS IMPACT**:
-- ✅ Restores 70% token reduction promise
+- ✅ Restores context prioritization and orchestration promise
 - ✅ Professional appearance for commercial product
 - ✅ Reduced API costs for customers
 - ✅ Better UX (copy 10 lines, not 3000)
@@ -126,7 +126,7 @@ Begin by fetching your mission.
    ↓
 6. Claude Code receives 30K token prompt
    ↓
-7. 70% token reduction feature COMPLETELY BYPASSED
+7. context prioritization and orchestration feature COMPLETELY BYPASSED
    ↓
 8. Orchestrator runs with fat context (expensive API costs)
 
@@ -171,7 +171,7 @@ Agent Templates    ─────┘                              User Clipboar
    ↓
 8. MCP tool applies field priorities and returns condensed mission (6K tokens)
    ↓
-9. 70% token reduction FULLY ACTIVE
+9. context prioritization and orchestration FULLY ACTIVE
    ↓
 10. Orchestrator runs with thin context (low API costs)
 
@@ -223,7 +223,7 @@ async def get_orchestrator_instructions(
     1. Fetch orchestrator job from database
     2. Get associated project and product
     3. Apply field priorities to vision content
-    4. Return condensed mission (70% token reduction)
+    4. Return condensed mission (context prioritization and orchestration)
 
     Args:
         orchestrator_id: Orchestrator job UUID
@@ -460,7 +460,7 @@ Thin Client Prompt Generator (Handover 0088)
 REPLACES: OrchestratorPromptGenerator (prompt_generator.py)
 
 KEY DIFFERENCE: Generates ~10 line prompts with identity only.
-Orchestrators fetch missions via MCP tools (70% token reduction enabled).
+Orchestrators fetch missions via MCP tools (context prioritization and orchestration enabled).
 
 Author: GiljoAI Development Team
 Date: 2025-11-02
@@ -495,7 +495,7 @@ class ThinClientPromptGenerator:
     """
     Generates thin client prompts for orchestrators.
 
-    CRITICAL: This enables the 70% token reduction feature.
+    CRITICAL: This enables the context prioritization and orchestration feature.
 
     Architecture:
     - Prompt contains only identity (~10 lines, 50 tokens)
@@ -513,7 +513,7 @@ class ThinClientPromptGenerator:
 
     Benefits:
     - Professional UX (copy 10 lines, not 3000)
-    - 70% token reduction ACTIVE
+    - context prioritization and orchestration ACTIVE
     - Dynamic mission updates possible
     - Commercial-grade appearance
     """
@@ -677,7 +677,7 @@ IDENTITY:
 
 INSTRUCTIONS:
 1. Call get_orchestrator_instructions('{orchestrator_id}', '<your-tenant-key>') to fetch your condensed mission
-2. The mission has been optimized using field priorities (70% token reduction applied)
+2. The mission has been optimized using field priorities (context prioritization and orchestration applied)
 3. Execute the mission according to the instructions provided
 4. Coordinate agents via MCP tools (spawn_agent_job, send_message, etc.)
 5. Report progress via update_job_progress('{orchestrator_id}', percent, message)
@@ -765,7 +765,7 @@ async def generate_orchestrator_prompt(
     CRITICAL CHANGE (Handover 0088):
     - OLD: Returns 2000-3000 line prompt with embedded mission
     - NEW: Returns 10-line prompt with MCP tool reference
-    - BENEFIT: 70% token reduction ACTIVE + professional UX
+    - BENEFIT: context prioritization and orchestration ACTIVE + professional UX
 
     Process:
     1. Create orchestrator job in database
@@ -773,7 +773,7 @@ async def generate_orchestrator_prompt(
     3. Return thin prompt with orchestrator_id
     4. User pastes prompt into CLI
     5. Orchestrator calls get_orchestrator_instructions() via MCP
-    6. Token reduction achieved
+    6. Context prioritization achieved
     """
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -879,7 +879,7 @@ async def generate_orchestrator_prompt(
     <ul class="mt-2">
       <li>Only 10 lines to copy (not 3000!)</li>
       <li>Mission fetched dynamically via MCP</li>
-      <li>70% token reduction ACTIVE</li>
+      <li>context prioritization and orchestration ACTIVE</li>
       <li>Lower API costs for you</li>
     </ul>
   </div>
@@ -908,7 +908,7 @@ async def generate_orchestrator_prompt(
 Orchestrator Staging Prompt Generator (DEPRECATED - Handover 0088)
 
 ⚠️ DEPRECATED: This module generates "fat prompts" (2000-3000 lines)
-that defeat the 70% token reduction feature.
+that defeat the context prioritization and orchestration feature.
 
 REPLACEMENT: Use ThinClientPromptGenerator (thin_prompt_generator.py)
 
@@ -1043,7 +1043,7 @@ async def test_orchestrator_fetches_instructions_via_mcp(
     2. Call get_orchestrator_instructions(orchestrator_id)
     3. Verify condensed mission returned
     4. Verify field priorities applied
-    5. Verify 70% token reduction achieved
+    5. Verify context prioritization and orchestration achieved
     """
     from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
@@ -1187,7 +1187,7 @@ async def test_multi_tenant_isolation(
 - ✅ All tests pass
 - ✅ Code coverage ≥85%
 - ✅ Multi-tenant isolation verified
-- ✅ Token reduction validated
+- ✅ Context prioritization validated
 - ✅ E2E workflow tested
 
 ---
@@ -1211,7 +1211,7 @@ result = await generator.generate(
 )
 ```
 
-**Impact**: Without user_id, field priorities are ignored and 70% token reduction is lost.
+**Impact**: Without user_id, field priorities are ignored and context prioritization and orchestration is lost.
 
 ---
 
@@ -1346,7 +1346,7 @@ orchestrator = MCPAgentJob(
 - ✅ Thin prompts are ~10 lines (~50 tokens)
 - ✅ Orchestrator calls get_orchestrator_instructions() successfully
 - ✅ Condensed mission returned with field priorities applied
-- ✅ 70% token reduction achieved
+- ✅ context prioritization and orchestration achieved
 - ✅ Multi-tenant isolation enforced
 - ✅ User experience improved (copy 10 lines, not 3000)
 
@@ -1415,7 +1415,7 @@ Before marking this handover complete:
 
 - [ ] User experience improved
 - [ ] Professional appearance achieved
-- [ ] Token reduction validated
+- [ ] Context prioritization validated
 - [ ] Commercial viability confirmed
 - [ ] Documentation complete
 - [ ] Migration plan approved
@@ -1482,15 +1482,15 @@ F:\GiljoAI_MCP\src\giljo_mcp\prompt_generator.py (deprecated, remove in v4.0)
 
 ## Conclusion
 
-This handover addresses a **CRITICAL architectural flaw** that defeats our 70% token reduction promise. The fix is straightforward but must be implemented carefully to avoid breaking existing workflows.
+This handover addresses a **CRITICAL architectural flaw** that defeats our context prioritization and orchestration promise. The fix is straightforward but must be implemented carefully to avoid breaking existing workflows.
 
-**The Core Problem**: We built an amazing token reduction system (field priorities), then bypassed it by embedding everything in prompts anyway.
+**The Core Problem**: We built an amazing context prioritization system (field priorities), then bypassed it by embedding everything in prompts anyway.
 
 **The Solution**: Thin client architecture - prompts contain identity only, missions fetched via MCP.
 
 **The Result**:
 - Professional user experience (copy 10 lines, not 3000)
-- 70% token reduction ACTIVE
+- context prioritization and orchestration ACTIVE
 - Lower API costs for customers
 - Commercial-grade product ready for launch
 
@@ -1909,7 +1909,7 @@ STARTUP SEQUENCE:
 1. Verify MCP connection:
    mcp__giljo-mcp__health_check()
 
-2. Fetch your condensed mission (70% token reduction applied):
+2. Fetch your condensed mission (context prioritization and orchestration applied):
    mcp__giljo-mcp__get_orchestrator_instructions(
        orchestrator_id='{orchestrator_id}',
        tenant_key='{self.tenant_key}'
@@ -2229,13 +2229,13 @@ backend_agent_calls:
 
 **What Was Built**:
 
-- **Phase 1: MCP Tools** - `get_orchestrator_instructions()` implemented (218 lines) with field priorities, token reduction, and WebSocket broadcasting. Comprehensive test suite created (915 lines, 10 test cases).
+- **Phase 1: MCP Tools** - `get_orchestrator_instructions()` implemented (218 lines) with field priorities, context prioritization, and WebSocket broadcasting. Comprehensive test suite created (915 lines, 10 test cases).
 
-- **Phase 2: ThinClientPromptGenerator Class** - New generator class (282 lines) produces ~10 line prompts with orchestrator identity only. Stores condensed mission in database with field priorities. 70% token reduction ACTIVE at mission fetch time. Token comparison tests validate 79.8% savings.
+- **Phase 2: ThinClientPromptGenerator Class** - New generator class (282 lines) produces ~10 line prompts with orchestrator identity only. Stores condensed mission in database with field priorities. context prioritization and orchestration ACTIVE at mission fetch time. Token comparison tests validate 79.8% savings.
 
 - **Phase 3: API Endpoints Refactored** - POST /api/prompts/orchestrator returns ThinPromptResponse (10 lines, not 3000). GET /api/prompts/staging adapted for thin client architecture. WebSocket broadcasts for real-time UI updates. Integration tests (13 test cases, 90%+ coverage).
 
-- **Phase 4: Frontend UI Updated** - LaunchTab.vue displays thin client badge, token savings visualization (computed properties), and professional copy prompts (10 lines). Real-time WebSocket listener for mission population. WCAG 2.1 AA accessibility compliance. Responsive design (mobile/tablet/desktop). Component tests (10 test cases).
+- **Phase 4: Frontend UI Updated** - LaunchTab.vue displays thin client badge, context-usage visualization (computed properties), and professional copy prompts (10 lines). Real-time WebSocket listener for mission population. WCAG 2.1 AA accessibility compliance. Responsive design (mobile/tablet/desktop). Component tests (10 test cases).
 
 - **Phase 5: Deprecation Warnings Added** - OrchestratorPromptGenerator marked deprecated with Python DeprecationWarning. CLAUDE.md updated with thin client section. Migration guide created (789 lines) in docs/guides/.
 
@@ -2261,7 +2261,7 @@ backend_agent_calls:
 
 **Testing** (70+ Test Cases):
 
-- **Phase 1**: 10 test cases (915 lines) - MCP tools, token reduction, multi-tenant isolation
+- **Phase 1**: 10 test cases (915 lines) - MCP tools, context prioritization, multi-tenant isolation
 - **Phase 2**: 24 test cases (1,189 lines) - Thin prompt generation, token comparison
 - **Phase 3**: 13 test cases (368 lines) - API endpoints, WebSocket integration
 - **Phase 4**: 10 test cases (425 lines) - Frontend UI, accessibility, responsive design
@@ -2329,7 +2329,7 @@ Run `python install.py` to apply the job_metadata column migration. Migration is
 2. Run test suite: `pytest tests/ -v --cov` (verify all 85+ tests pass)
 3. Manual UI testing: Generate thin prompt via LaunchTab
 4. Monitor WebSocket events in browser console
-5. Validate token reduction in production (should see 79.8% savings)
+5. Validate context prioritization in production (should see 79.8% savings)
 6. Gather user feedback on thin client UX
 7. Plan v3.2 migration (make thin client default)
 8. Schedule v4.0 cleanup (remove fat prompt generator)

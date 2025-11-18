@@ -20,7 +20,7 @@ The Context Management System achieves all performance targets with excellent re
 
 **Key Findings**:
 - Search performance is 2x better than target (< 50ms vs < 100ms target)
-- Token reduction for worker agents averages 86%
+- Context prioritization for worker agents averages 86%
 - Chunking performance scales linearly with document size
 - Multi-tenant isolation is complete with zero data leakage
 - System handles concurrent operations efficiently
@@ -255,7 +255,7 @@ Efficiency of token budget enforcement:
 
 ### Worker Agent Token Reduction
 
-Comprehensive analysis of token reduction per agent type:
+Comprehensive analysis of context prioritization per agent type:
 
 | Agent Type | Full Vision | Context Loaded | Reduction | Avg Relevance |
 |------------|-------------|----------------|-----------|---------------|
@@ -277,11 +277,11 @@ Comprehensive analysis of token reduction per agent type:
 | Specific | "Implement user auth API" | 8,200 | 83.6% |
 | Very specific | "Implement JWT auth with refresh tokens" | 6,100 | 87.8% |
 
-**Conclusion**: More specific missions lead to better token reduction
+**Conclusion**: More specific missions lead to better context prioritization
 
 ### Token Reduction Over Time
 
-Cumulative token savings for a project with 10 agents over 50 tasks:
+Cumulative context-efficiency impact for a project with 10 agents over 50 tasks:
 
 ```
 Cumulative Token Savings
@@ -602,7 +602,7 @@ python -m pstats context_perf.prof
 The Context Management System exceeds all performance targets:
 
 **Key Achievements**:
-- 87% average token reduction (45% better than 60% target)
+- 87% average context prioritization (45% better than 60% target)
 - < 50ms search performance (2x better than 100ms target)
 - Efficient chunking: 1.8s for 50K tokens (2.8x better than 5s target)
 - 100% multi-tenant isolation with only 10% overhead

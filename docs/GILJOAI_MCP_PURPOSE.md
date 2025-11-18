@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-**GiljoAI MCP** solves the two biggest problems with AI-assisted development: **context limitations** and **token inefficiency**. It achieves this through intelligent multi-agent orchestration that delivers **70% token reduction** while enabling coordinated teams of specialized AI agents to work on complex projects.
+**GiljoAI MCP** solves the two biggest problems with AI-assisted development: **context limitations** and **token inefficiency**. It achieves this through intelligent multi-agent orchestration that delivers **context prioritization and orchestration** while enabling coordinated teams of specialized AI agents to work on complex projects.
 
 **Key Achievements**:
 - **70% Token Reduction**: Production-ready orchestration system (Handover 0020) with intelligent mission generation
@@ -18,7 +18,7 @@
 
 ## What is GiljoAI MCP?
 
-GiljoAI MCP Coding Orchestrator is a **production-ready multi-agent orchestration system** that transforms AI coding assistants into coordinated development teams, achieving **70%+ token reduction** through intelligent context management. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks while dramatically reducing token consumption.
+GiljoAI MCP Coding Orchestrator is a **production-ready multi-agent orchestration system** that transforms AI coding assistants into coordinated development teams, achieving **70%+ context prioritization** through intelligent context management. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks while dramatically reducing token consumption.
 
 **The Magic**: The orchestrator reads your full project context ONCE (50,000 tokens) and creates condensed, focused missions for each specialized agent (1,500 tokens each). Database experts only get database context, frontend specialists only get UI patterns, and they all coordinate via lightweight JSONB message queues instead of duplicating context. The system automatically manages job lifecycles (pending → active → completed), tracks dependencies through parent-child hierarchies, and handles agent-to-agent communication with sub-100ms performance.
 
@@ -29,7 +29,7 @@ GiljoAI MCP Coding Orchestrator is a **production-ready multi-agent orchestratio
 **Context Limitations & Token Inefficiency**: Traditional AI coding assistants hit context limits when working on large codebases or complex projects. They can't maintain awareness of the entire system while implementing specific features, and they waste massive amounts of tokens by repeatedly analyzing the same code.
 
 **Solution**: Instead of one AI trying to hold everything in memory, GiljoAI MCP creates **teams of specialized agents** that:
-- Share context intelligently through condensed missions (**70% token reduction**)
+- Share context intelligently through condensed missions (**context prioritization and orchestration**)
 - Hand off work when they approach limits
 - Coordinate through a central orchestrator that reads full context once
 - Each focus on specific aspects of development with only relevant context
@@ -69,7 +69,7 @@ Modern software development involves:
 - AI: "I need you to show me the database models again..."
 - **Result**: Thousands of wasted tokens, incomplete implementation
 
-**With GiljoAI MCP (70% token reduction)**:
+**With GiljoAI MCP (context prioritization and orchestration)**:
 - Developer: "Implement user authentication"
 - **Orchestrator** (MissionPlanner): *Reads full vision document ONCE (50,000 tokens), creates condensed missions*
 - **AgentSelector**: *Queries AgentTemplate database, selects optimal team based on priority cascade*
@@ -117,7 +117,7 @@ Modern software development involves:
 - **Shared Discoveries**: Project memory prevents repeated codebase exploration
 - **Smart Handoffs**: Transfer focused context between agents without duplication
 
-**Proven Results**: Handover 0020 achieved **70% token reduction** in production testing
+**Proven Results**: Handover 0020 achieved **context prioritization and orchestration** in production testing
 
 ### 3. Lack of Specialization
 
@@ -254,7 +254,7 @@ Modern software development involves:
 **Serena Optimization Control** (v3.0):
 - `get_optimization_settings()` - View current optimization configuration
 - `update_optimization_rules()` - Adjust optimization rules per project
-- `get_token_savings_report()` - Comprehensive token reduction analytics
+- `get_token_savings_report()` - Comprehensive context prioritization analytics
 - `force_agent_handoff()` - Trigger context-based handoffs
 - `monitor_agent_context()` - Real-time context usage tracking
 - `optimize_agent_mission()` - Inject optimization rules at spawn time
@@ -290,7 +290,7 @@ context:
 
 ### Serena MCP Optimization Layer (v3.0)
 
-**Innovation**: Achieves 60-90% token reduction through intelligent symbolic operations.
+**Innovation**: Achieves 60-90% context prioritization through intelligent symbolic operations.
 
 **Core Optimization Engine**:
 - **Automatic symbolic operation enforcement** (find_symbol vs read_file)
@@ -304,10 +304,10 @@ context:
 2. **Tool interception**: MCP tool calls optimized in real-time
 3. **Symbolic operations**: Prefer find_symbol() over read_file() for targeted analysis
 4. **Answer limiting**: Auto-inject character limits on searches and file reads
-5. **Savings tracking**: Comprehensive per-project token reduction metrics
+5. **Savings tracking**: Comprehensive per-project context prioritization metrics
 
 **Impact**:
-- **60-90% token reduction** vs naive file reading approaches
+- **60-90% context prioritization** vs naive file reading approaches
 - **Extended agent lifespan** before hitting context limits
 - **Faster codebase navigation** through symbolic operations
 - **Production-grade reliability** with 37 passing unit tests
@@ -321,7 +321,7 @@ context:
 **Architecture**:
 - **Before**: Complex multi-terminal orchestration
 - **After**: Elegant sub-agent delegation through Claude Code
-- **Result**: 70% token reduction, 95% reliability, 30% less coordination code
+- **Result**: context prioritization and orchestration, 95% reliability, 30% less coordination code
 
 **How It Works**:
 1. User activates GiljoAI MCP project
@@ -392,7 +392,7 @@ context:
    - Real-time WebSocket events for job monitoring
    - Token metrics API for optimization tracking
 
-**Result**: Complete, production-ready system for multi-agent orchestration with proven 70%+ token reduction.
+**Result**: Complete, production-ready system for multi-agent orchestration with proven 70%+ context prioritization.
 
 ---
 
@@ -650,7 +650,7 @@ context:
 
 **Orchestration Workflow**:
 - **Start with orchestration**: Let the orchestrator read full context ONCE and create condensed missions
-- **Trust the 70% token reduction**: Proven system (50K tokens → 7.5K tokens across 5 agents = 85% reduction)
+- **Trust the context prioritization and orchestration**: Proven system (50K tokens → 7.5K tokens across 5 agents = 85% reduction)
 - **Monitor token metrics**: Use `GET /api/orchestrator/metrics/{project_id}` to track actual savings
 - **Use workflow patterns**: Leverage waterfall (sequential) or parallel execution as appropriate
 

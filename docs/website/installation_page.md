@@ -13,7 +13,7 @@
 
 **AI Agent Orchestration for Complex Software Development**
 
-70% token reduction through intelligent multi-agent coordination
+context prioritization and orchestration through intelligent multi-agent coordination
 
 [Get Started Free]  [View Documentation]  [GitHub]
 ```

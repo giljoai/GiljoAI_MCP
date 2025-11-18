@@ -141,7 +141,7 @@ tool_map = {
 
 **Suggested Definitions**:
 - **Vision** = User's project description (Project.mission field)
-- **Mission** = Orchestrator's condensed plan (70% token reduction applied)
+- **Mission** = Orchestrator's condensed plan (context prioritization and orchestration applied)
 - **Job** = Individual agent work assignment (MCPAgentJob record)
 - **Task** = Sub-units of work within a job
 

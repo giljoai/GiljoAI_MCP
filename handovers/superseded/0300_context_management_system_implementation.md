@@ -148,7 +148,7 @@ This master handover is divided into 11 focused sub-handovers (0301-0308 origina
 - More accurate token counting with tiktoken
 - Preview token usage before mission launch
 - Token budget warnings in UI
-- Analytics on token reduction effectiveness
+- Analytics on context prioritization effectiveness
 
 ### 0310: Integration Testing & Documentation
 **Duration**: 2 days
@@ -193,7 +193,7 @@ This master handover is divided into 11 focused sub-handovers (0301-0308 origina
 - `VisionDocumentChunker` - Already production-ready
 - `ContextIndexer` - PostgreSQL GIN-indexed full-text search
 - `DynamicContextLoader` - Role-based chunk selection
-- `ContextSummarizer` - Token reduction tracking
+- `ContextSummarizer` - Context prioritization tracking
 
 #### 3. Mission Planner (mission_planner.py)
 **Pattern**: Analysis → Context Building → Mission Generation
@@ -482,7 +482,7 @@ token_budget = user.field_priority_config.get("token_budget", 2000)
 - Update help text to reflect new capabilities
 
 **Phase 4: Monitoring**
-- Track token reduction metrics
+- Track context prioritization metrics
 - Monitor budget enforcement effectiveness
 - Gather user feedback on context quality
 
@@ -530,7 +530,7 @@ token_budget = user.field_priority_config.get("token_budget", 2000)
 
 ### Nice to Have (Non-Blocking)
 
-- Historical tracking of token reduction effectiveness
+- Historical tracking of context prioritization effectiveness
 - A/B testing framework for different truncation strategies
 - User feedback mechanism for context quality
 - Automated suggestions for optimal priority configurations
@@ -837,14 +837,14 @@ Upon completion of 0308, deliver:
 After 0308 completion, conduct comprehensive review:
 
 ### Metrics to Analyze
-- Token reduction percentage across all projects
+- Context prioritization percentage across all projects
 - Budget enforcement effectiveness (violations vs compliance)
 - User satisfaction with context quality
 - Performance impact on mission generation time
-- Cost savings from token reduction
+- Cost savings from context prioritization
 
 ### Success Indicators
-- Average token reduction: >60% (target: 70%)
+- Average context prioritization: >60% (target: 70%)
 - Budget violations: <5% of missions
 - User satisfaction: >4/5 stars
 - Performance: <200ms for context generation
