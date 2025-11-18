@@ -37,7 +37,8 @@ async def get_architecture(
     """
     Fetch architecture documentation for given product with depth control.
 
-    Returns Product.architecture_notes field content with truncation for overview mode.
+    Handover 0316: Reads from Product.config_data.architecture JSONB object.
+    Returns architecture fields: pattern, design_patterns, api_style, notes.
 
     Args:
         product_id: Product UUID
@@ -52,11 +53,16 @@ async def get_architecture(
         Currently ignored - full implementation deferred to future handover.
 
     Returns:
-        Dict with architecture notes and metadata:
+        Dict with architecture from config_data.architecture:
         {
             "source": "architecture",
             "depth": "overview",
-            "data": "System architecture overview...",
+            "data": {
+                "primary_pattern": "Microservices",
+                "design_patterns": "Repository, Service Layer",
+                "api_style": "RESTful",
+                "architecture_notes": "..."
+            },
             "metadata": {
                 "product_id": "uuid",
                 "tenant_key": "...",
@@ -115,10 +121,25 @@ async def get_architecture(
                 }
             }
 
-        # Check if architecture notes exist
-        arch_notes = product.architecture_notes
+        # Handover 0316: Access config_data JSONB (not architecture_notes column)
+        config_data = product.config_data or {}
+        architecture = config_data.get("architecture", {})
 
-        if not arch_notes:
+        # Extract architecture fields
+        primary_pattern = architecture.get("pattern", "")
+        design_patterns = architecture.get("design_patterns", "")
+        api_style = architecture.get("api_style", "")
+        arch_notes = architecture.get("notes", "")
+
+        # Combine all fields for depth filtering
+        full_architecture_text = f"""
+Primary Pattern: {primary_pattern}
+Design Patterns: {design_patterns}
+API Style: {api_style}
+Notes: {arch_notes}
+""".strip()
+
+        if not full_architecture_text or full_architecture_text == "Primary Pattern: \nDesign Patterns: \nAPI Style: \nNotes:":
             logger.debug(
                 "no_architecture_notes",
                 product_id=product_id,
@@ -127,7 +148,12 @@ async def get_architecture(
             return {
                 "source": "architecture",
                 "depth": depth,
-                "data": "",
+                "data": {
+                    "primary_pattern": "",
+                    "design_patterns": "",
+                    "api_style": "",
+                    "architecture_notes": ""
+                },
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
@@ -139,23 +165,32 @@ async def get_architecture(
         # Apply depth filtering
         truncated = False
         if depth == "overview":
-            # Return first 500 chars for overview
-            if len(arch_notes) > 500:
-                data = arch_notes[:500] + "..."
-                truncated = True
-            else:
-                data = arch_notes
+            # Return abbreviated version
+            data = {
+                "primary_pattern": primary_pattern,
+                "design_patterns": design_patterns[:100] + "..." if len(design_patterns) > 100 else design_patterns,
+                "api_style": api_style,
+                "architecture_notes": arch_notes[:200] + "..." if len(arch_notes) > 200 else arch_notes
+            }
+            truncated = len(design_patterns) > 100 or len(arch_notes) > 200
         else:  # "detailed"
-            # Return full notes
-            data = arch_notes
+            # Return full architecture
+            data = {
+                "primary_pattern": primary_pattern,
+                "design_patterns": design_patterns,
+                "api_style": api_style,
+                "architecture_notes": arch_notes
+            }
 
         # Calculate token estimate
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "architecture_fetched",
+            "architecture_fetched_from_config_data",
             product_id=product_id,
             tenant_key=tenant_key,
+            has_config_data=bool(product.config_data),
+            has_architecture=bool(config_data.get("architecture")),
             depth=depth,
             estimated_tokens=total_tokens,
             truncated=truncated
