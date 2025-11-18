@@ -42,9 +42,19 @@
     <v-window v-model="activeTab" :touch="false" :reverse="false">
       <!-- Context Settings -->
       <v-window-item value="context">
-        <v-card data-test="context-settings">
-          <v-card-title>Context Priority Management</v-card-title>
-          <v-card-text>
+        <!-- Context Sub-tabs -->
+        <v-tabs v-model="contextTab" class="mb-4">
+          <v-tab value="priority">Priority Configuration</v-tab>
+          <v-tab value="depth">Depth Configuration</v-tab>
+        </v-tabs>
+
+        <!-- Context Windows -->
+        <v-window v-model="contextTab" :touch="false" :reverse="false">
+          <!-- Priority Configuration Tab -->
+          <v-window-item value="priority">
+            <v-card data-test="context-settings">
+              <v-card-title>Context Priority Management</v-card-title>
+              <v-card-text>
 
             <v-alert type="info" variant="tonal" density="compact" class="mb-4">
               <strong>v2.0 Context Priority System:</strong> Controls which context categories are fetched when generating
@@ -254,8 +264,15 @@
                 Reset to Defaults
               </v-btn>
             </div>
-          </v-card-text>
-        </v-card>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
+
+          <!-- Depth Configuration Tab -->
+          <v-window-item value="depth">
+            <DepthConfiguration />
+          </v-window-item>
+        </v-window>
       </v-window-item>
 
       <!-- Agents -->
@@ -714,6 +731,7 @@ import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
+import DepthConfiguration from '@/components/settings/DepthConfiguration.vue'
 import draggable from 'vuedraggable'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
@@ -735,6 +753,7 @@ const router = useRouter()
 
 // State
 const activeTab = ref('general')
+const contextTab = ref('priority')  // Sub-tab for Context section (priority/depth)
 const integrationsSubTab = ref('mcp-config')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
