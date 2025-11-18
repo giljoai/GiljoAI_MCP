@@ -1,13 +1,46 @@
 """
-Thin Client Prompt Generator (Handover 0088)
+Thin Client Prompt Generator (Handover 0088, 0315)
 
 REPLACES: OrchestratorPromptGenerator (prompt_generator.py)
 
-KEY DIFFERENCE: Generates ~10 line prompts with identity only.
-Orchestrators fetch missions via MCP tools (context prioritization and orchestration enabled).
+KEY DIFFERENCE: Generates ~600 token prompts with MCP tool references (Handover 0315).
+Orchestrators fetch context on-demand via MCP tools (context prioritization enabled).
+
+Architecture (Handover 0315):
+- User configures priorities (Handover 0313) and depth (Handover 0314)
+- Generator creates thin prompt listing available MCP tools by priority
+- Orchestrator fetches context on-demand via MCP tool calls
+- Context usage stays within 90% budget (automatic succession trigger)
+
+Token Reduction:
+- Fat Prompt (v1.0): ~3500 tokens (inline context embedded in prompt)
+- Thin Prompt (v2.0): ~600 tokens (MCP tool references only)
+- Reduction: ~82% token savings on initial prompt
+
+MCP Tools (Handover 0315 Phase 1):
+- fetch_vision_document(chunking): Vision document chunks
+- fetch_360_memory(last_n_projects): Sequential project history
+- fetch_git_history(commits): Recent git commits
+- fetch_agent_templates(detail): Active agent configurations
+- fetch_tech_stack(sections): Tech stack information
+- fetch_architecture(depth): Architecture documentation
+
+Priority System (Handover 0313):
+- Priority 1 (CRITICAL): Fetch first, essential for mission planning
+- Priority 2 (IMPORTANT): Fetch if budget allows, enhances quality
+- Priority 3 (NICE_TO_HAVE): Fetch if extra budget, provides additional context
+- Priority 4 (EXCLUDED): Not listed in prompt, ignored by orchestrator
+
+Depth Configuration (Handover 0314):
+- vision_chunking: "none" | "light" | "moderate" | "heavy"
+- memory_last_n_projects: 1 | 3 | 5 | 10
+- git_commits: 10 | 25 | 50 | 100
+- agent_template_detail: "minimal" | "standard" | "full"
+- tech_stack_sections: "required" | "all"
+- architecture_depth: "overview" | "detailed"
 
 Author: GiljoAI Development Team
-Date: 2025-11-02
+Date: 2025-11-02 (Initial), 2025-11-17 (Handover 0315)
 Priority: CRITICAL - Enables Commercial Product
 """
 
@@ -85,7 +118,8 @@ class ThinClientPromptGenerator:
         user_id: Optional[str] = None,
         tool: str = "universal",
         instance_number: int = 1,
-        field_priorities: Optional[Dict[str, int]] = None
+        field_priorities: Optional[Dict[str, int]] = None,
+        depth_config: Optional[Dict[str, Any]] = None  # NEW PARAMETER (Handover 0315)
     ) -> Dict[str, Any]:
         """
         Generate a thin orchestrator prompt for a specified project.
@@ -93,14 +127,17 @@ class ThinClientPromptGenerator:
         Handover 0088: Now uses metadata JSONB column instead of handover_summary
         for storing field_priorities, user_id, tool, and other thin client data.
 
-        Handover (Git + 360 Memory): Injects 360 memory and git integration sections.
+        Handover 0315: Generates thin prompts (~600 tokens) that reference MCP tools
+        for on-demand context fetching, replacing fat prompts (~3500 tokens) with
+        inline context.
 
         Args:
             project_id: Project UUID
-            user_id: Optional user ID for tracking
+            user_id: Optional user ID for tracking and fetching priorities/depth config
             tool: AI coding tool (claude-code, codex, gemini, universal)
             instance_number: Orchestrator instance number (for succession)
-            field_priorities: Optional field importance weights
+            field_priorities: Optional field importance weights (v2.0 categories)
+            depth_config: Optional depth configuration (v2.0 depth settings)
 
         Returns:
             Dict with orchestrator_id and thin_prompt
@@ -120,6 +157,38 @@ class ThinClientPromptGenerator:
 
         # Fetch product for context injection
         product = await self._fetch_product(project_id)
+
+        # Handover 0315: Fetch user priorities and depth config if user_id provided
+        if user_id and (not field_priorities or not depth_config):
+            from src.giljo_mcp.models.auth import User
+            
+            user_stmt = select(User).where(
+                and_(
+                    User.id == user_id,
+                    User.tenant_key == self.tenant_key
+                )
+            )
+            user_result = await self.db.execute(user_stmt)
+            user = user_result.scalar_one_or_none()
+
+            if user:
+                # Use user config if not provided
+                if not field_priorities and user.field_priority_config:
+                    field_priorities = user.field_priority_config
+                
+                if not depth_config and user.depth_config:
+                    depth_config = user.depth_config
+
+        # Apply defaults for depth_config if still not set
+        if not depth_config:
+            depth_config = {
+                "vision_chunking": "moderate",
+                "memory_last_n_projects": 3,
+                "git_commits": 25,
+                "agent_template_detail": "standard",
+                "tech_stack_sections": "all",
+                "architecture_depth": "overview"
+            }
 
         # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
         # This prevents duplicate orchestrator creation on every "Stage Project" button click
@@ -152,7 +221,7 @@ class ThinClientPromptGenerator:
             )
 
             # Store project mission as placeholder
-            # IMPORTANT: The REAL condensed mission (with context prioritization and orchestration) is generated
+            # IMPORTANT: The REAL condensed mission (with context prioritization) is generated
             # by the MCP tool get_orchestrator_instructions() when the orchestrator calls it.
             # This placeholder ensures the job exists in the database for MCP lookup.
             placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
@@ -172,7 +241,7 @@ class ThinClientPromptGenerator:
             # Generate orchestrator_id (full UUID for consistency)
             orchestrator_id = str(uuid4())
 
-            # Create orchestrator job with metadata (Handover 0088)
+            # Create orchestrator job with metadata (Handover 0088 + 0315)
             orchestrator = MCPAgentJob(
                 tenant_key=self.tenant_key,
                 project_id=project_id,
@@ -185,13 +254,14 @@ class ThinClientPromptGenerator:
                 context_budget=project.context_budget,
                 context_used=0,
                 tool_type=tool,
-                # Handover 0088: Store thin client data in metadata column
+                # Handover 0088 + 0315: Store thin client data in metadata column
                 job_metadata={
                     "field_priorities": field_priorities or {},
+                    "depth_config": depth_config,  # NEW: Handover 0315
                     "user_id": user_id,
                     "tool": tool,
                     "created_via": "thin_client_generator"
-                } if field_priorities or user_id else {}
+                }
             )
 
             self.db.add(orchestrator)
@@ -203,29 +273,25 @@ class ThinClientPromptGenerator:
                 f"(instance #{instance_number})"
             )
 
-        # Generate thin prompt WITH 360 memory, git integration, and agent templates
-        if product:
-            thin_prompt = await self._build_thin_prompt_with_memory(
-                orchestrator_id=orchestrator_id,
-                project_id=project_id,
-                project_name=project.name,
-                instance_number=instance_number,
-                tool=tool,
-                product=product,
-                field_priorities=field_priorities
-            )
-        else:
-            # Fallback to base prompt if product not found
-            thin_prompt = self._build_thin_prompt(
-                orchestrator_id=orchestrator_id,
-                project_id=project_id,
-                project_name=project.name,
-                instance_number=instance_number,
-                tool=tool
-            )
+        # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
+        thin_prompt = await self._generate_thin_prompt(
+            orchestrator_id=orchestrator_id,
+            project_id=project_id,
+            project=project,
+            product=product,
+            instance_number=instance_number,
+            tool=tool,
+            field_priorities=field_priorities or {},
+            depth_config=depth_config
+        )
 
         # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
         estimated_tokens = len(thin_prompt) // 4
+
+        logger.info(
+            f"[ThinPromptGenerator] Generated thin prompt for {orchestrator_id}: "
+            f"~{estimated_tokens} tokens (target: 600, reduction from fat: ~{3500 - estimated_tokens})"
+        )
 
         return {
             "orchestrator_id": orchestrator_id,
@@ -323,6 +389,227 @@ Logs: ~/.giljo_mcp/logs/mcp_adapter.log
 
 Begin by verifying MCP connection, then fetch context and CREATE the mission plan.
 """
+
+    async def _generate_thin_prompt(
+        self,
+        orchestrator_id: str,
+        project_id: str,
+        project: Any,
+        product: Any,
+        instance_number: int,
+        tool: str,
+        field_priorities: Dict[str, int],
+        depth_config: Dict[str, Any]
+    ) -> str:
+        """
+        Generate thin prompt listing available MCP tools by priority (Handover 0315).
+
+        Returns ~600 token prompt (vs ~3500 in fat prompt) that references MCP tools
+        for on-demand context fetching.
+
+        Args:
+            orchestrator_id: Orchestrator job UUID
+            project_id: Project UUID
+            project: Project model
+            product: Product model
+            instance_number: Orchestrator instance number
+            tool: AI coding tool (claude-code, codex, gemini, universal)
+            field_priorities: User field priority configuration (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
+            depth_config: User depth configuration (vision_chunking, memory_last_n_projects, etc.)
+
+        Returns:
+            Thin prompt with MCP tool references grouped by priority
+        """
+        # Group MCP tools by priority
+        priority_groups = {
+            1: [],  # CRITICAL
+            2: [],  # IMPORTANT
+            3: [],  # NICE_TO_HAVE
+            4: []   # EXCLUDED (don't list)
+        }
+
+        # Map categories to MCP tools with depth parameters (from Handover 0315 Phase 1)
+        # CRITICAL: tenant_key must be passed to all tools for multi-tenant isolation
+        category_to_tool = {
+            "product_core": [
+                f"fetch_tech_stack(product_id='{product.id}', tenant_key='{self.tenant_key}', sections='{depth_config.get('tech_stack_sections', 'all')}')",
+                f"fetch_architecture(product_id='{product.id}', tenant_key='{self.tenant_key}', depth='{depth_config.get('architecture_depth', 'overview')}')"
+            ],
+            "vision_documents": [
+                f"fetch_vision_document(product_id='{product.id}', tenant_key='{self.tenant_key}', chunking='{depth_config.get('vision_chunking', 'moderate')}')"
+            ],
+            "agent_templates": [
+                f"fetch_agent_templates(product_id='{product.id}', tenant_key='{self.tenant_key}', detail='{depth_config.get('agent_template_detail', 'standard')}')"
+            ],
+            "project_context": [
+                # Inline project data (small, ~200 tokens) - NOT an MCP tool
+                None  # Special case: embedded inline below
+            ],
+            "memory_360": [
+                f"fetch_360_memory(product_id='{product.id}', tenant_key='{self.tenant_key}', last_n_projects={depth_config.get('memory_last_n_projects', 3)})"
+            ],
+            "git_history": [
+                f"fetch_git_history(product_id='{product.id}', tenant_key='{self.tenant_key}', commits={depth_config.get('git_commits', 25)})"
+            ]
+        }
+
+        # Group tools by priority
+        for category, priority in field_priorities.items():
+            if category in category_to_tool:
+                tools = category_to_tool[category]
+                if tools and tools[0] is not None:  # Skip None entries (inline data)
+                    priority_groups[priority].extend(tools)
+
+        # Get MCP server configuration
+        config = get_config()
+
+        # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
+        from pathlib import Path
+        import yaml
+
+        try:
+            config_path = Path("config.yaml")
+            if config_path.exists():
+                with open(config_path, encoding="utf-8") as f:
+                    config_data = yaml.safe_load(f) or {}
+                mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
+            else:
+                mcp_host = config.server.api_host
+        except Exception:
+            # Fallback to api_host if YAML loading fails
+            mcp_host = config.server.api_host
+
+        mcp_port = config.server.api_port
+        mcp_url = f"http://{mcp_host}:{mcp_port}"
+
+        # Generate API key hint (if configured)
+        api_key_configured = bool(config.server.api_key)
+        auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
+
+        # Build thin prompt with MCP tool references
+        prompt = f"""I am Orchestrator #{instance_number} for GiljoAI Project "{project.name}".
+
+IDENTITY:
+- Orchestrator ID: {orchestrator_id}
+- Project ID: {project_id}
+- Tenant Key: {self.tenant_key}
+
+MCP CONNECTION:
+- Server URL: {mcp_url}
+- Tool Prefix: mcp__giljo-mcp__
+- Auth Status: {auth_note}
+
+YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
+You are STAGING the project by creating a mission plan. You will NOT execute the work yourself.
+Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work to specialist agents.
+
+PROJECT CONTEXT (Inline - ~200 tokens):
+- Name: {project.name}
+- Description: {project.description or '(No description provided)'}
+- Mission: {project.mission or '(Mission will be created by you)'}
+- Notes: {project.notes or '(No additional notes)'}
+
+MCP CONTEXT TOOLS AVAILABLE (Fetch on-demand by priority):
+
+Priority 1 (CRITICAL - Fetch First):
+"""
+
+        # Add Priority 1 tools
+        if priority_groups[1]:
+            for tool_ref in priority_groups[1]:
+                prompt += f"  - `{tool_ref}`\n"
+        else:
+            prompt += "  (No CRITICAL context tools configured)\n"
+
+        prompt += "\nPriority 2 (IMPORTANT - Fetch if Budget Allows):\n"
+        
+        # Add Priority 2 tools
+        if priority_groups[2]:
+            for tool_ref in priority_groups[2]:
+                prompt += f"  - `{tool_ref}`\n"
+        else:
+            prompt += "  (No IMPORTANT context tools configured)\n"
+
+        prompt += "\nPriority 3 (NICE_TO_HAVE - Fetch if Extra Budget):\n"
+        
+        # Add Priority 3 tools
+        if priority_groups[3]:
+            for tool_ref in priority_groups[3]:
+                prompt += f"  - `{tool_ref}`\n"
+        else:
+            prompt += "  (No NICE_TO_HAVE context tools configured)\n"
+
+        # Add workflow instructions
+        prompt += """
+
+CLAUDE CODE INPUT LIMITS:
+Each MCP tool call is limited to ~24K tokens (Claude Code technical constraint).
+
+For content exceeding 24K, use pagination:
+
+Vision Documents (Full Pagination Support):
+  - Call 1: fetch_vision_document(product_id='{product_id}', tenant_key='{self.tenant_key}', chunking='heavy', offset=0, limit=4)
+  - Check metadata.has_more to determine if additional calls needed
+  - Call 2: fetch_vision_document(..., offset=metadata.next_offset, limit=4)
+  - Repeat until has_more=False
+
+360 Memory (Full Pagination Support):
+  - Call 1: fetch_360_memory(product_id='{product_id}', tenant_key='{self.tenant_key}', last_n_projects=10, offset=0, limit=5)
+  - Call 2: fetch_360_memory(..., offset=5, limit=5)
+  - Returns projects in batches to stay within 24K limit
+
+Other Tools (Future Pagination):
+  - Git history, agent templates, tech stack, architecture
+  - Accept offset/limit parameters (currently ignored)
+  - Full pagination support coming in future handover
+
+Key Points:
+  - No aggregate limit - make unlimited calls as needed
+  - Depth controls per-call content amount
+  - Pagination enables fetching large content across multiple calls
+  - Each call stays within 24K safety margin
+
+WORKFLOW:
+1. Assess your token budget (e.g., 200,000 tokens)
+2. Fetch CRITICAL context via MCP tools (Priority 1)
+3. Calculate remaining budget after each fetch
+4. Fetch IMPORTANT context if budget allows (Priority 2)
+5. Fetch NICE_TO_HAVE context if extra budget (Priority 3)
+6. Analyze all fetched context + inline project data
+7. CREATE MISSION: Generate condensed execution plan (context prioritization active)
+8. PERSIST MISSION: mcp__giljo-mcp__update_project_mission('{project_id}', your_created_mission)
+9. SPAWN AGENTS: mcp__giljo-mcp__spawn_agent_job() to create specialist agent jobs
+10. Monitor progress via mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}')
+
+CONTEXT MANAGEMENT:
+- Fetch tools in priority order (1 → 2 → 3)
+- Respect 24K per-call limit (prevents Claude Code input failures)
+- Use pagination for content >24K (vision + 360 memory support this)
+- Make multiple calls with offset/limit for large content
+- Stop fetching if budget reaches 90% capacity
+- Trigger succession if context usage exceeds 90%
+- Use get_orchestrator_instructions() for full mission details if needed
+
+CRITICAL DISTINCTIONS:
+- Project.description = User-written requirements (already provided above)
+- Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 7)
+- Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
+
+MCP CORE TOOLS (Always Available):
+✓ mcp__giljo-mcp__health_check() - Verify MCP connection
+✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch full context
+✓ mcp__giljo-mcp__update_project_mission(project_id, mission) - Save mission plan
+✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key) - Create agents
+✓ mcp__giljo-mcp__get_workflow_status(project_id, tenant_key) - Check spawned agents
+
+CONNECTION TROUBLESHOOTING:
+If MCP fails: Check server running at {mcp_url}/health
+Logs: ~/.giljo_mcp/logs/mcp_adapter.log
+
+Begin by verifying MCP connection, then fetch context by priority, and CREATE the mission plan.
+"""
+
+        return prompt
 
     def _inject_360_memory(self, product) -> str:
         """

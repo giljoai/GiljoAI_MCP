@@ -20,7 +20,7 @@ class DepthTokenEstimator:
             "none": 0,
             "light": 10000,
             "moderate": 17500,
-            "heavy": 30000
+            "heavy": 24000  # Safe margin below 25K Claude Code limit
         },
         "memory_last_n_projects": {
             1: 500,
