@@ -81,6 +81,8 @@ const depthConfig = ref<DepthConfig>({
   agent_template_detail: 'standard',
   tech_stack_sections: 'all',
   architecture_depth: 'overview',
+  product_core_enabled: false,  // Handover 0316: New field
+  testing_config_depth: 'none',  // Handover 0316: New field
 });
 
 const saving = ref(false);
@@ -150,6 +152,26 @@ const depthSources = [
     options: [
       { title: 'Overview (~300 tokens)', value: 'overview' },
       { title: 'Detailed (~1.5K tokens)', value: 'detailed' },
+    ],
+  },
+  // Handover 0316: New context tools
+  {
+    key: 'product_core_enabled' as keyof DepthConfig,
+    label: 'Product Core',
+    description: 'Basic product information',
+    options: [
+      { title: 'Disabled (0 tokens)', value: false },
+      { title: 'Enabled (~100 tokens)', value: true },
+    ],
+  },
+  {
+    key: 'testing_config_depth' as keyof DepthConfig,
+    label: 'Testing Configuration',
+    description: 'Quality standards and testing strategy',
+    options: [
+      { title: 'None (0 tokens)', value: 'none' },
+      { title: 'Basic - Strategy + Coverage (~150 tokens)', value: 'basic' },
+      { title: 'Full - All fields + Frameworks (~400 tokens)', value: 'full' },
     ],
   },
 ];

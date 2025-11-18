@@ -13,6 +13,8 @@ export interface DepthConfig {
   agent_template_detail: 'minimal' | 'standard' | 'full';
   tech_stack_sections: 'required' | 'all';
   architecture_depth: 'overview' | 'detailed';
+  product_core_enabled: boolean;  // Handover 0316: New field
+  testing_config_depth: 'none' | 'basic' | 'full';  // Handover 0316: New field
 }
 
 export interface TokenEstimate {
@@ -62,6 +64,16 @@ export class DepthTokenEstimator {
     architecture_depth: {
       overview: 300,
       detailed: 1500,
+    },
+    // Handover 0316: New context tools
+    product_core_enabled: {
+      true: 100,
+      false: 0,
+    },
+    testing_config_depth: {
+      none: 0,
+      basic: 150,
+      full: 400,
     },
   };
 
