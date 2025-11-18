@@ -1,7 +1,7 @@
 # Handover 0309: Token Estimation Improvements
 
 **Feature**: Dynamic Token Estimation from Active Product
-**Status**: Not Started
+**Status**: ❌ SUPERSEDED
 **Priority**: P2 - MEDIUM
 **Estimated Duration**: 5-6 hours
 **Agent Budget**: 110K tokens
@@ -9,6 +9,27 @@
 **Blocks**: Handover 0310 (Integration Testing & Validation)
 **Created**: 2025-11-16
 **Tool**: CLI + CCW (Backend API + Frontend integration)
+
+---
+
+## ⚠️ SUPERSEDED BY CONTEXT MANAGEMENT v2.0
+
+**Date**: 2025-11-18
+**Reason**: Context Management v2.0 (Handovers 0312-0316) completely redesigned the architecture.
+
+**Why This Handover Is Obsolete**:
+- v2.0 replaced 15 individual fields → 6 high-level categories
+- v2.0 uses depth-based token estimation, not field-based
+- Token estimation is now via `DepthTokenEstimator` for depth controls
+- Drag-and-drop field priority management was not implemented
+- Current system uses fixed category priorities + depth sliders
+
+**What Was Implemented Instead**:
+- `frontend/src/services/depthTokenEstimator.ts` - Depth-based token estimation
+- `frontend/src/components/settings/DepthConfiguration.vue` - Depth controls with token hints
+- 8 depth controls with token estimates (0-30K range)
+
+**Recommendation**: Archive as superseded. Do not implement.
 
 ---
 

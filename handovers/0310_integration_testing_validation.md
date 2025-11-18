@@ -1,14 +1,39 @@
 # Handover 0310: Integration Testing & Validation
 
 **Feature**: End-to-End Integration Testing for Context Management System
-**Status**: Not Started
+**Status**: Not Started (Scope Updated)
 **Priority**: P1 - HIGH
-**Estimated Duration**: 6-8 hours
-**Agent Budget**: 130K tokens
-**Depends On**: Handovers 0301-0309 (All context management features)
+**Estimated Duration**: 4-5 hours (reduced - some tests already exist)
+**Agent Budget**: 90K tokens
+**Depends On**: Handovers 0312-0316 (Context Management v2.0)
 **Blocks**: None (Final handover in series)
 **Created**: 2025-11-16
+**Updated**: 2025-11-18
 **Tool**: CLI (Integration testing, system validation)
+
+---
+
+## ⚠️ SCOPE UPDATED FOR CONTEXT MANAGEMENT v2.0
+
+**Date**: 2025-11-18
+**Reason**: Context Management v2.0 (Handovers 0312-0316) changed the architecture. Many tests already completed.
+
+**What's Already Covered** (skip these):
+- ✅ Context tool functionality tests (`tests/integration/test_handover_0316_*.py`)
+- ✅ Multi-tenant isolation (partial coverage)
+- ✅ Field priority updates (`tests/integration/test_priority_system_integration.py`)
+- ✅ >80% code coverage for context tools
+
+**Focus on Remaining Gaps**:
+1. **Performance Benchmarks** - Context generation <500ms, Token estimation <200ms
+2. **Token Accuracy Validation** - Within 5% tolerance of actual
+3. **E2E Priority × Depth Workflow** - Complete 2D model testing
+4. **Default Priority Application** - New user experience
+5. **Context Preview Consistency** - UI matches orchestrator mission
+
+**Updated Test Scope**:
+- Original: Test all 0301-0309 features
+- Updated: Test v2.0 (Priority × Depth) gaps only
 
 ---
 
