@@ -741,6 +741,12 @@ Tools supporting pagination (vision_document, 360_memory):
 3. Test code examples
 4. Get user feedback
 
+### Phase 7: Handover Closeout (30 minutes)
+1. Read closure procedures: `F:\GiljoAI_MCP\handovers\HANDOVER_INSTRUCTIONS.md` (section "Handover Completion Protocol")
+2. Mark handovers 0312-0316 as complete following the documented procedure
+3. Move handover files to `completed/` folder with `-C` suffix
+4. Commit closeout changes to git
+
 ---
 
 ## Success Criteria
