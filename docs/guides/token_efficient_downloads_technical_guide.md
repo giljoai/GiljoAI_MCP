@@ -450,7 +450,7 @@ async def gil_import_productagents(project_id: str = None):
     """
     Import agent templates to current project (.claude/agents/)
 
-    97% token reduction: Downloads ZIP via HTTP instead of writing files.
+    97% context prioritization: Downloads ZIP via HTTP instead of writing files.
     """
 
     # 1. Verify API key in environment
@@ -938,7 +938,7 @@ if script_type not in ["slash-commands", "agent-templates"]:
 
 ## Summary
 
-The token-efficient downloads system delivers **97% token reduction** through HTTP downloads instead of file writes. The three-layer architecture (client → API → data sources) provides:
+The token-efficient downloads system delivers **97% context prioritization** through HTTP downloads instead of file writes. The three-layer architecture (client → API → data sources) provides:
 
 - **Automated workflow:** MCP tools for one-click installation
 - **Manual fallback:** UI downloads and install scripts

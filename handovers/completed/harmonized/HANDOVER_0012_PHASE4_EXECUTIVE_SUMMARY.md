@@ -169,7 +169,7 @@
 | Claim | Status | Evidence |
 |-------|--------|----------|
 | "95% reliability through hybrid orchestration" | ❌ UNSUBSTANTIATED | NO automation exists (Phase 2), NO metrics collected |
-| "70% token reduction" | ⚠️ PARTIAL | ~40% from config filtering, NOT automation (Phase 3) |
+| "context prioritization and orchestration" | ⚠️ PARTIAL | ~40% from config filtering, NOT automation (Phase 3) |
 | "30% less code via delegation" | ⚠️ NEEDS ANALYSIS | Not yet investigated |
 | Manual workflow tracking works | ✅ CONFIRMED | Integration tests pass, database logging works |
 | Error handling is comprehensive | ✅ CONFIRMED | Consistent try/except, proper logging |

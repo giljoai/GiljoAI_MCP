@@ -138,7 +138,7 @@ async def generate_orchestrator_prompt_thin(
     CRITICAL CHANGE (Handover 0088):
     - OLD: Returns 2000-3000 line prompt with embedded mission
     - NEW: Returns 10-line prompt with MCP tool reference
-    - BENEFIT: 70% token reduction ACTIVE + professional UX
+    - BENEFIT: context prioritization and orchestration ACTIVE + professional UX
 
     Process:
     1. Create orchestrator job in database
@@ -146,7 +146,7 @@ async def generate_orchestrator_prompt_thin(
     3. Return thin prompt with orchestrator_id
     4. User pastes prompt into CLI
     5. Orchestrator calls get_orchestrator_instructions() via MCP
-    6. Token reduction achieved
+    6. Context prioritization achieved
 
     Args:
         request: Contains project_id, tool, and optional instance_number
@@ -413,7 +413,7 @@ async def generate_staging_prompt(
     5. Returns ready-to-paste thin prompt (~10 lines)
 
     Features:
-    - Thin client architecture (70% token reduction ACTIVE)
+    - Thin client architecture (context prioritization and orchestration ACTIVE)
     - MCP-only data access (remote-safe, no local file reads)
     - Dynamic field priority integration (user-configured)
     - Professional UX (copy 10 lines, not 3000)

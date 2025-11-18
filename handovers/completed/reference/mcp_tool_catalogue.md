@@ -253,7 +253,7 @@ These tools are directly callable by external agents.
 2.  **`update_optimization_rules`** ⚙️
     - Updates a specific optimization rule for a project.
 3.  **`get_token_savings_report`** ⚙️
-    - Generates a comprehensive token savings report for a project.
+    - Generates a comprehensive context-usage analytics report for a project.
 4.  **`estimate_optimization_impact`** ⚙️
     - Estimates the optimization impact before spawning an agent.
 5.  **`force_agent_handoff`** ⚙️

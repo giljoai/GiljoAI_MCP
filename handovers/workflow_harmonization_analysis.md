@@ -43,7 +43,7 @@
      - Complete flow from installation to execution
      - All 14 MCP tools verified
      - Database migrations confirmed
-     - Token reduction architecture (70% achieved)
+     - Context prioritization architecture (70% achieved)
    - Critical Sections:
      - Phase 1: Installation & Setup
      - Phase 2: Agent Template Export  
@@ -64,7 +64,7 @@
 ### Key Technical Specifications Referenced
 
 #### Handover Documents (Completed/Referenced)
-8. **Handover 0088** - Thin Client Architecture (70% token reduction)
+8. **Handover 0088** - Thin Client Architecture (context prioritization and orchestration)
 9. **Handover 0102** - Download Token System (15-min TTL)
 10. **Handover 0073** - Project Closeout Workflow
 11. **Handover 0105** - Orchestrator Review Workflow (conflicts identified)
@@ -79,7 +79,7 @@
 ### Code Files Referenced (Not directly analyzed but mentioned)
 - `src/giljo_mcp/tools/orchestration.py` - Orchestrator MCP tools
 - `src/giljo_mcp/tools/agent_coordination.py` - Agent execution tools  
-- `src/giljo_mcp/mission_planner.py` - Mission generation with token reduction
+- `src/giljo_mcp/mission_planner.py` - Mission generation with context prioritization
 - `src/giljo_mcp/agent_selector.py` - Smart agent selection
 - `src/giljo_mcp/template_seeder.py` - Default template definitions
 - `api/endpoints/projects.py` - Line 702: activate endpoint (not "stage")
@@ -173,7 +173,7 @@ After analyzing the workflow PDF against the comprehensive project documentation
 
 ### 🔴 **4. TOKEN REDUCTION MISSING**
 
-**PDF:** No mention of 70% token reduction architecture
+**PDF:** No mention of context prioritization and orchestration architecture
 **Reality:** Complex token management system with:
 - Field priorities
 - 2000 token budget default
@@ -355,7 +355,7 @@ After analyzing the workflow PDF against the comprehensive project documentation
 ### Page-by-Page Corrections
 
 **Page 8 (Application Workflow)**
-- ADD: Token reduction step after "Stage Project"
+- ADD: Context prioritization step after "Stage Project"
 - ADD: Mission generation vs description distinction
 - ADD: Field priority configuration influence
 
@@ -443,7 +443,7 @@ After analyzing the workflow PDF against the comprehensive project documentation
 
 2. **Add Critical Flows**
    - MCP thin client architecture
-   - Token reduction system
+   - Context prioritization system
    - Download token workflow
    - Orchestrator succession
 
@@ -479,7 +479,7 @@ The workflow PDF provides a good **high-level overview** but lacks the **technic
 
 **Recommendation:** Create a supplementary technical workflow document focusing on:
 - MCP communication protocols
-- Token reduction architecture
+- Context prioritization architecture
 - WebSocket real-time updates
 - Error recovery patterns
 - Orchestrator succession logic

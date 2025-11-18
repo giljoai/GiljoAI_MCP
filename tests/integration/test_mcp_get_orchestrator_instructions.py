@@ -8,7 +8,7 @@ Verifies that the get_orchestrator_instructions tool is:
 4. Handles tenant isolation
 5. Works with thin client architecture
 
-CRITICAL: This tool is the foundation of Handover 0088 (70% token reduction).
+CRITICAL: This tool is the foundation of Handover 0088 (context prioritization and orchestration).
 If this test fails, thin client prompts will not work.
 """
 
@@ -140,7 +140,7 @@ class TestGetOrchestratorInstructionsMCP:
         assert "async def get_orchestrator_instructions(" in content
 
         # Verify it has proper docstring explaining thin client architecture
-        assert "70% token reduction" in content or "thin client" in content
+        assert "context prioritization and orchestration" in content or "thin client" in content
 
     async def test_get_orchestrator_instructions_success(self, db_manager, tenant_context):
         """Test 4: get_orchestrator_instructions returns correct structure"""

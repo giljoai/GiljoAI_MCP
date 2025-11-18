@@ -10,13 +10,13 @@ Test Coverage:
 3. Agent selection integration (database template queries)
 4. Workflow execution integration (waterfall/parallel)
 5. Multi-tenant isolation (CRITICAL security test)
-6. Token reduction verification (70% target)
+6. Context prioritization verification (70% target)
 
 Test Approach:
 - Use real PostgreSQL test database
 - Test actual component interactions
 - Verify multi-tenant isolation at every layer
-- Measure token reduction metrics
+- Measure context prioritization metrics
 - No mocking of core orchestration logic
 
 Backend Integration Tester Agent - Production-grade integration testing.
@@ -86,7 +86,7 @@ This is a modern web application following best practices.
 - Database queries optimized with indexes
 """
 
-# Minimal vision for token reduction testing
+# Minimal vision for context prioritization testing
 MINIMAL_VISION_DOC = """
 # Minimal Product Vision
 
@@ -135,7 +135,7 @@ async def sample_product(db_session):
 
 @pytest.fixture
 async def minimal_product(db_session):
-    """Create minimal product for token reduction testing."""
+    """Create minimal product for context prioritization testing."""
     product = Product(
         id=str(uuid4()),
         tenant_key="test_tenant_minimal",
@@ -335,7 +335,7 @@ class TestFullOrchestrationWorkflow:
     2. Mission generation (MissionPlanner)
     3. Agent selection (AgentSelector)
     4. Workflow execution (WorkflowEngine)
-    5. Token reduction metrics
+    5. Context prioritization metrics
     """
 
     @pytest.mark.asyncio
@@ -357,7 +357,7 @@ class TestFullOrchestrationWorkflow:
         3. Verify mission generation
         4. Verify agent selection
         5. Verify workflow execution
-        6. Verify token reduction metrics
+        6. Verify context prioritization metrics
         """
         # Execute complete orchestration workflow
         result = await orchestrator.process_product_vision(
@@ -384,14 +384,14 @@ class TestFullOrchestrationWorkflow:
         assert isinstance(workflow_result, WorkflowResult)
         assert workflow_result.status in ["completed", "partial"]
 
-        # Verify token reduction metrics
+        # Verify context prioritization metrics
         assert "token_reduction" in result
         token_metrics = result["token_reduction"]
         assert "original_tokens" in token_metrics
         assert "optimized_tokens" in token_metrics
         assert "reduction_percent" in token_metrics
 
-        # Verify token reduction target (should approach 70%)
+        # Verify context prioritization target (should approach 70%)
         # Note: May not hit exactly 70% in test environment
         assert token_metrics["reduction_percent"] > 0
         assert token_metrics["optimized_tokens"] < token_metrics["original_tokens"]
@@ -411,7 +411,7 @@ class TestMissionGenerationIntegration:
     - Product vision is correctly analyzed
     - Requirements produce correct work types
     - Missions are generated for each agent type
-    - Token reduction target is approached
+    - Context prioritization target is approached
     """
 
     @pytest.mark.asyncio
@@ -823,7 +823,7 @@ class TestMultiTenantIsolation:
 
 class TestTokenReductionVerification:
     """
-    Verify token reduction target is achieved.
+    Verify context prioritization target is achieved.
 
     Tests:
     - Original vision document token count
@@ -842,7 +842,7 @@ class TestTokenReductionVerification:
         db_session,
     ):
         """
-        Verify token reduction target is achieved.
+        Verify context prioritization target is achieved.
 
         Verify:
         - Original vision document token count
@@ -865,7 +865,7 @@ class TestTokenReductionVerification:
             id=str(uuid4()),
             tenant_key=minimal_product.tenant_key,
             name="Token Test Project",
-            mission="Test token reduction",
+            mission="Test context prioritization",
             status="planning",
             context_budget=150000,
             context_used=0,
@@ -899,7 +899,7 @@ class TestTokenReductionVerification:
         # Calculate total mission tokens
         total_mission_tokens = sum(mission.token_count for mission in missions.values())
 
-        # Verify token reduction
+        # Verify context prioritization
         # Each agent gets a filtered, condensed mission
         # Total should be less than original vision
         assert total_mission_tokens < original_tokens, (
@@ -914,7 +914,7 @@ class TestTokenReductionVerification:
         per_agent_reduction = ((original_tokens - tokens_per_agent) / original_tokens) * 100
 
         # Each individual agent should have significant reduction
-        assert per_agent_reduction > 50, f"Per-agent token reduction ({per_agent_reduction:.1f}%) should exceed 50%"
+        assert per_agent_reduction > 50, f"Per-agent context prioritization ({per_agent_reduction:.1f}%) should exceed 50%"
 
         # Verify all missions are within token budget
         for role, mission in missions.items():

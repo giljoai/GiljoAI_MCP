@@ -147,7 +147,7 @@ Set job status to "blocked" and wait for orchestrator guidance.
 **Context tracking enables**:
 - Orchestrator succession at 90% capacity
 - Seamless handover between instances
-- 70% token reduction optimization
+- context prioritization and orchestration optimization
 
 ## Role Adherence
 

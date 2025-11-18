@@ -189,7 +189,7 @@ Use this when you want a Linux-first installation experience without relying on 
 ### Orchestrator Enhancement - 70% Token Reduction
 **Intelligent agent coordination system**
 - Template-based agent spawning with role specialization
-- Hierarchical context loading (60% token reduction)
+- Hierarchical context loading (60% context prioritization)
 - Smart handoff mechanism between agents
 - Serena MCP optimization layer (60-90% additional savings via symbolic operations)
 - Context usage tracking and metrics
@@ -297,7 +297,7 @@ Use this when you want a Linux-first installation experience without relying on 
 
 **Agent Orchestration**:
 - Job management system (119+ tests, production ready)
-- 70% token reduction through intelligent coordination
+- context prioritization and orchestration through intelligent coordination
 - Serena MCP optimization (60-90% additional savings)
 - Real-time WebSocket events for job updates
 - Multi-tenant isolation throughout
@@ -491,11 +491,11 @@ installer/
 - **[Agent Job Management API](docs/api/AGENT_JOBS_API_REFERENCE.md)** - 13 REST endpoints, WebSocket events
 - **[Multi-Tenant Architecture](docs/USER_STRUCTURES_TENANTS.md)** - Tenant isolation design
 - **[MCP-over-HTTP Integration](docs/MCP_OVER_HTTP_INTEGRATION.md)** - Claude Code integration
-- **[Serena Optimization](docs/optimization/)** - Token reduction system
+- **[Serena Optimization](docs/optimization/)** - Context prioritization system
 
 ### Handover Documentation
 - **[Handover 0019 - Agent Jobs](docs/HANDOVER_0019_COMPLETION_SUMMARY.md)** - Job management system
-- **[Handover 0020 - Orchestrator](docs/archive/handovers/)** - 70% token reduction
+- **[Handover 0020 - Orchestrator](docs/archive/handovers/)** - context prioritization and orchestration
 - **[Handover 0023 - Password Reset](docs/archive/handovers/)** - Recovery PIN system
 - **[Handover 0027 - Integrations Tab](docs/handovers/0027_supporting_docs/)** - Admin settings redesign
 

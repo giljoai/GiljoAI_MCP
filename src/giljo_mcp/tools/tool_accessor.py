@@ -388,7 +388,7 @@ class ToolAccessor:
         return await health_check()
 
     async def get_orchestrator_instructions(self, orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
-        """Fetch orchestrator mission with 70% token reduction"""
+        """Fetch orchestrator mission with context prioritization and orchestration"""
         # Delegate to orchestration module but use our db_manager
         try:
             async with self.db_manager.get_session_async() as session:

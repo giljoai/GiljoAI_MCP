@@ -603,7 +603,7 @@ CREATE TABLE project_metrics (
 
 **Tracking Capabilities**:
 - Real-time token usage monitoring
-- 70% token reduction verification
+- context prioritization and orchestration verification
 - Workflow performance analytics
 
 #### MCP Session Management (MCP-over-HTTP)
@@ -798,16 +798,16 @@ src/giljo_mcp/
 - **Orchestration tools** (Handover 0020): Mission generation, agent selection, workflow coordination
 
 **Serena Optimization Layer** (v3.0):
-- **60-90% token reduction** through symbolic operation enforcement
+- **60-90% context prioritization** through symbolic operation enforcement
 - **Mission-time optimization**: Rules injected automatically at agent spawn
 - **Tool interception**: Real-time MCP tool call optimization
 - **Context monitoring**: Tracks token usage and triggers intelligent handoffs
-- **Savings analytics**: Per-project and per-agent token reduction reporting
+- **Savings analytics**: Per-project and per-agent context prioritization reporting
 - **Production-ready**: 37 passing unit tests, full database integration
 
 #### HANDOVER 0010 - Serena MCP Optimization Layer (COMPLETE)
 
-**Implementation Status**: ✅ **COMPLETE** - Achieving 60-90% token reduction through intelligent symbolic operations
+**Implementation Status**: ✅ **COMPLETE** - Achieving 60-90% context prioritization through intelligent symbolic operations
 
 **Core Implementation**:
 - **`SerenaOptimizer`** (`src/giljo_mcp/optimization/serena_optimizer.py`) - Core optimization engine with token tracking
@@ -833,7 +833,7 @@ src/giljo_mcp/
 - **Token Reduction Target**: 60-90% vs naive file reading approaches
 - **Implementation Quality**: 37 passing unit tests, production-grade error handling
 - **Database Integration**: Full CRUD operations with tenant isolation
-- **Real-Time Analytics**: Per-project token savings reporting
+- **Real-Time Analytics**: Per-project context usage and efficiency reporting
 
 **Completion Details**:
 - **Implementation Time**: ~6 hours (research + implementation + testing)
@@ -917,7 +917,7 @@ src/giljo_mcp/
 **Token Reduction Strategy**:
 1. **Orchestrator reads full vision** (one-time token cost)
 2. **Creates condensed missions** (specific to each agent)
-3. **Agents receive only relevant context** (70% token reduction)
+3. **Agents receive only relevant context** (context prioritization and orchestration)
 4. **Coordination via messaging** (minimal overhead)
 
 **Archive Status**: Moved to `handovers/completed/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT-C.md`

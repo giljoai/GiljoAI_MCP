@@ -6,7 +6,7 @@ Tests end-to-end staging workflow including:
 - Mission generation with user config and field priorities
 - Agent creation and WebSocket broadcasts
 - Multi-tenant isolation across workflow
-- Token reduction validation (70% target)
+- Context prioritization validation (70% target)
 - Error handling and concurrent requests
 
 PRODUCTION-GRADE: Validates complete user journey from staging to launch
@@ -158,12 +158,12 @@ class TestStageProjectWorkflow:
 
     """
     Test 2: Mission generation with field priorities
-    Validates token reduction through field priority system
+    Validates context prioritization through field priority system
     """
 
     async def test_mission_generation_with_field_priorities(self, db: Session, test_user: User, test_project: Project):
         """
-        PRODUCTION-GRADE: Validate 70% token reduction through field priorities
+        PRODUCTION-GRADE: Validate context prioritization and orchestration through field priorities
         """
         # Arrange: Generate baseline mission (no priorities)
         mission_planner = MissionPlanner(db=db)
@@ -192,7 +192,7 @@ class TestStageProjectWorkflow:
         )
         optimized_tokens = len(optimized_mission) // 4
 
-        # Assert: Token reduction achieved (target: 70% reduction)
+        # Assert: Context prioritization achieved (target: 70% reduction)
         token_reduction_pct = ((baseline_tokens - optimized_tokens) / baseline_tokens) * 100
         assert token_reduction_pct >= 50, f"Expected 50%+ reduction, got {token_reduction_pct:.1f}%"
 
@@ -310,15 +310,15 @@ class TestStageProjectWorkflow:
         assert len(mission_text) > 0
 
     """
-    Test 6: Token reduction validation (70% target)
-    Validates business goal of 70% token reduction
+    Test 6: Context prioritization validation (70% target)
+    Validates business goal of context prioritization and orchestration
     """
 
     async def test_token_reduction_validation_70_percent_target(
         self, db: Session, test_user: User, test_project: Project
     ):
         """
-        PRODUCTION-GRADE: Validate core business value (70% token reduction)
+        PRODUCTION-GRADE: Validate core business value (context prioritization and orchestration)
         """
         # Arrange: Create large product vision and project
         test_project.product.vision_document = "# Vision\n\n" + ("Detailed section. " * 500)
@@ -355,7 +355,7 @@ class TestStageProjectWorkflow:
         )
         optimized_tokens = len(optimized_mission) // 4
 
-        # Assert: 70%+ token reduction achieved
+        # Assert: 70%+ context prioritization achieved
         token_reduction_pct = ((baseline_tokens - optimized_tokens) / baseline_tokens) * 100
         assert token_reduction_pct >= 70, f"Target: 70% reduction, Achieved: {token_reduction_pct:.1f}%"
 

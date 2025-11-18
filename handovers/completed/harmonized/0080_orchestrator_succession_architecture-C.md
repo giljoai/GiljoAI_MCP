@@ -758,7 +758,7 @@ orchestrator = orchestrator_pool.acquire(
 - **Projects >150K tokens**: Previously 0, now unlimited
 - **Project Continuity**: 100% (no interruptions)
 - **User Satisfaction**: >90% positive feedback
-- **Cost Efficiency**: 70% token reduction vs full context replay
+- **Cost Efficiency**: context prioritization and orchestration vs full context replay
 
 ## Related Handovers
 

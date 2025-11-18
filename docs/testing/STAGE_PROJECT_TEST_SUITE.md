@@ -102,7 +102,7 @@ test_abbreviate_codebase_summary()      # 50% reduction validation
 test_minimal_codebase_summary()         # 80% reduction validation
 test_count_tokens_accuracy()            # Tiktoken validation
 
-# Test 8-10: Token reduction validation
+# Test 8-10: Context prioritization validation
 test_token_reduction_70_percent()       # Overall reduction target
 test_user_config_propagation()          # user_id parameter chain
 test_serena_toggle_respected()          # Serena integration on/off
@@ -328,9 +328,9 @@ test('no memory leak after 1000 mount/unmount cycles', async () => {
 **File**: `tests/performance/test_stage_project_benchmarks.py`
 
 ```python
-# Benchmark 1: Token reduction validation
+# Benchmark 1: Context prioritization validation
 def test_token_reduction_benchmark():
-    """Validate 70% token reduction achieved."""
+    """Validate context prioritization and orchestration achieved."""
     results = []
     for vision_size in [10000, 20000, 50000]:
         original = vision_size
@@ -468,7 +468,7 @@ def test_user_with_priorities():
 
 ### Common Test Failures
 
-**Issue**: Token reduction not achieving 70%
+**Issue**: Context prioritization not achieving 70%
 ```bash
 # Run with verbose output
 pytest tests/mission_planner/test_field_priorities.py -v -s

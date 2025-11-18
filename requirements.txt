@@ -37,7 +37,7 @@ aiohttp>=3.9.0             # Async HTTP client (required by websocket_client.py)
 websockets>=12.0           # WebSocket client/server support
 psutil>=5.9.0              # Process and system utilities (required for network detection and statistics)
 aiofiles>=24.1.0           # Async file I/O operations (required for product vision uploads)
-tiktoken>=0.5.0             # Token counting for Context Management System (70% token reduction)
+tiktoken>=0.5.0             # Token counting for Context Management System (context prioritization and orchestration)
 
 # Platform-Specific
 pywin32>=306; sys_platform == "win32"  # Windows service management (Windows only)

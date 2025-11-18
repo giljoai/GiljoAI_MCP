@@ -89,7 +89,7 @@ MCP CONNECTION:
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
 2. Fetch mission: mcp__giljo-mcp__get_orchestrator_instructions('orch_test_123', 'test_tenant')
-3. Execute mission (70% token reduction applied)
+3. Execute mission (context prioritization and orchestration applied)
 4. Coordinate agents via MCP tools
 
 CONNECTION TROUBLESHOOTING:

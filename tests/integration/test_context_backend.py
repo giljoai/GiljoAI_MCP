@@ -7,7 +7,7 @@ Tests cover:
 - Full chunking workflow
 - Search accuracy
 - Agent context loading
-- Token reduction metrics
+- Context prioritization metrics
 - Concurrent operations
 - Error recovery
 - Multi-tenant isolation at database level
@@ -470,7 +470,7 @@ class TestContextSummarizer:
 
     @pytest.mark.asyncio
     async def test_get_reduction_stats(self, db_manager, tenant_key):
-        """Test retrieving token reduction statistics"""
+        """Test retrieving context prioritization statistics"""
         full_content = "# Full Vision\n\n" + "Detailed content. " * 50
         condensed_mission = "Build platform."
 

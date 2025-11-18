@@ -202,7 +202,7 @@ After comprehensive analysis using specialized research agents, GiljoAI MCP Serv
   - `/spawn-team` - Spawn agent team for project
   - `/workflow-status/{project_id}` - Get workflow status
   - `/metrics/{project_id}` - Get performance metrics
-- Mission planning with 70% token reduction
+- Mission planning with context prioritization and orchestration
 - Agent selector and workflow engine integration
 - Product description field hints at orchestrator usage (frontend/src/views/ProductsView.vue:217-222)
 

@@ -388,7 +388,7 @@ async def get_token_stats(
     tenant_key: str = Depends(get_tenant_key),
 ):
     """
-    Get token reduction statistics for a product.
+    Get context prioritization statistics for a product.
 
     Returns original tokens, condensed tokens (if summarized),
     and reduction percentage.

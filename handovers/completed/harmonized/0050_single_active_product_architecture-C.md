@@ -14,7 +14,7 @@
 
 The GiljoAI MCP Server now enforces that only ONE product can be active per tenant at any time through defense-in-depth architecture spanning database constraints, API validation, frontend UX, project validation, and orchestrator validation.
 
-**Key Achievement**: Mission-based orchestration operates on a single product context, maintaining the 70% token reduction achieved through focused context delivery.
+**Key Achievement**: Mission-based orchestration operates on a single product context, maintaining the context prioritization and orchestration achieved through focused context delivery.
 
 ---
 
@@ -48,7 +48,7 @@ The system allowed products to be activated but lacked enforcement that only ONE
 **Rationale**:
 
 1. **Architecture Alignment**: Mission-based orchestration (MissionPlanner, AgentSelector, WorkflowEngine) is fundamentally designed for focused context on ONE product
-2. **Token Efficiency**: The 70% token reduction was achieved through condensed mission generation for single product focus
+2. **Token Efficiency**: The context prioritization and orchestration was achieved through condensed mission generation for single product focus
 3. **MCP Server Design**: MCP tools (`get_active_product()`, `get_product_context()`) return ONE product
 4. **User Mental Model**: Users think "what am I working on right now?" (singular focus)
 5. **Implementation Simplicity**: No database schema changes, no breaking changes, proven patterns
@@ -549,7 +549,7 @@ alembic downgrade -1
 **READY FOR DEPLOYMENT** - All phases complete, all tests passing, comprehensive documentation
 
 ### Key Achievement
-Database-enforced single active product per tenant with user-friendly warnings and automatic conflict resolution. Mission-based orchestration maintains 70% token reduction through focused context delivery.
+Database-enforced single active product per tenant with user-friendly warnings and automatic conflict resolution. Mission-based orchestration maintains context prioritization and orchestration through focused context delivery.
 
 ---
 

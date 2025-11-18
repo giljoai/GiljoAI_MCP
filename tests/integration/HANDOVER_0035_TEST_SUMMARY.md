@@ -51,7 +51,7 @@ self.logger.info("Extension pg_trgm created successfully")
 **Why Critical**:
 - MCPContextIndex model requires `searchable_vector` column (TSVECTOR type)
 - GIN index on `searchable_vector` requires pg_trgm extension
-- Without pg_trgm: **Full-text search FAILS** (70% token reduction feature unusable)
+- Without pg_trgm: **Full-text search FAILS** (context prioritization and orchestration feature unusable)
 
 **Verdict**: ✅ Extension correctly created by installer BEFORE table creation
 
@@ -224,7 +224,7 @@ All Handover 0035 changes are correctly implemented in the codebase.
 
 **The database schema changes for Handover 0035 are production-ready.**
 
-All required fields, constraints, indexes, and extensions are correctly implemented. The unified installer will create a complete, secure database schema that enables the first-admin creation flow and 70% token reduction feature (via pg_trgm full-text search).
+All required fields, constraints, indexes, and extensions are correctly implemented. The unified installer will create a complete, secure database schema that enables the first-admin creation flow and context prioritization and orchestration feature (via pg_trgm full-text search).
 
 **Next Steps**: Run PostgreSQL manual verification after installation, then deploy with confidence.
 

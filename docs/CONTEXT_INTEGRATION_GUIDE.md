@@ -22,7 +22,7 @@
 ## Overview
 
 This guide explains how to integrate the Context Management System with the
-GiljoAI MCP Orchestrator to achieve 70% token reduction through intelligent
+GiljoAI MCP Orchestrator to achieve context prioritization and orchestration through intelligent
 context loading and role-based filtering.
 
 ### Integration Architecture
@@ -54,7 +54,7 @@ graph TD
 1. **Product Creation**: Chunk vision document when product is created
 2. **Agent Spawning**: Load role-based context for each agent
 3. **Mission Assignment**: Include relevant context chunks in agent missions
-4. **Progress Tracking**: Monitor token reduction and performance
+4. **Progress Tracking**: Monitor context prioritization and performance
 
 ## Quick Start
 
@@ -257,7 +257,7 @@ class EnhancedOrchestrator:
             # Track agent
             self.agents[agent["id"]] = agent
 
-            # Log token reduction
+            # Log context prioritization
             full_tokens = await self._get_full_vision_tokens(product_id, tenant_key)
             reduction = ((full_tokens - context["total_tokens"]) / full_tokens) * 100
 
@@ -511,7 +511,7 @@ async def track_token_reduction(
     tenant_key: str
 ) -> Dict:
     """
-    Track token reduction across all agents.
+    Track context prioritization across all agents.
 
     Returns:
         Statistics on token usage and reduction
@@ -629,7 +629,7 @@ async def spawn_agent_new(agent_type, mission, product_id, tenant_key):
 4. **Monitor Token Reduction**
    ```python
    stats = self.context_manager.get_token_reduction_stats(tenant_key, product_id)
-   logger.info(f"Token reduction: {stats['reduction_percentage']:.1f}%")
+   logger.info(f"Context prioritization: {stats['reduction_percentage']:.1f}%")
    ```
 
 ## Best Practices
@@ -786,9 +786,9 @@ async def complete_product_workflow():
               f"{context['total_chunks']} chunks, "
               f"{context['total_tokens']} tokens")
 
-    # 5. Monitor token reduction
+    # 5. Monitor context prioritization
     stats = await track_token_reduction(product.id, product.tenant_key)
-    print(f"\n✓ Average token reduction: {stats['average_reduction']:.1f}%")
+    print(f"\n✓ Average context prioritization: {stats['average_reduction']:.1f}%")
 
     return orchestrator, agents
 ```
@@ -926,7 +926,7 @@ async def test_complete_workflow(orchestrator, sample_vision):
         assert result["success"] is True
         agents.append(result)
 
-    # 3. Verify token reduction
+    # 3. Verify context prioritization
     for agent in agents:
         assert agent["token_reduction"] > 60
 
@@ -962,7 +962,7 @@ async def test_complete_workflow(orchestrator, sample_vision):
 
 ### Issue: High Token Usage
 
-**Symptoms**: Token reduction < 40%
+**Symptoms**: Context prioritization < 40%
 
 **Solutions**:
 1. Review token budgets (may be too high)
@@ -994,13 +994,13 @@ Integrating the Context Management System with the Orchestrator provides:
 - Product initialization: Chunk vision documents
 - Agent spawning: Load filtered context
 - Mission assignment: Include relevant chunks
-- Progress tracking: Monitor token reduction
+- Progress tracking: Monitor context prioritization
 
 **Next Steps**:
 1. Review [Context Management System Documentation](CONTEXT_MANAGEMENT_SYSTEM.md)
 2. Study [API Guide](api/CONTEXT_API_GUIDE.md)
 3. Read [Performance Report](CONTEXT_PERFORMANCE_REPORT.md)
 4. Test integration with provided examples
-5. Monitor token reduction in production
+5. Monitor context prioritization in production
 
 For questions or issues, consult the test suite at `tests/integration/test_context_api.py`.

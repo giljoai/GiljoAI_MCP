@@ -803,7 +803,7 @@ async def test_token_budget_with_360_memory(db_session, sample_product):
 - Git instructions: ~250 tokens (fixed, when enabled)
 
 ### Production Status
-All tests passing. Production ready. Part of v3.1 Context Management System (Context Source #9). Completes all 9 context sources from PDF specification. Overall system achieves 77% token reduction (3,500 tokens vs 15K-30K baseline).
+All tests passing. Production ready. Part of v3.1 Context Management System (Context Source #9). Completes all 9 context sources from PDF specification. Overall system achieves 77% context prioritization (3,500 tokens vs 15K-30K baseline).
 
 ---
 
