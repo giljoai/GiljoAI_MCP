@@ -487,3 +487,120 @@ class TestContextToolsBackwardCompatibility:
         assert "selected_fields" in params, (
             "get_testing should have selected_fields parameter"
         )
+
+
+class TestSchemaMigration:
+    """Tests for v2 to v3 schema migration."""
+
+    def test_migrate_v2_to_v3_basic(self):
+        """Test basic v2 to v3 migration."""
+        v2_config = {
+            "vision_chunking": "moderate",
+            "memory_last_n_projects": 3,
+            "git_commits": 25,
+            "agent_template_detail": "standard",
+            "tech_stack_sections": "all",
+            "architecture_depth": "overview"
+        }
+
+        v3_config = migrate_depth_config_v2_to_v3(v2_config)
+
+        # Should have schema version
+        assert v3_config["schema_version"] == "3.0"
+
+        # Should preserve existing depth values
+        assert v3_config["vision_chunking"] == "moderate"
+        assert v3_config["memory_last_n_projects"] == 3
+        assert v3_config["git_commits"] == 25
+        assert v3_config["agent_template_detail"] == "standard"
+
+        # Should have field_selections
+        assert "field_selections" in v3_config
+        assert "tech_stack" in v3_config["field_selections"]
+        assert "architecture" in v3_config["field_selections"]
+        assert "testing" in v3_config["field_selections"]
+
+    def test_migrate_v2_required_tech_stack(self):
+        """Test migration with tech_stack_sections='required'."""
+        v2_config = {
+            "tech_stack_sections": "required",
+            "architecture_depth": "detailed"
+        }
+
+        v3_config = migrate_depth_config_v2_to_v3(v2_config)
+
+        # Tech stack should only have core fields
+        tech_stack = v3_config["field_selections"]["tech_stack"]
+        assert tech_stack["languages"] is True
+        assert tech_stack["frameworks"] is True
+        assert tech_stack["databases"] is True
+        assert tech_stack["dependencies"] is False
+
+    def test_migrate_v2_overview_architecture(self):
+        """Test migration with architecture_depth='overview'."""
+        v2_config = {
+            "tech_stack_sections": "all",
+            "architecture_depth": "overview"
+        }
+
+        v3_config = migrate_depth_config_v2_to_v3(v2_config)
+
+        # Architecture should only have high-level fields
+        arch = v3_config["field_selections"]["architecture"]
+        assert arch["pattern"] is True
+        assert arch["api_style"] is True
+        assert arch["design_patterns"] is False
+        assert arch["notes"] is False
+
+    def test_is_v3_schema(self):
+        """Test is_v3_schema detection."""
+        v3_config = {"schema_version": "3.0", "field_selections": {}}
+        v2_config = {"tech_stack_sections": "all"}
+        empty_config = None
+
+        assert is_v3_schema(v3_config) is True
+        assert is_v3_schema(v2_config) is False
+        assert is_v3_schema(empty_config) is False
+
+    def test_already_v3_not_migrated_again(self):
+        """Test that v3 config is not migrated again."""
+        v3_config = {
+            "schema_version": "3.0",
+            "vision_chunking": "heavy",
+            "field_selections": {
+                "tech_stack": {"languages": False}
+            }
+        }
+
+        result = migrate_depth_config_v2_to_v3(v3_config)
+
+        # Should return same config without modification
+        assert result["vision_chunking"] == "heavy"
+        assert result["field_selections"]["tech_stack"]["languages"] is False
+
+    def test_get_field_selections_auto_migrate(self):
+        """Test get_field_selections auto-migrates v2 config."""
+        v2_config = {
+            "tech_stack_sections": "required",
+            "architecture_depth": "detailed"
+        }
+
+        selections = get_field_selections(v2_config)
+
+        # Should return field selections
+        assert "tech_stack" in selections
+        assert "architecture" in selections
+        assert "testing" in selections
+
+        # Should reflect migration
+        assert selections["tech_stack"]["dependencies"] is False
+
+    def test_get_field_selections_empty_config(self):
+        """Test get_field_selections returns defaults for empty config."""
+        selections = get_field_selections(None)
+
+        # All fields should be enabled
+        for category in ["tech_stack", "architecture", "testing"]:
+            assert category in selections
+            for field, enabled in selections[category].items():
+                assert enabled is True
