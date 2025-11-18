@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 # REMOVED: PlainTextResponse import (no longer needed)
 from passlib.hash import bcrypt
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -248,8 +248,8 @@ class DepthConfig(BaseModel):
         description="Architecture documentation depth"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "vision_chunking": "moderate",
                 "memory_last_n_projects": 3,
@@ -259,6 +259,7 @@ class DepthConfig(BaseModel):
                 "architecture_depth": "overview"
             }
         }
+    )
 
 
 class UpdateDepthConfigRequest(BaseModel):

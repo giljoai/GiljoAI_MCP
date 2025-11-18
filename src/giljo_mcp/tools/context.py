@@ -1290,7 +1290,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Returns:
             Vision chunks with metadata and pagination fields (has_more, next_offset)
         """
-        from .context.get_vision_document import get_vision_document
+        from .context_tools.get_vision_document import get_vision_document
         return await get_vision_document(product_id, tenant_key, chunking, offset, limit, db_manager)
 
     @mcp.tool()
@@ -1314,7 +1314,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Returns:
             Sequential history with metadata and pagination fields (has_more, next_offset)
         """
-        from .context.get_360_memory import get_360_memory
+        from .context_tools.get_360_memory import get_360_memory
         return await get_360_memory(product_id, tenant_key, last_n_projects, offset, limit, db_manager)
 
     @mcp.tool()
@@ -1338,7 +1338,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Returns:
             Git commits with metadata (pagination_supported=False)
         """
-        from .context.get_git_history import get_git_history
+        from .context_tools.get_git_history import get_git_history
         return await get_git_history(product_id, tenant_key, commits, offset, limit, db_manager)
 
     @mcp.tool()
@@ -1362,7 +1362,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Returns:
             Agent templates with metadata (pagination_supported=False)
         """
-        from .context.get_agent_templates import get_agent_templates
+        from .context_tools.get_agent_templates import get_agent_templates
         return await get_agent_templates(product_id, tenant_key, detail, offset, limit, db_manager)
 
     @mcp.tool()
@@ -1386,7 +1386,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Returns:
             Tech stack data with metadata (pagination_supported=False)
         """
-        from .context.get_tech_stack import get_tech_stack
+        from .context_tools.get_tech_stack import get_tech_stack
         return await get_tech_stack(product_id, tenant_key, sections, offset, limit, db_manager)
 
     @mcp.tool()
@@ -1410,7 +1410,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Returns:
             Architecture notes with metadata (pagination_supported=False)
         """
-        from .context.get_architecture import get_architecture
+        from .context_tools.get_architecture import get_architecture
         return await get_architecture(product_id, tenant_key, depth, offset, limit, db_manager)
 
     logger.info("Context and discovery tools registered (including 6 thin client context tools)")
