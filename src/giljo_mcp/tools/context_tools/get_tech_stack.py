@@ -33,7 +33,8 @@ async def get_tech_stack(
     sections: str = "all",
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None
+    db_manager: Optional[DatabaseManager] = None,
+    selected_fields: Optional[Dict[str, bool]] = None
 ) -> Dict[str, Any]:
     """
     Fetch tech stack information for given product with depth control.
@@ -48,6 +49,8 @@ async def get_tech_stack(
         offset: Skip first N items (reserved for future pagination)
         limit: Max items to return (reserved for future pagination)
         db_manager: Database manager instance
+        selected_fields: Optional dict mapping field keys to bool (v3.0 granular selection)
+                        Fields: languages, frameworks, databases, dependencies
 
     Pagination (Future):
         offset and limit parameters are reserved for future implementation.
@@ -126,15 +129,29 @@ async def get_tech_stack(
         config_data = product.config_data or {}
         tech_stack = config_data.get("tech_stack", {})
 
-        if sections == "required":
-            # Return only required fields
+        # Handover 0319: Support granular field selection (v3.0)
+        if selected_fields is not None:
+            # Use v3.0 granular field selection
+            data = {}
+            if selected_fields.get("languages", True):
+                data["programming_languages"] = tech_stack.get("languages", [])
+            if selected_fields.get("frameworks", True):
+                data["frontend_frameworks"] = tech_stack.get("frontend", [])
+                data["backend_frameworks"] = tech_stack.get("backend", [])
+            if selected_fields.get("databases", True):
+                data["databases"] = tech_stack.get("database", [])
+            if selected_fields.get("dependencies", True):
+                data["infrastructure"] = tech_stack.get("infrastructure", [])
+                data["dev_tools"] = tech_stack.get("dev_tools", [])
+        elif sections == "required":
+            # v2.0 backward compatibility: Return only required fields
             data = {
                 "programming_languages": tech_stack.get("languages", []),
                 "frameworks": tech_stack.get("frontend", []) + tech_stack.get("backend", []),
                 "database": tech_stack.get("database", [])
             }
         else:  # "all"
-            # Return all tech stack fields
+            # v2.0 backward compatibility: Return all tech stack fields
             data = {
                 "programming_languages": tech_stack.get("languages", []),
                 "frontend_frameworks": tech_stack.get("frontend", []),
