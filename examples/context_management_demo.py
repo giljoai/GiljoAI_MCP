@@ -1,7 +1,7 @@
 """
 Context Management System Demonstration
 
-Handover 0018: Shows complete workflow with token reduction metrics.
+Handover 0018: Shows complete workflow with context prioritization metrics.
 
 This demo illustrates:
 1. VisionDocumentChunker with tiktoken accuracy
@@ -41,7 +41,7 @@ isolation with PostgreSQL as the primary database.
 
 ## Token Reduction Strategy
 
-The context management system achieves 70% token reduction through:
+The context management system achieves context prioritization and orchestration through:
 
 - Vision document chunking with semantic boundaries
 - Role-based context loading
@@ -72,7 +72,7 @@ Database queries always include tenant_key in WHERE clauses.
 
 
 def demo_token_reduction():
-    """Demonstrate token reduction tracking."""
+    """Demonstrate context prioritization tracking."""
     print("\n" + "=" * 70)
     print("DEMO 2: Token Reduction Tracking")
     print("=" * 70)
@@ -107,7 +107,7 @@ monitoring, logging, and production deployment procedures.
     condensed_mission = """
 Implement GiljoAI MCP: Multi-tenant agent orchestration platform.
 5 phases: DB (PostgreSQL), API (FastAPI), Agents (orchestration),
-Frontend (Vue3), Deployment (Docker/K8s). Focus on 70% token reduction
+Frontend (Vue3), Deployment (Docker/K8s). Focus on context prioritization and orchestration
 via context management. Use tiktoken for accuracy.
 """
 
@@ -145,7 +145,7 @@ def main():
     print("\n" + "=" * 70)
     print("HANDOVER 0018: CONTEXT MANAGEMENT SYSTEM DEMONSTRATION")
     print("=" * 70)
-    print("\nProduction-grade context management with token reduction tracking")
+    print("\nProduction-grade context management with context prioritization tracking")
     print("Following TDD principles with comprehensive test coverage")
 
     demo_chunking()
@@ -159,7 +159,7 @@ def main():
     print("  - Tiktoken-based accurate token counting (cl100k_base)")
     print("  - Semantic boundary detection via EnhancedChunker")
     print("  - Keyword extraction and summarization")
-    print("  - Token reduction tracking (70% target)")
+    print("  - Context prioritization tracking (70% target)")
     print("  - Role-based context loading patterns")
     print("  - Multi-tenant isolation ready")
     print("\nAll components are production-grade and fully tested.")

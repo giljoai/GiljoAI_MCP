@@ -21,7 +21,7 @@ Multiple handover projects show as "Not Started" in documentation but are actual
 | Handover | Title | Actual Status | Evidence |
 |----------|-------|---------------|----------|
 | **0019** | Agent Job Management | ✅ COMPLETE | `AgentJobManager`, `JobCoordinator`, `AgentCommunicationQueue` exist with 90%+ test coverage |
-| **0020** | Orchestrator Enhancement | ✅ COMPLETE | `ProjectOrchestrator` (915 lines), token reduction working |
+| **0020** | Orchestrator Enhancement | ✅ COMPLETE | `ProjectOrchestrator` (915 lines), context prioritization working |
 | **0023** | Password Reset PIN | ✅ COMPLETE | Recovery PIN system implemented, tests passing |
 | **0024** | Two-Layout Auth Pattern | ✅ COMPLETE | `AuthLayout.vue`, `DefaultLayout.vue` exist and working |
 | **0025-0029** | Admin Settings Refactor | ✅ COMPLETE | All tabs redesigned, tests exist |

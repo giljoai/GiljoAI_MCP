@@ -422,7 +422,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
 
     @pytest.mark.asyncio
     async def test_record_operation_calculates_savings(self):
-        """Test operation recording calculates token savings"""
+        """Test operation recording calculates context-efficiency metrics"""
 
         agent_id = str(uuid.uuid4())
 
@@ -563,7 +563,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
 
     @pytest.mark.asyncio
     async def test_estimate_token_savings(self):
-        """Test estimating token savings for an operation"""
+        """Test estimating context-efficiency impact for an operation"""
         result_size = 1000  # characters
 
         savings = self.optimizer.estimate_token_savings(OperationType.FILE_READ, result_size)

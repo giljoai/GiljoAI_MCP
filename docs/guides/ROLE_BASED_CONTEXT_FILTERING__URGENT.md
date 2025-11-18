@@ -24,13 +24,13 @@
 
 ## Overview
 
-Role-based context filtering is a **hierarchical context management system** that provides differential configuration delivery to agents based on their role, achieving significant token reduction while maintaining effectiveness.
+Role-based context filtering is a **hierarchical context management system** that provides differential configuration delivery to agents based on their role, achieving significant context prioritization while maintaining effectiveness.
 
 ### Key Concepts
 
 - **Hierarchical Loading**: Orchestrators get FULL context, workers get FILTERED context
 - **Role Detection**: Automatic role detection from agent name or explicit role field
-- **Token Optimization**: 60% token reduction for worker agents
+- **Token Optimization**: 60% context prioritization for worker agents
 - **Database Performance**: GIN-indexed JSONB for sub-100ms queries
 - **Flexible Schema**: JSONB allows schema evolution without migrations
 

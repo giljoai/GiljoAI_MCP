@@ -388,8 +388,8 @@ def get_effective_field_priorities(
 # Applied when user has no custom field_priority_config
 # Ensures meaningful context even for new users who haven't customized priorities
 DEFAULT_FIELD_PRIORITIES = {
-    "codebase_summary": 6,  # Moderate detail (50% token reduction)
-    "architecture": 4,      # Abbreviated detail (70% token reduction)
+    "codebase_summary": 6,  # Moderate detail (50% context prioritization)
+    "architecture": 4,      # Abbreviated detail (context prioritization and orchestration)
 }
 ```
 

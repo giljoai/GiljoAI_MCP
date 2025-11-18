@@ -329,7 +329,7 @@ def upgrade() -> None:
     sa.Column('condensed_mission', sa.Text(), nullable=False, comment='Orchestrator-generated condensed mission'),
     sa.Column('full_token_count', sa.Integer(), nullable=True),
     sa.Column('condensed_token_count', sa.Integer(), nullable=True),
-    sa.Column('reduction_percent', sa.Float(), nullable=True, comment='Token reduction percentage achieved'),
+    sa.Column('reduction_percent', sa.Float(), nullable=True, comment='Context prioritization percentage achieved'),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),

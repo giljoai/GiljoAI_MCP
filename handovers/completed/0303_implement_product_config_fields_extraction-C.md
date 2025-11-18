@@ -192,7 +192,7 @@ def _extract_config_field(
     Args:
         product: Product instance with config_data
         field_name: Field key in config_data (e.g., "test_methodology")
-        detail_level: Token reduction level ("full", "abbreviated", "minimal")
+        detail_level: Context prioritization level ("full", "abbreviated", "minimal")
 
     Returns:
         Formatted field text with detail level applied, or None if field missing
@@ -237,7 +237,7 @@ def _extract_config_field(
     if not field_text.strip():
         return None
 
-    # Apply detail level token reduction
+    # Apply detail level context prioritization
     if detail_level == "minimal":
         # 20% of original (truncate to first 100 chars)
         return field_text[:100] + ("..." if len(field_text) > 100 else "")
@@ -304,8 +304,8 @@ for field_name in config_fields_to_extract:
 
 ```python
 DEFAULT_FIELD_PRIORITIES = {
-    "codebase_summary": 6,  # Moderate detail (50% token reduction)
-    "config_data.architecture": 4,  # Abbreviated detail (70% token reduction)
+    "codebase_summary": 6,  # Moderate detail (50% context prioritization)
+    "config_data.architecture": 4,  # Abbreviated detail (context prioritization and orchestration)
     "config_data.test_methodology": 6,  # Moderate - important for agents
     "config_data.coding_standards": 5,  # Moderate - quality guidelines
     "config_data.deployment_strategy": 3,  # Lower - not always needed
@@ -611,10 +611,10 @@ If implementation causes issues:
 - 4 integration tests passing (test_methodology, deployment_strategy, coding_standards, architecture)
 - Backward compatibility verified (existing architecture field works)
 - Multi-tenant isolation validated
-- Token reduction validated for detail levels
+- Context prioritization validated for detail levels
 
 ### Token Reduction Impact
-Config fields contribute to 77% overall token reduction:
+Config fields contribute to 77% overall context prioritization:
 - Full: Complete field content (0% reduction)
 - Abbreviated: First 250 chars (50% reduction)
 - Minimal: First 100 chars (80% reduction)

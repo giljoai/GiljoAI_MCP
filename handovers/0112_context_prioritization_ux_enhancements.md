@@ -415,7 +415,7 @@ async def get_context_efficiency_metrics(
 ## Value Proposition Alignment
 
 ### Current Marketing (Misleading)
-> "70% token reduction through field priorities"
+> "context prioritization and orchestration through field priorities"
 
 **Problem**: This claim is confusing and technically inaccurate. The 70% applies to OPTIONAL fields only, not total context.
 
@@ -632,7 +632,7 @@ ADD COLUMN vision_updated_at TIMESTAMP;
 
 ## Questions for Product Owner
 
-1. **Marketing Priority**: How important is clarifying the "70% token reduction" messaging? Should we update immediately or defer?
+1. **Marketing Priority**: How important is clarifying the "context prioritization and orchestration" messaging? Should we update immediately or defer?
 
 2. **Metric Precision**: Should we invest in tiktoken for precise token counts, or is rough estimation (4 chars/token) acceptable?
 
@@ -646,7 +646,7 @@ ADD COLUMN vision_updated_at TIMESTAMP;
 
 ## Related Handovers
 
-- **Handover 0088**: Thin Client Architecture (70% token reduction system)
+- **Handover 0088**: Thin Client Architecture (context prioritization and orchestration system)
 - **Handover 0111**: WebSocket Real-Time Updates (agent status reporting)
 - **Handover 0048**: Field Priority System (original implementation)
 - **Handover 0080**: Orchestrator Succession (context window management)

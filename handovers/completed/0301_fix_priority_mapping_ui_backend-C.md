@@ -8,11 +8,11 @@
 
 ## Executive Summary
 
-Critical bug in field priority mapping causes ALL user-configured priorities to map to "minimal" detail level (80% token reduction) instead of the intended full/moderate/abbreviated levels. This defeats the purpose of the 70% token reduction system.
+Critical bug in field priority mapping causes ALL user-configured priorities to map to "minimal" detail level (80% context prioritization) instead of the intended full/moderate/abbreviated levels. This defeats the purpose of the context prioritization and orchestration system.
 
 **Root Cause**: UI sends Priority 1/2/3 (values: 1, 2, 3) but backend `_get_detail_level()` expects 1-10 scale.
 
-**Impact**: Users experience unexpectedly aggressive token reduction regardless of their priority settings.
+**Impact**: Users experience unexpectedly aggressive context prioritization regardless of their priority settings.
 
 **Solution**: Map UI priority values to correct backend scale in `UserSettings.vue` saveFieldPriority function.
 
@@ -39,13 +39,13 @@ priority3Fields.value.forEach(field => {
 def _get_detail_level(self, priority: int) -> str:
     """Map priority (1-10) to detail level."""
     if priority >= 10:
-        return "full"        # 0% token reduction
+        return "full"        # 0% context prioritization
     if priority >= 7:
-        return "moderate"    # 25% token reduction
+        return "moderate"    # 25% context prioritization
     if priority >= 4:
-        return "abbreviated" # 50% token reduction
+        return "abbreviated" # 50% context prioritization
     if priority >= 1:
-        return "minimal"     # 80% token reduction (EVERYTHING GOES HERE!)
+        return "minimal"     # 80% context prioritization (EVERYTHING GOES HERE!)
     return "exclude"
 ```
 
@@ -71,17 +71,17 @@ def _get_detail_level(self, priority: int) -> str:
 1. **test_priority_1_always_included_maps_to_full_detail**
    - Given: User assigns field to Priority 1 (Always Included)
    - When: Field priority config saved via API
-   - Then: Backend receives priority=10 → detail_level="full" → 0% token reduction
+   - Then: Backend receives priority=10 → detail_level="full" → 0% context prioritization
 
 2. **test_priority_2_high_priority_maps_to_moderate_detail**
    - Given: User assigns field to Priority 2 (High Priority)
    - When: Field priority config saved via API
-   - Then: Backend receives priority=7 → detail_level="moderate" → 25% token reduction
+   - Then: Backend receives priority=7 → detail_level="moderate" → 25% context prioritization
 
 3. **test_priority_3_medium_priority_maps_to_abbreviated_detail**
    - Given: User assigns field to Priority 3 (Medium Priority)
    - When: Field priority config saved via API
-   - Then: Backend receives priority=4 → detail_level="abbreviated" → 50% token reduction
+   - Then: Backend receives priority=4 → detail_level="abbreviated" → 50% context prioritization
 
 4. **test_unassigned_fields_excluded_from_config**
    - Given: User leaves field unassigned
@@ -194,10 +194,10 @@ class FieldPriorityConfig(BaseModel):
 
 ```javascript
 // Field Priority Constants (must match backend MissionPlanner._get_detail_level)
-const PRIORITY_ALWAYS_INCLUDED = 10  // "full" detail - 0% token reduction
-const PRIORITY_HIGH = 7              // "moderate" detail - 25% token reduction
-const PRIORITY_MEDIUM = 4            // "abbreviated" detail - 50% token reduction
-const PRIORITY_EXCLUDE = 0           // "exclude" - 100% token reduction (omitted)
+const PRIORITY_ALWAYS_INCLUDED = 10  // "full" detail - 0% context prioritization
+const PRIORITY_HIGH = 7              // "moderate" detail - 25% context prioritization
+const PRIORITY_MEDIUM = 4            // "abbreviated" detail - 50% context prioritization
+const PRIORITY_EXCLUDE = 0           // "exclude" - 100% context prioritization (omitted)
 
 // Update saveFieldPriority function to use constants
 async function saveFieldPriority() {
@@ -231,10 +231,10 @@ async function saveFieldPriority() {
  * IMPORTANT: UI priorities (1/2/3) are mapped to backend scale (10/7/4) to match
  * MissionPlanner._get_detail_level() expected ranges:
  *
- * - Priority 1 (Always Included) → 10 → "full" (0% token reduction)
- * - Priority 2 (High Priority)    → 7  → "moderate" (25% token reduction)
- * - Priority 3 (Medium Priority)  → 4  → "abbreviated" (50% token reduction)
- * - Unassigned                    → 0  → "exclude" (100% token reduction)
+ * - Priority 1 (Always Included) → 10 → "full" (0% context prioritization)
+ * - Priority 2 (High Priority)    → 7  → "moderate" (25% context prioritization)
+ * - Priority 3 (Medium Priority)  → 4  → "abbreviated" (50% context prioritization)
+ * - Unassigned                    → 0  → "exclude" (100% context prioritization)
  *
  * See: src/giljo_mcp/mission_planner.py:512 (_get_detail_level)
  */
@@ -267,14 +267,14 @@ def _get_detail_level(self, priority: int) -> str:
         Detail level string: "full", "moderate", "abbreviated", "minimal", "exclude"
     """
     if priority >= 10:
-        return "full"        # 0% token reduction
+        return "full"        # 0% context prioritization
     if priority >= 7:
-        return "moderate"    # 25% token reduction
+        return "moderate"    # 25% context prioritization
     if priority >= 4:
-        return "abbreviated" # 50% token reduction
+        return "abbreviated" # 50% context prioritization
     if priority >= 1:
-        return "minimal"     # 80% token reduction
-    return "exclude"         # 100% token reduction (omitted)
+        return "minimal"     # 80% context prioritization
+    return "exclude"         # 100% context prioritization (omitted)
 ```
 
 #### Refactor 3: Add Backend Constants (Optional)
@@ -337,7 +337,7 @@ def _get_detail_level(self, priority: int) -> str:
 Integration tests for field priority mapping (UI → Backend).
 
 CRITICAL BUG FIX: UI sends 1/2/3 but backend expects 10/7/4 for correct detail levels.
-Before fix: All priorities map to "minimal" (80% token reduction)
+Before fix: All priorities map to "minimal" (80% context prioritization)
 After fix: Priorities map to "full"/"moderate"/"abbreviated" as intended
 
 Handover: 0301
@@ -436,7 +436,7 @@ async def test_priority_1_always_included_maps_to_full_detail(
     test_project: Project
 ):
     """
-    Priority 1 (Always Included) should map to backend value 10 → "full" detail (0% token reduction).
+    Priority 1 (Always Included) should map to backend value 10 → "full" detail (0% context prioritization).
 
     Test Flow:
     1. User configures "codebase_summary" as Priority 1 (value: 10 after fix)
@@ -465,7 +465,7 @@ async def test_priority_1_always_included_maps_to_full_detail(
         user_id=str(test_user.id)
     )
 
-    # ASSERT: Verify full codebase summary included (0% token reduction)
+    # ASSERT: Verify full codebase summary included (0% context prioritization)
     assert "## Codebase" in condensed_mission, "Codebase section should be present"
     assert "# Codebase Summary" in condensed_mission, "Full content header should be present"
     assert "## Architecture" in condensed_mission, "Architecture section should be present"
@@ -497,7 +497,7 @@ async def test_priority_2_high_priority_maps_to_moderate_detail(
     test_project: Project
 ):
     """
-    Priority 2 (High Priority) should map to backend value 7 → "moderate" detail (25% token reduction).
+    Priority 2 (High Priority) should map to backend value 7 → "moderate" detail (25% context prioritization).
 
     Test Flow:
     1. User configures "codebase_summary" as Priority 2 (value: 7 after fix)
@@ -525,7 +525,7 @@ async def test_priority_2_high_priority_maps_to_moderate_detail(
         user_id=str(test_user.id)
     )
 
-    # ASSERT: Verify moderate detail level (25% token reduction)
+    # ASSERT: Verify moderate detail level (25% context prioritization)
     assert "## Codebase" in condensed_mission, "Codebase section should be present"
 
     # Verify detail level mapping
@@ -553,7 +553,7 @@ async def test_priority_3_medium_priority_maps_to_abbreviated_detail(
     test_project: Project
 ):
     """
-    Priority 3 (Medium Priority) should map to backend value 4 → "abbreviated" detail (50% token reduction).
+    Priority 3 (Medium Priority) should map to backend value 4 → "abbreviated" detail (50% context prioritization).
 
     Test Flow:
     1. User configures "codebase_summary" as Priority 3 (value: 4 after fix)
@@ -581,7 +581,7 @@ async def test_priority_3_medium_priority_maps_to_abbreviated_detail(
         user_id=str(test_user.id)
     )
 
-    # ASSERT: Verify abbreviated detail level (50% token reduction)
+    # ASSERT: Verify abbreviated detail level (50% context prioritization)
     assert "## Codebase" in condensed_mission, "Codebase section should be present"
 
     # Verify detail level mapping
@@ -610,7 +610,7 @@ async def test_unassigned_fields_excluded_from_config(
 ):
     """
     Unassigned fields should NOT be included in the field priority config.
-    Backend treats missing fields as priority=0 → "exclude" (100% token reduction).
+    Backend treats missing fields as priority=0 → "exclude" (100% context prioritization).
 
     Test Flow:
     1. User configures some fields but leaves "codebase_summary" unassigned
@@ -640,7 +640,7 @@ async def test_unassigned_fields_excluded_from_config(
         user_id=str(test_user.id)
     )
 
-    # ASSERT: Verify codebase summary EXCLUDED (100% token reduction)
+    # ASSERT: Verify codebase summary EXCLUDED (100% context prioritization)
     # Note: Implementation may show "## Codebase" header with no content OR omit section entirely
     # Both are acceptable as long as the substantive content is excluded
 
@@ -669,7 +669,7 @@ async def test_actual_token_counts_match_detail_levels(
     test_project: Project
 ):
     """
-    Integration test: Verify actual token reduction percentages match detail levels
+    Integration test: Verify actual context prioritization percentages match detail levels
     when multiple fields have different priorities.
 
     Test Flow:
@@ -848,10 +848,10 @@ After implementing the fix, verify:
    - [ ] Check orchestrator job metadata: `SELECT job_metadata FROM mcp_agent_jobs WHERE agent_type = 'orchestrator';`
    - [ ] Verify `field_priorities` matches user's config (values 10/7/4, not 1/2/3)
    - [ ] Verify `token_reduction_applied` is true
-   - [ ] Check logs for token reduction percentage (should be < 70%, not 80%)
+   - [ ] Check logs for context prioritization percentage (should be < 70%, not 80%)
 
 ### Performance Testing
-- [ ] Verify token reduction system still achieves 70% reduction target (not 80%)
+- [ ] Verify context prioritization system still achieves 70% reduction target (not 80%)
 - [ ] Check that token counts match expected detail levels
 - [ ] Ensure no performance degradation from validation logic
 
@@ -917,7 +917,7 @@ If users have invalid configs:
 - [ ] Existing tests remain passing (no regressions)
 - [ ] Manual testing confirms correct mapping (1→10, 2→7, 3→4)
 - [ ] Orchestrator missions show expected detail levels (full/moderate/abbreviated)
-- [ ] Token reduction metrics align with priority selections
+- [ ] Context prioritization metrics align with priority selections
 - [ ] No performance degradation
 - [ ] Documentation updated (code comments, docstrings)
 - [ ] Rollback plan tested and validated
@@ -939,15 +939,15 @@ If users have invalid configs:
 ### Future Improvements (Post-Fix)
 1. Add E2E test that exercises full UI → API → Backend → Token Reduction flow
 2. Consider adding UI validation to prevent manual editing of invalid values
-3. Add logging/metrics to track token reduction effectiveness per priority level
-4. Create admin dashboard to view aggregate token reduction statistics
+3. Add logging/metrics to track context prioritization effectiveness per priority level
+4. Create admin dashboard to view aggregate context prioritization statistics
 
 ## Related Files
 
 ### Source Code
 - `frontend/src/views/UserSettings.vue` (UI layer - PRIMARY FIX)
 - `api/endpoints/users.py` (API schema validation)
-- `src/giljo_mcp/mission_planner.py` (Backend token reduction)
+- `src/giljo_mcp/mission_planner.py` (Backend context prioritization)
 - `src/giljo_mcp/tools/orchestration.py` (Orchestrator instructions)
 
 ### Tests
@@ -1007,14 +1007,14 @@ If users have invalid configs:
 ### Testing
 - All 6 integration tests passing
 - Manual UI testing verified correct mapping
-- Token reduction validated (0%/25%/50% for priorities 1/2/3)
+- Context prioritization validated (0%/25%/50% for priorities 1/2/3)
 - No regressions in existing orchestrator tests
 
 ### Token Reduction Impact
-Critical fix enabling proper token reduction system:
+Critical fix enabling proper context prioritization system:
 - Before: ALL priorities → minimal (80% reduction)
 - After: Priority 1 → full (0%), Priority 2 → moderate (25%), Priority 3 → abbreviated (50%)
-- System now achieves intended 70% token reduction target
+- System now achieves intended context prioritization and orchestration target
 
 ### Production Status
 All tests passing. Production ready. Part of v3.1 Context Management System.

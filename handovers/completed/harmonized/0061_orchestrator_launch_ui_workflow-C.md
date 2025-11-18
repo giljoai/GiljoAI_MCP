@@ -325,7 +325,7 @@ app.include_router(
 ### Handover 0020: Orchestrator Enhancement
 
 - ✅ Uses ProjectOrchestrator.process_product_vision() (the CORRECT method)
-- ✅ Token reduction metrics included in response
+- ✅ Context prioritization metrics included in response
 - ✅ Mission plan and agent selection results returned
 - ✅ Workflow coordination handled internally
 
@@ -431,7 +431,7 @@ app.include_router(
 
 - ✅ **Handover 0020**: Orchestrator Enhancement
   - Uses ProjectOrchestrator (correct implementation)
-  - Token reduction metrics included
+  - Context prioritization metrics included
 
 - ✅ **Handover 0050**: Single Active Product Architecture
   - Validates product is active before launch
@@ -475,7 +475,7 @@ app.include_router(
    - Agents are coordinating in background
    - Check Projects view for created project
    - Monitor agent job progress (future handover)
-   - View token reduction metrics (future handover)
+   - View context prioritization metrics (future handover)
 
 ### For Developers
 

@@ -1,7 +1,7 @@
 """
-Performance tests for token reduction through config_data filtering.
+Performance tests for context prioritization through config_data filtering.
 
-Tests verify that role-based filtering achieves token reduction targets:
+Tests verify that role-based filtering achieves context prioritization targets:
 - Orchestrator: Full config (baseline)
 - Implementer: ~40% reduction
 - Tester: ~60% reduction
@@ -302,10 +302,10 @@ class TestDocumenterTokenReduction:
 
 
 class TestOverallTokenReduction:
-    """Test overall token reduction across all roles"""
+    """Test overall context prioritization across all roles"""
 
     def test_average_token_reduction(self, realistic_product):
-        """Test average token reduction across all agent roles is ~40%"""
+        """Test average context prioritization across all agent roles is ~40%"""
         # Get baseline
         full_config = get_full_config(realistic_product)
         full_text = config_to_text(full_config)

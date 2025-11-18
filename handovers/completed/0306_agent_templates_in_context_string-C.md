@@ -782,7 +782,7 @@ Agent templates add controlled context with priority-based detail:
 - Priority 1 (Full): ~250 tokens (role + capabilities + expertise + tasks)
 - Priority 2 (Summary): ~150 tokens (role + capabilities) - DEFAULT
 - Priority 3 (Names): ~50 tokens (name + role only)
-- Contributes to overall 77% token reduction through selective detail
+- Contributes to overall 77% context prioritization through selective detail
 
 ### Production Status
 All tests passing. Production ready. Part of v3.1 Context Management System (Context Source #8).

@@ -107,7 +107,7 @@ Codebase Summary:          6
 Architecture:              4
 ```
 
-**Result**: Agents focus on UI/UX, minimal backend noise. ~65% token reduction.
+**Result**: Agents focus on UI/UX, minimal backend noise. ~65% context prioritization.
 
 ### Scenario 2: Backend-Heavy Microservice
 
@@ -123,7 +123,7 @@ Codebase Summary:          7
 Tech Stack - Frontend:     0 (Exclude - no UI)
 ```
 
-**Result**: Agents focus on backend architecture. ~55% token reduction.
+**Result**: Agents focus on backend architecture. ~55% context prioritization.
 
 ### Scenario 3: Maximum Token Reduction
 
@@ -138,7 +138,7 @@ Architecture:              0 (Exclude)
 Tech Stack:                4 (Abbreviated)
 ```
 
-**Result**: Bare minimum context. ~80% token reduction. **Warning**: May reduce mission quality.
+**Result**: Bare minimum context. ~80% context prioritization. **Warning**: May reduce mission quality.
 
 ### Scenario 4: Full Context (No Reduction)
 
@@ -158,7 +158,7 @@ All fields: 10 (Full detail)
 When you see this badge on a mission:
 
 ✅ **Your field priorities were applied**
-✅ **Token reduction achieved**
+✅ **Context prioritization achieved**
 ✅ **Cost savings active**
 
 If you DON'T see the badge:

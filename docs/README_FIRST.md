@@ -18,7 +18,7 @@
 **Authoritative references for critical workflows** - These documents are maintained as the definitive source for their topics:
 
 - **[SSoT Index](SSoT_INDEX.md)** - Master index of all SSoT documents
-- **[Orchestrator Context Flow SSoT](ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow from user setup to agent execution (13 context cards, 77% token reduction, 9 context sources)
+- **[Orchestrator Context Flow SSoT](ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow from user setup to agent execution (13 context cards, 77% context prioritization, 9 context sources)
 
 **New Implementation Features** (October 2025):
 
@@ -621,7 +621,7 @@ database:
 ### Serena MCP Optimization Layer (October 2025)
 
 **Handover 0010 - Serena MCP Optimization Implementation** (✅ COMPLETE - HARMONIZED):
-- **Token Reduction System**: 60-90% token savings through symbolic operations
+- **Serena Context Analytics**: context-usage analytics and optimization signals powered by symbolic operations
 - **Production Ready**: 37 passing unit tests, full database integration
 - **Core Components**:
   - `src/giljo_mcp/optimization/serena_optimizer.py` - Optimization engine
@@ -681,7 +681,7 @@ database:
 - **[Completion Summary](../handovers/completed/0020_COMPLETION_SUMMARY-C.md)**
 - **Purpose**: Enhance orchestrator to become the intelligent brain for mission generation and agent coordination
 - **Key Achievements**:
-  - 70% token usage reduction through intelligent context management
+  - Context prioritization and orchestration for terminal-based coding agents through intelligent context management
   - Automated mission generation from vision documents
   - Smart agent selection logic
   - Multi-agent workflow coordination
@@ -711,7 +711,7 @@ database:
   - Database schema: 7 new columns (instance_number, handover_to, handover_summary, etc.)
   - Vue Components: SuccessionTimeline, LaunchSuccessorDialog, AgentCardEnhanced
 - **Testing**: 45 integration tests (80.5% coverage), multi-tenant isolation verified, performance benchmarks validated
-- **Impact**: Projects can continue indefinitely without context limitations, 70% token reduction, graceful context management
+- **Impact**: Projects can continue indefinitely without context limitations, context prioritization and orchestration, graceful context management
 
 ### Password Reset via Recovery PIN (October 2025)
 

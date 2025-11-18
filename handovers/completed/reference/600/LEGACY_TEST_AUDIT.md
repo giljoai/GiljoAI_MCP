@@ -81,7 +81,7 @@
 ## Keep Candidates
 
 ### test_thin_prompt_endpoint.py (Handover 0088)
-- **Reason**: Tests unique thin client prompt generation (70% token reduction)
+- **Reason**: Tests unique thin client prompt generation (context prioritization and orchestration)
 - **Coverage overlap**: 0% - Unique functionality not in other tests
 - **Unique tests**: Thin prompt workflow, field priority application
 - **Recommendation**: KEEP

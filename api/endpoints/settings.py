@@ -193,7 +193,7 @@ async def get_product_info(
         database="PostgreSQL 14+",
         features=[
             "Multi-tenant orchestration",
-            "70% token reduction",
+            "context prioritization and orchestration",
             "Orchestrator succession",
             "Agent template management"
         ]

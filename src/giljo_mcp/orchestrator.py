@@ -205,7 +205,7 @@ class ProjectOrchestrator:
 
         Process:
         1. Generate mission with MCP coordination instructions
-        2. Apply Serena optimization for token reduction
+        2. Apply Serena optimization for context prioritization
         3. Create Agent record with mode='claude'
 
         Args:
@@ -220,7 +220,7 @@ class ProjectOrchestrator:
 
         Integration:
             - Includes MCP checkpoint instructions in mission
-            - Applies Serena optimization for token reduction
+            - Applies Serena optimization for context prioritization
             - Agent templates must be manually exported via My Settings → Integrations
         """
         # 1. Generate mission with MCP coordination instructions
@@ -1769,10 +1769,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         context_adjustments = impact.get("context_adjustments", 0)
 
         if rules_applied >= 5:
-            return "High optimization potential - expect 60-90% token reduction"
+            return "High optimization potential - expect 60-90% context prioritization"
         if rules_applied >= 3:
-            return "Medium optimization potential - expect 40-70% token reduction"
-        return "Basic optimization applied - expect 20-50% token reduction"
+            return "Medium optimization potential - expect 40-context prioritization and orchestration"
+        return "Basic optimization applied - expect 20-50% context prioritization"
 
     #  ====================  Phase 2: Orchestration Enhancement Methods (Handover 0020) ====================
 
@@ -1902,7 +1902,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             - selected_agents: List of agent roles
             - spawned_jobs: List of job IDs
             - workflow_result: Workflow execution result
-            - token_reduction: Token reduction metrics
+            - token_reduction: Context prioritization metrics
 
         Raises:
             ValueError: If product not found or not active (Handover 0050)
@@ -1982,7 +1982,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             agent_configs=agent_configs, workflow_type="waterfall", tenant_key=tenant_key, project_id=project.id
         )
 
-        # 8. Calculate token reduction metrics
+        # 8. Calculate context prioritization metrics
         total_mission_tokens = sum(
             mission.token_count for mission in missions.values() if hasattr(mission, "token_count")
         )

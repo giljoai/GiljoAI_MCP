@@ -21,7 +21,7 @@ class ContextRepository:
     Repository for context indexing and summarization.
 
     Handles vision document chunking storage and retrieval with PostgreSQL full-text search.
-    Supports both chunk-level operations and summary operations for token reduction.
+    Supports both chunk-level operations and summary operations for context prioritization.
     """
 
     def __init__(self, db_manager):
@@ -251,7 +251,7 @@ class ContextRepository:
         condensed_tokens: int,
     ) -> MCPContextSummary:
         """
-        Create a context summary with token reduction calculation.
+        Create a context summary with context prioritization calculation.
 
         Args:
             session: Database session
@@ -318,7 +318,7 @@ class ContextRepository:
 
     async def get_token_reduction_stats(self, session: AsyncSession, tenant_key: str, product_id: Optional[str] = None) -> dict:
         """
-        Get token reduction statistics for a tenant or specific product.
+        Get context prioritization statistics for a tenant or specific product.
 
         Args:
             session: Async database session

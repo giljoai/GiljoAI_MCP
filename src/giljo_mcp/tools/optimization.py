@@ -4,7 +4,7 @@ MCP Tools for Serena Optimization Control
 Provides MCP tools for managing and monitoring Serena optimization system:
 - Get optimization settings and rules
 - Update optimization configuration
-- Generate token savings reports
+- Generate context usage analytics reports
 - Force agent handoffs due to context limits
 """
 
@@ -158,13 +158,13 @@ def register_optimization_tools(mcp, db_manager=None):
     @mcp.tool()
     async def get_token_savings_report(project_id: str) -> Dict[str, Any]:
         """
-        Get comprehensive token savings report for a project.
+        Get comprehensive context-usage analytics report for a project.
 
         Args:
             project_id: Project UUID to generate report for
 
         Returns:
-            Dict with detailed token savings analytics
+            Dict with detailed context-usage analytics
         """
         try:
             # Get optimization report from orchestrator
@@ -190,7 +190,7 @@ def register_optimization_tools(mcp, db_manager=None):
             return report
 
         except Exception as e:
-            logger.error(f"Failed to generate token savings report: {e}")
+            logger.error(f"Failed to generate context-usage analytics report: {e}")
             return {"error": str(e), "project_id": project_id, "report_generated": False}
 
     @mcp.tool()

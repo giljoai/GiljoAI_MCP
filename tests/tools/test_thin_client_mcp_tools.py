@@ -11,7 +11,7 @@ Focus areas:
 - Happy path functionality
 - Error handling with actionable messages
 - Multi-tenant isolation (security)
-- Token reduction validation (70% reduction)
+- Context prioritization validation (70% reduction)
 - WebSocket broadcasting integration
 """
 
@@ -314,7 +314,7 @@ async def test_get_orchestrator_instructions_token_reduction(
     db_session, tenant_key, test_orchestrator_job, test_product
 ):
     """
-    Test that 70% token reduction is achieved.
+    Test that context prioritization and orchestration is achieved.
 
     Expected behavior:
     - Original vision: ~50K chars (~12.5K tokens)
@@ -334,7 +334,7 @@ async def test_get_orchestrator_instructions_token_reduction(
     # Verify success
     assert "error" not in result
 
-    # Verify token reduction
+    # Verify context prioritization
     estimated_tokens = result["estimated_tokens"]
 
     # Should be significantly less than original
@@ -347,7 +347,7 @@ async def test_get_orchestrator_instructions_token_reduction(
     if original_tokens > 0:
         reduction_percent = ((original_tokens - estimated_tokens) / original_tokens) * 100
         # Note: May not always hit 70% with test data, but should be significant
-        assert reduction_percent > 0, "Should achieve some token reduction"
+        assert reduction_percent > 0, "Should achieve some context prioritization"
 
 
 # ========================================================================
@@ -613,7 +613,7 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
     2. Orchestrator fetches instructions via get_orchestrator_instructions()
     3. Orchestrator spawns agent via spawn_agent_job()
     4. Agent fetches mission via get_agent_mission()
-    5. Verify token reduction throughout
+    5. Verify context prioritization throughout
     """
     from giljo_mcp.tools.orchestration import get_agent_mission, get_orchestrator_instructions, spawn_agent_job
 

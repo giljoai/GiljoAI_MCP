@@ -279,7 +279,7 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
 
 ## Validation of System-Architect Claims
 
-### Claim 1: "70% token reduction via automated sub-agent spawning"
+### Claim 1: "context prioritization and orchestration via automated sub-agent spawning"
 **Status**: ❌ **UNSUBSTANTIATED**
 
 **Evidence**:
@@ -287,7 +287,7 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
 - Tests confirm absence of spawning mechanism
 - Only manual workflow tracking exists
 
-**Revised Reality**: Token reduction (if any) comes from manual orchestration by developers, NOT automated spawning.
+**Revised Reality**: Context prioritization (if any) comes from manual orchestration by developers, NOT automated spawning.
 
 ### Claim 2: "95% reliability through hybrid orchestration"
 **Status**: 🔍 **REQUIRES FURTHER ANALYSIS**
