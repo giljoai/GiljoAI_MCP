@@ -44,6 +44,7 @@ class ProductService:
     - Product activation/deactivation (single active product per tenant)
     - Product metrics and statistics
     - Vision document management
+    - Quality standards updates (Handover 0316)
     - Cascade impact analysis for deletions
 
     Thread Safety: Each instance is session-scoped. Do not share across requests.
@@ -383,6 +384,102 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to update product: {e}")
             return {"success": False, "error": str(e)}
+
+    async def update_quality_standards(
+        self,
+        product_id: str,
+        quality_standards: str,
+        tenant_key: str,
+    ) -> Dict[str, Any]:
+        """
+        Update quality standards for a product.
+
+        Handover 0316: Updates Product.quality_standards field (direct column, not JSONB).
+
+        Args:
+            product_id: Product UUID
+            quality_standards: Quality standards text
+            tenant_key: Tenant isolation key
+
+        Returns:
+            Updated product data:
+            {
+                "product_id": "uuid",
+                "quality_standards": "80% coverage, zero bugs"
+            }
+
+        Raises:
+            ValueError: If product not found or tenant mismatch
+
+        Multi-Tenant Isolation:
+            Verifies product.tenant_key matches provided tenant_key.
+
+        WebSocket Events:
+            Emits "product_updated" event to tenant for real-time UI sync.
+
+        Example:
+            >>> result = await product_service.update_quality_standards(
+            ...     product_id="123e4567-e89b-12d3-a456-426614174000",
+            ...     quality_standards="TDD required, 85% coverage, zero P0 bugs",
+            ...     tenant_key="tenant_abc"
+            ... )
+        """
+        self._logger.info(
+            f"Updating quality_standards for product {product_id}",
+            extra={
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "has_quality_standards": bool(quality_standards)
+            }
+        )
+
+        async with self.db_manager.get_session_async() as session:
+            # Fetch product with multi-tenant isolation
+            product = await session.get(Product, product_id)
+
+            # Verify product exists and belongs to tenant
+            if not product or product.tenant_key != tenant_key:
+                self._logger.warning(
+                    f"Product {product_id} not found or wrong tenant",
+                    extra={
+                        "product_id": product_id,
+                        "tenant_key": tenant_key,
+                        "operation": "update_quality_standards"
+                    }
+                )
+                raise ValueError(f"Product {product_id} not found")
+
+            # Update quality_standards field
+            old_value = product.quality_standards
+            product.quality_standards = quality_standards
+
+            # Commit changes
+            await session.commit()
+
+            self._logger.info(
+                f"Quality standards updated for product {product_id}",
+                extra={
+                    "product_id": product_id,
+                    "tenant_key": tenant_key,
+                    "old_value": old_value[:50] if old_value else None,
+                    "new_value": quality_standards[:50] if quality_standards else None
+                }
+            )
+
+            # Emit WebSocket event for real-time UI updates
+            await self._emit_websocket_event(
+                event_type="product_updated",
+                data={
+                    "product_id": product_id,
+                    "field": "quality_standards",
+                    "quality_standards": quality_standards
+                }
+            )
+
+            return {
+                "product_id": product_id,
+                "quality_standards": quality_standards
+            }
 
     # ============================================================================
     # Lifecycle Management

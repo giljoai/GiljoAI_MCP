@@ -294,7 +294,7 @@
             <v-tab value="vision">Vision Docs</v-tab>
             <v-tab value="tech">Tech Stack</v-tab>
             <v-tab value="arch">Architecture</v-tab>
-            <v-tab value="features">Features & Testing</v-tab>
+            <v-tab value="features">Testing</v-tab><!-- Handover 0316: Renamed from "Features & Testing" -->
           </v-tabs>
 
           <v-form ref="formRef" v-model="formValid">
@@ -341,6 +341,49 @@
               persistent-hint
               class="mb-4"
             ></v-textarea>
+
+            <!-- Handover 0316: Core Features moved from Testing tab -->
+            <v-textarea
+              v-model="productForm.configData.features.core"
+              hint="Main functionality and capabilities of this product"
+              persistent-hint
+              variant="outlined"
+              density="comfortable"
+              rows="4"
+              auto-grow
+              class="mb-4"
+            >
+              <template #label>
+                <span>Core Features</span>
+                <v-chip
+                  v-if="hasFieldPriority('features.core')"
+                  :color="getPriorityColor(getPriorityForField('features.core'))"
+                  size="x-small"
+                  class="ml-2"
+                >
+                  {{ getPriorityLabel(getPriorityForField('features.core')) }}
+                </v-chip>
+                <v-tooltip
+                  v-if="hasFieldPriority('features.core')"
+                  location="top"
+                  max-width="300"
+                >
+                  <template #activator="{ props }">
+                    <v-icon
+                      v-bind="props"
+                      size="small"
+                      class="ml-1"
+                      style="vertical-align: middle"
+                    >
+                      mdi-information-outline
+                    </v-icon>
+                  </template>
+                  <span style="white-space: pre-line">{{
+                    getPriorityTooltip(getPriorityForField('features.core'))
+                  }}</span>
+                </v-tooltip>
+              </template>
+            </v-textarea>
               </v-tabs-window-item>
 
               <!-- Vision Documents Tab -->
@@ -895,13 +938,15 @@
                 </v-textarea>
               </v-tabs-window-item>
 
-              <!-- Features & Testing Tab (Handover 0042) -->
+              <!-- Testing Tab (Handover 0316: Renamed from "Features & Testing", Core Features moved to Basic Info) -->
               <v-tabs-window-item value="features">
-                <div class="text-subtitle-1 mb-4">Features & Quality Standards</div>
+                <div class="text-subtitle-1 mb-4">Quality Standards & Testing Configuration</div>
 
+                <!-- Handover 0316: New quality_standards field -->
                 <v-textarea
-                  v-model="productForm.configData.features.core"
-                  hint="Main functionality and capabilities of this product"
+                  v-model="productForm.configData.test_config.quality_standards"
+                  placeholder="e.g., Code review required, 80% coverage, zero critical bugs, all tests passing before merge"
+                  hint="Define your quality expectations for testing and development"
                   persistent-hint
                   variant="outlined"
                   density="comfortable"
@@ -910,17 +955,17 @@
                   class="mb-4"
                 >
                   <template #label>
-                    <span>Core Features</span>
+                    <span>Quality Standards</span>
                     <v-chip
-                      v-if="hasFieldPriority('features.core')"
-                      :color="getPriorityColor(getPriorityForField('features.core'))"
+                      v-if="hasFieldPriority('test_config.quality_standards')"
+                      :color="getPriorityColor(getPriorityForField('test_config.quality_standards'))"
                       size="x-small"
                       class="ml-2"
                     >
-                      {{ getPriorityLabel(getPriorityForField('features.core')) }}
+                      {{ getPriorityLabel(getPriorityForField('test_config.quality_standards')) }}
                     </v-chip>
                     <v-tooltip
-                      v-if="hasFieldPriority('features.core')"
+                      v-if="hasFieldPriority('test_config.quality_standards')"
                       location="top"
                       max-width="300"
                     >
@@ -935,7 +980,7 @@
                         </v-icon>
                       </template>
                       <span style="white-space: pre-line">{{
-                        getPriorityTooltip(getPriorityForField('features.core'))
+                        getPriorityTooltip(getPriorityForField('test_config.quality_standards'))
                       }}</span>
                     </v-tooltip>
                   </template>
@@ -1604,6 +1649,7 @@ const productForm = ref({
       strategy: 'TDD',
       coverage_target: 80,
       frameworks: '',
+      quality_standards: '',  // Handover 0316: New field
     },
   },
 })
@@ -1978,9 +2024,10 @@ async function editProduct(product) {
       strategy: 'TDD',
       coverage_target: 80,
       frameworks: '',
+      quality_standards: '',  // Handover 0316: New field
     },
   }
-  
+
   productForm.value = {
     name: product.name,
     description: product.description || '',
@@ -2313,6 +2360,7 @@ function closeDialog() {
       strategy: 'TDD',
       coverage_target: 80,
       frameworks: '',
+      quality_standards: '',  // Handover 0316: New field
       },
     },
   }
