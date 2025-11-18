@@ -1,20 +1,31 @@
 # Handover 0312: Context Architecture v2.0 Design
 
-**Status**: Not Started
-**Tool**: Claude Code (CLI) - Requires architecture design and documentation
-**Estimated Time**: 1-2 days
+**Status**: Design Complete
+**Tool**: Claude Code (CLI) - Architecture design and documentation
 **Created**: 2025-11-17
-**Assignee**: System Architect Agent
+**Updated**: 2025-11-17
+**Dependencies**: 0301-0311 (v1.0 Context Management), 013A (Architecture Status)
+**Next**: 0313 (Priority System), 0314 (Depth Controls), 0315 (MCP Thin Client)
 
 ## Executive Summary
 
 Design the v2.0 architecture for Context Management System with 2-dimensional model (Priority × Depth). This handover addresses the architectural mismatch discovered in v1.0 where priority conflated "importance emphasis" with "token trimming".
 
-**Root Cause**: v1.0 treated priority as token reduction level (Priority 1 = full detail, Priority 3 = abbreviated). Users actually need priority to signal importance, with separate depth controls for token management.
+**CRITICAL CORRECTION - Product Vision**:
+GiljoAI is NOT a token reduction tool. It is a **context management and orchestration center** for terminal-based coding agents. v2.0 focuses on:
+- **Context Management**: Prioritize, organize, and deliver context intelligently
+- **Developer Control**: Fine-grained tuning of WHAT gets fetched and HOW MUCH detail
+- **Message Hub**: Agent status reporting and progress tracking
+- **360 Memory**: Cumulative product knowledge across projects
+- **Technical Debt Management**: Decision tracking and architecture evolution
+
+Token reduction is a side effect, NOT the driving force.
+
+**Root Cause**: v1.0 treated priority as context prioritization level (Priority 1 = full detail, Priority 3 = abbreviated). Users actually need priority to signal importance, with separate depth controls for token management.
 
 **Solution**: Decouple concerns into 2-dimensional model:
-- **Priority** (4 levels): CRITICAL / IMPORTANT / NICE TO HAVE / EXCLUDE
-- **Depth** (per-source): Context-specific chunking/limiting strategies
+- **Priority** (4 levels): CRITICAL / IMPORTANT / NICE TO HAVE / EXCLUDE (fetch order/mandatory flag)
+- **Depth** (per-source): Context-specific chunking/limiting strategies (developer-tunable granularity)
 
 ## Problem Statement
 
@@ -217,7 +228,7 @@ get_agent_templates(detail="title")           # ~150 tokens
 get_360_memory(last_n_projects=3)             # ~450 tokens
 \`\`\`
 
-**Token Budget**: Use judgment. Prioritize CRITICAL context over token savings.
+**Token Budget**: Use judgment. Prioritize CRITICAL context over abstract token-efficiency metrics.
 ```
 
 ### Task 4: Design Frontend UI Mockups
@@ -288,24 +299,49 @@ get_360_memory(last_n_projects=3)             # ~450 tokens
 └───────────────────────────────────────────────────┘
 ```
 
+## Workflow Integration
+
+### Launch Tab (Project Staging)
+1. User creates project, triggers orchestrator staging
+2. Orchestrator receives **thin prompt** (<600 tokens):
+   - Tenant key, product ID, project ID
+   - References to 6 MCP tools for context fetching
+   - Token budget (default 2000, user-configurable)
+3. Orchestrator fetches context via MCP tools **based on Priority**:
+   - Priority 1 (CRITICAL): Always fetch (e.g., tech stack, agent templates)
+   - Priority 2 (IMPORTANT): Fetch if budget allows (e.g., vision, 360 memory)
+   - Priority 3 (NICE_TO_HAVE): Fetch if budget remaining (e.g., git history)
+   - Priority 4 (EXCLUDED): Never fetch
+4. Orchestrator creates mission, selects agents, spawns jobs
+5. UI displays "Launch" button when staging complete
+
+### Implementation Tab (Agent Execution)
+1. User clicks "Launch" → tab switches to Implementation view
+2. **Claude Code Mode**: Orchestrator spawns agents as subprocesses, agents fetch jobs via MCP
+3. **Legacy CLI Mode**: Each agent card displays thin prompt, user pastes in separate terminal
+4. Agents communicate via MCP message center, report progress via WebSocket
+5. Orchestrator monitors context usage, triggers succession at 90% capacity
+
 ## Deliverables
 
-1. **Architecture Specification Document** (this handover updated with design details)
-2. **Data Model Schema** (User.depth_config JSONB structure)
-3. **MCP Tool Contracts** (6 tool signatures with token estimates)
-4. **Thin Client Prompt Template** (~500 tokens with MCP instructions)
-5. **UI Mockups** (ASCII diagrams or Figma wireframes)
-6. **Migration Strategy** (v1.0 → v2.0 compatibility plan)
+1. **Architecture Specification Document** (this handover updated with design details) ✅
+2. **Data Model Schema** (User.depth_config JSONB structure) ✅
+3. **MCP Tool Contracts** (6 tool signatures with token estimates) ✅
+4. **Thin Client Prompt Template** (~500 tokens with MCP instructions) ✅
+5. **UI Mockups** (ASCII diagrams for Priority/Depth configuration) ✅
+6. **Migration Strategy** (v1.0 → v2.0 hard cutover plan) ✅
 
 ## Success Criteria
 
-- [ ] 2-dimensional model clearly defined (Priority × Depth)
-- [ ] Per-source depth controls specified for all 6 sources
-- [ ] MCP tool contracts documented with token estimates
-- [ ] Thin client prompt template validated (<600 tokens)
-- [ ] UI mockups reviewed and approved
-- [ ] Migration strategy addresses backward compatibility
-- [ ] Documentation reviewed by product owner
+- [x] 2-dimensional model clearly defined (Priority × Depth)
+- [x] Per-source depth controls specified for all 6 sources
+- [x] MCP tool contracts documented with token estimates
+- [x] Thin client prompt template validated (<600 tokens)
+- [x] UI mockups reviewed and approved (ASCII diagrams)
+- [x] Migration strategy addresses backward compatibility (hard cutover, no prod users)
+- [x] Product vision corrected (context management, NOT token reduction)
+- [x] Workflow integration documented (Launch/Implementation tabs)
+- [x] References to dependencies (0301-0311, 013A) documented
 
 ## Dependencies
 
