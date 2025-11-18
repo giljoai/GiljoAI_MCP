@@ -38,8 +38,8 @@ async def get_tech_stack(
     """
     Fetch tech stack information for given product with depth control.
 
-    Reuses field extraction logic from mission_planner._format_tech_stack().
-    Returns tech stack fields from Product model.
+    Handover 0316: Reads from Product.config_data.tech_stack JSONB object (not direct columns).
+    Returns tech stack fields based on sections parameter.
 
     Args:
         product_id: Product UUID
@@ -54,17 +54,17 @@ async def get_tech_stack(
         Currently ignored - full implementation deferred to future handover.
 
     Returns:
-        Dict with tech stack and metadata:
+        Dict with tech stack from config_data.tech_stack:
         {
             "source": "tech_stack",
             "depth": "all",
             "data": {
                 "programming_languages": ["Python", "TypeScript"],
-                "frameworks": ["FastAPI", "Vue 3"],
-                "database": ["PostgreSQL"],
-                "deployment_platform": ["AWS"],
-                "cloud_services": ["S3", "RDS"],
-                "dev_tools": ["Git", "Docker"]
+                "frontend_frameworks": ["Vue 3"],
+                "backend_frameworks": ["FastAPI"],
+                "databases": ["PostgreSQL"],
+                "infrastructure": ["Docker"],
+                "dev_tools": ["Git"]
             },
             "metadata": {
                 "product_id": "uuid",
@@ -122,32 +122,37 @@ async def get_tech_stack(
                 }
             }
 
-        # Build tech stack data based on depth (reuse pattern from mission_planner)
+        # Handover 0316: Access config_data JSONB (not direct columns)
+        config_data = product.config_data or {}
+        tech_stack = config_data.get("tech_stack", {})
+
         if sections == "required":
             # Return only required fields
             data = {
-                "programming_languages": product.programming_languages or [],
-                "frameworks": product.frameworks or [],
-                "database": product.database or []
+                "programming_languages": tech_stack.get("languages", []),
+                "frameworks": tech_stack.get("frontend", []) + tech_stack.get("backend", []),
+                "database": tech_stack.get("database", [])
             }
         else:  # "all"
             # Return all tech stack fields
             data = {
-                "programming_languages": product.programming_languages or [],
-                "frameworks": product.frameworks or [],
-                "database": product.database or [],
-                "deployment_platform": product.deployment_platform or [],
-                "cloud_services": product.cloud_services or [],
-                "dev_tools": product.dev_tools or []
+                "programming_languages": tech_stack.get("languages", []),
+                "frontend_frameworks": tech_stack.get("frontend", []),
+                "backend_frameworks": tech_stack.get("backend", []),
+                "databases": tech_stack.get("database", []),
+                "infrastructure": tech_stack.get("infrastructure", []),
+                "dev_tools": tech_stack.get("dev_tools", [])
             }
 
         # Calculate token estimate
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "tech_stack_fetched",
+            "tech_stack_fetched_from_config_data",
             product_id=product_id,
             tenant_key=tenant_key,
+            has_config_data=bool(product.config_data),
+            has_tech_stack=bool(config_data.get("tech_stack")),
             depth=sections,
             estimated_tokens=total_tokens
         )

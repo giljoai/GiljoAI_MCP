@@ -39,6 +39,9 @@ class Product(Base):
     - vision_document: Inline text storage (new agentic workflow)
     - vision_type: Source type ('file', 'inline', 'none')
     - chunked: Has vision been chunked into mcp_context_index
+
+    Handover 0316: Added quality_standards field for testing expectations.
+    Note: Project.context_budget is soft deprecated (kept for backward compatibility).
     """
 
     __tablename__ = "products"
@@ -51,6 +54,13 @@ class Product(Base):
     # Handover 0084: Project path for agent export (required for copy-command interface)
     project_path = Column(
         String(500), nullable=True, comment="File system path to product folder (required for agent export)"
+    )
+
+    # Handover 0316: Quality standards for testing expectations
+    quality_standards = Column(
+        Text,
+        nullable=True,
+        comment="Quality standards and testing expectations"
     )
 
     # ✅ Handover 0128e Complete: Deprecated vision fields removed
