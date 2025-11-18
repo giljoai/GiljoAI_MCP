@@ -12,7 +12,7 @@
 
 ## Executive Summary
 
-**Problem Statement (updated):** The HTTP MCP server now exposes **40 tools** via JSON-RPC 2.0 (tools/list aligns with tools/call). Earlier drafts cited 106 tools; that catalog has been consolidated. We validated removals and service-layer extraction and still identify **6 admin/dashboard tools** that should ultimately migrate to REST, leaving ~34 core MCP tools aligned with the thin‑client architecture. Legacy Agent‑model tools are no longer exposed via the HTTP MCP path.
+**Problem Statement (updated):** The HTTP MCP server now exposes **34 tools** via JSON-RPC 2.0 (tools/list aligns with tools/call). Earlier drafts cited 106 tools; that catalog has been consolidated. We removed **6 admin/dashboard tools** from the MCP catalog (migrated to REST), leaving 34 core MCP tools aligned with the thin‑client architecture. Legacy Agent‑model tools are no longer exposed via the HTTP MCP path.
 
 **Root Cause:** Confusion between:
 1. **Terminal-initiated MCP tools** (called from laptop Claude Code/Codex/Gemini via HTTP)
@@ -1190,13 +1190,13 @@ handovers/start_to_finish_agent_FLOW.md        Complete workflow
 
 ### Tool Catalog Evidence (current)
 
-- tools/list returns 40 tools; matches tools/call mapping
+- tools/list returns 34 tools; matches tools/call mapping
 - Current names:
-  - `create_project`, `list_projects`, `get_project`, `switch_project`, `close_project`, `update_project_mission`
+  - `create_project`, `switch_project`, `update_project_mission`
   - `get_orchestrator_instructions`
   - `send_message`, `receive_messages`, `acknowledge_message`, `list_messages`
   - `create_task`, `list_tasks`, `update_task`, `assign_task`, `complete_task`
-  - `list_templates`, `get_template`, `create_template`, `update_template`
+  - `get_template`
   - `health_check`
   - `get_pending_jobs`, `acknowledge_job`, `report_progress`, `get_next_instruction`, `complete_job`, `report_error`
   - `orchestrate_project`, `get_agent_mission`, `spawn_agent_job`, `get_workflow_status`
