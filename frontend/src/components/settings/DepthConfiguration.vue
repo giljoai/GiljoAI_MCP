@@ -83,6 +83,7 @@ const depthConfig = ref<DepthConfig>({
   architecture_depth: 'overview',
   product_core_enabled: false,  // Handover 0316: New field
   testing_config_depth: 'none',  // Handover 0316: New field
+  project_context_enabled: false,  // Handover 0316: Missing depth control (9th category)
 });
 
 const saving = ref(false);
@@ -172,6 +173,16 @@ const depthSources = [
       { title: 'None (0 tokens)', value: 'none' },
       { title: 'Basic - Strategy + Coverage (~150 tokens)', value: 'basic' },
       { title: 'Full - All fields + Frameworks (~400 tokens)', value: 'full' },
+    ],
+  },
+  // Handover 0316: Added missing 9th depth control
+  {
+    key: 'project_context_enabled' as keyof DepthConfig,
+    label: 'Project Context',
+    description: 'Project name, alias, mission, and status',
+    options: [
+      { title: 'Disabled (0 tokens)', value: false },
+      { title: 'Enabled (~80 tokens)', value: true },
     ],
   },
 ];
