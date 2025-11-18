@@ -316,7 +316,7 @@ jobs = session.query(MCPAgentJob).filter(
 
 ---
 
-### Token Reduction (70% Achievement)
+### Context Prioritization and Orchestrator Efficiency
 
 The orchestrator achieves massive token savings through:
 
@@ -378,7 +378,7 @@ The orchestrator achieves massive token savings through:
 **Backend Core:**
 - `src/giljo_mcp/tools/orchestration.py` → Orchestrator MCP tools
 - `src/giljo_mcp/tools/agent_coordination.py` → Agent execution tools
-- `src/giljo_mcp/mission_planner.py` → Mission generation (70% token reduction)
+- `src/giljo_mcp/mission_planner.py` → Mission generation (context prioritization and orchestration)
 - `src/giljo_mcp/agent_selector.py` → Smart agent selection
 - `src/giljo_mcp/template_seeder.py` → Default template definitions
 
@@ -415,7 +415,7 @@ The orchestrator achieves massive token savings through:
 | **Template** | Agent configuration (prompt, behavior, tools) |
 | **Tenant** | User isolation boundary (multi-tenant architecture) |
 | **MCP** | Model Context Protocol (communication layer) |
-| **Thin Client** | 10-line prompts + MCP mission fetch (70% token reduction) |
+| **Thin Client** | 10-line prompts + MCP mission fetch (efficient context usage) |
 
 ---
 
