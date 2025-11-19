@@ -676,6 +676,40 @@ function removeVisionFile(index) {
   visionUploadError.value = null // Clear error when file is removed
 }
 
+// Handover 0320: Handler for ProductForm upload-vision event
+// Note: Vision files are now managed internally by ProductForm and passed via save event
+// This handler is kept for potential future use (e.g., immediate upload)
+function uploadVisionDocument(file) {
+  // Currently not used - ProductForm passes files via save event
+  console.log('[ProductsView] uploadVisionDocument called:', file)
+}
+
+// Handover 0320: Handler for ProductForm remove-vision event (delete existing document)
+async function removeVisionDocument(doc) {
+  try {
+    await api.visionDocuments.delete(doc.id)
+
+    // Remove from existing documents list
+    const index = existingVisionDocuments.value.findIndex(d => d.id === doc.id)
+    if (index > -1) {
+      existingVisionDocuments.value.splice(index, 1)
+    }
+
+    showToast({
+      message: `Deleted vision document: ${doc.document_name}`,
+      type: 'success',
+      duration: 3000,
+    })
+  } catch (error) {
+    console.error('Failed to delete vision document:', error)
+    showToast({
+      message: 'Failed to delete vision document',
+      type: 'error',
+      duration: 5000,
+    })
+  }
+}
+
 // Handover 0508: Validate vision files before upload
 function validateVisionFile(file) {
   const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -841,11 +875,14 @@ async function confirmDelete(product) {
   }
 }
 
-async function saveProduct() {
-  if (!formValid.value) return
+async function saveProduct(payload) {
+  // Receive data from ProductForm component
+  const { productData, visionFiles: uploadFiles } = payload
 
   // Handover 0508: Validate vision files before saving
-  if (visionFiles.value && visionFiles.value.length > 0) {
+  if (uploadFiles && uploadFiles.length > 0) {
+    // Update local ref for validation function
+    visionFiles.value = uploadFiles
     if (!validateVisionFiles()) {
       return // Validation failed - error already shown via toast
     }
@@ -857,17 +894,17 @@ async function saveProduct() {
     let product
     if (editingProduct.value) {
       product = await productStore.updateProduct(editingProduct.value.id, {
-        name: productForm.value.name,
-        description: productForm.value.description,
-        projectPath: productForm.value.projectPath,  // Handover 0084: Project path for agent export
-        configData: productForm.value.configData,  // Handover 0042
+        name: productData.name,
+        description: productData.description,
+        projectPath: productData.project_path,  // Handover 0084: Project path for agent export
+        configData: productData.config_data,  // Handover 0042
       })
     } else {
       product = await productStore.createProduct({
-        name: productForm.value.name,
-        description: productForm.value.description,
-        projectPath: productForm.value.projectPath,  // Handover 0084: Project path for agent export
-        configData: productForm.value.configData,  // Handover 0042
+        name: productData.name,
+        description: productData.description,
+        projectPath: productData.project_path,  // Handover 0084: Project path for agent export
+        configData: productData.config_data,  // Handover 0042
       })
     }
 
