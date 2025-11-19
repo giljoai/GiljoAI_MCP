@@ -43,3 +43,9 @@ This document guides contributors working on the **GiljoAI Agent Orchestration M
 - When exploring or editing code with AI tools, prefer Serena MCP symbolic tools (`get_symbols_overview`, `find_symbol`) before full-file reads.
 - Keep prompts and comments concise; avoid embedding large specs directly into code.
 
+## Design Policies (Nov 2025)
+
+- Per-User Tenancy: Every user is assigned a unique `tenant_key` at registration. Treat tenant = user for isolation. Do not attempt to share data across tenants.
+- Active Product: Single active product per tenant. Under per-user tenancy, this behaves as per-user active product.
+- HTTP-only MCP: Use the HTTP JSON-RPC endpoint (`/mcp`). Stdio adapter paths are deprecated; do not add or rely on FastMCP registrations.
+- TDD Discipline: Write tests first, assert behavior (not implementation), then implement minimal changes and refactor.
