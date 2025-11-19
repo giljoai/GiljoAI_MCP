@@ -198,7 +198,8 @@ logs/ export-ignore
 *.db export-ignore
 *.sqlite export-ignore
 *.sqlite3 export-ignore
-!data/.gitkeep export-ignore
+# Note: Cannot negate .gitkeep - gitattributes doesn't support ! patterns
+# data/.gitkeep is kept by default (not in exclusion list above)
 
 # =============================================================================
 # OS FILES TO EXCLUDE
