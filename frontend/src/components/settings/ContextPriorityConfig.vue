@@ -62,20 +62,6 @@
           :disabled="!config[context.key]?.enabled"
         />
       </div>
-
-      <!-- Save Button -->
-      <div class="mt-4">
-        <v-btn
-          color="primary"
-          :loading="saving"
-          :disabled="saving || loading"
-          @click="saveConfig"
-          data-test="save-context-config"
-        >
-          <v-icon start size="small">mdi-content-save</v-icon>
-          Save Configuration
-        </v-btn>
-      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -127,10 +113,12 @@ const saving = ref(false);
 // Methods
 function toggleContext(key: string) {
   config.value[key].enabled = !config.value[key].enabled;
+  saveConfig(); // Auto-save
 }
 
 function updatePriority(key: string, value: string) {
   config.value[key].priority = value;
+  saveConfig(); // Auto-save
 }
 
 function updateDepth(key: string, value: string | number) {
@@ -143,6 +131,7 @@ function updateDepth(key: string, value: string | number) {
   } else {
     config.value[key].depth = value as string;
   }
+  saveConfig(); // Auto-save
 }
 
 function getDepthValue(key: string): string | number | undefined {
