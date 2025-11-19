@@ -10,6 +10,16 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Recent Updates (v3.1+)**: Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
+Per-User Tenancy Policy (Nov 2025)
+- Each user is isolated in their own tenant (unique tenant_key assigned at registration)
+- /api/auth/register ignores provided tenant_key and generates a per-user tenant
+- “Active Product” is tenant-specific; effective behavior is per user under this policy
+- WebSocket product events are tenant-scoped (no cross-tenant leakage)
+
+HTTP-only MCP (Nov 2025)
+- MCP-over-HTTP JSON-RPC endpoint (/mcp) is authoritative
+- Stdio adapter is deprecated; use HTTP transport with X-API-Key
+
 **Critical Remediation (v3.1.1)**: Handovers 0500-0515 completed major remediation after 0120-0130 refactoring:
 - Vision upload with chunking (<25K tokens per chunk)
 - Project lifecycle methods (activate, deactivate, summary, launch)
