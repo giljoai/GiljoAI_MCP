@@ -105,6 +105,21 @@ async def activate_product(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to activate product: {str(e)}"
         )
+    finally:
+        # Publish WS event via EventBus (tenant-scoped)
+        try:
+            from api.app import state
+            if getattr(state, "event_bus", None):
+                await state.event_bus.publish(
+                    "product:status:changed",
+                    {
+                        "tenant_key": current_user.tenant_key,
+                        "product_id": product_id,
+                        "is_active": True,
+                    },
+                )
+        except Exception as pub_err:
+            logger.warning(f"Failed to publish product activation event: {pub_err}")
 
 
 @router.post("/{product_id}/deactivate", response_model=ProductResponse)
@@ -163,6 +178,21 @@ async def deactivate_product(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to deactivate product: {str(e)}"
         )
+    finally:
+        # Publish WS event via EventBus (tenant-scoped)
+        try:
+            from api.app import state
+            if getattr(state, "event_bus", None):
+                await state.event_bus.publish(
+                    "product:status:changed",
+                    {
+                        "tenant_key": current_user.tenant_key,
+                        "product_id": product_id,
+                        "is_active": False,
+                    },
+                )
+        except Exception as pub_err:
+            logger.warning(f"Failed to publish product deactivation event: {pub_err}")
 
 
 @router.delete("/{product_id}", response_model=ProductDeleteResponse)
