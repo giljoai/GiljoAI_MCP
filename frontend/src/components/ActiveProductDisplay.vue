@@ -56,34 +56,12 @@ const wsStore = useWebSocketStore()
 
 // Loading state for initial fetch
 const loading = ref(true)
-
-// Fetch active product on mount
-onMounted(async () => {
-  loading.value = true
-  try {
-    await productsStore.fetchActiveProduct()
-    console.log('[ActiveProductDisplay] Initial active product:', productsStore.activeProduct)
-  } catch (err) {
-    console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
-  } finally {
-    loading.value = false
-  }
-})
-
-// Watch for changes to activeProduct (for debugging)
-watch(
-  () => productsStore.activeProduct,
-  (newProduct, oldProduct) => {
-    console.log('[ActiveProductDisplay] Active product changed:', {
-      from: oldProduct?.name || 'null',
-      to: newProduct?.name || 'null'
-    })
-  }
-)
+let unsubscribe = null
 
 // Listen for product status changes via WebSocket (tenant-scoped)
 // Whenever a product is activated/deactivated, refresh the display
-const handleProductStatusChanged = async () => {
+const handleProductStatusChanged = async (payload) => {
+  console.log('[ActiveProductDisplay] WebSocket product:status:changed received:', payload)
   try {
     await productsStore.fetchActiveProduct()
   } catch (err) {
@@ -91,21 +69,47 @@ const handleProductStatusChanged = async () => {
   }
 }
 
-let unsubscribe = null
-
-// Subscribe to product status change events if available
-onMounted(() => {
+// Single onMounted hook for all initialization
+onMounted(async () => {
+  // 1. Subscribe to WebSocket events first
   try {
     unsubscribe = wsStore.on('product:status:changed', handleProductStatusChanged)
+    console.log('[ActiveProductDisplay] Subscribed to product:status:changed events')
   } catch (e) {
     console.warn('[ActiveProductDisplay] Failed to register WS handler:', e)
   }
+
+  // 2. Fetch initial active product
+  loading.value = true
+  try {
+    await productsStore.fetchActiveProduct()
+    console.log('[ActiveProductDisplay] Initial active product:', productsStore.activeProduct?.name || 'null')
+  } catch (err) {
+    console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
+  } finally {
+    loading.value = false
+  }
 })
 
+// Watch for changes to activeProduct (for debugging and reactivity)
+watch(
+  () => productsStore.activeProduct,
+  (newProduct, oldProduct) => {
+    console.log('[ActiveProductDisplay] Active product changed:', {
+      from: oldProduct?.name || 'null',
+      to: newProduct?.name || 'null'
+    })
+  },
+  { immediate: false }
+)
+
 onUnmounted(() => {
-  // Cleanup WebSocket subscription if needed
+  // Cleanup WebSocket subscription
   try {
-    if (typeof unsubscribe === 'function') unsubscribe()
+    if (typeof unsubscribe === 'function') {
+      unsubscribe()
+      console.log('[ActiveProductDisplay] Unsubscribed from product:status:changed events')
+    }
   } catch (e) {
     // no-op
   }
