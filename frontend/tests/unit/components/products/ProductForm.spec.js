@@ -14,9 +14,15 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import ProductForm from '@/components/products/ProductForm.vue'
 
 describe('ProductForm Component', () => {
+  beforeEach(() => {
+    // Create and set active Pinia for each test
+    setActivePinia(createPinia())
+  })
+
   const createWrapper = (props = {}) => {
     const defaultProps = {
       modelValue: true,
@@ -29,6 +35,7 @@ describe('ProductForm Component', () => {
     return mount(ProductForm, {
       props: { ...defaultProps, ...props },
       global: {
+        plugins: [createPinia()],
         stubs: {
           'v-dialog': {
             template: '<div class="v-dialog" v-if="modelValue"><slot /></div>',
@@ -352,19 +359,11 @@ describe('ProductForm Component', () => {
       const wrapper = createWrapper()
       await flushPromises()
 
-      // Find close button (icon button with mdi-close)
-      const buttons = wrapper.findAll('.v-btn')
-      const closeButton = buttons.find(btn => {
-        const icon = btn.find('.v-icon')
-        return icon && icon.text().includes('mdi-close')
-      })
+      // Use the closeDialog method directly
+      wrapper.vm.closeDialog()
+      await flushPromises()
 
-      if (closeButton) {
-        await closeButton.trigger('click')
-        await flushPromises()
-
-        expect(wrapper.emitted('cancel')).toBeTruthy()
-      }
+      expect(wrapper.emitted('cancel')).toBeTruthy()
     })
 
     it('emits update:modelValue with false when cancelled', async () => {
@@ -654,10 +653,16 @@ describe('ProductForm Component', () => {
         }
       }
 
+      // Start with modelValue false, then set to true to trigger watch
       const wrapper = createWrapper({
+        modelValue: false,
         isEdit: true,
         product: existingProduct
       })
+      await flushPromises()
+
+      // Now open the dialog to trigger the watch that loads product data
+      await wrapper.setProps({ modelValue: true })
       await flushPromises()
 
       // Component should load product data

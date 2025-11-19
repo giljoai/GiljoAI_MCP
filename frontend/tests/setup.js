@@ -44,6 +44,17 @@ vi.mock('vuetify', () => ({
     height: { value: 1080 },
     platform: { value: { android: false, ios: false, mac: false, touch: false, ssr: false } },
     name: { value: 'lg' }
+  }),
+  useTheme: () => ({
+    global: {
+      name: { value: 'dark' },
+      current: { value: { dark: true, colors: { background: '#121212' } } }
+    },
+    name: { value: 'dark' },
+    current: { value: { dark: true, colors: { background: '#121212' } } },
+    computedThemes: { value: {} },
+    themes: { value: {} },
+    isDisabled: { value: false }
   })
 }))
 
