@@ -97,7 +97,7 @@ async def get_tech_stack(
         logger.error("db_manager is required", operation="get_tech_stack")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Fetch product tech stack fields
         stmt = select(Product).where(
             Product.id == product_id,

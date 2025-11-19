@@ -170,8 +170,8 @@ async def test_bug_fix_get_tech_stack_uses_config_data():
     session.execute = AsyncMock(return_value=mock_result)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session = MagicMock(return_value=session)
-    
+    db_manager.get_session_async = MagicMock(return_value=session)
+
     # Call get_tech_stack
     result = await get_tech_stack(
         product_id="test-id",
@@ -218,8 +218,8 @@ async def test_bug_fix_get_architecture_uses_config_data():
     session.execute = AsyncMock(return_value=mock_result)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session = MagicMock(return_value=session)
-    
+    db_manager.get_session_async = MagicMock(return_value=session)
+
     # Call get_architecture
     result = await get_architecture(
         product_id="test-id",

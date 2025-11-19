@@ -81,7 +81,7 @@ async def get_project(
         logger.error("db_manager is required", operation="get_project")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Fetch project with multi-tenant isolation
         stmt = select(Project).where(
             Project.id == project_id,
