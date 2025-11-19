@@ -25,8 +25,7 @@ async def get_testing(
     product_id: str,
     tenant_key: str,
     depth: str = "full",
-    db_manager: Optional[DatabaseManager] = None,
-    selected_fields: Optional[Dict[str, bool]] = None
+    db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
     Fetch testing strategy and quality standards (Testing).
@@ -41,9 +40,6 @@ async def get_testing(
             - basic: strategy + coverage_target (~150 tokens)
             - full: All fields + frameworks (~400 tokens)
         db_manager: Database manager instance
-        selected_fields: Optional dict mapping field keys to bool (v3.0 granular selection)
-                        Fields: quality_standards, strategy, frameworks
-
     Returns:
         Dict with testing config:
         {
@@ -129,19 +125,7 @@ async def get_testing(
         config_data = product.config_data or {}
         test_config = config_data.get("test_config", {})
 
-        # Handover 0319: Support granular field selection (v3.0)
-        if selected_fields is not None:
-            # Use v3.0 granular field selection
-            data = {}
-            if selected_fields.get("quality_standards", True):
-                data["quality_standards"] = product.quality_standards or ""
-            if selected_fields.get("strategy", True):
-                data["testing_strategy"] = test_config.get("strategy", "")
-                data["coverage_target"] = test_config.get("coverage_target", 80)
-            if selected_fields.get("frameworks", True):
-                data["testing_frameworks"] = test_config.get("frameworks", [])
-                data["test_commands"] = config_data.get("test_commands", [])
-        elif depth == "basic":
+        if depth == "basic":
             # v2.0 backward compatibility
             data = {
                 "quality_standards": product.quality_standards or "",
