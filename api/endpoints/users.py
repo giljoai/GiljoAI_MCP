@@ -913,10 +913,9 @@ async def get_depth_config(
     db: AsyncSession = Depends(get_db_session)
 ) -> Dict[str, Any]:
     """
-    Get user's depth configuration with token estimates.
+    Get user's depth configuration.
 
-    Returns the authenticated user's depth configuration (or defaults) along with
-    estimated token usage for each source and total.
+    Returns the authenticated user's depth configuration (or defaults).
 
     Handover 0314: Context Management v2.0 - Depth Controls
     - Controls HOW MUCH detail to extract from each context source
@@ -927,7 +926,7 @@ async def get_depth_config(
         db: Database session
 
     Returns:
-        Dict with depth_config and token_estimate fields
+        Dict with depth_config field
 
     Example Response:
         {
@@ -938,22 +937,9 @@ async def get_depth_config(
                 "agent_template_detail": "standard",
                 "tech_stack_sections": "all",
                 "architecture_depth": "overview"
-            },
-            "token_estimate": {
-                "total": 21450,
-                "per_source": {
-                    "vision_chunking": 17500,
-                    "memory_last_n_projects": 1500,
-                    "git_commits": 1250,
-                    "agent_template_detail": 800,
-                    "tech_stack_sections": 400,
-                    "architecture_depth": 300
-                }
             }
         }
     """
-    from src.giljo_mcp.services.depth_token_estimator import DepthTokenEstimator
-
     logger.debug(f"User {current_user.username} retrieving depth config")
 
     # Get depth config (from user or defaults)
@@ -966,21 +952,10 @@ async def get_depth_config(
         "architecture_depth": "overview"
     }
 
-    # Calculate token estimates
-    total_estimate = DepthTokenEstimator.estimate_total(depth_config)
-    per_source_estimate = DepthTokenEstimator.estimate_per_source(depth_config)
-
-    logger.debug(
-        f"Returning depth config for user {current_user.username}",
-        extra={"total_tokens": total_estimate}
-    )
+    logger.debug(f"Returning depth config for user {current_user.username}")
 
     return {
-        "depth_config": depth_config,
-        "token_estimate": {
-            "total": total_estimate,
-            "per_source": per_source_estimate
-        }
+        "depth_config": depth_config
     }
 
 
@@ -1006,7 +981,7 @@ async def update_depth_config(
         ws_dependency: WebSocket manager for event emission
 
     Returns:
-        Dict with updated depth_config and token estimates
+        Dict with updated depth_config
 
     Raises:
         HTTPException: 422 if Pydantic validation fails (invalid depth values)
@@ -1023,8 +998,6 @@ async def update_depth_config(
             }
         }
     """
-    from src.giljo_mcp.services.depth_token_estimator import DepthTokenEstimator
-
     logger.debug(
         f"User {current_user.username} updating depth config",
         extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key}
@@ -1035,16 +1008,11 @@ async def update_depth_config(
     await db.commit()
     await db.refresh(current_user)
 
-    # Calculate token estimates
-    total_estimate = DepthTokenEstimator.estimate_total(current_user.depth_config)
-    per_source_estimate = DepthTokenEstimator.estimate_per_source(current_user.depth_config)
-
     logger.info(
         f"Updated depth config for user: {current_user.username}",
         extra={
             "user_id": str(current_user.id),
-            "tenant_key": current_user.tenant_key,
-            "total_tokens": total_estimate
+            "tenant_key": current_user.tenant_key
         }
     )
 
@@ -1055,11 +1023,7 @@ async def update_depth_config(
             event_type="depth_config_updated",
             data={
                 "user_id": str(current_user.id),
-                "depth_config": current_user.depth_config,
-                "token_estimate": {
-                    "total": total_estimate,
-                    "per_source": per_source_estimate
-                }
+                "depth_config": current_user.depth_config
             },
             schema_version="1.0"
         )
@@ -1075,11 +1039,7 @@ async def update_depth_config(
         )
 
     return {
-        "depth_config": current_user.depth_config,
-        "token_estimate": {
-            "total": total_estimate,
-            "per_source": per_source_estimate
-        }
+        "depth_config": current_user.depth_config
     }
 
 
