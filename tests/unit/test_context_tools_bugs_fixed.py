@@ -43,7 +43,7 @@ async def test_get_tech_stack_from_config_data():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     # Call the function (sections="all")
     result = await get_tech_stack(
@@ -84,7 +84,7 @@ async def test_get_tech_stack_required_sections():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     # Call with sections="required"
     result = await get_tech_stack(
@@ -118,7 +118,7 @@ async def test_get_tech_stack_empty_config_data():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_tech_stack(
         product_id="test-id",
@@ -148,7 +148,7 @@ async def test_get_tech_stack_missing_tech_stack_key():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_tech_stack(
         product_id="test-id",
@@ -185,7 +185,7 @@ async def test_get_architecture_from_config_data():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
         product_id="test-id",
@@ -227,7 +227,7 @@ async def test_get_architecture_overview_truncation():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
         product_id="test-id",
@@ -258,7 +258,7 @@ async def test_get_architecture_empty_config_data():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
         product_id="test-id",
@@ -289,7 +289,7 @@ async def test_get_architecture_missing_architecture_key():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
         product_id="test-id",

@@ -96,7 +96,7 @@ async def get_agent_templates(
         logger.error("db_manager is required", operation="get_agent_templates")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Query agent templates for this tenant (reuse pattern from thin_prompt_generator)
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == tenant_key,

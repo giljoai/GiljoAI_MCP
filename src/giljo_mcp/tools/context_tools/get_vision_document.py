@@ -146,7 +146,7 @@ async def get_vision_document(
         logger.error("db_manager is required", operation="get_vision_document")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Fetch product to verify existence and get vision documents
         stmt = select(Product).where(
             Product.id == product_id,
