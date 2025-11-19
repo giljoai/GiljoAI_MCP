@@ -147,7 +147,7 @@ async def test_bug_fix_get_tech_stack_uses_config_data():
     session.execute = AsyncMock(return_value=mock_result)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session = MagicMock(return_value=session)
+    db_manager.get_session_async = MagicMock(return_value=session)
 
     result = await get_tech_stack(
         product_id="test-id",
@@ -190,7 +190,7 @@ async def test_bug_fix_get_architecture_uses_config_data():
     session.execute = AsyncMock(return_value=mock_result)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session = MagicMock(return_value=session)
+    db_manager.get_session_async = MagicMock(return_value=session)
 
     result = await get_architecture(
         product_id="test-id",
@@ -231,7 +231,7 @@ async def test_new_tool_get_product_context():
     session.execute = AsyncMock(return_value=mock_result)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session = MagicMock(return_value=session)
+    db_manager.get_session_async = MagicMock(return_value=session)
 
     result = await get_product_context(
         product_id="test-id",
@@ -242,7 +242,7 @@ async def test_new_tool_get_product_context():
 
     assert result["source"] == "product_context"
     assert result["data"]["product_name"] == "Test Product"
-    assert result["data"]["description"] == "Test Description"
+    assert result["data"]["product_description"] == "Test Description"  # Correct key name
     assert result["data"]["core_features"] == ["Feature 1", "Feature 2"]
 
 
@@ -274,7 +274,7 @@ async def test_new_tool_get_testing():
     session.execute = AsyncMock(return_value=mock_result)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session = MagicMock(return_value=session)
+    db_manager.get_session_async = MagicMock(return_value=session)
 
     result = await get_testing(
         product_id="test-id",
