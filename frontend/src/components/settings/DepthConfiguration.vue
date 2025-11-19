@@ -1,57 +1,51 @@
 <template>
-  <v-card>
-    <v-card-title>Depth Configuration</v-card-title>
-    <v-card-subtitle>
+  <v-card class="compact-card">
+    <v-card-title class="text-h6 pb-1">Depth Configuration</v-card-title>
+    <v-card-subtitle class="text-caption pt-0">
       Control extraction detail levels for context sources
     </v-card-subtitle>
 
-    <v-card-text>
+    <v-card-text class="pt-2">
       <!-- Token Budget Alert -->
       <v-alert
         :type="budgetStatus"
         :icon="budgetIcon"
-        class="mb-4"
-        prominent
+        class="mb-3 compact-alert"
+        density="compact"
       >
         <div class="d-flex justify-space-between align-center flex-wrap">
-          <div>
-            <strong>Total Estimated Tokens:</strong>
-            {{ totalTokens.toLocaleString() }}
+          <div class="text-body-2">
+            <strong>Total:</strong> {{ totalTokens.toLocaleString() }} tokens
           </div>
           <div v-if="userTokenBudget" class="text-caption">
-            Budget: {{ userTokenBudget.toLocaleString() }} tokens
-            ({{ budgetPercentage }}% used)
+            Budget: {{ userTokenBudget.toLocaleString() }} ({{ budgetPercentage }}%)
           </div>
         </div>
       </v-alert>
 
       <!-- Locked Project Context Display -->
-      <v-card variant="tonal" color="primary" class="mb-4">
-        <v-card-text class="py-3">
-          <div class="d-flex justify-space-between align-center">
-            <div>
-              <div class="d-flex align-center">
-                <v-icon start color="primary">mdi-lock</v-icon>
-                <span class="text-subtitle-1 font-weight-medium">Project Context</span>
-              </div>
-              <div class="text-caption text-grey-darken-1 ml-7">
-                Always included - project name, alias, mission, status
-              </div>
-            </div>
-            <v-chip size="small" color="primary" variant="flat">
-              {{ projectContextTokens.toLocaleString() }} tokens
-            </v-chip>
+      <div class="depth-control-row compact-row d-flex justify-space-between align-center py-2">
+        <div>
+          <div class="d-flex align-center">
+            <v-icon size="small" color="primary" class="mr-1">mdi-lock</v-icon>
+            <span class="text-subtitle-2 font-weight-medium">Project Context</span>
           </div>
-        </v-card-text>
-      </v-card>
+          <div class="text-caption text-medium-emphasis ml-5">
+            Always included - project metadata
+          </div>
+        </div>
+        <v-chip size="x-small" color="primary" variant="flat">
+          {{ projectContextTokens.toLocaleString() }}
+        </v-chip>
+      </div>
 
       <!-- Product Core Toggle -->
-      <v-row class="mb-3 align-center depth-control-row">
-        <v-col cols="12" md="4">
-          <div class="text-subtitle-1 font-weight-medium">Product Core</div>
-          <div class="text-caption text-grey-darken-1">Basic product information</div>
-        </v-col>
-        <v-col cols="12" md="5">
+      <div class="depth-control-row compact-row d-flex justify-space-between align-center py-2">
+        <div class="flex-grow-1">
+          <div class="text-subtitle-2 font-weight-medium">Product Core</div>
+          <div class="text-caption text-medium-emphasis">Basic product information</div>
+        </div>
+        <div class="d-flex align-center">
           <v-select
             v-model="depthConfig.product_core_enabled"
             :items="productCoreOptions"
@@ -60,22 +54,21 @@
             hide-details
             @update:model-value="updateEstimate"
             aria-label="Product Core depth setting"
+            class="compact-select mr-2"
           />
-        </v-col>
-        <v-col cols="12" md="3" class="text-right">
-          <v-chip size="small" color="primary" variant="tonal">
-            {{ (tokenEstimates.product_core_enabled || 0).toLocaleString() }} tokens
+          <v-chip size="x-small" color="primary" variant="tonal">
+            {{ (tokenEstimates.product_core_enabled || 0).toLocaleString() }}
           </v-chip>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
 
       <!-- Vision Documents Dropdown -->
-      <v-row class="mb-3 align-center depth-control-row">
-        <v-col cols="12" md="4">
-          <div class="text-subtitle-1 font-weight-medium">Vision Documents</div>
-          <div class="text-caption text-grey-darken-1">Chunking level for vision uploads</div>
-        </v-col>
-        <v-col cols="12" md="5">
+      <div class="depth-control-row compact-row d-flex justify-space-between align-center py-2">
+        <div class="flex-grow-1">
+          <div class="text-subtitle-2 font-weight-medium">Vision Documents</div>
+          <div class="text-caption text-medium-emphasis">Chunking level for uploads</div>
+        </div>
+        <div class="d-flex align-center">
           <v-select
             v-model="depthConfig.vision_chunking"
             :items="visionOptions"
@@ -84,58 +77,54 @@
             hide-details
             @update:model-value="updateEstimate"
             aria-label="Vision Documents depth setting"
+            class="compact-select mr-2"
           />
-        </v-col>
-        <v-col cols="12" md="3" class="text-right">
-          <v-chip size="small" color="primary" variant="tonal">
-            {{ (tokenEstimates.vision_chunking || 0).toLocaleString() }} tokens
+          <v-chip size="x-small" color="primary" variant="tonal">
+            {{ (tokenEstimates.vision_chunking || 0).toLocaleString() }}
           </v-chip>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
 
       <!-- Tech Stack Checkbox Group -->
-      <v-row class="mb-3 depth-control-row">
-        <v-col cols="12">
-          <FieldCheckboxGroup
-            v-model="depthConfig.tech_stack_fields"
-            :fields="techStackFields"
-            label="Tech Stack"
-            @update:model-value="updateEstimate"
-          />
-        </v-col>
-      </v-row>
+      <div class="depth-control-row py-2">
+        <FieldCheckboxGroup
+          v-model="depthConfig.tech_stack_fields"
+          :fields="techStackFields"
+          label="Tech Stack"
+          subtitle="Programming languages and frameworks"
+          @update:model-value="updateEstimate"
+        />
+      </div>
 
       <!-- Architecture Checkbox Group -->
-      <v-row class="mb-3 depth-control-row">
-        <v-col cols="12">
-          <FieldCheckboxGroup
-            v-model="depthConfig.architecture_fields"
-            :fields="architectureFields"
-            label="Architecture"
-            @update:model-value="updateEstimate"
-          />
-        </v-col>
-      </v-row>
+      <div class="depth-control-row py-2">
+        <FieldCheckboxGroup
+          v-model="depthConfig.architecture_fields"
+          :fields="architectureFields"
+          label="Architecture"
+          subtitle="Design patterns and structure"
+          @update:model-value="updateEstimate"
+        />
+      </div>
 
       <!-- Testing Checkbox Group -->
-      <v-row class="mb-3 depth-control-row">
-        <v-col cols="12">
-          <FieldCheckboxGroup
-            v-model="depthConfig.testing_fields"
-            :fields="testingFields"
-            label="Testing"
-            @update:model-value="updateEstimate"
-          />
-        </v-col>
-      </v-row>
+      <div class="depth-control-row py-2">
+        <FieldCheckboxGroup
+          v-model="depthConfig.testing_fields"
+          :fields="testingFields"
+          label="Testing"
+          subtitle="Quality standards and frameworks"
+          @update:model-value="updateEstimate"
+        />
+      </div>
 
       <!-- Agent Templates Dropdown -->
-      <v-row class="mb-3 align-center depth-control-row">
-        <v-col cols="12" md="4">
-          <div class="text-subtitle-1 font-weight-medium">Agent Templates</div>
-          <div class="text-caption text-grey-darken-1">Detail level for templates</div>
-        </v-col>
-        <v-col cols="12" md="5">
+      <div class="depth-control-row compact-row d-flex justify-space-between align-center py-2">
+        <div class="flex-grow-1">
+          <div class="text-subtitle-2 font-weight-medium">Agent Templates</div>
+          <div class="text-caption text-medium-emphasis">Detail level for templates</div>
+        </div>
+        <div class="d-flex align-center">
           <v-select
             v-model="depthConfig.agent_template_detail"
             :items="agentTemplateOptions"
@@ -144,22 +133,21 @@
             hide-details
             @update:model-value="updateEstimate"
             aria-label="Agent Templates depth setting"
+            class="compact-select mr-2"
           />
-        </v-col>
-        <v-col cols="12" md="3" class="text-right">
-          <v-chip size="small" color="primary" variant="tonal">
-            {{ (tokenEstimates.agent_template_detail || 0).toLocaleString() }} tokens
+          <v-chip size="x-small" color="primary" variant="tonal">
+            {{ (tokenEstimates.agent_template_detail || 0).toLocaleString() }}
           </v-chip>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
 
       <!-- 360 Memory Dropdown -->
-      <v-row class="mb-3 align-center depth-control-row">
-        <v-col cols="12" md="4">
-          <div class="text-subtitle-1 font-weight-medium">360 Memory</div>
-          <div class="text-caption text-grey-darken-1">Number of recent projects to include</div>
-        </v-col>
-        <v-col cols="12" md="5">
+      <div class="depth-control-row compact-row d-flex justify-space-between align-center py-2">
+        <div class="flex-grow-1">
+          <div class="text-subtitle-2 font-weight-medium">360 Memory</div>
+          <div class="text-caption text-medium-emphasis">Recent projects to include</div>
+        </div>
+        <div class="d-flex align-center">
           <v-select
             v-model="depthConfig.memory_last_n_projects"
             :items="memoryOptions"
@@ -168,22 +156,21 @@
             hide-details
             @update:model-value="updateEstimate"
             aria-label="360 Memory depth setting"
+            class="compact-select mr-2"
           />
-        </v-col>
-        <v-col cols="12" md="3" class="text-right">
-          <v-chip size="small" color="primary" variant="tonal">
-            {{ (tokenEstimates.memory_last_n_projects || 0).toLocaleString() }} tokens
+          <v-chip size="x-small" color="primary" variant="tonal">
+            {{ (tokenEstimates.memory_last_n_projects || 0).toLocaleString() }}
           </v-chip>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
 
       <!-- Git History Dropdown -->
-      <v-row class="mb-3 align-center depth-control-row">
-        <v-col cols="12" md="4">
-          <div class="text-subtitle-1 font-weight-medium">Git History</div>
-          <div class="text-caption text-grey-darken-1">Number of recent commits</div>
-        </v-col>
-        <v-col cols="12" md="5">
+      <div class="depth-control-row compact-row d-flex justify-space-between align-center py-2">
+        <div class="flex-grow-1">
+          <div class="text-subtitle-2 font-weight-medium">Git History</div>
+          <div class="text-caption text-medium-emphasis">Recent commits</div>
+        </div>
+        <div class="d-flex align-center">
           <v-select
             v-model="depthConfig.git_commits"
             :items="gitOptions"
@@ -192,30 +179,26 @@
             hide-details
             @update:model-value="updateEstimate"
             aria-label="Git History depth setting"
+            class="compact-select mr-2"
           />
-        </v-col>
-        <v-col cols="12" md="3" class="text-right">
-          <v-chip size="small" color="primary" variant="tonal">
-            {{ (tokenEstimates.git_commits || 0).toLocaleString() }} tokens
+          <v-chip size="x-small" color="primary" variant="tonal">
+            {{ (tokenEstimates.git_commits || 0).toLocaleString() }}
           </v-chip>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
 
       <!-- Save Button -->
-      <v-row class="mt-6">
-        <v-col>
-          <v-btn
-            color="primary"
-            :loading="saving"
-            :disabled="saving"
-            @click="saveDepthConfig"
-            size="large"
-          >
-            <v-icon start>mdi-content-save</v-icon>
-            Save Configuration
-          </v-btn>
-        </v-col>
-      </v-row>
+      <div class="mt-4">
+        <v-btn
+          color="primary"
+          :loading="saving"
+          :disabled="saving"
+          @click="saveDepthConfig"
+        >
+          <v-icon start size="small">mdi-content-save</v-icon>
+          Save Configuration
+        </v-btn>
+      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -272,36 +255,36 @@ const techStackFields = DepthTokenEstimator.getTechStackFieldDefinitions();
 const architectureFields = DepthTokenEstimator.getArchitectureFieldDefinitions();
 const testingFields = DepthTokenEstimator.getTestingFieldDefinitions();
 
-// Dropdown options
+// Dropdown options - shortened titles for compact display
 const productCoreOptions = [
-  { title: 'Disabled (0 tokens)', value: false },
-  { title: 'Enabled (~100 tokens)', value: true },
+  { title: 'Disabled', value: false },
+  { title: 'Enabled (~100)', value: true },
 ];
 
 const visionOptions = [
-  { title: 'None (0 tokens)', value: 'none' },
-  { title: 'Light (~10K tokens)', value: 'light' },
-  { title: 'Moderate (~17.5K tokens)', value: 'moderate' },
-  { title: 'Heavy (~30K tokens)', value: 'heavy' },
+  { title: 'None', value: 'none' },
+  { title: 'Light (~10K)', value: 'light' },
+  { title: 'Moderate (~17.5K)', value: 'moderate' },
+  { title: 'Heavy (~30K)', value: 'heavy' },
 ];
 
 const agentTemplateOptions = [
-  { title: 'Type Only (~400 tokens)', value: 'type_only' },
-  { title: 'Full (~2.4K tokens)', value: 'full' },
+  { title: 'Type Only (~400)', value: 'type_only' },
+  { title: 'Full (~2.4K)', value: 'full' },
 ];
 
 const memoryOptions = [
-  { title: '1 project (~500 tokens)', value: 1 },
-  { title: '3 projects (~1.5K tokens)', value: 3 },
-  { title: '5 projects (~2.5K tokens)', value: 5 },
-  { title: '10 projects (~5K tokens)', value: 10 },
+  { title: '1 project (~500)', value: 1 },
+  { title: '3 projects (~1.5K)', value: 3 },
+  { title: '5 projects (~2.5K)', value: 5 },
+  { title: '10 projects (~5K)', value: 10 },
 ];
 
 const gitOptions = [
-  { title: 'None (0 tokens)', value: 0 },
-  { title: '5 commits (~250 tokens)', value: 5 },
-  { title: '15 commits (~750 tokens)', value: 15 },
-  { title: '25 commits (~1.25K tokens)', value: 25 },
+  { title: 'None', value: 0 },
+  { title: '5 commits (~250)', value: 5 },
+  { title: '15 commits (~750)', value: 15 },
+  { title: '25 commits (~1.25K)', value: 25 },
 ];
 
 // Computed properties
@@ -411,20 +394,73 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.compact-card {
+  padding: 8px;
+}
+
+.compact-card :deep(.v-card-title) {
+  padding: 8px 12px 4px;
+}
+
+.compact-card :deep(.v-card-subtitle) {
+  padding: 0 12px 8px;
+}
+
+.compact-card :deep(.v-card-text) {
+  padding: 8px 12px;
+}
+
+.compact-alert {
+  padding: 8px 12px;
+}
+
 .depth-control-row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .depth-control-row:last-of-type {
   border-bottom: none;
 }
 
+.compact-row {
+  min-height: 48px;
+}
+
+.compact-select {
+  max-width: 160px;
+  min-width: 140px;
+}
+
+.compact-select :deep(.v-field__input) {
+  font-size: 0.75rem;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.compact-select :deep(.v-field) {
+  min-height: 32px;
+}
+
+/* Ensure medium emphasis text works in both themes */
+.text-medium-emphasis {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
 /* Mobile responsive adjustments */
 @media (max-width: 600px) {
-  .depth-control-row .text-right {
-    text-align: left !important;
+  .compact-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .compact-row > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+
+  .compact-select {
+    flex-grow: 1;
   }
 }
 </style>
