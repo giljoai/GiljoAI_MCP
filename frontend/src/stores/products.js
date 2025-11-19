@@ -390,6 +390,17 @@ export const useProductStore = defineStore('products', () => {
       wsStore.on('product:github:settings:changed', handleProductGitHubSettingsChanged)
     )
 
+    // Refresh active product on status changes (tenant-scoped WS event)
+    wsUnsubscribers.value.push(
+      wsStore.on('product:status:changed', async () => {
+        try {
+          await fetchActiveProduct()
+        } catch (e) {
+          console.warn('[PRODUCTS] Failed to refresh active product on WS event:', e)
+        }
+      })
+    )
+
     console.log('[PRODUCTS] WebSocket event listeners initialized')
   }
 
