@@ -519,7 +519,8 @@ class ProductService:
                         "error": "Product not found"
                     }
 
-                # Deactivate all other products for tenant
+                # Deactivate all other products for tenant FIRST
+                # Must flush deactivation before activation due to unique constraint
                 deactivate_stmt = select(Product).where(
                     and_(
                         Product.tenant_key == self.tenant_key,
@@ -534,7 +535,11 @@ class ProductService:
                     p.is_active = False
                     p.updated_at = datetime.now(timezone.utc)
 
-                # Activate target product
+                # Flush deactivation to satisfy unique constraint before activating
+                if products_to_deactivate:
+                    await session.flush()
+
+                # NOW activate target product (after others are deactivated)
                 product.is_active = True
                 product.updated_at = datetime.now(timezone.utc)
 
