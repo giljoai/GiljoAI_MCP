@@ -272,13 +272,10 @@ class TestTechStackFiltersFields:
         mock_result.scalar_one_or_none.return_value = mock_product
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        # Create async context manager
-        async def mock_get_session():
-            yield mock_session
-
-        mock_manager.get_session = MagicMock(return_value=mock_session)
-        mock_manager.get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_manager.get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+        # Create async context manager for get_session_async
+        mock_manager.get_session_async = MagicMock(return_value=mock_session)
+        mock_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=None)
 
         return mock_manager
 
@@ -339,9 +336,9 @@ class TestArchitectureFiltersFields:
         mock_result.scalar_one_or_none.return_value = mock_product
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        mock_manager.get_session = MagicMock(return_value=mock_session)
-        mock_manager.get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_manager.get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_manager.get_session_async = MagicMock(return_value=mock_session)
+        mock_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=None)
 
         return mock_manager
 
@@ -402,9 +399,9 @@ class TestTestingFiltersFields:
         mock_result.scalar_one_or_none.return_value = mock_product
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        mock_manager.get_session = MagicMock(return_value=mock_session)
-        mock_manager.get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_manager.get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_manager.get_session_async = MagicMock(return_value=mock_session)
+        mock_manager.get_session_async.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_manager.get_session_async.return_value.__aexit__ = AsyncMock(return_value=None)
 
         return mock_manager
 

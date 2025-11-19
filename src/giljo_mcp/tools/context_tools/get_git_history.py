@@ -99,7 +99,7 @@ async def get_git_history(
         logger.error("db_manager is required", operation="get_git_history")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Fetch product with product_memory JSONB field
         stmt = select(Product).where(
             Product.id == product_id,
