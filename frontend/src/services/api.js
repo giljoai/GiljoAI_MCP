@@ -105,6 +105,7 @@ export const api = {
   products: {
     list: (params) => apiClient.get('/api/v1/products/', { params }),
     get: (id) => apiClient.get(`/api/v1/products/${id}/`),
+    getActive: () => apiClient.get('/api/v1/products/refresh-active'),
     create: (data) => {
       // Handover 0507: Send JSON to match backend ProductCreate schema
       // Backend expects: { name, description, project_path, config_data }

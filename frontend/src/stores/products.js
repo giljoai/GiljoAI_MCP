@@ -205,9 +205,11 @@ export const useProductStore = defineStore('products', () => {
     activeProductLoading.value = true
     error.value = null
     try {
-      const response = await api.products.list({ is_active: true })
-      if (response.data && response.data.length > 0) {
-        activeProduct.value = response.data[0]
+      // Use dedicated active-product endpoint for accurate status
+      const response = await api.products.getActive()
+      const data = response?.data || { has_active_product: false, product: null }
+      if (data.has_active_product && data.product) {
+        activeProduct.value = data.product
       } else {
         activeProduct.value = null
       }
