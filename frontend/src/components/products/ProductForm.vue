@@ -847,7 +847,8 @@ function saveProduct() {
     config_data: productForm.value.configData
   }
 
-  emit('save', productData)
+  // Include visionFiles in save payload for parent to handle uploads
+  emit('save', { productData, visionFiles: visionFiles.value })
 
   // Note: Parent component should set saving = false after async operation completes
 }
