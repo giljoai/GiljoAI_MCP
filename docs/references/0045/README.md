@@ -127,7 +127,7 @@ FastAPI Server
 ProjectOrchestrator (Routing Logic)
   ├─ _get_agent_template() → Resolve template
   ├─ _spawn_claude_code_agent() → Hybrid mode
-  └─ _spawn_legacy_agent() → CLI mode (Codex/Gemini)
+  └─ _spawn_generic_agent() → CLI mode (Codex/Gemini)
   ↓
 AgentJobManager (Job Lifecycle)
   ├─ create_job()
@@ -184,13 +184,13 @@ Get Template → preferred_tool
   │               - Create Job (status = "in_progress")
   │               - Spawn in Claude Code (automatic)
   │
-  ├─ "codex" → _spawn_legacy_agent(tool="codex")
+  ├─ "codex" → _spawn_generic_agent(tool="codex")
   │              - Create Agent (mode = "codex")
   │              - Create Job (status = "waiting_acknowledgment")
   │              - Generate CLI prompt
   │              - User copies prompt manually
   │
-  └─ "gemini" → _spawn_legacy_agent(tool="gemini")
+  └─ "gemini" → _spawn_generic_agent(tool="gemini")
                 - Create Agent (mode = "gemini")
                 - Create Job (status = "waiting_acknowledgment")
                 - Generate CLI prompt
