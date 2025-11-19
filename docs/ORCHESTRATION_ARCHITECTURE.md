@@ -123,7 +123,7 @@ The orchestration system follows a clean 4-layer architecture:
        if template.tool == "claude-code":
            return await self._spawn_claude_code_agent(...)  # Direct mode
        else:
-           return await self._spawn_legacy_agent(...)  # Job queue mode (Codex/Gemini)
+           return await self._spawn_generic_agent(...)  # Job queue mode (Codex/Gemini)
    ```
 
    **Supports:**
@@ -530,7 +530,7 @@ Check template.tool
   │                   ├─ Auto-export config
   │                   └─ Return agent_id
   │
-  └─ "codex"|"gemini" → ProjectOrchestrator._spawn_legacy_agent()
+  └─ "codex"|"gemini" → ProjectOrchestrator._spawn_generic_agent()
                         ├─ AgentJobManager.create_job()
                         ├─ Job queue mode
                         └─ Return job_id

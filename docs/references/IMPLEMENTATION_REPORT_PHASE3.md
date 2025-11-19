@@ -58,7 +58,7 @@ mode = Column(String(20), default="claude")  # claude | codex | gemini
 if template.tool == "claude":
     agent = await self._spawn_claude_code_agent(...)
 elif template.tool in ["codex", "gemini"]:
-    agent = await self._spawn_legacy_agent(...)
+    agent = await self._spawn_generic_agent(...)
 else:
     # Fallback to original logic
 ```
@@ -94,7 +94,7 @@ else:
 - Includes MCP checkpoint instructions in mission
 - Applies existing Serena optimization logic
 
-##### `_spawn_legacy_agent(project, role, template, ...)`
+##### `_spawn_generic_agent(project, role, template, ...)`
 **Purpose**: Spawn Codex/Gemini agent (legacy mode with job queue)
 
 **Process**:
@@ -212,7 +212,7 @@ except Exception as e:
 - ✅ Includes MCP instructions in mission
 - ✅ Stores template metadata
 
-##### Legacy Agent Spawning Tests (4 tests)
+##### Generic Agent Spawning Tests (4 tests)
 - ✅ Creates MCP job
 - ✅ Links Agent to job via job_id
 - ✅ Generates CLI prompt
@@ -361,7 +361,7 @@ pytest tests/test_orchestrator_routing.py -v
 ### Test Coverage Breakdown
 - Template resolution: 5 tests
 - Claude Code spawning: 4 tests
-- Legacy agent spawning: 4 tests
+- Generic agent spawning: 4 tests
 - spawn_agent routing: 4 tests
 - Agent-Job sync: 3 tests
 - Helper functions: 2 tests

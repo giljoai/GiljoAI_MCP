@@ -369,7 +369,7 @@ async def spawn_agent(self, project_id, role, ...):
     if template.tool == "claude":
         return await self._spawn_claude_code_agent(...)
     elif template.tool in ["codex", "gemini"]:
-        return await self._spawn_legacy_agent(...)
+        return await self._spawn_generic_agent(...)
 ```
 
 **Benefits**:
