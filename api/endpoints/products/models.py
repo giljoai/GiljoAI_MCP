@@ -106,7 +106,8 @@ class ProductDeleteResponse(BaseModel):
 class ActiveProductRefreshResponse(BaseModel):
     """Response for /refresh-active endpoint"""
 
-    active_product: Optional[ActiveProductInfo]
+    has_active_product: bool = Field(False, description="Whether there is an active product")
+    product: Optional[ProductResponse] = Field(None, description="Full product details if active")
     total_products_count: Optional[int] = None
     last_refreshed_at: Optional[datetime] = None
 

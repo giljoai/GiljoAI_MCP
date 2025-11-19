@@ -98,12 +98,12 @@
                     <div class="d-flex align-center justify-space-between mb-2">
                       <div
                         class="text-h6"
-                        :style="product.is_active ? 'color: #ffc300' : ''"
+                        :style="isProductActive(product) ? 'color: #ffc300' : ''"
                       >
                         {{ product.name }}
                       </div>
                       <v-chip
-                        v-if="product.is_active"
+                        v-if="isProductActive(product)"
                       color="success"
                       size="small"
                       variant="flat"
@@ -171,12 +171,12 @@
                           variant="text"
                           v-bind="props"
                           @click="toggleProductActivation(product)"
-                          :style="product.is_active ? 'color: #ffc300' : ''"
+                          :style="isProductActive(product) ? 'color: #ffc300' : ''"
                         >
-                          <v-icon>{{ product.is_active ? 'mdi-stop' : 'mdi-play' }}</v-icon>
+                          <v-icon>{{ isProductActive(product) ? 'mdi-stop' : 'mdi-play' }}</v-icon>
                         </v-btn>
                       </template>
-                      <span>{{ product.is_active ? 'Deactivate Product' : 'Activate Product' }}</span>
+                      <span>{{ isProductActive(product) ? 'Deactivate Product' : 'Activate Product' }}</span>
                     </v-tooltip>
                     <v-tooltip location="top" content-class="branded-tooltip">
                       <template v-slot:activator="{ props }">
@@ -486,8 +486,11 @@ const filteredProducts = computed(() => {
   // Primary sort: Active products first
   sorted.sort((a, b) => {
     // If one is active and the other isn't, active comes first
-    if (a.is_active && !b.is_active) return -1
-    if (!a.is_active && b.is_active) return 1
+    // Use isProductActive for single source of truth (Handover 0320)
+    const aActive = isProductActive(a)
+    const bActive = isProductActive(b)
+    if (aActive && !bActive) return -1
+    if (!aActive && bActive) return 1
 
     // Both active or both inactive - apply secondary sort
     switch (sortBy.value) {
@@ -506,8 +509,9 @@ const filteredProducts = computed(() => {
 })
 
 const totalProducts = computed(() => productStore.productCount)
+// Handover 0320: Use store as single source of truth
 const activeProducts = computed(
-  () => productStore.products.filter((p) => p.is_active === true).length,
+  () => productStore.activeProduct ? 1 : 0,
 )
 
 const totalTasks = computed(() => {
@@ -553,6 +557,13 @@ const productStats = computed(() => {
 })
 
 // Methods
+
+// Handover 0320: Single source of truth for active product detection
+// Uses productStore.activeProduct.id instead of product.is_active from array
+function isProductActive(product) {
+  return productStore.activeProduct?.id === product.id
+}
+
 function getProductInitial(product) {
   return product.name?.charAt(0).toUpperCase() || '?'
 }
@@ -577,7 +588,8 @@ function getTaskProgress(productId) {
 // Handover 0050: Enhanced activation with warning dialog
 async function toggleProductActivation(product) {
   try {
-    if (product.is_active) {
+    // Handover 0320: Use store as single source of truth for active product
+    if (isProductActive(product)) {
       // Deactivating - no warning needed
       await api.products.deactivate(product.id)
       await productStore.fetchActiveProduct()
@@ -591,7 +603,8 @@ async function toggleProductActivation(product) {
       await loadProducts()
     } else {
       // Activating - check if there's currently an active product FIRST
-      const currentActive = productStore.products.find(p => p.is_active)
+      // Use store as single source of truth (Handover 0320)
+      const currentActive = productStore.activeProduct
 
       if (currentActive && currentActive.id !== product.id) {
         // There's already an active product - show warning BEFORE activating
@@ -1151,6 +1164,9 @@ async function loadProducts() {
   loading.value = true
   try {
     await productStore.fetchProducts()
+    // WORKAROUND: Manual fetch until WebSocket-driven refresh is fully implemented
+    // TODO: Remove once product:status:changed WebSocket events reliably update store
+    await productStore.fetchActiveProduct()
     // Fetch metrics for all products
     for (const product of productStore.products) {
       await productStore.fetchProductMetrics(product.id)
