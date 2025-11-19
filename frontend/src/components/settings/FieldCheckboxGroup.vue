@@ -1,59 +1,43 @@
 <template>
   <div class="field-checkbox-group">
     <!-- Group Header with Total -->
-    <div class="d-flex justify-space-between align-center mb-2">
-      <div class="text-subtitle-1 font-weight-medium">{{ label }}</div>
-      <v-chip size="small" color="primary" variant="tonal">
-        {{ totalTokens.toLocaleString() }} tokens
+    <div class="d-flex justify-space-between align-center mb-1">
+      <div class="text-subtitle-2 font-weight-medium">{{ label }}</div>
+      <v-chip size="x-small" color="primary" variant="tonal">
+        ~{{ totalTokens.toLocaleString() }} tokens
       </v-chip>
     </div>
 
-    <!-- Select All / None Actions -->
-    <div class="d-flex gap-2 mb-2">
-      <v-btn
-        size="x-small"
-        variant="text"
-        density="compact"
-        @click="selectAll(true)"
-        :disabled="allSelected"
-      >
-        Select All
-      </v-btn>
-      <v-btn
-        size="x-small"
-        variant="text"
-        density="compact"
-        @click="selectAll(false)"
-        :disabled="!someSelected"
-      >
-        Clear All
-      </v-btn>
+    <!-- Subtitle -->
+    <div class="text-caption grey--text text--darken-1 mb-2">
+      {{ subtitle || 'Fields from product profile' }}
     </div>
 
-    <!-- Checkbox List -->
-    <div class="checkbox-container">
+    <!-- Horizontal Switch List -->
+    <div class="switch-container d-flex flex-wrap align-center">
       <div
         v-for="field in fields"
         :key="field.key"
-        class="checkbox-item d-flex justify-space-between align-center"
+        class="switch-item d-flex align-center mr-4 mb-1"
       >
-        <v-checkbox
+        <span class="text-body-2 mr-1">{{ field.label }}</span>
+        <v-switch
           :model-value="modelValue[field.key]"
-          @update:model-value="onCheckboxChange(field.key, $event)"
-          :label="field.label"
+          @update:model-value="onSwitchChange(field.key, $event)"
           density="compact"
           hide-details
-          class="flex-grow-1"
+          color="primary"
+          :aria-label="`Toggle ${field.label}`"
+          class="compact-switch"
         />
-        <v-chip
-          size="x-small"
-          variant="outlined"
-          :color="modelValue[field.key] ? 'primary' : 'grey'"
-          class="token-chip"
-        >
-          {{ field.tokens }}
-        </v-chip>
       </div>
+    </div>
+
+    <!-- Selected Tokens Footer -->
+    <div class="text-right mt-1">
+      <span class="text-caption grey--text">
+        ~{{ selectedTokens.toLocaleString() }} tokens
+      </span>
     </div>
   </div>
 </template>
@@ -71,6 +55,7 @@ interface Props {
   fields: Field[];
   modelValue: Record<string, boolean>;
   label: string;
+  subtitle?: string;
 }
 
 const props = defineProps<Props>();
@@ -80,6 +65,10 @@ const emit = defineEmits<{
 
 // Computed properties
 const totalTokens = computed(() => {
+  return props.fields.reduce((sum, field) => sum + field.tokens, 0);
+});
+
+const selectedTokens = computed(() => {
   return props.fields.reduce((sum, field) => {
     return sum + (props.modelValue[field.key] ? field.tokens : 0);
   }, 0);
@@ -95,7 +84,7 @@ const someSelected = computed(() => {
 });
 
 // Methods
-function onCheckboxChange(key: string, value: boolean) {
+function onSwitchChange(key: string, value: boolean) {
   const newValue = { ...props.modelValue, [key]: value };
   emit('update:modelValue', newValue);
 }
@@ -116,6 +105,7 @@ function selectAll(selected: boolean) {
 // Expose methods for testing
 defineExpose({
   totalTokens,
+  selectedTokens,
   allSelected,
   someSelected,
   toggleField,
@@ -125,30 +115,41 @@ defineExpose({
 
 <style scoped>
 .field-checkbox-group {
-  padding: 12px;
+  padding: 8px 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
-  background-color: rgba(var(--v-theme-surface-variant), 0.05);
+  background-color: rgba(var(--v-theme-surface-variant), 0.03);
 }
 
-.checkbox-container {
-  display: flex;
-  flex-direction: column;
+.switch-container {
   gap: 4px;
 }
 
-.checkbox-item {
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+.switch-item {
+  white-space: nowrap;
 }
 
-.checkbox-item:hover {
-  background-color: rgba(var(--v-theme-on-surface), 0.04);
+.compact-switch {
+  margin: 0;
+  padding: 0;
 }
 
-.token-chip {
-  min-width: 40px;
-  text-align: center;
+.compact-switch :deep(.v-switch__track) {
+  height: 14px;
+  width: 28px;
+}
+
+.compact-switch :deep(.v-switch__thumb) {
+  height: 10px;
+  width: 10px;
+}
+
+.compact-switch :deep(.v-selection-control) {
+  min-height: auto;
+}
+
+/* Ensure grey text colors work in both light and dark themes */
+.grey--text.text--darken-1 {
+  color: rgba(var(--v-theme-on-surface), 0.6) !important;
 }
 </style>
