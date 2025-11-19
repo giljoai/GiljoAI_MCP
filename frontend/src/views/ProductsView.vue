@@ -1777,7 +1777,7 @@ const filteredProducts = computed(() => {
 
 const totalProducts = computed(() => productStore.productCount)
 const activeProducts = computed(
-  () => productStore.products.filter((p) => p.status === 'active').length,
+  () => productStore.products.filter((p) => p.is_active === true).length,
 )
 
 const totalTasks = computed(() => {
