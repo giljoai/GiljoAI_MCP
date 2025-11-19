@@ -46,7 +46,7 @@ describe('DeletedProductsRecoveryDialog Component', () => {
       global: {
         stubs: {
           'v-dialog': {
-            template: '<div class="v-dialog" v-if="$attrs.modelValue"><slot /></div>',
+            template: '<div class="v-dialog" v-if="modelValue"><slot /></div>',
             props: ['modelValue']
           },
           'v-card': { template: '<div class="v-card"><slot /></div>' },
@@ -54,7 +54,8 @@ describe('DeletedProductsRecoveryDialog Component', () => {
           'v-card-text': { template: '<div class="v-card-text"><slot /></div>' },
           'v-card-actions': { template: '<div class="v-card-actions"><slot /></div>' },
           'v-btn': {
-            template: '<button class="v-btn" :disabled="$attrs.disabled" :class="{ loading: $attrs.loading }" @click="$emit(\'click\')"><slot /></button>',
+            template: '<button class="v-btn" :disabled="disabled" :class="{ loading: loading }" @click="$emit(\'click\')"><slot /></button>',
+            props: ['disabled', 'loading'],
             emits: ['click']
           },
           'v-icon': { template: '<span class="v-icon"><slot /></span>' },
@@ -64,7 +65,7 @@ describe('DeletedProductsRecoveryDialog Component', () => {
           'v-list': { template: '<div class="v-list"><slot /></div>' },
           'v-list-item': { template: '<div class="v-list-item"><slot /></div>' },
           'v-chip': {
-            template: '<span class="v-chip" :class="$attrs.color"><slot /></span>',
+            template: '<span class="v-chip" :class="color"><slot /></span>',
             props: ['color']
           },
           'v-spacer': { template: '<div class="v-spacer"></div>' }
