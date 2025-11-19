@@ -735,14 +735,19 @@ async def register_user(
     # Hash password
     password_hash = bcrypt.hash(request.password)
 
-    # Create new user
+    # Per-user tenancy policy: assign a unique tenant_key for each user
+    # Ignore any provided tenant_key in request
+    from src.giljo_mcp.tenant import TenantManager
+
+    generated_tenant = TenantManager.generate_tenant_key(request.username)
+
     new_user = User(
         username=request.username,
         email=request.email,
         full_name=request.full_name,
         password_hash=password_hash,
         role=request.role,
-        tenant_key=request.tenant_key,
+        tenant_key=generated_tenant,
         is_active=True,
         created_at=datetime.now(timezone.utc),
     )
