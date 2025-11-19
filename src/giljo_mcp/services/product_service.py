@@ -800,7 +800,9 @@ class ProductService:
         """
         try:
             async with self.db_manager.get_session_async() as session:
-                stmt = select(Product).where(
+                stmt = select(Product).options(
+                    selectinload(Product.vision_documents)
+                ).where(
                     and_(
                         Product.tenant_key == self.tenant_key,
                         Product.is_active == True,
@@ -826,9 +828,13 @@ class ProductService:
                         "id": str(product.id),
                         "name": product.name,
                         "description": product.description,
+                        "vision_path": product.primary_vision_path,
                         "project_path": product.project_path,
+                        "created_at": product.created_at,
+                        "updated_at": product.updated_at,
                         "config_data": product.config_data,
                         "has_config_data": bool(product.config_data),
+                        "is_active": product.is_active,
                         **metrics
                     }
                 }
