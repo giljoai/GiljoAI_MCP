@@ -159,6 +159,9 @@ class TestContextToolsImportStructure:
             "get_agent_templates",
             "get_tech_stack",
             "get_architecture",
+            "get_product_context",
+            "get_project",
+            "get_testing",
         ]
 
         assert set(context_tools.__all__) == set(expected_exports), (

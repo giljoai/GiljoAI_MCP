@@ -97,7 +97,7 @@ async def get_testing(
             }
         }
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Fetch product with multi-tenant isolation
         stmt = select(Product).where(
             Product.id == product_id,
