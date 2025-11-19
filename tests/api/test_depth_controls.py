@@ -10,7 +10,6 @@ Test Coverage:
 - Invalid depth values rejection
 - GET endpoint (returns defaults for new users)
 - PUT endpoint (updates depth config)
-- Token estimation accuracy
 - WebSocket event emission
 - Multi-tenant isolation
 
@@ -22,7 +21,6 @@ from httpx import AsyncClient
 from pydantic import ValidationError
 
 from api.endpoints.users import DepthConfig, UpdateDepthConfigRequest
-from src.giljo_mcp.services.depth_token_estimator import DepthTokenEstimator
 
 
 # ============================================================================
@@ -120,89 +118,6 @@ class TestDepthConfigValidation:
 
 
 # ============================================================================
-# TEST SUITE 2: Token Estimator Service
-# ============================================================================
-
-
-class TestDepthTokenEstimator:
-    """Test token estimation logic"""
-
-    def test_estimate_total_default_config(self):
-        """Test total token estimate for default configuration"""
-        default_config = {
-            "vision_chunking": "moderate",
-            "memory_last_n_projects": 3,
-            "git_commits": 25,
-            "agent_template_detail": "standard",
-            "tech_stack_sections": "all",
-            "architecture_depth": "overview"
-        }
-        total = DepthTokenEstimator.estimate_total(default_config)
-        # Expected: 17500 + 1500 + 1250 + 800 + 400 + 300 = 21750
-        assert total == 21750
-
-    def test_estimate_total_minimal_config(self):
-        """Test total token estimate for minimal configuration"""
-        minimal_config = {
-            "vision_chunking": "none",
-            "memory_last_n_projects": 1,
-            "git_commits": 10,
-            "agent_template_detail": "minimal",
-            "tech_stack_sections": "required",
-            "architecture_depth": "overview"
-        }
-        total = DepthTokenEstimator.estimate_total(minimal_config)
-        # Expected: 0 + 500 + 500 + 400 + 200 + 300 = 1900
-        assert total == 1900
-
-    def test_estimate_total_maximal_config(self):
-        """Test total token estimate for maximal configuration"""
-        maximal_config = {
-            "vision_chunking": "heavy",
-            "memory_last_n_projects": 10,
-            "git_commits": 100,
-            "agent_template_detail": "full",
-            "tech_stack_sections": "all",
-            "architecture_depth": "detailed"
-        }
-        total = DepthTokenEstimator.estimate_total(maximal_config)
-        # Expected: 30000 + 5000 + 5000 + 2400 + 400 + 1500 = 44300
-        assert total == 44300
-
-    def test_estimate_per_source_returns_dict(self):
-        """Test per-source estimation returns correct structure"""
-        config = {
-            "vision_chunking": "moderate",
-            "memory_last_n_projects": 3,
-            "git_commits": 25
-        }
-        per_source = DepthTokenEstimator.estimate_per_source(config)
-        assert isinstance(per_source, dict)
-        assert per_source["vision_chunking"] == 17500
-        assert per_source["memory_last_n_projects"] == 1500
-        assert per_source["git_commits"] == 1250
-
-    def test_estimate_per_source_all_fields(self):
-        """Test per-source estimation includes all fields"""
-        config = {
-            "vision_chunking": "light",
-            "memory_last_n_projects": 5,
-            "git_commits": 50,
-            "agent_template_detail": "full",
-            "tech_stack_sections": "required",
-            "architecture_depth": "detailed"
-        }
-        per_source = DepthTokenEstimator.estimate_per_source(config)
-        assert len(per_source) == 6
-        assert per_source["vision_chunking"] == 10000
-        assert per_source["memory_last_n_projects"] == 2500
-        assert per_source["git_commits"] == 2500
-        assert per_source["agent_template_detail"] == 2400
-        assert per_source["tech_stack_sections"] == 200
-        assert per_source["architecture_depth"] == 1500
-
-
-# ============================================================================
 # TEST SUITE 3: API Endpoints
 # ============================================================================
 
@@ -226,9 +141,6 @@ class TestDepthConfigEndpoints:
 
         # Verify structure
         assert "depth_config" in data
-        assert "token_estimate" in data
-        assert "total" in data["token_estimate"]
-        assert "per_source" in data["token_estimate"]
 
         # Verify default values
         depth_config = data["depth_config"]
@@ -238,9 +150,6 @@ class TestDepthConfigEndpoints:
         assert depth_config["agent_template_detail"] == "standard"
         assert depth_config["tech_stack_sections"] == "all"
         assert depth_config["architecture_depth"] == "overview"
-
-        # Verify token estimate
-        assert data["token_estimate"]["total"] == 21750
 
     async def test_put_depth_config_updates_successfully(
         self,
@@ -272,10 +181,6 @@ class TestDepthConfigEndpoints:
         assert data["depth_config"]["memory_last_n_projects"] == 5
         assert data["depth_config"]["git_commits"] == 50
         assert data["depth_config"]["agent_template_detail"] == "full"
-
-        # Verify token estimate updated
-        # Expected: 30000 + 2500 + 2500 + 2400 + 400 + 1500 = 39300
-        assert data["token_estimate"]["total"] == 39300
 
     async def test_put_depth_config_persists_across_requests(
         self,
@@ -432,8 +337,6 @@ class TestDepthConfigWebSocketEvents:
 
         event_data = events[0]
         assert event_data["depth_config"]["vision_chunking"] == "heavy"
-        assert "token_estimate" in event_data
-        assert event_data["token_estimate"]["total"] == 39300
 
     async def test_websocket_event_includes_user_id(
         self,
