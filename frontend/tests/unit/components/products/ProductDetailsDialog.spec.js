@@ -1,0 +1,522 @@
+/**
+ * Test suite for ProductDetailsDialog component
+ * TDD Phase 1: Tests written FIRST before implementation
+ *
+ * Extracted from ProductsView.vue lines 1159-1338
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import ProductDetailsDialog from '@/components/products/ProductDetailsDialog.vue'
+
+describe('ProductDetailsDialog Component', () => {
+  let vuetify
+
+  beforeEach(() => {
+    vuetify = createVuetify({
+      components,
+      directives,
+    })
+  })
+
+  const createWrapper = (props = {}) => {
+    return mount(ProductDetailsDialog, {
+      props: {
+        modelValue: true,
+        product: {
+          id: 'test-product-123',
+          name: 'Test Product',
+          description: 'Test description',
+          unresolved_tasks: 5,
+          unfinished_projects: 3,
+          has_config_data: false,
+          created_at: '2025-01-15T10:00:00Z',
+          updated_at: '2025-01-16T14:30:00Z',
+        },
+        visionDocuments: [],
+        stats: { unresolved_tasks: 5, unfinished_projects: 3 },
+        ...props,
+      },
+      global: {
+        plugins: [vuetify],
+      },
+    })
+  }
+
+  describe('Dialog Visibility', () => {
+    it('renders dialog when modelValue is true', () => {
+      const wrapper = createWrapper({ modelValue: true })
+
+      expect(wrapper.find('.v-dialog').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Product Details')
+    })
+
+    it('does not render dialog content when modelValue is false', async () => {
+      const wrapper = createWrapper({ modelValue: false })
+
+      // Dialog should exist but not be visible/open
+      // The v-dialog with v-model=false should not display content
+      const cardText = wrapper.find('.v-card-text')
+      if (cardText.exists()) {
+        // When dialog is closed, the content may be hidden
+        expect(wrapper.find('.v-dialog--active').exists()).toBe(false)
+      }
+    })
+  })
+
+  describe('Product Information Display', () => {
+    it('displays product name', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'My Awesome Product',
+          description: 'Some description',
+        },
+      })
+
+      expect(wrapper.text()).toContain('My Awesome Product')
+    })
+
+    it('displays product ID', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'unique-product-id-456',
+          name: 'Product Name',
+        },
+      })
+
+      expect(wrapper.text()).toContain('unique-product-id-456')
+    })
+
+    it('displays product description', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          description: 'This is a detailed product description for testing.',
+        },
+      })
+
+      expect(wrapper.text()).toContain('This is a detailed product description for testing.')
+    })
+
+    it('displays fallback text when no description provided', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          description: null,
+        },
+      })
+
+      expect(wrapper.text()).toContain('No description provided')
+    })
+  })
+
+  describe('Statistics Display', () => {
+    it('displays unresolved tasks count', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          unresolved_tasks: 12,
+        },
+      })
+
+      expect(wrapper.text()).toContain('Unresolved Tasks')
+      expect(wrapper.text()).toContain('12')
+    })
+
+    it('displays unfinished projects count', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          unfinished_projects: 7,
+        },
+      })
+
+      expect(wrapper.text()).toContain('Unfinished Projects')
+      expect(wrapper.text()).toContain('7')
+    })
+
+    it('displays zero for missing statistics', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+        },
+      })
+
+      // Should default to 0 for missing values
+      expect(wrapper.text()).toContain('0')
+    })
+  })
+
+  describe('Vision Documents Display', () => {
+    it('lists vision documents with chunk counts', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'architecture.md', chunk_count: 5, file_size: 1024 },
+          { id: 'doc-2', filename: 'requirements.md', chunk_count: 3, file_size: 512 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('architecture.md')
+      expect(wrapper.text()).toContain('5 chunks')
+      expect(wrapper.text()).toContain('requirements.md')
+      expect(wrapper.text()).toContain('3 chunks')
+    })
+
+    it('lists vision documents with file sizes', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'design.pdf', chunk_count: 2, file_size: 2048 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('design.pdf')
+      // Should display formatted file size (2048 bytes = 2.0 KB)
+      expect(wrapper.text()).toMatch(/2\.0\s*KB/)
+    })
+
+    it('displays document count in header', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'doc1.md', chunk_count: 1, file_size: 100 },
+          { id: 'doc-2', filename: 'doc2.md', chunk_count: 2, file_size: 200 },
+          { id: 'doc-3', filename: 'doc3.md', chunk_count: 3, file_size: 300 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('Vision Documents (3)')
+    })
+
+    it('shows alert when no vision documents exist', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [],
+      })
+
+      expect(wrapper.text()).toContain('No vision documents attached')
+    })
+
+    it('handles document_name as fallback for filename', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', document_name: 'Legacy Document Name', chunk_count: 4, file_size: 1024 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('Legacy Document Name')
+    })
+  })
+
+  describe('Aggregate Stats Panel', () => {
+    it('shows total chunks when documents exist', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'doc1.md', chunk_count: 5, file_size: 1024 },
+          { id: 'doc-2', filename: 'doc2.md', chunk_count: 8, file_size: 2048 },
+        ],
+      })
+
+      // Total: 5 + 8 = 13 chunks
+      expect(wrapper.text()).toContain('Total chunks:')
+      expect(wrapper.text()).toContain('13')
+    })
+
+    it('shows total file size when documents exist', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'doc1.md', chunk_count: 1, file_size: 1024 },
+          { id: 'doc-2', filename: 'doc2.md', chunk_count: 2, file_size: 2048 },
+        ],
+      })
+
+      // Total: 1024 + 2048 = 3072 bytes = 3.0 KB
+      expect(wrapper.text()).toContain('Total file sizes:')
+      expect(wrapper.text()).toMatch(/3\.0\s*KB/)
+    })
+
+    it('does not show aggregate stats panel when no documents', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [],
+      })
+
+      expect(wrapper.text()).not.toContain('Total chunks:')
+      expect(wrapper.text()).not.toContain('Total file sizes:')
+    })
+
+    it('shows document count in aggregate stats', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'doc1.md', chunk_count: 1, file_size: 1024 },
+          { id: 'doc-2', filename: 'doc2.md', chunk_count: 2, file_size: 1024 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('2 document(s)')
+    })
+  })
+
+  describe('Config Data Section', () => {
+    it('conditionally renders config_data section when has_config_data is true', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          has_config_data: true,
+          config_data: {
+            tech_stack: {
+              languages: 'Python, JavaScript',
+              frontend: 'Vue 3',
+              backend: 'FastAPI',
+              database: 'PostgreSQL',
+            },
+          },
+        },
+      })
+
+      expect(wrapper.text()).toContain('Configuration Data')
+      expect(wrapper.text()).toContain('Tech Stack')
+    })
+
+    it('does not render config_data section when has_config_data is false', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          has_config_data: false,
+        },
+      })
+
+      expect(wrapper.text()).not.toContain('Configuration Data')
+    })
+
+    it('displays tech stack details', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          has_config_data: true,
+          config_data: {
+            tech_stack: {
+              languages: 'TypeScript, Rust',
+              frontend: 'React',
+              backend: 'Axum',
+              database: 'MongoDB',
+            },
+          },
+        },
+      })
+
+      expect(wrapper.text()).toContain('Tech Stack')
+    })
+
+    it('displays architecture details', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          has_config_data: true,
+          config_data: {
+            architecture: {
+              pattern: 'Microservices',
+              api_style: 'REST',
+              design_patterns: 'Repository, Factory',
+            },
+          },
+        },
+      })
+
+      expect(wrapper.text()).toContain('Architecture')
+    })
+
+    it('displays features and testing section', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          has_config_data: true,
+          config_data: {
+            features: {
+              core: 'User management, Authentication',
+            },
+            test_config: {
+              strategy: 'TDD',
+              coverage_target: 80,
+            },
+          },
+        },
+      })
+
+      expect(wrapper.text()).toContain('Features & Testing')
+    })
+  })
+
+  describe('Event Handling', () => {
+    it('emits update:modelValue when close button clicked', async () => {
+      const wrapper = createWrapper()
+
+      // Find the close button in card actions
+      const closeButton = wrapper.findAll('.v-btn').find(btn => btn.text() === 'Close')
+      expect(closeButton).toBeDefined()
+
+      await closeButton.trigger('click')
+
+      expect(wrapper.emitted('update:modelValue')).toBeTruthy()
+      expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    })
+
+    it('emits update:modelValue when X button clicked in header', async () => {
+      const wrapper = createWrapper()
+
+      // Find the X button in the header (icon button with mdi-close)
+      const xButton = wrapper.find('.v-card-title .v-btn')
+      expect(xButton.exists()).toBe(true)
+
+      await xButton.trigger('click')
+
+      expect(wrapper.emitted('update:modelValue')).toBeTruthy()
+      expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+    })
+  })
+
+  describe('File Size Formatting', () => {
+    it('formats bytes correctly', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'small.txt', chunk_count: 1, file_size: 500 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('500 B')
+    })
+
+    it('formats kilobytes correctly', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'medium.md', chunk_count: 1, file_size: 5120 },
+        ],
+      })
+
+      // 5120 bytes = 5.0 KB
+      expect(wrapper.text()).toMatch(/5\.0\s*KB/)
+    })
+
+    it('formats megabytes correctly', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'large.pdf', chunk_count: 10, file_size: 2097152 },
+        ],
+      })
+
+      // 2097152 bytes = 2.0 MB
+      expect(wrapper.text()).toMatch(/2\.0\s*MB/)
+    })
+
+    it('handles zero file size', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'empty.txt', chunk_count: 0, file_size: 0 },
+        ],
+      })
+
+      expect(wrapper.text()).toContain('0 B')
+    })
+  })
+
+  describe('Date Formatting', () => {
+    it('displays created date', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          created_at: '2025-03-15T10:00:00Z',
+          updated_at: '2025-03-16T14:30:00Z',
+        },
+      })
+
+      expect(wrapper.text()).toContain('Created:')
+    })
+
+    it('displays updated date', () => {
+      const wrapper = createWrapper({
+        product: {
+          id: 'prod-1',
+          name: 'Product',
+          created_at: '2025-03-15T10:00:00Z',
+          updated_at: '2025-03-16T14:30:00Z',
+        },
+      })
+
+      expect(wrapper.text()).toContain('Updated:')
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('handles empty product object gracefully', () => {
+      const wrapper = createWrapper({
+        product: {},
+      })
+
+      // Should not throw, should display fallbacks
+      expect(wrapper.exists()).toBe(true)
+      expect(wrapper.text()).toContain('No description provided')
+    })
+
+    it('handles undefined visionDocuments', () => {
+      const wrapper = mount(ProductDetailsDialog, {
+        props: {
+          modelValue: true,
+          product: { id: '1', name: 'Test' },
+          // visionDocuments not provided - should use default
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('Vision Documents (0)')
+      expect(wrapper.text()).toContain('No vision documents attached')
+    })
+
+    it('handles documents with missing chunk_count', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'test.md', file_size: 1024 },
+        ],
+      })
+
+      // Should default to 0 chunks
+      expect(wrapper.text()).toContain('0 chunks')
+    })
+
+    it('handles documents with missing file_size', () => {
+      const wrapper = createWrapper({
+        visionDocuments: [
+          { id: 'doc-1', filename: 'test.md', chunk_count: 5 },
+        ],
+      })
+
+      // Should default to 0 bytes
+      expect(wrapper.text()).toContain('0 B')
+    })
+  })
+
+  describe('Accessibility', () => {
+    it('dialog has proper close button', () => {
+      const wrapper = createWrapper()
+
+      // Should have a close button that users can interact with
+      const closeButtons = wrapper.findAll('.v-btn')
+      const hasCloseButton = closeButtons.some(btn =>
+        btn.text() === 'Close' || btn.find('.mdi-close').exists()
+      )
+
+      expect(hasCloseButton).toBe(true)
+    })
+  })
+})
