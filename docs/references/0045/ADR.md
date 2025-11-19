@@ -58,7 +58,7 @@ template = await self._get_agent_template(role, project_id)
 if template.preferred_tool == "claude":
     return await self._spawn_claude_code_agent(...)
 elif template.preferred_tool == "codex":
-    return await self._spawn_legacy_agent(..., tool="codex")
+    return await self._spawn_generic_agent(..., tool="codex")
 ```
 
 ---

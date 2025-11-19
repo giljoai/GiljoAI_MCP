@@ -861,7 +861,7 @@ async def spawn_agent(
 
         elif tool in ["codex", "gemini"]:
             # ROUTE: Legacy Multi-Window Mode
-            return await self._spawn_legacy_agent(
+            return await self._spawn_generic_agent(
                 project=project,
                 template=template,
                 role=role,
@@ -975,7 +975,7 @@ On ANY error:
     return agent
 
 
-async def _spawn_legacy_agent(
+async def _spawn_generic_agent(
     self,
     project: Project,
     template: AgentTemplate,

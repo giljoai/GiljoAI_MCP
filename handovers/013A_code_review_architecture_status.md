@@ -160,7 +160,7 @@ In simple terms: this is a **mature V2 codebase** with explicit legacy seams. Mo
 **Where the legacy paths live (this is the important part)**
 
 - `src/giljo_mcp/orchestrator.py` explicitly contains legacy logic:
-  - `_spawn_legacy_agent(...)` and comments like “Spawn legacy agent (Codex/Gemini with job queue).”
+  - `_spawn_generic_agent(...)` and comments like “Spawn legacy agent (Codex/Gemini with job queue).”
   - Fallbacks: “logger.info('[spawn_agent] No template found for {role.value}, using legacy spawn logic')”
   - Defaulting to `mode="claude"` for legacy agents in some paths.
 
@@ -171,24 +171,24 @@ These legacy paths exist so that older “Codex/Gemini”-style flows or older p
 Because you’re a single dev, think of this in **phases**:
 
 1. **Identify any real usage of legacy paths:**
-   - Search for `_spawn_legacy_agent(` in the codebase (`src/giljo_mcp/orchestrator.py`).
-   - Look at where `_spawn_legacy_agent` is called (e.g., when no template is found, or when a particular agent mode is requested).
+   - Search for `_spawn_generic_agent(` in the codebase (`src/giljo_mcp/orchestrator.py`).
+   - Look at where `_spawn_generic_agent` is called (e.g., when no template is found, or when a particular agent mode is requested).
    - Check your **templates** and **UI flows**:
      - Are you still referencing old “Codex/Gemini” agents anywhere (in `handovers`, templates, or UI)?
      - Are there any CLI tools or older scripts that call these endpoints expecting legacy behavior?
 
 2. **Decide on a cutover date / version:**
    - Once you are confident nothing in your current workflows uses those legacy agent modes, you can:
-     - Replace `_spawn_legacy_agent` with a clearer “unsupported” error, **or**
+     - Replace `_spawn_generic_agent` with a clearer “unsupported” error, **or**
      - Remove it entirely and simplify `spawn_agent` to use only the modern orchestration paths.
 
 3. **Document the removal:**
    - Add a short note in `HANDOVER_INSTRUCTIONS.md` or a new handover that says:
-     - “As of version X, legacy agent spawning via `_spawn_legacy_agent` is removed. All agents must use the template-based orchestration flow.”
+     - “As of version X, legacy agent spawning via `_spawn_generic_agent` is removed. All agents must use the template-based orchestration flow.”
 
 There is no external “installation” to scan; this is about your **own** code paths and any scripts/handovers that might assume the old behavior. The safest method is:
 
-- Temporarily log or raise a warning if `_spawn_legacy_agent` is ever called in your test and dev sessions. If you never see it triggered, it’s safe to remove later.
+- Temporarily log or raise a warning if `_spawn_generic_agent` is ever called in your test and dev sessions. If you never see it triggered, it’s safe to remove later.
 
 ---
 
@@ -378,7 +378,7 @@ You can also enforce this mentally by scanning new diffs: if an endpoint uses `S
 ### 5.2 Medium Priority
 
 4. **Legacy Orchestrator Paths**
-   - Add temporary logging or asserts around `_spawn_legacy_agent` and any deprecated context discovery functions.
+   - Add temporary logging or asserts around `_spawn_generic_agent` and any deprecated context discovery functions.
    - Use your own workflows (TinyContacts, test projects) and see if these are ever hit.
    - If not, plan a version where you remove or hard-fail those paths and simplify the orchestrator.
 
