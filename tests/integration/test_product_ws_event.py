@@ -12,11 +12,15 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from passlib.hash import bcrypt
+from typing import Optional
+from fastapi import Cookie, Depends, Header, Request
 
 from api.app import app
 from src.giljo_mcp.auth.dependencies import get_db_session, get_current_active_user
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.auth_manager import AuthManager
+from src.giljo_mcp.models import User
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -55,30 +59,45 @@ async def test_client():
 
     app.dependency_overrides[get_db_session] = override_get_db_session
 
-    # Initialize app.state with required objects
-    app.state.db_manager = test_db_manager
-
-    # Create auth manager for test
-    auth_manager = AuthManager(test_db_manager)
-    app.state.auth = auth_manager
-
-    # Override auth to bypass JWT
+    # Create admin user for auth
     test_tenant = "tk_test_ws_event"
+    async with test_db_manager.get_session_async() as session:
+        admin = User(
+            username="test_admin",
+            email="admin@test.com",
+            full_name="Test Admin",
+            password_hash=bcrypt.hash("testpass123"),
+            role="admin",
+            tenant_key=test_tenant,
+            is_active=True,
+        )
+        session.add(admin)
+        await session.commit()
+        await session.refresh(admin)
+        admin_id = admin.id
 
-    async def override_user():
+    # Override get_current_active_user to bypass auth middleware
+    async def override_get_current_active_user(
+        request: Request = None,
+        access_token: Optional[str] = Cookie(None),
+        x_api_key: Optional[str] = Header(None),
+        db: AsyncSession = Depends(override_get_db_session),
+    ):
         return types.SimpleNamespace(
-            id=1,
-            username="tester",
+            id=admin_id,
+            username="test_admin",
             role="admin",
             tenant_key=test_tenant,
             is_active=True
         )
 
-    app.dependency_overrides[get_current_active_user] = override_user
+    app.dependency_overrides[get_current_active_user] = override_get_current_active_user
 
     # Replace event bus with dummy to capture events
+    # Import state from api.app to set event_bus
+    from api.app import state
     dummy_bus = DummyEventBus()
-    app.state.event_bus = dummy_bus
+    state.event_bus = dummy_bus
 
     # Create client with testserver host
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver:8000") as client:
@@ -90,8 +109,20 @@ async def test_client():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Requires app lifespan initialization - needs test infrastructure update for auth middleware closure")
+@pytest.mark.skip(reason="""
+BLOCKED: AuthMiddleware runs before FastAPI dependency injection, so overriding
+get_current_active_user doesn't bypass the middleware. The middleware's auth_manager
+is set via closure at app creation time.
+
+Tests need either:
+1. A fresh app instance with test-specific lifespan, or
+2. Patching the middleware's auth_manager lambda directly
+
+The functionality (product:status:changed events) IS implemented - see
+api/endpoints/products/lifecycle.py which publishes to state.event_bus.
+""")
 async def test_product_activation_emits_tenant_scoped_ws_event(test_client):
+    """Test that product activation/deactivation emits correct WebSocket events."""
     client, dummy_bus, test_tenant = test_client
 
     # Create product
