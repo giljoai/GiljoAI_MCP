@@ -1,8 +1,20 @@
 # Handover 0316B - Context Condensing Discussion Summary
 
 **Date**: 2025-11-18
-**Status**: DISCUSSION (Awaiting Decision)
+**Status**: SUPERSEDED by Handover 0319
 **Type**: Architecture Decision / Feature Proposal
+
+---
+
+## ⚠️ SUPERSEDED NOTICE
+
+**This discussion was superseded by Handover 0319 (Context Management v3.0 - Granular Fields).**
+
+The condensing approach (Options B/C) was not implemented. Instead, **Option A (static fields)** was chosen, enhanced with **granular per-field selection** in 0319, which gives users explicit control over individual fields rather than condensed summaries.
+
+**Resolution**: User selected Option A with granular field selection (0319) rather than CPU-based condensing.
+
+---
 
 ---
 
