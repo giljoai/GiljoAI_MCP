@@ -1164,9 +1164,6 @@ async function loadProducts() {
   loading.value = true
   try {
     await productStore.fetchProducts()
-    // WORKAROUND: Manual fetch until WebSocket-driven refresh is fully implemented
-    // TODO: Remove once product:status:changed WebSocket events reliably update store
-    await productStore.fetchActiveProduct()
     // Fetch metrics for all products
     for (const product of productStore.products) {
       await productStore.fetchProductMetrics(product.id)
