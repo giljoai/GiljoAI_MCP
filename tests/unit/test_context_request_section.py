@@ -24,8 +24,9 @@ class TestContextRequestSection:
         tenant_key = "test_tenant_context"
 
         # Seed templates
+        # Note: orchestrator is a SYSTEM_MANAGED_ROLE and is skipped during seeding
         count = await seed_tenant_templates(db_session, tenant_key)
-        assert count == 6, "Should seed 6 default templates"
+        assert count == 5, "Should seed 5 default templates (orchestrator is system-managed)"
 
         # Fetch all templates
         result = await db_session.execute(
@@ -165,29 +166,25 @@ class TestContextRequestSection:
                 f"{template.role} benefits should mention audit trail"
             )
 
-    async def test_orchestrator_response_instructions(self, db_session: AsyncSession):
-        """Verify orchestrator template has reciprocal 'RESPONDING TO CONTEXT REQUESTS' section."""
-        tenant_key = "test_tenant_orchestrator"
+    def test_orchestrator_response_instructions(self):
+        """Verify orchestrator context response section has required content.
 
-        await seed_tenant_templates(db_session, tenant_key)
+        Note: Orchestrator is a SYSTEM_MANAGED_ROLE and not seeded via seed_tenant_templates.
+        Instead, we test the helper function directly that generates the content.
+        """
+        from src.giljo_mcp.template_seeder import _get_orchestrator_context_response_section
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "orchestrator"
-            )
-        )
-        orchestrator_template = result.scalar_one()
+        # Get the orchestrator context response section
+        response_section = _get_orchestrator_context_response_section()
 
         # Orchestrator should have special "RESPONDING TO CONTEXT REQUESTS" section
-        user_inst = orchestrator_template.user_instructions
-        assert "RESPONDING TO CONTEXT REQUESTS" in user_inst, (
+        assert "RESPONDING TO CONTEXT REQUESTS" in response_section, (
             "Orchestrator missing RESPONDING TO CONTEXT REQUESTS section"
         )
-        assert "CONTEXT_RESPONSE:" in user_inst, (
+        assert "CONTEXT_RESPONSE:" in response_section, (
             "Orchestrator should show CONTEXT_RESPONSE message format"
         )
-        assert "filtered excerpt" in user_inst.lower(), (
+        assert "filtered excerpt" in response_section.lower(), (
             "Orchestrator should mention providing filtered excerpts, not full text"
         )
 

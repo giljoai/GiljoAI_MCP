@@ -95,7 +95,7 @@ async def get_architecture(
         logger.error("db_manager is required", operation="get_architecture")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         # Fetch product.architecture_notes
         stmt = select(Product).where(
             Product.id == product_id,
