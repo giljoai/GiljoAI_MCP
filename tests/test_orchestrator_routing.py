@@ -298,14 +298,14 @@ async def test_spawn_claude_code_agent_stores_metadata(orchestrator, test_projec
 
 
 # ========================================================================
-# LEGACY AGENT SPAWNING TESTS (Codex/Gemini)
+# GENERIC AGENT SPAWNING TESTS (Codex/Gemini)
 # ========================================================================
 
 
 @pytest.mark.asyncio
-async def test_spawn_legacy_agent_creates_job(orchestrator, test_project, codex_template, db_manager):
-    """Test legacy agent spawning creates MCP job."""
-    job = await orchestrator._spawn_legacy_agent(
+async def test_spawn_generic_agent_creates_job(orchestrator, test_project, codex_template, db_manager):
+    """Test generic agent spawning creates MCP job."""
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
@@ -329,9 +329,9 @@ async def test_spawn_legacy_agent_creates_job(orchestrator, test_project, codex_
 
 
 @pytest.mark.asyncio
-async def test_spawn_legacy_agent_links_agent_to_job(orchestrator, test_project, codex_template):
-    """Test legacy agent job has correct tool type and status."""
-    job = await orchestrator._spawn_legacy_agent(
+async def test_spawn_generic_agent_links_agent_to_job(orchestrator, test_project, codex_template):
+    """Test generic agent job has correct tool type and status."""
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
@@ -343,9 +343,9 @@ async def test_spawn_legacy_agent_links_agent_to_job(orchestrator, test_project,
 
 
 @pytest.mark.asyncio
-async def test_spawn_legacy_agent_generates_cli_prompt(orchestrator, test_project, gemini_template):
-    """Test legacy agent generates CLI prompt in metadata."""
-    job = await orchestrator._spawn_legacy_agent(
+async def test_spawn_generic_agent_generates_cli_prompt(orchestrator, test_project, gemini_template):
+    """Test generic agent generates CLI prompt in metadata."""
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.REVIEWER,
         template=gemini_template,
@@ -363,9 +363,9 @@ async def test_spawn_legacy_agent_generates_cli_prompt(orchestrator, test_projec
 
 
 @pytest.mark.asyncio
-async def test_spawn_legacy_agent_includes_behavioral_rules(orchestrator, test_project, codex_template):
-    """Test legacy agent CLI prompt includes behavioral rules."""
-    job = await orchestrator._spawn_legacy_agent(
+async def test_spawn_generic_agent_includes_behavioral_rules(orchestrator, test_project, codex_template):
+    """Test generic agent CLI prompt includes behavioral rules."""
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
@@ -444,8 +444,8 @@ async def test_acknowledge_job_transitions_status(orchestrator, test_project, co
     """Test acknowledge_job transitions MCPAgentJob status to active."""
     from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 
-    # Spawn legacy agent (creates MCPAgentJob)
-    job = await orchestrator._spawn_legacy_agent(
+    # Spawn generic agent (creates MCPAgentJob)
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
@@ -487,7 +487,7 @@ async def test_complete_job_transitions_status(orchestrator, test_project, codex
     from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 
     # Spawn and persist job
-    job = await orchestrator._spawn_legacy_agent(
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,
@@ -533,7 +533,7 @@ async def test_report_error_transitions_status(orchestrator, test_project, codex
     from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
 
     # Spawn and persist job
-    job = await orchestrator._spawn_legacy_agent(
+    job = await orchestrator._spawn_generic_agent(
         project=test_project,
         role=AgentRole.TESTER,
         template=codex_template,

@@ -46,7 +46,7 @@
 │  │  ProjectOrchestrator (Multi-Tool Routing Logic)        │  │
 │  │  - _get_agent_template() → Resolve template            │  │
 │  │  - _spawn_claude_code_agent() → Hybrid mode            │  │
-│  │  - _spawn_legacy_agent() → CLI mode (Codex/Gemini)     │  │
+│  │  - _spawn_generic_agent() → CLI mode (Codex/Gemini)     │  │
 │  │  - _generate_mcp_instructions() → MCP integration      │  │
 │  │  - _generate_cli_prompt() → CLI prompt generation      │  │
 │  └────────────┬───────────────────────────────────────────┘  │
@@ -128,7 +128,7 @@ Agent Spawn Request
   │   │       - Return agent_id
   │   │
   │   ├─ preferred_tool = "codex"
-  │   │   └─> Call _spawn_legacy_agent(tool="codex")
+  │   │   └─> Call _spawn_generic_agent(tool="codex")
   │   │       - Create Agent record (mode = "codex")
   │   │       - Create MCPAgentJob (status = "waiting_acknowledgment")
   │   │       - Link: Agent.job_id = job.id
@@ -137,7 +137,7 @@ Agent Spawn Request
   │   │       - Return agent_id (user copies prompt manually)
   │   │
   │   └─ preferred_tool = "gemini"
-  │       └─> Call _spawn_legacy_agent(tool="gemini")
+  │       └─> Call _spawn_generic_agent(tool="gemini")
   │           - Create Agent record (mode = "gemini")
   │           - Create MCPAgentJob (status = "waiting_acknowledgment")
   │           - Link: Agent.job_id = job.id
@@ -369,10 +369,10 @@ async def _spawn_claude_code_agent(
     return agent.id
 ```
 
-**_spawn_legacy_agent(agent_name, mission, template, tool) → str**
+**_spawn_generic_agent(agent_name, mission, template, tool) → str**
 
 ```python
-async def _spawn_legacy_agent(
+async def _spawn_generic_agent(
     self,
     agent_name: str,
     mission: str,
@@ -974,11 +974,11 @@ async def spawn_agent(
             agent_name, mission, template, project_id
         )
     elif template.preferred_tool == "codex":
-        return await self._spawn_legacy_agent(
+        return await self._spawn_generic_agent(
             agent_name, mission, template, "codex", project_id
         )
     elif template.preferred_tool == "gemini":
-        return await self._spawn_legacy_agent(
+        return await self._spawn_generic_agent(
             agent_name, mission, template, "gemini", project_id
         )
     elif template.preferred_tool == "cursor":  # NEW TOOL
@@ -1941,7 +1941,7 @@ async def test_route_to_codex_agent(orchestrator):
     )
 
     orchestrator._get_agent_template = AsyncMock(return_value=template)
-    orchestrator._spawn_legacy_agent = AsyncMock(return_value="agent_002")
+    orchestrator._spawn_generic_agent = AsyncMock(return_value="agent_002")
 
     agent_id = await orchestrator.spawn_agent(
         project_id="proj_001",
@@ -1951,7 +1951,7 @@ async def test_route_to_codex_agent(orchestrator):
     )
 
     # Verify legacy agent spawning called with tool="codex"
-    orchestrator._spawn_legacy_agent.assert_called_once_with(
+    orchestrator._spawn_generic_agent.assert_called_once_with(
         "Tester-001",
         "Test mission",
         template,
@@ -2983,7 +2983,7 @@ class CustomOrchestrator(ProjectOrchestrator):
                 agent_name, mission, template, project_id
             )
         elif tool in ["codex", "gemini"]:
-            return await self._spawn_legacy_agent(
+            return await self._spawn_generic_agent(
                 agent_name, mission, template, tool, project_id
             )
         elif tool == "custom_tool":
@@ -3625,7 +3625,7 @@ class OptimizedOrchestrator(ProjectOrchestrator):
                 agent_name, mission, template, project_id
             )
         elif template.preferred_tool in ["codex", "gemini"]:
-            return await self._spawn_legacy_agent(
+            return await self._spawn_generic_agent(
                 agent_name, mission, template, template.preferred_tool, project_id
             )
         else:
