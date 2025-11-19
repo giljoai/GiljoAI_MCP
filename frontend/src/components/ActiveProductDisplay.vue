@@ -81,9 +81,9 @@ watch(
   }
 )
 
-// Listen for product activation events via WebSocket (when implemented)
-// Whenever a product is activated, refresh the display
-const handleProductActivated = async () => {
+// Listen for product status changes via WebSocket (tenant-scoped)
+// Whenever a product is activated/deactivated, refresh the display
+const handleProductStatusChanged = async () => {
   try {
     await productsStore.fetchActiveProduct()
   } catch (err) {
@@ -91,15 +91,24 @@ const handleProductActivated = async () => {
   }
 }
 
-// Subscribe to product activation events if available
+let unsubscribe = null
+
+// Subscribe to product status change events if available
 onMounted(() => {
-  // This can be enhanced with WebSocket listeners when available
-  // wsStore.subscribe('product:activated', handleProductActivated)
+  try {
+    unsubscribe = wsStore.on('product:status:changed', handleProductStatusChanged)
+  } catch (e) {
+    console.warn('[ActiveProductDisplay] Failed to register WS handler:', e)
+  }
 })
 
 onUnmounted(() => {
   // Cleanup WebSocket subscription if needed
-  // wsStore.unsubscribe('product:activated', handleProductActivated)
+  try {
+    if (typeof unsubscribe === 'function') unsubscribe()
+  } catch (e) {
+    // no-op
+  }
 })
 </script>
 
