@@ -32,8 +32,7 @@ async def get_architecture(
     depth: str = "overview",
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None,
-    selected_fields: Optional[Dict[str, bool]] = None
+    db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
     Fetch architecture documentation for given product with depth control.
@@ -48,9 +47,6 @@ async def get_architecture(
         offset: Skip first N items (reserved for future pagination)
         limit: Max items to return (reserved for future pagination)
         db_manager: Database manager instance
-        selected_fields: Optional dict mapping field keys to bool (v3.0 granular selection)
-                        Fields: pattern, design_patterns, api_style, notes, layers, components
-
     Pagination (Future):
         offset and limit parameters are reserved for future implementation.
         Currently ignored - full implementation deferred to future handover.
@@ -165,25 +161,8 @@ Notes: {arch_notes}
                 }
             }
 
-        # Handover 0319: Support granular field selection (v3.0)
         truncated = False
-        if selected_fields is not None:
-            # Use v3.0 granular field selection
-            data = {}
-            if selected_fields.get("pattern", True):
-                data["primary_pattern"] = primary_pattern
-            if selected_fields.get("design_patterns", True):
-                data["design_patterns"] = design_patterns
-            if selected_fields.get("api_style", True):
-                data["api_style"] = api_style
-            if selected_fields.get("notes", True):
-                data["architecture_notes"] = arch_notes
-            # layers and components from config_data (future expansion)
-            if selected_fields.get("layers", True):
-                data["layers"] = architecture.get("layers", "")
-            if selected_fields.get("components", True):
-                data["components"] = architecture.get("components", "")
-        elif depth == "overview":
+        if depth == "overview":
             # v2.0 backward compatibility: Return abbreviated version
             data = {
                 "primary_pattern": primary_pattern,
