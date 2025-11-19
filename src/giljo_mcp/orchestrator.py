@@ -468,7 +468,7 @@ class ProjectOrchestrator:
             "iterations": iterations,
         }
 
-    async def _spawn_legacy_agent(
+    async def _spawn_generic_agent(
         self,
         project: Project,
         role: AgentRole,
@@ -477,7 +477,7 @@ class ProjectOrchestrator:
         additional_instructions: Optional[str] = None,
     ) -> MCPAgentJob:
         """
-        Spawn legacy agent (Codex/Gemini with job queue).
+        Spawn generic agent (Codex/Gemini with job queue).
 
         Process:
         1. Create MCP job via AgentJobManager
@@ -525,7 +525,7 @@ class ProjectOrchestrator:
         )
 
         logger.info(
-            f"[_spawn_legacy_agent] Created MCP job: job_id={job.job_id}, "
+            f"[_spawn_generic_agent] Created MCP job: job_id={job.job_id}, "
             f"agent_type={role.value}, tenant={project.tenant_key}"
         )
 
@@ -558,7 +558,7 @@ class ProjectOrchestrator:
         )
 
         logger.info(
-            f"[_spawn_legacy_agent] Created {template.tool} agent: role={role.value}, "
+            f"[_spawn_generic_agent] Created {template.tool} agent: role={role.value}, "
             f"job_id={job.job_id}, project={project.id}"
         )
 
@@ -1097,7 +1097,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         Routing Logic:
             1. Query template by role and tenant_key
             2. Check template.tool field
-            3. Route to _spawn_claude_code_agent() OR _spawn_legacy_agent()
+            3. Route to _spawn_claude_code_agent() OR _spawn_generic_agent()
             4. Fallback to original logic if no template found
         """
         async with self.db_manager.get_session_async() as session:
@@ -1141,8 +1141,8 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                         additional_instructions=additional_instructions,
                     )
                 elif template.tool in ["codex", "gemini"]:
-                    # Legacy mode: Create job + link agent
-                    agent = await self._spawn_legacy_agent(
+                    # Generic mode: Create job + link agent
+                    agent = await self._spawn_generic_agent(
                         project=project,
                         role=role,
                         template=template,

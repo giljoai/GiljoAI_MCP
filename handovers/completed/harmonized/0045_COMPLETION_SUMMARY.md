@@ -134,8 +134,8 @@ mode = Column(String(20), nullable=False, default='claude')  # 'claude', 'codex'
    - Agent runs independently with MCP access
    - No job queue needed (direct MCP tool calls)
 
-3. **_spawn_legacy_agent()** (Lines 485-621)
-   - Legacy mode: Manual CLI operation
+3. **_spawn_generic_agent()** (Lines 485-621)
+   - Generic mode: Manual CLI operation
    - Creates MCPAgentJob in pending state
    - Generates CLI prompt with MCP instructions
    - Returns job_id for user to copy/paste
@@ -151,7 +151,7 @@ mode = Column(String(20), nullable=False, default='claude')  # 'claude', 'codex'
 if template.preferred_tool == "claude":
     return await self._spawn_claude_code_agent(...)
 elif template.preferred_tool in ["codex", "gemini"]:
-    return await self._spawn_legacy_agent(...)
+    return await self._spawn_generic_agent(...)
 ```
 
 **Template Resolution Cascade**:

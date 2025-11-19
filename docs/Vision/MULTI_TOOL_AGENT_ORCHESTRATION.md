@@ -205,7 +205,7 @@ async def spawn_agent(self, project_id: str, agent_role: str):
 
     elif tool in ["codex", "gemini"]:
         # Route to multi-window legacy mode
-        await self._spawn_legacy_agent(template, tool)
+        await self._spawn_generic_agent(template, tool)
 ```
 
 ---
