@@ -49,13 +49,76 @@ class WebSocketEventListener:
         """
         await self.event_bus.subscribe("project:mission_updated", self.handle_mission_updated)
         await self.event_bus.subscribe("agent:created", self.handle_agent_created)
+        await self.event_bus.subscribe("product:status:changed", self.handle_product_status_changed)
 
         self.logger.info(
             "WebSocket event listener started",
             extra={
-                "registered_events": ["project:mission_updated", "agent:created"],
+                "registered_events": [
+                    "project:mission_updated",
+                    "agent:created",
+                    "product:status:changed",
+                ],
             },
         )
+
+    async def handle_product_status_changed(self, data: Dict[str, Any]) -> None:
+        """
+        Handle product:status:changed event.
+
+        Broadcasts product status changes (activate/deactivate) tenant-scoped.
+
+        Args:
+            data: { tenant_key: str, product_id: str, is_active: bool }
+        """
+        try:
+            tenant_key = data.get("tenant_key")
+            product_id = data.get("product_id")
+            is_active = bool(data.get("is_active", False))
+
+            if not tenant_key or not product_id:
+                self.logger.error(
+                    "Missing required fields for product status change",
+                    extra={"data": data},
+                )
+                return
+
+            message = {
+                "type": "product:status:changed",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "schema_version": "1.0",
+                "data": {
+                    "tenant_key": tenant_key,
+                    "product_id": product_id,
+                    "is_active": is_active,
+                },
+            }
+
+            sent_count = 0
+            for client_id, ws in self.ws_manager.active_connections.items():
+                auth_context = self.ws_manager.auth_contexts.get(client_id, {})
+                if auth_context.get("tenant_key") != tenant_key:
+                    continue
+                try:
+                    await ws.send_json(message)
+                    sent_count += 1
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to send product status to client {client_id}: {e}",
+                        extra={"client_id": client_id, "error": str(e)},
+                    )
+
+            self.logger.info(
+                f"Product status broadcasted to {sent_count} client(s)",
+                extra={"product_id": product_id, "tenant_key": tenant_key, "sent_count": sent_count},
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Error handling product status change event: {e}",
+                extra={"error": str(e)},
+                exc_info=True,
+            )
 
     async def handle_mission_updated(self, data: Dict[str, Any]) -> None:
         """
