@@ -1,0 +1,643 @@
+"""
+AuthService - Authentication and authorization service layer.
+
+Handover 0322 Phase 2: Service Layer Compliance
+Implements production-grade authentication operations following TDD discipline.
+
+Responsibilities:
+- User authentication (login validation, JWT token generation)
+- Last login timestamp management
+- Setup state checking
+- API key management (list, create, revoke)
+- User registration (admin + first admin flows)
+
+Design Principles:
+- NO tenant_key in constructor (auth operates across tenants for login)
+- Dependency Injection: Accepts DatabaseManager
+- Async/Await: Full SQLAlchemy 2.0 async support
+- Error Handling: Consistent dict responses with success/error
+- Testability: Can be unit tested independently
+"""
+
+import logging
+import secrets
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
+
+from passlib.hash import bcrypt
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
+
+from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
+from src.giljo_mcp.auth.jwt_manager import JWTManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.auth import APIKey, User
+from src.giljo_mcp.models.config import SetupState
+from src.giljo_mcp.tenant import TenantManager
+
+
+logger = logging.getLogger(__name__)
+
+
+class AuthService:
+    """
+    Service for managing authentication and authorization operations.
+
+    This service handles all auth-related operations including:
+    - User authentication (login with username/password)
+    - JWT token generation for authenticated sessions
+    - Last login timestamp updates
+    - Setup state checking (first admin created, etc.)
+    - API key management (list, create, revoke)
+    - User registration (admin creates users, first admin creation)
+
+    Thread Safety: Each instance is request-scoped. Do not share across requests.
+    NO tenant_key: Auth operations span tenants (login can be any tenant).
+    """
+
+    def __init__(self, db_manager: DatabaseManager, websocket_manager=None):
+        """
+        Initialize AuthService with database manager.
+
+        Args:
+            db_manager: Database manager for async database operations
+            websocket_manager: Optional WebSocket manager for event emission
+        """
+        self.db_manager = db_manager
+        self._websocket_manager = websocket_manager
+        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    # ============================================================================
+    # Authentication Methods
+    # ============================================================================
+
+    async def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
+        """
+        Authenticate user and return user dict + JWT token.
+
+        Args:
+            username: Username to authenticate
+            password: Plaintext password to verify
+
+        Returns:
+            Dict with success status and user/token data or error
+            {
+                "success": True,
+                "data": {
+                    "user": {...},  # User dict
+                    "token": "eyJ..."  # JWT access token
+                }
+            }
+
+        Example:
+            >>> result = await service.authenticate_user("admin", "Password123!")
+            >>> if result["success"]:
+            ...     token = result["data"]["token"]
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Find user by username
+                stmt = select(User).where(User.username == username)
+                result = await session.execute(stmt)
+                user = result.scalar_one_or_none()
+
+                # Verify user exists and password matches
+                if not user or not bcrypt.verify(password, user.password_hash):
+                    self._logger.warning(
+                        f"Authentication failed for username: {username}",
+                        extra={"username": username, "reason": "invalid_credentials"}
+                    )
+                    return {"success": False, "error": "Invalid credentials"}
+
+                # Check if user account is active
+                if not user.is_active:
+                    self._logger.warning(
+                        f"Authentication failed for username: {username} (inactive account)",
+                        extra={"username": username, "user_id": user.id, "reason": "inactive_account"}
+                    )
+                    return {"success": False, "error": "User account is inactive"}
+
+                # Generate JWT token
+                token = JWTManager.create_access_token(
+                    user_id=user.id,
+                    username=user.username,
+                    role=user.role,
+                    tenant_key=user.tenant_key
+                )
+
+                self._logger.info(
+                    f"User authenticated successfully: {username}",
+                    extra={"username": username, "user_id": user.id, "role": user.role}
+                )
+
+                # Convert user to dict for response
+                user_dict = {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "email": user.email,
+                    "full_name": user.full_name,
+                    "role": user.role,
+                    "tenant_key": user.tenant_key,
+                    "is_active": user.is_active,
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
+                    "last_login": user.last_login.isoformat() if user.last_login else None,
+                }
+
+                return {
+                    "success": True,
+                    "data": {
+                        "user": user_dict,
+                        "token": token
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to authenticate user: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def update_last_login(self, user_id: str, timestamp: datetime) -> Dict[str, Any]:
+        """
+        Update user's last login timestamp.
+
+        Args:
+            user_id: User UUID
+            timestamp: Login timestamp (UTC)
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.update_last_login(user_id, datetime.now(timezone.utc))
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                stmt = select(User).where(User.id == user_id)
+                result = await session.execute(stmt)
+                user = result.scalar_one_or_none()
+
+                if not user:
+                    return {"success": False, "error": "User not found"}
+
+                user.last_login = timestamp
+                await session.commit()
+
+                self._logger.debug(
+                    f"Updated last login for user {user_id}",
+                    extra={"user_id": user_id, "timestamp": timestamp.isoformat()}
+                )
+
+                return {"success": True}
+
+        except Exception as e:
+            self._logger.exception(f"Failed to update last login: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # Setup State Methods
+    # ============================================================================
+
+    async def check_setup_state(self, tenant_key: str) -> Dict[str, Any]:
+        """
+        Check setup state for tenant.
+
+        Args:
+            tenant_key: Tenant key
+
+        Returns:
+            Dict with success status and setup state data or None
+            {
+                "success": True,
+                "data": {
+                    "first_admin_created": bool,
+                    "database_initialized": bool,
+                    ...
+                } or None
+            }
+
+        Example:
+            >>> result = await service.check_setup_state("test_tenant")
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
+                result = await session.execute(stmt)
+                setup_state = result.scalar_one_or_none()
+
+                if not setup_state:
+                    return {"success": True, "data": None}
+
+                return {
+                    "success": True,
+                    "data": {
+                        "first_admin_created": setup_state.first_admin_created,
+                        "database_initialized": setup_state.database_initialized,
+                        "tenant_key": setup_state.tenant_key,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to check setup state: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # API Key Methods
+    # ============================================================================
+
+    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> Dict[str, Any]:
+        """
+        List API keys for user.
+
+        Args:
+            user_id: User UUID
+            include_revoked: Include revoked keys in results (default: False)
+
+        Returns:
+            Dict with success status and list of API keys
+            {
+                "success": True,
+                "data": [
+                    {"id": "...", "name": "...", "is_active": True, ...},
+                    ...
+                ]
+            }
+
+        Example:
+            >>> result = await service.list_api_keys(user_id, include_revoked=True)
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                if include_revoked:
+                    stmt = select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
+                else:
+                    stmt = (
+                        select(APIKey)
+                        .where(APIKey.user_id == user_id, APIKey.is_active == True)
+                        .order_by(APIKey.created_at.desc())
+                    )
+
+                result = await session.execute(stmt)
+                api_keys = result.scalars().all()
+
+                keys_list = [
+                    {
+                        "id": str(key.id),
+                        "name": key.name,
+                        "key_prefix": key.key_prefix,
+                        "permissions": key.permissions or [],
+                        "is_active": key.is_active,
+                        "created_at": key.created_at.isoformat() if key.created_at else None,
+                        "last_used": key.last_used.isoformat() if key.last_used else None,
+                        "revoked_at": key.revoked_at.isoformat() if key.revoked_at else None,
+                    }
+                    for key in api_keys
+                ]
+
+                return {"success": True, "data": keys_list}
+
+        except Exception as e:
+            self._logger.exception(f"Failed to list API keys: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def create_api_key(
+        self, user_id: str, tenant_key: str, name: str, permissions: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Create new API key for user.
+
+        Args:
+            user_id: User UUID
+            tenant_key: Tenant key
+            name: API key name/description
+            permissions: List of permissions (e.g., ["*"] for all)
+
+        Returns:
+            Dict with success status and API key data (includes raw key ONCE)
+            {
+                "success": True,
+                "data": {
+                    "id": "...",
+                    "name": "...",
+                    "api_key": "gk_...",  # RAW KEY - only shown once!
+                    "key_prefix": "gk_abc...",
+                    "key_hash": "$2b$..."  # Hashed version for storage
+                }
+            }
+
+        Example:
+            >>> result = await service.create_api_key(user_id, tenant_key, "My Key", ["*"])
+            >>> print("Store this key:", result["data"]["api_key"])
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Generate new API key
+                api_key = generate_api_key()
+                key_hash = hash_api_key(api_key)
+                key_prefix = get_key_prefix(api_key, length=12)
+
+                # Create API key record
+                new_key = APIKey(
+                    id=str(uuid4()),
+                    user_id=user_id,
+                    tenant_key=tenant_key,
+                    name=name,
+                    key_hash=key_hash,
+                    key_prefix=key_prefix,
+                    permissions=permissions,
+                    is_active=True,
+                    created_at=datetime.now(timezone.utc),
+                )
+
+                session.add(new_key)
+                await session.commit()
+                await session.refresh(new_key)
+
+                self._logger.info(
+                    f"API key created: {name} (user: {user_id})",
+                    extra={"user_id": user_id, "key_name": name, "key_prefix": key_prefix}
+                )
+
+                return {
+                    "success": True,
+                    "data": {
+                        "id": str(new_key.id),
+                        "name": new_key.name,
+                        "api_key": api_key,  # RAW KEY - only shown once!
+                        "key_prefix": key_prefix,
+                        "key_hash": key_hash,
+                        "permissions": new_key.permissions,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to create API key: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def revoke_api_key(self, key_id: str, user_id: str) -> Dict[str, Any]:
+        """
+        Revoke (deactivate) an API key.
+
+        Args:
+            key_id: API key UUID
+            user_id: User UUID (for ownership verification)
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.revoke_api_key(key_id, user_id)
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                stmt = select(APIKey).where(APIKey.id == key_id, APIKey.user_id == user_id)
+                result = await session.execute(stmt)
+                api_key = result.scalar_one_or_none()
+
+                if not api_key:
+                    return {"success": False, "error": "API key not found or access denied"}
+
+                # Revoke key
+                api_key.is_active = False
+                api_key.revoked_at = datetime.now(timezone.utc)
+                await session.commit()
+
+                self._logger.info(
+                    f"API key revoked: {api_key.name} (user: {user_id})",
+                    extra={"user_id": user_id, "key_id": key_id, "key_name": api_key.name}
+                )
+
+                return {"success": True}
+
+        except Exception as e:
+            self._logger.exception(f"Failed to revoke API key: {e}")
+            return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # User Registration Methods
+    # ============================================================================
+
+    async def register_user(
+        self,
+        username: str,
+        email: Optional[str],
+        password: str,
+        role: str,
+        requesting_admin_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Register new user (admin-only operation).
+
+        Args:
+            username: Username for new user
+            email: Email address (optional)
+            password: Plaintext password (will be hashed)
+            role: User role (admin, developer, viewer)
+            requesting_admin_id: Admin user ID creating this user
+
+        Returns:
+            Dict with success status and new user data
+            {
+                "success": True,
+                "data": {
+                    "id": "...",
+                    "username": "...",
+                    "email": "...",
+                    "role": "...",
+                    "tenant_key": "..."  # Auto-generated per-user tenant
+                }
+            }
+
+        Example:
+            >>> result = await service.register_user(
+            ...     "newuser", "new@example.com", "Password123!", "developer", admin_id
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Check for duplicate username
+                stmt = select(User).where(User.username == username)
+                result = await session.execute(stmt)
+                if result.scalar_one_or_none():
+                    return {"success": False, "error": f"Username '{username}' already exists"}
+
+                # Check for duplicate email if provided
+                if email:
+                    stmt = select(User).where(User.email == email)
+                    result = await session.execute(stmt)
+                    if result.scalar_one_or_none():
+                        return {"success": False, "error": f"Email '{email}' already exists"}
+
+                # Hash password
+                password_hash = bcrypt.hash(password)
+
+                # Generate per-user tenant key
+                tenant_key = TenantManager.generate_tenant_key(username)
+
+                # Create user
+                new_user = User(
+                    id=str(uuid4()),
+                    username=username,
+                    email=email,
+                    password_hash=password_hash,
+                    role=role,
+                    tenant_key=tenant_key,
+                    is_active=True,
+                    created_at=datetime.now(timezone.utc),
+                )
+
+                session.add(new_user)
+                await session.commit()
+                await session.refresh(new_user)
+
+                self._logger.info(
+                    f"User registered: {username} (role: {role}, by admin: {requesting_admin_id})",
+                    extra={"username": username, "role": role, "admin_id": requesting_admin_id}
+                )
+
+                return {
+                    "success": True,
+                    "data": {
+                        "id": str(new_user.id),
+                        "username": new_user.username,
+                        "email": new_user.email,
+                        "role": new_user.role,
+                        "tenant_key": new_user.tenant_key,
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to register user: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def create_first_admin(
+        self, username: str, email: Optional[str], password: str, full_name: Optional[str]
+    ) -> Dict[str, Any]:
+        """
+        Create first administrator account (fresh install only).
+
+        Args:
+            username: Admin username
+            email: Admin email (optional)
+            password: Admin password (must meet complexity requirements)
+            full_name: Admin full name (optional)
+
+        Returns:
+            Dict with success status, user data, and JWT token for immediate login
+            {
+                "success": True,
+                "data": {
+                    "id": "...",
+                    "username": "...",
+                    "email": "...",
+                    "role": "admin",
+                    "tenant_key": "...",
+                    "is_active": True,
+                    "token": "eyJ..."  # JWT for immediate login
+                }
+            }
+
+        Example:
+            >>> result = await service.create_first_admin(
+            ...     "admin", "admin@example.com", "SecureAdmin123!@#", "Administrator"
+            ... )
+        """
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Check if users already exist (must be fresh install)
+                user_count_stmt = select(func.count(User.id))
+                result = await session.execute(user_count_stmt)
+                total_users = result.scalar()
+
+                if total_users > 0:
+                    return {"success": False, "error": "Administrator account already exists"}
+
+                # Validate password strength (12+ chars, complexity)
+                if len(password) < 12:
+                    return {"success": False, "error": "Password must be at least 12 characters"}
+
+                has_upper = any(c.isupper() for c in password)
+                has_lower = any(c.islower() for c in password)
+                has_digit = any(c.isdigit() for c in password)
+                has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password)
+
+                if not (has_upper and has_lower and has_digit and has_special):
+                    return {
+                        "success": False,
+                        "error": "Password must contain uppercase, lowercase, digit, and special character"
+                    }
+
+                # Hash password
+                password_hash = bcrypt.hash(password)
+
+                # Generate secure tenant key
+                tenant_key = TenantManager.generate_tenant_key(username)
+
+                # Create first admin user
+                admin_user = User(
+                    id=str(uuid4()),
+                    username=username,
+                    email=email,
+                    full_name=full_name or "Administrator",
+                    password_hash=password_hash,
+                    role="admin",  # Force admin role
+                    tenant_key=tenant_key,
+                    is_active=True,
+                    created_at=datetime.now(timezone.utc),
+                )
+
+                session.add(admin_user)
+                await session.commit()
+                await session.refresh(admin_user)
+
+                # Mark first admin created in SetupState
+                setup_state_stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
+                setup_result = await session.execute(setup_state_stmt)
+                setup_state = setup_result.scalar_one_or_none()
+
+                if setup_state:
+                    setup_state.first_admin_created = True
+                    setup_state.first_admin_created_at = datetime.now(timezone.utc)
+                else:
+                    setup_state = SetupState(
+                        id=str(uuid4()),
+                        tenant_key=tenant_key,
+                        database_initialized=True,
+                        database_initialized_at=datetime.now(timezone.utc),
+                        first_admin_created=True,
+                        first_admin_created_at=datetime.now(timezone.utc),
+                    )
+                    session.add(setup_state)
+
+                await session.commit()
+
+                # Generate JWT token for immediate login
+                token = JWTManager.create_access_token(
+                    user_id=admin_user.id,
+                    username=admin_user.username,
+                    role=admin_user.role,
+                    tenant_key=admin_user.tenant_key
+                )
+
+                self._logger.info(
+                    f"First administrator account created: {username}",
+                    extra={"username": username, "tenant_key": tenant_key}
+                )
+
+                return {
+                    "success": True,
+                    "data": {
+                        "id": str(admin_user.id),
+                        "username": admin_user.username,
+                        "email": admin_user.email,
+                        "full_name": admin_user.full_name,
+                        "role": admin_user.role,
+                        "tenant_key": admin_user.tenant_key,
+                        "is_active": admin_user.is_active,
+                        "token": token,  # JWT for immediate login
+                    }
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to create first admin: {e}")
+            return {"success": False, "error": str(e)}
