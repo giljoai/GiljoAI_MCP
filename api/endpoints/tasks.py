@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.endpoints.dependencies import get_task_service
 from api.schemas.task import (
     ProjectConversionResponse,
     StatusUpdate,
@@ -29,6 +30,7 @@ from api.schemas.task import (
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Product, Project, Task, User
+from src.giljo_mcp.services.task_service import TaskService
 
 
 logger = logging.getLogger(__name__)
@@ -241,19 +243,19 @@ async def create_task(
 async def get_task(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    task_service: TaskService = Depends(get_task_service),
 ) -> TaskResponse:
     """
     Get a single task by ID within the current tenant.
     """
-    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    task = result.scalar_one_or_none()
+    result = await task_service.get_task(task_id)
 
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
-    return task_to_response(task)
+    # Convert service response to TaskResponse
+    task_data = result["data"]
+    return TaskResponse(**task_data)
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
@@ -323,7 +325,9 @@ async def update_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 @router.delete("/{task_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
-    task_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+    task_service: TaskService = Depends(get_task_service),
 ):
     """
     Delete a task.
@@ -333,7 +337,7 @@ async def delete_task(
     Args:
         task_id: Task ID to delete
         current_user: Current authenticated user
-        db: Database session
+        task_service: Task service instance
 
     Raises:
         HTTPException: 403 if user lacks permission
@@ -341,22 +345,18 @@ async def delete_task(
     """
     logger.debug(f"User {current_user.username} deleting task {task_id}")
 
-    # Query task filtered by tenant (multi-tenant isolation)
-    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    task = result.scalar_one_or_none()
+    result = await task_service.delete_task(task_id, str(current_user.id))
 
-    if not task:
-        logger.warning(f"Task {task_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-
-    # Permission check
-    if not can_delete_task(task, current_user):
-        logger.warning(f"User {current_user.username} not authorized to delete task {task_id}")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only task creator or admin can delete")
-
-    await db.delete(task)
-    await db.commit()
+    if not result["success"]:
+        error_msg = result["error"]
+        if "not found" in error_msg.lower():
+            logger.warning(f"Task {task_id} not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        elif "not authorized" in error_msg.lower():
+            logger.warning(f"User {current_user.username} not authorized to delete task {task_id}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     logger.info(f"Deleted task {task_id} by user {current_user.username}")
 
@@ -367,7 +367,7 @@ async def convert_task_to_project(
     task_id: str,
     conversion_request: TaskConversionRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    task_service: TaskService = Depends(get_task_service),
 ) -> ProjectConversionResponse:
     """
     Convert a task to a project.
@@ -379,112 +379,47 @@ async def convert_task_to_project(
         task_id: Task ID to convert
         conversion_request: Conversion configuration
         current_user: Current authenticated user
-        db: Database session
+        task_service: Task service instance
 
     Returns:
         Conversion result with new project details
 
     Raises:
-        HTTPException: 400 if task already converted
+        HTTPException: 400 if task already converted or no active product
         HTTPException: 403 if user lacks permission
         HTTPException: 404 if task not found
     """
     logger.debug(f"User {current_user.username} converting task {task_id} to project")
 
-    # Query task filtered by tenant (multi-tenant isolation)
-    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    task = result.scalar_one_or_none()
-
-    if not task:
-        logger.warning(f"Task {task_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-
-    # Check if already converted
-    if task.converted_to_project_id:
-        logger.warning(f"Task {task_id} already converted to project {task.converted_to_project_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Task already converted to project {task.converted_to_project_id}",
-        )
-
-    # Permission check (only creator or admin can convert)
-    if current_user.role != "admin" and task.created_by_user_id != current_user.id:
-        logger.warning(f"User {current_user.username} not authorized to convert task {task_id}")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only task creator or admin can convert")
-
-    # Handover 0076: Get active product (required for project creation per Handover 0050)
-    product_query = select(Product).where(Product.tenant_key == current_user.tenant_key, Product.is_active == True)
-    product_result = await db.execute(product_query)
-    active_product = product_result.scalar_one_or_none()
-
-    if not active_product:
-        logger.warning(f"No active product for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active product. Please activate a product before converting tasks to projects.",
-        )
-
-    # CRITICAL FIX: Check for existing active project and pause it
-    # This prevents UniqueViolationError on idx_project_single_active_per_product constraint
-    # Only ONE project can be active per product at a time (Handover 0050b)
-    existing_active_query = select(Project).where(
-        Project.product_id == active_product.id,
-        Project.status == "active"
-    )
-    existing_active_result = await db.execute(existing_active_query)
-    existing_active_project = existing_active_result.scalar_one_or_none()
-
-    if existing_active_project:
-        logger.info(
-            f"Deactivating existing active project {existing_active_project.id} "
-            f"before creating new project from task {task_id}"
-        )
-        existing_active_project.status = "inactive"
-        existing_active_project.updated_at = datetime.now(timezone.utc)
-
-    # Create project
-    project_name = conversion_request.project_name or task.title
-    project = Project(
-        name=project_name,
-        description=task.description or f"Project created from task: {task.title}",
-        mission="",  # Leave empty - orchestrator will generate mission during staging
-        product_id=active_product.id,
-        tenant_key=current_user.tenant_key,
-        status="inactive",  # Projects start inactive, user activates when ready
+    result = await task_service.convert_to_project(
+        task_id=task_id,
+        project_name=conversion_request.project_name,
+        strategy=conversion_request.strategy,
+        include_subtasks=conversion_request.include_subtasks,
+        user_id=str(current_user.id),
     )
 
-    db.add(project)
-    await db.flush()  # Get project ID without committing
+    if not result["success"]:
+        error_msg = result["error"]
+        if "not found" in error_msg.lower():
+            logger.warning(f"Task {task_id} not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        elif "not authorized" in error_msg.lower():
+            logger.warning(f"User {current_user.username} not authorized to convert task {task_id}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_msg)
+        else:
+            logger.warning(f"Failed to convert task {task_id}: {error_msg}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
-    # Mark task as completed (converted) - Handover 0076
-    task.converted_to_project_id = project.id
-    task.status = "completed"  # Mark as completed, not 'converted'
-
-    # Handle subtasks if requested
-    if conversion_request.include_subtasks:
-        stmt = select(Task).where(Task.parent_task_id == task_id)
-        result = await db.execute(stmt)
-        subtasks = result.scalars().all()
-
-        for subtask in subtasks:
-            subtask.project_id = project.id
-
-    # Delete the task after successful conversion
-    await db.delete(task)
-    logger.info(f"Deleted task {task_id} after successful conversion to project {project.id}")
-
-    await db.commit()
-    await db.refresh(project)
-
-    logger.info(f"Converted task {task_id} to project {project.id} (strategy: {conversion_request.strategy})")
+    data = result["data"]
+    logger.info(f"Converted task {task_id} to project {data['project_id']} (strategy: {conversion_request.strategy})")
 
     return ProjectConversionResponse(
-        project_id=project.id,
-        project_name=project.name,
-        original_task_id=task.id,
-        conversion_strategy=conversion_request.strategy,
-        created_at=project.created_at,
+        project_id=data["project_id"],
+        project_name=data["project_name"],
+        original_task_id=data["original_task_id"],
+        conversion_strategy=data["conversion_strategy"],
+        created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(timezone.utc),
     )
 
 
@@ -493,71 +428,47 @@ async def change_task_status(
     task_id: str,
     status_update: StatusUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    task_service: TaskService = Depends(get_task_service),
 ) -> TaskResponse:
     """
     Change only the status field of a task. Convenience endpoint for UI.
     """
-    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    task = result.scalar_one_or_none()
+    result = await task_service.change_status(task_id, status_update.status)
 
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    if not result["success"]:
+        error_msg = result["error"]
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
-    if not can_modify_task(task, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
+    # Fetch full task data to return complete TaskResponse
+    get_result = await task_service.get_task(task_id)
+    if not get_result["success"]:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Task updated but fetch failed")
 
-    task.status = status_update.status
-    if task.status == "in_progress" and not task.started_at:
-        task.started_at = datetime.now(timezone.utc)
-    elif task.status == "completed" and not task.completed_at:
-        task.completed_at = datetime.now(timezone.utc)
-
-    await db.commit()
-    await db.refresh(task)
-
-    return task_to_response(task)
+    return TaskResponse(**get_result["data"])
 
 
 @router.get("/summary/")
 async def get_task_summary(
     product_id: Optional[str] = Query(None, description="Filter by product ID"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    task_service: TaskService = Depends(get_task_service),
 ):
     """
     Return simple task summary metrics grouped by product for the current tenant.
     Structure is compatible with UI store expectations.
     """
-    base_query = select(Task).where(Task.tenant_key == current_user.tenant_key)
-    if product_id:
-        base_query = base_query.where(Task.product_id == product_id)
+    result = await task_service.get_summary(product_id=product_id)
 
-    result = await db.execute(base_query)
-    tasks = result.scalars().all()
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-    summary: dict[str, dict] = {}
-    for t in tasks:
-        pid = t.product_id or "no-product"
-        if pid not in summary:
-            summary[pid] = {
-                "total": 0,
-                "pending": 0,
-                "in_progress": 0,
-                "completed": 0,
-                "blocked": 0,
-                "cancelled": 0,
-                "by_priority": {"critical": 0, "high": 0, "medium": 0, "low": 0},
-            }
-
-        s = summary[pid]
-        s["total"] += 1
-        s.get(t.status or "pending", 0)
-        if t.status in s:
-            s[t.status] += 1
-        pr = t.priority or "medium"
-        if pr in s["by_priority"]:
-            s["by_priority"][pr] += 1
-
-    return {"success": True, "summary": summary, "total_products": len(summary), "total_tasks": len(tasks)}
+    data = result["data"]
+    return {
+        "success": True,
+        "summary": data["summary"],
+        "total_products": data["total_products"],
+        "total_tasks": data["total_tasks"]
+    }
