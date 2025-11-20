@@ -235,34 +235,7 @@
           <v-card-subtitle>Configure MCP tools and integrations</v-card-subtitle>
           <v-card-text>
             <!-- GiljoAI MCP Integration -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="40" rounded="0" class="mr-2">
-                    <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" alt="GiljoAI MCP" />
-                  </v-avatar>
-                  <h3 class="text-h6 mb-0">GiljoAI MCP Integration</h3>
-                </div>
-                <p class="text-body-2 text-medium-emphasis mb-4">
-                  Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI.
-                </p>
-
-                <!-- MCP Configuration Tool -->
-                <v-card variant="tonal" class="mb-0">
-                  <v-card-text class="pa-3">
-                    <div class="d-flex align-center justify-between">
-                      <div class="flex-grow-1">
-                        <div class="text-subtitle-2 font-weight-medium">MCP Configuration Tool</div>
-                        <div class="text-body-2 text-medium-emphasis">
-                          Creates MCP integration CLI command for your coding agent of choice
-                        </div>
-                      </div>
-                      <AiToolConfigWizard />
-                    </div>
-                  </v-card-text>
-                </v-card>
-              </v-card-text>
-            </v-card>
+            <McpIntegrationCard />
 
             <!-- Slash Command Setup -->
             <SlashCommandSetup />
@@ -271,209 +244,22 @@
             <ClaudeCodeExport />
 
             <!-- Serena MCP Integration -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="40" rounded="0" class="mr-2">
-                    <v-img src="/Serena.png" alt="Serena MCP" />
-                  </v-avatar>
-                  <div class="flex-grow-1">
-                    <div class="d-flex align-center">
-                      <h3 class="text-h6 mb-0 mr-2">Serena MCP</h3>
-                      <v-tooltip location="top" max-width="400">
-                        <template #activator="{ props }">
-                          <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
-                        </template>
-                        <div>
-                          <strong>Intelligent codebase understanding and navigation</strong>
-                          <p class="mt-2 mb-0">
-                            Serena provides deep semantic code analysis, intelligent symbol navigation, and contextual 
-                            understanding of your codebase. It enables agents to efficiently explore and understand 
-                            project structure without reading unnecessary code, significantly improving performance 
-                            and reducing token usage.
-                          </p>
-                          <p class="mt-2 mb-0 text-caption">
-                            <strong>Note:</strong> Serena must be installed separately in your AI coding tool.
-                          </p>
-                        </div>
-                      </v-tooltip>
-                    </div>
-                    <p class="text-caption text-medium-emphasis mb-0">Intelligent codebase understanding and navigation</p>
-                  </div>
-                </div>
-
-                <p class="text-body-2 text-medium-emphasis mb-3">
-                  Enabling adds Serena tool instructions to agent prompts. Disabling removes them from agent tool startup.
-                </p>
-
-                <div class="d-flex align-center mb-3">
-                  <v-btn variant="text" size="small" color="light-blue" href="https://github.com/oraios/serena" target="_blank">
-                    <v-icon start>mdi-github</v-icon>
-                    GitHub Repository
-                  </v-btn>
-                  <span class="text-caption text-medium-emphasis ml-3">
-                    Credit: Oraios
-                  </span>
-                </div>
-
-                <!-- Serena Controls -->
-                <v-card variant="tonal" class="mb-0">
-                  <v-card-text class="pa-3">
-                    <div class="d-flex align-center justify-between">
-                      <div class="flex-grow-1 d-flex align-center">
-                        <div class="text-subtitle-2 font-weight-medium mr-4">Enable Serena MCP</div>
-                        <v-switch
-                          v-model="serenaEnabled"
-                          @update:model-value="toggleSerena"
-                          :loading="toggling"
-                          hide-details
-                          density="compact"
-                          class="serena-toggle-inline"
-                        />
-                      </div>
-                      <v-btn
-                        color="primary"
-                        variant="flat"
-                        size="small"
-                        width="120"
-                        @click="openSerenaAdvanced"
-                        :disabled="toggling"
-                      >
-                        Advanced
-                      </v-btn>
-                    </div>
-                  </v-card-text>
-                </v-card>
-              </v-card-text>
-            </v-card>
+            <SerenaIntegrationCard
+              :enabled="serenaEnabled"
+              :config="serenaConfig"
+              :loading="toggling"
+              @update:enabled="toggleSerena"
+              @openAdvanced="openSerenaAdvanced"
+            />
 
             <!-- Git + 360 Memory Integration (Handover 013B) -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="40" rounded="0" class="mr-2" color="grey-darken-2">
-                    <v-icon size="28" color="white">mdi-github</v-icon>
-                  </v-avatar>
-                  <div class="flex-grow-1">
-                    <div class="d-flex align-center">
-                      <h3 class="text-h6 mb-0 mr-2">Git + 360 Memory</h3>
-                      <v-tooltip location="top" max-width="400">
-                        <template #activator="{ props }">
-                          <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
-                        </template>
-                        <div>
-                          <strong>Cumulative product knowledge tracking</strong>
-                          <p class="mt-2 mb-0">
-                            When enabled, GiljoAI captures git commit history at project closeout
-                            and stores it in 360 Memory. This provides orchestrators with cumulative
-                            context across all projects, including what was built, decisions made,
-                            and implementation patterns used.
-                          </p>
-                          <p class="mt-2 mb-0 text-caption">
-                            <strong>Note:</strong> Git must be configured on your system with access
-                            to your repositories.
-                          </p>
-                        </div>
-                      </v-tooltip>
-                    </div>
-                    <p class="text-caption text-medium-emphasis mb-0">Track git commits in 360 Memory for orchestrator context</p>
-                  </div>
-                </div>
-
-                <p class="text-body-2 text-medium-emphasis mb-3">
-                  Enable to automatically include git commit history in project summaries. Commits are stored in product memory for future orchestrator reference.
-                </p>
-
-                <div class="d-flex align-center mb-3">
-                  <v-btn
-                    variant="text"
-                    size="small"
-                    color="light-blue"
-                    href="https://docs.github.com/en/get-started/quickstart/set-up-git"
-                    target="_blank"
-                  >
-                    <v-icon start>mdi-book-open-variant</v-icon>
-                    GitHub Setup Guide
-                  </v-btn>
-                </div>
-
-                <!-- Git Integration Controls -->
-                <v-card variant="tonal" class="mb-0">
-                  <v-card-text class="pa-3">
-                    <div class="d-flex align-center justify-between mb-3">
-                      <div class="flex-grow-1 d-flex align-center">
-                        <div class="text-subtitle-2 font-weight-medium mr-4">Enable Git Integration</div>
-                        <v-switch
-                          v-model="gitIntegration.enabled"
-                          @update:model-value="onGitToggle"
-                          :loading="savingGitIntegration"
-                          hide-details
-                          density="compact"
-                          class="git-toggle-inline"
-                        />
-                      </div>
-                      <v-btn
-                        color="primary"
-                        variant="flat"
-                        size="small"
-                        width="120"
-                        @click="saveGitIntegration"
-                        :disabled="savingGitIntegration"
-                        :loading="savingGitIntegration"
-                      >
-                        Save
-                      </v-btn>
-                    </div>
-
-                    <!-- Info Alert (shown when enabled) -->
-                    <v-alert
-                      v-if="gitIntegration.enabled"
-                      type="info"
-                      variant="tonal"
-                      density="compact"
-                      class="mb-3"
-                    >
-                      <div class="text-body-2">
-                        <strong>Requirement:</strong> Git must be configured with access to your repositories
-                        on your system (Windows/Linux/macOS). GiljoAI uses your local git
-                        credentials - no server-side authentication needed.
-                      </div>
-                    </v-alert>
-
-                    <!-- Advanced Settings (collapsible) -->
-                    <v-expansion-panels v-if="gitIntegration.enabled" variant="accordion" class="mt-0">
-                      <v-expansion-panel>
-                        <v-expansion-panel-title>
-                          <v-icon start size="small">mdi-cog</v-icon>
-                          Advanced Settings
-                        </v-expansion-panel-title>
-                        <v-expansion-panel-text>
-                          <v-text-field
-                            v-model.number="gitIntegration.commit_limit"
-                            label="Commit Limit"
-                            type="number"
-                            min="1"
-                            max="100"
-                            hint="Number of commits to include in orchestrator prompts"
-                            persistent-hint
-                            density="compact"
-                            class="mb-3"
-                          />
-                          <v-text-field
-                            v-model="gitIntegration.default_branch"
-                            label="Default Branch"
-                            placeholder="e.g., main, master, develop"
-                            hint="Leave empty for repository default"
-                            persistent-hint
-                            density="compact"
-                          />
-                        </v-expansion-panel-text>
-                      </v-expansion-panel>
-                    </v-expansion-panels>
-                  </v-card-text>
-                </v-card>
-              </v-card-text>
-            </v-card>
+            <GitIntegrationCard
+              :enabled="gitIntegration.enabled"
+              :config="gitIntegration"
+              :loading="savingGitIntegration"
+              @update:enabled="onGitToggle"
+              @save="handleGitSave"
+            />
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -497,11 +283,13 @@ import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
-import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
+import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
+import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
+import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
 
@@ -740,6 +528,7 @@ async function loadGitIntegration() {
 
 function onGitToggle(enabled) {
   console.log('[USER SETTINGS] Git integration toggled:', enabled)
+  gitIntegration.value.enabled = enabled
   // If disabled, reset to defaults
   if (!enabled) {
     gitIntegration.value.commit_limit = 20
@@ -747,7 +536,7 @@ function onGitToggle(enabled) {
   }
 }
 
-async function saveGitIntegration() {
+async function handleGitSave(payload) {
   if (!settingsStore.productInfo?.id) {
     console.error('[USER SETTINGS] No active product - cannot save git integration')
     return
@@ -758,9 +547,9 @@ async function saveGitIntegration() {
     const response = await api.products.updateGitIntegration(
       settingsStore.productInfo.id,
       {
-        enabled: gitIntegration.value.enabled,
-        commit_limit: gitIntegration.value.commit_limit || 20,
-        default_branch: gitIntegration.value.default_branch || 'main'
+        enabled: payload.enabled,
+        commit_limit: payload.commit_limit || 20,
+        default_branch: payload.default_branch || 'main'
       }
     )
 
@@ -773,13 +562,8 @@ async function saveGitIntegration() {
 
     console.log('[USER SETTINGS] Git integration saved successfully')
 
-    // Show success notification (you can add toast notification here if available)
-    console.log('[USER SETTINGS] ✓ Git integration settings saved')
-
   } catch (error) {
     console.error('[USER SETTINGS] Failed to save git integration:', error)
-    // Show error notification
-    console.error('[USER SETTINGS] ✗ Failed to save git integration:', error.message)
   } finally {
     savingGitIntegration.value = false
   }
@@ -792,15 +576,6 @@ async function saveGitIntegration() {
   --v-theme-overlay-multiplier: 1; /* ensure visibility */
   border-color: var(--v-theme-on-surface) !important;
   opacity: 0.3 !important;
-}
-/* Make Serena toggle inline */
-.serena-toggle-inline {
-  flex: 0 0 auto;
-}
-
-/* Make Git toggle inline (Handover 013B) */
-.git-toggle-inline {
-  flex: 0 0 auto;
 }
 
 /* Disable sliding transitions, use simple fade instead */
