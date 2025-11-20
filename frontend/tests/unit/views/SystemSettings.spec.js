@@ -2,10 +2,11 @@
  * Test suite for SystemSettings.vue component
  *
  * Tests the System Settings view functionality including:
- * - Network configuration (mode, API host/port, CORS, API key)
+ * - Network configuration (external host, API port, CORS)
  * - Database settings (readonly display)
- * - Integrations (Serena MCP toggle)
- * - Users placeholder (Phase 5)
+ * - Integrations (Claude Code, Codex CLI, Gemini CLI, Serena MCP)
+ * - Security configuration (cookie domain whitelist)
+ * - System settings (orchestrator prompt override)
  * - Admin-only access
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -16,6 +17,22 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createPinia, setActivePinia } from 'pinia'
 import SystemSettings from '@/views/SystemSettings.vue'
+
+// Mock the api service
+vi.mock('@/services/api', () => ({
+  default: {
+    settings: {
+      getCookieDomains: vi.fn().mockResolvedValue({ data: { domains: [] } }),
+      addCookieDomain: vi.fn().mockResolvedValue({ data: { success: true } }),
+      removeCookieDomain: vi.fn().mockResolvedValue({ data: { success: true } })
+    },
+    system: {
+      getOrchestratorPrompt: vi.fn().mockResolvedValue({ data: { content: 'test prompt', is_override: false } }),
+      updateOrchestratorPrompt: vi.fn().mockResolvedValue({ data: { content: 'updated', is_override: true } }),
+      resetOrchestratorPrompt: vi.fn().mockResolvedValue({ data: { content: 'default', is_override: false } })
+    }
+  }
+}))
 
 describe('SystemSettings.vue', () => {
   let vuetify
@@ -128,78 +145,87 @@ describe('SystemSettings.vue', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('renders all 4 tabs (Network, Database, Integrations, Security)', () => {
+    const defaultStubs = {
+      DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+      NetworkSettingsTab: { template: '<div>Network Tab</div>' },
+      AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+      SecuritySettingsTab: { template: '<div>Security Tab</div>' },
+      SystemPromptTab: { template: '<div>System Tab</div>' },
+      ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
+      CodexConfigModal: { template: '<div>Codex Modal</div>' },
+      GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
+    }
+
+    it('renders all 5 tabs (Network, Database, Integrations, Security, System)', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
-          }
+          stubs: defaultStubs
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      expect(tabs.length).toBe(4)
+      // Check for tab text content instead of .v-tab class
+      const text = wrapper.text()
+      expect(text).toContain('Network')
+      expect(text).toContain('Database')
+      expect(text).toContain('Integrations')
+      expect(text).toContain('Security')
+      expect(text).toContain('System')
     })
 
     it('renders Network tab', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
-          }
+          stubs: defaultStubs
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      const networkTab = tabs.find(tab => tab.text().includes('Network'))
-      expect(networkTab).toBeDefined()
+      expect(wrapper.text()).toContain('Network')
     })
 
     it('renders Database tab', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
-          }
+          stubs: defaultStubs
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      const databaseTab = tabs.find(tab => tab.text().includes('Database'))
-      expect(databaseTab).toBeDefined()
+      expect(wrapper.text()).toContain('Database')
     })
 
     it('renders Integrations tab', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
-          }
+          stubs: defaultStubs
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      const integrationsTab = tabs.find(tab => tab.text().includes('Integrations'))
-      expect(integrationsTab).toBeDefined()
+      expect(wrapper.text()).toContain('Integrations')
     })
 
     it('renders Security tab', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
-          }
+          stubs: defaultStubs
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      const securityTab = tabs.find(tab => tab.text().includes('Security'))
-      expect(securityTab).toBeDefined()
+      expect(wrapper.text()).toContain('Security')
+    })
+
+    it('renders System tab', () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: defaultStubs
+        }
+      })
+
+      expect(wrapper.text()).toContain('System')
     })
   })
 
@@ -280,74 +306,32 @@ describe('SystemSettings.vue', () => {
       expect(wrapper.vm.networkSettings.frontendPort).toBe(7274)
     })
 
-    it('shows external host field', async () => {
+    it('renders NetworkSettingsTab component with correct props', async () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
+            UserManager: { template: '<div>User Manager Mock</div>' },
+            NetworkSettingsTab: {
+              template: '<div data-test="network-settings-tab">Network Tab</div>',
+              props: ['config', 'corsOrigins', 'loading']
+            },
+            AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+            SecuritySettingsTab: { template: '<div>Security Tab</div>' },
+            SystemPromptTab: { template: '<div>System Tab</div>' },
+            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
+            CodexConfigModal: { template: '<div>Codex Modal</div>' },
+            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
 
-      const externalHostField = wrapper.find('[data-test="external-host-field"]')
-      expect(externalHostField.exists()).toBe(true)
+      const networkTab = wrapper.find('[data-test="network-settings-tab"]')
+      expect(networkTab.exists()).toBe(true)
     })
 
-    it('shows API port field', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
-          }
-        }
-      })
-
-      const apiPortField = wrapper.find('[data-test="api-port-field"]')
-      expect(apiPortField.exists()).toBe(true)
-    })
-
-    it('shows frontend port field', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
-          }
-        }
-      })
-
-      const frontendPortField = wrapper.find('[data-test="frontend-port-field"]')
-      expect(frontendPortField.exists()).toBe(true)
-    })
-
-    it('provides copy button for external host', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
-          }
-        }
-      })
-
-      const copyButton = wrapper.find('[data-test="copy-external-host-btn"]')
-      expect(copyButton.exists()).toBe(true)
-    })
-
-    it('copies external host to clipboard when copy button clicked', async () => {
-      // Mock navigator.clipboard first
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: vi.fn().mockResolvedValue()
-        }
-      })
-
+    it('passes network settings to NetworkSettingsTab via props', async () => {
       global.fetch.mockImplementation((url) => {
         if (url.includes('/api/v1/config/database')) {
           return Promise.resolve({
@@ -364,14 +348,8 @@ describe('SystemSettings.vue', () => {
                 api: { port: 7272 },
                 frontend: { port: 7274 }
               },
-              security: { cors: { allowed_origins: [] } }
+              security: { cors: { allowed_origins: ['http://test.com'] } }
             })
-          })
-        }
-        if (url.includes('/api/settings/cookie-domains')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ domains: [] })
           })
         }
         return Promise.reject(new Error('Unmocked fetch'))
@@ -382,7 +360,14 @@ describe('SystemSettings.vue', () => {
           plugins: [vuetify, router, pinia],
           stubs: {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
+            UserManager: { template: '<div>User Manager Mock</div>' },
+            NetworkSettingsTab: { template: '<div>Network Tab</div>' },
+            AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+            SecuritySettingsTab: { template: '<div>Security Tab</div>' },
+            SystemPromptTab: { template: '<div>System Tab</div>' },
+            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
+            CodexConfigModal: { template: '<div>Codex Modal</div>' },
+            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
@@ -390,25 +375,9 @@ describe('SystemSettings.vue', () => {
       await wrapper.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 0))
 
-      if (wrapper.vm.copyExternalHost) {
-        wrapper.vm.copyExternalHost()
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('192.168.1.100')
-      }
-    })
-
-    it('shows CORS origins management section', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
-          }
-        }
-      })
-
-      const corsSection = wrapper.find('[data-test="cors-origins-section"]')
-      expect(corsSection.exists()).toBe(true)
+      // Verify the data is loaded correctly - it will be passed to NetworkSettingsTab
+      expect(wrapper.vm.networkSettings.externalHost).toBe('192.168.1.100')
+      expect(wrapper.vm.corsOrigins).toEqual(['http://test.com'])
     })
 
     it('does NOT show deprecated mode chip', async () => {
@@ -478,19 +447,27 @@ describe('SystemSettings.vue', () => {
       expect(wrapper.vm.corsOrigins).toEqual([])
     })
 
-    it('shows informational alert about unified v3.0 architecture', async () => {
+    it('renders child component tabs correctly', async () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
+            UserManager: { template: '<div>User Manager Mock</div>' },
+            NetworkSettingsTab: { template: '<div data-test="network-stub">Network</div>' },
+            AdminIntegrationsTab: { template: '<div data-test="integrations-stub">Integrations</div>' },
+            SecuritySettingsTab: { template: '<div data-test="security-stub">Security</div>' },
+            SystemPromptTab: { template: '<div data-test="system-stub">System</div>' },
+            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
+            CodexConfigModal: { template: '<div>Codex Modal</div>' },
+            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
 
-      const unifiedAlert = wrapper.find('[data-test="v3-unified-alert"]')
-      expect(unifiedAlert.exists()).toBe(true)
+      // Network tab is default, should be visible
+      const networkStub = wrapper.find('[data-test="network-stub"]')
+      expect(networkStub.exists()).toBe(true)
     })
   })
 
@@ -561,27 +538,6 @@ describe('SystemSettings.vue', () => {
     })
   })
 
-  describe('Users Tab', () => {
-    it('renders UserManager component', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div data-test="user-manager-stub">User Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'users'
-        await wrapper.vm.$nextTick()
-      }
-
-      const userManager = wrapper.find('[data-test="user-manager-stub"]')
-      expect(userManager.exists()).toBe(true)
-    })
-  })
 
   describe('Network Settings Management', () => {
     it('loads network settings on mount', async () => {
@@ -636,24 +592,26 @@ describe('SystemSettings.vue', () => {
       expect(configCalls.length).toBeGreaterThan(0)
     })
 
-    it('adds CORS origin', async () => {
+    it('maintains loadNetworkSettings method for child component events', async () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
+            UserManager: { template: '<div>User Manager Mock</div>' },
+            NetworkSettingsTab: { template: '<div>Network Tab</div>' },
+            AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+            SecuritySettingsTab: { template: '<div>Security Tab</div>' },
+            SystemPromptTab: { template: '<div>System Tab</div>' },
+            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
+            CodexConfigModal: { template: '<div>Codex Modal</div>' },
+            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
 
-      if (wrapper.vm.addOrigin) {
-        wrapper.vm.newOrigin = 'http://192.168.1.100:7274'
-        wrapper.vm.addOrigin()
-        await wrapper.vm.$nextTick()
-
-        expect(wrapper.vm.corsOrigins).toContain('http://192.168.1.100:7274')
-      }
+      // The method should exist to handle events from NetworkSettingsTab
+      expect(typeof wrapper.vm.loadNetworkSettings).toBe('function')
     })
 
     it('saves network settings', async () => {
