@@ -144,3 +144,100 @@ None - this is a frontend-only refactoring task with no backend changes required
 - `handovers/013A_code_review_architecture_status.md` - November 16 architecture review recommending componentization
 - Section 2.4 (Products) explicitly notes: "ProductsView.vue is very large. Over time, break into smaller components (e.g., ProductForm.vue, ProductVisionPanel.vue, ProductDeleteDialog.vue, etc.)"
 - `frontend/src/components/products/ActivationWarningDialog.vue` - Example of already-extracted dialog component
+
+---
+
+## Implementation Summary
+
+**Date Completed**: 2025-11-19
+**Status**: ✅ Completed
+**Agent**: Claude Code (TDD workflow)
+
+### What Was Built
+
+**5 Dialog Components Extracted** (`frontend/src/components/products/`):
+- `ProductForm.vue` (34,504 bytes) - Multi-tab create/edit wizard with auto-save
+- `ProductVisionPanel.vue` (7,751 bytes) - Vision document upload and chunk display
+- `ProductDeleteDialog.vue` (5,269 bytes) - Soft delete with cascade impact
+- `ProductDetailsDialog.vue` (9,540 bytes) - Read-only product information view
+- `DeletedProductsRecoveryDialog.vue` (4,839 bytes) - Trash recovery interface
+
+### Results
+
+| Metric | Before | After | Achievement |
+|--------|--------|-------|-------------|
+| **ProductsView.vue** | 2,582 lines | **1,376 lines** | 47% reduction ✅ |
+| **Target** | <1,000 lines | 1,376 lines | Close to target |
+| **Components Created** | - | **5 components** | All functional ✅ |
+
+**Note**: Target was <1,000 lines. Final is 1,376 lines - significant improvement but still above target. Remaining bulk is product grid/card display logic.
+
+### Key Files Modified
+
+- `frontend/src/views/ProductsView.vue` - Refactored to use extracted dialog components
+- All 5 dialog components created with proper props/events interfaces
+- Test files created for each component
+
+### Git Commits (Related to 0320)
+
+Core componentization commits:
+- `7de10c4` - refactor(frontend): Extract ProductsView.vue dialogs into components
+- `282c263` - feat: Implement ProductForm.vue component with TDD
+- `e88aa64` - feat: Implement ProductVisionPanel component
+- `29b1906` - feat: Implement ProductDetailsDialog component with TDD
+- `b25a246` - feat: Implement ProductDeleteDialog component with TDD
+- `f9a0d9d` - feat: Implement DeletedProductsRecoveryDialog component
+
+Bug fixes discovered during implementation:
+- `6caa79f` - fix(frontend): Add missing vision document handlers in ProductsView
+- `6e1286b` - fix(backend): Flush deactivation before activation for unique constraint
+- `8da3de0` - fix(backend): Reorder product routers to fix /refresh-active 404
+- `d855178` - fix(backend): Fix product activation 500 errors with eager loading
+- `f3e1d56` - refactor(frontend): Remove manual fetchActiveProduct workaround
+
+### Issues Discovered and Resolved
+
+**During implementation, 3 backend bugs were discovered and fixed**:
+
+1. **UniqueViolationError on product activation**
+   - **Cause**: Database constraint violation when activating product while another was active
+   - **Fix**: Added `await session.flush()` after deactivating products in `ProductService.activate_product()`
+   - **Commit**: `6e1286b`
+
+2. **404 error on `/api/v1/products/refresh-active`**
+   - **Cause**: Router ordering - lifecycle routes registered after catch-all CRUD routes
+   - **Fix**: Reordered routers in `api/endpoints/products/__init__.py` (lifecycle before CRUD)
+   - **Commit**: `8da3de0`
+
+3. **500 error on product activation (vision_path AttributeError)**
+   - **Cause**: `ProductService.get_active_product()` used `product.vision_path` instead of `product.primary_vision_path`
+   - **Fix**: Changed to use helper property `primary_vision_path` (from VisionDocument relationship)
+   - **Commit**: `d855178`
+
+### Testing
+
+- Test files created for each extracted component in `frontend/src/components/products/__tests__/`
+- TDD workflow followed (tests written first, then implementation)
+- All product CRUD operations verified working
+- Auto-save functionality preserved
+- Vision upload and chunk display functional
+- Cascade impact display working
+- Multi-tab navigation working
+
+### Installation Impact
+
+None - frontend-only refactor with backend bug fixes. No database schema changes, no new dependencies.
+
+### Future Improvements
+
+To reach the <1,000 line target, additional extraction candidates:
+- Product grid/card display logic could be extracted to `ProductGrid.vue`
+- Vision validation/upload logic could move to a composable
+- Duplicate config data structures could be extracted to constants file
+
+### Lessons Learned
+
+- Frontend componentization revealed hidden backend bugs (activation flow issues)
+- Router ordering matters - lifecycle routes must come before generic CRUD routes
+- ORM lazy-loading can cause AttributeErrors - use helper properties for related data
+- TDD approach caught integration issues early in development
