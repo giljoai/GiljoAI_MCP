@@ -1,11 +1,76 @@
 # Service Layer Architecture
 
 **Version**: v3.1+ (Post-Remediation)
-**Last Updated**: 2025-11-15
+**Last Updated**: 2025-11-20
 
 ## Overview
 
 GiljoAI MCP uses a service layer architecture to separate business logic from API endpoints. All services follow consistent patterns for database access, multi-tenant isolation, validation, and real-time updates.
+
+**Compliance Status**: 95% service layer compliance (42/44 violations eliminated as of Handover 0322)
+
+---
+
+## Services Inventory
+
+### UserService
+**Location**: `src/giljo_mcp/services/user_service.py`
+**Purpose**: User management, authentication, role management, and configuration management
+**Methods**: 16 total
+- CRUD: `list_users`, `get_user`, `create_user`, `update_user`, `delete_user`
+- Authentication: `change_password`, `reset_password`, `verify_password`
+- Validation: `check_username_exists`, `check_email_exists`
+- Role Management: `change_role`
+- Configuration: `get_field_priority_config`, `update_field_priority_config`, `reset_field_priority_config`, `get_depth_config`, `update_depth_config`
+
+**Key Features**:
+- Soft delete pattern (is_active flag)
+- Bcrypt password hashing
+- Multi-tenant isolation on all queries
+- WebSocket event emission for user changes
+- Context Management v2.0 config handling
+
+### AuthService
+**Location**: `src/giljo_mcp/services/auth_service.py`
+**Purpose**: Authentication flows, API key management, user registration, and setup
+**Methods**: 8 total
+- Authentication: `authenticate_user`, `update_last_login`, `check_setup_state`
+- API Keys: `list_api_keys`, `create_api_key`, `revoke_api_key`
+- Registration: `register_user`, `create_first_admin`
+
+**Key Features**:
+- JWT token generation
+- API key generation with bcrypt hashing
+- First admin creation flow with race condition protection
+- Setup state management
+- Cross-tenant operations (login can span tenants)
+
+### TaskService
+**Location**: `src/giljo_mcp/services/task_service.py`
+**Purpose**: Task lifecycle management with complex operations
+**Methods**: Enhanced with 5 new methods + 2 helpers
+- CRUD: `get_task`, `list_tasks`, `create_task`, `update_task`, `delete_task`
+- Business Logic: `convert_to_project`, `change_status`, `get_summary`
+- Permission Helpers: `can_modify_task`, `can_delete_task`
+
+**Key Features**:
+- Task-to-project conversion with subtask handling
+- Automatic timestamp management on status changes
+- Permission-based access control
+- Aggregated statistics and reporting
+
+### MessageService
+**Location**: `src/giljo_mcp/services/message_service.py`
+**Purpose**: Message handling and communication queue management
+**Methods**: Message CRUD and queue operations
+- Message Management: `create_message`, `get_messages`, `mark_as_read`
+- Queue Operations: `enqueue_message`, `dequeue_message`, `get_queue_status`
+
+**Key Features**:
+- Agent-to-agent message routing
+- Message prioritization and queuing
+- Read/unread tracking
+- WebSocket notifications for new messages
 
 ---
 
@@ -230,6 +295,113 @@ await manager.complete_job(
 pending → acknowledged → active → completed
                          ↓         ↓
                       failed   cancelled
+```
+
+---
+
+## Service Migration Patterns
+
+### Migrating Endpoints to Services
+
+When migrating an endpoint from direct database access to service layer:
+
+#### Before (Non-Compliant)
+```python
+@router.get("/", response_model=list[UserResponse])
+async def list_users(
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session)
+):
+    stmt = select(User).where(User.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    users = result.scalars().all()
+    return [user_to_response(user) for user in users]
+```
+
+#### After (Compliant)
+```python
+@router.get("/", response_model=list[UserResponse])
+async def list_users(
+    current_user: User = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service)
+):
+    result = await user_service.list_users()
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return [user_to_response(user) for user in result["data"]]
+```
+
+### Key Migration Changes
+1. **Dependency Change**: Replace `AsyncSession` with service dependency
+2. **Service Call**: Use service method instead of direct query
+3. **Error Handling**: Check `result["success"]` and raise HTTPException
+4. **Response Conversion**: Convert service dict response to Pydantic model
+
+### Dependency Injection Pattern
+
+All services use dependency injection for tenant isolation:
+
+```python
+# api/endpoints/dependencies.py
+
+def get_user_service(
+    current_user: User = Depends(get_current_active_user),
+    db_manager: DatabaseManager = Depends(get_db_manager)
+) -> UserService:
+    """Get UserService with tenant context"""
+    return UserService(db_manager, tenant_key=current_user.tenant_key)
+
+def get_auth_service(
+    db_manager: DatabaseManager = Depends(get_db_manager)
+) -> AuthService:
+    """Get AuthService (no tenant context - cross-tenant operations)"""
+    return AuthService(db_manager)
+
+def get_task_service(
+    current_user: User = Depends(get_current_active_user),
+    tenant_manager: TenantManager = Depends(get_tenant_manager)
+) -> TaskService:
+    """Get TaskService with tenant context"""
+    tenant_manager.set_current_tenant(current_user.tenant_key)
+    return TaskService(tenant_manager=tenant_manager)
+```
+
+### Service Response Pattern
+
+All services return `dict[str, Any]` with standardized structure:
+
+```python
+# Success response
+{
+    "success": True,
+    "data": {...}  # Entity data or list
+}
+
+# Error response
+{
+    "success": False,
+    "error": "Error message string"
+}
+```
+
+### Error Handling in Endpoints
+
+Standard error handling pattern:
+
+```python
+result = await service.method()
+
+if not result["success"]:
+    # Determine appropriate HTTP status code
+    error_msg = result["error"].lower()
+    if "not found" in error_msg:
+        raise HTTPException(status_code=404, detail=result["error"])
+    elif "permission" in error_msg or "unauthorized" in error_msg:
+        raise HTTPException(status_code=403, detail=result["error"])
+    else:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+return result["data"]
 ```
 
 ---
@@ -496,4 +668,46 @@ async def activate_project(self, project_id: int):
 
 ---
 
-**Last Updated**: 2025-11-15 (Post-Remediation v3.1.1)
+## Service Layer Compliance Status
+
+### Compliance Metrics (as of Handover 0322)
+
+| Endpoint File | Violations Before | Violations After | Compliance Rate |
+|---------------|-------------------|------------------|-----------------|
+| users.py      | 18                | 0                | 100%            |
+| auth.py       | 10                | 0                | 100%            |
+| messages.py   | 7                 | 0                | 100%            |
+| tasks.py      | 9                 | 2*               | 78%             |
+| **Total**     | **44**            | **2**            | **95%**         |
+
+*Remaining violations in tasks.py (lines 154, 294) are in complex list/update operations that require further refactoring.
+
+### Migration History
+
+**Handover 0322** (November 2025):
+- Created UserService (16 methods)
+- Created AuthService (8 methods)
+- Enhanced TaskService (5 new methods + 2 helpers)
+- Migrated 21 endpoints across 4 files
+- Eliminated 42 out of 44 direct database access violations
+
+### Best Practices Established
+
+1. **Service-First Architecture**: All new business logic goes in services, not endpoints
+2. **Dependency Injection**: Services injected via FastAPI dependencies
+3. **Tenant Isolation**: Multi-tenant filtering enforced at service layer
+4. **Standardized Responses**: All services return `dict[str, Any]` with success/data/error
+5. **Comprehensive Testing**: Service unit tests + API integration tests
+6. **WebSocket Integration**: Services emit real-time events for UI updates
+
+### Future Work
+
+**Remaining Tasks**:
+1. Migrate remaining 2 violations in tasks.py (list_tasks, update_task)
+2. Fix service unit test transaction isolation issues
+3. Achieve >80% test coverage for all services
+4. Consider creating SettingsService for system configuration operations
+
+---
+
+**Last Updated**: 2025-11-20 (Post-Remediation v3.1.1 + Handover 0322)
