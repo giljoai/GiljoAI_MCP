@@ -13,6 +13,19 @@ Handovers enable seamless task delegation between development agents/sessions by
 
 ## Active Handovers
 
+### Recently Completed (Nov 20, 2025)
+
+**0322: Service Layer Compliance** ✅ COMPLETE (95% Compliance)
+- **Achievement**: Eliminated 42/44 direct database access violations
+- **Services Created**: 2 (UserService, AuthService) + 1 enhanced (TaskService)
+- **Endpoints Migrated**: 21 endpoints across 4 files
+- **API Integration Pass Rate**: 88/107 tests (82%)
+- **Production Status**: Fully operational, no blocking issues
+- **Summary**: `0322_EXECUTIVE_SUMMARY.md`
+- **Completion Report**: `0322_service_layer_compliance_COMPLETE.md`
+- **Original Spec**: `archive/0322_service_layer_compliance_ORIGINAL.md`
+- **Next**: Handover 0324 for remaining 5% compliance and test fixes
+
 ### Agentic Vision Implementation Projects (NEW - Based on Handover 0012)
 
 **In Progress:**
@@ -42,6 +55,7 @@ Handovers enable seamless task delegation between development agents/sessions by
 - None
 
 **Recently Completed:**
+- `0322 Service Layer Compliance` - **COMPLETE 2025-11-20** (95% compliance: Eliminated 42/44 direct database access violations. Created 2 new services (UserService, AuthService), enhanced TaskService, migrated 21 endpoints. API integration tests: 88/107 passing (82%). Production-ready with zero breaking changes. See: `0322_EXECUTIVE_SUMMARY.md` and `0322_service_layer_compliance_COMPLETE.md`)
 - `0107 Agent Monitoring & Graceful Cancellation` - **COMPLETE 2025-11-06** (Production-grade passive monitoring and graceful cancellation for external agents. Contextual check-ins, 10-min stale detection, two-tier cancellation (graceful→force), real-time WebSocket updates, Vue UI with health indicators, 25 comprehensive tests, database migration applied & verified, full documentation (user + developer guides). Reference docs: `completed/reference/0107/`. See: `completed/0107_agent_monitoring_and_graceful_cancellation-C.md`)
 - `0106 Agent Template Hardcoded Rules & Protection` - **COMPLETE 2025-11-06** (CRITICAL security fix: Protected MCP coordination instructions from user deletion. Dual-field architecture (system_instructions + user_instructions), runtime validation with Redis caching, health monitoring service, 168+ passing tests. Eliminates vulnerability where users could break entire orchestration system. See: `completed/0106_agent_template_hardcoded_rules-C.md`)
 - `0096 Download Token System` - **COMPLETE 2025-11-04** (Introduced secure one‑time download token architecture enabling client‑side ZIP downloads; multi‑tenant isolation, expiry enforcement, and background cleanup task wired. Documentation finalized and archived. See: `completed/0096_download_token_system-C.md`)
