@@ -33,142 +33,13 @@
     <v-window v-model="activeTab">
       <!-- Network Settings -->
       <v-window-item value="network">
-        <v-card>
-          <v-card-title>Network Configuration</v-card-title>
-          <v-card-subtitle>Server network settings (configured during installation)</v-card-subtitle>
-
-          <v-card-text>
-            <!-- Unified Architecture Info -->
-            <v-alert type="info" variant="tonal" class="mb-4" data-test="v3-unified-alert" :icon="false">
-              <div class="d-flex align-center">
-                <v-icon start>mdi-information</v-icon>
-                <div>
-                  <strong>Unified Architecture:</strong> Server binds to all interfaces with authentication always enabled.
-                  OS firewall controls network access (defense in depth).
-                </div>
-              </div>
-            </v-alert>
-
-            <!-- Server Configuration -->
-            <h3 class="text-h6 mb-3">Server Configuration from Installation</h3>
-
-            <v-text-field
-              :model-value="networkSettings.externalHost"
-              label="External Host"
-              variant="outlined"
-              readonly
-              hint="Host/IP configured during installation for external access"
-              persistent-hint
-              class="mb-4"
-              data-test="external-host-field"
-            />
-
-            <v-text-field
-              :model-value="networkSettings.apiPort"
-              label="API Port"
-              variant="outlined"
-              readonly
-              hint="Default: 7272"
-              persistent-hint
-              class="mb-4"
-              data-test="api-port-field"
-            />
-
-            <v-text-field
-              :model-value="networkSettings.frontendPort"
-              label="Frontend Port"
-              variant="outlined"
-              readonly
-              hint="Default: 7274"
-              persistent-hint
-              class="mb-4"
-              data-test="frontend-port-field"
-            />
-
-            <!-- CORS Origins Management -->
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-3 text-medium-emphasis">CORS Allowed Origins</h3>
-
-            <v-alert type="info" variant="tonal" class="mb-4">
-              <strong>Foundation implementation exists.</strong> Reserved for future use when frontend and backend are hosted on separate domains (e.g., SaaS deployments).
-              Not needed for current single-server installations where frontend and backend run together.
-            </v-alert>
-
-            <div data-test="cors-origins-section" class="disabled-section">
-              <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4" disabled>
-                <v-list-item v-for="(origin, index) in corsOrigins" :key="index" disabled>
-                  <v-list-item-title class="text-medium-emphasis">{{ origin }}</v-list-item-title>
-
-                  <template v-slot:append>
-                    <v-btn
-                      icon="mdi-content-copy"
-                      size="small"
-                      variant="text"
-                      @click="copyOrigin(origin)"
-                      title="Copy Origin"
-                      disabled
-                    />
-                    <v-btn
-                      v-if="!isDefaultOrigin(origin)"
-                      icon="mdi-delete"
-                      size="small"
-                      variant="text"
-                      color="error"
-                      @click="removeOrigin(index)"
-                      title="Remove Origin"
-                      disabled
-                    />
-                  </template>
-                </v-list-item>
-              </v-list>
-
-              <v-alert v-else type="info" variant="outlined" class="mb-4">
-                <span class="text-medium-emphasis">No CORS origins configured. Foundation ready for future SaaS deployments.</span>
-              </v-alert>
-
-              <v-text-field
-                v-model="newOrigin"
-                label="Add New Origin"
-                variant="outlined"
-                placeholder="http://192.168.1.100:7274"
-                hint="Disabled for single-server installations"
-                persistent-hint
-                :append-icon="'mdi-plus'"
-                @click:append="addOrigin"
-                @keyup.enter="addOrigin"
-                disabled
-              />
-            </div>
-
-            <!-- Network Configuration Info -->
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-3">Configuration Notes</h3>
-
-            <v-alert type="info" variant="tonal" class="mb-0">
-              <div class="mb-2">
-                <strong>Network settings are configured during installation.</strong>
-              </div>
-              <div class="text-body-2">
-                To modify the external host or ports, update <code>config.yaml</code> and restart the server.
-                Authentication is always enabled for all connections (local and remote).
-                Use OS firewall to control network access.
-              </div>
-            </v-alert>
-          </v-card-text>
-
-          <v-card-actions>
-            <v-spacer />
-            <v-btn variant="text" @click="loadNetworkSettings">
-              <v-icon start>mdi-refresh</v-icon>
-              Reload
-            </v-btn>
-            <v-btn color="primary" disabled>
-              Save Changes
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+        <NetworkSettingsTab
+          :config="networkSettings"
+          :cors-origins="corsOrigins"
+          :loading="loading.network"
+          @refresh="loadNetworkSettings"
+          @save="saveNetworkSettings"
+        />
       </v-window-item>
 
       <!-- Database Settings -->
@@ -195,634 +66,58 @@
 
       <!-- Integrations -->
       <v-window-item value="integrations">
-        <v-card>
-          <v-card-title>Integrations</v-card-title>
-          <v-card-subtitle>Agent coding tools and native integrations (Admin overview)</v-card-subtitle>
-
-          <v-card-text>
-            <!-- AI Tool Configuration Redirect Alert (single info icon, tonal like cookie-domain alert) -->
-            <v-alert type="info" variant="tonal" class="mb-6" :icon="false">
-              <v-icon start>mdi-information</v-icon>
-              <strong>Configure AI Coding Tools</strong>
-              <div class="mt-2">
-                Users configure their AI coding tools (Claude Code, Codex CLI, Gemini CLI) in
-                <router-link to="/settings" class="text-primary font-weight-bold">
-                  My Settings → MCP Configuration
-                </router-link>.
-                This section provides an admin overview of available integrations.
-              </div>
-            </v-alert>
-
-            <!-- Agent Coding Tools Section -->
-            <h2 class="text-h5 mb-4">Agent Coding Tools</h2>
-            
-            <!-- Claude Code CLI -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="48" class="mr-4">
-                    <v-img src="/claude_pix.svg" alt="Claude Code CLI" />
-                  </v-avatar>
-                  <div>
-                    <h3 class="text-h6">Claude Code CLI</h3>
-                    <p class="text-caption text-medium-emphasis mb-0">AI-powered development with MCP integration</p>
-                  </div>
-                </div>
-
-                <p class="text-body-2 mb-3">
-                  GiljoAI Agent Orchestration MCP Server integrates seamlessly with Claude Code CLI, leveraging MCP
-                  configuration via a single command‑line setup in each user’s
-                  <router-link to="/settings" class="text-primary font-weight-bold">My Settings → API and Integrations → MCP Configuration</router-link>.
-                </p>
-
-                <p class="text-body-2 mb-3">
-                  <strong>Sub-agent Architecture:</strong> Claude Code integration utilizes Claude Code native sub‑agent tools. This application
-                  will copy templated agents, or user‑customized agents, into the Claude Code agents folder (either on a per‑user or per‑project basis).
-                  The user can choose to also launch each agent in its own Claude Code terminal window. Agent integration can be found under
-                  <strong>My Settings → API and Integrations → Integrations</strong>, in the <strong>Claude Code Agent Export</strong> section.
-                </p>
-              </v-card-text>
-            </v-card>
-
-            <!-- Codex CLI -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="48" class="mr-4">
-                    <CodexMarkIcon
-                      class="codex-mark"
-                      :style="{ color: theme.global.current.value.dark ? '#ffffff' : '#000000', width: '53px', height: '53px' }"
-                    />
-                  </v-avatar>
-                  <div>
-                    <h3 class="text-h6">Codex CLI</h3>
-                    <p class="text-caption text-medium-emphasis mb-0">Advanced code generation and analysis</p>
-                  </div>
-                </div>
-
-                <p class="text-body-2 mb-3">
-                  Codex CLI integrates with our sub-agent architecture to provide powerful code generation and 
-                  analysis capabilities. Sub-agents coordinate through GiljoAI MCP for complex development workflows, 
-                  maintaining context and state across multiple coding sessions.
-                </p>
-                <p class="text-body-2 mb-3">
-                  <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user runs an
-                  orchestrator session in one Codex CLI terminal and starts each agent in its own terminal using our
-                  prepared activation prompts. This allows each agent to work autonomously and stay focused while
-                  coordinating through MCP messages.
-                </p>
-
-                <!-- Configuration instructions removed; see user help files in the future -->
-              </v-card-text>
-            </v-card>
-
-            <!-- Gemini CLI -->
-            <v-card variant="outlined" class="mb-6">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="48" class="mr-4">
-                    <v-img src="/gemini-icon.svg" alt="Gemini CLI" />
-                  </v-avatar>
-                  <div>
-                    <h3 class="text-h6">Gemini CLI</h3>
-                    <p class="text-caption text-medium-emphasis mb-0">Google's advanced AI development platform</p>
-                  </div>
-                </div>
-
-                <p class="text-body-2 mb-3">
-                  Google Gemini CLI integrates with our sub-agent architecture to provide powerful AI-driven
-                  development capabilities. Sub-agents coordinate through GiljoAI MCP for advanced development
-                  workflows with enhanced reasoning and multi-modal capabilities.
-                </p>
-                <p class="text-body-2 mb-3">
-                  <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user runs an
-                  orchestrator session in one Gemini CLI terminal and starts each agent in its own terminal using our
-                  prepared activation prompts. This allows each agent to work autonomously and stay focused while
-                  coordinating through MCP messages.
-                </p>
-
-                <!-- Configuration instructions removed; see user help files in the future -->
-              </v-card-text>
-            </v-card>
-
-            <!-- Native Integrations Section -->
-            <v-divider class="my-6"></v-divider>
-            
-            <h2 class="text-h5 mb-4">Native Integrations</h2>
-
-            <!-- Serena Integration -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-avatar size="48" class="mr-4">
-                    <v-img src="/Serena.png" alt="Serena MCP" />
-                  </v-avatar>
-                  <div>
-                    <h3 class="text-h6">Serena MCP</h3>
-                    <p class="text-caption text-medium-emphasis mb-0">Intelligent codebase understanding and navigation</p>
-                  </div>
-                </div>
-
-                <p class="text-body-2 mb-3">
-                  Serena provides deep semantic code analysis, intelligent symbol navigation, and contextual 
-                  understanding of your codebase. It enables agents to efficiently explore and understand 
-                  project structure without reading unnecessary code, significantly improving performance 
-                  and reducing token usage.
-                </p>
-
-                <div class="d-flex align-center mb-3">
-                  <v-btn variant="text" size="small" color="light-blue" href="https://github.com/oraios/serena" target="_blank">
-                    <v-icon start>mdi-github</v-icon>
-                    GitHub Repository
-                  </v-btn>
-                  <span class="text-caption text-medium-emphasis ml-3">
-                    Credit: Oraios
-                  </span>
-                </div>
-
-                <v-alert type="info" variant="tonal" class="mb-0">
-                  <v-icon start>mdi-account-cog</v-icon>
-                  <strong>User Configuration:</strong> Each user enables Serena under User Settings → Integrations
-                </v-alert>
-              </v-card-text>
-            </v-card>
-
-            <!-- More Coming Soon -->
-            <v-card variant="outlined" color="surface-variant">
-              <v-card-text class="text-center py-6">
-                <v-icon size="48" color="medium-emphasis" class="mb-3">mdi-plus-circle-outline</v-icon>
-                <h3 class="text-h6 text-medium-emphasis mb-2">More Integrations Coming Soon</h3>
-                <p class="text-body-2 text-medium-emphasis mb-0">
-                  Additional native integrations and agent tools will be added in future releases
-                </p>
-              </v-card-text>
-            </v-card>
-          </v-card-text>
-        </v-card>
+        <AdminIntegrationsTab />
       </v-window-item>
 
-<!-- Security Settings -->
+      <!-- Security Settings -->
       <v-window-item value="security">
-        <v-card>
-          <v-card-title>Security Settings</v-card-title>
-          <v-card-subtitle>Manage authentication and cross-origin security</v-card-subtitle>
-
-          <v-card-text>
-            <!-- Cookie Domain Whitelist Section -->
-            <h3 class="text-h6 mb-3">Cookie Domain Whitelist</h3>
-
-            <p class="text-body-2 mb-3">
-              Configure which domain names are allowed for cross-port authentication cookies.
-              This enables secure authentication when accessing the dashboard from different ports
-              or subdomains on the same machine.
-            </p>
-
-            <v-alert type="info" variant="tonal" class="mb-4" :icon="false">
-              <v-icon start>mdi-information</v-icon>
-              IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com, localhost).
-            </v-alert>
-
-            <!-- Domain List -->
-            <div v-if="cookieDomains.length > 0" class="mb-4">
-              <v-list density="compact" class="mb-3">
-                <v-list-item
-                  v-for="domain in cookieDomains"
-                  :key="domain"
-                  :title="domain"
-                >
-                  <template v-slot:append>
-                    <v-btn
-                      icon="mdi-delete"
-                      size="small"
-                      variant="text"
-                      color="error"
-                      @click="removeCookieDomain(domain)"
-                      :aria-label="`Delete domain ${domain}`"
-                    />
-                  </template>
-                </v-list-item>
-              </v-list>
-            </div>
-
-            <!-- Empty State -->
-            <v-alert
-              v-else
-              type="info"
-              variant="outlined"
-              class="mb-4"
-            >
-              No domain names configured. IP-based access only.
-            </v-alert>
-
-            <!-- Add Domain Form -->
-            <v-text-field
-              v-model="newDomain"
-              label="Add Domain Name"
-              variant="outlined"
-              placeholder="app.example.com"
-              hint="Enter a domain name (no IP addresses)"
-              persistent-hint
-              :rules="[validateDomain]"
-              :error-messages="domainError"
-              @keyup.enter="addCookieDomain"
-              class="mb-2"
-            >
-              <template v-slot:append>
-                <v-btn
-                  icon="mdi-plus"
-                  color="primary"
-                  variant="text"
-                  @click="addCookieDomain"
-                  :disabled="!newDomain || !!domainError"
-                  aria-label="Add domain"
-                />
-              </template>
-            </v-text-field>
-
-            <!-- Success/Error Feedback -->
-            <v-alert
-              v-if="cookieDomainFeedback"
-              :type="cookieDomainFeedback.type"
-              variant="tonal"
-              class="mb-4"
-              closable
-              @click:close="cookieDomainFeedback = null"
-            >
-              {{ cookieDomainFeedback.message }}
-            </v-alert>
-          </v-card-text>
-
-          <v-card-actions>
-            <v-spacer />
-            <v-btn variant="text" @click="loadCookieDomains">
-              <v-icon start>mdi-refresh</v-icon>
-              Reload
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+        <SecuritySettingsTab
+          :cookie-domains="cookieDomains"
+          :loading="loading.security"
+          :feedback="securityFeedback"
+          @add-domain="addCookieDomain"
+          @remove-domain="removeCookieDomain"
+          @reload="loadCookieDomains"
+          @clear-feedback="clearSecurityFeedback"
+        />
       </v-window-item>
 
+      <!-- System Prompt -->
       <v-window-item value="system">
-        <v-card>
-          <v-card-title>System Orchestrator Prompt</v-card-title>
-          <v-card-subtitle>Core instructions for the Giljo Orchestrator (admin override only)</v-card-subtitle>
-
-          <v-card-text>
-            <v-alert type="warning" variant="tonal" class="mb-4">
-              <v-icon start>mdi-alert</v-icon>
-              Editing this prompt can break orchestrator coordination. Only proceed if you understand the full impact.
-              Always keep a backup and verify flows after saving.
-            </v-alert>
-
-            <v-alert
-              v-if="orchestratorPromptError"
-              type="error"
-              variant="tonal"
-              class="mb-4"
-              closable
-              @click:close="orchestratorPromptError = null"
-            >
-              {{ orchestratorPromptError }}
-            </v-alert>
-
-            <v-alert
-              v-if="orchestratorPromptFeedback"
-              type="success"
-              variant="tonal"
-              class="mb-4"
-              closable
-              @click:close="orchestratorPromptFeedback = null"
-            >
-              {{ orchestratorPromptFeedback }}
-            </v-alert>
-
-            <v-textarea
-              v-model="orchestratorPrompt"
-              :loading="orchestratorPromptLoading"
-              :readonly="orchestratorPromptLoading"
-              label="Orchestrator Prompt"
-              class="mono-textarea"
-              rows="18"
-              auto-grow
-              variant="outlined"
-              spellcheck="false"
-            />
-
-            <div class="text-caption mt-2">
-              {{ orchestratorPromptStatus }}
-            </div>
-          </v-card-text>
-
-          <v-card-actions>
-            <v-btn
-              variant="text"
-              color="warning"
-              :disabled="orchestratorPromptLoading || orchestratorPromptSaving"
-              @click="restoreOrchestratorPrompt"
-            >
-              <v-icon start>mdi-backup-restore</v-icon>
-              Restore Default
-            </v-btn>
-            <v-spacer />
-            <v-btn
-              color="primary"
-              :loading="orchestratorPromptSaving"
-              :disabled="!orchestratorPromptDirty || orchestratorPromptSaving"
-              @click="saveOrchestratorPrompt"
-            >
-              <v-icon start>mdi-content-save</v-icon>
-              Save Override
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+        <SystemPromptTab />
       </v-window-item>
     </v-window>
 
-    <!-- Claude Code Configuration Modal -->
-    <v-dialog v-model="showClaudeConfigModal" max-width="800" scrollable>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon start color="primary">mdi-robot-outline</v-icon>
-          How to Configure Claude Code
-        </v-card-title>
-        
-        <v-card-text>
-          <v-alert type="info" variant="tonal" class="mb-4">
-            <v-icon start>mdi-information</v-icon>
-            First, generate an API key under your User Profile → Settings → API and Integrations
-          </v-alert>
-
-          <v-tabs v-model="claudeConfigTab" class="mb-4">
-            <v-tab value="marketplace">Marketplace Configuration</v-tab>
-            <v-tab value="manual">Manual Configuration</v-tab>
-            <v-tab value="download">Download Instructions</v-tab>
-          </v-tabs>
-
-          <v-window v-model="claudeConfigTab">
-            <!-- Marketplace Configuration -->
-            <v-window-item value="marketplace">
-              <h3 class="text-h6 mb-3">Claude Code Marketplace Configuration</h3>
-              <ol class="text-body-2 mb-3">
-                <li class="mb-2">Open Claude Code and navigate to the MCP Tools Marketplace</li>
-                <li class="mb-2">Search for "GiljoAI Agent Orchestration MCP Server"</li>
-                <li class="mb-2">Click "Install" and follow the marketplace prompts</li>
-                <li class="mb-2">When prompted for the API endpoint, enter: <code>http://your-server-ip:7272</code></li>
-                <li class="mb-2">Enter your API key from your user profile</li>
-                <li class="mb-2">Test the connection and confirm installation</li>
-              </ol>
-            </v-window-item>
-
-            <!-- Manual Configuration -->
-            <v-window-item value="manual">
-              <h3 class="text-h6 mb-3">Manual Configuration</h3>
-              <p class="text-body-2 mb-3">
-                Add the following to your Claude Code MCP configuration file. 
-                See <a href="https://docs.claude.com/en/docs/claude-code/mcp" target="_blank" class="text-primary">Claude Code MCP Documentation</a> for complete setup instructions.
-              </p>
-              
-              <v-alert type="info" variant="tonal" class="mb-3" density="compact">
-                <v-icon start size="small">mdi-file-document</v-icon>
-                <strong>Configuration File Location:</strong>
-                <br>• macOS/Linux: <code>~/.claude.json</code>
-                <br>• Windows: <code>%USERPROFILE%\.claude.json</code>
-              </v-alert>
-              
-              <v-card variant="outlined" class="mb-3">
-                <v-card-text>
-                  <pre class="text-caption"><code>{
-  "servers": {
-    "giljo-mcp": {
-      "command": "mcp-client",
-      "args": [
-        "--server-url", "http://your-server-ip:7272",
-        "--api-key", "{your-api-key-here}"
-      ],
-      "description": "GiljoAI Agent Orchestration MCP Server"
-    }
-  }
-}</code></pre>
-                </v-card-text>
-                <v-card-actions>
-                  <v-btn variant="text" size="small" @click="copyClaudeConfig">
-                    <v-icon start>mdi-content-copy</v-icon>
-                    Copy Configuration
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
-
-              <p class="text-body-2">
-                Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
-              </p>
-            </v-window-item>
-
-            <!-- Download Instructions -->
-            <v-window-item value="download">
-              <h3 class="text-h6 mb-3">Download Configuration Instructions</h3>
-              <p class="text-body-2 mb-3">
-                Download a complete setup guide with your server-specific configuration:
-              </p>
-              
-              <v-btn variant="outlined" color="primary" @click="downloadClaudeInstructions">
-                <v-icon start>mdi-download</v-icon>
-                Download Claude Code Setup Guide
-              </v-btn>
-            </v-window-item>
-          </v-window>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showClaudeConfigModal = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Codex Configuration Modal -->
-    <v-dialog v-model="showCodexConfigModal" max-width="800" scrollable>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon start color="secondary">mdi-code-braces</v-icon>
-          How to Configure Codex CLI
-        </v-card-title>
-        
-        <v-card-text>
-          <v-alert type="info" variant="tonal" class="mb-4">
-            <v-icon start>mdi-information</v-icon>
-            First, generate an API key under your User Profile → Settings → API and Integrations
-          </v-alert>
-
-          <v-tabs v-model="codexConfigTab" class="mb-4">
-            <v-tab value="manual">Manual Configuration</v-tab>
-            <v-tab value="download">Download Instructions</v-tab>
-          </v-tabs>
-
-          <v-window v-model="codexConfigTab">
-            <!-- Manual Configuration -->
-            <v-window-item value="manual">
-              <h3 class="text-h6 mb-3">Manual Configuration</h3>
-              <p class="text-body-2 mb-3">
-                Add the following to your Codex CLI configuration file. 
-                See <a href="https://developers.openai.com/codex/local-config#cli" target="_blank" class="text-primary">Codex CLI Configuration</a> 
-                and <a href="https://developers.openai.com/codex/mcp" target="_blank" class="text-primary">Codex MCP Documentation</a> for complete setup instructions.
-              </p>
-              
-              <v-alert type="info" variant="tonal" class="mb-3" density="compact">
-                <v-icon start size="small">mdi-file-document</v-icon>
-                <strong>Configuration File Location:</strong>
-                <br>• macOS/Linux: <code>~/.codex/config.toml</code>
-                <br>• Windows: <code>%USERPROFILE%\\.codex\\config.toml</code>
-              </v-alert>
-              
-              <v-card variant="outlined" class="mb-3">
-                <v-card-text>
-                  <pre class="text-caption"><code>[giljo-mcp]
-endpoint = "http://your-server-ip:7272"
-api_key = "{your-api-key-here}"
-description = "GiljoAI Agent Orchestration MCP Server"
-
-[agents]
-orchestrator_enabled = true
-subagent_coordination = true
-context_sharing = true</code></pre>
-                </v-card-text>
-                <v-card-actions>
-                  <v-btn variant="text" size="small" @click="copyCodexConfig">
-                    <v-icon start>mdi-content-copy</v-icon>
-                    Copy Configuration
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
-
-              <p class="text-body-2">
-                Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
-              </p>
-            </v-window-item>
-
-            <!-- Download Instructions -->
-            <v-window-item value="download">
-              <h3 class="text-h6 mb-3">Download Configuration Instructions</h3>
-              <p class="text-body-2 mb-3">
-                Download a complete setup guide with your server-specific configuration:
-              </p>
-              
-              <v-btn variant="outlined" color="secondary" @click="downloadCodexInstructions">
-                <v-icon start>mdi-download</v-icon>
-                Download Codex CLI Setup Guide
-              </v-btn>
-            </v-window-item>
-          </v-window>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showCodexConfigModal = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Gemini CLI Configuration Modal -->
-    <v-dialog v-model="showGeminiConfigModal" max-width="800" scrollable>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon start color="success">mdi-sparkles</v-icon>
-          How to Configure Gemini CLI
-        </v-card-title>
-
-        <v-card-text>
-          <v-alert type="info" variant="tonal" class="mb-4">
-            <v-icon start>mdi-information</v-icon>
-            First, generate an API key under your User Profile → Settings → API and Integrations
-          </v-alert>
-
-          <v-tabs v-model="geminiConfigTab" class="mb-4">
-            <v-tab value="manual">Manual Configuration</v-tab>
-            <v-tab value="download">Download Instructions</v-tab>
-          </v-tabs>
-
-          <v-window v-model="geminiConfigTab">
-            <!-- Manual Configuration -->
-            <v-window-item value="manual">
-              <h3 class="text-h6 mb-3">Manual Configuration</h3>
-              <p class="text-body-2 mb-3">
-                Add the following to your Gemini CLI settings file.
-                See <a href="https://github.com/google-gemini/gemini-cli" target="_blank" class="text-primary">Gemini CLI Documentation</a> for complete setup instructions.
-              </p>
-
-              <v-alert type="info" variant="tonal" class="mb-3" density="compact">
-                <v-icon start size="small">mdi-file-document</v-icon>
-                <strong>Configuration File Location:</strong>
-                <br>• All platforms: <code>~/.gemini/settings.json</code>
-              </v-alert>
-
-              <v-card variant="outlined" class="mb-3">
-                <v-card-text>
-                  <pre class="text-caption"><code>{
-  "mcpServers": {
-    "giljo-mcp": {
-      "url": "http://your-server-ip:7272",
-      "apiKey": "{your-api-key-here}",
-      "description": "GiljoAI Agent Orchestration MCP Server",
-      "capabilities": [
-        "agent_coordination",
-        "context_sharing",
-        "memory_persistence"
-      ]
-    }
-  }
-}</code></pre>
-                </v-card-text>
-                <v-card-actions>
-                  <v-btn variant="text" size="small" @click="copyGeminiConfig">
-                    <v-icon start>mdi-content-copy</v-icon>
-                    Copy Configuration
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
-
-              <p class="text-body-2">
-                Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
-              </p>
-            </v-window-item>
-
-            <!-- Download Instructions -->
-            <v-window-item value="download">
-              <h3 class="text-h6 mb-3">Download Configuration Instructions</h3>
-              <p class="text-body-2 mb-3">
-                Download a complete setup guide with your server-specific configuration:
-              </p>
-
-              <v-btn variant="outlined" color="success" @click="downloadGeminiInstructions">
-                <v-icon start>mdi-download</v-icon>
-                Download Gemini CLI Setup Guide
-              </v-btn>
-            </v-window-item>
-          </v-window>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showGeminiConfigModal = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Configuration Modals -->
+    <ClaudeConfigModal v-model="showClaudeConfigModal" />
+    <CodexConfigModal v-model="showCodexConfigModal" />
+    <GeminiConfigModal v-model="showGeminiConfigModal" />
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { useTheme } from 'vuetify'
-import CodexMarkIcon from '@/components/icons/CodexMarkIcon.vue'
-import { useRouter } from 'vue-router'
-import DatabaseConnection from '@/components/DatabaseConnection.vue'
+import { ref, onMounted } from 'vue'
 import { getApiBaseURL } from '@/config/api'
 import api from '@/services/api'
 
-// Router
-const router = useRouter()
-const theme = useTheme()
+// Components
+import DatabaseConnection from '@/components/DatabaseConnection.vue'
+import NetworkSettingsTab from '@/components/settings/tabs/NetworkSettingsTab.vue'
+import AdminIntegrationsTab from '@/components/settings/tabs/AdminIntegrationsTab.vue'
+import SecuritySettingsTab from '@/components/settings/tabs/SecuritySettingsTab.vue'
+import SystemPromptTab from '@/components/settings/tabs/SystemPromptTab.vue'
+import ClaudeConfigModal from '@/components/settings/modals/ClaudeConfigModal.vue'
+import CodexConfigModal from '@/components/settings/modals/CodexConfigModal.vue'
+import GeminiConfigModal from '@/components/settings/modals/GeminiConfigModal.vue'
 
 // State
 const activeTab = ref('network')
+
+// Loading states
+const loading = ref({
+  network: false,
+  security: false
+})
 
 // Network settings state
 const networkSettings = ref({
@@ -831,48 +126,19 @@ const networkSettings = ref({
   frontendPort: 7274,
 })
 const corsOrigins = ref([])
-const newOrigin = ref('')
-const networkSettingsChanged = ref(false)
 
 // Configuration modal state
 const showClaudeConfigModal = ref(false)
 const showCodexConfigModal = ref(false)
 const showGeminiConfigModal = ref(false)
-const claudeConfigTab = ref('marketplace')
-const codexConfigTab = ref('manual')
-const geminiConfigTab = ref('manual')
 
 // Cookie Domain Whitelist state
 const cookieDomains = ref([])
-const newDomain = ref('')
-const domainError = ref('')
-const cookieDomainFeedback = ref(null)
-
-// System prompt editor state
-const orchestratorPrompt = ref('')
-const orchestratorPromptBaseline = ref('')
-const orchestratorPromptLoading = ref(false)
-const orchestratorPromptSaving = ref(false)
-const orchestratorPromptDirty = ref(false)
-const orchestratorPromptMetadata = ref({
-  isOverride: false,
-  updatedAt: null,
-  updatedBy: null,
-})
-const orchestratorPromptError = ref(null)
-const orchestratorPromptFeedback = ref(null)
-
-const orchestratorPromptStatus = computed(() => {
-  if (orchestratorPromptMetadata.value.isOverride && orchestratorPromptMetadata.value.updatedAt) {
-    const timestamp = orchestratorPromptMetadata.value.updatedAt.toLocaleString()
-    const actor = orchestratorPromptMetadata.value.updatedBy || 'admin'
-    return `Override saved ${timestamp} by ${actor}`
-  }
-  return 'Using default system prompt'
-})
+const securityFeedback = ref(null)
 
 // Network Settings Methods
 async function loadNetworkSettings() {
+  loading.value.network = true
   try {
     // Load from /api/v1/config endpoint only
     const response = await fetch(`${getApiBaseURL()}/api/v1/config`, {
@@ -907,39 +173,9 @@ async function loadNetworkSettings() {
     networkSettings.value.apiPort = 7272
     networkSettings.value.frontendPort = 7274
     corsOrigins.value = []
+  } finally {
+    loading.value.network = false
   }
-}
-
-function isDefaultOrigin(origin) {
-  return origin.includes('localhost') || origin.includes('127.0.0.1')
-}
-
-function copyOrigin(origin) {
-  navigator.clipboard.writeText(origin)
-  console.log('[SYSTEM SETTINGS] Origin copied to clipboard:', origin)
-}
-
-function addOrigin() {
-  if (!newOrigin.value) return
-
-  // Validate origin format
-  try {
-    new URL(newOrigin.value)
-    if (!corsOrigins.value.includes(newOrigin.value)) {
-      corsOrigins.value.push(newOrigin.value)
-      newOrigin.value = ''
-      networkSettingsChanged.value = true
-      console.log('[SYSTEM SETTINGS] Origin added successfully')
-    }
-  } catch (error) {
-    console.error('Invalid origin format:', error)
-  }
-}
-
-function removeOrigin(index) {
-  corsOrigins.value.splice(index, 1)
-  networkSettingsChanged.value = true
-  console.log('[SYSTEM SETTINGS] Origin removed')
 }
 
 async function saveNetworkSettings() {
@@ -959,7 +195,6 @@ async function saveNetworkSettings() {
     })
 
     if (response.ok) {
-      networkSettingsChanged.value = false
       console.log('[SYSTEM SETTINGS] Network settings saved successfully')
     }
   } catch (error) {
@@ -974,7 +209,7 @@ async function loadDatabaseSettings() {
     const response = await fetch(`${getApiBaseURL()}/api/v1/config/database`, {
       credentials: 'include',
     })
-    const config = await response.json()
+    await response.json()
 
     console.log('Database settings reloaded from config')
   } catch (error) {
@@ -990,310 +225,45 @@ function handleDatabaseError(error) {
   console.error('Database connection failed:', error)
 }
 
-// Configuration Modal Methods
-const copyClaudeConfig = () => {
-  const config = `{
-  "servers": {
-    "giljo-mcp": {
-      "command": "mcp-client",
-      "args": [
-        "--server-url", "http://your-server-ip:7272",
-        "--api-key", "{your-api-key-here}"
-      ],
-      "description": "GiljoAI Agent Orchestration MCP Server"
-    }
-  }
-}`
-  navigator.clipboard.writeText(config)
-  console.log('[INTEGRATIONS] Claude configuration copied to clipboard')
-}
-
-const copyCodexConfig = () => {
-  const config = `[giljo-mcp]
-endpoint = "http://your-server-ip:7272"
-api_key = "{your-api-key-here}"
-description = "GiljoAI Agent Orchestration MCP Server"
-
-[agents]
-orchestrator_enabled = true
-subagent_coordination = true
-context_sharing = true`
-  navigator.clipboard.writeText(config)
-  console.log('[INTEGRATIONS] Codex configuration copied to clipboard')
-}
-
-const downloadClaudeInstructions = () => {
-  const instructions = `# Claude Code Setup Guide for GiljoAI MCP Server
-
-## Prerequisites
-1. Generate an API key from your user profile in GiljoAI dashboard
-2. Ensure Claude Code is installed and configured
-
-## Marketplace Configuration (Recommended)
-1. Open Claude Code
-2. Navigate to MCP Tools Marketplace
-3. Search for "GiljoAI Agent Orchestration MCP Server"
-4. Click "Install"
-5. Enter endpoint: http://your-server-ip:7272
-6. Enter your API key
-7. Test connection
-
-## Manual Configuration
-
-**Configuration File Location:**
-- macOS/Linux: ~/.claude.json
-- Windows: %USERPROFILE%\\.claude.json
-
-**Documentation:** https://docs.claude.com/en/docs/claude-code/mcp
-
-Add the following to your Claude Code MCP configuration file:
-
-{
-  "servers": {
-    "giljo-mcp": {
-      "command": "mcp-client",
-      "args": [
-        "--server-url", "http://your-server-ip:7272",
-        "--api-key", "YOUR_API_KEY_HERE"
-      ],
-      "description": "GiljoAI Agent Orchestration MCP Server"
-    }
-  }
-}
-
-## Verification
-- Restart Claude Code
-- Verify GiljoAI MCP tools are available
-- Test agent coordination functionality
-
-## Support
-Visit your GiljoAI dashboard for additional configuration help.`
-
-  const blob = new Blob([instructions], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'claude-code-giljo-mcp-setup.txt'
-  a.click()
-  URL.revokeObjectURL(url)
-  console.log('[INTEGRATIONS] Claude setup instructions downloaded')
-}
-
-const downloadCodexInstructions = () => {
-  const instructions = `# Codex CLI Setup Guide for GiljoAI MCP Server
-
-## Prerequisites
-1. Generate an API key from your user profile in GiljoAI dashboard
-2. Ensure Codex CLI is installed and configured
-
-## Configuration
-**Configuration File Location:**
-- macOS/Linux: ~/.codex/config.toml
-- Windows: %USERPROFILE%\\.codex\\config.toml
-
-**Documentation:** 
-- MCP Integration: https://developers.openai.com/codex/mcp
-- CLI Configuration: https://developers.openai.com/codex/local-config#cli
-
-Add to your Codex CLI configuration file:
-
-[giljo-mcp]
-endpoint = "http://your-server-ip:7272"
-api_key = "YOUR_API_KEY_HERE"
-description = "GiljoAI Agent Orchestration MCP Server"
-
-[agents]
-orchestrator_enabled = true
-subagent_coordination = true
-context_sharing = true
-
-## Sub-Agent Workflow
-1. Codex spawns specialized sub-agents for different tasks
-2. GiljoAI MCP coordinates agent state and memory
-3. Context sharing enables seamless handoffs
-4. context prioritization and orchestration through intelligent coordination
-
-## Verification
-- Restart Codex CLI
-- Verify GiljoAI MCP connection
-- Test sub-agent coordination
-
-## Support
-Visit your GiljoAI dashboard for additional configuration help.`
-
-  const blob = new Blob([instructions], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'codex-cli-giljo-mcp-setup.txt'
-  a.click()
-  URL.revokeObjectURL(url)
-  console.log('[INTEGRATIONS] Codex setup instructions downloaded')
-}
-
-const copyGeminiConfig = () => {
-  const config = `{
-  "mcpServers": {
-    "giljo-mcp": {
-      "url": "http://your-server-ip:7272",
-      "apiKey": "{your-api-key-here}",
-      "description": "GiljoAI Agent Orchestration MCP Server",
-      "capabilities": [
-        "agent_coordination",
-        "context_sharing",
-        "memory_persistence"
-      ]
-    }
-  }
-}`
-  navigator.clipboard.writeText(config)
-  console.log('[INTEGRATIONS] Gemini configuration copied to clipboard')
-}
-
-const downloadGeminiInstructions = () => {
-  const instructions = `# Gemini CLI Setup Guide for GiljoAI MCP Server
-
-## Prerequisites
-1. Generate an API key from your user profile in GiljoAI dashboard
-2. Install Gemini CLI following official instructions
-3. Ensure Gemini CLI is properly configured
-
-## Installation
-Install Gemini CLI using one of these methods:
-- NPX: npx https://github.com/google-gemini/gemini-cli
-- NPM global: npm install -g @google/gemini-cli
-- Homebrew: brew install gemini-cli
-
-## Configuration
-**Configuration File Location:**
-- All platforms: ~/.gemini/settings.json
-
-**Documentation:**
-- Gemini CLI: https://github.com/google-gemini/gemini-cli
-
-Add to your Gemini CLI settings.json file:
-
-{
-  "mcpServers": {
-    "giljo-mcp": {
-      "url": "http://your-server-ip:7272",
-      "apiKey": "YOUR_API_KEY_HERE",
-      "description": "GiljoAI Agent Orchestration MCP Server",
-      "capabilities": [
-        "agent_coordination",
-        "context_sharing",
-        "memory_persistence"
-      ]
-    }
-  }
-}
-
-## Sub-Agent Workflow
-1. Gemini CLI spawns specialized sub-agents for different tasks
-2. GiljoAI MCP coordinates agent state and memory
-3. Enhanced reasoning with multi-modal capabilities
-4. Context sharing enables seamless handoffs
-5. context prioritization and orchestration through intelligent coordination
-
-## Multi-Modal Features
-- Code analysis with visual diagrams
-- Image processing for UI development
-- Document analysis and generation
-- Advanced reasoning capabilities
-
-## Verification
-- Restart Gemini CLI
-- Verify GiljoAI MCP connection
-- Test sub-agent coordination
-- Validate multi-modal capabilities
-
-## Support
-Visit your GiljoAI dashboard for additional configuration help.`
-
-  const blob = new Blob([instructions], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'gemini-cli-giljo-mcp-setup.txt'
-  a.click()
-  URL.revokeObjectURL(url)
-  console.log('[INTEGRATIONS] Gemini setup instructions downloaded')
-}
-
 // Cookie Domain Whitelist Methods
 async function loadCookieDomains() {
+  loading.value.security = true
   try {
     const response = await api.settings.getCookieDomains()
     cookieDomains.value = response.data.domains || []
     console.log('[SECURITY] Cookie domains loaded:', cookieDomains.value.length)
   } catch (error) {
     console.error('[SECURITY] Failed to load cookie domains:', error)
-    cookieDomainFeedback.value = {
+    securityFeedback.value = {
       type: 'error',
       message: 'Failed to load cookie domains. Please try again.'
     }
+  } finally {
+    loading.value.security = false
   }
 }
 
-function validateDomain(value) {
-  if (!value) {
-    return true // Empty is valid (optional field)
-  }
-
-  const trimmed = value.trim()
-
-  // Check for IP address pattern (reject IPs)
-  const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
-  if (ipPattern.test(trimmed)) {
-    domainError.value = 'IP addresses are not allowed. Use domain names only.'
-    return false
-  }
-
-  // Validate domain format
-  const domainPattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-  if (!domainPattern.test(trimmed)) {
-    domainError.value = 'Invalid domain format. Example: app.example.com'
-    return false
-  }
-
-  domainError.value = ''
-  return true
-}
-
-async function addCookieDomain() {
-  const trimmed = newDomain.value.trim()
-
-  if (!trimmed) {
-    return
-  }
-
-  // Validate before submitting
-  if (!validateDomain(trimmed)) {
-    return
-  }
-
+async function addCookieDomain(domain) {
   // Check for duplicates
-  if (cookieDomains.value.includes(trimmed)) {
-    cookieDomainFeedback.value = {
+  if (cookieDomains.value.includes(domain)) {
+    securityFeedback.value = {
       type: 'warning',
-      message: `Domain "${trimmed}" is already in the whitelist.`
+      message: `Domain "${domain}" is already in the whitelist.`
     }
     return
   }
 
   try {
-    await api.settings.addCookieDomain(trimmed)
-    cookieDomains.value.push(trimmed)
-    newDomain.value = ''
-    domainError.value = ''
-    cookieDomainFeedback.value = {
+    await api.settings.addCookieDomain(domain)
+    cookieDomains.value.push(domain)
+    securityFeedback.value = {
       type: 'success',
-      message: `Domain "${trimmed}" added successfully.`
+      message: `Domain "${domain}" added successfully.`
     }
-    console.log('[SECURITY] Cookie domain added:', trimmed)
+    console.log('[SECURITY] Cookie domain added:', domain)
   } catch (error) {
     console.error('[SECURITY] Failed to add cookie domain:', error)
-    cookieDomainFeedback.value = {
+    securityFeedback.value = {
       type: 'error',
       message: error.response?.data?.detail || 'Failed to add domain. Please try again.'
     }
@@ -1304,99 +274,23 @@ async function removeCookieDomain(domain) {
   try {
     await api.settings.removeCookieDomain(domain)
     cookieDomains.value = cookieDomains.value.filter(d => d !== domain)
-    cookieDomainFeedback.value = {
+    securityFeedback.value = {
       type: 'success',
       message: `Domain "${domain}" removed successfully.`
     }
     console.log('[SECURITY] Cookie domain removed:', domain)
   } catch (error) {
     console.error('[SECURITY] Failed to remove cookie domain:', error)
-    cookieDomainFeedback.value = {
+    securityFeedback.value = {
       type: 'error',
       message: error.response?.data?.detail || 'Failed to remove domain. Please try again.'
     }
   }
 }
 
-// System Prompt Methods
-async function loadOrchestratorPrompt() {
-  orchestratorPromptLoading.value = true
-  orchestratorPromptError.value = null
-  orchestratorPromptFeedback.value = null
-
-  try {
-    const response = await api.system.getOrchestratorPrompt()
-    const data = response.data || {}
-    orchestratorPrompt.value = data.content || ''
-    orchestratorPromptBaseline.value = orchestratorPrompt.value
-    orchestratorPromptMetadata.value = {
-      isOverride: Boolean(data.is_override),
-      updatedAt: data.updated_at ? new Date(data.updated_at) : null,
-      updatedBy: data.updated_by || null,
-    }
-    orchestratorPromptDirty.value = false
-  } catch (error) {
-    console.error('[SYSTEM] Failed to load orchestrator prompt:', error)
-    orchestratorPromptError.value = error.response?.data?.detail || 'Failed to load orchestrator prompt.'
-  } finally {
-    orchestratorPromptLoading.value = false
-  }
+function clearSecurityFeedback() {
+  securityFeedback.value = null
 }
-
-async function saveOrchestratorPrompt() {
-  if (!orchestratorPromptDirty.value) return
-  orchestratorPromptSaving.value = true
-  orchestratorPromptError.value = null
-  orchestratorPromptFeedback.value = null
-
-  try {
-    const response = await api.system.updateOrchestratorPrompt(orchestratorPrompt.value)
-    const data = response.data || {}
-    orchestratorPrompt.value = data.content || orchestratorPrompt.value
-    orchestratorPromptBaseline.value = orchestratorPrompt.value
-    orchestratorPromptMetadata.value = {
-      isOverride: Boolean(data.is_override),
-      updatedAt: data.updated_at ? new Date(data.updated_at) : null,
-      updatedBy: data.updated_by || null,
-    }
-    orchestratorPromptDirty.value = false
-    orchestratorPromptFeedback.value = 'Override saved successfully.'
-  } catch (error) {
-    console.error('[SYSTEM] Failed to save orchestrator prompt:', error)
-    orchestratorPromptError.value = error.response?.data?.detail || 'Failed to save orchestrator prompt.'
-  } finally {
-    orchestratorPromptSaving.value = false
-  }
-}
-
-async function restoreOrchestratorPrompt() {
-  orchestratorPromptSaving.value = true
-  orchestratorPromptError.value = null
-  orchestratorPromptFeedback.value = null
-
-  try {
-    const response = await api.system.resetOrchestratorPrompt()
-    const data = response.data || {}
-    orchestratorPrompt.value = data.content || ''
-    orchestratorPromptBaseline.value = orchestratorPrompt.value
-    orchestratorPromptMetadata.value = {
-      isOverride: Boolean(data.is_override),
-      updatedAt: data.updated_at ? new Date(data.updated_at) : null,
-      updatedBy: data.updated_by || null,
-    }
-    orchestratorPromptDirty.value = false
-    orchestratorPromptFeedback.value = 'Reverted to default orchestrator prompt.'
-  } catch (error) {
-    console.error('[SYSTEM] Failed to reset orchestrator prompt:', error)
-    orchestratorPromptError.value = error.response?.data?.detail || 'Failed to restore default prompt.'
-  } finally {
-    orchestratorPromptSaving.value = false
-  }
-}
-
-watch(orchestratorPrompt, (value) => {
-  orchestratorPromptDirty.value = value !== orchestratorPromptBaseline.value
-})
 
 // Lifecycle
 onMounted(async () => {
@@ -1406,15 +300,7 @@ onMounted(async () => {
   // Load network settings from config on mount
   await loadNetworkSettings()
 
-  await loadOrchestratorPrompt()
-
   // Load cookie domains
   await loadCookieDomains()
 })
 </script>
-
-<style scoped>
-.mono-textarea :deep(textarea) {
-  font-family: 'Roboto Mono', monospace;
-}
-</style>
