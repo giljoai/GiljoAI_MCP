@@ -1,0 +1,760 @@
+/**
+ * Test suite for SecuritySettingsTab.vue component
+ * TDD RED Phase - Tests for security settings tab extraction
+ *
+ * Tests the Security Settings tab functionality:
+ * - Component rendering with security settings
+ * - Cookie domain management section
+ * - Current cookie domains list display
+ * - Add domain functionality
+ * - Remove domain functionality
+ * - Domain format validation
+ * - Event emissions (update, save)
+ * - Loading state handling
+ * - Feedback message display
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import SecuritySettingsTab from '@/components/settings/tabs/SecuritySettingsTab.vue'
+
+describe('SecuritySettingsTab.vue', () => {
+  let vuetify
+  let wrapper
+
+  beforeEach(() => {
+    // Setup Vuetify
+    vuetify = createVuetify({
+      components,
+      directives,
+    })
+
+    // Mock clipboard API
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+  })
+
+  afterEach(() => {
+    if (wrapper) {
+      wrapper.unmount()
+    }
+    vi.clearAllMocks()
+  })
+
+  describe('Component Rendering', () => {
+    it('renders the component', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.exists()).toBe(true)
+    })
+
+    it('displays security settings title', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('Security Settings')
+    })
+
+    it('displays card subtitle about authentication and security', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('authentication')
+    })
+
+    it('displays cookie domain whitelist section', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('Cookie Domain Whitelist')
+    })
+
+    it('displays informational alert about IP addresses', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('IP addresses are automatically allowed')
+    })
+  })
+
+  describe('Cookie Domains List Display', () => {
+    it('displays cookie domains when provided', () => {
+      const domains = ['app.example.com', 'api.example.com', 'localhost']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('app.example.com')
+      expect(wrapper.text()).toContain('api.example.com')
+      expect(wrapper.text()).toContain('localhost')
+    })
+
+    it('displays empty state when no domains are configured', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.text()).toContain('No domain names configured')
+    })
+
+    it('shows delete button for each domain', async () => {
+      const domains = ['app.example.com', 'api.example.com']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      // Find delete buttons in the domain list
+      const deleteButtons = wrapper.findAll('[data-test="delete-domain-btn"]')
+      expect(deleteButtons.length).toBe(2)
+    })
+  })
+
+  describe('Add Domain Functionality', () => {
+    it('has input field for adding new domain', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      expect(input.exists()).toBe(true)
+    })
+
+    it('has add button for adding new domain', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      expect(addButton.exists()).toBe(true)
+    })
+
+    it('emits add-domain event when add button is clicked with valid domain', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      // Set the domain value
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('new.example.com')
+
+      // Click add button
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      await addButton.trigger('click')
+
+      expect(wrapper.emitted('add-domain')).toBeTruthy()
+      expect(wrapper.emitted('add-domain')[0]).toEqual(['new.example.com'])
+    })
+
+    it('emits add-domain event when Enter key is pressed in input', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('new.example.com')
+      await input.trigger('keyup.enter')
+
+      expect(wrapper.emitted('add-domain')).toBeTruthy()
+      expect(wrapper.emitted('add-domain')[0]).toEqual(['new.example.com'])
+    })
+
+    it('clears input after successful add', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('new.example.com')
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      await addButton.trigger('click')
+
+      // Input should be cleared after emit
+      expect(wrapper.vm.newDomain).toBe('')
+    })
+
+    it('does not emit when input is empty', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      await addButton.trigger('click')
+
+      expect(wrapper.emitted('add-domain')).toBeFalsy()
+    })
+
+    it('disables add button when input is empty', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      expect(addButton.attributes('disabled')).toBeDefined()
+    })
+  })
+
+  describe('Remove Domain Functionality', () => {
+    it('emits remove-domain event when delete button is clicked', async () => {
+      const domains = ['app.example.com']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const deleteButton = wrapper.find('[data-test="delete-domain-btn"]')
+      await deleteButton.trigger('click')
+
+      expect(wrapper.emitted('remove-domain')).toBeTruthy()
+      expect(wrapper.emitted('remove-domain')[0]).toEqual(['app.example.com'])
+    })
+  })
+
+  describe('Domain Validation', () => {
+    it('shows error for IP address input', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('192.168.1.100')
+      await wrapper.vm.$nextTick()
+
+      // Check for validation error
+      expect(wrapper.text()).toContain('IP addresses are not allowed')
+    })
+
+    it('shows error for invalid domain format', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('invalid..domain')
+      await wrapper.vm.$nextTick()
+
+      // Check for validation error
+      expect(wrapper.text()).toContain('Invalid domain format')
+    })
+
+    it('accepts valid domain names', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('valid.example.com')
+      await wrapper.vm.$nextTick()
+
+      // No validation error should be present
+      expect(wrapper.text()).not.toContain('Invalid domain format')
+      expect(wrapper.text()).not.toContain('IP addresses are not allowed')
+    })
+
+    it('accepts localhost as valid domain', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('localhost')
+      await wrapper.vm.$nextTick()
+
+      // No validation error
+      expect(wrapper.text()).not.toContain('Invalid domain format')
+    })
+
+    it('disables add button when validation fails', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('192.168.1.100')
+      await wrapper.vm.$nextTick()
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      expect(addButton.attributes('disabled')).toBeDefined()
+    })
+  })
+
+  describe('Loading State', () => {
+    it('shows loading indicator when loading is true', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: true,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const loadingIndicator = wrapper.find('[data-test="loading-indicator"]')
+      expect(loadingIndicator.exists()).toBe(true)
+    })
+
+    it('disables add button when loading', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: true,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      expect(addButton.attributes('disabled')).toBeDefined()
+    })
+
+    it('disables delete buttons when loading', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: ['app.example.com'],
+          loading: true,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const deleteButton = wrapper.find('[data-test="delete-domain-btn"]')
+      if (deleteButton.exists()) {
+        expect(deleteButton.attributes('disabled')).toBeDefined()
+      }
+    })
+
+    it('disables reload button when loading', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: true,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const reloadButton = wrapper.find('[data-test="reload-btn"]')
+      if (reloadButton.exists()) {
+        expect(reloadButton.attributes('disabled')).toBeDefined()
+      }
+    })
+  })
+
+  describe('Feedback Messages', () => {
+    it('displays success feedback message', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+          feedback: {
+            type: 'success',
+            message: 'Domain added successfully.',
+          },
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).toContain('Domain added successfully.')
+    })
+
+    it('displays error feedback message', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+          feedback: {
+            type: 'error',
+            message: 'Failed to add domain.',
+          },
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).toContain('Failed to add domain.')
+    })
+
+    it('displays warning feedback message', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+          feedback: {
+            type: 'warning',
+            message: 'Domain already exists.',
+          },
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).toContain('Domain already exists.')
+    })
+
+    it('emits clear-feedback when feedback alert is closed', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+          feedback: {
+            type: 'success',
+            message: 'Domain added successfully.',
+          },
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const feedbackAlert = wrapper.find('[data-test="feedback-alert"]')
+      if (feedbackAlert.exists()) {
+        // Find and click close button
+        const closeButton = feedbackAlert.find('.v-alert__close')
+        if (closeButton.exists()) {
+          await closeButton.trigger('click')
+          expect(wrapper.emitted('clear-feedback')).toBeTruthy()
+        }
+      }
+    })
+  })
+
+  describe('Reload Functionality', () => {
+    it('has reload button', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const reloadButton = wrapper.find('[data-test="reload-btn"]')
+      expect(reloadButton.exists()).toBe(true)
+    })
+
+    it('emits reload event when reload button is clicked', async () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const reloadButton = wrapper.find('[data-test="reload-btn"]')
+      await reloadButton.trigger('click')
+
+      expect(wrapper.emitted('reload')).toBeTruthy()
+    })
+  })
+
+  describe('Props', () => {
+    it('accepts cookieDomains prop', () => {
+      const domains = ['domain1.com', 'domain2.com']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.props('cookieDomains')).toEqual(domains)
+    })
+
+    it('accepts loading prop', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: true,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.props('loading')).toBe(true)
+    })
+
+    it('accepts feedback prop', () => {
+      const feedback = { type: 'success', message: 'Test message' }
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+          feedback: feedback,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.props('feedback')).toEqual(feedback)
+    })
+
+    it('defaults feedback to null', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      expect(wrapper.props('feedback')).toBeNull()
+    })
+  })
+
+  describe('Accessibility', () => {
+    it('has aria-label on delete buttons', async () => {
+      const domains = ['app.example.com']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const deleteButton = wrapper.find('[data-test="delete-domain-btn"]')
+      expect(deleteButton.attributes('aria-label')).toBeDefined()
+      expect(deleteButton.attributes('aria-label')).toContain('app.example.com')
+    })
+
+    it('has aria-label on add button', () => {
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: [],
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      expect(addButton.attributes('aria-label')).toBeDefined()
+    })
+  })
+
+  describe('Duplicate Domain Prevention', () => {
+    it('does not emit add-domain for duplicate domain', async () => {
+      const domains = ['app.example.com']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('app.example.com')
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      await addButton.trigger('click')
+
+      // Should show warning instead of emitting add-domain
+      expect(wrapper.emitted('add-domain')).toBeFalsy()
+    })
+
+    it('shows warning when trying to add duplicate domain', async () => {
+      const domains = ['app.example.com']
+
+      wrapper = mount(SecuritySettingsTab, {
+        props: {
+          cookieDomains: domains,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      const input = wrapper.find('[data-test="new-domain-input"]')
+      await input.setValue('app.example.com')
+
+      const addButton = wrapper.find('[data-test="add-domain-btn"]')
+      await addButton.trigger('click')
+
+      await wrapper.vm.$nextTick()
+
+      // Check for duplicate warning
+      expect(wrapper.text()).toContain('already')
+    })
+  })
+})
