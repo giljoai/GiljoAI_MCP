@@ -19,18 +19,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
-from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
-from src.giljo_mcp.auth.jwt_manager import JWTManager
+from src.giljo_mcp.auth.dependencies import get_current_active_user, require_admin
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import APIKey, User
+from src.giljo_mcp.models import User
+from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
+from api.endpoints.dependencies import get_auth_service
 
 
 logger = logging.getLogger(__name__)
@@ -283,7 +279,7 @@ async def login(
     login_data: LoginRequest = Body(...),
     response: Response = None,
     request: Request = None,
-    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Login with username/password, returns JWT in httpOnly cookie.
@@ -297,7 +293,7 @@ async def login(
     Args:
         request: Login credentials (username, password)
         response: FastAPI response (to set cookie)
-        db: Database session
+        auth_service: Auth service for authentication operations
 
     Returns:
         Login success message with user info
@@ -305,36 +301,23 @@ async def login(
     Raises:
         HTTPException: 401 if credentials are invalid
     """
-    # Find user by username
-    stmt = select(User).where(User.username == login_data.username)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    # Authenticate user via service
+    auth_result = await auth_service.authenticate_user(login_data.username, login_data.password)
 
-    if not user or not user.is_active:
-        logger.warning(f"Login failed for username: {login_data.username} (user not found or inactive)")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not auth_result["success"]:
+        logger.warning(f"Login failed for username: {login_data.username}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=auth_result["error"])
 
-    # Verify password
-    if not bcrypt.verify(login_data.password, user.password_hash):
-        logger.warning(f"Login failed for username: {login_data.username} (invalid password)")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    user_data = auth_result["data"]["user"]
+    token = auth_result["data"]["token"]
 
-    # Check if default password is still active (for admin user) - v3.0 Unified UX
-    from src.giljo_mcp.models import SetupState
-
-    stmt_setup = select(SetupState).where(SetupState.tenant_key == user.tenant_key)
-    result_setup = await db.execute(stmt_setup)
-    setup_state = result_setup.scalar_one_or_none()
+    # Update last login timestamp
+    await auth_service.update_last_login(user_data["id"], datetime.now(timezone.utc))
 
     # v3.0 Unified (Handover 0034): No more default admin/admin password
     # Fresh installs go directly to "Create Admin Account" page
     # This flag is always False for v3.0+ (legacy field removed in Handover 0035)
     password_change_required = False
-
-    # Generate JWT token
-    token = JWTManager.create_access_token(
-        user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
-    )
 
     # SECURITY: Cookie domain validation and whitelist enforcement
     #
@@ -412,20 +395,16 @@ async def login(
         domain=cookie_domain,  # Set to request host for cross-port cookie sharing
     )
 
-    # Update last_login
-    user.last_login = datetime.now(timezone.utc)
-    await db.commit()
-
     logger.info(
-        f"User logged in successfully: {user.username} (role: {user.role}) (password_change_required: {password_change_required})"
+        f"User logged in successfully: {user_data['username']} (role: {user_data['role']}) (password_change_required: {password_change_required})"
     )
 
     # v3.0 Unified: Include password change requirement in response for frontend handling
     response_data = {
         "message": "Login successful",
-        "username": user.username,
-        "role": user.role,
-        "tenant_key": user.tenant_key,
+        "username": user_data["username"],
+        "role": user_data["role"],
+        "tenant_key": user_data["tenant_key"],
     }
 
     if password_change_required:
@@ -457,7 +436,7 @@ async def logout(response: Response):
 
 
 @router.get("/me", tags=["auth"])
-async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
+async def get_me(request: Request):
     """
     Get current user profile or return 401 if not authenticated.
 
@@ -466,13 +445,15 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
 
     Args:
         request: FastAPI request
-        db: Database session
 
     Returns:
         User profile data if authenticated, 401 JSON response otherwise
     """
     # Try to get current user (optional - doesn't raise exceptions)
-    from src.giljo_mcp.auth.dependencies import get_current_user_optional
+    from src.giljo_mcp.auth.dependencies import get_current_user_optional, get_db_session
+
+    # Get db session for auth check
+    db = await anext(get_db_session())
 
     current_user = await get_current_user_optional(
         request=request,
@@ -513,7 +494,7 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
 async def list_api_keys(
     include_revoked: bool = Query(False, description="Include revoked keys in results"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     List all API keys for current user.
@@ -523,35 +504,28 @@ async def list_api_keys(
 
     Args:
         current_user: User from JWT token (dependency)
-        db: Database session
+        auth_service: Auth service for API key operations
 
     Returns:
         List of API keys (masked)
     """
-    # Query user's API keys (active by default, include revoked when requested)
-    if include_revoked:
-        stmt = select(APIKey).where(APIKey.user_id == current_user.id).order_by(APIKey.created_at.desc())
-    else:
-        stmt = (
-            select(APIKey)
-            .where(APIKey.user_id == current_user.id, APIKey.is_active == True)
-            .order_by(APIKey.created_at.desc())
-        )
-    result = await db.execute(stmt)
-    api_keys = result.scalars().all()
+    result = await auth_service.list_api_keys(str(current_user.id), include_revoked=include_revoked)
+
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return [
         APIKeyResponse(
-            id=str(key.id),
-            name=key.name,
-            key_prefix=key.key_prefix,
-            permissions=key.permissions or [],
-            is_active=key.is_active,
-            created_at=key.created_at.isoformat(),
-            last_used=key.last_used.isoformat() if key.last_used else None,
-            revoked_at=key.revoked_at.isoformat() if key.revoked_at else None,
+            id=key["id"],
+            name=key["name"],
+            key_prefix=key["key_prefix"],
+            permissions=key["permissions"],
+            is_active=key["is_active"],
+            created_at=key["created_at"],
+            last_used=key["last_used"],
+            revoked_at=key["revoked_at"],
         )
-        for key in api_keys
+        for key in result["data"]
     ]
 
 
@@ -559,7 +533,7 @@ async def list_api_keys(
 async def create_api_key(
     request: APIKeyCreateRequest = Body(...),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Generate a new API key for current user.
@@ -570,46 +544,38 @@ async def create_api_key(
     Args:
         request: API key creation request (name, permissions)
         current_user: User from JWT token (dependency)
-        db: Database session
+        auth_service: Auth service for API key operations
 
     Returns:
         API key response with plaintext key (shown only once)
     """
-    # Generate new API key
-    api_key = generate_api_key()
-    key_hash = hash_api_key(api_key)
-    key_prefix = get_key_prefix(api_key, length=12)
-
-    # Create API key record
-    new_key = APIKey(
-        user_id=current_user.id,
+    result = await auth_service.create_api_key(
+        user_id=str(current_user.id),
         tenant_key=current_user.tenant_key,
         name=request.name,
-        key_hash=key_hash,
-        key_prefix=key_prefix,
-        permissions=request.permissions,
-        is_active=True,
-        created_at=datetime.now(timezone.utc),
+        permissions=request.permissions
     )
 
-    db.add(new_key)
-    await db.commit()
-    await db.refresh(new_key)
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-    logger.info(f"API key created: {new_key.name} (user: {current_user.username}, prefix: {key_prefix})")
+    key_data = result["data"]
+    logger.info(f"API key created: {key_data['name']} (user: {current_user.username}, prefix: {key_data['key_prefix']})")
 
     return APIKeyCreateResponse(
-        id=str(new_key.id),
-        name=new_key.name,
-        api_key=api_key,  # Plaintext key - only shown once!
-        key_prefix=key_prefix,
+        id=key_data["id"],
+        name=key_data["name"],
+        api_key=key_data["api_key"],  # Plaintext key - only shown once!
+        key_prefix=key_data["key_prefix"],
         message="API key created successfully. Store this key securely - it will not be shown again!",
     )
 
 
 @router.delete("/api-keys/{key_id}", response_model=APIKeyRevokeResponse, tags=["auth"])
 async def revoke_api_key(
-    key_id: UUID, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
+    key_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Revoke an API key.
@@ -620,7 +586,7 @@ async def revoke_api_key(
     Args:
         key_id: UUID of API key to revoke
         current_user: User from JWT token (dependency)
-        db: Database session
+        auth_service: Auth service for API key operations
 
     Returns:
         Revocation confirmation
@@ -628,35 +594,40 @@ async def revoke_api_key(
     Raises:
         HTTPException: 404 if key not found or belongs to another user
     """
-    # Query API key
-    stmt = select(APIKey).where(APIKey.id == str(key_id), APIKey.user_id == current_user.id)
-    result = await db.execute(stmt)
-    api_key = result.scalar_one_or_none()
+    result = await auth_service.revoke_api_key(str(key_id), str(current_user.id))
 
-    if not api_key:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found or access denied")
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
-    # Revoke key
-    api_key.is_active = False
-    api_key.revoked_at = datetime.now(timezone.utc)
-    await db.commit()
+    logger.info(f"API key revoked (user: {current_user.username})")
 
-    logger.info(f"API key revoked: {api_key.name} (user: {current_user.username})")
+    # Need to get key name for response - let's list keys and find it
+    keys_result = await auth_service.list_api_keys(str(current_user.id), include_revoked=True)
+    key_name = "Unknown"
+    if keys_result["success"]:
+        for key in keys_result["data"]:
+            if key["id"] == str(key_id):
+                key_name = key["name"]
+                break
 
-    return APIKeyRevokeResponse(id=str(api_key.id), name=api_key.name, message="API key revoked successfully")
+    return APIKeyRevokeResponse(id=str(key_id), name=key_name, message="API key revoked successfully")
 
 
 @router.get("/users", response_model=List[UserListResponse], tags=["auth"])
-async def list_users(current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)):
+async def list_users(
+    current_user: User = Depends(get_current_active_user)
+):
     """
     List all users in the current tenant (admin only).
 
     This endpoint returns all users in the same tenant as the authenticated user.
     Only admins can list users.
 
+    NOTE: This endpoint is duplicated from /api/users/ for backward compatibility.
+    It should be migrated to use UserService once proper tenant isolation is in place.
+
     Args:
         current_user: User from JWT token (dependency)
-        db: Database session
 
     Returns:
         List of users in the tenant
@@ -668,23 +639,30 @@ async def list_users(current_user: User = Depends(get_current_active_user), db: 
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    # Query users in the same tenant
-    stmt = select(User).where(User.tenant_key == current_user.tenant_key).order_by(User.created_at.desc())
-    result = await db.execute(stmt)
-    users = result.scalars().all()
+    # Import UserService here to avoid circular dependencies
+    from api.endpoints.dependencies import get_db_manager
+    from src.giljo_mcp.services import UserService
+
+    db_manager = await get_db_manager()
+    user_service = UserService(db_manager=db_manager, tenant_key=current_user.tenant_key)
+
+    result = await user_service.list_users()
+
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return [
         UserListResponse(
-            id=str(user.id),
-            username=user.username,
-            email=user.email,
-            full_name=user.full_name,
-            role=user.role,
-            is_active=user.is_active,
-            created_at=user.created_at.isoformat(),
-            last_login=user.last_login.isoformat() if user.last_login else None,
+            id=user["id"],
+            username=user["username"],
+            email=user["email"],
+            full_name=user["full_name"],
+            role=user["role"],
+            is_active=user["is_active"],
+            created_at=user["created_at"],
+            last_login=user["last_login"],
         )
-        for user in users
+        for user in result["data"]
     ]
 
 
@@ -692,7 +670,7 @@ async def list_users(current_user: User = Depends(get_current_active_user), db: 
 async def register_user(
     request: RegisterUserRequest = Body(...),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Register a new user (admin only).
@@ -702,7 +680,7 @@ async def register_user(
     Args:
         request: User registration data
         current_user: Admin user from JWT token (dependency)
-        db: Database session
+        auth_service: Auth service for user registration
 
     Returns:
         New user info
@@ -711,59 +689,29 @@ async def register_user(
         HTTPException: 400 if username/email already exists
         HTTPException: 403 if not admin
     """
-    # Check if username already exists
-    stmt = select(User).where(User.username == request.username)
-    result = await db.execute(stmt)
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Username '{request.username}' already exists"
-        )
-
-    # Check if email already exists (if provided)
-    if request.email:
-        stmt = select(User).where(User.email == request.email)
-        result = await db.execute(stmt)
-        existing_email = result.scalar_one_or_none()
-
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Email '{request.email}' already exists"
-            )
-
-    # Hash password
-    password_hash = bcrypt.hash(request.password)
-
-    # Per-user tenancy policy: assign a unique tenant_key for each user
-    # Ignore any provided tenant_key in request
-    from src.giljo_mcp.tenant import TenantManager
-
-    generated_tenant = TenantManager.generate_tenant_key(request.username)
-
-    new_user = User(
+    result = await auth_service.register_user(
         username=request.username,
         email=request.email,
-        full_name=request.full_name,
-        password_hash=password_hash,
+        password=request.password,
         role=request.role,
-        tenant_key=generated_tenant,
-        is_active=True,
-        created_at=datetime.now(timezone.utc),
+        requesting_admin_id=str(current_user.id),
     )
 
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
 
-    logger.info(f"User registered: {new_user.username} (role: {new_user.role}, by admin: {current_user.username})")
+    user_data = result["data"]
+    logger.info(f"User registered: {user_data['username']} (role: {user_data['role']}, by admin: {current_user.username})")
 
     return RegisterUserResponse(
-        id=str(new_user.id),
-        username=new_user.username,
-        email=new_user.email,
-        role=new_user.role,
-        tenant_key=new_user.tenant_key,
+        id=user_data["id"],
+        username=user_data["username"],
+        email=user_data["email"],
+        role=user_data["role"],
+        tenant_key=user_data["tenant_key"],
         message="User registered successfully",
     )
 
@@ -773,7 +721,7 @@ async def create_first_admin_user(
     response: Response,
     request: Request,
     request_body: RegisterUserRequest = Body(...),
-    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     """
     Create first administrator account on fresh install (Handover 0034).
@@ -794,7 +742,7 @@ async def create_first_admin_user(
         request: FastAPI request object (for IP logging)
         request_body: User registration request with username, password, optional email/full_name
         response: FastAPI response object for setting cookies
-        db: Database session
+        auth_service: Auth service for first admin creation
 
     Returns:
         RegisterUserResponse with user details and success message
@@ -804,11 +752,6 @@ async def create_first_admin_user(
         HTTPException 400: If password doesn't meet requirements
         HTTPException 503: If database check fails (fail-secure)
     """
-    from uuid import uuid4
-
-    from src.giljo_mcp.auth.jwt_manager import JWTManager
-    from src.giljo_mcp.tenant import TenantManager
-
     # Log client IP for audit trail (LAN access allowed for remote setup)
     client_ip = request.client.host
     logger.info(f"[SETUP] Admin creation attempt from IP: {client_ip}")
@@ -817,123 +760,48 @@ async def create_first_admin_user(
     # Without this lock, multiple concurrent requests could all check user_count == 0
     # simultaneously and create multiple admin accounts
     async with _first_admin_creation_lock:
-        # SECURITY CHECK #1: Check if endpoint is already disabled (first admin created)
-        # This is the PRIMARY security gate - if first admin exists, endpoint is permanently disabled
-        from src.giljo_mcp.models import SetupState
-
-        try:
-            setup_check_stmt = select(SetupState).where(SetupState.first_admin_created == True)
-            setup_check_result = await db.execute(setup_check_stmt)
-            existing_setup = setup_check_result.scalar_one_or_none()
-
-            if existing_setup:
-                logger.warning(
-                    f"[SECURITY] BLOCKED admin creation attempt from {client_ip} - "
-                    f"first admin already created on {existing_setup.first_admin_created_at.isoformat()}. "
-                    f"This endpoint is permanently disabled."
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Administrator account already exists. This setup endpoint has been disabled. "
-                    "Please use the login page instead.",
-                )
-        except HTTPException:
-            raise  # Re-raise our 403
-        except Exception as setup_error:
-            # If SetupState check fails, fall through to user count check (backwards compatibility)
-            logger.warning(f"[SETUP] SetupState check failed: {setup_error}. Falling back to user count check.")
-
-        # SECURITY CHECK: Verify no users exist (fresh install only)
-        # FAIL-SECURE: If database check fails, block admin creation
-        try:
-            user_count_stmt = select(func.count(User.id))
-            result = await db.execute(user_count_stmt)
-            total_users = result.scalar()
-        except Exception as db_error:
-            logger.error(
-                f"[SECURITY] Admin creation BLOCKED - database check failed: {db_error}. "
-                f"Failing secure to prevent potential bypass attacks."
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="System temporarily unavailable. Database connection error. Please try again in a moment.",
-            )
-
-        if total_users > 0:
-            logger.warning(
-                f"[SECURITY] Blocked create-first-admin attempt - {total_users} users already exist. "
-                "This may be an attack attempt."
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Administrator account already exists. Please use the login page instead.",
-            )
-
-        # Validate password strength (enforce 12+ char minimum for admin)
-        if len(request_body.password) < 12:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Admin password must be at least 12 characters long"
-            )
-
-        # Check password complexity
-        has_upper = any(c.isupper() for c in request_body.password)
-        has_lower = any(c.islower() for c in request_body.password)
-        has_digit = any(c.isdigit() for c in request_body.password)
-        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in request_body.password)
-
-        if not (has_upper and has_lower and has_digit and has_special):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must contain uppercase, lowercase, digit, and special character",
-            )
-
-        # Hash password
-        password_hash = bcrypt.hash(request_body.password)
-
-        # Generate secure tenant key
-        tenant_key = TenantManager.generate_tenant_key(request_body.username)
-
-        # Create first admin user (force admin role)
-        admin_user = User(
-            id=str(uuid4()),
+        # Create first admin via service (includes all security checks)
+        result = await auth_service.create_first_admin(
             username=request_body.username,
             email=request_body.email,
-            full_name=request_body.full_name or "Administrator",
-            password_hash=password_hash,
-            role="admin",  # FORCE admin role for first user
-            tenant_key=tenant_key,
-            is_active=True,
-            created_at=datetime.now(timezone.utc),
+            password=request_body.password,
+            full_name=request_body.full_name,
         )
 
-        db.add(admin_user)
+        if not result["success"]:
+            error_msg = result["error"]
+            # Map service errors to appropriate HTTP status codes
+            if "already exists" in error_msg.lower():
+                status_code = status.HTTP_403_FORBIDDEN
+            elif "password" in error_msg.lower():
+                status_code = status.HTTP_400_BAD_REQUEST
+            else:
+                status_code = status.HTTP_400_BAD_REQUEST
+
+            logger.warning(f"[SETUP] Admin creation failed from {client_ip}: {error_msg}")
+            raise HTTPException(status_code=status_code, detail=error_msg)
+
+        admin_data = result["data"]
+        token = admin_data["token"]
+        tenant_key = admin_data["tenant_key"]
 
         # Seed default agent templates for this tenant (Handover 0041 Phase 2)
         # CRITICAL: Templates are seeded with the user's tenant_key (not default_tenant_key)
         # This ensures templates appear in UI immediately after user creation
         try:
-            template_count = await seed_tenant_templates(db, tenant_key)
+            # Need to get db session for template seeding
+            from api.endpoints.dependencies import get_db_manager
+            from sqlalchemy.ext.asyncio import AsyncSession
+
+            db_manager = await get_db_manager()
+            async with db_manager.get_session_async() as db:
+                template_count = await seed_tenant_templates(db, tenant_key)
+                await db.commit()  # Ensure templates are persisted
             logger.info(f"[SETUP] Seeded {template_count} default agent templates for tenant {tenant_key[:12]}...")
         except Exception as e:
             # Non-blocking - templates can be added later via UI
             logger.warning(f"[SETUP] Template seeding failed (non-critical): {e}")
             template_count = 0
-
-        try:
-            await db.commit()
-            await db.refresh(admin_user)
-        except IntegrityError as e:
-            await db.rollback()
-            logger.error(f"Failed to create first admin user: {e}")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
-
-        # Generate JWT token for immediate login
-        token = JWTManager.create_access_token(
-            user_id=str(admin_user.id),
-            username=admin_user.username,
-            role=admin_user.role,
-            tenant_key=admin_user.tenant_key,
-        )
 
         # SECURITY: Cookie domain validation and whitelist enforcement
         #
@@ -1011,45 +879,20 @@ async def create_first_admin_user(
             max_age=86400,  # 24 hours
         )
 
-        # SECURITY: Disable this endpoint permanently after first admin created
-        # This prevents any future attempts to create additional admins via this endpoint
-        from src.giljo_mcp.models import SetupState
-
-        setup_state_stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
-        setup_result = await db.execute(setup_state_stmt)
-        setup_state = setup_result.scalar_one_or_none()
-
-        if setup_state:
-            setup_state.first_admin_created = True
-            setup_state.first_admin_created_at = datetime.now(timezone.utc)
-        else:
-            # Create SetupState if it doesn't exist
-            setup_state = SetupState(
-                id=str(uuid4()),
-                tenant_key=tenant_key,
-                database_initialized=True,
-                database_initialized_at=datetime.now(timezone.utc),
-                first_admin_created=True,
-                first_admin_created_at=datetime.now(timezone.utc),
-            )
-            db.add(setup_state)
-
-        await db.commit()
-
         logger.info(
             f"[SETUP] First administrator account created successfully - "
-            f"username: {admin_user.username}, tenant: {tenant_key[:12]}..., "
+            f"username: {admin_data['username']}, tenant: {tenant_key[:12]}..., "
             f"client_ip: {client_ip}. Endpoint now DISABLED for security."
         )
 
         return RegisterUserResponse(
-            id=str(admin_user.id),
-            username=admin_user.username,
-            email=admin_user.email,
-            full_name=admin_user.full_name,
-            role=admin_user.role,
-            tenant_key=admin_user.tenant_key,
-            is_active=admin_user.is_active,
+            id=admin_data["id"],
+            username=admin_data["username"],
+            email=admin_data["email"],
+            full_name=admin_data["full_name"],
+            role=admin_data["role"],
+            tenant_key=admin_data["tenant_key"],
+            is_active=admin_data["is_active"],
             message="Administrator account created successfully. Redirecting to dashboard...",
         )
 
