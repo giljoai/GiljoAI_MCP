@@ -18,6 +18,8 @@ vi.mock('@/services/api', () => ({
     },
     products: {
       getActiveProductTokenEstimate: vi.fn(),
+      getGitIntegration: vi.fn(() => Promise.resolve({ data: { enabled: false, commit_limit: 20, default_branch: 'main' } })),
+      updateGitIntegration: vi.fn(() => Promise.resolve({ data: { enabled: true, commit_limit: 20, default_branch: 'main' } })),
     },
     settings: {
       get: vi.fn(),
@@ -102,6 +104,25 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
           McpConfigComponent: true,
           AiToolConfigWizard: true,
           ClaudeCodeExport: true,
+          SlashCommandSetup: true,
+          SerenaAdvancedSettingsDialog: true,
+          ContextPriorityConfig: true,
+          McpIntegrationCard: {
+            name: 'McpIntegrationCard',
+            template: '<div class="mcp-integration-card-stub"></div>',
+          },
+          SerenaIntegrationCard: {
+            name: 'SerenaIntegrationCard',
+            template: '<div class="serena-integration-card-stub"></div>',
+            props: ['enabled', 'config', 'loading'],
+            emits: ['update:enabled', 'openAdvanced'],
+          },
+          GitIntegrationCard: {
+            name: 'GitIntegrationCard',
+            template: '<div class="git-integration-card-stub"></div>',
+            props: ['enabled', 'config', 'loading'],
+            emits: ['update:enabled', 'save'],
+          },
           draggable: {
             template: '<div><slot></slot></div>',
             props: ['modelValue', 'group', 'itemKey', 'handle'],
@@ -535,6 +556,151 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
       const alerts = wrapper.findAll('.v-alert')
       const noProductAlert = alerts.find(a => a.text().includes('No active product'))
       expect(noProductAlert?.exists()).toBe(true)
+    })
+  })
+
+  describe('Integration Cards Extraction (Refactoring)', () => {
+    it('should render McpIntegrationCard component in integrations tab', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      // Check that the McpIntegrationCard stub is rendered
+      const mcpCard = wrapper.findComponent({ name: 'McpIntegrationCard' })
+      expect(mcpCard.exists()).toBe(true)
+    })
+
+    it('should render SerenaIntegrationCard component with correct props', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      // Check that the SerenaIntegrationCard stub is rendered
+      const serenaCard = wrapper.findComponent({ name: 'SerenaIntegrationCard' })
+      expect(serenaCard.exists()).toBe(true)
+
+      // Verify props are passed correctly
+      expect(serenaCard.props('enabled')).toBe(false) // Initial state from mock
+      expect(serenaCard.props('loading')).toBe(false)
+    })
+
+    it('should render GitIntegrationCard component with correct props', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      // Check that the GitIntegrationCard stub is rendered
+      const gitCard = wrapper.findComponent({ name: 'GitIntegrationCard' })
+      expect(gitCard.exists()).toBe(true)
+
+      // Verify props are passed correctly
+      expect(gitCard.props('enabled')).toBe(false) // Initial state from mock
+      expect(gitCard.props('loading')).toBe(false)
+    })
+
+    it('should handle SerenaIntegrationCard update:enabled event', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      const serenaCard = wrapper.findComponent({ name: 'SerenaIntegrationCard' })
+
+      // Emit the update:enabled event
+      await serenaCard.vm.$emit('update:enabled', true)
+      await wrapper.vm.$nextTick()
+
+      // The toggleSerena function should have been called
+      // We can verify the serenaEnabled state changed
+      expect(wrapper.vm.serenaEnabled).toBe(true)
+    })
+
+    it('should handle SerenaIntegrationCard openAdvanced event', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      const serenaCard = wrapper.findComponent({ name: 'SerenaIntegrationCard' })
+
+      // Emit the openAdvanced event
+      await serenaCard.vm.$emit('openAdvanced')
+      await wrapper.vm.$nextTick()
+
+      // The showSerenaAdvanced dialog should be opened
+      expect(wrapper.vm.showSerenaAdvanced).toBe(true)
+    })
+
+    it('should handle GitIntegrationCard update:enabled event', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      const gitCard = wrapper.findComponent({ name: 'GitIntegrationCard' })
+
+      // Emit the update:enabled event
+      await gitCard.vm.$emit('update:enabled', true)
+      await wrapper.vm.$nextTick()
+
+      // The gitIntegration.enabled state should change
+      expect(wrapper.vm.gitIntegration.enabled).toBe(true)
+    })
+
+    it('should handle GitIntegrationCard save event', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      const gitCard = wrapper.findComponent({ name: 'GitIntegrationCard' })
+
+      // Emit the save event with config
+      const savePayload = {
+        enabled: true,
+        commit_limit: 30,
+        default_branch: 'develop'
+      }
+      await gitCard.vm.$emit('save', savePayload)
+      await wrapper.vm.$nextTick()
+
+      // The API should have been called
+      expect(api.products.updateGitIntegration).toHaveBeenCalled()
+    })
+
+    it('should keep SlashCommandSetup and ClaudeCodeExport inline', async () => {
+      wrapper = mountComponent()
+      await wrapper.vm.$nextTick()
+
+      // Navigate to integrations tab
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
+
+      // These components should still be rendered (as stubs)
+      const slashCommandSetup = wrapper.findComponent({ name: 'SlashCommandSetup' })
+      const claudeCodeExport = wrapper.findComponent({ name: 'ClaudeCodeExport' })
+
+      expect(slashCommandSetup.exists()).toBe(true)
+      expect(claudeCodeExport.exists()).toBe(true)
     })
   })
 })
