@@ -24,18 +24,16 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 # REMOVED: PlainTextResponse import (no longer needed)
-from passlib.hash import bcrypt
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import (
     get_current_active_user,
-    get_db_session,
     require_admin,
 )
 from src.giljo_mcp.models import User
+from src.giljo_mcp.services import UserService
 from api.dependencies.websocket import get_websocket_dependency
+from api.endpoints.dependencies import get_user_service
 
 
 logger = logging.getLogger(__name__)
@@ -290,7 +288,8 @@ def user_to_response(user: User) -> UserResponse:
 
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
-    current_user: User = Depends(require_admin), db: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service)
 ) -> list[UserResponse]:
     """
     List all users in current tenant.
@@ -299,7 +298,7 @@ async def list_users(
 
     Args:
         current_user: Current authenticated admin user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         List of UserResponse objects (passwords excluded)
@@ -309,20 +308,34 @@ async def list_users(
     """
     logger.debug(f"Admin {current_user.username} listing users for tenant {current_user.tenant_key}")
 
-    # Query users filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.tenant_key == current_user.tenant_key).order_by(User.created_at)
-    result = await db.execute(stmt)
-    users = result.scalars().all()
+    result = await user_service.list_users()
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-    logger.info(f"Found {len(users)} users for tenant {current_user.tenant_key}")
-    return [user_to_response(user) for user in users]
+    logger.info(f"Found {len(result['data'])} users for tenant {current_user.tenant_key}")
+
+    # Convert service response to UserResponse objects
+    return [
+        UserResponse(
+            id=user["id"],
+            username=user["username"],
+            email=user["email"],
+            full_name=user["full_name"],
+            role=user["role"],
+            tenant_key=user["tenant_key"],
+            is_active=user["is_active"],
+            created_at=user["created_at"],
+            last_login=user["last_login"]
+        )
+        for user in result["data"]
+    ]
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """
     Create a new user.
@@ -332,7 +345,7 @@ async def create_user(
     Args:
         user_data: User creation data
         current_user: Current authenticated admin user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Created user data (password excluded)
@@ -343,55 +356,42 @@ async def create_user(
     """
     logger.debug(f"Admin {current_user.username} creating user: {user_data.username}")
 
-    # Check for duplicate username (global uniqueness)
-    stmt = select(User).where(User.username == user_data.username)
-    result = await db.execute(stmt)
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Username '{user_data.username}' already exists",
-        )
-
-    # Check for duplicate email if provided
-    if user_data.email:
-        stmt = select(User).where(User.email == user_data.email)
-        result = await db.execute(stmt)
-        if result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email '{user_data.email}' already exists",
-            )
-
-    # Hash default password 'GiljoMCP' (Handover 0023)
-    password_hash = bcrypt.hash("GiljoMCP")
-
-    # Create user (inherits tenant_key from admin)
-    new_user = User(
+    result = await user_service.create_user(
         username=user_data.username,
         email=user_data.email,
         full_name=user_data.full_name,
-        password_hash=password_hash,
+        password=None,  # Use default password 'GiljoMCP'
         role=user_data.role,
-        is_active=user_data.is_active,
-        tenant_key=current_user.tenant_key,  # Inherit tenant from admin
-        must_change_password=True,  # Force password change on first login
-        must_set_pin=True,  # Force PIN setup on first login
-        recovery_pin_hash=None,  # No PIN set initially
+        is_active=user_data.is_active
     )
 
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
 
-    logger.info(f"Created user: {new_user.username} (role: {new_user.role}) in tenant {new_user.tenant_key}")
-    return user_to_response(new_user)
+    logger.info(f"Created user: {user_data.username} (role: {user_data.role}) in tenant {current_user.tenant_key}")
+
+    user = result["user"]
+    return UserResponse(
+        id=user["id"],
+        username=user["username"],
+        email=user["email"],
+        full_name=user["full_name"],
+        role=user["role"],
+        tenant_key=user["tenant_key"],
+        is_active=user["is_active"],
+        created_at=user["created_at"],
+        last_login=None
+    )
 
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """
     Get user details by ID.
@@ -401,7 +401,7 @@ async def get_user(
     Args:
         user_id: UUID of user to retrieve
         current_user: Current authenticated user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         User data (password excluded)
@@ -412,21 +412,30 @@ async def get_user(
     """
     logger.debug(f"User {current_user.username} retrieving user {user_id}")
 
-    # Query user filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    result = await user_service.get_user(str(user_id))
 
-    if not user:
+    if not result["success"]:
         logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+
+    user = result["user"]
 
     # Authorization: admin can view any user, non-admin can only view self
-    if current_user.role != "admin" and user.id != current_user.id:
-        logger.warning(f"Non-admin {current_user.username} tried to view user {user.username}")
+    if current_user.role != "admin" and user["id"] != str(current_user.id):
+        logger.warning(f"Non-admin {current_user.username} tried to view user {user['username']}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot view other users' profiles")
 
-    return user_to_response(user)
+    return UserResponse(
+        id=user["id"],
+        username=user["username"],
+        email=user["email"],
+        full_name=user["full_name"],
+        role=user["role"],
+        tenant_key=user["tenant_key"],
+        is_active=user["is_active"],
+        created_at=user["created_at"],
+        last_login=user["last_login"]
+    )
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -434,7 +443,7 @@ async def update_user(
     user_id: UUID,
     user_data: UserUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """
     Update user profile.
@@ -445,7 +454,7 @@ async def update_user(
         user_id: UUID of user to update
         user_data: Fields to update
         current_user: Current authenticated user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Updated user data (password excluded)
@@ -457,51 +466,55 @@ async def update_user(
     """
     logger.debug(f"User {current_user.username} updating user {user_id}")
 
-    # Query user filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if not user:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
     # Authorization: admin can update any user, non-admin can only update self
-    if current_user.role != "admin" and user.id != current_user.id:
-        logger.warning(f"Non-admin {current_user.username} tried to update user {user.username}")
+    get_result = await user_service.get_user(str(user_id))
+    if not get_result["success"]:
+        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
+
+    user = get_result["user"]
+    if current_user.role != "admin" and user["id"] != str(current_user.id):
+        logger.warning(f"Non-admin {current_user.username} tried to update user {user['username']}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot update other users' profiles")
 
-    # Check for duplicate email if changing email
-    if user_data.email and user_data.email != user.email:
-        stmt = select(User).where(User.email == user_data.email)
-        result = await db.execute(stmt)
-        existing_user = result.scalar_one_or_none()
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email '{user_data.email}' already exists",
-            )
-
-    # Update fields (only update non-None values)
+    # Build updates dict (only include non-None values)
+    updates = {}
     if user_data.email is not None:
-        user.email = user_data.email
+        updates["email"] = user_data.email
     if user_data.full_name is not None:
-        user.full_name = user_data.full_name
+        updates["full_name"] = user_data.full_name
     if user_data.is_active is not None:
-        user.is_active = user_data.is_active
+        updates["is_active"] = user_data.is_active
 
-    await db.commit()
-    await db.refresh(user)
+    result = await user_service.update_user(str(user_id), **updates)
 
-    logger.info(f"Updated user: {user.username}")
-    return user_to_response(user)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
+
+    logger.info(f"Updated user: {user['username']}")
+
+    updated_user = result["user"]
+    return UserResponse(
+        id=updated_user["id"],
+        username=updated_user["username"],
+        email=updated_user["email"],
+        full_name=updated_user["full_name"],
+        role=updated_user["role"],
+        tenant_key=current_user.tenant_key,
+        is_active=updated_user["is_active"],
+        created_at=user["created_at"],  # Use original created_at
+        last_login=user["last_login"]
+    )
 
 
 @router.delete("/{user_id}", response_model=UserDeleteResponse)
 async def delete_user(
     user_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserDeleteResponse:
     """
     Soft-delete user by deactivating account.
@@ -511,7 +524,7 @@ async def delete_user(
     Args:
         user_id: UUID of user to deactivate
         current_user: Current authenticated admin user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Deletion confirmation message
@@ -522,21 +535,18 @@ async def delete_user(
     """
     logger.debug(f"Admin {current_user.username} deactivating user {user_id}")
 
-    # Query user filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    result = await user_service.delete_user(str(user_id))
 
-    if not user:
+    if not result["success"]:
         logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
-    # Soft delete: deactivate instead of hard delete
-    user.is_active = False
-    await db.commit()
-
-    logger.info(f"Deactivated user: {user.username}")
-    return UserDeleteResponse(message="User deactivated successfully", user_id=str(user.id), username=user.username)
+    logger.info(f"Deactivated user: {result['username']}")
+    return UserDeleteResponse(
+        message=result["message"],
+        user_id=result["user_id"],
+        username=result["username"]
+    )
 
 
 @router.put("/{user_id}/role", response_model=RoleChangeResponse)
@@ -544,7 +554,7 @@ async def change_user_role(
     user_id: UUID,
     role_data: RoleChange,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> RoleChangeResponse:
     """
     Change user role.
@@ -555,7 +565,7 @@ async def change_user_role(
         user_id: UUID of user to change role
         role_data: New role data
         current_user: Current authenticated admin user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Role change confirmation with new role
@@ -567,34 +577,30 @@ async def change_user_role(
     """
     logger.debug(f"Admin {current_user.username} changing role for user {user_id} to {role_data.role}")
 
-    # Query user filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if not user:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
     # Prevent self-demotion (admin cannot change their own role)
-    if user.id == current_user.id:
+    if str(user_id) == str(current_user.id):
         logger.warning(f"Admin {current_user.username} tried to change their own role")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot change your own role (prevents lockout)",
         )
 
-    # Update role
-    old_role = user.role
-    user.role = role_data.role
-    await db.commit()
+    result = await user_service.change_role(str(user_id), role_data.role)
 
-    logger.info(f"Changed role for user {user.username}: {old_role} -> {user.role}")
+    if not result["success"]:
+        logger.warning(f"Failed to change role for user {user_id}: {result['error']}")
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+
+    user = result["user"]
+    logger.info(f"Changed role for user {user['username']} to {user['role']}")
+
     return RoleChangeResponse(
         message="User role updated successfully",
-        user_id=str(user.id),
-        username=user.username,
-        role=user.role,
+        user_id=user["id"],
+        username=user["username"],
+        role=user["role"],
     )
 
 
@@ -603,7 +609,7 @@ async def change_password(
     user_id: UUID,
     password_data: PasswordChange,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> PasswordChangeResponse:
     """
     Change user password.
@@ -615,7 +621,7 @@ async def change_password(
         user_id: UUID of user to change password
         password_data: Password change data
         current_user: Current authenticated user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Password change confirmation
@@ -627,49 +633,36 @@ async def change_password(
     """
     logger.debug(f"User {current_user.username} changing password for user {user_id}")
 
-    # Query user filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if not user:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
     # Authorization: admin can change any password, non-admin can only change own
-    if current_user.role != "admin" and user.id != current_user.id:
-        logger.warning(f"Non-admin {current_user.username} tried to change password for {user.username}")
+    if current_user.role != "admin" and str(user_id) != str(current_user.id):
+        logger.warning(f"Non-admin {current_user.username} tried to change password for user {user_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change other users' passwords")
 
-    # If user is changing their own password, verify old password
-    if user.id == current_user.id and current_user.role != "admin":
-        if not password_data.old_password:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is required to change your password",
-            )
+    # Determine if admin is bypassing old password check
+    is_admin = current_user.role == "admin" and str(user_id) != str(current_user.id)
 
-        # Verify old password
-        if not bcrypt.verify(password_data.old_password, user.password_hash):
-            logger.warning(f"User {user.username} provided incorrect current password")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    result = await user_service.change_password(
+        str(user_id),
+        old_password=password_data.old_password,
+        new_password=password_data.new_password,
+        is_admin=is_admin
+    )
 
-    # Admin changing other user's password doesn't require old password
-    # (password reset scenario)
+    if not result["success"]:
+        logger.warning(f"Failed to change password for user {user_id}: {result['error']}")
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-    # Hash and update password
-    user.password_hash = bcrypt.hash(password_data.new_password)
-    await db.commit()
-
-    logger.info(f"Password changed for user: {user.username}")
-    return PasswordChangeResponse(message="Password updated successfully")
+    logger.info(f"Password changed for user: {user_id}")
+    return PasswordChangeResponse(message=result["message"])
 
 
 @router.post("/{user_id}/reset-password", response_model=PasswordChangeResponse)
 async def reset_password(
     user_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> PasswordChangeResponse:
     """
     Reset user password to default 'GiljoMCP' (Handover 0023).
@@ -681,7 +674,7 @@ async def reset_password(
     Args:
         user_id: UUID of user to reset password
         current_user: Current authenticated admin user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Password reset confirmation
@@ -692,31 +685,14 @@ async def reset_password(
     """
     logger.debug(f"Admin {current_user.username} resetting password for user {user_id}")
 
-    # Query user filtered by tenant_key (multi-tenant isolation)
-    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    result = await user_service.reset_password(str(user_id))
 
-    if not user:
+    if not result["success"]:
         logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
-    # Reset password to default 'GiljoMCP'
-    user.password_hash = bcrypt.hash("GiljoMCP")
-
-    # Set must_change_password flag
-    user.must_change_password = True
-
-    # Keep recovery_pin_hash unchanged (user retains PIN)
-
-    # Clear PIN lockout
-    user.failed_pin_attempts = 0
-    user.pin_lockout_until = None
-
-    await db.commit()
-
-    logger.info(f"Admin {current_user.username} reset password for user: {user.username}")
-    return PasswordChangeResponse(message="Password reset successful")
+    logger.info(f"Admin {current_user.username} reset password for user: {user_id}")
+    return PasswordChangeResponse(message=result["message"])
 
 
 # Field Priority Configuration Endpoints (Handover 0048)
@@ -725,6 +701,7 @@ async def reset_password(
 @router.get("/me/field-priority", response_model=FieldPriorityConfig)
 async def get_field_priority_config(
     current_user: User = Depends(get_current_active_user),
+    user_service: UserService = Depends(get_user_service),
 ) -> FieldPriorityConfig:
     """
     Get user's field priority configuration or default (v2.0).
@@ -738,6 +715,7 @@ async def get_field_priority_config(
 
     Args:
         current_user: Current authenticated user
+        user_service: User service for database operations
 
     Returns:
         FieldPriorityConfig: User's custom config or system defaults (v2.0)
@@ -757,24 +735,20 @@ async def get_field_priority_config(
     """
     logger.debug(f"User {current_user.username} retrieving field priority config")
 
-    # Return user's custom config if set
-    if current_user.field_priority_config:
-        logger.debug(f"Returning custom field priority config for user {current_user.username}")
-        return FieldPriorityConfig(**current_user.field_priority_config)
+    result = await user_service.get_field_priority_config(str(current_user.id))
 
-    # Return system defaults if no custom config (v2.0)
-    logger.debug(f"Returning default field priority config for user {current_user.username}")
-    from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-    return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
+    logger.debug(f"Returning field priority config for user {current_user.username}")
+    return FieldPriorityConfig(**result["config"])
 
 
 @router.put("/me/field-priority", response_model=FieldPriorityConfig)
 async def update_field_priority_config(
     config: FieldPriorityConfig,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-    ws_dependency: "WebSocketDependency" = Depends(get_websocket_dependency),
+    user_service: UserService = Depends(get_user_service),
 ) -> FieldPriorityConfig:
     """
     Update user's field priority configuration (v2.0).
@@ -789,8 +763,7 @@ async def update_field_priority_config(
     Args:
         config: New field priority configuration (v2.0)
         current_user: Current authenticated user
-        db: Database session
-        ws_dependency: WebSocket manager for event emission
+        user_service: User service for database operations
 
     Returns:
         FieldPriorityConfig: Updated configuration
@@ -817,12 +790,14 @@ async def update_field_priority_config(
     )
 
     # Pydantic validation already enforced (1-4 range, CRITICAL requirement, valid categories)
-    # No additional validation needed - Pydantic schema handles all rules
+    # Update via service (service handles WebSocket emission)
+    result = await user_service.update_field_priority_config(
+        str(current_user.id),
+        config.model_dump()
+    )
 
-    # Update user's config (store as dict for JSONB column)
-    current_user.field_priority_config = config.model_dump()
-    await db.commit()
-    await db.refresh(current_user)
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=result["error"])
 
     logger.info(
         f"Updated field priority config for user: {current_user.username}",
@@ -833,37 +808,13 @@ async def update_field_priority_config(
         },
     )
 
-    # Emit WebSocket event for real-time UI synchronization
-    try:
-        await ws_dependency.broadcast_to_tenant(
-            tenant_key=current_user.tenant_key,
-            event_type="priority_config_updated",
-            data={
-                "user_id": str(current_user.id),
-                "timestamp": current_user.updated_at.isoformat() if current_user.updated_at else None,
-                "priorities": config.priorities,
-                "version": config.version,
-            },
-            schema_version="2.0",
-        )
-        logger.debug(
-            f"WebSocket event 'priority_config_updated' emitted for user {current_user.username}",
-            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key},
-        )
-    except Exception as e:
-        # Don't fail request if WebSocket emission fails
-        logger.warning(
-            f"Failed to emit WebSocket event for priority config update: {e}",
-            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key, "error": str(e)},
-        )
-
     return config
 
 
 @router.post("/me/field-priority/reset", response_model=FieldPriorityConfig)
 async def reset_field_priority_config(
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    user_service: UserService = Depends(get_user_service),
 ) -> FieldPriorityConfig:
     """
     Reset field priority configuration to system defaults.
@@ -873,28 +824,27 @@ async def reset_field_priority_config(
 
     Args:
         current_user: Current authenticated user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         FieldPriorityConfig: System default configuration
 
     Example Response:
         {
-            "version": "1.0",
-            "token_budget": 1500,
-            "fields": {
-                "tech_stack.languages": 1,
-                "tech_stack.backend": 1,
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "agent_templates": 1,
                 ...
             }
         }
     """
     logger.debug(f"User {current_user.username} resetting field priority config to defaults")
 
-    # Clear user's custom config
-    current_user.field_priority_config = None
-    await db.commit()
-    await db.refresh(current_user)
+    result = await user_service.reset_field_priority_config(str(current_user.id))
+
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     logger.info(f"Reset field priority config to defaults for user: {current_user.username}")
 
@@ -910,7 +860,7 @@ async def reset_field_priority_config(
 @router.get("/me/context/depth", response_model=Dict[str, Any])
 async def get_depth_config(
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    user_service: UserService = Depends(get_user_service),
 ) -> Dict[str, Any]:
     """
     Get user's depth configuration.
@@ -923,7 +873,7 @@ async def get_depth_config(
 
     Args:
         current_user: Current authenticated user
-        db: Database session
+        user_service: User service for database operations
 
     Returns:
         Dict with depth_config field
@@ -942,20 +892,15 @@ async def get_depth_config(
     """
     logger.debug(f"User {current_user.username} retrieving depth config")
 
-    # Get depth config (from user or defaults)
-    depth_config = current_user.depth_config or {
-        "vision_chunking": "moderate",
-        "memory_last_n_projects": 3,
-        "git_commits": 25,
-        "agent_template_detail": "standard",
-        "tech_stack_sections": "all",
-        "architecture_depth": "overview"
-    }
+    result = await user_service.get_depth_config(str(current_user.id))
+
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     logger.debug(f"Returning depth config for user {current_user.username}")
 
     return {
-        "depth_config": depth_config
+        "depth_config": result["config"]
     }
 
 
@@ -963,8 +908,7 @@ async def get_depth_config(
 async def update_depth_config(
     depth_request: UpdateDepthConfigRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-    ws_dependency: "WebSocketDependency" = Depends(get_websocket_dependency)
+    user_service: UserService = Depends(get_user_service),
 ) -> Dict[str, Any]:
     """
     Update user's depth configuration.
@@ -977,8 +921,7 @@ async def update_depth_config(
     Args:
         depth_request: New depth configuration
         current_user: Current authenticated user
-        db: Database session
-        ws_dependency: WebSocket manager for event emission
+        user_service: User service for database operations
 
     Returns:
         Dict with updated depth_config
@@ -1003,10 +946,13 @@ async def update_depth_config(
         extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key}
     )
 
-    # Update user's depth config (store as dict for JSONB column)
-    current_user.depth_config = depth_request.depth_config.model_dump()
-    await db.commit()
-    await db.refresh(current_user)
+    result = await user_service.update_depth_config(
+        str(current_user.id),
+        depth_request.depth_config.model_dump()
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=result["error"])
 
     logger.info(
         f"Updated depth config for user: {current_user.username}",
@@ -1016,30 +962,13 @@ async def update_depth_config(
         }
     )
 
-    # Emit WebSocket event for real-time UI synchronization
-    try:
-        await ws_dependency.broadcast_to_tenant(
-            tenant_key=current_user.tenant_key,
-            event_type="depth_config_updated",
-            data={
-                "user_id": str(current_user.id),
-                "depth_config": current_user.depth_config
-            },
-            schema_version="1.0"
-        )
-        logger.debug(
-            f"WebSocket event 'depth_config_updated' emitted for user {current_user.username}",
-            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key}
-        )
-    except Exception as e:
-        # Don't fail request if WebSocket emission fails
-        logger.warning(
-            f"Failed to emit WebSocket event for depth config update: {e}",
-            extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key, "error": str(e)}
-        )
+    # Get updated config from service result
+    get_result = await user_service.get_depth_config(str(current_user.id))
+    if not get_result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=get_result["error"])
 
     return {
-        "depth_config": current_user.depth_config
+        "depth_config": get_result["config"]
     }
 
 
