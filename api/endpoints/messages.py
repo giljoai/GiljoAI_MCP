@@ -6,8 +6,13 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from api.endpoints.dependencies import get_message_service
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.services.message_service import MessageService
 
 
 router = APIRouter()
@@ -37,12 +42,16 @@ class MessageResponse(BaseModel):
 
 
 @router.post("/", response_model=MessageResponse)
-async def send_message(message: MessageSend):
+async def send_message(
+    message: MessageSend,
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
+):
     """Send a message to agents"""
     from api.app import state
 
     try:
-        result = await state.tool_accessor.send_message(
+        result = await message_service.send_message(
             to_agents=message.to_agents,
             content=message.content,
             project_id=message.project_id,
@@ -52,7 +61,7 @@ async def send_message(message: MessageSend):
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))  # noqa: TRY301
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))
 
         response = MessageResponse(
             id=result["message_id"],
@@ -80,7 +89,7 @@ async def send_message(message: MessageSend):
                 },
             )
 
-        return response  # noqa: TRY300
+        return response
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -91,15 +100,15 @@ async def list_messages(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
     agent_name: Optional[str] = Query(None, description="Filter by agent name (to or from)"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
 ):
     """List all messages with optional filters
 
-    Messages are stored in the mcp_agent_jobs.messages JSONB column.
-    This endpoint aggregates messages from all agent jobs in the project.
+    Messages are retrieved from MessageService which handles both
+    Message table and legacy mcp_agent_jobs.messages JSONB.
     """
     from api.app import state
-    from src.giljo_mcp.models import MCPAgentJob
-    from sqlalchemy import select
 
     # Check if database is available (not in setup mode)
     if not state.db_manager:
@@ -107,54 +116,48 @@ async def list_messages(
         return []
 
     try:
+        # Use MessageService to list messages
+        result = await message_service.list_messages(
+            project_id=project_id,
+            status=status,
+            tenant_key=current_user.tenant_key,
+        )
+
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to list messages"))
+
+        messages_data = result.get("messages", [])
         messages = []
 
-        async with state.db_manager.get_session_async() as session:
-            # Build query for agent jobs
-            query = select(MCPAgentJob)
+        for msg in messages_data:
+            # Apply agent_name filter if provided
+            if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
+                continue
 
-            if project_id:
-                query = query.where(MCPAgentJob.project_id == project_id)
+            # Parse created_at
+            created_at_str = msg.get("created_at")
+            if created_at_str:
+                try:
+                    created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    created_at = datetime.now(timezone.utc)
+            else:
+                created_at = datetime.now(timezone.utc)
 
-            result = await session.execute(query)
-            jobs = result.scalars().all()
-
-            # Aggregate messages from all jobs
-            for job in jobs:
-                if not job.messages:
-                    continue
-
-                for msg in job.messages:
-                    # Apply filters
-                    if status and msg.get("status") != status:
-                        continue
-                    if agent_name and msg.get("from") != agent_name and msg.get("to_agent") != agent_name:
-                        continue
-
-                    # Parse timestamp
-                    timestamp_str = msg.get("timestamp")
-                    if timestamp_str:
-                        try:
-                            created_at = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                        except (ValueError, AttributeError):
-                            created_at = datetime.now()
-                    else:
-                        created_at = datetime.now()
-
-                    to_agent_val = msg.get("to_agent")
-                    messages.append(
-                        MessageResponse(
-                            id=msg.get("id", str(uuid4())),
-                            from_agent=msg.get("from", "developer"),
-                            to_agents=[to_agent_val] if to_agent_val else [],
-                            to_agent=to_agent_val,  # Single recipient for frontend
-                            content=msg.get("content", ""),
-                            message_type=msg.get("type", "direct"),
-                            priority=msg.get("priority", "normal"),
-                            status=msg.get("status", "pending"),
-                            created_at=created_at,
-                        )
-                    )
+            to_agent_val = msg.get("to_agent")
+            messages.append(
+                MessageResponse(
+                    id=msg.get("id", str(uuid4())),
+                    from_agent=msg.get("from_agent", "developer"),
+                    to_agents=[to_agent_val] if to_agent_val else [],
+                    to_agent=to_agent_val,
+                    content=msg.get("content", ""),
+                    message_type=msg.get("type", "direct"),
+                    priority=msg.get("priority", "normal"),
+                    status=msg.get("status", "pending"),
+                    created_at=created_at,
+                )
+            )
 
         # Sort by timestamp (newest first)
         messages.sort(key=lambda m: m.created_at, reverse=True)
@@ -165,18 +168,35 @@ async def list_messages(
 
 
 @router.get("/agent/{agent_name}", response_model=list[MessageResponse])
-async def get_messages(agent_name: str, project_id: Optional[str] = Query(None, description="Project ID filter")):
+async def get_messages(
+    agent_name: str,
+    project_id: Optional[str] = Query(None, description="Project ID filter"),
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
+):
     """Get pending messages for an agent"""
-    from api.app import state
-
     try:
-        result = await state.tool_accessor.get_messages(agent_name=agent_name, project_id=project_id)
+        result = await message_service.get_messages(
+            agent_name=agent_name,
+            project_id=project_id,
+            status="pending"
+        )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get messages"))  # noqa: TRY301
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get messages"))
 
         messages = []
         for msg in result.get("messages", []):
+            # Parse created timestamp
+            created_str = msg.get("created")
+            if created_str:
+                try:
+                    created_at = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    created_at = datetime.now(timezone.utc)
+            else:
+                created_at = datetime.now(timezone.utc)
+
             messages.append(
                 MessageResponse(
                     id=msg["id"],
@@ -186,11 +206,11 @@ async def get_messages(agent_name: str, project_id: Optional[str] = Query(None, 
                     message_type=msg.get("type", "direct"),
                     priority=msg.get("priority", "normal"),
                     status="pending",
-                    created_at=datetime.fromisoformat(msg["created"]),
+                    created_at=created_at,
                 )
             )
 
-        return messages  # noqa: TRY300
+        return messages
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -198,13 +218,19 @@ async def get_messages(agent_name: str, project_id: Optional[str] = Query(None, 
 
 @router.post("/{message_id}/acknowledge")
 async def acknowledge_message(
-    message_id: str, agent_name: str = Query(..., description="Agent acknowledging the message")
+    message_id: str,
+    agent_name: str = Query(..., description="Agent acknowledging the message"),
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
 ):
     """Acknowledge message receipt"""
     from api.app import state
 
     try:
-        result = await state.tool_accessor.acknowledge_message(message_id=message_id, agent_name=agent_name)
+        result = await message_service.acknowledge_message(
+            message_id=message_id,
+            agent_name=agent_name
+        )
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to acknowledge message"))
@@ -215,12 +241,12 @@ async def acknowledge_message(
             # For now, we'll broadcast without project_id (could be enhanced)
             await state.websocket_manager.broadcast_message_update(
                 message_id=message_id,
-                project_id=result.get("project_id", ""),
+                project_id="",  # Could be enhanced to fetch from message
                 update_type="acknowledged",
                 message_data={"acknowledged_by": agent_name, "status": "acknowledged"},
             )
 
-        return {"success": True, "message": "Message acknowledged"}  # noqa: TRY300
+        return {"success": True, "message": "Message acknowledged"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -231,13 +257,17 @@ async def complete_message(
     message_id: str,
     agent_name: str = Query(..., description="Agent completing the message"),
     result: str = Query(..., description="Completion result"),
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
 ):
     """Mark message as completed"""
     from api.app import state
 
     try:
-        complete_result = await state.tool_accessor.complete_message(
-            message_id=message_id, agent_name=agent_name, result=result
+        complete_result = await message_service.complete_message(
+            message_id=message_id,
+            agent_name=agent_name,
+            result=result
         )
 
         if not complete_result.get("success"):
@@ -247,12 +277,12 @@ async def complete_message(
         if state.websocket_manager:
             await state.websocket_manager.broadcast_message_update(
                 message_id=message_id,
-                project_id=complete_result.get("project_id", ""),
+                project_id="",  # Could be enhanced to fetch from message
                 update_type="completed",
                 message_data={"completed_by": agent_name, "result": result, "status": "completed"},
             )
 
-        return {"success": True, "message": "Message completed", "result": result}  # noqa: TRY300
+        return {"success": True, "message": "Message completed", "result": result}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -266,74 +296,60 @@ class BroadcastMessage(BaseModel):
 
 
 @router.post("/broadcast", response_model=dict)
-async def broadcast_message(broadcast: BroadcastMessage):
+async def broadcast_message(
+    broadcast: BroadcastMessage,
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
+):
     """Broadcast message to all active agents in a project"""
     from api.app import state
-    from src.giljo_mcp.models import MCPAgentJob
-    from sqlalchemy import select
 
     # Check if database is available
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        # Get all active agent jobs for the project
-        async with state.db_manager.get_session_async() as session:
-            query = select(MCPAgentJob).where(
-                MCPAgentJob.project_id == broadcast.project_id,
-                MCPAgentJob.status.in_(["pending", "working", "paused"])  # Active statuses
-            )
-            result = await session.execute(query)
-            active_jobs = result.scalars().all()
+        # Use MessageService to broadcast (it handles finding active agents)
+        message_result = await message_service.broadcast(
+            content=broadcast.content,
+            project_id=broadcast.project_id,
+            priority=broadcast.priority,
+            from_agent=broadcast.from_agent or "user",
+        )
 
-            if not active_jobs:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No active agents found for project {broadcast.project_id}"
-                )
+        if not message_result.get("success"):
+            error_msg = message_result.get("error", "Failed to send broadcast")
+            if "not found" in error_msg.lower():
+                raise HTTPException(status_code=404, detail=error_msg)
+            else:
+                raise HTTPException(status_code=400, detail=error_msg)
 
-            # Get agent names
-            agent_names = [job.agent_type for job in active_jobs]
+        # Get agent names from the result
+        agent_names = message_result.get("to_agents", [])
 
-            # Send message to all active agents
-            message_result = await state.tool_accessor.send_message(
-                to_agents=agent_names,
-                content=broadcast.content,
+        # Broadcast WebSocket notification
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_message_update(
+                message_id=message_result["message_id"],
                 project_id=broadcast.project_id,
-                message_type="broadcast",
-                priority=broadcast.priority,
-                from_agent=broadcast.from_agent or "user",
+                update_type="broadcast",
+                message_data={
+                    "from_agent": broadcast.from_agent or "user",
+                    "to_agents": agent_names,
+                    "content": broadcast.content,
+                    "priority": broadcast.priority,
+                    "status": "pending",
+                    "recipient_count": len(agent_names),
+                },
             )
 
-            if not message_result.get("success"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=message_result.get("error", "Failed to send broadcast")
-                )
-
-            # Broadcast WebSocket notification
-            if state.websocket_manager:
-                await state.websocket_manager.broadcast_message_update(
-                    message_id=message_result["message_id"],
-                    project_id=broadcast.project_id,
-                    update_type="broadcast",
-                    message_data={
-                        "from_agent": broadcast.from_agent or "user",
-                        "to_agents": agent_names,
-                        "content": broadcast.content,
-                        "priority": broadcast.priority,
-                        "status": "pending",
-                        "recipient_count": len(agent_names),
-                    },
-                )
-
-            return {
-                "success": True,
-                "message_id": message_result["message_id"],
-                "recipient_count": len(agent_names),
-                "recipients": agent_names,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
+        return {
+            "success": True,
+            "message_id": message_result["message_id"],
+            "recipient_count": len(agent_names),
+            "recipients": agent_names,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
     except HTTPException:
         raise
