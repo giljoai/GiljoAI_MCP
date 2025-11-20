@@ -8,7 +8,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.js'],
-    include: ['tests/**/*.spec.js', 'tests/**/*.spec.vue', 'src/**/*.spec.js', 'src/**/*.spec.vue'],
+    include: ['tests/**/*.spec.js', 'tests/**/*.spec.ts', 'tests/**/*.spec.vue', 'src/**/*.spec.js', 'src/**/*.spec.ts', 'src/**/*.spec.vue'],
     deps: {
       inline: ['vuetify']
     },
