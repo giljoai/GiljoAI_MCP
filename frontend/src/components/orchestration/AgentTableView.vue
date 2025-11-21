@@ -107,6 +107,28 @@
           <v-tooltip activator="parent" location="top">View Error</v-tooltip>
         </v-btn>
 
+        <!-- Handover 0230: Copy prompt button -->
+        <v-btn
+          v-if="mode === 'jobs'"
+          icon
+          size="x-small"
+          variant="text"
+          :disabled="!canCopyPrompt(item)"
+          :loading="copyingJobId === item.job_id"
+          @click.stop="handleCopyPrompt(item)"
+        >
+          <v-icon>mdi-content-copy</v-icon>
+          <v-tooltip activator="parent" location="top">
+            <span v-if="!canCopyPrompt(item) && usingClaudeCodeSubagents">
+              Disabled in Claude Code mode (non-orchestrator)
+            </span>
+            <span v-else-if="item.status === 'decommissioned'">
+              Agent decommissioned
+            </span>
+            <span v-else>Copy prompt to clipboard</span>
+          </v-tooltip>
+        </v-btn>
+
         <!-- Complete status -->
         <v-chip v-if="mode === 'jobs' && item.status === 'complete'" color="success" size="x-small">
           <v-icon start size="x-small">mdi-check-circle</v-icon>
@@ -123,11 +145,26 @@
       </div>
     </template>
   </v-data-table>
+
+  <!-- Handover 0230: Snackbar for copy feedback -->
+  <v-snackbar
+    v-model="snackbar.show"
+    :color="snackbar.color"
+    :timeout="3000"
+    location="bottom right"
+  >
+    {{ snackbar.message }}
+    <template #actions>
+      <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAgentData } from '@/composables/useAgentData'
+import { useClipboard } from '@/composables/useClipboard'
+import api from '@/services/api'
 
 /**
  * AgentTableView Component
@@ -175,6 +212,11 @@ const {
   getHealthIcon,
 } = useAgentData(computed(() => props.agents))
 
+// Handover 0230: Clipboard functionality
+const { copy } = useClipboard()
+const copyingJobId = ref(null)
+const snackbar = ref({ show: false, message: '', color: 'success' })
+
 // Table headers configuration
 const headers = [
   { title: 'Agent Type', key: 'agent_type', sortable: true },
@@ -215,6 +257,43 @@ function canLaunchAgent(agent) {
 
   // General CLI mode: all non-terminal agents can be launched
   return true
+}
+
+/**
+ * Handover 0230: Copy agent prompt to clipboard
+ * Fetches prompt from API and copies to clipboard
+ */
+async function handleCopyPrompt(agent) {
+  if (!canCopyPrompt(agent)) return
+
+  copyingJobId.value = agent.job_id
+
+  try {
+    // Call existing API endpoint
+    const response = await api.prompts.agentPrompt(agent.job_id)
+    const prompt = response.data.prompt
+
+    // Copy using existing composable
+    const success = await copy(prompt)
+
+    if (success) {
+      showSnackbar('Prompt copied to clipboard!', 'success')
+    } else {
+      throw new Error('Clipboard copy failed')
+    }
+  } catch (error) {
+    console.error('[AgentTableView] Copy prompt failed:', error)
+    showSnackbar('Failed to copy prompt', 'error')
+  } finally {
+    copyingJobId.value = null
+  }
+}
+
+/**
+ * Handover 0230: Show snackbar notification
+ */
+function showSnackbar(message, color = 'success') {
+  snackbar.value = { show: true, message, color }
 }
 
 /**
