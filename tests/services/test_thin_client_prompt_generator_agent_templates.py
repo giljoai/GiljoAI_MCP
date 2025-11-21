@@ -585,3 +585,71 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         "Default Priority 2 should NOT include expertise (full detail)"
     assert "**Typical Tasks**:" not in context and "Typical Tasks:" not in context, \
         "Default Priority 2 should NOT include typical tasks (full detail)"
+
+
+@pytest.mark.asyncio
+async def test_project_description_not_notes_in_context_string(db_session: AsyncSession):
+    """
+    BEHAVIOR: Thin prompt generator should use project.description not project.notes
+    
+    REGRESSION TEST for Bug #1: AttributeError 'Project' object has no attribute 'notes'
+    
+    GIVEN: A project with a description field
+    WHEN: Generating orchestrator context
+    THEN: Context string includes project description (NOT project.notes which doesn't exist)
+    AND: No AttributeError is raised
+    """
+    # ARRANGE
+    tenant_key = "test_tenant_notes_bug"
+    
+    # Create product
+    product = Product(
+        id="prod-notes-bug",
+        name="Notes Bug Test Product",
+        tenant_key=tenant_key,
+        config_data={}
+    )
+    db_session.add(product)
+    
+    # Create user
+    user = User(
+        id="user-notes-bug",
+        username="notesbuguser",
+        tenant_key=tenant_key,
+        field_priority_config={}
+    )
+    db_session.add(user)
+    
+    # Create project with description
+    project_description = "This is the project description field that should appear in context"
+    project = Project(
+        id="proj-notes-bug",
+        name="Notes Bug Test Project",
+        product_id=product.id,
+        tenant_key=tenant_key,
+        description=project_description,
+        mission="Test mission for notes bug",
+        context_budget=100000
+    )
+    db_session.add(project)
+    await db_session.commit()
+    
+    # ACT - Generate context (should NOT raise AttributeError on project.notes)
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
+    result = await generator.generate(
+        project_id=project.id,
+        user_id=user.id,
+        field_priorities={}
+    )
+    thin_prompt = result["thin_prompt"]
+    
+    # ASSERT
+    # Should not raise AttributeError (test passes if we get here)
+    assert thin_prompt is not None, "Thin prompt should be generated without errors"
+    
+    # Project description should appear in context
+    assert project_description in thin_prompt or "project description" in thin_prompt.lower(), \
+        "Project description should appear in context string"
+    
+    # Should contain PROJECT CONTEXT section
+    assert "PROJECT CONTEXT" in thin_prompt, "Context should contain PROJECT CONTEXT section"
