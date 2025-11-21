@@ -1,6 +1,23 @@
 <template>
   <div class="agent-grid-container" role="region" aria-label="Agent orchestration grid">
-    <div class="agent-grid" :style="gridStyles">
+    <!-- View Mode Toggle (Handover 0228) -->
+    <v-row class="mb-4">
+      <v-col cols="auto">
+        <v-btn-toggle v-model="viewMode" mandatory color="primary" density="compact">
+          <v-btn value="cards">
+            <v-icon>mdi-view-grid</v-icon>
+            <v-tooltip activator="parent" location="top">Card View</v-tooltip>
+          </v-btn>
+          <v-btn value="table">
+            <v-icon>mdi-table</v-icon>
+            <v-tooltip activator="parent" location="top">Table View</v-tooltip>
+          </v-btn>
+        </v-btn-toggle>
+      </v-col>
+    </v-row>
+
+    <!-- Card View (EXISTING - enhanced with v-if) -->
+    <div v-if="viewMode === 'cards'" class="agent-grid" :style="gridStyles">
       <!-- Orchestrator card always first -->
       <OrchestratorCard
         v-if="orchestrator"
@@ -22,6 +39,15 @@
         @toggle-messages="toggleAgentMessages"
       />
     </div>
+
+    <!-- Table View (NEW - Handover 0228) -->
+    <AgentTableView
+      v-else
+      :agents="allAgentsForTable"
+      mode="jobs"
+      @row-click="handleRowClick"
+      @launch-agent="handleLaunchAgent"
+    />
   </div>
 </template>
 
@@ -31,25 +57,26 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useOrchestrationStore } from '@/stores/orchestration'
 import AgentCard from '@/components/AgentCard.vue'
 import OrchestratorCard from './OrchestratorCard.vue'
+import AgentTableView from './AgentTableView.vue' // NEW - Handover 0228
 
 const props = defineProps({
   projectId: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
-const emit = defineEmits(['copy-prompt', 'close-project'])
+const emit = defineEmits(['copy-prompt', 'close-project', 'launch-agent']) // NEW - Handover 0228
 
 // Status priority order for sorting (lower = higher priority)
 const STATUS_ORDER = {
-  'failed': 0,
-  'blocked': 1,
-  'working': 2,
-  'review': 3,
-  'preparing': 4,
-  'waiting': 5,
-  'complete': 6
+  failed: 0,
+  blocked: 1,
+  working: 2,
+  review: 3,
+  preparing: 4,
+  waiting: 5,
+  complete: 6,
 }
 
 // Store
@@ -57,6 +84,7 @@ const orchestrationStore = useOrchestrationStore()
 
 // Reactive state
 const expandedAgentId = ref(null)
+const viewMode = ref('cards') // NEW - Handover 0228: Default to card view
 
 // WebSocket setup
 const { on, off } = useWebSocket()
@@ -82,11 +110,21 @@ const project = computed(() => {
   return orchestrationStore.project
 })
 
+// NEW - Handover 0228: Combined agents for table view
+const allAgentsForTable = computed(() => {
+  const agents = [...regularAgents.value]
+  if (orchestrator.value) {
+    // Include orchestrator in table view
+    agents.unshift(orchestrator.value)
+  }
+  return agents
+})
+
 const gridStyles = computed(() => {
   return {
     display: 'grid',
     gap: '16px',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))'
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
   }
 })
 
@@ -113,6 +151,17 @@ const handleCloseProject = () => {
 
 const handleAgentStatusUpdate = (event) => {
   orchestrationStore.handleAgentStatusUpdate(event)
+}
+
+// NEW - Handover 0228: Table view event handlers
+const handleRowClick = (agent) => {
+  // Expand agent messages or show details (reuse existing logic)
+  toggleAgentMessages(agent.id)
+}
+
+const handleLaunchAgent = (agent) => {
+  // Emit launch event (can be handled by parent component)
+  emit('launch-agent', agent)
 }
 
 // Lifecycle hooks
