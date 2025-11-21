@@ -50,7 +50,13 @@ class UserService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_key: str, websocket_manager=None):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_key: str,
+        websocket_manager=None,
+        session: AsyncSession | None = None
+    ):
         """
         Initialize UserService with database and tenant isolation.
 
@@ -58,10 +64,12 @@ class UserService:
             db_manager: Database manager for async database operations
             tenant_key: Tenant key for multi-tenant isolation
             websocket_manager: Optional WebSocket manager for event emission (Handover 0139a)
+            session: Optional AsyncSession for test transaction isolation (Handover 0324)
         """
         self.db_manager = db_manager
         self.tenant_key = tenant_key
         self._websocket_manager = websocket_manager
+        self._session = session  # Store for test transaction isolation
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     # ============================================================================
@@ -81,39 +89,48 @@ class UserService:
             ...     print(user["username"])
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._list_users_impl(self._session)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = (
-                    select(User)
-                    .where(User.tenant_key == self.tenant_key)
-                    .order_by(User.created_at)
-                )
-                result = await session.execute(stmt)
-                users = result.scalars().all()
-
-                user_list = []
-                for user in users:
-                    user_list.append({
-                        "id": str(user.id),
-                        "username": user.username,
-                        "email": user.email,
-                        "full_name": user.full_name,
-                        "role": user.role,
-                        "tenant_key": user.tenant_key,
-                        "is_active": user.is_active,
-                        "created_at": user.created_at.isoformat() if user.created_at else None,
-                        "last_login": user.last_login.isoformat() if user.last_login else None
-                    })
-
-                self._logger.debug(f"Found {len(user_list)} users for tenant {self.tenant_key}")
-
-                return {
-                    "success": True,
-                    "data": user_list
-                }
+                return await self._list_users_impl(session)
 
         except Exception as e:
             self._logger.exception(f"Failed to list users: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _list_users_impl(self, session: AsyncSession) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = (
+            select(User)
+            .where(User.tenant_key == self.tenant_key)
+            .order_by(User.created_at)
+        )
+        result = await session.execute(stmt)
+        users = result.scalars().all()
+
+        user_list = []
+        for user in users:
+            user_list.append({
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "tenant_key": user.tenant_key,
+                "is_active": user.is_active,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "last_login": user.last_login.isoformat() if user.last_login else None
+            })
+
+        self._logger.debug(f"Found {len(user_list)} users for tenant {self.tenant_key}")
+
+        return {
+            "success": True,
+            "data": user_list
+        }
 
     async def get_user(self, user_id: str) -> Dict[str, Any]:
         """
@@ -131,40 +148,49 @@ class UserService:
             ...     print(result["user"]["username"])
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._get_user_impl(self._session, user_id)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                return {
-                    "success": True,
-                    "user": {
-                        "id": str(user.id),
-                        "username": user.username,
-                        "email": user.email,
-                        "full_name": user.full_name,
-                        "role": user.role,
-                        "tenant_key": user.tenant_key,
-                        "is_active": user.is_active,
-                        "created_at": user.created_at.isoformat() if user.created_at else None,
-                        "last_login": user.last_login.isoformat() if user.last_login else None
-                    }
-                }
+                return await self._get_user_impl(session, user_id)
 
         except Exception as e:
             self._logger.exception(f"Failed to get user: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _get_user_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        return {
+            "success": True,
+            "user": {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "tenant_key": user.tenant_key,
+                "is_active": user.is_active,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "last_login": user.last_login.isoformat() if user.last_login else None
+            }
+        }
 
     async def create_user(
         self,
@@ -197,69 +223,91 @@ class UserService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                # Check for duplicate username (global uniqueness)
-                stmt = select(User).where(User.username == username)
-                result = await session.execute(stmt)
-                if result.scalar_one_or_none():
-                    return {
-                        "success": False,
-                        "error": f"Username '{username}' already exists"
-                    }
-
-                # Check for duplicate email if provided
-                if email:
-                    stmt = select(User).where(User.email == email)
-                    result = await session.execute(stmt)
-                    if result.scalar_one_or_none():
-                        return {
-                            "success": False,
-                            "error": f"Email '{email}' already exists"
-                        }
-
-                # Hash password (default to "GiljoMCP" per Handover 0023)
-                password_hash = bcrypt.hash(password or "GiljoMCP")
-
-                # Create user
-                user = User(
-                    id=str(uuid4()),
-                    username=username,
-                    email=email,
-                    full_name=full_name,
-                    password_hash=password_hash,
-                    role=role,
-                    is_active=is_active,
-                    tenant_key=self.tenant_key,
-                    must_change_password=True if not password else False,  # Force change if default password
-                    must_set_pin=True,  # Force PIN setup on first login
-                    recovery_pin_hash=None,  # No PIN set initially
-                    created_at=datetime.now(timezone.utc)
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._create_user_impl(
+                    self._session, username, email, full_name, password, role, is_active
                 )
 
-                session.add(user)
-                await session.commit()
-                await session.refresh(user)
-
-                self._logger.info(f"Created user {user.id} for tenant {self.tenant_key}")
-
-                return {
-                    "success": True,
-                    "user": {
-                        "id": str(user.id),
-                        "username": user.username,
-                        "email": user.email,
-                        "full_name": user.full_name,
-                        "role": user.role,
-                        "tenant_key": user.tenant_key,
-                        "is_active": user.is_active,
-                        "must_change_password": user.must_change_password,
-                        "created_at": user.created_at.isoformat() if user.created_at else None
-                    }
-                }
+            # Otherwise create new session (production mode)
+            async with self.db_manager.get_session_async() as session:
+                return await self._create_user_impl(
+                    session, username, email, full_name, password, role, is_active
+                )
 
         except Exception as e:
             self._logger.exception(f"Failed to create user: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _create_user_impl(
+        self,
+        session: AsyncSession,
+        username: str,
+        email: Optional[str],
+        full_name: Optional[str],
+        password: Optional[str],
+        role: str,
+        is_active: bool
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        # Check for duplicate username (global uniqueness)
+        stmt = select(User).where(User.username == username)
+        result = await session.execute(stmt)
+        if result.scalar_one_or_none():
+            return {
+                "success": False,
+                "error": f"Username '{username}' already exists"
+            }
+
+        # Check for duplicate email if provided
+        if email:
+            stmt = select(User).where(User.email == email)
+            result = await session.execute(stmt)
+            if result.scalar_one_or_none():
+                return {
+                    "success": False,
+                    "error": f"Email '{email}' already exists"
+                }
+
+        # Hash password (default to "GiljoMCP" per Handover 0023)
+        password_hash = bcrypt.hash(password or "GiljoMCP")
+
+        # Create user
+        user = User(
+            id=str(uuid4()),
+            username=username,
+            email=email,
+            full_name=full_name,
+            password_hash=password_hash,
+            role=role,
+            is_active=is_active,
+            tenant_key=self.tenant_key,
+            must_change_password=True if not password else False,  # Force change if default password
+            must_set_pin=True,  # Force PIN setup on first login
+            recovery_pin_hash=None,  # No PIN set initially
+            created_at=datetime.now(timezone.utc)
+        )
+
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+
+        self._logger.info(f"Created user {user.id} for tenant {self.tenant_key}")
+
+        return {
+            "success": True,
+            "user": {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "tenant_key": user.tenant_key,
+                "is_active": user.is_active,
+                "must_change_password": user.must_change_password,
+                "created_at": user.created_at.isoformat() if user.created_at else None
+            }
+        }
 
     async def update_user(
         self,
@@ -284,59 +332,70 @@ class UserService:
             ... )
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._update_user_impl(self._session, user_id, updates)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Check for duplicate email if changing email
-                if "email" in updates and updates["email"] and updates["email"] != user.email:
-                    stmt = select(User).where(User.email == updates["email"])
-                    result = await session.execute(stmt)
-                    existing_user = result.scalar_one_or_none()
-                    if existing_user:
-                        return {
-                            "success": False,
-                            "error": f"Email '{updates['email']}' already exists"
-                        }
-
-                # Apply updates (only allowed fields)
-                allowed_fields = {"email", "full_name", "is_active"}
-                for field, value in updates.items():
-                    if field in allowed_fields:
-                        setattr(user, field, value)
-
-                await session.commit()
-                await session.refresh(user)
-
-                self._logger.info(f"Updated user {user_id}")
-
-                return {
-                    "success": True,
-                    "user": {
-                        "id": str(user.id),
-                        "username": user.username,
-                        "email": user.email,
-                        "full_name": user.full_name,
-                        "role": user.role,
-                        "is_active": user.is_active
-                    }
-                }
+                return await self._update_user_impl(session, user_id, updates)
 
         except Exception as e:
             self._logger.exception(f"Failed to update user: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _update_user_impl(
+        self, session: AsyncSession, user_id: str, updates: dict
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Check for duplicate email if changing email
+        if "email" in updates and updates["email"] and updates["email"] != user.email:
+            stmt = select(User).where(User.email == updates["email"])
+            result = await session.execute(stmt)
+            existing_user = result.scalar_one_or_none()
+            if existing_user:
+                return {
+                    "success": False,
+                    "error": f"Email '{updates['email']}' already exists"
+                }
+
+        # Apply updates (only allowed fields)
+        allowed_fields = {"email", "full_name", "is_active"}
+        for field, value in updates.items():
+            if field in allowed_fields:
+                setattr(user, field, value)
+
+        await session.commit()
+        await session.refresh(user)
+
+        self._logger.info(f"Updated user {user_id}")
+
+        return {
+            "success": True,
+            "user": {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_active": user.is_active
+            }
+        }
 
     async def delete_user(self, user_id: str) -> Dict[str, Any]:
         """
@@ -352,39 +411,48 @@ class UserService:
             >>> result = await service.delete_user("abc-123")
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._delete_user_impl(self._session, user_id)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Soft delete
-                user.is_active = False
-
-                await session.commit()
-
-                self._logger.info(f"Soft deleted user {user_id}")
-
-                return {
-                    "success": True,
-                    "message": "User deactivated successfully",
-                    "user_id": str(user.id),
-                    "username": user.username
-                }
+                return await self._delete_user_impl(session, user_id)
 
         except Exception as e:
             self._logger.exception(f"Failed to delete user: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Soft delete
+        user.is_active = False
+
+        await session.commit()
+
+        self._logger.info(f"Soft deleted user {user_id}")
+
+        return {
+            "success": True,
+            "message": "User deactivated successfully",
+            "user_id": str(user.id),
+            "username": user.username
+        }
 
     # ============================================================================
     # Role Management
@@ -405,69 +473,80 @@ class UserService:
             >>> result = await service.change_role("abc-123", "viewer")
         """
         try:
-            # Validate role
-            valid_roles = ["admin", "developer", "viewer"]
-            if new_role not in valid_roles:
-                return {
-                    "success": False,
-                    "error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"
-                }
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._change_role_impl(self._session, user_id, new_role)
 
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Check if this is the last admin (prevent lockout)
-                if user.role == "admin" and new_role != "admin":
-                    stmt = select(func.count(User.id)).where(
-                        and_(
-                            User.tenant_key == self.tenant_key,
-                            User.role == "admin",
-                            User.is_active == True,
-                            User.id != user_id
-                        )
-                    )
-                    admin_count_result = await session.execute(stmt)
-                    admin_count = admin_count_result.scalar() or 0
-
-                    if admin_count == 0:
-                        return {
-                            "success": False,
-                            "error": "Cannot demote the last admin. At least one admin must remain."
-                        }
-
-                # Update role
-                old_role = user.role
-                user.role = new_role
-                await session.commit()
-                await session.refresh(user)
-
-                self._logger.info(f"Changed role for user {user.username}: {old_role} -> {new_role}")
-
-                return {
-                    "success": True,
-                    "user": {
-                        "id": str(user.id),
-                        "username": user.username,
-                        "role": user.role
-                    }
-                }
+                return await self._change_role_impl(session, user_id, new_role)
 
         except Exception as e:
             self._logger.exception(f"Failed to change role: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _change_role_impl(
+        self, session: AsyncSession, user_id: str, new_role: str
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        # Validate role
+        valid_roles = ["admin", "developer", "viewer"]
+        if new_role not in valid_roles:
+            return {
+                "success": False,
+                "error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+            }
+
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Check if this is the last admin (prevent lockout)
+        if user.role == "admin" and new_role != "admin":
+            stmt = select(func.count(User.id)).where(
+                and_(
+                    User.tenant_key == self.tenant_key,
+                    User.role == "admin",
+                    User.is_active == True,
+                    User.id != user_id
+                )
+            )
+            admin_count_result = await session.execute(stmt)
+            admin_count = admin_count_result.scalar() or 0
+
+            if admin_count == 0:
+                return {
+                    "success": False,
+                    "error": "Cannot demote the last admin. At least one admin must remain."
+                }
+
+        # Update role
+        old_role = user.role
+        user.role = new_role
+        await session.commit()
+        await session.refresh(user)
+
+        self._logger.info(f"Changed role for user {user.username}: {old_role} -> {new_role}")
+
+        return {
+            "success": True,
+            "user": {
+                "id": str(user.id),
+                "username": user.username,
+                "role": user.role
+            }
+        }
 
     # ============================================================================
     # Password Management
@@ -500,52 +579,72 @@ class UserService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._change_password_impl(
+                    self._session, user_id, old_password, new_password, is_admin
                 )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
 
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # If not admin, verify old password
-                if not is_admin:
-                    if not old_password:
-                        return {
-                            "success": False,
-                            "error": "Current password is required"
-                        }
-
-                    if not bcrypt.verify(old_password, user.password_hash):
-                        return {
-                            "success": False,
-                            "error": "Current password is incorrect"
-                        }
-
-                # Hash and update password
-                user.password_hash = bcrypt.hash(new_password)
-                user.must_change_password = False  # Clear flag after successful change
-
-                await session.commit()
-
-                self._logger.info(f"Password changed for user: {user.username}")
-
-                return {
-                    "success": True,
-                    "message": "Password updated successfully"
-                }
+            # Otherwise create new session (production mode)
+            async with self.db_manager.get_session_async() as session:
+                return await self._change_password_impl(
+                    session, user_id, old_password, new_password, is_admin
+                )
 
         except Exception as e:
             self._logger.exception(f"Failed to change password: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _change_password_impl(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        old_password: Optional[str],
+        new_password: str,
+        is_admin: bool
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # If not admin, verify old password
+        if not is_admin:
+            if not old_password:
+                return {
+                    "success": False,
+                    "error": "Current password is required"
+                }
+
+            if not bcrypt.verify(old_password, user.password_hash):
+                return {
+                    "success": False,
+                    "error": "Current password is incorrect"
+                }
+
+        # Hash and update password
+        user.password_hash = bcrypt.hash(new_password)
+        user.must_change_password = False  # Clear flag after successful change
+
+        await session.commit()
+
+        self._logger.info(f"Password changed for user: {user.username}")
+
+        return {
+            "success": True,
+            "message": "Password updated successfully"
+        }
 
     async def reset_password(self, user_id: str) -> Dict[str, Any]:
         """
@@ -561,44 +660,53 @@ class UserService:
             >>> result = await service.reset_password("abc-123")
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._reset_password_impl(self._session, user_id)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Reset password to default 'GiljoMCP'
-                user.password_hash = bcrypt.hash("GiljoMCP")
-
-                # Set must_change_password flag
-                user.must_change_password = True
-
-                # Clear PIN lockout
-                user.failed_pin_attempts = 0
-                user.pin_lockout_until = None
-
-                await session.commit()
-
-                self._logger.info(f"Reset password for user: {user.username}")
-
-                return {
-                    "success": True,
-                    "message": "Password reset successful"
-                }
+                return await self._reset_password_impl(session, user_id)
 
         except Exception as e:
             self._logger.exception(f"Failed to reset password: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Reset password to default 'GiljoMCP'
+        user.password_hash = bcrypt.hash("GiljoMCP")
+
+        # Set must_change_password flag
+        user.must_change_password = True
+
+        # Clear PIN lockout
+        user.failed_pin_attempts = 0
+        user.pin_lockout_until = None
+
+        await session.commit()
+
+        self._logger.info(f"Reset password for user: {user.username}")
+
+        return {
+            "success": True,
+            "message": "Password reset successful"
+        }
 
     # ============================================================================
     # Validation Methods
@@ -620,19 +728,28 @@ class UserService:
             ...     print("Username taken")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(User.username == username)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._check_username_exists_impl(self._session, username)
 
-                return {
-                    "success": True,
-                    "exists": user is not None
-                }
+            # Otherwise create new session (production mode)
+            async with self.db_manager.get_session_async() as session:
+                return await self._check_username_exists_impl(session, username)
 
         except Exception as e:
             self._logger.exception(f"Failed to check username: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(User.username == username)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        return {
+            "success": True,
+            "exists": user is not None
+        }
 
     async def check_email_exists(self, email: str) -> Dict[str, Any]:
         """
@@ -650,19 +767,28 @@ class UserService:
             ...     print("Email taken")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(User.email == email)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._check_email_exists_impl(self._session, email)
 
-                return {
-                    "success": True,
-                    "exists": user is not None
-                }
+            # Otherwise create new session (production mode)
+            async with self.db_manager.get_session_async() as session:
+                return await self._check_email_exists_impl(session, email)
 
         except Exception as e:
             self._logger.exception(f"Failed to check email: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(User.email == email)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        return {
+            "success": True,
+            "exists": user is not None
+        }
 
     async def verify_password(self, user_id: str, password: str) -> Dict[str, Any]:
         """
@@ -681,32 +807,43 @@ class UserService:
             ...     print("Password correct")
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._verify_password_impl(self._session, user_id, password)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                verified = bcrypt.verify(password, user.password_hash)
-
-                return {
-                    "success": True,
-                    "verified": verified
-                }
+                return await self._verify_password_impl(session, user_id, password)
 
         except Exception as e:
             self._logger.exception(f"Failed to verify password: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _verify_password_impl(
+        self, session: AsyncSession, user_id: str, password: str
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        verified = bcrypt.verify(password, user.password_hash)
+
+        return {
+            "success": True,
+            "verified": verified
+        }
 
     # ============================================================================
     # Configuration Management
@@ -727,40 +864,51 @@ class UserService:
             >>> print(result["config"])
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._get_field_priority_config_impl(self._session, user_id)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Return custom config if set, otherwise defaults
-                if user.field_priority_config:
-                    return {
-                        "success": True,
-                        "config": user.field_priority_config
-                    }
-
-                # Return system defaults (v2.0)
-                from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-
-                return {
-                    "success": True,
-                    "config": DEFAULT_FIELD_PRIORITY
-                }
+                return await self._get_field_priority_config_impl(session, user_id)
 
         except Exception as e:
             self._logger.exception(f"Failed to get field priority config: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _get_field_priority_config_impl(
+        self, session: AsyncSession, user_id: str
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Return custom config if set, otherwise defaults
+        if user.field_priority_config:
+            return {
+                "success": True,
+                "config": user.field_priority_config
+            }
+
+        # Return system defaults (v2.0)
+        from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+
+        return {
+            "success": True,
+            "config": DEFAULT_FIELD_PRIORITY
+        }
 
     async def update_field_priority_config(
         self,
@@ -784,61 +932,72 @@ class UserService:
             ... )
         """
         try:
-            # Validate config structure
-            if "version" not in config or "priorities" not in config:
-                return {
-                    "success": False,
-                    "error": "Invalid config structure. Must contain 'version' and 'priorities'"
-                }
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._update_field_priority_config_impl(self._session, user_id, config)
 
-            # Validate priorities (1-4 range)
-            for category, priority in config["priorities"].items():
-                if not isinstance(priority, int) or priority < 1 or priority > 4:
-                    return {
-                        "success": False,
-                        "error": f"Invalid priority {priority} for category '{category}'. Must be 1-4"
-                    }
-
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Update config
-                user.field_priority_config = config
-                await session.commit()
-
-                self._logger.info(f"Updated field priority config for user {user.username}")
-
-                # Emit WebSocket event if manager available
-                await self._emit_websocket_event(
-                    event_type="priority_config_updated",
-                    data={
-                        "user_id": user_id,
-                        "priorities": config["priorities"],
-                        "version": config["version"]
-                    }
-                )
-
-                return {
-                    "success": True,
-                    "message": "Field priority config updated successfully"
-                }
+                return await self._update_field_priority_config_impl(session, user_id, config)
 
         except Exception as e:
             self._logger.exception(f"Failed to update field priority config: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _update_field_priority_config_impl(
+        self, session: AsyncSession, user_id: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        # Validate config structure
+        if "version" not in config or "priorities" not in config:
+            return {
+                "success": False,
+                "error": "Invalid config structure. Must contain 'version' and 'priorities'"
+            }
+
+        # Validate priorities (1-4 range)
+        for category, priority in config["priorities"].items():
+            if not isinstance(priority, int) or priority < 1 or priority > 4:
+                return {
+                    "success": False,
+                    "error": f"Invalid priority {priority} for category '{category}'. Must be 1-4"
+                }
+
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Update config
+        user.field_priority_config = config
+        await session.commit()
+
+        self._logger.info(f"Updated field priority config for user {user.username}")
+
+        # Emit WebSocket event if manager available
+        await self._emit_websocket_event(
+            event_type="priority_config_updated",
+            data={
+                "user_id": user_id,
+                "priorities": config["priorities"],
+                "version": config["version"]
+            }
+        )
+
+        return {
+            "success": True,
+            "message": "Field priority config updated successfully"
+        }
 
     async def reset_field_priority_config(self, user_id: str) -> Dict[str, Any]:
         """
@@ -854,36 +1013,47 @@ class UserService:
             >>> result = await service.reset_field_priority_config("abc-123")
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._reset_field_priority_config_impl(self._session, user_id)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Clear custom config
-                user.field_priority_config = None
-                await session.commit()
-
-                self._logger.info(f"Reset field priority config for user {user.username}")
-
-                return {
-                    "success": True,
-                    "message": "Field priority config reset to defaults"
-                }
+                return await self._reset_field_priority_config_impl(session, user_id)
 
         except Exception as e:
             self._logger.exception(f"Failed to reset field priority config: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _reset_field_priority_config_impl(
+        self, session: AsyncSession, user_id: str
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Clear custom config
+        user.field_priority_config = None
+        await session.commit()
+
+        self._logger.info(f"Reset field priority config for user {user.username}")
+
+        return {
+            "success": True,
+            "message": "Field priority config reset to defaults"
+        }
 
     async def get_depth_config(self, user_id: str) -> Dict[str, Any]:
         """
@@ -900,40 +1070,49 @@ class UserService:
             >>> print(result["config"])
         """
         try:
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._get_depth_config_impl(self._session, user_id)
+
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Return depth config (from user or defaults)
-                depth_config = user.depth_config or {
-                    "vision_chunking": "moderate",
-                    "memory_last_n_projects": 3,
-                    "git_commits": 25,
-                    "agent_template_detail": "standard",
-                    "tech_stack_sections": "all",
-                    "architecture_depth": "overview"
-                }
-
-                return {
-                    "success": True,
-                    "config": depth_config
-                }
+                return await self._get_depth_config_impl(session, user_id)
 
         except Exception as e:
             self._logger.exception(f"Failed to get depth config: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Return depth config (from user or defaults)
+        depth_config = user.depth_config or {
+            "vision_chunking": "moderate",
+            "memory_last_n_projects": 3,
+            "git_commits": 25,
+            "agent_template_detail": "standard",
+            "tech_stack_sections": "all",
+            "architecture_depth": "overview"
+        }
+
+        return {
+            "success": True,
+            "config": depth_config
+        }
 
     async def update_depth_config(
         self,
@@ -957,56 +1136,67 @@ class UserService:
             ... )
         """
         try:
-            # Validate config values
-            valid_vision = ["none", "light", "moderate", "heavy"]
-            valid_memory = [1, 3, 5, 10]
-            valid_git = [10, 25, 50, 100]
+            # Use provided session if available (test mode)
+            if self._session:
+                return await self._update_depth_config_impl(self._session, user_id, config)
 
-            if "vision_chunking" in config and config["vision_chunking"] not in valid_vision:
-                return {
-                    "success": False,
-                    "error": f"Invalid vision_chunking. Must be one of: {', '.join(valid_vision)}"
-                }
-
+            # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(User).where(
-                    and_(
-                        User.id == user_id,
-                        User.tenant_key == self.tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    return {
-                        "success": False,
-                        "error": "User not found"
-                    }
-
-                # Update config
-                user.depth_config = config
-                await session.commit()
-
-                self._logger.info(f"Updated depth config for user {user.username}")
-
-                # Emit WebSocket event if manager available
-                await self._emit_websocket_event(
-                    event_type="depth_config_updated",
-                    data={
-                        "user_id": user_id,
-                        "depth_config": config
-                    }
-                )
-
-                return {
-                    "success": True,
-                    "message": "Depth config updated successfully"
-                }
+                return await self._update_depth_config_impl(session, user_id, config)
 
         except Exception as e:
             self._logger.exception(f"Failed to update depth config: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _update_depth_config_impl(
+        self, session: AsyncSession, user_id: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Implementation that uses provided session"""
+        # Validate config values
+        valid_vision = ["none", "light", "moderate", "heavy"]
+        valid_memory = [1, 3, 5, 10]
+        valid_git = [10, 25, 50, 100]
+
+        if "vision_chunking" in config and config["vision_chunking"] not in valid_vision:
+            return {
+                "success": False,
+                "error": f"Invalid vision_chunking. Must be one of: {', '.join(valid_vision)}"
+            }
+
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found"
+            }
+
+        # Update config
+        user.depth_config = config
+        await session.commit()
+
+        self._logger.info(f"Updated depth config for user {user.username}")
+
+        # Emit WebSocket event if manager available
+        await self._emit_websocket_event(
+            event_type="depth_config_updated",
+            data={
+                "user_id": user_id,
+                "depth_config": config
+            }
+        )
+
+        return {
+            "success": True,
+            "message": "Depth config updated successfully"
+        }
 
     # ============================================================================
     # Private Helper Methods
