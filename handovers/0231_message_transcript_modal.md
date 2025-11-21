@@ -1,8 +1,8 @@
 # Handover 0231: Message Transcript Modal
 
-**Status**: Ready for Implementation
+**Status**: Ready for Implementation (REVISED - Extract-first approach)
 **Priority**: Medium
-**Estimated Effort**: 2 hours (reduced from 4 via component reuse)
+**Estimated Effort**: 4 hours (component extraction + modal integration)
 **Dependencies**: Handover 0228 (StatusBoardTable component)
 **Part of**: Visual Refactor Series (0225-0237)
 
@@ -10,9 +10,11 @@
 
 ## Objective
 
-Create MessageModal component by **reusing existing MessagePanel.vue** component with modal mode support. Trigger on table row click in AgentTableView. This approach enhances existing components rather than creating duplicates.
+Create MessageModal component by **extracting reusable MessageList from MessagePanel.vue**, then reusing it in modal context. This prevents logic duplication while accommodating MessagePanel's current container-based layout.
 
-**CRITICAL**: Per QUICK_LAUNCH.txt line 19 - NO parallel systems. We reuse MessagePanel (347 lines exist), not duplicate it.
+**CRITICAL**: Per QUICK_LAUNCH.txt line 19 - NO parallel systems. We extract shared rendering logic to MessageList.vue (150 lines), then reuse it in both MessagePanel AND MessageModal.
+
+**ARCHITECTURAL REVISION**: After codebase analysis, MessagePanel.vue uses `v-container` + `v-row` + `v-col` layout designed for full-page display, NOT modal content. Simply adding a `mode` prop is insufficient. We must extract the core message rendering logic to a separate MessageList component, then reuse it in both contexts.
 
 ---
 
@@ -29,10 +31,29 @@ Create MessageModal component by **reusing existing MessagePanel.vue** component
 - Search functionality
 - Virtual scroll for performance
 
-**Reusable Capabilities**:
-- All 347 lines can be reused for modal display
-- Only needs `mode` prop to distinguish inline vs modal styling
-- No duplication needed
+**Current Layout Structure** (CRITICAL for understanding refactor):
+```vue
+<v-container fluid>  <!-- Container-based layout -->
+  <v-row class="mb-4">  <!-- Filter controls -->
+    <v-col cols="12">
+      <v-select ... />  <!-- Filter dropdowns -->
+    </v-col>
+  </v-row>
+  <v-row>  <!-- Message list -->
+    <v-col cols="12">
+      <v-card variant="outlined">  <!-- Card wrapper -->
+        <v-virtual-scroll ...>  <!-- Message rendering -->
+          <MessageItem ... />
+        </v-virtual-scroll>
+      </v-card>
+    </v-col>
+  </v-row>
+</v-container>
+```
+
+**Problem**: `v-container` + `v-row` + `v-col` layout is designed for full-page display, NOT modal content. Adding a simple `mode` prop will not make this modal-friendly.
+
+**Solution**: Extract the core message rendering logic (v-virtual-scroll + MessageItem loop) into MessageList.vue (150 lines), then reuse it in both MessagePanel AND MessageModal.
 
 ### Vision Document Requirements (Slide 18)
 
@@ -48,69 +69,162 @@ Create MessageModal component by **reusing existing MessagePanel.vue** component
 
 ### 0. Test-Driven Development Order
 
-**Test-Driven Development Order**:
+**Test-Driven Development Order** (REVISED):
 
-1. Write failing tests for MessagePanel modal mode (renders correctly with mode="modal")
-2. Add modal mode styling to existing MessagePanel
-3. Write failing tests for MessageModal wrapper (opens/closes, passes props correctly)
-4. Implement thin MessageModal wrapper component
-5. Write failing tests for MessageInput modal position (renders in modal footer)
-6. Add position prop to existing MessageInput
-7. Refactor if needed
+1. Write failing tests for MessageList component (renders messages, virtual scroll works)
+2. Extract MessageList from MessagePanel (150 lines of rendering logic)
+3. Write failing tests for refactored MessagePanel (uses MessageList internally)
+4. Refactor MessagePanel to use MessageList (remove 50 lines of inline rendering)
+5. Write failing tests for MessageModal wrapper (opens/closes, uses MessageList)
+6. Implement MessageModal wrapper component (80 lines)
+7. Write failing tests for MessageInput modal position (renders in modal footer)
+8. Add position prop to existing MessageInput (30 lines)
+9. Refactor if needed
 
-**Test Focus**: Component reuse (same MessagePanel works in both inline and modal contexts).
+**Test Focus**: Component extraction and reuse (same MessageList works in both MessagePanel and MessageModal).
 
-**Key Principle**: Add props to existing components, don't duplicate logic.
+**Key Principle**: Extract shared rendering logic, then reuse in multiple contexts.
 
 ---
 
 ## Implementation Plan
 
-### 1. Enhance Existing MessagePanel for Modal Mode
+### 1. Extract MessageList Component (NEW - 150 lines)
 
-**File**: `frontend/src/components/messages/MessagePanel.vue` (MODIFY EXISTING - add 10 lines)
+**File**: `frontend/src/components/messages/MessageList.vue` (NEW)
 
-Add modal mode support to EXISTING component:
+Extract the core message rendering logic from MessagePanel:
 
 ```vue
 <template>
-  <div :class="['message-panel', `mode-${mode}`]">
-    <!-- EXISTING CONTENT (lines 1-347) remains unchanged -->
-    <!-- Virtual scroll, filtering, search - all existing functionality -->
+  <div class="message-list">
+    <v-virtual-scroll
+      :items="messages"
+      :item-height="120"
+      height="600"
+    >
+      <template #default="{ item }">
+        <MessageItem
+          :message="item"
+          :is-broadcast="item.type === 'broadcast'"
+          @click="$emit('message-click', item)"
+        />
+      </template>
+    </v-virtual-scroll>
+
+    <!-- Empty state -->
+    <div v-if="messages.length === 0" class="empty-state">
+      <v-icon size="64" color="grey-lighten-1">mdi-message-text-outline</v-icon>
+      <p class="text-grey-lighten-1 mt-4">No messages yet</p>
+    </div>
   </div>
 </template>
 
 <script setup>
+import MessageItem from './MessageItem.vue'
+
 const props = defineProps({
-  messages: Array,
-  jobId: String,
-  mode: {  // NEW PROP (1 line)
-    type: String,
-    default: 'inline',
-    validator: (v) => ['inline', 'modal'].includes(v)
+  messages: {
+    type: Array,
+    required: true,
+    default: () => []
   }
 })
+
+const emit = defineEmits(['message-click'])
 </script>
 
 <style scoped>
-/* EXISTING STYLES (lines 1-50) remain unchanged */
+.message-list {
+  width: 100%;
+  position: relative;
+}
 
-/* NEW: Modal-specific styling (5 lines) */
-.mode-modal {
-  max-height: 600px;
-  overflow-y: auto;
-  padding: 0;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
 }
 </style>
 ```
 
-**Impact**: 10 lines added to existing 347-line component (not 200+ new component)
+**Impact**: 150 lines (extracted from MessagePanel)
+
+**Key Features**:
+- Pure message rendering logic (no layout wrappers)
+- Virtual scroll for performance
+- Empty state handling
+- Reusable in ANY context (inline panel, modal, sidebar, etc.)
 
 ---
 
-### 2. Create Thin Modal Wrapper
+### 2. Refactor MessagePanel to use MessageList (MODIFY - remove 50 lines)
 
-**File**: `frontend/src/components/messages/MessageModal.vue` (NEW - 80 lines)
+**File**: `frontend/src/components/messages/MessagePanel.vue` (MODIFY EXISTING)
+
+Replace inline message rendering with MessageList component:
+
+```vue
+<template>
+  <v-container fluid>
+    <!-- KEEP: Filter controls (lines 1-30) -->
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <v-select v-model="filterType" :items="messageTypes" label="Filter by type" />
+        <v-text-field v-model="searchQuery" label="Search messages" prepend-icon="mdi-magnify" />
+      </v-col>
+    </v-row>
+
+    <!-- REPLACE: Inline v-virtual-scroll (lines 31-80 REMOVED) -->
+    <!-- WITH: MessageList component (5 lines) -->
+    <v-row>
+      <v-col cols="12">
+        <v-card variant="outlined">
+          <MessageList
+            :messages="filteredMessages"
+            @message-click="handleMessageClick"
+          />
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import MessageList from './MessageList.vue'  // NEW IMPORT
+
+// KEEP: Filter logic (lines 1-50)
+const filteredMessages = computed(() => {
+  let result = props.messages
+  if (filterType.value) {
+    result = result.filter(m => m.type === filterType.value)
+  }
+  if (searchQuery.value) {
+    result = result.filter(m => m.content.includes(searchQuery.value))
+  }
+  return result
+})
+
+// KEEP: All existing logic
+</script>
+```
+
+**Impact**: 347 lines → 302 lines (50 lines removed, replaced by MessageList import)
+
+**Key Changes**:
+- REMOVED: Inline v-virtual-scroll + MessageItem loop (50 lines)
+- ADDED: MessageList component (5 lines)
+- KEPT: Filter controls, search, all business logic
+
+---
+
+### 3. Create Thin Modal Wrapper (NEW - 80 lines)
+
+**File**: `frontend/src/components/messages/MessageModal.vue` (NEW)
 
 ```vue
 <template>
@@ -134,11 +248,10 @@ const props = defineProps({
       <v-divider />
 
       <v-card-text class="pa-0">
-        <!-- REUSE EXISTING MessagePanel -->
-        <MessagePanel
+        <!-- REUSE EXTRACTED MessageList -->
+        <MessageList
           :messages="messages"
-          :job-id="jobId"
-          :mode="'modal'"
+          @message-click="handleMessageClick"
         />
       </v-card-text>
 
@@ -158,7 +271,7 @@ const props = defineProps({
 
 <script setup>
 import { computed } from 'vue'
-import MessagePanel from '@/components/messages/MessagePanel.vue'  // REUSE
+import MessageList from '@/components/messages/MessageList.vue'  // REUSE EXTRACTED
 import MessageInput from '@/components/projects/MessageInput.vue'  // REUSE
 
 const props = defineProps({
@@ -193,11 +306,17 @@ function handleMessageSent(messageData) {
 </style>
 ```
 
-**Impact**: 80 lines (thin wrapper) vs 200+ duplicate = **60% reduction**
+**Impact**: 80 lines (thin wrapper using MessageList)
+
+**Key Features**:
+- Modal dialog (v-dialog)
+- Message display via MessageList component
+- Message input via MessageInput component
+- Close on X button, ESC key, click outside
 
 ---
 
-### 3. Enhance Existing MessageInput for Position Modes
+### 4. Enhance Existing MessageInput for Position Modes
 
 **File**: `frontend/src/components/projects/MessageInput.vue` (MODIFY EXISTING - add 30 lines)
 
@@ -255,15 +374,23 @@ const props = defineProps({
 
 ---
 
-## Code Reduction Summary
+## Code Impact Summary (REVISED)
 
-| Component | Original Approach | Redesigned Approach | Reduction |
-|-----------|-------------------|---------------------|-----------|
-| **MessageTranscriptModal.vue** | 200 lines (duplicate) | **Not created** | 200 lines saved |
-| **MessagePanel.vue** | Unchanged | +10 lines (mode prop) | 10 lines added |
-| **MessageModal.vue** | N/A | +80 lines (wrapper) | 60% vs original |
-| **MessageInput.vue** | Unchanged | +30 lines (position) | 30 lines added |
-| **Net Code** | +200 lines | +120 lines | **40% reduction** |
+| Component | Action | Lines | Notes |
+|-----------|--------|-------|-------|
+| **MessageList.vue** | CREATE | +150 | Extracted from MessagePanel (rendering logic) |
+| **MessagePanel.vue** | REFACTOR | -50 | Removed inline rendering, uses MessageList |
+| **MessageModal.vue** | CREATE | +80 | Thin wrapper using MessageList |
+| **MessageInput.vue** | ENHANCE | +30 | Position prop for modal/sticky modes |
+| **Net Code** | | **+210 lines** | vs +200 if duplicating (5% more, but zero duplication) |
+
+**Why This Approach**:
+- ✅ Zero logic duplication (MessageList used in both contexts)
+- ✅ MessagePanel becomes smaller (347 → 302 lines)
+- ✅ Modal-friendly rendering (no v-container wrappers)
+- ✅ Future-proof (MessageList reusable in sidebars, drawers, etc.)
+
+**Trade-off**: Slightly more code (+210 vs +120 in original plan) BUT architecturally sound extraction with zero duplication.
 
 ---
 
@@ -485,16 +612,18 @@ it('MessagePanel behaves identically in inline and modal modes', async () => {
 
 ---
 
-## Success Criteria
+## Success Criteria (REVISED)
 
-- ✅ MessagePanel.vue enhanced with `mode` prop (+10 lines)
+- ✅ MessageList.vue extracted from MessagePanel (+150 lines)
+- ✅ MessagePanel.vue refactored to use MessageList (-50 lines)
 - ✅ MessageModal.vue created as thin wrapper (+80 lines)
 - ✅ MessageInput.vue enhanced with `position` prop (+30 lines)
-- ✅ Zero logic duplication between inline and modal message display
+- ✅ Zero logic duplication (MessageList used in both MessagePanel AND MessageModal)
 - ✅ Modal opens on table row click
 - ✅ Modal closes on X button, ESC key, click outside
 - ✅ MessageInput renders in modal footer with correct styling
-- ✅ Total code reduction: 40% vs creating duplicate MessageTranscriptModal
+- ✅ MessagePanel cleaner (347 → 302 lines)
+- ✅ Total code: +210 lines (vs +200 if duplicating) with zero duplication
 
 ---
 
