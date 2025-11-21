@@ -123,22 +123,11 @@
               </template>
             </v-alert>
 
-            <!-- Message List (Virtual Scroll) -->
-            <v-virtual-scroll
+            <!-- Message List -->
+            <MessageList
               v-else
-              :items="filteredMessages"
-              :height="600"
-              item-height="120"
-            >
-              <template v-slot:default="{ item }">
-                <div class="px-4 pt-3">
-                  <MessageItem
-                    :message="item"
-                    :show-actions="false"
-                  />
-                </div>
-              </template>
-            </v-virtual-scroll>
+              :messages="filteredMessages"
+            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -150,7 +139,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import api from '@/services/api'
-import MessageItem from './MessageItem.vue'
+import MessageList from './MessageList.vue'
 import type { Message, MessageType, MessageStatus } from '@/types/message'
 
 interface Props {
