@@ -1,5 +1,5 @@
 <template>
-  <div class="message-input" :class="{ 'message-input--disabled': disabled }">
+  <div class="message-input" :class="[`position-${position}`, { 'message-input--disabled': disabled }]">
     <div class="message-input__container">
       <!-- User icon -->
       <div class="message-input__user-icon" aria-hidden="true">
@@ -77,6 +77,21 @@ import { ref, computed, nextTick } from 'vue'
 
 const props = defineProps({
   /**
+   * Job ID for message sending
+   */
+  jobId: {
+    type: String,
+    required: true
+  },
+  /**
+   * Position mode: inline (default), modal (in dialog), sticky (bottom)
+   */
+  position: {
+    type: String,
+    default: 'inline',
+    validator: (value) => ['inline', 'modal', 'sticky'].includes(value)
+  },
+  /**
    * Disable input and submission
    */
   disabled: {
@@ -85,7 +100,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['send'])
+const emit = defineEmits(['send', 'message-sent'])
 
 /**
  * Message text state
@@ -148,6 +163,13 @@ function handleSubmit() {
 
   // Emit send event with message and recipient
   emit('send', trimmedMessage, recipient.value)
+
+  // Also emit message-sent for modal usage
+  emit('message-sent', {
+    content: trimmedMessage,
+    recipient: recipient.value,
+    jobId: props.jobId
+  })
 
   // Clear input after sending
   messageText.value = ''
@@ -355,5 +377,29 @@ function handleSubmit() {
   .message-input__submit {
     transition: none;
   }
+}
+
+/* Position-specific styling (Handover 0231 Phase 4) */
+.message-input.position-inline {
+  /* Default - uses existing sticky positioning */
+}
+
+.message-input.position-modal {
+  position: static;
+  width: 100%;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 16px;
+  background: white;
+  box-shadow: none;
+}
+
+.message-input.position-sticky {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  padding: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
 }
 </style>
