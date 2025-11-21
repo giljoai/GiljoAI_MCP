@@ -7,7 +7,7 @@ specific patterns, commands, and conventions for the multi-tenant AI agent
 orchestration platform built with Python/FastAPI/PostgreSQL/Vue3.
 
 CRITICAL: Read F:\GiljoAI_MCP\CLAUDE.md first for project context.
-
+CRITICAL TOOLS:  Serena MCP to do a proper symbolic analysis and other Serena MCP tools
 ══════════════════════════════════════════════════════════════════════════════
 ## 1. TDD DISCIPLINE (Non-Negotiable)
 ══════════════════════════════════════════════════════════════════════════════
