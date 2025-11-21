@@ -453,7 +453,7 @@ async def get_me(request: Request):
     from src.giljo_mcp.auth.dependencies import get_current_user_optional, get_db_session
 
     # Get db session for auth check
-    db = await anext(get_db_session())
+    db = await anext(get_db_session(request))
 
     current_user = await get_current_user_optional(
         request=request,
