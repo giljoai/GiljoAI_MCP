@@ -32,9 +32,33 @@ class MCPAgentJob(Base):
     Handover 0017: Enables agent-to-agent job coordination for agentic orchestration.
     Handover 0073: Enhanced with progress tracking, tool assignment, and expanded status states.
     Handover 0080: Orchestrator succession architecture for unlimited project duration.
+    Handover 0225: Performance indexes for status board queries (last_progress_at, health_status, composite).
     Separate from Task model which tracks user-facing work items.
 
     Multi-tenant isolation: All queries filter by tenant_key.
+
+    Message Tracking (Auto-implemented):
+    - messages (JSONB): Message array with status tracking
+      - Status transition: "pending" (unread) → "acknowledged" (read)
+      - Auto-tracking: read_mcp_messages() marks messages as acknowledged
+    - last_message_check_at (DateTime): Auto-updated when agent reads messages
+
+    Progress Tracking:
+    - last_progress_at (DateTime): Updated by agents reporting progress
+    - progress (Integer, 0-100): Job completion percentage
+    - current_task (Text): Current task description
+
+    Health Monitoring:
+    - health_status (String): unknown, healthy, warning, critical, timeout
+    - last_health_check (DateTime): Last health check timestamp
+    - health_failure_count (Integer): Consecutive health check failures
+
+    Status Board Optimizations:
+    - Indexed fields: last_progress_at, health_status
+    - Composite index: (project_id, status, last_progress_at)
+    - Enables fast sorting/filtering for table view
+
+    See: agent_messaging.py for message auto-tracking implementation
     """
 
     __tablename__ = "mcp_agent_jobs"
@@ -164,6 +188,10 @@ class MCPAgentJob(Base):
         # Handover 0080: Succession indexes
         Index("idx_agent_jobs_instance", "project_id", "agent_type", "instance_number"),
         Index("idx_agent_jobs_handover", "handover_to"),
+        # Handover 0225: Performance indexes for status board queries
+        Index("idx_mcp_agent_jobs_last_progress", "last_progress_at"),
+        Index("idx_mcp_agent_jobs_health_status", "health_status"),
+        Index("idx_mcp_agent_jobs_composite_status", "project_id", "status", "last_progress_at"),
         CheckConstraint(
             "status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')",
             name="ck_mcp_agent_job_status",
