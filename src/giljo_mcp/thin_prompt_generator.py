@@ -507,7 +507,6 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Name: {project.name}
 - Description: {project.description or '(No description provided)'}
 - Mission: {project.mission or '(Mission will be created by you)'}
-- Notes: {project.notes or '(No additional notes)'}
 
 MCP CONTEXT TOOLS AVAILABLE (Fetch on-demand by priority):
 
