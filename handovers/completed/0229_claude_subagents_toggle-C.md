@@ -677,3 +677,86 @@ it('loads toggle state from localStorage on mount', () => {
 - **StatusBoardTable**: Handover 0228
 - **Vuetify v-switch**: [Documentation](https://vuetifyjs.com/en/components/switches/)
 - **Existing Toggle Logic**: `shouldDisablePromptButton()` function
+
+---
+
+## ✅ HANDOVER COMPLETION SUMMARY
+
+**Status**: COMPLETE
+**Completed**: 2025-11-21
+**Execution Time**: 2 hours
+**Git Commit**: c61a962
+**Merged to**: master
+
+### Deliverables Completed
+
+✅ Integrated Claude Subagents toggle with AgentCardGrid and AgentTableView
+✅ Implemented canLaunchAgent() and canCopyPrompt() logic methods
+✅ Added visual feedback (disabled buttons, row opacity, tooltips)
+✅ Verified existing toggle in JobsTab.vue (lines 268-369)
+✅ Comprehensive TDD test coverage (25 tests, 100% passing)
+
+### Test Results
+
+**JobsTab tests**:
+- Tests written: 10 tests
+- Tests passing: 10/10 (100%)
+- Coverage: Toggle logic, hint text, alert indicators
+
+**AgentCardGrid tests**:
+- Tests written: 15 tests
+- Tests passing: 15/15 (100%)
+- Coverage: Button disabling, tooltips, visual feedback
+
+**Total**: 25/25 tests passing (100%)
+
+### Files Modified/Created
+
+**Modified**:
+- `frontend/src/components/orchestration/AgentCardGrid.vue` (+52 lines)
+- `frontend/src/components/orchestration/AgentTableView.vue` (+82 lines)
+
+**Created**:
+- `frontend/tests/components/projects/JobsTab.0229.spec.js` (305 lines, 10 tests)
+- `frontend/tests/components/orchestration/AgentCardGrid.0229.spec.js` (405 lines, 15 tests)
+- `frontend/tests/components/orchestration/AgentTableView.0229.spec.js` (392 lines)
+
+### Key Changes
+
+**Toggle Integration**:
+- usingClaudeCodeSubagents prop added to AgentCardGrid
+- Prop passed through to AgentTableView
+- Existing toggle in JobsTab.vue verified and reused (no duplication)
+
+**Logic Methods**:
+- canLaunchAgent(agent) - Disables non-orchestrators in Claude Code mode
+- canCopyPrompt(agent) - Disables prompt copying for non-orchestrators
+- Implemented in both AgentCardGrid and AgentTableView for consistency
+
+**Visual Feedback**:
+- Launch button :disabled binding based on canLaunchAgent()
+- Color changes: primary → grey for disabled buttons
+- Tooltips: "Disabled in Claude Code mode (non-orchestrator)"
+- CSS: disabled-agent-row class (opacity 0.6, background shading)
+
+**Behavior Modes**:
+- General CLI Mode: All agents can be launched independently
+- Claude Code Mode: Only orchestrator can be launched (others are subagents)
+
+### Integration Points
+
+- JobsTab.vue toggle controls behavior via prop drilling
+- Data flow: JobsTab → AgentCardGrid → AgentTableView
+- Both card and table views respect toggle state
+- Visual feedback consistent across both views
+- Existing toggle implementation preserved (no parallel system)
+
+### Next Steps
+
+→ Handover 0230: Prompt Generation & Clipboard Copy
+- Implement "Copy Prompt" action with clipboard integration
+- Add success feedback (snackbar notification)
+
+---
+
+**Archive Status**: Moved to `handovers/completed/` on 2025-11-21
