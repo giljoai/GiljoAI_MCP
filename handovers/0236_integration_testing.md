@@ -8,6 +8,28 @@
 
 ---
 
+## Before You Begin
+
+**REQUIRED READING** (Critical for TDD discipline and architectural alignment):
+
+1. **F:\GiljoAI_MCP\handovers\QUICK_LAUNCH.txt**
+   - TDD discipline (Red → Green → Refactor)
+   - Write tests FIRST (behavior, not implementation)
+   - No zombie code policy (delete, don't comment)
+
+2. **F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md**
+   - Service layer patterns
+   - Multi-tenant isolation
+   - Component reuse principles
+
+3. **F:\GiljoAI_MCP\handovers\code_review_nov18.md**
+   - Past mistakes to avoid (ProductsView 2,582 lines)
+   - Success patterns to follow (ProjectsView componentization)
+
+**Execute in order**: Red (failing tests) → Green (minimal implementation) → Refactor (cleanup)
+
+---
+
 ## Objective
 
 Implement comprehensive E2E integration tests for the complete status board workflow, covering table data loading, WebSocket real-time updates, user interactions, multi-tenant isolation, and cross-browser compatibility. Achieve >80% test coverage for new components.
