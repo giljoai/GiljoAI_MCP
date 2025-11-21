@@ -49,12 +49,13 @@ async def test_tenant_key():
 
 
 @pytest_asyncio.fixture
-async def user_service(db_manager, test_tenant_key):
-    """Create UserService instance for testing"""
+async def user_service(db_manager, db_session, test_tenant_key):
+    """Create UserService instance for testing with shared session (Handover 0324)"""
     return UserService(
         db_manager=db_manager,
         tenant_key=test_tenant_key,
-        websocket_manager=None  # No WebSocket in tests
+        websocket_manager=None,  # No WebSocket in tests
+        session=db_session  # SHARED SESSION for test transaction isolation
     )
 
 

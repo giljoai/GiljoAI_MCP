@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytest_asyncio
 from passlib.hash import bcrypt
 from sqlalchemy import select
 
@@ -33,10 +34,14 @@ from src.giljo_mcp.services.auth_service import AuthService
 # Fixtures
 
 
-@pytest.fixture
-def auth_service(db_manager):
-    """Create AuthService instance for testing (no tenant_key - auth operates across tenants)"""
-    return AuthService(db_manager=db_manager)
+@pytest_asyncio.fixture
+async def auth_service(db_manager, db_session):
+    """Create AuthService instance for testing with shared session (Handover 0324)"""
+    return AuthService(
+        db_manager=db_manager,
+        websocket_manager=None,  # No WebSocket in tests
+        session=db_session  # SHARED SESSION for test transaction isolation
+    )
 
 
 @pytest.fixture
