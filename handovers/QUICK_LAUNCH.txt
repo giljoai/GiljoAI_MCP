@@ -1,340 +1,1321 @@
+══════════════════════════════════════════════════════════════════════════════
+  GILJOAI MCP - HANDOVER EXECUTION GUIDE
+══════════════════════════════════════════════════════════════════════════════
 
-Execute handover ""F:\GiljoAI_MCP\handovers\0322_service_layer_compliance.md"" with production-grade quality.
-
-CRITICAL REQUIREMENTS:
-AFTER PLANNING YOU MUST USE CLAUDE CODE CLI Subagnets as a skill to deliver these results.  Each agent has its own context window and can work in parallel.
-
-1. TDD DISCIPLINE (Non-Negotiable):
-   - Write tests FIRST (Red phase - tests must fail initially)
-   - Implement MINIMAL code to make tests pass (Green phase)
-   - Refactor if needed (Refactor phase)
-   - Test BEHAVIOR (what code does), not IMPLEMENTATION (how it does it)
-   - Use descriptive test names: test_extraction_returns_full_detail_at_priority_10
-   - Avoid testing internal implementation details
-   - Coverage target: >80% for new code
-
-2. ARCHITECTURAL DISCIPLINE:
-   - Read "F:\GiljoAI_MCP\handovers\code_review_nov18.md" FIRST
-   - Build on existing patterns (ProductService, ProjectService, etc.)
-   - Do NOT reinvent methods that already exist
-   - Use existing service layer patterns (AsyncSession, multi-tenant isolation, Pydantic schemas)
-   - Follow established conventions (see F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md area-specific patterns)
-   - Reuse existing fixtures from tests/conftest.py
-  
-
-3. CODE QUALITY STANDARDS:
-   - Production-grade code from the start (no bandaids, no "fix later" comments)
-   - Follow existing patterns in F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
-   - Clean code: No zombie code, no commented-out blocks (delete, don't comment)
-   - Cross-platform: Use pathlib.Path() for all file operations
-   - Multi-tenant isolation: Include tenant_key in all DB queries
-   - Error handling: Comprehensive, domain-specific exceptions
-   - Logging: Structured metadata (extra={...}) for all significant operations
-
-4. EXECUTION WORKFLOW:
-   Phase 1 - Read & Understand (15-20 min):
-     - Read complete handover document
-     - Read "F:\GiljoAI_MCP\handovers\code_review_nov18.md"
-     - Identify existing patterns to reuse
-     - Identify integration points (which services, which endpoints)
-
-   Phase 2 - Write Tests FIRST (Red - 30-40% of time):
-     - Create test file: tests/unit/test_{feature_name}.py
-     - Write failing unit tests for all new methods
-     - Create integration test file: tests/integration/test_{feature_name}_integration.py
-     - Write failing integration tests for end-to-end behavior
-     - Run tests: pytest tests/ -v (all should fail RED ❌)
-
-   Phase 3 - Implement (Green - 40-50% of time):
-     - Write MINIMAL code to make tests pass
-     - Follow service layer pattern if backend work
-     - Follow component pattern if frontend work
-     - Run tests iteratively: pytest tests/ -v (all should pass GREEN ✅)
-
-   Phase 4 - Refactor & Polish (10-20% of time):
-     - Extract common patterns into helpers
-     - Optimize for performance (minimize DB queries, string operations)
-     - Add comprehensive docstrings (Google style)
-     - Add structured logging with metadata
-     - Run tests: pytest tests/ -v (still GREEN ✅)
-
-   Phase 5 - Validate & Document (10% of time):
-     - Run full test suite: pytest tests/ --cov=src/giljo_mcp
-     - Verify >80% coverage for new code
-     - Update relevant documentation 
-     - Git commit with descriptive message
-
-5. DELIVERABLES:
-   - All tests passing (Green ✅)
-   - >80% code coverage for new code
-   - Clean implementation (no commented code, no TODOs)
-   - Documentation updated
-   - Git commit ready for review
-
-6. CRITICAL CHECKS (Before Committing):
-   ✓ Read "F:\GiljoAI_MCP\handovers\code_review_nov18.md"? (verify you reused existing patterns)
-   ✓ Tests written FIRST? (TDD Red → Green → Refactor)
-   ✓ All tests passing? (pytest tests/ -v)
-   ✓ Coverage >80%? (pytest --cov)
-   ✓ Multi-tenant isolation verified? (tenant_key in all queries)
-   ✓ Cross-platform paths? (pathlib.Path, no hardcoded F:\)
-   ✓ Production-grade? (no bandaids, no quick fixes)
-   ✓ Documentation updated?
-
-SHOW ME:
-- Test file(s) created (with descriptive test names)
-- Implementation file(s) modified
-- Test results (all passing)
-- Coverage report (>80% for new code)
-- Git commit summary
-
-
-## v2.0 Architecture Evolution (November 2025)
-
-### Background: Why v2.0?
-
-After completing handovers 0301-0311 (v1.0), user feedback revealed an architectural mismatch:
-
-**Issue**: v1.0 conflated two separate concerns:
-1. **Prioritization** (what's important to emphasize)
-2. **Token Budget Management** (how much context to send)
-
-Users wanted to say "Architecture is CRITICAL" without forcing 100% of tokens. They wanted granular control over token usage (depth) independent of importance (priority).
+Execute handovers with production-grade quality. This guide provides GiljoAI-
+specific patterns, commands, and conventions for the multi-tenant AI agent
+orchestration platform built with Python/FastAPI/PostgreSQL/Vue3.
 
-**Solution**: Refactor to 2-dimensional model (Priority × Depth)
+CRITICAL: Read F:\GiljoAI_MCP\CLAUDE.md first for project context.
 
----
+══════════════════════════════════════════════════════════════════════════════
+## 1. TDD DISCIPLINE (Non-Negotiable)
+══════════════════════════════════════════════════════════════════════════════
 
-### v1.0 Summary (COMPLETED - Foundational Work)
+Write tests FIRST. Implementation SECOND. Always RED → GREEN → REFACTOR.
 
-**Completed Handovers** (Nov 17, 2025):
-- ✅ **0301**: Fix priority mapping UI-backend bug (REUSED in 0313)
-- ✅ **0302**: Tech stack context extraction (REUSED in 0315)
-- ✅ **0303**: Product config fields extraction (REUSED in 0315)
-- ✅ **0305**: Vision document chunking (REUSED in 0314, 0315)
-- ✅ **0306**: Agent templates in context (REUSED in 0315)
-- ✅ **0311**: 360 Memory + Git integration (REUSED in 0314, 0315)
+### Test-First Workflow
 
-**Achievement**: 8/9 context sources implemented, 77% context prioritization, 30+ tests passing
+PHASE 1: RED (Write Failing Tests - 30-40% of time)
+────────────────────────────────────────────────────
+Create test file BEFORE implementation:
 
-**Code Quality**: Clean implementation, zero orphan code, comprehensive test coverage
+Backend Services:
+  pytest tests/services/test_product_service.py -v
+  pytest tests/services/test_project_service.py -v
+  pytest tests/services/test_orchestration_service.py -v
 
-**Status**: v1.0 code is production-ready and will be reused (60-80%) in v2.0
+API Endpoints:
+  pytest tests/api/test_products_api.py -v
+  pytest tests/api/test_projects_api.py -v
+  pytest tests/api/test_tasks_api.py -v
 
----
+Integration Tests:
+  pytest tests/integration/test_product_lifecycle.py -v
+  pytest tests/integration/test_orchestrator_succession.py -v
 
-### Superseded Handovers (Moved to /superseded)
+Frontend Components:
+  cd frontend && npm run test:unit -- --grep "ProductsView"
+  cd frontend && npm run test:unit -- --grep "ProjectsView"
 
-These handovers were designed for v1.0 architecture but are no longer needed in v2.0:
-
-- ❌ **0304**: Token budget enforcement → Replaced by v2.0 token calculator (feedback-only)
-- ❌ **0307**: Backend default field priorities → Replaced by 0313 (priority refactor)
-- ❌ **0308**: Frontend field labels & tooltips → Replaced by 0314 (depth UI)
-
-**Note**: These handovers were never implemented (still in planning when architecture pivot identified).
-
----
-
-### v2.0 Execution Roadmap
-
-**Execute in this order**:
-
-#### Phase 1: Architecture Design (1-2 days)
-**0312**: Context Architecture v2.0 Design
-- Define 2-dimensional model (Priority × Depth)
-- Design MCP tool contracts
-- Create UI mockups for depth configuration
-- Document migration strategy
-
-**Estimated Time**: 1-2 days
-**Assignee**: System Architect Agent
-**Dependencies**: None
-
----
-
-#### Phase 2: Priority System Refactor (3-4 days)
-**0313**: Implement Priority System
-- Refactor priority semantics (emphasis vs trimming)
-- Update UserSettings.vue (13 cards → 6 cards)
-- Update mission_planner.py to emit priority metadata
-- Migrate v1.0 priorities to v2.0 format
-
-**Estimated Time**: 3-4 days
-**Assignee**: TDD Implementor Agent
-**Dependencies**: 0312 complete
-
----
-
-#### Phase 3: Depth Controls Implementation (4-5 days)
-**0314**: Implement Depth Controls
-- Add depth_config JSONB column to users table
-- Create depth configuration UI (6 rows, per-source controls)
-- Implement token calculator (display-only)
-- Apply depth settings to context extraction
-
-**Estimated Time**: 4-5 days
-**Assignee**: Database Expert + TDD Implementor Agents
-**Dependencies**: 0313 complete
-
----
-
-#### Phase 4: MCP Thin Client Refactor (5-6 days)
-**0315**: Refactor MCP Thin Client
-- Create 6 MCP tools (get_vision_document, get_360_memory, etc.)
-- Refactor thin_prompt_generator.py (fat → thin prompts)
-- Reuse v1.0 extraction methods in MCP tools
-- Test E2E workflow (thin → MCP → orchestrator)
-
-**Estimated Time**: 5-6 days
-**Assignee**: TDD Implementor + Backend Tester Agents
-**Dependencies**: 0314 complete
-
----
-
-#### Phase 5: Enhancements (2-3 days)
-**0309**: Token Estimation Improvements (ADAPTED for v2.0)
-- Update for depth-based estimation
-- Real-time token calculator
-- Per-source token breakdown
-
-**Estimated Time**: 2-3 days
-**Assignee**: Frontend Tester Agent
-**Dependencies**: 0315 complete
-
----
-
-#### Phase 6: Integration Testing (3-4 days)
-**0310**: Integration Testing & Validation (ADAPTED for v2.0)
-- Test 2-dimensional model (Priority × Depth)
-- Validate MCP tool integration
-- E2E workflow testing
-- Performance benchmarking
-
-**Estimated Time**: 3-4 days
-**Assignee**: Backend Integration Tester Agent
-**Dependencies**: 0309 complete
-
----
-
-### Total v2.0 Timeline
-
-**Total Estimated Time**: 18-24 days (3-4 weeks)
-
-**Breakdown**:
-- Design: 1-2 days
-- Implementation: 12-15 days
-- Testing: 5-7 days
-
-**Code Reuse**: 60-80% of v1.0 code (900 production lines, 3,840 test lines)
-
-**Risk**: LOW (refactoring on solid foundation, comprehensive test coverage)
-
----
-
-### v2.0 Success Criteria
-
-- [ ] 2-dimensional model operational (Priority × Depth)
-- [ ] 6 MCP tools created for on-demand context fetching
-- [ ] Thin prompts <600 tokens (vs v1.0 fat prompts 3,500+ tokens)
-- [ ] Per-source depth controls in UI
-- [ ] Token calculator provides accurate estimates
-- [ ] v1.0 → v2.0 migration seamless (backward compatible)
-- [ ] All tests passing (>80% coverage maintained)
-- [ ] Priority system supports 4 levels (CRITICAL/IMPORTANT/NICE/EXCLUDED)
-- [ ] Depth controls operational (per-source granularity)
-
-═══════════════════════════════════════════════════════════════
-  EXECUTION ORDER - Context Management System v2.0
-═══════════════════════════════════════════════════════════════
-
-PHASE 1: Architecture Design (1-2 days)
-─────────────────────────────────────────
-1. handovers/0312_context_architecture_v2_design.md
-   ├─ Design 2-dimensional model (Priority × Depth)
-   ├─ Define MCP tool contracts (6 tools)
-   ├─ Create UI mockups
-   └─ Est: 1-2 days | Tool: Claude Code (CLI) | Agent: System Architect
-
-PHASE 2: Priority System Refactor (3-4 days)
-─────────────────────────────────────────────
-2. handovers/0313_priority_system_refactor.md
-   ├─ Refactor priority semantics (10/7/4 → 1/2/3/4)
-   ├─ Update UI (13 cards → 6 category cards)
-   ├─ Drag-and-drop priority ordering
-   ├─ Dependencies: 0312 complete
-   └─ Est: 3-4 days | Tool: Claude Code (CLI) | Agent: TDD Implementor
-
-PHASE 3: Depth Controls (4-5 days)
-───────────────────────────────────
-3. handovers/0314_depth_controls_implementation.md
-   ├─ Add depth_config JSONB column to users table
-   ├─ Create depth configuration UI (per-source settings)
-   ├─ Implement token calculator (real-time estimates)
-   ├─ Dependencies: 0313 complete
-   └─ Est: 4-5 days | Tool: Claude Code (CLI) | Agent: Database Expert + TDD
-
-PHASE 4: MCP Thin Client (5-6 days)
-────────────────────────────────────
-4. handovers/0315_mcp_thin_client_refactor.md
-   ├─ Create 6 MCP tools (get_vision_document, get_360_memory, etc.)
-   ├─ Implement thin prompt generator (<600 tokens)
-   ├─ Reuse v1.0 extraction methods (60-80% code reuse)
-   ├─ Dependencies: 0313 + 0314 complete
-   └─ Est: 5-6 days | Tool: Claude Code (CLI) | Agent: TDD + Backend Tester
-
-PHASE 5: Enhancements (2-3 days)
-─────────────────────────────────
-5. handovers/0309_token_estimation_improvements.md (ADAPTED)
-   ├─ Update for depth-based estimation
-   ├─ Real-time token calculator
-   ├─ Dependencies: 0315 complete
-   └─ Est: 2-3 days | Tool: Claude Code (CLI) | Agent: Frontend Tester
-
-PHASE 6: Integration Testing (3-4 days)
-────────────────────────────────────────
-6. handovers/0310_integration_testing_validation.md (ADAPTED)
-   ├─ Test 2-dimensional model
-   ├─ Validate MCP integration
-   ├─ E2E workflow testing
-   ├─ Dependencies: 0309 complete
-   └─ Est: 3-4 days | Tool: Claude Code (CLI) | Agent: Backend Integration Tester
-
-═══════════════════════════════════════════════════════════════
-  TOTAL ESTIMATED TIME: 18-24 days (3-4 weeks)
-═══════════════════════════════════════════════════════════════
-
-SUPERSEDED HANDOVERS (Moved to /superseded - NOT EXECUTED):
-────────────────────────────────────────────────────────────
-❌ handovers/superseded/0304_enforce_token_budget_limit.md
-❌ handovers/superseded/0307_backend_default_field_priorities.md
-❌ handovers/superseded/0308_frontend_field_labels_tooltips.md
-
-Reason: v1.0 architecture pivot to v2.0 (Priority × Depth model)
-
-COMPLETED HANDOVERS (v1.0 - Code REUSED in v2.0):
+All tests MUST FAIL initially (RED ❌). If tests pass before implementation,
+you've written tests against implementation details, not behavior.
+
+PHASE 2: GREEN (Minimal Implementation - 40-50% of time)
+─────────────────────────────────────────────────────────
+Write ONLY enough code to make tests pass:
+
+  pytest tests/services/test_product_service.py -v
+
+All tests MUST PASS (GREEN ✅).
+
+PHASE 3: REFACTOR (Polish - 10-20% of time)
+────────────────────────────────────────────
+Clean up, optimize, extract helpers. Tests MUST STAY GREEN.
+
+  pytest tests/ --cov=src/giljo_mcp --cov-report=html
+
+Coverage target: >80% for new code.
+
+### GiljoAI Test Patterns
+
+Test BEHAVIOR, not IMPLEMENTATION:
+
+❌ WRONG (tests implementation):
+  def test_product_service_uses_select_statement():
+      service = ProductService(session, tenant_key)
+      result = service.get_products()
+      # Testing HOW (uses select statement) - breaks on refactor
+
+✅ CORRECT (tests behavior):
+  def test_product_service_returns_only_tenant_products():
+      service = ProductService(session, tenant_key="user123")
+      products = await service.get_products()
+      assert all(p.tenant_key == "user123" for p in products)
+      # Testing WHAT (returns correct data) - survives refactor
+
+Real Example from Codebase:
+
+  # tests/services/test_product_service.py
+  @pytest.mark.asyncio
+  async def test_create_product_with_vision_chunking(db_session, test_tenant):
+      """Test that large vision documents are automatically chunked"""
+      service = ProductService(db_session, tenant_key=test_tenant)
+
+      # Create product with 50K token vision document
+      large_vision = "Lorem ipsum..." * 10000  # 50K tokens
+      product = await service.create_product({
+          "name": "Test Product",
+          "vision_content": large_vision
+      })
+
+      # BEHAVIOR: Vision should be chunked into <25K token chunks
+      chunks = await service.get_vision_chunks(product.id)
+      assert len(chunks) == 2  # 50K → 2 chunks
+      assert all(len(chunk.content) < 25000 for chunk in chunks)
+
+Use descriptive test names:
+  test_activate_project_deactivates_other_projects_in_same_product()
+  test_orchestrator_triggers_succession_at_90_percent_context_usage()
+  test_multi_tenant_isolation_prevents_cross_tenant_data_access()
+
+Reuse fixtures from tests/conftest.py:
+  - db_session: PostgreSQL test database session
+  - test_tenant: Pre-created tenant key
+  - test_user: Authenticated user fixture
+  - test_product: Product with config_data
+  - test_project: Active project fixture
+
+══════════════════════════════════════════════════════════════════════════════
+## 2. ARCHITECTURAL DISCIPLINE
+══════════════════════════════════════════════════════════════════════════════
+
+GiljoAI uses SERVICE LAYER ONLY architecture. Build on existing patterns.
+
+### Read These FIRST (Before Any Implementation)
+
+Required Reading:
+  1. F:\GiljoAI_MCP\CLAUDE.md - Complete project guidance
+  2. F:\GiljoAI_MCP\docs\SERVICES.md - Service layer patterns
+  3. F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+  4. F:\GiljoAI_MCP\handovers\code_review_nov18.md
+
+### Service Layer Pattern (95% Compliance as of Handover 0322)
+
+ALL business logic goes in services. Endpoints are thin request/response
+translators.
+
+❌ WRONG (endpoint has business logic):
+  # api/endpoints/products.py
+  @router.get("/")
+  async def list_products(
+      current_user: User = Depends(get_current_active_user),
+      db: AsyncSession = Depends(get_db_session)
+  ):
+      # VIOLATION: Direct database query in endpoint
+      stmt = select(Product).where(Product.tenant_key == current_user.tenant_key)
+      result = await db.execute(stmt)
+      return result.scalars().all()
+
+✅ CORRECT (endpoint uses service):
+  # api/endpoints/products.py
+  @router.get("/")
+  async def list_products(
+      product_service: ProductService = Depends(get_product_service)
+  ):
+      # Endpoint only translates request → service → response
+      result = await product_service.list_products()
+      if not result["success"]:
+          raise HTTPException(status_code=400, detail=result["error"])
+      return [ProductResponse.from_orm(p) for p in result["data"]]
+
+  # src/giljo_mcp/services/product_service.py
+  class ProductService:
+      def __init__(self, session: AsyncSession, tenant_key: str):
+          self.session = session
+          self.tenant_key = tenant_key
+
+      async def list_products(self) -> dict[str, Any]:
+          """List all products for current tenant"""
+          try:
+              stmt = select(Product).where(
+                  Product.tenant_key == self.tenant_key,
+                  Product.is_deleted == False
+              )
+              result = await self.session.execute(stmt)
+              products = result.scalars().all()
+              return {"success": True, "data": products}
+          except Exception as e:
+              logger.error(f"Failed to list products: {e}")
+              return {"success": False, "error": str(e)}
+
+### Core Services (Use These, Don't Recreate)
+
+Backend Services:
+  - ProductService (src/giljo_mcp/services/product_service.py)
+    • create_product, upload_vision_document, activate_product
+
+  - ProjectService (src/giljo_mcp/services/project_service.py)
+    • create_project, activate_project, launch_orchestrator
+
+  - OrchestrationService (src/giljo_mcp/services/orchestration_service.py)
+    • create_orchestrator_job, trigger_succession, update_context_usage
+
+  - UserService (src/giljo_mcp/services/user_service.py)
+    • list_users, create_user, update_user, change_password
+
+  - TaskService (src/giljo_mcp/services/task_service.py)
+    • create_task, update_task, convert_to_project
+
+  - AuthService (src/giljo_mcp/services/auth_service.py)
+    • authenticate_user, create_api_key, register_user
+
+Frontend Composables:
+  - useAgentData.js (frontend/src/composables/useAgentData.js)
+    • Centralized agent data management (DO NOT create parallel systems)
+
+  - useWebSocket.js (frontend/src/composables/useWebSocket.js)
+    • WebSocket connection and event handling
+
+Example: Reusing ProductService
+
+  # In new endpoint
+  from src.giljo_mcp.services.product_service import ProductService
+
+  @router.post("/products/{product_id}/vision")
+  async def upload_vision(
+      product_id: int,
+      content: str,
+      product_service: ProductService = Depends(get_product_service)
+  ):
+      # Reuse existing upload_vision_document method (don't recreate)
+      result = await product_service.upload_vision_document(
+          product_id=product_id,
+          content=content
+      )
+      if not result["success"]:
+          raise HTTPException(status_code=400, detail=result["error"])
+      return {"message": "Vision uploaded", "chunks": len(result["data"])}
+
+### Multi-Tenant Isolation (CRITICAL)
+
+EVERY database query MUST filter by tenant_key. No exceptions.
+
+❌ WRONG (no tenant isolation):
+  stmt = select(Product).where(Product.id == product_id)  # SECURITY RISK
+
+✅ CORRECT (tenant isolation enforced):
+  stmt = select(Product).where(
+      Product.id == product_id,
+      Product.tenant_key == self.tenant_key  # REQUIRED
+  )
+
+Use BaseRepository pattern for automatic tenant filtering:
+
+  # src/giljo_mcp/repositories/base_repository.py (lines 24-27)
+  class BaseRepository:
+      def __init__(self, session: AsyncSession, tenant_key: str):
+          self.session = session
+          self.tenant_key = tenant_key
+
+      def _tenant_filter(self, model):
+          """Automatically add tenant_key filter to all queries"""
+          return model.tenant_key == self.tenant_key
+
+Test multi-tenant isolation in every service test:
+
+  @pytest.mark.asyncio
+  async def test_product_service_enforces_tenant_isolation(db_session):
+      # Create products in different tenants
+      service_a = ProductService(db_session, tenant_key="tenant_a")
+      service_b = ProductService(db_session, tenant_key="tenant_b")
+
+      product_a = await service_a.create_product({"name": "Product A"})
+      product_b = await service_b.create_product({"name": "Product B"})
+
+      # BEHAVIOR: Each service only sees its own tenant's products
+      products_a = await service_a.list_products()
+      products_b = await service_b.list_products()
+
+      assert len(products_a["data"]) == 1
+      assert len(products_b["data"]) == 1
+      assert products_a["data"][0].id == product_a.id
+      assert products_b["data"][0].id == product_b.id
+
+### WebSocket Events for Real-Time UI
+
+Emit WebSocket events after state changes:
+
+  from src.giljo_mcp.websocket_manager import websocket_manager
+
+  async def activate_project(self, project_id: int):
+      # ... database update ...
+
+      # Emit real-time event to frontend
+      await websocket_manager.broadcast_to_tenant(
+          tenant_key=self.tenant_key,
+          event="project:activated",
+          data={"project_id": project_id, "status": "active"}
+      )
+
+Frontend listens for events:
+
+  // frontend/src/composables/useWebSocket.js
+  socket.on('project:activated', (data) => {
+      store.commit('projects/SET_ACTIVE_PROJECT', data.project_id)
+      showNotification('Project activated')
+  })
+
+### Component Reuse (No Parallel Systems)
+
+Best Example: ProjectsView.vue extracted 9 components (~2,500 lines → 1,018)
+
+  frontend/src/components/projects/
+  ├── ProjectTabs.vue        # Tab navigation
+  ├── LaunchTab.vue          # Orchestrator launch
+  ├── JobsTab.vue            # Agent jobs table
+  ├── MessageStream.vue      # Job message display
+  ├── MessageInput.vue       # Message input bar
+  ├── ArchiveDialog.vue      # Project archival
+  ├── DeleteDialog.vue       # Project deletion
+  ├── SettingsPanel.vue      # Project settings
+  └── StatusIndicator.vue    # Status badge
+
+❌ WRONG: Create parallel "agent grid" when useAgentData.js exists
+✅ CORRECT: Extend useAgentData.js composable with new methods
+
+══════════════════════════════════════════════════════════════════════════════
+## 3. CODE QUALITY STANDARDS
+══════════════════════════════════════════════════════════════════════════════
+
+Production-grade code from the start. No bandaids, no "fix later" comments.
+
+### Cross-Platform Paths (CRITICAL for Windows/Linux/Mac)
+
+❌ WRONG (hardcoded paths - breaks on other systems):
+  data_dir = 'F:\\GiljoAI_MCP\\data'
+  log_file = 'F:/logs/app.log'
+  config_path = os.path.join('C:', 'config', 'app.yaml')
+
+✅ CORRECT (pathlib.Path - cross-platform):
+  from pathlib import Path
+
+  data_dir = Path.cwd() / 'data'
+  log_file = Path('logs') / 'app.log'
+  config_path = Path.home() / '.config' / 'giljo_mcp' / 'app.yaml'
+
+Real Example from Codebase:
+
+  # src/giljo_mcp/config.py
+  from pathlib import Path
+
+  BASE_DIR = Path(__file__).parent.parent
+  DATA_DIR = BASE_DIR / 'data'
+  LOGS_DIR = BASE_DIR / 'logs'
+
+  def get_config_path() -> Path:
+      return BASE_DIR / 'config.yaml'
+
+### Pydantic Schemas for Validation
+
+Use Pydantic for all request/response models:
+
+  from pydantic import BaseModel, Field, validator
+
+  class ProductCreate(BaseModel):
+      name: str = Field(..., min_length=1, max_length=255)
+      description: str = Field(default="")
+      config_data: dict = Field(default_factory=dict)
+
+      @validator('name')
+      def name_must_not_be_empty(cls, v):
+          if not v.strip():
+              raise ValueError('Product name cannot be empty')
+          return v.strip()
+
+  class ProductResponse(BaseModel):
+      id: int
+      name: str
+      description: str
+      tenant_key: str
+      status: str
+      created_at: datetime
+
+      class Config:
+          orm_mode = True
+
+### No Zombie Code (Delete, Don't Comment)
+
+❌ WRONG (commented code pollutes codebase):
+  async def activate_product(self, product_id: int):
+      # Old logic - keeping for reference
+      # product = await self.session.get(Product, product_id)
+      # if product:
+      #     product.status = 'active'
+      # return product
+
+      # New logic
+      stmt = select(Product).where(...)
+      return result
+
+✅ CORRECT (clean code, use git for history):
+  async def activate_product(self, product_id: int):
+      stmt = select(Product).where(
+          Product.id == product_id,
+          Product.tenant_key == self.tenant_key
+      )
+      result = await self.session.execute(stmt)
+      product = result.scalar_one_or_none()
+
+      if not product:
+          raise ProductNotFoundError(f"Product {product_id} not found")
+
+      product.status = 'active'
+      await self.session.commit()
+      return product
+
+If you need history, check git:
+  git log -p -- src/giljo_mcp/services/product_service.py
+
+### Structured Logging with Metadata
+
+Use structured logging for all significant operations:
+
+❌ WRONG (unstructured logging):
+  logger.info(f"Activating product {product_id} for tenant {tenant_key}")
+
+✅ CORRECT (structured logging):
+  logger.info(
+      "Activating product",
+      extra={
+          "product_id": product_id,
+          "tenant_key": self.tenant_key,
+          "status": "active",
+          "timestamp": datetime.utcnow().isoformat()
+      }
+  )
+
+Real Example from Orchestrator:
+
+  # src/giljo_mcp/orchestrator.py (line 1167)
+  logger.info(
+      "[spawn_agent] No template found for role, using legacy spawn logic",
+      extra={
+          "role": role.value,
+          "project_id": project_id,
+          "tenant_key": self.tenant_key,
+          "fallback": "legacy_spawn"
+      }
+  )
+
+### Vue 3 Composable Pattern (Frontend)
+
+Extract reusable logic into composables:
+
+❌ WRONG (duplicated logic in components):
+  // ProductsView.vue
+  export default {
+      data() {
+          return { products: [], loading: false }
+      },
+      methods: {
+          async fetchProducts() {
+              this.loading = true
+              const response = await api.get('/products')
+              this.products = response.data
+              this.loading = false
+          }
+      }
+  }
+
+  // ProjectsView.vue (DUPLICATE PATTERN)
+  export default {
+      data() {
+          return { projects: [], loading: false }
+      },
+      methods: {
+          async fetchProjects() { /* same pattern */ }
+      }
+  }
+
+✅ CORRECT (composable for reuse):
+  // frontend/src/composables/useApiData.js
+  import { ref } from 'vue'
+
+  export function useApiData(endpoint) {
+      const data = ref([])
+      const loading = ref(false)
+      const error = ref(null)
+
+      async function fetch() {
+          loading.value = true
+          error.value = null
+          try {
+              const response = await api.get(endpoint)
+              data.value = response.data
+          } catch (e) {
+              error.value = e.message
+          } finally {
+              loading.value = false
+          }
+      }
+
+      return { data, loading, error, fetch }
+  }
+
+  // ProductsView.vue (uses composable)
+  import { useApiData } from '@/composables/useApiData'
+
+  export default {
+      setup() {
+          const { data: products, loading, fetch: fetchProducts } =
+              useApiData('/products')
+
+          onMounted(fetchProducts)
+
+          return { products, loading, fetchProducts }
+      }
+  }
+
+Real Example: useAgentData.js
+
+  // frontend/src/composables/useAgentData.js
+  export function useAgentData() {
+      const agents = ref([])
+      const agentStatusMap = ref({})
+
+      function updateAgentStatus(agentId, status) {
+          agentStatusMap.value[agentId] = status
+      }
+
+      function getAgentStatus(agentId) {
+          return agentStatusMap.value[agentId] || 'unknown'
+      }
+
+      return { agents, agentStatusMap, updateAgentStatus, getAgentStatus }
+  }
+
+══════════════════════════════════════════════════════════════════════════════
+## 4. EXECUTION WORKFLOW
+══════════════════════════════════════════════════════════════════════════════
+
+Follow this sequence for every handover:
+
+Phase 1: READ & UNDERSTAND (15-20% of time)
+────────────────────────────────────────────
+Read required documentation:
+  - Handover document (handovers/XXXX_feature.md)
+  - F:\GiljoAI_MCP\CLAUDE.md (project context)
+  - F:\GiljoAI_MCP\docs\SERVICES.md (if backend work)
+  - F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+
+Identify reusable patterns:
+  - Which services exist? (ProductService, ProjectService, etc.)
+  - Which composables exist? (useAgentData, useWebSocket, etc.)
+  - Which test fixtures exist? (tests/conftest.py)
+
+Verify environment:
+  # Check PostgreSQL running (Git Bash path format)
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\dt"
+
+  # Check Python environment
+  python --version  # 3.11+
+  pytest --version
+
+  # Check frontend environment
+  cd frontend && npm --version && cd ..
+
+Phase 2: WRITE TESTS FIRST (RED - 30-40% of time)
 ──────────────────────────────────────────────────
-✅ handovers/completed/0301_fix_priority_mapping_ui_backend-C.md
-✅ handovers/completed/0302_implement_tech_stack_context_extraction-C.md
-✅ handovers/completed/0303_implement_product_config_fields_extraction-C.md
-✅ handovers/completed/0305_integrate_vision_document_chunking-C.md
-✅ handovers/completed/0306_agent_templates_in_context_string-C.md
-✅ handovers/completed/0311_integrate_360_memory_context-C.md
+Backend Service Tests:
+  # Create test file
+  touch tests/services/test_feature_service.py
 
-Code Reuse: 60-80% of v1.0 work directly reused in v2.0 MCP tools
+  # Write failing tests
+  pytest tests/services/test_feature_service.py -v
+  # MUST SEE: FAILED (RED ❌)
 
-═══════════════════════════════════════════════════════════════
-  USAGE INSTRUCTIONS
-═══════════════════════════════════════════════════════════════
+Backend API Tests:
+  # Create test file
+  touch tests/api/test_feature_api.py
 
-To execute a handover using this template:
+  # Write failing tests
+  pytest tests/api/test_feature_api.py -v
+  # MUST SEE: FAILED (RED ❌)
 
-1. Copy handover path (e.g., handovers/0312_context_architecture_v2_design.md)
-2. Use LAUNCH_PROMPT_TEMPLATE.md to generate agent instructions
-3. Pass to recommended subagent (see "Agent:" field above)
-4. Follow TDD discipline (RED → GREEN → REFACTOR)
-5. Mark handover complete when all tests passing
+Integration Tests:
+  # Create test file
+  touch tests/integration/test_feature_integration.py
 
-NOTE: Execute in sequence (0312 → 0313 → 0314 → 0315 → 0309 → 0310)
-Dependencies must complete before proceeding to next handover.
+  # Write failing tests
+  pytest tests/integration/test_feature_integration.py -v
+  # MUST SEE: FAILED (RED ❌)
 
-BEGIN EXECUTION NOW.
+Frontend Tests:
+  # Create test file
+  touch frontend/tests/unit/components/Feature.spec.js
+
+  # Write failing tests
+  cd frontend && npm run test:unit -- --grep "Feature" && cd ..
+  # MUST SEE: FAILED (RED ❌)
+
+Phase 3: IMPLEMENT (GREEN - 40-50% of time)
+────────────────────────────────────────────
+Write MINIMAL code to make tests pass:
+
+Backend:
+  # Implement service
+  touch src/giljo_mcp/services/feature_service.py
+
+  # Implement endpoint
+  touch api/endpoints/feature.py
+
+  # Run tests iteratively
+  pytest tests/services/test_feature_service.py -v
+  pytest tests/api/test_feature_api.py -v
+  # MUST SEE: PASSED (GREEN ✅)
+
+Frontend:
+  # Implement component
+  touch frontend/src/components/Feature.vue
+
+  # Run tests
+  cd frontend && npm run test:unit -- --grep "Feature" && cd ..
+  # MUST SEE: PASSED (GREEN ✅)
+
+Database Changes:
+  # Update models
+  # Edit: src/giljo_mcp/models.py
+
+  # Run migration (auto-migration via install.py)
+  python install.py
+
+  # Verify schema
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\d mcp_table_name"
+
+Phase 4: REFACTOR & POLISH (10-20% of time)
+────────────────────────────────────────────
+Extract common patterns:
+  # Extract helper functions
+  # Add comprehensive docstrings
+  # Add structured logging
+  # Optimize queries (minimize N+1 queries)
+
+Backend Optimization:
+  # Check for N+1 queries (use selectinload)
+  from sqlalchemy.orm import selectinload
+
+  stmt = select(Product).options(
+      selectinload(Product.vision_documents)
+  ).where(Product.tenant_key == self.tenant_key)
+
+Linting & Formatting:
+  # Python
+  ruff src/ && black src/
+
+  # Vue/JavaScript
+  cd frontend && npm run lint && cd ..
+
+Run tests again (MUST STAY GREEN):
+  pytest tests/ -v
+  cd frontend && npm run test:unit && cd ..
+
+Phase 5: VALIDATE & DOCUMENT (10% of time)
+───────────────────────────────────────────
+Run full test suite with coverage:
+  # Backend
+  pytest tests/ --cov=src/giljo_mcp --cov-report=html
+
+  # View coverage report
+  # Open: htmlcov/index.html
+  # Target: >80% for new code
+
+  # Frontend
+  cd frontend && npm run test:unit -- --coverage && cd ..
+
+Manual Testing:
+  # Start server
+  python startup.py --dev
+
+  # In separate terminal, test endpoints
+  curl -X GET http://localhost:7272/api/products \
+       -H "Authorization: Bearer YOUR_TOKEN"
+
+  # Start frontend dev server
+  cd frontend && npm run dev && cd ..
+  # Visit: http://localhost:5173
+
+Update documentation (if needed):
+  # Service documentation
+  # Edit: docs/SERVICES.md (if new service created)
+
+  # Architecture documentation
+  # Edit: docs/SERVER_ARCHITECTURE_TECH_STACK.md (if architectural change)
+
+Git commit:
+  git add .
+  git commit -m "feat: Implement feature X (Handover 0XXX)
+
+  - Add FeatureService with tenant isolation
+  - Add /api/features endpoints
+  - Add comprehensive tests (>80% coverage)
+  - Add WebSocket events for real-time updates
+
+  Tests: 24 passed, 0 failed
+  Coverage: 87%"
+
+══════════════════════════════════════════════════════════════════════════════
+## 5. GILJOAI-SPECIFIC PATTERNS
+══════════════════════════════════════════════════════════════════════════════
+
+### Database Operations (PostgreSQL on Windows Git Bash)
+
+CRITICAL: Claude Code runs Git Bash on Windows. Use Unix-style paths.
+
+❌ WRONG (PowerShell path - won't work in Git Bash):
+  psql -U postgres -d giljo_mcp -c "\dt"
+
+✅ CORRECT (Git Bash path format):
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\dt"
+
+Common Database Commands:
+
+List all tables:
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\dt"
+
+Describe table schema:
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\d mcp_products"
+
+Query data:
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT * FROM mcp_agent_jobs LIMIT 5;"
+
+Count records:
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM mcp_products;"
+
+Check multi-tenant data:
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT tenant_key, COUNT(*) FROM mcp_products GROUP BY tenant_key;"
+
+Drop and recreate database (DANGEROUS - dev only):
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp;"
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -c "CREATE DATABASE giljo_mcp;"
+  python install.py  # Run migration
+
+### Service Layer Pattern (Backend)
+
+All services follow this structure:
+
+  from sqlalchemy.ext.asyncio import AsyncSession
+  from sqlalchemy import select
+  from src.giljo_mcp.websocket_manager import websocket_manager
+  import logging
+
+  logger = logging.getLogger(__name__)
+
+  class FeatureService:
+      """Service for managing features with multi-tenant isolation"""
+
+      def __init__(self, session: AsyncSession, tenant_key: str):
+          self.session = session
+          self.tenant_key = tenant_key
+
+      async def create_feature(self, feature_data: dict) -> dict[str, Any]:
+          """Create new feature
+
+          Args:
+              feature_data: Feature creation data
+
+          Returns:
+              dict with 'success' bool and 'data' or 'error'
+          """
+          try:
+              feature = Feature(
+                  name=feature_data["name"],
+                  tenant_key=self.tenant_key
+              )
+              self.session.add(feature)
+              await self.session.commit()
+
+              # Emit WebSocket event
+              await websocket_manager.broadcast_to_tenant(
+                  tenant_key=self.tenant_key,
+                  event="feature:created",
+                  data={"feature_id": feature.id, "name": feature.name}
+              )
+
+              logger.info(
+                  "Feature created",
+                  extra={
+                      "feature_id": feature.id,
+                      "tenant_key": self.tenant_key
+                  }
+              )
+
+              return {"success": True, "data": feature}
+
+          except Exception as e:
+              logger.error(
+                  f"Failed to create feature: {e}",
+                  extra={"tenant_key": self.tenant_key}
+              )
+              return {"success": False, "error": str(e)}
+
+      async def list_features(self) -> dict[str, Any]:
+          """List all features for current tenant"""
+          try:
+              stmt = select(Feature).where(
+                  Feature.tenant_key == self.tenant_key,
+                  Feature.is_deleted == False
+              )
+              result = await self.session.execute(stmt)
+              features = result.scalars().all()
+
+              return {"success": True, "data": features}
+
+          except Exception as e:
+              logger.error(f"Failed to list features: {e}")
+              return {"success": False, "error": str(e)}
+
+Dependency injection in endpoints:
+
+  # api/dependencies.py
+  from src.giljo_mcp.services.feature_service import FeatureService
+
+  def get_feature_service(
+      current_user: User = Depends(get_current_active_user),
+      db_manager: DatabaseManager = Depends(get_db_manager)
+  ) -> FeatureService:
+      return FeatureService(db_manager, tenant_key=current_user.tenant_key)
+
+Endpoint usage:
+
+  # api/endpoints/features.py
+  from fastapi import APIRouter, Depends, HTTPException
+  from src.giljo_mcp.services.feature_service import FeatureService
+
+  router = APIRouter(prefix="/api/features", tags=["features"])
+
+  @router.post("/", response_model=FeatureResponse)
+  async def create_feature(
+      feature_data: FeatureCreate,
+      feature_service: FeatureService = Depends(get_feature_service)
+  ):
+      result = await feature_service.create_feature(feature_data.dict())
+
+      if not result["success"]:
+          raise HTTPException(status_code=400, detail=result["error"])
+
+      return FeatureResponse.from_orm(result["data"])
+
+### Multi-Tenant Isolation Pattern
+
+EVERY query MUST filter by tenant_key. Use this pattern:
+
+  async def get_feature(self, feature_id: int) -> dict[str, Any]:
+      """Get feature by ID (tenant-isolated)"""
+      try:
+          stmt = select(Feature).where(
+              Feature.id == feature_id,
+              Feature.tenant_key == self.tenant_key  # REQUIRED
+          )
+          result = await self.session.execute(stmt)
+          feature = result.scalar_one_or_none()
+
+          if not feature:
+              return {
+                  "success": False,
+                  "error": f"Feature {feature_id} not found"
+              }
+
+          return {"success": True, "data": feature}
+
+      except Exception as e:
+          return {"success": False, "error": str(e)}
+
+Test multi-tenant isolation:
+
+  @pytest.mark.asyncio
+  async def test_feature_service_enforces_tenant_isolation(db_session):
+      service_a = FeatureService(db_session, tenant_key="tenant_a")
+      service_b = FeatureService(db_session, tenant_key="tenant_b")
+
+      # Create features in different tenants
+      feature_a = await service_a.create_feature({"name": "Feature A"})
+      feature_b = await service_b.create_feature({"name": "Feature B"})
+
+      # BEHAVIOR: tenant_a can't access tenant_b's features
+      result = await service_a.get_feature(feature_b["data"].id)
+      assert not result["success"]
+      assert "not found" in result["error"]
+
+      # BEHAVIOR: tenant_b can't access tenant_a's features
+      result = await service_b.get_feature(feature_a["data"].id)
+      assert not result["success"]
+      assert "not found" in result["error"]
+
+### Frontend Composable Pattern (Vue 3)
+
+Extract reusable logic into composables:
+
+  // frontend/src/composables/useFeatureData.js
+  import { ref, computed } from 'vue'
+  import api from '@/services/api'
+
+  export function useFeatureData() {
+      const features = ref([])
+      const loading = ref(false)
+      const error = ref(null)
+
+      const activeFeatures = computed(() =>
+          features.value.filter(f => f.status === 'active')
+      )
+
+      async function fetchFeatures() {
+          loading.value = true
+          error.value = null
+          try {
+              const response = await api.get('/features')
+              features.value = response.data
+          } catch (e) {
+              error.value = e.message
+          } finally {
+              loading.value = false
+          }
+      }
+
+      async function createFeature(featureData) {
+          try {
+              const response = await api.post('/features', featureData)
+              features.value.push(response.data)
+              return { success: true, data: response.data }
+          } catch (e) {
+              return { success: false, error: e.message }
+          }
+      }
+
+      return {
+          features,
+          loading,
+          error,
+          activeFeatures,
+          fetchFeatures,
+          createFeature
+      }
+  }
+
+Use in component:
+
+  // frontend/src/views/FeaturesView.vue
+  <script setup>
+  import { onMounted } from 'vue'
+  import { useFeatureData } from '@/composables/useFeatureData'
+
+  const { features, loading, activeFeatures, fetchFeatures, createFeature } =
+      useFeatureData()
+
+  onMounted(fetchFeatures)
+
+  async function handleCreate(featureData) {
+      const result = await createFeature(featureData)
+      if (result.success) {
+          showNotification('Feature created')
+      } else {
+          showError(result.error)
+      }
+  }
+  </script>
+
+### Component Extraction Pattern (Frontend)
+
+When a component exceeds ~1,000 lines, extract logical sections:
+
+ProductsView.vue (2,582 lines) → Extract:
+  - ProductForm.vue (wizard tabs)
+  - ProductVisionPanel.vue (vision upload/chunks)
+  - ProductDeleteDialog.vue (delete confirmation)
+  - ActivationWarningDialog.vue (activation warning)
+  - CascadeImpactDialog.vue (cascade impact display)
+
+ProjectsView.vue (1,018 lines) → Already extracted:
+  - ProjectTabs.vue
+  - LaunchTab.vue
+  - JobsTab.vue
+  - MessageStream.vue
+  - MessageInput.vue
+  - ArchiveDialog.vue
+  - DeleteDialog.vue
+  - SettingsPanel.vue
+  - StatusIndicator.vue
+
+Extraction pattern:
+
+  // Before (inline dialog in ProductsView.vue)
+  <v-dialog v-model="deleteDialog">
+      <v-card>
+          <v-card-title>Delete Product?</v-card-title>
+          <v-card-text>
+              This will delete {{ selectedProduct?.name }}
+          </v-card-text>
+          <v-card-actions>
+              <v-btn @click="deleteDialog = false">Cancel</v-btn>
+              <v-btn color="error" @click="confirmDelete">Delete</v-btn>
+          </v-card-actions>
+      </v-card>
+  </v-dialog>
+
+  // After (extracted component)
+  <ProductDeleteDialog
+      v-model="deleteDialog"
+      :product="selectedProduct"
+      @confirm="handleDelete"
+  />
+
+  // frontend/src/components/products/ProductDeleteDialog.vue
+  <script setup>
+  defineProps(['product'])
+  const emit = defineEmits(['confirm', 'cancel'])
+
+  const model = defineModel({ type: Boolean, default: false })
+
+  function handleConfirm() {
+      emit('confirm', props.product.id)
+      model.value = false
+  }
+  </script>
+
+══════════════════════════════════════════════════════════════════════════════
+## 6. DELIVERABLES
+══════════════════════════════════════════════════════════════════════════════
+
+Before marking handover complete, verify ALL deliverables:
+
+1. Tests Written FIRST (TDD Red → Green → Refactor)
+   ✓ Service unit tests (tests/services/test_*.py)
+   ✓ API integration tests (tests/api/test_*_api.py)
+   ✓ E2E integration tests (tests/integration/test_*_integration.py)
+   ✓ Frontend unit tests (frontend/tests/unit/**/*.spec.js)
+
+2. All Tests Passing (GREEN ✅)
+   pytest tests/ -v
+   cd frontend && npm run test:unit && cd ..
+
+3. Code Coverage >80% for New Code
+   pytest tests/ --cov=src/giljo_mcp --cov-report=html
+   # Open: htmlcov/index.html
+   # Verify: New modules >80% coverage
+
+4. Service Layer Compliance (No Direct DB Queries in Endpoints)
+   ✓ All business logic in services
+   ✓ Endpoints use dependency injection
+   ✓ Services return dict[str, Any] with success/data/error
+
+5. Multi-Tenant Isolation Verified
+   ✓ All queries filter by tenant_key
+   ✓ Tests verify cross-tenant access blocked
+   ✓ Repository pattern used where applicable
+
+6. Cross-Platform Paths
+   ✓ All paths use pathlib.Path()
+   ✓ No hardcoded Windows paths (F:\, C:\)
+   ✓ Relative paths in configs
+
+7. WebSocket Events Emitted (for Real-Time UI)
+   ✓ broadcast_to_tenant called after state changes
+   ✓ Frontend composable listens for events
+
+8. Clean Code (No Zombie Code)
+   ✓ No commented-out blocks
+   ✓ No TODO comments (use git issues instead)
+   ✓ No "fix later" comments
+
+9. Structured Logging with Metadata
+   ✓ logger.info/error with extra={...}
+   ✓ Include tenant_key, entity_id, operation
+
+10. Documentation Updated (if needed)
+    ✓ docs/SERVICES.md (if new service)
+    ✓ docs/ORCHESTRATOR.md (if orchestrator change)
+    ✓ docs/SERVER_ARCHITECTURE_TECH_STACK.md (if architectural change)
+
+11. Git Commit with Descriptive Message
+    git add .
+    git commit -m "feat: Implement feature X (Handover 0XXX)
+
+    - Add FeatureService with tenant isolation
+    - Add /api/features endpoints
+    - Add comprehensive tests (>80% coverage)
+    - Add WebSocket events for real-time updates
+
+    Tests: 24 passed, 0 failed
+    Coverage: 87%
+
+    🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+    Co-Authored-By: Claude <noreply@anthropic.com>"
+
+══════════════════════════════════════════════════════════════════════════════
+## 7. CRITICAL CHECKS (Before Committing)
+══════════════════════════════════════════════════════════════════════════════
+
+Run this checklist BEFORE git commit:
+
+### Architecture Checks
+✓ Read F:\GiljoAI_MCP\CLAUDE.md? (verify project context)
+✓ Read F:\GiljoAI_MCP\docs\SERVICES.md? (verify service pattern)
+✓ Read F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md?
+✓ Reused existing services? (ProductService, ProjectService, etc.)
+✓ Reused existing composables? (useAgentData, useWebSocket, etc.)
+✓ No parallel systems created? (extend existing, don't recreate)
+
+### TDD Checks
+✓ Tests written FIRST? (TDD Red → Green → Refactor)
+✓ All tests passing? (pytest tests/ -v)
+✓ Coverage >80%? (pytest --cov=src/giljo_mcp --cov-report=html)
+✓ Test behavior not implementation? (descriptive test names)
+
+### Service Layer Checks
+✓ All business logic in services? (not endpoints)
+✓ Services use AsyncSession + tenant_key? (consistent pattern)
+✓ Services return dict[str, Any]? (success/data/error structure)
+✓ Dependency injection used? (get_feature_service pattern)
+
+### Multi-Tenant Isolation Checks
+✓ All queries filter by tenant_key? (CRITICAL security)
+✓ Tests verify tenant isolation? (cross-tenant access blocked)
+✓ BaseRepository pattern used? (automatic tenant filtering)
+
+### Cross-Platform Checks
+✓ All paths use pathlib.Path()? (not os.path or hardcoded)
+✓ No hardcoded Windows paths? (F:\, C:\)
+✓ Relative paths in configs? (Path.cwd() / 'data')
+
+### Code Quality Checks
+✓ Production-grade code? (no bandaids, no "fix later")
+✓ No zombie code? (delete, don't comment)
+✓ Structured logging? (logger with extra={...})
+✓ Pydantic schemas? (request/response validation)
+
+### Real-Time UI Checks
+✓ WebSocket events emitted? (broadcast_to_tenant after state changes)
+✓ Frontend listens for events? (useWebSocket composable)
+
+### Documentation Checks
+✓ docs/SERVICES.md updated? (if new service)
+✓ Handover marked complete? (move to completed/ folder)
+✓ Git commit message descriptive? (include test results, coverage)
+
+### Manual Testing Checks
+✓ Server starts? (python startup.py --dev)
+✓ Endpoints work? (curl -X GET http://localhost:7272/api/...)
+✓ Frontend works? (cd frontend && npm run dev)
+✓ Database schema correct? (PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe ...)
+
+══════════════════════════════════════════════════════════════════════════════
+## 8. COMMAND REFERENCE
+══════════════════════════════════════════════════════════════════════════════
+
+### Backend Commands
+
+Python Environment:
+  python --version  # 3.11+
+  pip install -r requirements.txt
+  ruff src/ && black src/  # Linting & formatting
+
+Testing:
+  pytest tests/ -v                              # All tests
+  pytest tests/services/ -v                     # Service layer tests
+  pytest tests/api/ -v                          # API endpoint tests
+  pytest tests/integration/ -v                  # Integration tests
+  pytest tests/services/test_product_service.py -v  # Specific file
+  pytest -k "test_multi_tenant" -v              # Filter by name
+  pytest tests/ --cov=src/giljo_mcp --cov-report=html  # Coverage
+
+Server:
+  python startup.py              # Production mode
+  python startup.py --dev        # Development mode
+  python startup.py --port 7272  # Custom port
+
+Database (Git Bash on Windows):
+  # List tables
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\dt"
+
+  # Describe table
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\d mcp_products"
+
+  # Query data
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT * FROM mcp_agent_jobs LIMIT 5;"
+
+  # Count records
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM mcp_products;"
+
+  # Check multi-tenant isolation
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "SELECT tenant_key, COUNT(*) FROM mcp_products GROUP BY tenant_key;"
+
+  # Fresh database (DANGEROUS)
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp;"
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -c "CREATE DATABASE giljo_mcp;"
+  python install.py
+
+### Frontend Commands
+
+NPM Environment:
+  cd frontend
+  npm --version
+  npm install
+  npm run lint  # ESLint + Prettier
+
+Testing:
+  npm run test:unit                    # All tests
+  npm run test:unit -- --grep "Feature"  # Filter by name
+  npm run test:unit -- --coverage      # With coverage
+
+Development Server:
+  npm run dev        # Dev server (http://localhost:5173)
+  npm run build      # Production build
+  npm run preview    # Preview production build
+
+### Git Commands
+
+Status & Changes:
+  git status
+  git diff
+  git log --oneline -10  # Last 10 commits
+
+Commits:
+  git add .
+  git commit -m "feat: Implement feature X (Handover 0XXX)
+
+  - Add FeatureService with tenant isolation
+  - Add /api/features endpoints
+  - Add comprehensive tests (>80% coverage)
+
+  Tests: 24 passed, 0 failed
+  Coverage: 87%"
+
+Branches:
+  git checkout -b feature/handover-0XXX
+  git checkout master
+  git merge feature/handover-0XXX
+
+History:
+  git log -p -- src/giljo_mcp/services/product_service.py  # File history
+  git blame src/giljo_mcp/orchestrator.py  # Line-by-line authorship
+
+══════════════════════════════════════════════════════════════════════════════
+## 9. TROUBLESHOOTING
+══════════════════════════════════════════════════════════════════════════════
+
+### Common Issues
+
+Database Connection Failed:
+  # Check PostgreSQL running
+  PGPASSWORD=4010 /f/PostgreSQL/bin/psql.exe -U postgres -l
+
+  # Check config.yaml
+  cat config.yaml
+  # Verify database_url: postgresql://postgres:4010@localhost/giljo_mcp
+
+Tests Failing with "No Module Named...":
+  # Install dependencies
+  pip install -r requirements.txt
+
+  # Verify PYTHONPATH
+  export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+
+Frontend Build Errors:
+  cd frontend
+  rm -rf node_modules/
+  npm install
+  npm run build
+  cd ..
+
+Port Already in Use:
+  # Find process using port
+  netstat -ano | findstr :7272
+
+  # Kill process (Windows)
+  taskkill /PID <PID> /F
+
+  # Or use different port
+  python startup.py --port 7273
+
+Multi-Tenant Isolation Tests Failing:
+  # Check tenant_key in all queries
+  grep -r "select(.*).where" src/giljo_mcp/services/
+  # Verify: All have .where(..., Model.tenant_key == self.tenant_key)
+
+Coverage Below 80%:
+  # View detailed report
+  pytest tests/ --cov=src/giljo_mcp --cov-report=html
+  # Open: htmlcov/index.html
+  # Add tests for uncovered lines
+
+WebSocket Events Not Working:
+  # Check WebSocket connection
+  # Frontend console should show: "WebSocket connected"
+
+  # Check event emission in service
+  await websocket_manager.broadcast_to_tenant(
+      tenant_key=self.tenant_key,
+      event="feature:created",
+      data={"feature_id": feature.id}
+  )
+
+  # Check frontend listener
+  socket.on('feature:created', (data) => {
+      console.log('Feature created:', data)
+  })
+
+══════════════════════════════════════════════════════════════════════════════
+## 10. RELATED DOCUMENTATION
+══════════════════════════════════════════════════════════════════════════════
+
+Essential Reading:
+  F:\GiljoAI_MCP\CLAUDE.md                      # Project guidance
+  F:\GiljoAI_MCP\docs\README_FIRST.md           # Documentation hub
+  F:\GiljoAI_MCP\docs\SERVICES.md               # Service layer patterns
+  F:\GiljoAI_MCP\docs\TESTING.md                # Testing patterns
+  F:\GiljoAI_MCP\docs\ORCHESTRATOR.md           # Orchestrator architecture
+  F:\GiljoAI_MCP\docs\HANDOVERS.md              # Handover format
+
+Architecture Reviews:
+  F:\GiljoAI_MCP\handovers\013A_code_review_architecture_status.md
+  F:\GiljoAI_MCP\handovers\code_review_nov18.md
+
+Recent Handovers:
+  F:\GiljoAI_MCP\handovers\0322_service_layer_compliance.md
+  F:\GiljoAI_MCP\handovers\0601_nuclear_reset_test_report.md
+
+══════════════════════════════════════════════════════════════════════════════
+  END OF QUICK_LAUNCH GUIDE
+══════════════════════════════════════════════════════════════════════════════
+
+Remember: This is a MULTI-TENANT AI AGENT ORCHESTRATION PLATFORM.
+
+Every line of code must respect:
+  1. TDD Discipline (Red → Green → Refactor)
+  2. Service Layer Architecture (no direct DB in endpoints)
+  3. Multi-Tenant Isolation (tenant_key in ALL queries)
+  4. Cross-Platform Paths (pathlib.Path only)
+  5. Component Reuse (extend existing, don't recreate)
+
+START EXECUTION NOW.
