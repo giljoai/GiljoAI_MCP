@@ -48,16 +48,23 @@ class TaskService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(
+        self,
+        db_manager: DatabaseManager = None,
+        tenant_manager: TenantManager = None,
+        session: AsyncSession | None = None
+    ):
         """
         Initialize TaskService with database and tenant management.
 
         Args:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
+            session: Optional AsyncSession for test transaction isolation (Handover 0324)
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
+        self._session = session  # Store for test transaction isolation
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     # ============================================================================
