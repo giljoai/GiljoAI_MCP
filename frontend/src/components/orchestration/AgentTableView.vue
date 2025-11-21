@@ -66,11 +66,19 @@
           icon="mdi-rocket-launch"
           size="x-small"
           variant="text"
-          color="primary"
+          :color="canLaunchAgent(item) ? 'primary' : 'grey'"
+          :disabled="!canLaunchAgent(item)"
           @click.stop="$emit('launch-agent', item)"
         >
           <v-icon>mdi-rocket-launch</v-icon>
-          <v-tooltip activator="parent" location="top">Launch Agent</v-tooltip>
+          <v-tooltip activator="parent" location="top">
+            <span v-if="!canLaunchAgent(item) && usingClaudeCodeSubagents">
+              Disabled in Claude Code mode (non-orchestrator)
+            </span>
+            <span v-else>
+              Launch Agent
+            </span>
+          </v-tooltip>
         </v-btn>
 
         <!-- View details for working agents -->
@@ -149,6 +157,10 @@ const props = defineProps({
     default: 'jobs',
     validator: (value) => ['launch', 'jobs'].includes(value),
   },
+  usingClaudeCodeSubagents: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['row-click', 'launch-agent'])
@@ -177,6 +189,53 @@ const headers = [
 function handleRowClick(event, { item }) {
   emit('row-click', item)
 }
+
+/**
+ * Handover 0229: Determine if agent can be launched
+ * Terminal states: cannot be launched
+ * Blocked state: cannot be launched
+ * Claude Code mode: only orchestrator can be launched
+ */
+function canLaunchAgent(agent) {
+  // Terminal states: cannot be launched
+  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned']
+  if (terminalStates.includes(agent.status)) {
+    return false
+  }
+
+  // Blocked state: cannot be launched
+  if (agent.status === 'blocked') {
+    return false
+  }
+
+  // Claude Code mode: only orchestrator can be launched
+  if (props.usingClaudeCodeSubagents) {
+    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+  }
+
+  // General CLI mode: all non-terminal agents can be launched
+  return true
+}
+
+/**
+ * Handover 0229: Determine if agent prompt can be copied
+ * Decommissioned agents have no prompt
+ * Claude Code mode: only orchestrator prompts can be copied
+ */
+function canCopyPrompt(agent) {
+  // Decommissioned agents have no prompt
+  if (agent.status === 'decommissioned') {
+    return false
+  }
+
+  // Claude Code mode: only orchestrator prompts can be copied
+  if (props.usingClaudeCodeSubagents) {
+    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+  }
+
+  // General CLI mode: all agent prompts can be copied
+  return true
+}
 </script>
 
 <style scoped>
@@ -203,5 +262,24 @@ function handleRowClick(event, { item }) {
 .agent-table-view :deep([data-v-for-health]) {
   display: flex;
   justify-content: center;
+}
+
+/* Handover 0229: Visual feedback for disabled rows in Claude Code mode */
+.agent-table-view :deep(.disabled-agent-row) {
+  opacity: 0.6;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.agent-table-view :deep(.disabled-agent-row:hover) {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Handover 0229: Disabled action buttons */
+.agent-table-view :deep(.v-btn:disabled) {
+  opacity: 0.4;
+}
+
+.agent-table-view :deep(.v-btn:disabled .v-icon) {
+  color: grey !important;
 }
 </style>

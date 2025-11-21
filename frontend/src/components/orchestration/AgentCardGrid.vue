@@ -44,6 +44,7 @@
     <AgentTableView
       v-else
       :agents="allAgentsForTable"
+      :using-claude-code-subagents="usingClaudeCodeSubagents"
       mode="jobs"
       @row-click="handleRowClick"
       @launch-agent="handleLaunchAgent"
@@ -63,6 +64,10 @@ const props = defineProps({
   projectId: {
     type: String,
     required: true,
+  },
+  usingClaudeCodeSubagents: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -139,6 +144,53 @@ const toggleAgentMessages = (agentId) => {
   } else {
     expandedAgentId.value = agentId
   }
+}
+
+/**
+ * Handover 0229: Determine if agent can be launched
+ * Terminal states: cannot be launched
+ * Blocked state: cannot be launched
+ * Claude Code mode: only orchestrator can be launched
+ */
+const canLaunchAgent = (agent) => {
+  // Terminal states: cannot be launched
+  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned']
+  if (terminalStates.includes(agent.status)) {
+    return false
+  }
+
+  // Blocked state: cannot be launched
+  if (agent.status === 'blocked') {
+    return false
+  }
+
+  // Claude Code mode: only orchestrator can be launched
+  if (props.usingClaudeCodeSubagents) {
+    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+  }
+
+  // General CLI mode: all non-terminal agents can be launched
+  return true
+}
+
+/**
+ * Handover 0229: Determine if agent prompt can be copied
+ * Decommissioned agents have no prompt
+ * Claude Code mode: only orchestrator prompts can be copied
+ */
+const canCopyPrompt = (agent) => {
+  // Decommissioned agents have no prompt
+  if (agent.status === 'decommissioned') {
+    return false
+  }
+
+  // Claude Code mode: only orchestrator prompts can be copied
+  if (props.usingClaudeCodeSubagents) {
+    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+  }
+
+  // General CLI mode: all agent prompts can be copied
+  return true
 }
 
 const handleCopyPrompt = (data) => {
