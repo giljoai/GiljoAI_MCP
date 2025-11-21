@@ -459,7 +459,7 @@ export const api = {
   // Orchestrator (Multi-Agent Workflow Coordination)
   orchestrator: {
     launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
-    launchProject: (data) => apiClient.post('/api/v1/orchestration/launch-project', data),
+    launchProject: (data) => apiClient.post('/api/agent-jobs/launch-project', data),
     getWorkflowStatus: (projectId) => apiClient.get(`/api/v1/orchestration/workflow-status/${projectId}`),
     getMetrics: (projectId) => apiClient.get(`/api/v1/orchestration/metrics/${projectId}`),
     createMissions: (data) => apiClient.post('/api/v1/orchestration/create-missions', data),
