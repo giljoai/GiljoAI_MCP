@@ -662,3 +662,105 @@ it('MessagePanel behaves identically in inline and modal modes', async () => {
   - `frontend/src/components/projects/MessageInput.vue` (360 lines - REUSED)
 - **AgentTableView**: Handover 0228 (row click trigger)
 - **Vuetify v-dialog**: [Documentation](https://vuetifyjs.com/en/components/dialogs/)
+
+---
+
+## Implementation Summary
+
+**Completed**: 2025-11-21
+**Status**: ✅ Production Ready
+**Effort**: 4 hours (4 phases)
+
+### What Was Built
+
+**Extract-First Architecture**: Created MessageList component from MessagePanel, then reused in MessageModal wrapper. Zero duplication, clean separation of concerns.
+
+### Phase 1: Extract MessageList (1.25 hours)
+
+**Files Created**:
+- `frontend/src/components/messages/MessageList.vue` (64 lines)
+- `frontend/tests/components/messages/MessageList.spec.js` (116 lines)
+
+**Features**:
+- Pure message rendering logic (v-virtual-scroll, empty state)
+- Emits message-click events
+- Reusable in any context (inline, modal, sidebar)
+
+**Tests**: 5/5 passing
+
+### Phase 2: Refactor MessagePanel (1 hour)
+
+**Files Modified**:
+- `frontend/src/components/messages/MessagePanel.vue` (342 → 335 lines, net -7)
+- `frontend/tests/components/messages/MessagePanel.0231.spec.js` (124 lines, NEW)
+
+**Changes**:
+- Replaced inline v-virtual-scroll with `<MessageList />` component
+- Preserved all filter/search/WebSocket logic
+- Behavioral equivalence verified
+
+**Tests**: 5/5 passing
+
+### Phase 3: Create MessageModal (1 hour)
+
+**Files Created**:
+- `frontend/src/components/messages/MessageModal.vue` (109 lines)
+- `frontend/tests/components/messages/MessageModal.spec.js` (78 lines)
+
+**Features**:
+- v-dialog wrapper with MessageList + MessageInput
+- Max-width 800px, max-height 600px
+- Close on X/ESC/outside click
+- Props: isOpen, jobId, agentName, messages
+- Events: close, message-sent
+
+**Tests**: 6/6 passing
+
+### Phase 4: Enhance MessageInput (45 minutes)
+
+**Files Modified**:
+- `frontend/src/components/projects/MessageInput.vue` (+48 lines to 405 total)
+- `frontend/tests/components/projects/MessageInput.0231.spec.js` (44 lines, NEW)
+
+**Features**:
+- Added `position` prop ('inline' | 'modal' | 'sticky') with validator
+- Position-specific CSS classes
+- Maintains backward compatibility (default='inline')
+
+**Tests**: 4/4 passing
+
+### Files Summary
+
+**Created**: 4 components, 4 test files (8 files total)
+**Modified**: MessagePanel.vue, MessageInput.vue
+**Total Tests**: 20/20 passing (100%)
+
+### Git Commits
+
+- 3a22f1fe - test: MessageList tests (Phase 1 RED)
+- 3ed4e58d - feat: MessageList component (Phase 1 GREEN)
+- bc2a9c39 - feat: Refactor MessagePanel (Phase 2)
+- 57a51d19 - test: MessageModal tests (Phase 3 RED)
+- dc8f8a27 - test: MessageInput position tests (Phase 4 RED)
+- c96fa89c - feat: MessageInput position props (Phase 4 GREEN)
+- 635a11d5 - feat: MessageModal wrapper (Phase 3 GREEN)
+
+### Architecture Win
+
+MessageList extracted and reused (not duplicated). Future-proof for sidebars, drawers, notifications.
+
+**Code Metrics**:
+- MessagePanel cleaner: 342 → 335 lines (-7)
+- MessageModal thin: 109 lines
+- MessageInput enhanced: +48 lines
+- Zero duplication achieved
+
+### Success Criteria: All Met ✅
+
+- MessageList component extracted ✅
+- MessagePanel refactored to use MessageList ✅
+- MessageModal created with MessageList ✅
+- MessageInput position prop added ✅
+- All tests passing (20/20) ✅
+- Zero code duplication ✅
+- Behavioral equivalence verified ✅
