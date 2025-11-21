@@ -1,10 +1,31 @@
 # Handover 0232: Bottom Message Composer Bar
 
-**Status**: Ready for Implementation
+**Status**: Ready for Implementation (PRE-VERIFICATION REQUIRED)
 **Priority**: High
-**Estimated Effort**: 1 hour (reduced from 3 via component reuse)
+**Estimated Effort**: 1 hour (IF not already done - see verification step below)
 **Dependencies**: Handover 0226 (backend API extensions)
 **Part of**: Visual Refactor Series (0225-0237)
+
+---
+
+## ⚠️ PRE-IMPLEMENTATION VERIFICATION REQUIRED
+
+**CRITICAL**: Before implementing this handover, verify existing MessageInput sticky CSS.
+
+**Verification Steps**:
+1. Open `frontend/src/components/projects/MessageInput.vue`
+2. Check for existing sticky CSS (around lines 165-174 based on codebase analysis)
+3. Run the application and test sticky behavior
+
+**Possible Outcomes**:
+- ✅ **Sticky CSS exists AND works** → Mark handover as "ALREADY COMPLETE" (no work needed)
+- ⚠️ **Sticky CSS exists BUT broken** → Debug existing CSS (don't add duplicate CSS)
+- ❌ **No sticky CSS** → Proceed with implementation below
+
+**Why This Verification**:
+- Codebase analysis suggests MessageInput.vue may already have sticky positioning (lines 165-174)
+- Implementing duplicate CSS will create conflicts
+- Verify first, implement only if needed
 
 ---
 
