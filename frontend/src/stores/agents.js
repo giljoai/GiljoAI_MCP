@@ -43,7 +43,8 @@ export const useAgentStore = defineStore('agents', () => {
     error.value = null
     try {
       const response = await api.agentJobs.list(projectId)
-      agents.value = response.data
+      // Ensure agents.value is always an array (Bug #3 fix)
+      agents.value = Array.isArray(response.data) ? response.data : []
     } catch (err) {
       error.value = err.message
       console.error('Failed to fetch agents:', err)
