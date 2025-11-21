@@ -3,7 +3,7 @@
     <!-- 3-Column Layout -->
     <v-row class="launch-columns mb-6">
       <!-- Left Column: Action Buttons Panel -->
-      <v-col cols="12" md="3" class="mb-4 mb-md-0">
+      <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card elevation="2" class="action-panel pa-4">
           <!-- Stage Project Button (Initial State) -->
           <v-btn
@@ -76,7 +76,7 @@
       </v-col>
 
       <!-- Middle Column: Project Description Panel -->
-      <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
+      <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card class="description-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header -->
           <v-card-title class="panel-header bg-primary text-white text-center">
@@ -109,7 +109,7 @@
       </v-col>
 
       <!-- Right Column: Orchestrator Mission Panel -->
-      <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
+      <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card class="mission-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header with "Optimized for you" badge -->
           <v-card-title class="panel-header bg-primary text-white d-flex justify-center">
