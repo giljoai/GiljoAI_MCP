@@ -215,22 +215,30 @@ class TaskService:
         status: Optional[str] = None,
         assigned_to: Optional[str] = None,
         project_id: Optional[str] = None,
+        product_id: Optional[str] = None,
+        priority: Optional[str] = None,
+        created_by_user_id: Optional[str] = None,
+        filter_type: Optional[str] = None,
         tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        List tasks with optional filters.
+        List tasks with optional filters (enhanced for API endpoint support - Handover 0324).
 
         Args:
             status: Filter by task status (optional)
             assigned_to: Filter by assigned agent (not yet implemented)
-            project_id: Filter by project ID (uses active project if not provided)
+            project_id: Filter by project ID (optional)
+            product_id: Filter by product ID (optional)
+            priority: Filter by priority level (optional)
+            created_by_user_id: Filter by creator user ID (optional)
+            filter_type: Special filter type ('product_tasks', 'all_tasks', or None)
             tenant_key: Tenant key for filtering (uses current if not provided)
 
         Returns:
             Dict with success status and list of tasks or error
 
         Example:
-            >>> result = await service.list_tasks(status="pending")
+            >>> result = await service.list_tasks(status="pending", priority="high")
             >>> for task in result["tasks"]:
             ...     print(f"{task['id']}: {task['description']}")
         """
@@ -246,59 +254,82 @@ class TaskService:
                 }
 
             async with self.db_manager.get_session_async() as session:
-                project = None
+                # Start with tenant-scoped base query
+                query = select(Task).where(Task.tenant_key == tenant_key)
 
-                # Get or find project
-                if project_id:
-                    result = await session.execute(
-                        select(Project).where(Project.id == project_id)
-                    )
-                    project = result.scalar_one_or_none()
-                else:
-                    # Find active project
-                    project_query = select(Project).where(
-                        and_(Project.tenant_key == tenant_key, Project.status == "active")
-                    )
-                    project_result = await session.execute(project_query)
-                    project = project_result.scalar_one_or_none()
-
-                    # Fallback to most recent project
-                    if not project:
-                        project_query = (
-                            select(Project)
-                            .where(Project.tenant_key == tenant_key)
-                            .order_by(Project.created_at.desc())
-                            .limit(1)
+                # Handle special filter types (product-scoped filtering)
+                if filter_type == "product_tasks":
+                    # Use explicit product_id if provided, otherwise get active product
+                    if product_id:
+                        query = query.where(Task.product_id == product_id)
+                    else:
+                        # Get active product for tenant
+                        from giljo_mcp.models.products import Product
+                        product_query = select(Product).where(
+                            and_(
+                                Product.tenant_key == tenant_key,
+                                Product.is_active == True
+                            )
                         )
-                        project_result = await session.execute(project_query)
-                        project = project_result.scalar_one_or_none()
+                        product_result = await session.execute(product_query)
+                        active_product = product_result.scalar_one_or_none()
 
-                if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found"
-                    }
+                        if active_product:
+                            query = query.where(Task.product_id == active_product.id)
+                        else:
+                            # No active product - return empty list
+                            return {"success": True, "tasks": [], "count": 0}
 
-                # Query tasks
-                query = select(Task).where(Task.project_id == project.id)
+                elif filter_type == "all_tasks":
+                    # Tasks with NULL product_id
+                    query = query.where(Task.product_id.is_(None))
+
+                # Apply other filters
+                if product_id and not filter_type:
+                    query = query.where(Task.product_id == product_id)
+
+                if project_id:
+                    query = query.where(Task.project_id == project_id)
+
                 if status:
                     query = query.where(Task.status == status)
 
+                if priority:
+                    query = query.where(Task.priority == priority)
+
+                if created_by_user_id:
+                    query = query.where(Task.created_by_user_id == created_by_user_id)
+
+                # Order by creation date (newest first)
+                query = query.order_by(Task.created_at.desc())
+
+                # Execute query
                 result = await session.execute(query)
                 tasks = result.scalars().all()
 
+                # Convert to dict list
                 task_list = []
                 for task in tasks:
                     task_list.append({
                         "id": str(task.id),
+                        "tenant_key": task.tenant_key,
+                        "product_id": task.product_id,
+                        "project_id": task.project_id,
+                        "parent_task_id": task.parent_task_id,
+                        "agent_job_id": task.agent_job_id,
+                        "created_by_user_id": task.created_by_user_id,
+                        "converted_to_project_id": task.converted_to_project_id,
                         "title": task.title,
                         "description": task.description,
                         "category": task.category,
                         "status": task.status,
                         "priority": task.priority,
-                        "project_id": task.project_id,
-                        "assigned_to": task.assigned_to if hasattr(task, "assigned_to") else None,
                         "created_at": task.created_at.isoformat() if task.created_at else None,
+                        "started_at": task.started_at.isoformat() if task.started_at else None,
+                        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                        "due_date": task.due_date.isoformat() if task.due_date else None,
+                        "estimated_effort": task.estimated_effort,
+                        "actual_effort": task.actual_effort,
                     })
 
                 return {
@@ -322,6 +353,10 @@ class TaskService:
     ) -> dict[str, Any]:
         """
         Update a task with arbitrary fields.
+
+        Automatically handles timestamp updates based on status changes:
+        - status → "in_progress": Sets started_at if not already set
+        - status → "completed" or "cancelled": Sets completed_at if not already set
 
         Args:
             task_id: Task UUID (required)
@@ -359,6 +394,21 @@ class TaskService:
                         self._logger.warning(
                             f"Attempted to update non-existent field '{key}' on task {task_id}"
                         )
+
+                # Auto-update timestamps based on status changes (Handover 0324)
+                if "status" in kwargs:
+                    new_status = kwargs["status"]
+                    now = datetime.now(timezone.utc)
+
+                    if new_status == "in_progress" and not task.started_at:
+                        task.started_at = now
+                        updated_fields.append("started_at")
+                        self._logger.debug(f"Auto-set started_at for task {task_id}")
+
+                    elif new_status in ("completed", "cancelled") and not task.completed_at:
+                        task.completed_at = now
+                        updated_fields.append("completed_at")
+                        self._logger.debug(f"Auto-set completed_at for task {task_id}")
 
                 await session.commit()
 
@@ -448,52 +498,57 @@ class TaskService:
             ...     print(result["data"]["title"])
         """
         try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
+            if self._session:
+                return await self._get_task_impl(self._session, task_id)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(Task).where(
-                    and_(
-                        Task.id == task_id,
-                        Task.tenant_key == tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                task = result.scalar_one_or_none()
-
-                if not task:
-                    return {"success": False, "error": "Task not found"}
-
-                # Convert to dict
-                task_data = {
-                    "id": str(task.id),
-                    "tenant_key": task.tenant_key,
-                    "product_id": task.product_id,
-                    "project_id": task.project_id,
-                    "parent_task_id": task.parent_task_id,
-                    "agent_job_id": task.agent_job_id,
-                    "created_by_user_id": task.created_by_user_id,
-                    "converted_to_project_id": task.converted_to_project_id,
-                    "title": task.title,
-                    "description": task.description,
-                    "category": task.category,
-                    "status": task.status,
-                    "priority": task.priority,
-                    "estimated_effort": task.estimated_effort,
-                    "actual_effort": task.actual_effort,
-                    "created_at": task.created_at.isoformat() if task.created_at else None,
-                    "started_at": task.started_at.isoformat() if task.started_at else None,
-                    "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-                    "due_date": task.due_date.isoformat() if task.due_date else None,
-                    "meta_data": task.meta_data,
-                }
-
-                return {"success": True, "data": task_data}
-
+                return await self._get_task_impl(session, task_id)
         except Exception as e:
             self._logger.exception(f"Failed to get task {task_id}: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _get_task_impl(self, session: AsyncSession, task_id: str) -> dict[str, Any]:
+        """Implementation of get_task with explicit session parameter."""
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        stmt = select(Task).where(
+            and_(
+                Task.id == task_id,
+                Task.tenant_key == tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        task = result.scalar_one_or_none()
+
+        if not task:
+            return {"success": False, "error": "Task not found"}
+
+        # Convert to dict
+        task_data = {
+            "id": str(task.id),
+            "tenant_key": task.tenant_key,
+            "product_id": task.product_id,
+            "project_id": task.project_id,
+            "parent_task_id": task.parent_task_id,
+            "agent_job_id": task.agent_job_id,
+            "created_by_user_id": task.created_by_user_id,
+            "converted_to_project_id": task.converted_to_project_id,
+            "title": task.title,
+            "description": task.description,
+            "category": task.category,
+            "status": task.status,
+            "priority": task.priority,
+            "estimated_effort": task.estimated_effort,
+            "actual_effort": task.actual_effort,
+            "created_at": task.created_at.isoformat() if task.created_at else None,
+            "started_at": task.started_at.isoformat() if task.started_at else None,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "meta_data": task.meta_data,
+        }
+
+        return {"success": True, "data": task_data}
 
     async def delete_task(self, task_id: str, user_id: str) -> dict[str, Any]:
         """
@@ -517,54 +572,59 @@ class TaskService:
             >>> result = await service.delete_task("abc-123", user.id)
         """
         try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
+            if self._session:
+                return await self._delete_task_impl(self._session, task_id, user_id)
             async with self.db_manager.get_session_async() as session:
-                # Get task
-                task_stmt = select(Task).where(
-                    and_(
-                        Task.id == task_id,
-                        Task.tenant_key == tenant_key
-                    )
-                )
-                task_result = await session.execute(task_stmt)
-                task = task_result.scalar_one_or_none()
-
-                if not task:
-                    return {"success": False, "error": "Task not found"}
-
-                # Get user for permission check
-                from giljo_mcp.models.auth import User
-                user_stmt = select(User).where(User.id == user_id)
-                user_result = await session.execute(user_stmt)
-                user = user_result.scalar_one_or_none()
-
-                if not user:
-                    return {"success": False, "error": "User not found"}
-
-                # Permission check
-                if not self.can_delete_task(task, user):
-                    return {
-                        "success": False,
-                        "error": "Not authorized to delete this task. Only task creator or admin can delete."
-                    }
-
-                # Delete task
-                await session.delete(task)
-                await session.commit()
-
-                self._logger.info(f"Deleted task {task_id} by user {user_id}")
-
-                return {
-                    "success": True,
-                    "message": "Task deleted successfully"
-                }
-
+                return await self._delete_task_impl(session, task_id, user_id)
         except Exception as e:
             self._logger.exception(f"Failed to delete task {task_id}: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _delete_task_impl(self, session: AsyncSession, task_id: str, user_id: str) -> dict[str, Any]:
+        """Implementation of delete_task with explicit session parameter."""
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        # Get task
+        task_stmt = select(Task).where(
+            and_(
+                Task.id == task_id,
+                Task.tenant_key == tenant_key
+            )
+        )
+        task_result = await session.execute(task_stmt)
+        task = task_result.scalar_one_or_none()
+
+        if not task:
+            return {"success": False, "error": "Task not found"}
+
+        # Get user for permission check
+        from giljo_mcp.models.auth import User
+        user_stmt = select(User).where(User.id == user_id)
+        user_result = await session.execute(user_stmt)
+        user = user_result.scalar_one_or_none()
+
+        if not user:
+            return {"success": False, "error": "User not found"}
+
+        # Permission check
+        if not self.can_delete_task(task, user):
+            return {
+                "success": False,
+                "error": "Not authorized to delete this task. Only task creator or admin can delete."
+            }
+
+        # Delete task
+        await session.delete(task)
+        await session.commit()
+
+        self._logger.info(f"Deleted task {task_id} by user {user_id}")
+
+        return {
+            "success": True,
+            "message": "Task deleted successfully"
+        }
 
     async def convert_to_project(
         self,
@@ -613,135 +673,152 @@ class TaskService:
             ... )
         """
         try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
+            if self._session:
+                return await self._convert_to_project_impl(
+                    self._session, task_id, project_name, strategy, include_subtasks, user_id
+                )
             async with self.db_manager.get_session_async() as session:
-                # Get task
-                task_stmt = select(Task).where(
-                    and_(
-                        Task.id == task_id,
-                        Task.tenant_key == tenant_key
-                    )
+                return await self._convert_to_project_impl(
+                    session, task_id, project_name, strategy, include_subtasks, user_id
                 )
-                task_result = await session.execute(task_stmt)
-                task = task_result.scalar_one_or_none()
-
-                if not task:
-                    return {"success": False, "error": "Task not found"}
-
-                # Check if already converted
-                if task.converted_to_project_id:
-                    return {
-                        "success": False,
-                        "error": f"Task already converted to project {task.converted_to_project_id}"
-                    }
-
-                # Get user for permission check
-                from giljo_mcp.models.auth import User
-                user_stmt = select(User).where(User.id == user_id)
-                user_result = await session.execute(user_stmt)
-                user = user_result.scalar_one_or_none()
-
-                if not user:
-                    return {"success": False, "error": "User not found"}
-
-                # Permission check (only creator or admin can convert)
-                if user.role != "admin" and task.created_by_user_id != user.id:
-                    return {
-                        "success": False,
-                        "error": "Not authorized to convert this task. Only task creator or admin can convert."
-                    }
-
-                # Get active product (required for project creation per Handover 0050)
-                from giljo_mcp.models.products import Product
-                product_stmt = select(Product).where(
-                    and_(
-                        Product.tenant_key == tenant_key,
-                        Product.is_active == True
-                    )
-                )
-                product_result = await session.execute(product_stmt)
-                active_product = product_result.scalar_one_or_none()
-
-                if not active_product:
-                    return {
-                        "success": False,
-                        "error": "No active product. Please activate a product before converting tasks to projects."
-                    }
-
-                # Check for existing active project and deactivate it
-                # (only ONE project can be active per product - Handover 0050b)
-                existing_active_stmt = select(Project).where(
-                    and_(
-                        Project.product_id == active_product.id,
-                        Project.status == "active"
-                    )
-                )
-                existing_active_result = await session.execute(existing_active_stmt)
-                existing_active_project = existing_active_result.scalar_one_or_none()
-
-                if existing_active_project:
-                    self._logger.info(
-                        f"Deactivating existing active project {existing_active_project.id} "
-                        f"before creating new project from task {task_id}"
-                    )
-                    existing_active_project.status = "inactive"
-                    existing_active_project.updated_at = datetime.now(timezone.utc)
-
-                # Create project
-                final_project_name = project_name or task.title
-                new_project = Project(
-                    name=final_project_name,
-                    description=task.description or f"Project created from task: {task.title}",
-                    mission="",  # Leave empty - orchestrator will generate mission during staging
-                    product_id=active_product.id,
-                    tenant_key=tenant_key,
-                    status="inactive",  # Projects start inactive, user activates when ready
-                )
-
-                session.add(new_project)
-                await session.flush()  # Get project ID without committing
-
-                # Mark task as converted and completed
-                task.converted_to_project_id = new_project.id
-                task.status = "completed"  # Mark as completed, not 'converted'
-
-                # Handle subtasks if requested
-                if include_subtasks:
-                    subtask_stmt = select(Task).where(Task.parent_task_id == task_id)
-                    subtask_result = await session.execute(subtask_stmt)
-                    subtasks = subtask_result.scalars().all()
-
-                    for subtask in subtasks:
-                        subtask.project_id = new_project.id
-
-                # Delete the task after successful conversion
-                await session.delete(task)
-                self._logger.info(f"Deleted task {task_id} after successful conversion to project {new_project.id}")
-
-                await session.commit()
-                await session.refresh(new_project)
-
-                self._logger.info(
-                    f"Converted task {task_id} to project {new_project.id} (strategy: {strategy})"
-                )
-
-                return {
-                    "success": True,
-                    "data": {
-                        "project_id": str(new_project.id),
-                        "project_name": new_project.name,
-                        "original_task_id": str(task_id),
-                        "conversion_strategy": strategy,
-                        "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
-                    }
-                }
-
         except Exception as e:
             self._logger.exception(f"Failed to convert task {task_id} to project: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _convert_to_project_impl(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        project_name: Optional[str],
+        strategy: str,
+        include_subtasks: bool,
+        user_id: str
+    ) -> dict[str, Any]:
+        """Implementation of convert_to_project with explicit session parameter."""
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        # Get task
+        task_stmt = select(Task).where(
+            and_(
+                Task.id == task_id,
+                Task.tenant_key == tenant_key
+            )
+        )
+        task_result = await session.execute(task_stmt)
+        task = task_result.scalar_one_or_none()
+
+        if not task:
+            return {"success": False, "error": "Task not found"}
+
+        # Check if already converted
+        if task.converted_to_project_id:
+            return {
+                "success": False,
+                "error": f"Task already converted to project {task.converted_to_project_id}"
+            }
+
+        # Get user for permission check
+        from giljo_mcp.models.auth import User
+        user_stmt = select(User).where(User.id == user_id)
+        user_result = await session.execute(user_stmt)
+        user = user_result.scalar_one_or_none()
+
+        if not user:
+            return {"success": False, "error": "User not found"}
+
+        # Permission check (only creator or admin can convert)
+        if user.role != "admin" and task.created_by_user_id != user.id:
+            return {
+                "success": False,
+                "error": "Not authorized to convert this task. Only task creator or admin can convert."
+            }
+
+        # Get active product (required for project creation per Handover 0050)
+        from giljo_mcp.models.products import Product
+        product_stmt = select(Product).where(
+            and_(
+                Product.tenant_key == tenant_key,
+                Product.is_active == True
+            )
+        )
+        product_result = await session.execute(product_stmt)
+        active_product = product_result.scalar_one_or_none()
+
+        if not active_product:
+            return {
+                "success": False,
+                "error": "No active product. Please activate a product before converting tasks to projects."
+            }
+
+        # Check for existing active project and deactivate it
+        # (only ONE project can be active per product - Handover 0050b)
+        existing_active_stmt = select(Project).where(
+            and_(
+                Project.product_id == active_product.id,
+                Project.status == "active"
+            )
+        )
+        existing_active_result = await session.execute(existing_active_stmt)
+        existing_active_project = existing_active_result.scalar_one_or_none()
+
+        if existing_active_project:
+            self._logger.info(
+                f"Deactivating existing active project {existing_active_project.id} "
+                f"before creating new project from task {task_id}"
+            )
+            existing_active_project.status = "inactive"
+            existing_active_project.updated_at = datetime.now(timezone.utc)
+
+        # Create project
+        final_project_name = project_name or task.title
+        new_project = Project(
+            name=final_project_name,
+            description=task.description or f"Project created from task: {task.title}",
+            mission="",  # Leave empty - orchestrator will generate mission during staging
+            product_id=active_product.id,
+            tenant_key=tenant_key,
+            status="inactive",  # Projects start inactive, user activates when ready
+        )
+
+        session.add(new_project)
+        await session.flush()  # Get project ID without committing
+
+        # Mark task as converted and completed
+        task.converted_to_project_id = new_project.id
+        task.status = "completed"  # Mark as completed, not 'converted'
+
+        # Handle subtasks if requested
+        if include_subtasks:
+            subtask_stmt = select(Task).where(Task.parent_task_id == task_id)
+            subtask_result = await session.execute(subtask_stmt)
+            subtasks = subtask_result.scalars().all()
+
+            for subtask in subtasks:
+                subtask.project_id = new_project.id
+
+        # Delete the task after successful conversion
+        await session.delete(task)
+        self._logger.info(f"Deleted task {task_id} after successful conversion to project {new_project.id}")
+
+        await session.commit()
+        await session.refresh(new_project)
+
+        self._logger.info(
+            f"Converted task {task_id} to project {new_project.id} (strategy: {strategy})"
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "project_id": str(new_project.id),
+                "project_name": new_project.name,
+                "original_task_id": str(task_id),
+                "conversion_strategy": strategy,
+                "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
+            }
+        }
 
     async def change_status(self, task_id: str, new_status: str) -> dict[str, Any]:
         """
@@ -772,53 +849,58 @@ class TaskService:
             >>> result = await service.change_status("abc-123", "in_progress")
         """
         try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
+            if self._session:
+                return await self._change_status_impl(self._session, task_id, new_status)
             async with self.db_manager.get_session_async() as session:
-                stmt = select(Task).where(
-                    and_(
-                        Task.id == task_id,
-                        Task.tenant_key == tenant_key
-                    )
-                )
-                result = await session.execute(stmt)
-                task = result.scalar_one_or_none()
-
-                if not task:
-                    return {"success": False, "error": "Task not found"}
-
-                # Update status
-                task.status = new_status
-
-                # Update timestamps based on status
-                now = datetime.now(timezone.utc)
-                if new_status == "in_progress" and not task.started_at:
-                    task.started_at = now
-                elif new_status in ("completed", "cancelled") and not task.completed_at:
-                    task.completed_at = now
-
-                await session.commit()
-                await session.refresh(task)
-
-                self._logger.info(f"Changed task {task_id} status to {new_status}")
-
-                # Convert to dict for response
-                task_data = {
-                    "id": str(task.id),
-                    "status": task.status,
-                    "started_at": task.started_at.isoformat() if task.started_at else None,
-                    "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-                    "title": task.title,
-                    "description": task.description,
-                }
-
-                return {"success": True, "data": task_data}
-
+                return await self._change_status_impl(session, task_id, new_status)
         except Exception as e:
             self._logger.exception(f"Failed to change task {task_id} status: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> dict[str, Any]:
+        """Implementation of change_status with explicit session parameter."""
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        stmt = select(Task).where(
+            and_(
+                Task.id == task_id,
+                Task.tenant_key == tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        task = result.scalar_one_or_none()
+
+        if not task:
+            return {"success": False, "error": "Task not found"}
+
+        # Update status
+        task.status = new_status
+
+        # Update timestamps based on status
+        now = datetime.now(timezone.utc)
+        if new_status == "in_progress" and not task.started_at:
+            task.started_at = now
+        elif new_status in ("completed", "cancelled") and not task.completed_at:
+            task.completed_at = now
+
+        await session.commit()
+        await session.refresh(task)
+
+        self._logger.info(f"Changed task {task_id} status to {new_status}")
+
+        # Convert to dict for response
+        task_data = {
+            "id": str(task.id),
+            "status": task.status,
+            "started_at": task.started_at.isoformat() if task.started_at else None,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            "title": task.title,
+            "description": task.description,
+        }
+
+        return {"success": True, "data": task_data}
 
     async def get_summary(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """
@@ -861,64 +943,69 @@ class TaskService:
             >>> print(result["data"]["total_tasks"])
         """
         try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
-
+            if self._session:
+                return await self._get_summary_impl(self._session, product_id)
             async with self.db_manager.get_session_async() as session:
-                # Build base query
-                base_query = select(Task).where(Task.tenant_key == tenant_key)
-                if product_id:
-                    base_query = base_query.where(Task.product_id == product_id)
-
-                result = await session.execute(base_query)
-                tasks = result.scalars().all()
-
-                # Aggregate by product
-                summary = {}
-                for task in tasks:
-                    pid = task.product_id or "no-product"
-                    if pid not in summary:
-                        summary[pid] = {
-                            "total": 0,
-                            "pending": 0,
-                            "in_progress": 0,
-                            "completed": 0,
-                            "blocked": 0,
-                            "cancelled": 0,
-                            "by_priority": {
-                                "critical": 0,
-                                "high": 0,
-                                "medium": 0,
-                                "low": 0
-                            }
-                        }
-
-                    s = summary[pid]
-                    s["total"] += 1
-
-                    # Count by status
-                    status = task.status or "pending"
-                    if status in s:
-                        s[status] += 1
-
-                    # Count by priority
-                    priority = task.priority or "medium"
-                    if priority in s["by_priority"]:
-                        s["by_priority"][priority] += 1
-
-                return {
-                    "success": True,
-                    "data": {
-                        "summary": summary,
-                        "total_products": len(summary),
-                        "total_tasks": len(tasks)
-                    }
-                }
-
+                return await self._get_summary_impl(session, product_id)
         except Exception as e:
             self._logger.exception(f"Failed to get task summary: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _get_summary_impl(self, session: AsyncSession, product_id: Optional[str] = None) -> dict[str, Any]:
+        """Implementation of get_summary with explicit session parameter."""
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        # Build base query
+        base_query = select(Task).where(Task.tenant_key == tenant_key)
+        if product_id:
+            base_query = base_query.where(Task.product_id == product_id)
+
+        result = await session.execute(base_query)
+        tasks = result.scalars().all()
+
+        # Aggregate by product
+        summary = {}
+        for task in tasks:
+            pid = task.product_id or "no-product"
+            if pid not in summary:
+                summary[pid] = {
+                    "total": 0,
+                    "pending": 0,
+                    "in_progress": 0,
+                    "completed": 0,
+                    "blocked": 0,
+                    "cancelled": 0,
+                    "by_priority": {
+                        "critical": 0,
+                        "high": 0,
+                        "medium": 0,
+                        "low": 0
+                    }
+                }
+
+            s = summary[pid]
+            s["total"] += 1
+
+            # Count by status
+            status = task.status or "pending"
+            if status in s:
+                s[status] += 1
+
+            # Count by priority
+            priority = task.priority or "medium"
+            if priority in s["by_priority"]:
+                s["by_priority"][priority] += 1
+
+        return {
+            "success": True,
+            "data": {
+                "summary": summary,
+                "total_products": len(summary),
+                "total_tasks": len(tasks)
+            }
+        }
 
     # ============================================================================
     # Permission Helpers (Handover 0322 Phase 3)

@@ -187,15 +187,16 @@ async def other_tenant_task(db_session, other_tenant_key, other_tenant_user):
 
 
 @pytest_asyncio.fixture
-async def task_service(db_manager, test_tenant_key):
-    """Create TaskService instance with TenantManager"""
+async def task_service(db_manager, db_session, test_tenant_key):
+    """Create TaskService instance with TenantManager and shared session"""
     # Create a mock TenantManager that returns our test tenant key
     mock_tenant_manager = MagicMock()
     mock_tenant_manager.get_current_tenant.return_value = test_tenant_key
 
     return TaskService(
         db_manager=db_manager,
-        tenant_manager=mock_tenant_manager
+        tenant_manager=mock_tenant_manager,
+        session=db_session  # ADD THIS - Shared Session Pattern (Handover 0324)
     )
 
 
