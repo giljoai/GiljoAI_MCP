@@ -126,7 +126,7 @@ async def list_tasks(
     project_id: Optional[str] = Query(None, description="Filter by project"),
     product_id: Optional[str] = Query(None, description="Filter by product"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    task_service: TaskService = Depends(get_task_service),
 ) -> list[TaskResponse]:
     """
     List tasks with product-scoped filtering (Handover 0076).
@@ -143,62 +143,35 @@ async def list_tasks(
         project_id: Filter by project
         product_id: Filter by product
         current_user: Current authenticated user
-        db: Database session
+        task_service: Task service instance
 
     Returns:
         List of TaskResponse objects
     """
     logger.debug(f"User {current_user.username} listing tasks (filter_type: {filter_type})")
 
-    # Start with tenant filter (multi-tenant isolation)
-    query = select(Task).where(Task.tenant_key == current_user.tenant_key)
+    # Build filters for service call
+    created_by_user_id = str(current_user.id) if created_by_me else None
 
-    # Apply product-scoped filters (Handover 0076)
-    if filter_type == "product_tasks":
-        # Prefer explicit product_id from query params if provided
-        if product_id:
-            query = query.where(Task.product_id == product_id)
-        else:
-            # Get active product for current tenant
-            product_query = select(Product).where(
-                Product.tenant_key == current_user.tenant_key, Product.is_active == True
-            )
-            product_result = await db.execute(product_query)
-            active_product = product_result.scalar_one_or_none()
+    # Use TaskService.list_tasks() with enhanced filtering (Handover 0324)
+    result = await task_service.list_tasks(
+        filter_type=filter_type,
+        product_id=product_id,
+        project_id=project_id,
+        status=status,
+        priority=priority,
+        created_by_user_id=created_by_user_id,
+        tenant_key=None  # Will use current tenant from context
+    )
 
-            if active_product:
-                query = query.where(Task.product_id == active_product.id)
-            else:
-                # No active product, return empty list
-                query = query.where(Task.id == None)  # Always false
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
 
-    elif filter_type == "all_tasks":
-        # Tasks with NULL product_id (created via MCP without active product)
-        query = query.where(Task.product_id.is_(None))
+    tasks_data = result["tasks"]
+    logger.info(f"Found {len(tasks_data)} tasks for user {current_user.username}")
 
-    if created_by_me:
-        query = query.where(Task.created_by_user_id == current_user.id)
-
-    # Apply other filters
-    if status:
-        query = query.where(Task.status == status)
-
-    if priority:
-        query = query.where(Task.priority == priority)
-
-    if project_id:
-        query = query.where(Task.project_id == project_id)
-
-    if product_id:
-        query = query.where(Task.product_id == product_id)
-
-    # Execute query
-    query = query.order_by(Task.created_at.desc())
-    result = await db.execute(query)
-    tasks = result.scalars().all()
-
-    logger.info(f"Found {len(tasks)} tasks for user {current_user.username}")
-    return [task_to_response(task) for task in tasks]
+    # Convert task dicts to TaskResponse objects
+    return [TaskResponse(**task) for task in tasks_data]
 
 
 @router.post("/", response_model=TaskResponse)
@@ -264,7 +237,7 @@ async def update_task(
     task_id: str,
     task_update: TaskUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
+    task_service: TaskService = Depends(get_task_service),
 ) -> TaskResponse:
     """
     Update a task.
@@ -279,7 +252,7 @@ async def update_task(
         task_id: Task ID to update
         task_update: Fields to update
         current_user: Current authenticated user
-        db: Database session
+        task_service: Task service instance
 
     Returns:
         Updated task data
@@ -290,36 +263,36 @@ async def update_task(
     """
     logger.debug(f"User {current_user.username} updating task {task_id}")
 
-    # Query task filtered by tenant (multi-tenant isolation)
-    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
-    result = await db.execute(stmt)
-    task = result.scalar_one_or_none()
+    # First verify task exists and user has permission via get_task
+    get_result = await task_service.get_task(task_id)
+    if not get_result["success"]:
+        logger.warning(f"Task {task_id} not found in tenant")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
 
-    if not task:
-        logger.warning(f"Task {task_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    # Permission check - reconstruct minimal task object for permission check
+    task_data = get_result["data"]
 
-    # Permission check
-    if not can_modify_task(task, current_user):
+    # Simple permission check: admin or creator
+    if current_user.role != "admin" and task_data["created_by_user_id"] != str(current_user.id):
         logger.warning(f"User {current_user.username} not authorized to update task {task_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
 
-    # Update fields (only update non-None values)
+    # Use TaskService.update_task() to perform the update
     update_data = task_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(task, field, value)
+    result = await task_service.update_task(task_id, **update_data)
 
-    # Update timestamps
-    if "status" in update_data and update_data["status"] == "in_progress" and not task.started_at:
-        task.started_at = datetime.now(timezone.utc)
-    elif "status" in update_data and update_data["status"] == "completed" and not task.completed_at:
-        task.completed_at = datetime.now(timezone.utc)
-
-    await db.commit()
-    await db.refresh(task)
+    if not result["success"]:
+        status_code = 404 if "not found" in result["error"].lower() else 400
+        raise HTTPException(status_code=status_code, detail=result["error"])
 
     logger.info(f"Updated task {task_id} by user {current_user.username}")
-    return task_to_response(task)
+
+    # Fetch updated task data for response
+    get_updated = await task_service.get_task(task_id)
+    if not get_updated["success"]:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Task updated but fetch failed")
+
+    return TaskResponse(**get_updated["data"])
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
