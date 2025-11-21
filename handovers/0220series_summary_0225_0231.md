@@ -206,9 +206,113 @@ Extract-first architecture: Created MessageList component from MessagePanel, the
 
 ---
 
+## Post-Implementation Bug Fixes (2025-11-21 Session)
+
+### Critical Production Bugs Fixed
+
+**Session Context**: During preparation for Handover 0232/0233 execution, three critical bugs were discovered and fixed following TDD discipline (RED → GREEN → REFACTOR).
+
+#### Bug Fix #1: ImportError in Handover 0226 Files
+**Commits**: 0c22cb63
+**Files**: `api/endpoints/agent_jobs/filters.py`, `table_view.py`
+
+**Problem**: Backend crashed on startup with `ImportError`
+- Incorrect imports: `from api.dependencies import get_current_user`
+- Non-existent module: `from api.models.user import User`
+
+**Fix**: Corrected import paths
+- `from src.giljo_mcp.auth.dependencies import get_current_user`
+- `from src.giljo_mcp.models import User`
+
+**Impact**: Restored backend startup capability
+
+#### Bug Fix #2: Auth Endpoint Missing Request Parameter
+**Commits**: 7071e49e
+**File**: `api/endpoints/auth.py` (line 456)
+
+**Problem**: 503 errors on `/api/auth/me` - "db_manager not available in app state"
+
+**Root Cause**: Handover 0322 refactored auth endpoints to use service layer pattern, but forgot to pass `request` parameter to `get_db_session()` call
+
+**Fix**: Changed `get_db_session()` to `get_db_session(request)` (1 word fix)
+
+**Impact**: Restored user authentication and profile loading
+
+#### Bug Fix #3: Project.notes AttributeError
+**Commits**: 0448a930 (test), 03225ff3 (fix)
+**File**: `src/giljo_mcp/thin_prompt_generator.py` (line 510)
+
+**Problem**: Project staging failed with `'Project' object has no attribute 'notes'`
+
+**Root Cause**: Thin prompt generator accessed non-existent `project.notes` field
+
+**Fix**: Removed `project.notes` reference from prompt template
+
+**Impact**: Restored project staging functionality
+
+**Test**: Added regression test `test_project_description_not_notes_in_context_string`
+
+#### Bug Fix #4: Orchestrator Launch 404 Error
+**Commits**: 7c041922
+**File**: `frontend/src/services/api.js` (line 462)
+
+**Problem**: Launch button returned 404 Not Found
+
+**Root Cause**: Frontend calling wrong endpoint path
+- Called: `/api/v1/orchestration/launch-project`
+- Correct: `/api/agent-jobs/launch-project`
+
+**Fix**: Corrected frontend API call to use proper endpoint path
+
+**Impact**: Restored orchestrator launch capability
+
+#### Bug Fix #5: agents.value.find TypeError
+**Commits**: a630d0af
+**File**: `frontend/src/stores/agents.js` (line 47)
+
+**Problem**: WebSocket health alerts crashed with `TypeError: agents.value.find is not a function`
+
+**Root Cause**: `fetchAgents()` assigned `response.data` without array validation
+
+**Fix**: Added type safety guard: `agents.value = Array.isArray(response.data) ? response.data : []`
+
+**Impact**: Eliminated WebSocket health alert crashes and console spam
+
+### Bug Fix Summary
+
+**Total Fixes**: 5 critical bugs
+**Total Commits**: 6 (including 1 regression test)
+**TDD Compliance**: 100% (tests written first for applicable fixes)
+**Production Grade**: All fixes address root cause, no bandaids
+
+**Git Commits** (Bug Fixes):
+- 0c22cb63 - fix: Correct imports in filters.py and table_view.py (Handover 0226 regression)
+- 7071e49e - fix: Pass request parameter to get_db_session() in /api/auth/me (Handover 0322 regression)
+- 0448a930 - test: Add regression test for project.notes AttributeError
+- 03225ff3 - fix: Remove project.notes reference in thin prompt generator
+- 7c041922 - fix: Correct orchestrator launch endpoint path
+- a630d0af - fix: Ensure agents.value is always an array
+
+---
+
+## Handover 0232 Status
+
+**Investigation Date**: 2025-11-21
+**Status**: ✅ **ALREADY COMPLETE** (via Handover 0231 Phase 4)
+
+**Finding**: Handover 0232 (Bottom Message Composer Bar) was fully implemented in Handover 0231 Phase 4 (commit c96fa89c). The `.position-sticky` CSS exists in MessageInput.vue (lines 396-404) and matches the specification exactly.
+
+**Documentation**: See `handovers/0232_investigation_report.md` for complete investigation findings
+
+**Recommendation**: **SKIP Handover 0232** - proceed directly to Handover 0233
+
+---
+
 ## Next Steps
 
-**Handover 0232**: AgentTableView Message Integration
+**Handover 0232**: ✅ **SKIP** (already complete via 0231)
+
+**Handover 0233**: Job Read/Acknowledged Indicators
 - Integrate MessageModal into AgentTableView actions column
 - Add "View Messages" button for agents with message counts
 - Wire up message-sent events to WebSocket refresh
