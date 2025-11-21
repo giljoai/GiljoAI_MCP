@@ -350,4 +350,276 @@ describe('AgentCardGrid.vue', () => {
       expect(true).toBe(true)
     })
   })
+
+  describe('View Toggle - Handover 0228', () => {
+    it('defaults to card view on initial render', () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      expect(wrapper.vm.viewMode).toBe('cards')
+      expect(wrapper.find('.agent-grid').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'AgentTableView' }).exists()).toBe(false)
+    })
+
+    it('renders view toggle button group', () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const btnToggle = wrapper.findComponent({ name: 'VBtnToggle' })
+      expect(btnToggle.exists()).toBe(true)
+      expect(btnToggle.findAll('button')).toHaveLength(2)
+    })
+
+    it('displays card view icon button', () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const cardButton = wrapper.find('[value="cards"]')
+      expect(cardButton.exists()).toBe(true)
+      expect(cardButton.html()).toContain('mdi-view-grid')
+    })
+
+    it('displays table view icon button', () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const tableButton = wrapper.find('[value="table"]')
+      expect(tableButton.exists()).toBe(true)
+      expect(tableButton.html()).toContain('mdi-table')
+    })
+
+    it('switches to table view when table button clicked', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Initially card view
+      expect(wrapper.vm.viewMode).toBe('cards')
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.viewMode).toBe('table')
+      expect(wrapper.find('.agent-grid').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'AgentTableView' }).exists()).toBe(true)
+    })
+
+    it('switches back to card view when card button clicked', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Switch to table view first
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.viewMode).toBe('table')
+
+      // Switch back to card view
+      wrapper.vm.viewMode = 'cards'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.viewMode).toBe('cards')
+      expect(wrapper.find('.agent-grid').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'AgentTableView' }).exists()).toBe(false)
+    })
+
+    it('preserves agent data when switching views', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const initialAgents = wrapper.vm.sortedAgents
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      const tableView = wrapper.findComponent({ name: 'AgentTableView' })
+      expect(tableView.props('agents')).toEqual(initialAgents)
+
+      // Switch back to card view
+      wrapper.vm.viewMode = 'cards'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.sortedAgents).toEqual(initialAgents)
+    })
+
+    it('maintains sort order in both views', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const cardViewAgents = wrapper.vm.sortedAgents
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      const tableView = wrapper.findComponent({ name: 'AgentTableView' })
+      const tableViewAgents = tableView.props('agents')
+
+      // Both views should have same sort order
+      expect(tableViewAgents[0].id).toBe(cardViewAgents[0].id)
+      expect(tableViewAgents[1].id).toBe(cardViewAgents[1].id)
+      expect(tableViewAgents[2].id).toBe(cardViewAgents[2].id)
+    })
+
+    it('WebSocket updates reflect in both views', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Initial state in card view
+      const initialStatus = wrapper.vm.sortedAgents[0].status
+
+      // Simulate WebSocket update
+      const store = useOrchestrationStore()
+      const updateEvent = {
+        job_id: wrapper.vm.sortedAgents[0].job_id,
+        status: 'complete',
+        progress: 100
+      }
+      await store.handleAgentStatusUpdate(updateEvent)
+      await wrapper.vm.$nextTick()
+
+      // Verify card view reflects change
+      expect(wrapper.vm.sortedAgents.find(a => a.job_id === updateEvent.job_id).status).toBe('complete')
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      // Verify table view also reflects same change (shared reactive data)
+      const tableView = wrapper.findComponent({ name: 'AgentTableView' })
+      expect(tableView.props('agents').find(a => a.job_id === updateEvent.job_id).status).toBe('complete')
+    })
+
+    it('uses composable for shared logic in card view', () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Component should import and use useAgentData composable
+      expect(wrapper.vm.sortedAgents).toBeDefined()
+    })
+
+    it('passes mode prop to table view', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      const tableView = wrapper.findComponent({ name: 'AgentTableView' })
+      expect(tableView.props('mode')).toBeDefined()
+    })
+
+    it('forwards launch-agent event from table view', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      const tableView = wrapper.findComponent({ name: 'AgentTableView' })
+      await tableView.vm.$emit('launch-agent', mockAgents[0])
+
+      expect(wrapper.emitted('launch-agent')).toBeTruthy()
+      expect(wrapper.emitted('launch-agent')[0]).toEqual([mockAgents[0]])
+    })
+
+    it('forwards view-details event from table view', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      // Switch to table view
+      wrapper.vm.viewMode = 'table'
+      await wrapper.vm.$nextTick()
+
+      const tableView = wrapper.findComponent({ name: 'AgentTableView' })
+      await tableView.vm.$emit('row-click', mockAgents[0])
+
+      expect(wrapper.emitted('view-details')).toBeTruthy()
+      expect(wrapper.emitted('view-details')[0]).toEqual([mockAgents[0]])
+    })
+
+    it('has tooltips for view toggle buttons', () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const tooltips = wrapper.findAllComponents({ name: 'VTooltip' })
+      expect(tooltips.length).toBeGreaterThan(0)
+
+      // Check for Card View and Table View tooltips
+      const tooltipTexts = tooltips.map(t => t.text())
+      expect(tooltipTexts).toContain('Card View')
+      expect(tooltipTexts).toContain('Table View')
+    })
+
+    it('toggle button group is mandatory (always has selection)', async () => {
+      wrapper = mount(AgentCardGrid, {
+        props: { projectId: 'project-1' },
+        global: {
+          plugins: [pinia, vuetify]
+        }
+      })
+
+      const btnToggle = wrapper.findComponent({ name: 'VBtnToggle' })
+      expect(btnToggle.props('mandatory')).toBe(true)
+    })
+  })
 })
