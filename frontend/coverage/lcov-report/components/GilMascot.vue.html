@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>0/41</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>0/41</span>
             </div>
         
             
@@ -148,17 +148,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -167,11 +161,17 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -212,18 +212,18 @@
 <span class="cstat-no" title="statement not covered" >  &lt;/div&gt;</span>
 &lt;/template&gt;
 &nbsp;
-&lt;script setup&gt;
+<span class="cstat-no" title="statement not covered" >&lt;script setup&gt;</span>
 <span class="cstat-no" title="statement not covered" >import { ref, watch, onMounted, onUnmounted, computed } from 'vue'</span>
-&nbsp;
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >const props = defineProps({</span>
   size: { type: Number, default: 150 },
   darkEyes: { type: Boolean, default: false },
-})
-&nbsp;
+<span class="cstat-no" title="statement not covered" >})</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >const height = computed(() =&gt; Math.round(props.size * 1.13))</span>
 <span class="cstat-no" title="statement not covered" >const openEyes = ref(true)</span>
 <span class="cstat-no" title="statement not covered" >let timer = null</span>
-&nbsp;
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >onMounted(() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  timer = setInterval(() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >    // Blink briefly</span>
@@ -231,11 +231,11 @@
 <span class="cstat-no" title="statement not covered" >    setTimeout(() =&gt; (openEyes.value = true), 220)</span>
 <span class="cstat-no" title="statement not covered" >  }, 1400)</span>
 <span class="cstat-no" title="statement not covered" >})</span>
-&nbsp;
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >onUnmounted(() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  if (timer) clearInterval(timer)</span>
 <span class="cstat-no" title="statement not covered" >})</span>
-&nbsp;
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >// Eye color adapts to theme via currentColor</span>
 <span class="cstat-no" title="statement not covered" >const eyeColor = computed(() =&gt; (props.darkEyes ? '#080d13' : '#e1e1e1'))</span>
 &lt;/script&gt;
@@ -262,7 +262,7 @@ svg { display: block; background: transparent !important; }
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-20T03:06:36.501Z
+                at 2025-11-22T02:00:39.899Z
             </div>
         <script src="../prettify.js"></script>
         <script>
