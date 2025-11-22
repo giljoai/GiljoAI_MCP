@@ -60,63 +60,14 @@
             </v-card-text>
           </v-card>
 
-          <!-- Horizontal Scrollable Agent Cards -->
-          <div
-            ref="agentsScrollContainer"
-            class="jobs-tab__agents-scroll"
-            role="list"
-            aria-label="Agent cards"
-            tabindex="0"
-            @keydown="handleAgentsKeydown"
-          >
-            <div class="jobs-tab__agents-grid">
-              <AgentCard
-                v-for="agent in sortedAgents"
-                :key="agent.job_id || agent.agent_id"
-                :agent="agent"
-                mode="jobs"
-                :instance-number="getInstanceNumber(agent)"
-                :is-orchestrator="isOrchestratorAgent(agent)"
-                :show-closeout-button="allAgentsComplete && isOrchestratorAgent(agent)"
-                :prompt-button-disabled="shouldDisablePromptButton(agent)"
-                @launch-agent="handleLaunchAgent"
-                @view-details="handleViewDetails"
-                @view-error="handleViewError"
-                @hand-over="handleHandOver"
-                @closeout-project="handleCloseoutProject"
-                class="jobs-tab__agent-card"
-                role="listitem"
-              />
-            </div>
-          </div>
-
-          <!-- Scroll Hint Indicators -->
-          <div class="jobs-tab__scroll-indicators">
-            <v-btn
-              v-if="showLeftScroll"
-              icon
-              size="small"
-              color="primary"
-              variant="tonal"
-              class="jobs-tab__scroll-left"
-              @click="scrollAgentsLeft"
-              aria-label="Scroll agents left"
-            >
-              <v-icon>mdi-chevron-left</v-icon>
-            </v-btn>
-            <v-btn
-              v-if="showRightScroll"
-              icon
-              size="small"
-              color="primary"
-              variant="tonal"
-              class="jobs-tab__scroll-right"
-              @click="scrollAgentsRight"
-              aria-label="Scroll agents right"
-            >
-              <v-icon>mdi-chevron-right</v-icon>
-            </v-btn>
-          </div>
+          <!-- Status Board Table (Handover 0240b) -->
+          <AgentTableView
+            :agents="sortedAgents"
+            :using-claude-code-subagents="usingClaudeCodeSubagents"
+            mode="jobs"
+            @launch-agent="handleLaunchAgent"
+            @row-click="handleViewDetails"
+          />
         </div>
       </v-col>
 
@@ -147,8 +98,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import AgentCard from '@/components/AgentCard.vue'
+import { ref, computed } from 'vue'
+import AgentTableView from '@/components/orchestration/AgentTableView.vue'
 import MessageStream from './MessageStream.vue'
 import MessageInput from './MessageInput.vue'
 import { api } from '@/services/api'
@@ -258,18 +209,9 @@ const emit = defineEmits([
 const { showToast } = useToast()
 
 /**
- * Component refs
- */
-const agentsScrollContainer = ref(null)
-const showLeftScroll = ref(false)
-const showRightScroll = ref(false)
-
-/**
  * Claude Code Subagent Mode Toggle (Handover 0105)
  */
 const usingClaudeCodeSubagents = ref(false)
-
-// Execution prompt dialog removed; handled inline by Launch button
 
 /**
  * Project ID (supports either project_id or id)
@@ -458,102 +400,6 @@ function handleSendMessage(message, recipient) {
   console.log('[JobsTab] Send message:', { message, recipient })
   emit('send-message', message, recipient)
 }
-
-// Removed execution prompt dialog helpers
-
-/**
- * Horizontal scroll handlers for agent cards
- */
-function scrollAgentsLeft() {
-  if (!agentsScrollContainer.value) return
-  agentsScrollContainer.value.scrollBy({
-    left: -300,
-    behavior: 'smooth'
-  })
-}
-
-function scrollAgentsRight() {
-  if (!agentsScrollContainer.value) return
-  agentsScrollContainer.value.scrollBy({
-    left: 300,
-    behavior: 'smooth'
-  })
-}
-
-/**
- * Update scroll indicator visibility
- */
-function updateScrollIndicators() {
-  if (!agentsScrollContainer.value) return
-
-  const container = agentsScrollContainer.value
-  const { scrollLeft, scrollWidth, clientWidth } = container
-
-  showLeftScroll.value = scrollLeft > 10
-  showRightScroll.value = scrollLeft < scrollWidth - clientWidth - 10
-}
-
-/**
- * Keyboard navigation for agent cards scroll
- */
-function handleAgentsKeydown(event) {
-  if (!agentsScrollContainer.value) return
-
-  const container = agentsScrollContainer.value
-
-  switch (event.key) {
-    case 'ArrowLeft':
-      event.preventDefault()
-      scrollAgentsLeft()
-      break
-    case 'ArrowRight':
-      event.preventDefault()
-      scrollAgentsRight()
-      break
-    case 'Home':
-      event.preventDefault()
-      container.scrollTo({ left: 0, behavior: 'smooth' })
-      break
-    case 'End':
-      event.preventDefault()
-      container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' })
-      break
-  }
-}
-
-/**
- * Lifecycle - Mount
- */
-onMounted(() => {
-  // Set up scroll listener for indicators
-  if (agentsScrollContainer.value) {
-    agentsScrollContainer.value.addEventListener('scroll', updateScrollIndicators)
-
-    // Initial check
-    nextTick(() => {
-      updateScrollIndicators()
-    })
-  }
-
-  // Update indicators on window resize
-  window.addEventListener('resize', updateScrollIndicators)
-
-  console.log('[JobsTab] Component mounted')
-})
-
-/**
- * Lifecycle - Unmount
- */
-onBeforeUnmount(() => {
-  // Clean up scroll listener
-  if (agentsScrollContainer.value) {
-    agentsScrollContainer.value.removeEventListener('scroll', updateScrollIndicators)
-  }
-
-  window.removeEventListener('resize', updateScrollIndicators)
-
-  console.log('[JobsTab] Component unmounting')
-})
 </script>
 
 <style scoped lang="scss">
@@ -641,82 +487,6 @@ onBeforeUnmount(() => {
     border-left: 3px solid var(--agent-orchestrator-primary);
   }
 
-  &__agents-scroll {
-    position: relative;
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 8px 4px;
-    margin: -8px -4px;
-    scroll-behavior: smooth;
-
-    /* Custom scrollbar */
-    &::-webkit-scrollbar {
-      height: 8px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 4px;
-      transition: background 0.2s ease;
-
-      &:hover {
-        background: rgba(0, 0, 0, 0.3);
-      }
-    }
-
-    /* Firefox */
-    scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
-    scrollbar-width: thin;
-
-    /* Keyboard focus */
-    &:focus {
-      outline: 2px solid var(--color-accent-primary, #ffc300);
-      outline-offset: 2px;
-    }
-  }
-
-  &__agents-grid {
-    display: flex;
-    gap: 16px;
-    min-width: min-content;
-    padding: 4px;
-  }
-
-  &__agent-card {
-    flex-shrink: 0;
-    animation: cardFadeIn 0.3s ease-out;
-  }
-
-  &__scroll-indicators {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    transform: translateY(-50%);
-    pointer-events: none;
-    z-index: 5;
-  }
-
-  &__scroll-left {
-    position: absolute;
-    left: 8px;
-    pointer-events: auto;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  &__scroll-right {
-    position: absolute;
-    right: 8px;
-    pointer-events: auto;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
   &__messages-panel {
     display: flex;
     flex-direction: column;
@@ -757,18 +527,6 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Animations */
-@keyframes cardFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Responsive Design */
 @media (max-width: 1280px) {
   .jobs-tab {
@@ -778,10 +536,6 @@ onBeforeUnmount(() => {
 
     &__right-column {
       padding-left: 8px;
-    }
-
-    &__agents-grid {
-      gap: 12px;
     }
   }
 }
@@ -840,10 +594,6 @@ onBeforeUnmount(() => {
       }
     }
 
-    &__agents-grid {
-      gap: 8px;
-    }
-
     &__messages-panel {
       min-height: 400px;
     }
@@ -854,23 +604,6 @@ onBeforeUnmount(() => {
 @media (max-width: 600px) {
   .jobs-tab {
     padding: 8px;
-
-    &__agents-scroll {
-      padding: 4px 2px;
-      margin: -4px -2px;
-    }
-
-    &__agent-card {
-      width: 260px !important;
-    }
-
-    &__scroll-left {
-      left: 4px;
-    }
-
-    &__scroll-right {
-      right: 4px;
-    }
   }
 }
 
@@ -888,25 +621,6 @@ onBeforeUnmount(() => {
 
     &__right-column {
       border-left-width: 3px;
-    }
-  }
-}
-
-/* Accessibility: Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  .jobs-tab__agents-scroll {
-    scroll-behavior: auto;
-  }
-
-  .jobs-tab__agent-card {
-    animation: none;
-  }
-
-  @keyframes cardFadeIn {
-    from,
-    to {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 }
@@ -960,14 +674,6 @@ onBeforeUnmount(() => {
       border: 2px solid #4caf50 !important;
       background: #e8f5e9 !important;
       color: #000 !important;
-    }
-
-    &__scroll-indicators {
-      display: none;
-    }
-
-    &__agents-scroll {
-      overflow: visible;
     }
 
     &__messages-panel {
