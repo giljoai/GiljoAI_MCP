@@ -8,7 +8,13 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.1+)**: Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.1+)**: GUI Redesign Series (0234-0235) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+
+**GUI Redesign (Nov 2025)** - Handovers 0234-0235:
+- StatusBoard components (StatusChip with health indicators, ActionIcons with 5 actions, JobReadAckIndicators)
+- Status board table with real-time WebSocket updates
+- Agent health monitoring with staleness detection
+- Action management (launch, copy prompt, view messages, cancel, hand over)
 
 Per-User Tenancy Policy (Nov 2025)
 - Each user is isolated in their own tenant (unique tenant_key assigned at registration)
@@ -49,7 +55,24 @@ F:\GiljoAI_MCP/
 ├── src/giljo_mcp/     # Core orchestrator & MCP tools
 ├── api/               # FastAPI server & endpoints
 ├── frontend/          # Vue dashboard
+│   ├── src/components/
+│   │   ├── StatusBoard/               # Status board components (Handovers 0234-0235)
+│   │   │   ├── StatusChip.vue         # Status badge with health indicators
+│   │   │   ├── ActionIcons.vue        # Agent action buttons (launch/copy/message/cancel/handover)
+│   │   │   └── JobReadAckIndicators.vue  # Read/acknowledged checkmarks
+│   │   ├── orchestration/
+│   │   │   └── AgentTableView.vue     # Reusable status board table
+│   │   └── projects/
+│   │       ├── LaunchTab.vue          # Project launch interface
+│   │       └── JobsTab.vue            # Agent jobs monitoring
+│   ├── src/utils/
+│   │   ├── statusConfig.js            # Status/health configuration utilities
+│   │   └── actionConfig.js            # Action availability and configuration
+│   └── src/composables/
+│       └── useStalenessMonitor.js     # Staleness detection for agents
 ├── docs/              # Documentation
+│   ├── user_guides/                   # User-facing guides
+│   └── components/                    # Component API documentation
 └── install.py         # Single cross-platform installer
 ```
 
@@ -276,9 +299,11 @@ pytest tests/integration/ -v
 **Adding MCP Tool**: `src/giljo_mcp/tools/` → Register in `__init__.py` → Add tests
 **Adding API Endpoint**: `api/endpoints/` → Import in `api/app.py` → Add models & tests
 **Database Changes**: Update `src/giljo_mcp/models.py` → Run `python install.py`
-**Frontend Changes**: Edit `frontend/` → Test with `npm run dev`
+**Frontend Changes**: Edit `frontend/` → Test with `npm run dev` → Update user guides if workflows changed
+**Adding Frontend Component**: Create in `frontend/src/components/` → Add unit tests → Document in `docs/components/` if reusable
+**Adding StatusBoard Component**: Follow pattern in `StatusChip.vue` (props-based, emits events, unit tested) → Document props/events in component API docs
 
-**Correct Order**: Database schema → Service layer → API endpoints → Frontend components
+**Correct Order**: Database schema → Service layer → API endpoints → Frontend components → Documentation
 
 ## Common Issues
 
