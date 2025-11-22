@@ -20,11 +20,14 @@
       </div>
     </template>
 
-    <!-- Status Column -->
+    <!-- Status Column (Handover 0234: StatusChip Integration) -->
     <template #item.status="{ item }">
-      <v-chip :color="getStatusColor(item.status)" size="small">
-        {{ item.status }}
-      </v-chip>
+      <StatusChip
+        :status="item.status"
+        :health-status="item.health_status"
+        :last-progress-at="item.last_progress_at"
+        :minutes-since-progress="item.minutes_since_progress"
+      />
     </template>
 
     <!-- Messages Column -->
@@ -50,13 +53,6 @@
       </div>
     </template>
 
-    <!-- Health Column -->
-    <template #item.health_status="{ item }">
-      <v-icon :color="getHealthColor(item.health_status)" size="small">
-        {{ getHealthIcon(item.health_status) }}
-      </v-icon>
-    </template>
-
     <!-- Mission Tracking Column (Handover 0233) -->
     <template #item.mission_tracking="{ item }">
       <JobReadAckIndicators
@@ -65,84 +61,18 @@
       />
     </template>
 
-    <!-- Actions Column -->
+    <!-- Actions Column (Handover 0235: ActionIcons Integration) -->
     <template #item.actions="{ item }">
-      <div class="d-flex gap-1">
-        <!-- Launch button for waiting agents -->
-        <v-btn
-          v-if="mode === 'jobs' && item.status === 'waiting'"
-          icon="mdi-rocket-launch"
-          size="x-small"
-          variant="text"
-          :color="canLaunchAgent(item) ? 'primary' : 'grey'"
-          :disabled="!canLaunchAgent(item)"
-          @click.stop="$emit('launch-agent', item)"
-        >
-          <v-icon>mdi-rocket-launch</v-icon>
-          <v-tooltip activator="parent" location="top">
-            <span v-if="!canLaunchAgent(item) && usingClaudeCodeSubagents">
-              Disabled in Claude Code mode (non-orchestrator)
-            </span>
-            <span v-else>
-              Launch Agent
-            </span>
-          </v-tooltip>
-        </v-btn>
-
-        <!-- View details for working agents -->
-        <v-btn
-          v-if="mode === 'jobs' && item.status === 'working'"
-          icon="mdi-information"
-          size="x-small"
-          variant="text"
-          color="primary"
-          @click.stop="$emit('row-click', item)"
-        >
-          <v-icon>mdi-information</v-icon>
-          <v-tooltip activator="parent" location="top">View Details</v-tooltip>
-        </v-btn>
-
-        <!-- View error for failed/blocked agents -->
-        <v-btn
-          v-if="mode === 'jobs' && (item.status === 'failed' || item.status === 'blocked')"
-          icon="mdi-alert-circle"
-          size="x-small"
-          variant="text"
-          :color="item.status === 'failed' ? 'error' : 'warning'"
-          @click.stop="$emit('row-click', item)"
-        >
-          <v-icon>mdi-alert-circle</v-icon>
-          <v-tooltip activator="parent" location="top">View Error</v-tooltip>
-        </v-btn>
-
-        <!-- Handover 0230: Copy prompt button -->
-        <v-btn
-          v-if="mode === 'jobs'"
-          icon
-          size="x-small"
-          variant="text"
-          :disabled="!canCopyPrompt(item)"
-          :loading="copyingJobId === item.job_id"
-          @click.stop="handleCopyPrompt(item)"
-        >
-          <v-icon>mdi-content-copy</v-icon>
-          <v-tooltip activator="parent" location="top">
-            <span v-if="!canCopyPrompt(item) && usingClaudeCodeSubagents">
-              Disabled in Claude Code mode (non-orchestrator)
-            </span>
-            <span v-else-if="item.status === 'decommissioned'">
-              Agent decommissioned
-            </span>
-            <span v-else>Copy prompt to clipboard</span>
-          </v-tooltip>
-        </v-btn>
-
-        <!-- Complete status -->
-        <v-chip v-if="mode === 'jobs' && item.status === 'complete'" color="success" size="x-small">
-          <v-icon start size="x-small">mdi-check-circle</v-icon>
-          Complete
-        </v-chip>
-      </div>
+      <ActionIcons
+        v-if="mode === 'jobs'"
+        :job="item"
+        :claude-code-cli-mode="usingClaudeCodeSubagents"
+        @launch="handleLaunchJob"
+        @copy-prompt="handleCopyPrompt"
+        @view-messages="handleViewMessages"
+        @cancel="handleCancelJob"
+        @hand-over="handleHandOver"
+      />
     </template>
 
     <!-- No Data State -->
@@ -166,14 +96,36 @@
       <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
     </template>
   </v-snackbar>
+
+  <!-- Handover 0234: Staleness warning snackbar -->
+  <v-snackbar
+    v-model="showStaleWarning"
+    color="warning"
+    :timeout="5000"
+    location="bottom"
+  >
+    <v-icon class="mr-2">mdi-clock-alert</v-icon>
+    <strong>{{ staleAgentName }}</strong> has been inactive for over 10 minutes
+    <template #actions>
+      <v-btn
+        variant="text"
+        @click="showStaleWarning = false"
+      >
+        Dismiss
+      </v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
 import { useAgentData } from '@/composables/useAgentData'
 import { useClipboard } from '@/composables/useClipboard'
+import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
 import JobReadAckIndicators from '@/components/StatusBoard/JobReadAckIndicators.vue'
+import StatusChip from '@/components/StatusBoard/StatusChip.vue'
+import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 
 /**
  * AgentTableView Component
@@ -226,13 +178,24 @@ const { copy } = useClipboard()
 const copyingJobId = ref(null)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
-// Table headers configuration
+// Handover 0234: Staleness monitoring
+const showStaleWarning = ref(false)
+const staleAgentName = ref('')
+
+const emitStaleWarning = (job) => {
+  staleAgentName.value = job.agent_name || job.agent_type
+  showStaleWarning.value = true
+}
+
+// Initialize staleness monitor
+useStalenessMonitor(computed(() => props.agents), emitStaleWarning)
+
+// Table headers configuration (Handover 0234: Removed health_status - now in StatusChip)
 const headers = [
   { title: 'Agent Type', key: 'agent_type', sortable: true },
   { title: 'Agent Name', key: 'agent_name', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Messages', key: 'messages', sortable: false },
-  { title: 'Health', key: 'health_status', sortable: true },
   { title: 'Mission Tracking', key: 'mission_tracking', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false },
 ]
@@ -267,6 +230,46 @@ function canLaunchAgent(agent) {
 
   // General CLI mode: all non-terminal agents can be launched
   return true
+}
+
+/**
+ * Handover 0235: Handle launch job action from ActionIcons
+ */
+function handleLaunchJob(job) {
+  emit('launch-agent', job)
+}
+
+/**
+ * Handover 0235: Handle view messages action from ActionIcons
+ */
+function handleViewMessages(job) {
+  emit('row-click', job)
+}
+
+/**
+ * Handover 0235: Handle cancel job action from ActionIcons
+ */
+async function handleCancelJob(job) {
+  try {
+    await api.jobs.cancel(job.job_id)
+    showSnackbar('Job cancelled successfully', 'success')
+  } catch (error) {
+    console.error('[AgentTableView] Cancel job failed:', error)
+    showSnackbar('Failed to cancel job', 'error')
+  }
+}
+
+/**
+ * Handover 0235: Handle orchestrator handover action from ActionIcons
+ */
+async function handleHandOver(job) {
+  try {
+    await api.orchestration.handOver(job.job_id, 'context_threshold')
+    showSnackbar('Orchestrator handover initiated', 'success')
+  } catch (error) {
+    console.error('[AgentTableView] Handover failed:', error)
+    showSnackbar('Failed to trigger handover', 'error')
+  }
 }
 
 /**
