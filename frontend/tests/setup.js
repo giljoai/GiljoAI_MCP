@@ -83,8 +83,9 @@ config.global.stubs = {
   'v-progress-linear': { template: '<div><slot /></div>' },
   'v-overlay': { template: '<div><slot /></div>' },
   'v-img': { template: '<div><slot /></div>' },
-  'v-btn': { template: '<button><slot /></button>' },
-  'v-icon': { template: '<span><slot /></span>' },
+  'v-btn': { template: '<button class="v-btn"><slot /></button>' },
+  'v-icon': { template: '<span class="v-icon"><slot /></span>' },
+  'v-avatar': { template: '<div class="v-avatar"><slot /></div>' },
   'v-chip': { template: '<span><slot /></span>' },
   'v-badge': { template: '<span><slot /></span>' },
   'v-alert': { template: '<div><slot /></div>' },
@@ -97,7 +98,8 @@ config.global.stubs = {
   'v-textarea': { template: '<textarea><slot /></textarea>' },
   'v-spacer': { template: '<div></div>' },
   'v-snackbar': { template: '<div><slot /></div>' },
-  'v-stepper-window-item': { template: '<div><slot /></div>' }
+  'v-stepper-window-item': { template: '<div><slot /></div>' },
+  'v-switch': { template: '<input type="checkbox" />' }
 }
 
 // Provide mock implementations for browser APIs
@@ -127,6 +129,16 @@ document.execCommand = vi.fn(() => true)
 
 // Mock API service
 vi.mock('@/services/api', () => ({
+  api: {
+    prompts: {
+      execution: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock orchestrator prompt' } })),
+      agentPrompt: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock agent prompt' } }))
+    },
+    get: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock prompt text' } })),
+    post: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    put: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    delete: vi.fn(() => Promise.resolve({ data: { success: true } }))
+  },
   default: {
     get: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock prompt text' } })),
     post: vi.fn(() => Promise.resolve({ data: { success: true } })),
