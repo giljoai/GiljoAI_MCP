@@ -57,6 +57,14 @@
       </v-icon>
     </template>
 
+    <!-- Mission Tracking Column (Handover 0233) -->
+    <template #item.mission_tracking="{ item }">
+      <JobReadAckIndicators
+        :mission-read-at="item.mission_read_at"
+        :mission-acknowledged-at="item.mission_acknowledged_at"
+      />
+    </template>
+
     <!-- Actions Column -->
     <template #item.actions="{ item }">
       <div class="d-flex gap-1">
@@ -165,6 +173,7 @@ import { computed, ref } from 'vue'
 import { useAgentData } from '@/composables/useAgentData'
 import { useClipboard } from '@/composables/useClipboard'
 import api from '@/services/api'
+import JobReadAckIndicators from '@/components/StatusBoard/JobReadAckIndicators.vue'
 
 /**
  * AgentTableView Component
@@ -224,6 +233,7 @@ const headers = [
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Messages', key: 'messages', sortable: false },
   { title: 'Health', key: 'health_status', sortable: true },
+  { title: 'Mission Tracking', key: 'mission_tracking', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false },
 ]
 
