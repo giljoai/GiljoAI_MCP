@@ -83,10 +83,16 @@ def test_config():
     config = get_config()
     # Override with test settings - use PostgreSQL test database
     config.database.database_url = PostgreSQLTestHelper.get_test_db_url()
-    config.api.port = 7000  # Use different port for tests
-    config.websocket.port = 7001
+    # Note: config object may not have api/websocket attributes in newer versions
+    # Only set if they exist
+    if hasattr(config, 'api'):
+        config.api.port = 7000  # Use different port for tests
+    if hasattr(config, 'websocket'):
+        config.websocket.port = 7001
     return config
 
+
+# Note: db_manager fixture is imported from base_fixtures.py above
 
 # Serena MCP test fixtures
 @pytest.fixture

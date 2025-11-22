@@ -340,6 +340,23 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // Handover 0233 Phase 5: Update specific agent field by job_id
+  function updateAgentField(jobId, fieldName, value) {
+    // Find agent by job_id
+    const agent = agents.value.find((a) => a.job_id === jobId)
+
+    if (agent) {
+      // Update the specified field
+      agent[fieldName] = value
+      agent.updated_at = new Date().toISOString()
+
+      // If this is the current agent, update it too
+      if (currentAgent.value?.job_id === jobId) {
+        currentAgent.value = { ...agent }
+      }
+    }
+  }
+
   // Initialize WebSocket listeners for real-time updates
   function initializeWebSocketListeners() {
     const wsStore = useWebSocketStore()
@@ -414,5 +431,6 @@ export const useAgentStore = defineStore('agents', () => {
     handleAgentComplete,
     handleHealthAlert,
     handleHealthRecovered,
+    updateAgentField, // Handover 0233 Phase 5
   }
 })

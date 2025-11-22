@@ -175,6 +175,18 @@ class MCPAgentJob(Base):
         comment="Timestamp when agent job was decommissioned (Handover 0113)"
     )
 
+    # Handover 0233: Mission tracking fields (job lifecycle checkpoints)
+    mission_read_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when agent first read mission via get_orchestrator_instructions() (Handover 0233)"
+    )
+    mission_acknowledged_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when agent acknowledged mission via status transition to 'working' (Handover 0233)"
+    )
+
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
 

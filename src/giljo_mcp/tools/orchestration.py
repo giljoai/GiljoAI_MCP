@@ -1003,6 +1003,48 @@ The agent templates are now being updated...
                         "contact_support": "If problem persists: support@giljoai.com",
                     }
 
+                # Handover 0233: Track mission_read_at timestamp (idempotent)
+                # Set timestamp on FIRST read only (doesn't overwrite existing)
+                if orchestrator.mission_read_at is None:
+                    orchestrator.mission_read_at = datetime.now(timezone.utc)
+                    await session.commit()
+                    logger.info(
+                        f"[MISSION_TRACKING] Set mission_read_at for orchestrator {orchestrator_id}",
+                        extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key}
+                    )
+
+                    # Handover 0233 Phase 5: Emit WebSocket event for mission_read
+                    try:
+                        # Import websocket manager
+                        from api.app import state
+
+                        ws_manager = getattr(state, "websocket_manager", None)
+
+                        if ws_manager:
+                            await ws_manager.broadcast_to_tenant(
+                                tenant_key=tenant_key,
+                                event_type="job:mission_read",
+                                data={
+                                    "job_id": orchestrator_id,
+                                    "mission_read_at": orchestrator.mission_read_at.isoformat(),
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                },
+                            )
+                            logger.info(
+                                f"[WEBSOCKET] Broadcasted job:mission_read event",
+                                extra={
+                                    "orchestrator_id": orchestrator_id,
+                                    "tenant_key": tenant_key,
+                                    "mission_read_at": orchestrator.mission_read_at.isoformat()
+                                }
+                            )
+                    except Exception as ws_error:
+                        # Non-blocking - WebSocket failures shouldn't break MCP tool
+                        logger.warning(
+                            f"[WEBSOCKET] Failed to broadcast job:mission_read event: {ws_error}",
+                            extra={"orchestrator_id": orchestrator_id}
+                        )
+
                 # Get project with tenant isolation
                 result = await session.execute(
                     select(Project).where(and_(Project.id == orchestrator.project_id, Project.tenant_key == tenant_key))
@@ -1166,7 +1208,7 @@ async def health_check() -> dict[str, Any]:
     }
 
 
-async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
+async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, db_manager: "DatabaseManager" = None) -> dict[str, Any]:
     """
     Fetch orchestrator instructions (standalone for testing).
 
@@ -1176,14 +1218,20 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -
     Args:
         orchestrator_id: Orchestrator job UUID
         tenant_key: Tenant isolation key
+        db_manager: Optional DatabaseManager instance (for testing)
 
     Returns:
         Orchestrator instructions dict
     """
     from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.config_manager import get_config
 
-    db_manager = DatabaseManager()
-    async with db_manager.get_session() as session:
+    if db_manager is None:
+        # Get database URL from config for test environments
+        config = get_config()
+        db_url = config.database.database_url
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
+    async with db_manager.get_session_async() as session:
         from sqlalchemy import and_, select
         from sqlalchemy.orm import joinedload
 
@@ -1223,6 +1271,48 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -
                     ],
                     "severity": "ERROR",
                 }
+
+            # Handover 0233: Track mission_read_at timestamp (idempotent)
+            # Set timestamp on FIRST read only (doesn't overwrite existing)
+            if orchestrator.mission_read_at is None:
+                orchestrator.mission_read_at = datetime.now(timezone.utc)
+                await session.commit()
+                logger.info(
+                    f"[MISSION_TRACKING] Set mission_read_at for orchestrator {orchestrator_id}",
+                    extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key}
+                )
+
+                # Handover 0233 Phase 5: Emit WebSocket event for mission_read
+                try:
+                    # Import websocket manager
+                    from api.app import state
+
+                    ws_manager = getattr(state, "websocket_manager", None)
+
+                    if ws_manager:
+                        await ws_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="job:mission_read",
+                            data={
+                                "job_id": orchestrator_id,
+                                "mission_read_at": orchestrator.mission_read_at.isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            },
+                        )
+                        logger.info(
+                            f"[WEBSOCKET] Broadcasted job:mission_read event",
+                            extra={
+                                "orchestrator_id": orchestrator_id,
+                                "tenant_key": tenant_key,
+                                "mission_read_at": orchestrator.mission_read_at.isoformat()
+                            }
+                        )
+                except Exception as ws_error:
+                    # Non-blocking - WebSocket failures shouldn't break MCP tool
+                    logger.warning(
+                        f"[WEBSOCKET] Failed to broadcast job:mission_read event: {ws_error}",
+                        extra={"orchestrator_id": orchestrator_id}
+                    )
 
             # Get project and product
             project = orchestrator.project
@@ -1302,7 +1392,7 @@ async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any
     from giljo_mcp.database import DatabaseManager
 
     db_manager = DatabaseManager()
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         from sqlalchemy import and_, select
 
         from giljo_mcp.models import MCPAgentJob
@@ -1361,7 +1451,7 @@ async def spawn_agent_job(
     from giljo_mcp.database import DatabaseManager
 
     db_manager = DatabaseManager()
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session_async() as session:
         from giljo_mcp.models import MCPAgentJob
 
         try:
