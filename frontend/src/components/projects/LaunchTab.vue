@@ -9,14 +9,14 @@
           <v-btn
             v-if="!isStaging && !readyToLaunch"
             block
-            color="primary"
-            variant="elevated"
+            color="yellow-darken-2"
+            variant="outlined"
             size="x-large"
             :loading="loadingStageProject"
             @click="handleStageProject"
-            class="mb-3"
+            class="mb-3 stage-project-btn"
           >
-            <v-icon start>mdi-play-circle</v-icon>
+            <v-icon start>mdi-clipboard-text</v-icon>
             Stage Project
           </v-btn>
 
@@ -25,10 +25,10 @@
             v-if="readyToLaunch"
             block
             color="yellow-darken-2"
-            variant="elevated"
+            variant="flat"
             size="x-large"
             @click="handleLaunchJobs"
-            class="mb-3 launch-button"
+            class="mb-3 launch-jobs-btn"
           >
             <v-icon start>mdi-rocket-launch</v-icon>
             Launch Jobs
@@ -77,17 +77,17 @@
 
       <!-- Middle Column: Project Description Panel -->
       <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
-        <v-card class="description-panel d-flex flex-column" elevation="2" style="height: 100%;">
+        <v-card class="description-panel launch-panel d-flex flex-column" flat style="height: 100%;">
           <!-- Header -->
           <v-card-title class="panel-header bg-primary text-white text-center">
-            <span>Project Description</span>
+            <span>PROJECT DESCRIPTION</span>
           </v-card-title>
 
           <v-divider />
 
           <!-- Content -->
           <v-card-text class="pa-4 d-flex flex-column flex-grow-1">
-            <div class="scrollable-content flex-grow-1 mb-3">
+            <div class="scrollable-content scrollable-panel flex-grow-1 mb-3">
               <div class="text-body-2 description-text">
                 {{ project.description || 'No description available' }}
               </div>
@@ -110,10 +110,10 @@
 
       <!-- Right Column: Orchestrator Mission Panel -->
       <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
-        <v-card class="mission-panel d-flex flex-column" elevation="2" style="height: 100%;">
+        <v-card class="mission-panel launch-panel d-flex flex-column" flat style="height: 100%;">
           <!-- Header with "Optimized for you" badge -->
           <v-card-title class="panel-header bg-primary text-white d-flex justify-center">
-            <span>Orchestrator Created Mission</span>
+            <span>ORCHESTRATOR CREATED MISSION</span>
             <v-chip
               v-if="userConfigApplied && missionText"
               color="success"
@@ -180,7 +180,7 @@
 
             <!-- Content State -->
             <div v-else-if="missionText" class="d-flex flex-column flex-grow-1">
-              <div class="scrollable-content flex-grow-1 mb-3">
+              <div class="scrollable-content scrollable-panel flex-grow-1 mb-3">
                 <div class="text-body-2 mission-text">
                   {{ missionText }}
                 </div>
@@ -202,7 +202,7 @@
             <!-- Empty State -->
             <div
               v-else
-              class="flex-grow-1 d-flex flex-column align-center justify-center py-8"
+              class="flex-grow-1 d-flex flex-column align-center justify-center py-8 empty-state"
             >
               <v-icon size="64" color="grey-lighten-1" class="mb-4">
                 mdi-file-document-outline
@@ -223,7 +223,7 @@
         <v-card elevation="2">
           <v-card-title class="panel-header panel-header-tight bg-primary text-white d-flex align-center">
             <v-icon class="mr-2">mdi-account-group</v-icon>
-            <span>Agent Team</span>
+            <span>AGENT TEAM</span>
             <v-chip
               v-if="agents.length > 0"
               color="white"
@@ -949,12 +949,21 @@ defineExpose({
   gap: 1rem;
 }
 
+/* Launch Panel Styling (Task 1: Panel Styling Overhaul) */
+.launch-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
 /* Panel Headers */
 .panel-header {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 16px;
 }
 
@@ -1011,23 +1020,25 @@ defineExpose({
   background: rgba(0, 0, 0, 0.02);
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.06);
+}
 
-  /* Custom scrollbar */
+/* Custom Scrollbar for Panels (Task 1: Panel Styling Overhaul) */
+.scrollable-panel {
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 
     &:hover {
-      background: rgba(255, 255, 255, 1);
+      background: rgba(255, 255, 255, 0.3);
     }
   }
 }
@@ -1079,7 +1090,26 @@ defineExpose({
   min-height: 200px;
 }
 
-/* Launch Button Styling */
+/* Button Styling Enhancements (Task 3: Button Styling Enhancement) */
+.stage-project-btn {
+  border-width: 2px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+.launch-jobs-btn {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.87) !important;
+
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+
+/* Legacy Launch Button Styling (can be removed if unused) */
 .launch-button {
   font-weight: 700;
   font-size: 16px;
