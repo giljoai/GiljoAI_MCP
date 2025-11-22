@@ -385,6 +385,7 @@ import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import SuccessionTimeline from '@/components/projects/SuccessionTimeline.vue'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
+import { getStatusConfig } from '@/utils/statusConfig'
 
 /**
  * AgentCard Component (Consolidated - Handover 0515a)
@@ -481,48 +482,10 @@ const headerStyles = computed(() => ({
 }))
 
 /**
- * Status configuration for Jobs Tab
+ * Status configuration for Jobs Tab (using shared utility)
  */
-const STATUS_CONFIG = {
-  waiting: {
-    color: 'grey',
-    icon: 'mdi-clock-outline',
-    label: 'Waiting'
-  },
-  working: {
-    color: 'primary',
-    icon: 'mdi-cog',
-    label: 'Working'
-  },
-  blocked: {
-    color: 'orange',
-    icon: 'mdi-alert-octagon',
-    label: 'Blocked'
-  },
-  complete: {
-    color: 'yellow-darken-2',
-    icon: 'mdi-check-circle',
-    label: 'Complete'
-  },
-  failed: {
-    color: 'purple',
-    icon: 'mdi-alert-circle',
-    label: 'Failure'
-  },
-  cancelled: {
-    color: 'warning',
-    icon: 'mdi-cancel',
-    label: 'Cancelled'
-  },
-  decommissioned: {
-    color: 'grey-darken-1',
-    icon: 'mdi-archive',
-    label: 'Decommissioned'
-  }
-}
-
 const statusConfig = computed(() => {
-  return STATUS_CONFIG[props.agent.status] || STATUS_CONFIG.waiting
+  return getStatusConfig(props.agent.status)
 })
 
 /**
