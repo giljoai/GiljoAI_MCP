@@ -1,10 +1,38 @@
 # Handover 0232: Bottom Message Composer Bar
 
-**Status**: Ready for Implementation (PRE-VERIFICATION REQUIRED)
-**Priority**: High
-**Estimated Effort**: 1 hour (IF not already done - see verification step below)
+**Status**: ✅ DEPRECATED - Already Complete via Handover 0231 Phase 4
+**Completion Date**: 2025-11-21
+**Actual Effort**: 0 hours (pre-existing implementation)
 **Dependencies**: Handover 0226 (backend API extensions)
 **Part of**: Visual Refactor Series (0225-0237)
+
+---
+
+## Implementation Summary
+
+**Status**: ✅ **DEPRECATED** - This handover was fully implemented in Handover 0231 Phase 4 (commit c96fa89c).
+
+**Finding**: All sticky positioning functionality already exists in `MessageInput.vue` (lines 396-404). The `.position-sticky` CSS block matches this handover's specification exactly.
+
+**What Already Exists**:
+- `position` prop with validator (lines 89-93) supporting `inline`, `modal`, and `sticky` modes
+- Complete sticky CSS implementation (lines 396-404):
+  - `position: sticky`
+  - `bottom: 0`
+  - `background: white`
+  - `box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1)`
+  - `z-index: 100`
+  - `padding: 16px`
+  - `border-top: 1px solid rgba(0, 0, 0, 0.12)`
+- Tests verifying sticky behavior (MessageInput.0231.spec.js)
+
+**Verification**: See `handovers/0232_investigation_report.md` for complete analysis.
+
+**Recommendation**: Proceed directly to Handover 0233.
+
+---
+
+## Original Specification (For Reference)
 
 ---
 
