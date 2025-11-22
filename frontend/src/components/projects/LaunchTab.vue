@@ -1,326 +1,95 @@
 <template>
-  <div class="launch-tab">
-    <!-- 3-Column Layout -->
-    <v-row class="launch-columns mb-6">
-      <!-- Left Column: Action Buttons Panel -->
-      <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
-        <v-card elevation="2" class="action-panel pa-4">
-          <!-- Stage Project Button (Initial State) -->
-          <v-btn
-            v-if="!isStaging && !readyToLaunch"
-            block
-            color="yellow-darken-2"
-            variant="outlined"
-            size="x-large"
-            :loading="loadingStageProject"
-            @click="handleStageProject"
-            class="mb-3 stage-project-btn"
-          >
-            <v-icon start>mdi-clipboard-text</v-icon>
-            Stage Project
-          </v-btn>
+  <div class="launch-tab-wrapper">
+    <!-- Top Action Bar (outside main container) -->
+    <div class="top-action-bar">
+      <v-btn
+        class="stage-button"
+        variant="outlined"
+        color="yellow-darken-2"
+        rounded
+        :loading="loadingStageProject"
+        @click="handleStage"
+      >
+        Stage project
+      </v-btn>
 
-          <!-- Launch Jobs Button (Ready State) -->
-          <v-btn
-            v-if="readyToLaunch"
-            block
-            color="yellow-darken-2"
-            variant="flat"
-            size="x-large"
-            @click="handleLaunchJobs"
-            class="mb-3 launch-jobs-btn"
-          >
-            <v-icon start>mdi-rocket-launch</v-icon>
-            Launch Jobs
-          </v-btn>
+      <span class="status-text">Waiting:</span>
 
-          <!-- Re-Stage Project Button (Visible during staging or when ready) -->
-          <v-btn
-            v-if="isStaging || readyToLaunch"
-            block
-            color="error"
-            variant="outlined"
-            size="large"
-            @click="showCancelDialog = true"
-          >
-            <v-icon start>mdi-refresh</v-icon>
-            Re-Stage Project
-            <v-tooltip activator="parent" location="bottom">
-              Use this when product vision, descriptions, or context configurations have changed.
-              This will delete all staged missions and agent jobs, requiring complete re-orchestration.
-              Note: This will incur new token costs as agents regenerate everything.
-            </v-tooltip>
-          </v-btn>
+      <v-btn
+        class="launch-button"
+        :disabled="!readyToLaunch"
+        :color="readyToLaunch ? 'yellow-darken-2' : 'grey'"
+        rounded
+        @click="handleLaunch"
+      >
+        Launch jobs
+      </v-btn>
+    </div>
 
-          <!-- Info Text -->
-          <v-alert
-            v-if="!isStaging && !readyToLaunch"
-            type="info"
-            variant="tonal"
-            density="compact"
-            class="mt-4"
-          >
-            Click to generate mission and spawn agents
-          </v-alert>
-
-          <v-alert
-            v-if="readyToLaunch"
-            type="success"
-            variant="tonal"
-            density="compact"
-            class="mt-4"
-          >
-            Ready to launch! Review mission and agents below.
-          </v-alert>
-        </v-card>
-      </v-col>
-
-      <!-- Middle Column: Project Description Panel -->
-      <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
-        <v-card class="description-panel launch-panel d-flex flex-column" flat style="height: 100%;">
-          <!-- Header -->
-          <v-card-title class="panel-header bg-primary text-white text-center">
-            <span>PROJECT DESCRIPTION</span>
-          </v-card-title>
-
-          <v-divider />
-
-          <!-- Content -->
-          <v-card-text class="pa-4 d-flex flex-column flex-grow-1">
-            <div class="scrollable-content scrollable-panel flex-grow-1 mb-3">
-              <div class="text-body-2 description-text">
-                {{ project.description || 'No description available' }}
-              </div>
-            </div>
-
-            <!-- Edit Button -->
+    <!-- Main Container (unified border) -->
+    <div class="main-container">
+      <div class="three-panels">
+        <!-- Panel 1: Project Description -->
+        <div class="panel project-description-panel">
+          <div class="panel-header">Project Description</div>
+          <div class="panel-content">
+            <p class="description-text">{{ project.description || 'No description available' }}</p>
             <v-btn
-              variant="outlined"
-              color="white"
+              icon="mdi-pencil"
               size="small"
-              @click="handleEditDescription"
-              class="align-self-end"
-            >
-              <v-icon start size="small">mdi-pencil</v-icon>
-              Edit
-            </v-btn>
-          </v-card-text>
-        </v-card>
-      </v-col>
+              variant="text"
+              class="edit-icon"
+              @click="editDescription"
+            />
+          </div>
+        </div>
 
-      <!-- Right Column: Orchestrator Mission Panel -->
-      <v-col cols="4" md="4" class="mb-4 mb-md-0 d-flex">
-        <v-card class="mission-panel launch-panel d-flex flex-column" flat style="height: 100%;">
-          <!-- Header with "Optimized for you" badge -->
-          <v-card-title class="panel-header bg-primary text-white d-flex justify-center">
-            <span>ORCHESTRATOR CREATED MISSION</span>
-            <v-chip
-              v-if="userConfigApplied && missionText"
-              color="success"
-              size="small"
-              class="ml-2"
-              prepend-icon="mdi-check-circle"
-            >
-              Optimized for you
-            </v-chip>
-            <v-chip
-              v-if="tokenEstimate > 0 && missionText"
-              color="info"
-              size="small"
-              class="ml-2"
-              prepend-icon="mdi-counter"
-            >
-              {{ tokenEstimate }} tokens
-            </v-chip>
-          </v-card-title>
+        <!-- Panel 2: Orchestrator Mission -->
+        <div class="panel mission-panel">
+          <div class="panel-header">Orchestrator Generated Mission</div>
+          <div class="panel-content">
+            <div v-if="!missionText" class="empty-state">
+              <v-icon size="80" class="empty-icon">mdi-file-document-outline</v-icon>
+            </div>
+            <div v-else class="mission-content">
+              {{ missionText }}
+            </div>
+          </div>
+        </div>
 
-          <v-divider />
-
-          <!-- Content -->
-          <v-card-text class="pa-4 d-flex flex-column flex-grow-1">
-            <!-- Loading State -->
-            <div
-              v-if="isLoadingMission"
-              class="flex-grow-1 d-flex flex-column align-center justify-center"
-            >
-              <v-progress-circular indeterminate color="primary" size="64" />
-              <p class="text-subtitle-1 mt-4 font-weight-bold">Generating mission...</p>
-              <p class="text-caption text-medium-emphasis mt-2">
-                Analyzing project vision and applying your preferences
-              </p>
+        <!-- Panel 3: Default Agent -->
+        <div class="panel default-agent-panel">
+          <div class="panel-header">Default agent</div>
+          <div class="panel-content">
+            <!-- Orchestrator Card -->
+            <div class="orchestrator-card">
+              <v-avatar color="#d4a574" size="32" class="agent-avatar">
+                <span style="color: #000; font-weight: bold;">Or</span>
+              </v-avatar>
+              <span class="agent-name">Orchestrator</span>
+              <v-icon size="small" class="lock-icon">mdi-lock</v-icon>
+              <v-icon size="small" class="info-icon">mdi-information</v-icon>
             </div>
 
-            <!-- Error State -->
-            <v-alert
-              v-else-if="missionError"
-              type="error"
-              variant="tonal"
-              closable
-              @click:close="missionError = null"
-              class="mb-0"
-            >
-              <v-alert-title>
-                <v-icon start>mdi-alert-circle</v-icon>
-                Mission Generation Failed
-              </v-alert-title>
-              {{ missionError }}
-              <template #append>
-                <v-btn
-                  size="small"
-                  color="error"
-                  variant="elevated"
-                  @click="handleStageProject"
-                  class="mt-2"
-                >
-                  <v-icon start>mdi-refresh</v-icon>
-                  Retry
-                </v-btn>
-              </template>
-            </v-alert>
-
-            <!-- Content State -->
-            <div v-else-if="missionText" class="d-flex flex-column flex-grow-1">
-              <div class="scrollable-content scrollable-panel flex-grow-1 mb-3">
-                <div class="text-body-2 mission-text">
-                  {{ missionText }}
-                </div>
+            <!-- Agent Team Section -->
+            <div class="agent-team-section">
+              <div class="agent-team-header">Agent Team</div>
+              <div class="agent-team-list">
+                <!-- Agent cards will populate here from WebSocket events -->
+                <AgentCard
+                  v-for="agent in agents"
+                  :key="agent.agent_id || agent.job_id"
+                  :agent="agent"
+                  mode="launch"
+                  :instance-number="getInstanceNumber(agent)"
+                  @edit-mission="handleEditAgentMission"
+                />
               </div>
-
-              <!-- Edit Button -->
-              <v-btn
-                variant="outlined"
-                color="white"
-                size="small"
-                @click="handleEditMission"
-                class="align-self-end"
-              >
-                <v-icon start size="small">mdi-pencil</v-icon>
-                Edit
-              </v-btn>
             </div>
-
-            <!-- Empty State -->
-            <div
-              v-else
-              class="flex-grow-1 d-flex flex-column align-center justify-center py-8 empty-state"
-            >
-              <v-icon size="64" color="grey-lighten-1" class="mb-4">
-                mdi-file-document-outline
-              </v-icon>
-              <p class="text-body-1 font-weight-bold mb-2">Mission will appear after staging</p>
-              <p class="text-body-2 text-grey text-center px-4">
-                Click "Stage Project" to begin orchestrator mission generation
-              </p>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Agent Cards Section (Bottom Row) -->
-    <v-row class="agent-cards-row">
-      <v-col cols="12">
-        <v-card elevation="2">
-          <v-card-title class="panel-header panel-header-tight bg-primary text-white d-flex align-center">
-            <v-icon class="mr-2">mdi-account-group</v-icon>
-            <span>AGENT TEAM</span>
-            <v-chip
-              v-if="agents.length > 0"
-              color="white"
-              text-color="success"
-              size="small"
-              class="ml-2 font-weight-bold"
-            >
-              {{ agents.length }} Agent{{ agents.length !== 1 ? 's' : '' }}
-            </v-chip>
-          </v-card-title>
-
-          <v-divider />
-
-          <v-card-text class="pa-4">
-            <!-- Agent Cards Container -->
-            <div v-if="agents.length > 0" class="agent-cards-container">
-              <AgentCard
-                v-for="agent in agents"
-                :key="agent.agent_id || agent.job_id"
-                :agent="agent"
-                mode="launch"
-                :instance-number="getInstanceNumber(agent)"
-                @edit-mission="handleEditAgentMission"
-              />
-            </div>
-
-            <!-- Empty State -->
-            <div v-else class="empty-state text-center py-8">
-              <v-icon size="64" color="grey-lighten-1" class="mb-4">
-                mdi-account-group-outline
-              </v-icon>
-              <p class="text-body-1 font-weight-bold mb-2">Agents will appear here after staging begins</p>
-              <p class="text-body-2 text-grey">
-                The orchestrator will create specialized agents based on project requirements
-              </p>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Re-Stage Confirmation Dialog -->
-    <v-dialog v-model="showCancelDialog" max-width="500" persistent>
-      <v-card>
-        <v-card-title class="text-h5 bg-error text-white">
-          <v-icon class="mr-2">mdi-refresh</v-icon>
-          Re-Stage Project?
-        </v-card-title>
-
-        <v-divider />
-
-        <v-card-text class="pa-6">
-          <p class="text-body-1 mb-3">
-            This will completely reset the project staging area and clear all AI-generated content:
-          </p>
-
-          <v-list density="compact" class="mb-0">
-            <v-list-item prepend-icon="mdi-file-document-remove">
-              <v-list-item-title>Clear generated mission text</v-list-item-title>
-            </v-list-item>
-            <v-list-item prepend-icon="mdi-account-group-outline">
-              <v-list-item-title>Delete all spawned agents ({{ agents.length }})</v-list-item-title>
-            </v-list-item>
-            <v-list-item prepend-icon="mdi-message-off">
-              <v-list-item-title>Delete all agent communications</v-list-item-title>
-            </v-list-item>
-            <v-list-item prepend-icon="mdi-refresh">
-              <v-list-item-title>Return to initial state</v-list-item-title>
-            </v-list-item>
-          </v-list>
-
-          <v-alert type="warning" variant="tonal" density="compact" class="mt-4 mb-0">
-            <v-icon start size="small">mdi-currency-usd</v-icon>
-            <strong>Token Cost Warning:</strong> Re-staging will incur new token costs as the orchestrator regenerates all missions and agent assignments.
-          </v-alert>
-        </v-card-text>
-
-        <v-card-actions class="pa-4">
-          <v-btn
-            @click="showCancelDialog = false"
-            variant="text"
-          >
-            Keep Current Staging
-          </v-btn>
-          <v-spacer />
-          <v-btn
-            @click="handleCancelStaging"
-            color="error"
-            variant="elevated"
-          >
-            <v-icon start>mdi-refresh</v-icon>
-            Yes, Re-Stage Project
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Toast Notification -->
     <v-snackbar
@@ -348,25 +117,13 @@ import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 
 /**
- * LaunchTab Component
+ * LaunchTab Component - Complete Rewrite (Handover 0241)
  *
- * Production-grade staging area for Handover 0077 + Handover 0086.
- * Orchestrator builds mission, creates agents, user reviews before launch.
- *
- * Layout:
- * - 3-column top: Orchestrator card | Project Description | Orchestrator Mission
- * - Bottom row: Agent cards (horizontal scroll)
- * - Action buttons: Stage Project → Launch jobs, Cancel
- *
- * States:
- * 1. Initial: Empty mission, no agents, "Stage Project" button
- * 2. Staging: Orchestrator building mission, agents appearing dynamically
- * 3. Ready to Launch: Mission complete, all agents created, "Launch jobs" button
- *
- * WebSocket Integration (Handover 0086):
- * - Listens for 'project:mission_updated' events (mission panel populates)
- * - Listens for 'agent:created' events (agent cards appear in real-time)
- * - Multi-tenant isolation: checks project_id and tenant_key
+ * Exact match to screenshot design:
+ * - Top action bar with stage button (left), status text (center), launch button (right)
+ * - Main container with unified border and rounded corners
+ * - Three equal panels: Project Description, Orchestrator Mission, Default Agent
+ * - Dark navy background, tan orchestrator avatar, yellow buttons
  */
 
 const props = defineProps({
@@ -398,8 +155,6 @@ const emit = defineEmits([
 
 /**
  * Project ID from props
- * PRODUCTION-GRADE: Direct access (Handover 0086B Task 4.3)
- * Backend now consistently returns 'id' field via @hybrid_property
  */
 const projectId = computed(() => {
   const id = props.project?.id
@@ -411,7 +166,7 @@ const projectId = computed(() => {
 })
 
 /**
- * WebSocket and Auth Setup (Handover 0086)
+ * WebSocket and Auth Setup
  */
 const { on, off } = useWebSocket()
 const userStore = useUserStore()
@@ -421,55 +176,20 @@ const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
  * Component State
  */
 const missionText = ref('')
-
-// Track agent IDs to prevent duplicates (RACE CONDITION FIX - Task 4.2)
 const agentIds = ref(new Set())
-
 const agents = ref([])
-const stagingInProgress = ref(false)
-const readyToLaunch = ref(false) // Set to false to show "Stage Project" button
-const showCancelDialog = ref(false)
+const readyToLaunch = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
-
-// Loading states and error boundaries (PRODUCTION-GRADE - Task 4.4)
-const isLoadingMission = ref(false)
-const isLoadingAgents = ref(false)
-const missionError = ref(null)
-const agentError = ref(null)
-const userConfigApplied = ref(false)
-const tokenEstimate = ref(0)
 const loadingStageProject = ref(false)
 
 /**
- * Computed Properties
- */
-// (Orchestrator agent is now a computed property above - no watch needed)
-
-
-/**
- * Get status color for chip
- */
-function getStatusColor(status) {
-  const colors = {
-    active: 'success',
-    inactive: 'warning',
-    completed: 'info',
-    cancelled: 'error',
-    deleted: 'grey'
-  }
-  return colors[status] || 'grey'
-}
-
-/**
  * Get instance number for multi-instance agents
- * (e.g., if there are 2 Implementors, second one gets instance 2)
  */
 function getInstanceNumber(agent) {
   const agentType = agent.agent_type?.toLowerCase()
   if (!agentType) return 1
 
-  // Count how many agents of same type appear before this one
   const sameTypeAgents = agents.value.filter(a => a.agent_type?.toLowerCase() === agentType)
   const index = sameTypeAgents.findIndex(a =>
     (a.agent_id || a.job_id) === (agent.agent_id || agent.job_id)
@@ -479,14 +199,7 @@ function getInstanceNumber(agent) {
 }
 
 /**
- * WebSocket Event Handlers (Handover 0086)
- */
-
-/**
- * Handle mission update from external orchestrator execution
- * Called when orchestrator calls update_project_mission() via MCP
- *
- * PRODUCTION-GRADE: Enhanced with loading states (Handover 0086B Task 4.4)
+ * WebSocket Event Handlers
  */
 const handleMissionUpdate = (data) => {
   console.log('[LaunchTab] Received project:mission_updated event:', data)
@@ -505,37 +218,14 @@ const handleMissionUpdate = (data) => {
 
   // Update mission text reactively
   missionText.value = data.mission
-
-  // Capture user config info for UI badges
-  userConfigApplied.value = data.user_config_applied || false
-  tokenEstimate.value = data.token_estimate || 0
-
-  // Clear loading state
-  isLoadingMission.value = false
-  stagingInProgress.value = false
   readyToLaunch.value = true
-  missionError.value = null
 
-  // Show success notification with config info
-  let message = `Mission generated (${data.token_estimate || 0} tokens)`
-  if (data.user_config_applied) {
-    message += ' • Optimized for you'
-  }
-
-  toastMessage.value = message
+  toastMessage.value = `Mission generated (${data.token_estimate || 0} tokens)`
   showToast.value = true
 
   console.log('[LaunchTab] Mission panel updated successfully')
 }
 
-/**
- * Handle agent creation from external orchestrator execution
- * Called when orchestrator calls create_agent_job_external() via MCP
- *
- * PRODUCTION-GRADE: Race condition fixed (Handover 0086B Task 4.2)
- * - Uses Set for atomic duplicate check
- * - Prevents duplicate agents in concurrent scenarios
- */
 const handleAgentCreated = (data) => {
   console.log('[LaunchTab] Received agent:created event:', data)
 
@@ -551,9 +241,7 @@ const handleAgentCreated = (data) => {
     return
   }
 
-  // Support both payload shapes:
-  // 1) Nested: { agent: { id|job_id, agent_type, agent_name, status } }
-  // 2) Flat:   { agent_id|agent_job_id, agent_type, agent_name, status }
+  // Support both payload shapes
   const nestedAgent = data.agent || {}
   const fallbackAgentId = data.agent_id || data.agent_job_id
   const agentId = nestedAgent.id || nestedAgent.job_id || fallbackAgentId
@@ -563,13 +251,13 @@ const handleAgentCreated = (data) => {
     return
   }
 
-  // Use Set for atomic duplicate check (RACE CONDITION FIX)
+  // Prevent duplicates
   if (agentIds.value.has(agentId)) {
     console.log('[LaunchTab] Agent already exists, skipping duplicate')
     return
   }
 
-  // Build normalized agent object for UI
+  // Build normalized agent object
   const normalizedAgent = {
     id: agentId,
     job_id: agentId,
@@ -578,13 +266,10 @@ const handleAgentCreated = (data) => {
     status: nestedAgent.status || data.status || 'waiting',
   }
 
-  // Add to Set first (atomic operation)
+  // Add to Set and array
   agentIds.value.add(agentId)
-
-  // Then add to reactive array
   agents.value.push(normalizedAgent)
 
-  // Show notification
   const agentType = normalizedAgent.agent_type || 'Unknown'
   toastMessage.value = `Agent Selected - ${agentType} agent assigned to project`
   showToast.value = true
@@ -593,48 +278,7 @@ const handleAgentCreated = (data) => {
 }
 
 /**
- * Handle staging cancellation from WebSocket event
- * Called when staging is cancelled (via UI or external action)
- *
- * PRODUCTION-GRADE: Multi-tenant isolation (Handover 0108)
- * - Validates tenant key and project ID
- * - Shows success notification with agent count
- * - Resets UI to initial state
- */
-const handleStagingCancelled = (data) => {
-  console.log('[LaunchTab] Received project:staging_cancelled event:', data)
-
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    console.warn('[LaunchTab] Staging cancellation rejected: tenant mismatch')
-    return
-  }
-
-  // Project isolation check
-  if (data.project_id !== projectId.value) {
-    console.log('[LaunchTab] Staging cancellation ignored: different project')
-    return
-  }
-
-  // Reset UI to initial state
-  resetStagingState()
-
-  // Show success notification with agent count
-  const agentCount = data.agents_deleted || 0
-  toastMessage.value = `Staging cancelled: ${agentCount} agent${agentCount !== 1 ? 's' : ''} deleted`
-  showToast.value = true
-
-  console.log('[LaunchTab] Staging area reset. Agents deleted:', agentCount)
-}
-
-/**
  * Production-grade clipboard copy function
- * Works on both HTTPS and HTTP (10.1.0.164:7272)
- *
- * Strategy:
- * 1. Try modern Clipboard API first (works on HTTPS and localhost)
- * 2. Fallback to execCommand for HTTP network addresses
- * 3. Both methods tested and reliable on current environment
  */
 async function copyPromptToClipboard(text) {
   if (!text) {
@@ -644,7 +288,7 @@ async function copyPromptToClipboard(text) {
   }
 
   try {
-    // Try modern Clipboard API first (works on HTTPS and localhost)
+    // Try modern Clipboard API first
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text)
       return true
@@ -653,7 +297,7 @@ async function copyPromptToClipboard(text) {
     console.warn('[LaunchTab] Clipboard API failed, trying fallback:', clipErr)
   }
 
-  // Fallback for HTTP (network addresses like 10.1.0.164:7272)
+  // Fallback for HTTP
   try {
     const textarea = document.createElement('textarea')
     textarea.value = text
@@ -662,7 +306,6 @@ async function copyPromptToClipboard(text) {
     textarea.style.top = '0'
     document.body.appendChild(textarea)
 
-    // Focus and select
     textarea.focus()
     textarea.select()
     textarea.setSelectionRange(0, textarea.value.length)
@@ -679,47 +322,33 @@ async function copyPromptToClipboard(text) {
 }
 
 /**
- * Handle Stage Project button click - Handover 0079 + 0088 Thin Client
- * SIMPLIFIED: Direct copy without dialog
- * - Generates thin prompt via API
- * - Copies immediately to clipboard
- * - Shows simple toast notification
- * - NO DIALOG, NO METRICS, NO COMPLEXITY
+ * Handle Stage Project button click
  */
-async function handleStageProject() {
-  // Reset errors
-  missionError.value = null
-  agentError.value = null
-
-  // Set loading state
+async function handleStage() {
   loadingStageProject.value = true
 
   try {
-    // Generate thin client staging prompt (Handover 0088)
+    // Generate thin client staging prompt
     const response = await api.prompts.staging(projectId.value, {
-      tool: 'claude-code'  // TODO: Make tool selectable in UI
+      tool: 'claude-code'
     })
 
     if (!response.data?.prompt) {
       throw new Error('Invalid response from staging endpoint')
     }
 
-    // Extract prompt from response
     const { prompt, estimated_prompt_tokens } = response.data
 
-    // Copy to clipboard immediately (no dialog)
+    // Copy to clipboard immediately
     const copied = await copyPromptToClipboard(prompt)
 
     if (copied) {
-      // Success: Show simple notification
       toastMessage.value = 'Orchestrator prompt copied to clipboard!'
       showToast.value = true
     } else {
-      // Fallback: Show prompt in alert for manual copy
       alert(`Please manually copy this prompt:\n\n${prompt}`)
     }
 
-    // Log for debugging
     const lineCount = prompt.split('\n').length
     console.log('[LaunchTab] Thin client prompt copied:', {
       lines: lineCount,
@@ -730,12 +359,7 @@ async function handleStageProject() {
 
   } catch (err) {
     console.error('[LaunchTab] Failed to generate prompt:', err)
-
-    // Set error state
-    missionError.value = err.response?.data?.detail || err.message || 'Failed to generate orchestrator prompt'
-
-    // Show error toast
-    toastMessage.value = `Staging failed: ${missionError.value}`
+    toastMessage.value = `Staging failed: ${err.response?.data?.detail || err.message}`
     showToast.value = true
   } finally {
     loadingStageProject.value = false
@@ -745,81 +369,15 @@ async function handleStageProject() {
 /**
  * Handle Launch jobs button click
  */
-function handleLaunchJobs() {
+function handleLaunch() {
   emit('launch-jobs')
 }
 
 /**
- * Handle Re-Stage Project button (with confirmation)
- * PRODUCTION-GRADE: API call with error handling (Handover 0108)
- * - Calls staging cancellation API endpoint to clear all AI-generated content
- * - Shows success/error notifications
- * - Resets all UI state on success
- * - WebSocket handler updates UI in real-time
- */
-async function handleCancelStaging() {
-  showCancelDialog.value = false
-
-  try {
-    // Call staging cancellation API endpoint (Handover 0108)
-    const response = await api.projects.cancelStaging(projectId.value)
-    const result = response.data
-
-    // Show success notification with agent count
-    toastMessage.value = `Project reset to initial state: ${result.agents_deleted} agent${result.agents_deleted !== 1 ? 's' : ''} and ${result.messages_deleted || 0} message${result.messages_deleted !== 1 ? 's' : ''} deleted`
-    showToast.value = true
-
-    // Reset UI state
-    resetStagingState()
-
-    emit('cancel-staging')
-
-  } catch (error) {
-    console.error('[LaunchTab] Failed to re-stage project:', error)
-
-    // Show error notification
-    const errorMsg = error.response?.data?.detail || error.message || 'Failed to reset project'
-    toastMessage.value = `Failed to re-stage project: ${errorMsg}`
-    showToast.value = true
-  }
-}
-
-/**
- * Reset staging state (shared by cancel and WebSocket handler)
- * PRODUCTION-GRADE: Complete state reset
- */
-function resetStagingState() {
-  // Reset mission and agents
-  missionText.value = ''
-  agents.value = []
-  stagingInProgress.value = false
-  readyToLaunch.value = false
-
-  // Reset loading states and errors
-  isLoadingMission.value = false
-  isLoadingAgents.value = false
-  missionError.value = null
-  agentError.value = null
-  userConfigApplied.value = false
-  tokenEstimate.value = 0
-
-  // Clear agent tracking Set
-  agentIds.value.clear()
-}
-
-
-/**
  * Handle Edit Description button
  */
-function handleEditDescription() {
+function editDescription() {
   emit('edit-description')
-}
-
-/**
- * Handle Edit Mission button
- */
-function handleEditMission() {
-  emit('edit-mission', missionText.value)
 }
 
 /**
@@ -832,15 +390,13 @@ function handleEditAgentMission(agent) {
 }
 
 /**
- * Lifecycle Hooks - WebSocket Listener Registration (Handover 0086)
+ * Lifecycle Hooks
  */
 onMounted(() => {
-  // Initialize from props if data exists (page refresh scenario)
-  // This handles the case where user refreshes the page after staging
+  // Initialize from props if data exists
   if (props.project.mission) {
     console.log('[LaunchTab] Loading existing mission from props on mount')
     missionText.value = props.project.mission
-    stagingInProgress.value = false
     readyToLaunch.value = true
   }
 
@@ -860,34 +416,31 @@ onMounted(() => {
 
   // Register WebSocket event listeners
   on('project:mission_updated', handleMissionUpdate)
-  on('orchestrator:instructions_fetched', handleMissionUpdate) // Amendment A: Thin client support
+  on('orchestrator:instructions_fetched', handleMissionUpdate)
   on('agent:created', handleAgentCreated)
-  on('project:staging_cancelled', handleStagingCancelled) // Handover 0108: Staging cancellation
 
   console.log('[LaunchTab] WebSocket listeners registered for project:', projectId.value)
   console.log('[LaunchTab] Current tenant key:', currentTenantKey.value)
 })
 
 onUnmounted(() => {
-  // Clean up WebSocket listeners (prevent memory leaks)
+  // Clean up WebSocket listeners
   off('project:mission_updated', handleMissionUpdate)
-  off('orchestrator:instructions_fetched', handleMissionUpdate) // Amendment A: Thin client support
+  off('orchestrator:instructions_fetched', handleMissionUpdate)
   off('agent:created', handleAgentCreated)
-  off('project:staging_cancelled', handleStagingCancelled) // Handover 0108: Staging cancellation
 
-  // Clear agent tracking Set (RACE CONDITION FIX - Task 4.2)
+  // Clear agent tracking Set
   agentIds.value.clear()
 
   console.log('[LaunchTab] Cleanup complete - WebSocket listeners removed, agent IDs cleared')
 })
 
 /**
- * Watchers - Sync with backend data
+ * Watchers
  */
 watch(() => props.project.mission, (newMission) => {
   if (newMission) {
     missionText.value = newMission
-    stagingInProgress.value = false
     readyToLaunch.value = true
   }
 })
@@ -900,15 +453,11 @@ watch(() => props.project.agents, (newAgents) => {
 
 /**
  * Expose methods for parent component
- * PRODUCTION-GRADE: Complete state reset (Task 4.4)
  */
 defineExpose({
   setMission: (mission) => {
     missionText.value = mission
-    stagingInProgress.value = false
     readyToLaunch.value = true
-    isLoadingMission.value = false
-    missionError.value = null
   },
   addAgent: (agent) => {
     const agentId = agent.id || agent.job_id
@@ -924,257 +473,165 @@ defineExpose({
   resetStaging: () => {
     missionText.value = ''
     agents.value = []
-    stagingInProgress.value = false
     readyToLaunch.value = false
-    isLoadingMission.value = false
-    isLoadingAgents.value = false
-    missionError.value = null
-    agentError.value = null
-    userConfigApplied.value = false
-    tokenEstimate.value = 0
     agentIds.value.clear()
   }
 })
 </script>
 
 <style scoped lang="scss">
-@use '@/styles/agent-colors.scss' as *;
+.launch-tab-wrapper {
+  padding: 20px;
+  background: #0e1c2d;
+  min-height: 100vh;
 
-.launch-tab {
-  padding: 0;
-}
+  .top-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
 
-/* Column Layout */
-.launch-columns {
-  gap: 1rem;
-}
+    .stage-button {
+      text-transform: none;
+      font-weight: 500;
+    }
 
-/* Launch Panel Styling (Task 1: Panel Styling Overhaul) */
-.launch-panel {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-}
+    .status-text {
+      color: #ffd700;
+      font-style: italic;
+      font-size: 20px;
+      font-weight: 400;
+    }
 
-/* Panel Headers */
-.panel-header {
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 12px 16px;
-}
-
-/* Tight Panel Header (Agent Team) */
-.panel-header-tight {
-  padding: 2px 16px !important;
-}
-
-/* Description and Mission Panels */
-.description-panel,
-.mission-panel {
-  min-height: 200px;
-  max-height: 400px;
-}
-
-
-/* Orchestrator Card */
-.orchestrator-card {
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-/* Orchestrator Card Header */
-.orchestrator-header {
-  background: #D4A574 !important;
-  background: var(--agent-orchestrator-primary) !important;
-  color: white;
-  padding: 16px 20px;
-  font-weight: 600;
-  font-size: 16px;
-  text-transform: none;
-  letter-spacing: 0;
-  border-radius: 16px 16px 0 0;
-  text-align: center;
-}
-
-.agent-header-text {
-  flex: 1;
-}
-
-/* Info Rows */
-.info-row {
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 4px;
-}
-
-/* Scrollable Content Areas */
-.scrollable-content {
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: 200px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-/* Custom Scrollbar for Panels (Task 1: Panel Styling Overhaul) */
-.scrollable-panel {
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.3);
+    .launch-button {
+      text-transform: none;
+      font-weight: 500;
     }
   }
-}
 
-/* Text Content */
-.description-text,
-.mission-text {
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #BDBDBD !important;
-}
+  .main-container {
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 30px;
+    background: rgba(14, 28, 45, 0.5);
 
-.mission-text {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.875rem;
-}
+    .three-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
 
-/* Agent Cards Container */
-.agent-cards-container {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 8px 0;
-  scrollbar-width: thin;
-  scrollbar-color: var(--agent-orchestrator-primary) transparent;
+      .panel {
+        .panel-header {
+          font-size: 13px;
+          color: #999;
+          margin-bottom: 12px;
+          font-weight: 400;
+        }
 
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
+        .panel-content {
+          background: rgba(20, 35, 50, 0.8);
+          border-radius: 8px;
+          padding: 20px;
+          min-height: 450px;
+          position: relative;
+          color: #e0e0e0;
+          font-size: 14px;
+          line-height: 1.6;
 
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
+          .edit-icon {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            color: #ccc;
+          }
 
-  &::-webkit-scrollbar-thumb {
-    background: var(--agent-orchestrator-primary);
-    border-radius: 4px;
+          .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
 
-    &:hover {
-      background: var(--agent-orchestrator-dark);
+            .empty-icon {
+              color: rgba(255, 255, 255, 0.15);
+            }
+          }
+
+          .mission-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.875rem;
+          }
+
+          .description-text {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+        }
+      }
     }
   }
-}
 
-/* Empty State */
-.empty-state {
-  min-height: 200px;
-}
+  .orchestrator-card {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 8px 16px;
+    margin-bottom: 24px;
 
-/* Button Styling Enhancements (Task 3: Button Styling Enhancement) */
-.stage-project-btn {
-  border-width: 2px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.5px;
-}
+    .agent-avatar {
+      margin-right: 12px;
+    }
 
-.launch-jobs-btn {
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.5px;
-  color: rgba(0, 0, 0, 0.87) !important;
+    .agent-name {
+      flex: 1;
+      color: #fff;
+      font-size: 15px;
+    }
 
-  &:disabled {
-    opacity: 0.4;
-  }
-}
-
-/* Legacy Launch Button Styling (can be removed if unused) */
-.launch-button {
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-
-  :deep(.v-icon) {
-    font-size: 24px;
-  }
-}
-
-/* Card Heights */
-.h-100 {
-  height: 100%;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 960px) {
-  .launch-columns {
-    gap: 1rem;
+    .lock-icon,
+    .info-icon {
+      margin-left: 8px;
+      color: #ccc;
+    }
   }
 
-  .agent-cards-container {
-    justify-content: flex-start;
-  }
-}
+  .agent-team-section {
+    .agent-team-header {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 12px;
+    }
 
-@media (max-width: 600px) {
-  .panel-header {
-    font-size: 12px;
-    padding: 10px 12px;
-  }
+    .agent-team-list {
+      min-height: 200px;
+      border-right: 2px solid rgba(255, 255, 255, 0.1);
+      padding-right: 8px;
+      overflow-y: auto;
+      max-height: 350px;
 
-  .scrollable-content {
-    max-height: 200px;
-  }
-}
+      /* Custom Scrollbar */
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
 
+      &::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
 
-/* Accessibility */
-:focus-visible {
-  outline: 2px solid #2196f3;
-  outline-offset: 2px;
-}
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
 
-/* Button Transitions */
-.v-btn {
-  transition: all 0.3s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
-/* Card Elevations on Hover */
-.v-card {
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      }
+    }
   }
 }
 </style>
