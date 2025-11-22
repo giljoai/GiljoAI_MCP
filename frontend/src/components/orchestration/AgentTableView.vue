@@ -30,35 +30,46 @@
       />
     </template>
 
-    <!-- Messages Column -->
-    <template #item.messages="{ item }">
-      <div class="d-flex gap-1">
-        <v-chip
-          v-if="getMessageCounts(item).unread > 0"
-          color="error"
-          size="x-small"
-          prepend-icon="mdi-message-badge"
-        >
-          {{ getMessageCounts(item).unread }}
-        </v-chip>
-        <v-chip
-          v-if="getMessageCounts(item).acknowledged > 0"
-          color="success"
-          size="x-small"
-          prepend-icon="mdi-check-all"
-        >
-          {{ getMessageCounts(item).acknowledged }}
-        </v-chip>
-        <span v-if="getMessageCounts(item).total === 0" class="text-grey">—</span>
-      </div>
+    <!-- Agent ID Column (Handover 0240b) -->
+    <template #item.agent_id="{ item }">
+      <code class="agent-id">{{ item.job_id ? item.job_id.slice(0, 8) : '—' }}</code>
     </template>
 
-    <!-- Mission Tracking Column (Handover 0233) -->
-    <template #item.mission_tracking="{ item }">
-      <JobReadAckIndicators
-        :mission-read-at="item.mission_read_at"
-        :mission-acknowledged-at="item.mission_acknowledged_at"
-      />
+    <!-- Job Read Column (Handover 0240b) -->
+    <template #item.job_read="{ item }">
+      <v-icon
+        :color="item.mission_read_at ? 'success' : 'grey'"
+        size="small"
+      >
+        {{ item.mission_read_at ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
+      </v-icon>
+    </template>
+
+    <!-- Job Acknowledged Column (Handover 0240b) -->
+    <template #item.job_acknowledged="{ item }">
+      <v-icon
+        :color="item.mission_acknowledged_at ? 'success' : 'grey'"
+        size="small"
+      >
+        {{ item.mission_acknowledged_at ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
+      </v-icon>
+    </template>
+
+    <!-- Messages Sent Column (Handover 0240b) -->
+    <template #item.messages_sent="{ item }">
+      <span class="text-body-2">{{ item.messages_sent || 0 }}</span>
+    </template>
+
+    <!-- Messages Waiting Column (Handover 0240b) -->
+    <template #item.messages_waiting="{ item }">
+      <span class="text-body-2" :class="{ 'text-warning': item.messages_waiting > 0 }">
+        {{ item.messages_waiting || 0 }}
+      </span>
+    </template>
+
+    <!-- Messages Read Column (Handover 0240b) -->
+    <template #item.messages_read="{ item }">
+      <span class="text-body-2">{{ item.messages_read || 0 }}</span>
     </template>
 
     <!-- Actions Column (Handover 0235: ActionIcons Integration) -->
@@ -190,14 +201,17 @@ const emitStaleWarning = (job) => {
 // Initialize staleness monitor
 useStalenessMonitor(computed(() => props.agents), emitStaleWarning)
 
-// Table headers configuration (Handover 0234: Removed health_status - now in StatusChip)
+// Table headers configuration (Handover 0240b: 8-column structure)
 const headers = [
   { title: 'Agent Type', key: 'agent_type', sortable: true },
-  { title: 'Agent Name', key: 'agent_name', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Messages', key: 'messages', sortable: false },
-  { title: 'Mission Tracking', key: 'mission_tracking', sortable: false },
-  { title: 'Actions', key: 'actions', sortable: false },
+  { title: 'Agent ID', key: 'agent_id', sortable: false },
+  { title: 'Agent Status', key: 'status', sortable: true },
+  { title: 'Job Read', key: 'job_read', sortable: false, align: 'center' },
+  { title: 'Job Acknowledged', key: 'job_acknowledged', sortable: false, align: 'center' },
+  { title: 'Messages Sent', key: 'messages_sent', sortable: true, align: 'center' },
+  { title: 'Messages Waiting', key: 'messages_waiting', sortable: true, align: 'center' },
+  { title: 'Messages Read', key: 'messages_read', sortable: true, align: 'center' },
+  { title: '', key: 'actions', sortable: false },
 ]
 
 // Handle row click event
@@ -373,5 +387,14 @@ function canCopyPrompt(agent) {
 
 .agent-table-view :deep(.v-btn:disabled .v-icon) {
   color: grey !important;
+}
+
+/* Handover 0240b: Agent ID styling */
+.agent-id {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 </style>
