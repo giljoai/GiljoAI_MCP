@@ -1,12 +1,10 @@
 # Handover 0234: Agent Status Enhancements
 
-**Status**: ✅ COMPLETE
+**Status**: Ready for Implementation
 **Priority**: High
 **Estimated Effort**: 4 hours
-**Actual Effort**: 3.5 hours
-**Completed**: 2025-11-21
 **Dependencies**: Handover 0226 (backend table view endpoint)
-**Part of**: Visual Refactor Series (0225-0240)
+**Part of**: Visual Refactor Series (0225-0237)
 
 ---
 
@@ -160,34 +158,696 @@ computed: {
 
 ## Implementation Plan
 
-[Original implementation plan sections 1-5 omitted for brevity - see original file]
+### 1. Status Icon Configuration
+
+**File**: `frontend/src/utils/statusConfig.js` (NEW)
+
+Create centralized status configuration:
+
+```javascript
+/**
+ * Status chip configuration for agent jobs
+ */
+export const STATUS_CONFIG = {
+  waiting: {
+    icon: 'mdi-clock-outline',
+    color: 'grey',
+    label: 'Waiting',
+    description: 'Agent is waiting to start'
+  },
+  working: {
+    icon: 'mdi-cog',
+    color: 'primary',
+    label: 'Working',
+    description: 'Agent is actively working'
+  },
+  blocked: {
+    icon: 'mdi-alert-circle',
+    color: 'orange',
+    label: 'Blocked',
+    description: 'Agent is blocked waiting for input'
+  },
+  complete: {
+    icon: 'mdi-check-circle',
+    color: 'success',
+    label: 'Complete',
+    description: 'Agent has completed successfully'
+  },
+  failed: {
+    icon: 'mdi-close-circle',
+    color: 'error',
+    label: 'Failed',
+    description: 'Agent has failed'
+  },
+  cancelled: {
+    icon: 'mdi-cancel',
+    color: 'grey',
+    label: 'Cancelled',
+    description: 'Agent was cancelled by user'
+  },
+  decommissioned: {
+    icon: 'mdi-archive',
+    color: 'grey darken-2',
+    label: 'Decommissioned',
+    description: 'Agent has been decommissioned'
+  }
+};
+
+/**
+ * Health status configuration
+ */
+export const HEALTH_CONFIG = {
+  healthy: {
+    icon: null,  // No indicator shown
+    color: 'success',
+    label: 'Healthy',
+    showIndicator: false
+  },
+  warning: {
+    icon: 'mdi-alert-circle',
+    color: 'warning',
+    label: 'Warning',
+    showIndicator: true,
+    dotColor: 'yellow darken-2'
+  },
+  critical: {
+    icon: 'mdi-alert',
+    color: 'error',
+    label: 'Critical',
+    showIndicator: true,
+    dotColor: 'red',
+    pulse: true  // Enable pulse animation
+  },
+  timeout: {
+    icon: 'mdi-wifi-off',
+    color: 'grey',
+    label: 'Timeout',
+    showIndicator: true,
+    dotColor: 'grey'
+  },
+  unknown: {
+    icon: 'mdi-help-circle',
+    color: 'grey lighten-1',
+    label: 'Unknown',
+    showIndicator: false
+  }
+};
+
+/**
+ * Staleness threshold in minutes
+ */
+export const STALENESS_THRESHOLD = 10;
+
+/**
+ * Get status configuration
+ */
+export function getStatusConfig(status) {
+  return STATUS_CONFIG[status] || STATUS_CONFIG.waiting;
+}
+
+/**
+ * Get health configuration
+ */
+export function getHealthConfig(healthStatus) {
+  return HEALTH_CONFIG[healthStatus] || HEALTH_CONFIG.unknown;
+}
+
+/**
+ * Check if job is stale
+ */
+export function isJobStale(lastProgressAt, status) {
+  if (!lastProgressAt) return false;
+
+  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned'];
+  if (terminalStates.includes(status)) return false;
+
+  const now = new Date();
+  const lastProgress = new Date(lastProgressAt);
+  const minutesSince = (now - lastProgress) / (1000 * 60);
+
+  return minutesSince > STALENESS_THRESHOLD;
+}
+
+/**
+ * Format last activity time
+ */
+export function formatLastActivity(lastProgressAt) {
+  if (!lastProgressAt) return 'Never';
+
+  const now = new Date();
+  const lastProgress = new Date(lastProgressAt);
+  const minutesSince = Math.floor((now - lastProgress) / (1000 * 60));
+
+  if (minutesSince < 1) return 'Just now';
+  if (minutesSince === 1) return '1 minute ago';
+  if (minutesSince < 60) return `${minutesSince} minutes ago`;
+
+  const hoursSince = Math.floor(minutesSince / 60);
+  if (hoursSince === 1) return '1 hour ago';
+  if (hoursSince < 24) return `${hoursSince} hours ago`;
+
+  const daysSince = Math.floor(hoursSince / 24);
+  if (daysSince === 1) return '1 day ago';
+  return `${daysSince} days ago`;
+}
+```
+
+### 2. Enhanced Status Chip Component
+
+**File**: `frontend/src/components/StatusBoard/StatusChip.vue` (NEW)
+
+Create enhanced status chip with health indicators:
+
+```vue
+<template>
+  <div class="status-chip-wrapper d-flex align-center">
+    <!-- Main status chip -->
+    <v-tooltip bottom>
+      <template #activator="{ on, attrs }">
+        <v-chip
+          small
+          :color="statusConfig.color"
+          dark
+          v-bind="attrs"
+          v-on="on"
+          class="status-chip"
+        >
+          <v-icon left small>{{ statusConfig.icon }}</v-icon>
+          {{ statusConfig.label }}
+
+          <!-- Staleness indicator -->
+          <v-icon
+            v-if="isStale"
+            right
+            small
+            color="white"
+            class="ml-1"
+          >
+            mdi-clock-alert
+          </v-icon>
+        </v-chip>
+      </template>
+      <span>
+        {{ statusConfig.description }}
+        <template v-if="lastActivity">
+          <br>Last activity: {{ lastActivity }}
+        </template>
+        <template v-if="isStale">
+          <br><strong>Warning:</strong> No activity for {{ minutesSinceProgress }} minutes
+        </template>
+      </span>
+    </v-tooltip>
+
+    <!-- Health indicator (dot overlay) -->
+    <div
+      v-if="healthConfig.showIndicator"
+      :class="[
+        'health-indicator',
+        { 'pulse-animation': healthConfig.pulse }
+      ]"
+      :style="{ backgroundColor: getHealthDotColor() }"
+    >
+      <v-tooltip bottom>
+        <template #activator="{ on, attrs }">
+          <div v-bind="attrs" v-on="on"></div>
+        </template>
+        <span>
+          Health: {{ healthConfig.label }}
+          <template v-if="healthFailureCount > 0">
+            <br>Consecutive failures: {{ healthFailureCount }}
+          </template>
+        </span>
+      </v-tooltip>
+    </div>
+  </div>
+</template>
+
+<script>
+import { computed } from 'vue';
+import {
+  getStatusConfig,
+  getHealthConfig,
+  isJobStale,
+  formatLastActivity
+} from '@/utils/statusConfig';
+
+export default {
+  name: 'StatusChip',
+
+  props: {
+    status: {
+      type: String,
+      required: true,
+      validator: (value) => {
+        const validStatuses = ['waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'];
+        return validStatuses.includes(value);
+      }
+    },
+    healthStatus: {
+      type: String,
+      default: 'unknown',
+      validator: (value) => {
+        const validHealth = ['unknown', 'healthy', 'warning', 'critical', 'timeout'];
+        return validHealth.includes(value);
+      }
+    },
+    lastProgressAt: {
+      type: String,
+      default: null
+    },
+    healthFailureCount: {
+      type: Number,
+      default: 0
+    },
+    minutesSinceProgress: {
+      type: Number,
+      default: null
+    }
+  },
+
+  setup(props) {
+    const statusConfig = computed(() => getStatusConfig(props.status));
+    const healthConfig = computed(() => getHealthConfig(props.healthStatus));
+
+    const isStale = computed(() => {
+      return isJobStale(props.lastProgressAt, props.status);
+    });
+
+    const lastActivity = computed(() => {
+      return formatLastActivity(props.lastProgressAt);
+    });
+
+    const getHealthDotColor = () => {
+      return healthConfig.value.dotColor || healthConfig.value.color;
+    };
+
+    return {
+      statusConfig,
+      healthConfig,
+      isStale,
+      lastActivity,
+      getHealthDotColor
+    };
+  }
+};
+</script>
+
+<style scoped>
+.status-chip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status-chip {
+  position: relative;
+}
+
+.health-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+.pulse-animation {
+  animation: pulse 2s ease-in-out infinite;
+}
+</style>
+```
+
+### 3. Integrate into StatusBoardTable
+
+**File**: `frontend/src/components/StatusBoard/StatusBoardTable.vue`
+
+Replace simple status chip with enhanced component:
+
+```vue
+<template>
+  <v-data-table
+    :headers="tableHeaders"
+    :items="tableRows"
+    class="status-board-table"
+  >
+    <!-- Agent Status column -->
+    <template #item.status="{ item }">
+      <StatusChip
+        :status="item.status"
+        :health-status="item.health_status"
+        :last-progress-at="item.last_progress_at"
+        :health-failure-count="item.health_failure_count"
+        :minutes-since-progress="item.minutes_since_progress"
+      />
+    </template>
+
+    <!-- Other columns ... -->
+  </v-data-table>
+</template>
+
+<script>
+import StatusChip from './StatusChip.vue';
+
+export default {
+  name: 'StatusBoardTable',
+
+  components: {
+    StatusChip
+  },
+
+  // ... rest of component
+};
+</script>
+```
+
+### 4. Add Staleness Monitoring
+
+**File**: `frontend/src/composables/useStalenessMonitor.js` (NEW)
+
+Create composable for staleness detection:
+
+```javascript
+import { ref, onMounted, onUnmounted } from 'vue';
+import { isJobStale } from '@/utils/statusConfig';
+
+/**
+ * Monitor job staleness and emit warnings
+ */
+export function useStalenessMonitor(jobs, emitStaleWarning) {
+  const stalenessCheckInterval = ref(null);
+
+  const checkStaleness = () => {
+    jobs.value.forEach(job => {
+      const wasStale = job._wasStale || false;
+      const isStale = isJobStale(job.last_progress_at, job.status);
+
+      // Emit warning if job became stale
+      if (isStale && !wasStale) {
+        emitStaleWarning(job);
+      }
+
+      // Track staleness state
+      job._wasStale = isStale;
+    });
+  };
+
+  onMounted(() => {
+    // Check every 30 seconds
+    stalenessCheckInterval.value = setInterval(checkStaleness, 30000);
+  });
+
+  onUnmounted(() => {
+    if (stalenessCheckInterval.value) {
+      clearInterval(stalenessCheckInterval.value);
+    }
+  });
+
+  return {
+    checkStaleness
+  };
+}
+```
+
+### 5. Add Staleness Warning Snackbar
+
+**File**: `frontend/src/components/StatusBoard/StatusBoardTable.vue`
+
+Integrate staleness monitoring:
+
+```vue
+<template>
+  <div>
+    <!-- Status board table -->
+    <v-data-table ...>
+      <!-- ... -->
+    </v-data-table>
+
+    <!-- Staleness warning snackbar -->
+    <v-snackbar
+      v-model="showStaleWarning"
+      color="warning"
+      timeout="5000"
+      multi-line
+    >
+      <v-icon left>mdi-clock-alert</v-icon>
+      <strong>{{ staleAgentName }}</strong> has been inactive for over 10 minutes
+      <template #action="{ attrs }">
+        <v-btn
+          text
+          v-bind="attrs"
+          @click="showStaleWarning = false"
+        >
+          Dismiss
+        </v-btn>
+      </template>
+    </v-snackbar>
+  </div>
+</template>
+
+<script>
+import { ref } from 'vue';
+import { useStalenessMonitor } from '@/composables/useStalenessMonitor';
+
+export default {
+  setup() {
+    const tableRows = ref([]);
+    const showStaleWarning = ref(false);
+    const staleAgentName = ref('');
+
+    const emitStaleWarning = (job) => {
+      staleAgentName.value = job.agent_name || job.agent_type;
+      showStaleWarning.value = true;
+    };
+
+    useStalenessMonitor(tableRows, emitStaleWarning);
+
+    return {
+      tableRows,
+      showStaleWarning,
+      staleAgentName
+    };
+  }
+};
+</script>
+```
 
 ---
 
 ## Cleanup Checklist
 
 **Old Code Removed**:
-- [x] No commented-out blocks remaining
-- [x] No orphaned imports (check with linter)
-- [x] No unused functions or variables
-- [x] No `// TODO` or `// FIXME` comments without tickets
+- [ ] No commented-out blocks remaining
+- [ ] No orphaned imports (check with linter)
+- [ ] No unused functions or variables
+- [ ] No `// TODO` or `// FIXME` comments without tickets
 
 **Integration Verified**:
-- [x] Existing components reused where possible
-- [x] No duplicate functionality created
-- [x] Shared logic extracted to composables (if applicable)
-- [x] No zombie code (per QUICK_LAUNCH.txt line 28)
+- [ ] Existing components reused where possible
+- [ ] No duplicate functionality created
+- [ ] Shared logic extracted to composables (if applicable)
+- [ ] No zombie code (per QUICK_LAUNCH.txt line 28)
 
 **Testing**:
-- [x] All imports resolved correctly
-- [x] No linting errors (eslint/ruff)
-- [x] Coverage maintained (>80%)
+- [ ] All imports resolved correctly
+- [ ] No linting errors (eslint/ruff)
+- [ ] Coverage maintained (>80%)
 
 ---
 
 ## Testing Criteria
 
-[Original testing sections omitted for brevity - see original file]
+### 1. Status Icon Tests
+
+**File**: `frontend/tests/unit/StatusChip.spec.js`
+
+```javascript
+import { mount } from '@vue/test-utils';
+import StatusChip from '@/components/StatusBoard/StatusChip.vue';
+
+describe('StatusChip.vue', () => {
+  it('renders correct icon for each status', () => {
+    const statuses = ['waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'];
+    const expectedIcons = [
+      'mdi-clock-outline',
+      'mdi-cog',
+      'mdi-alert-circle',
+      'mdi-check-circle',
+      'mdi-close-circle',
+      'mdi-cancel',
+      'mdi-archive'
+    ];
+
+    statuses.forEach((status, index) => {
+      const wrapper = mount(StatusChip, {
+        props: { status }
+      });
+      expect(wrapper.find('.v-icon').text()).toBe(expectedIcons[index]);
+    });
+  });
+
+  it('renders correct color for each status', () => {
+    const wrapper = mount(StatusChip, {
+      props: { status: 'working' }
+    });
+    expect(wrapper.find('.v-chip').classes()).toContain('primary');
+  });
+
+  it('shows health indicator for non-healthy states', () => {
+    const wrapper = mount(StatusChip, {
+      props: {
+        status: 'working',
+        healthStatus: 'warning'
+      }
+    });
+    expect(wrapper.find('.health-indicator').exists()).toBe(true);
+  });
+
+  it('does not show health indicator for healthy state', () => {
+    const wrapper = mount(StatusChip, {
+      props: {
+        status: 'working',
+        healthStatus: 'healthy'
+      }
+    });
+    expect(wrapper.find('.health-indicator').exists()).toBe(false);
+  });
+
+  it('applies pulse animation for critical health', () => {
+    const wrapper = mount(StatusChip, {
+      props: {
+        status: 'working',
+        healthStatus: 'critical'
+      }
+    });
+    const healthIndicator = wrapper.find('.health-indicator');
+    expect(healthIndicator.classes()).toContain('pulse-animation');
+  });
+
+  it('shows staleness indicator for stale jobs', () => {
+    const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+
+    const wrapper = mount(StatusChip, {
+      props: {
+        status: 'working',
+        lastProgressAt: elevenMinutesAgo,
+        minutesSinceProgress: 11
+      }
+    });
+
+    expect(wrapper.find('.mdi-clock-alert').exists()).toBe(true);
+  });
+
+  it('does not show staleness for terminal states', () => {
+    const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+
+    const wrapper = mount(StatusChip, {
+      props: {
+        status: 'complete',
+        lastProgressAt: elevenMinutesAgo,
+        minutesSinceProgress: 11
+      }
+    });
+
+    expect(wrapper.find('.mdi-clock-alert').exists()).toBe(false);
+  });
+
+  it('shows tooltip with last activity time', async () => {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    const wrapper = mount(StatusChip, {
+      props: {
+        status: 'working',
+        lastProgressAt: fiveMinutesAgo
+      }
+    });
+
+    await wrapper.find('.v-chip').trigger('mouseenter');
+    expect(wrapper.text()).toContain('Last activity: 5 minutes ago');
+  });
+});
+```
+
+### 2. Staleness Monitor Tests
+
+**File**: `frontend/tests/unit/useStalenessMonitor.spec.js`
+
+```javascript
+import { ref } from 'vue';
+import { useStalenessMonitor } from '@/composables/useStalenessMonitor';
+
+describe('useStalenessMonitor', () => {
+  it('emits warning when job becomes stale', () => {
+    const jobs = ref([
+      {
+        job_id: '123',
+        status: 'working',
+        last_progress_at: new Date(Date.now() - 11 * 60 * 1000).toISOString()
+      }
+    ]);
+
+    const warnings = [];
+    const emitStaleWarning = (job) => warnings.push(job);
+
+    const { checkStaleness } = useStalenessMonitor(jobs, emitStaleWarning);
+    checkStaleness();
+
+    expect(warnings.length).toBe(1);
+    expect(warnings[0].job_id).toBe('123');
+  });
+
+  it('does not emit duplicate warnings for same job', () => {
+    const jobs = ref([
+      {
+        job_id: '123',
+        status: 'working',
+        last_progress_at: new Date(Date.now() - 11 * 60 * 1000).toISOString()
+      }
+    ]);
+
+    const warnings = [];
+    const emitStaleWarning = (job) => warnings.push(job);
+
+    const { checkStaleness } = useStalenessMonitor(jobs, emitStaleWarning);
+    checkStaleness();  // First check
+    checkStaleness();  // Second check
+
+    expect(warnings.length).toBe(1);  // Only one warning
+  });
+
+  it('ignores terminal state jobs', () => {
+    const jobs = ref([
+      {
+        job_id: '123',
+        status: 'complete',
+        last_progress_at: new Date(Date.now() - 11 * 60 * 1000).toISOString()
+      }
+    ]);
+
+    const warnings = [];
+    const emitStaleWarning = (job) => warnings.push(job);
+
+    const { checkStaleness } = useStalenessMonitor(jobs, emitStaleWarning);
+    checkStaleness();
+
+    expect(warnings.length).toBe(0);
+  });
+});
+```
 
 ---
 
