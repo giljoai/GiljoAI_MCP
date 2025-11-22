@@ -15,7 +15,8 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from .database import DatabaseManager
-from .models import Job, MCPAgentJob
+from .models import MCPAgentJob
+Job = MCPAgentJob  # Alias for backward compatibility (Handover 0233)
 
 
 logger = logging.getLogger(__name__)
@@ -261,6 +262,14 @@ class AgentJobManager:
                 self._validate_status_transition(job.status, status)
                 job.status = status
 
+            # Handover 0233: Set mission_acknowledged_at on first transition to 'working'
+            if status == 'working' and job.mission_acknowledged_at is None:
+                job.mission_acknowledged_at = datetime.now(timezone.utc)
+                logger.info(
+                    f"[MISSION_TRACKING] Set mission_acknowledged_at for job {job_id}",
+                    extra={"job_id": job_id, "tenant_key": tenant_key}
+                )
+
             # Add message if provided
             if metadata and "message" in metadata:
                 message = self._create_message(metadata["message"])
@@ -272,6 +281,92 @@ class AgentJobManager:
         logger.info(f"Updated job {job_id} status to {status} for tenant {tenant_key}")
 
         return job
+
+    async def update_status(
+        self,
+        job_id: str,
+        new_status: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Async version of update_job_status for WebSocket integration (Handover 0233 Phase 5).
+
+        Updates job status and tracks mission_acknowledged_at when transitioning to 'working'.
+        Emits WebSocket events for real-time UI updates.
+
+        Args:
+            job_id: Job ID to update
+            new_status: New status (waiting, working, complete, failed, blocked, cancelled, decommissioned)
+            tenant_key: Tenant key for isolation
+
+        Raises:
+            ValueError: If job not found or status transition invalid
+        """
+        from datetime import datetime, timezone
+        from sqlalchemy import and_, select
+        from giljo_mcp.models import MCPAgentJob
+
+        async with self.db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            result = await session.execute(
+                select(MCPAgentJob).where(
+                    and_(
+                        MCPAgentJob.job_id == job_id,
+                        MCPAgentJob.tenant_key == tenant_key,
+                    )
+                )
+            )
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+
+            # Validate status transition
+            if job.status != new_status:
+                self._validate_status_transition(job.status, new_status)
+                job.status = new_status
+
+            # Handover 0233: Set mission_acknowledged_at on first transition to 'working'
+            if new_status == 'working' and job.mission_acknowledged_at is None:
+                job.mission_acknowledged_at = datetime.now(timezone.utc)
+
+                await session.commit()
+
+                # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
+                try:
+                    # Import websocket manager
+                    from api.app import state
+
+                    ws_manager = getattr(state, "websocket_manager", None)
+
+                    if ws_manager:
+                        await ws_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="job:mission_acknowledged",
+                            data={
+                                "job_id": job_id,
+                                "mission_acknowledged_at": job.mission_acknowledged_at.isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            },
+                        )
+                        logger.info(
+                            f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
+                            extra={
+                                "job_id": job_id,
+                                "tenant_key": tenant_key,
+                                "mission_acknowledged_at": job.mission_acknowledged_at.isoformat()
+                            }
+                        )
+                except Exception as ws_error:
+                    # Non-blocking
+                    logger.warning(
+                        f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}",
+                        extra={"job_id": job_id}
+                    )
+            else:
+                await session.commit()
+
+        logger.info(f"Updated job {job_id} status to {new_status} for tenant {tenant_key}")
 
     def complete_job(
         self,
