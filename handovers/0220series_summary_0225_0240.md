@@ -348,7 +348,63 @@ These components are STATUS BOARD TABLE components only - **NOT the complete GUI
 
 ---
 
-## Combined Impact (Handovers 0225-0235)
+## Handover 0240d: GUI Redesign Documentation (Completed)
+
+**Completed**: 2025-11-22 | **Commits**: 9de014c | **Effort**: 2 hours
+**Status**: ✅ Complete (0240a/0240b deferred, 0240c to be completed by CLI agent)
+
+### What Was Built
+
+Complete documentation for StatusBoard components and dashboard workflows. Based on components from Handovers 0234-0235, with framework for future 0240a/0240b integration.
+
+**Documentation Created**:
+- **User Guide** (`docs/user_guides/dashboard_guide.md`, 280 lines)
+  - Status board table column reference (9 columns)
+  - Agent interaction workflows (5 action types)
+  - Mission tracking documentation
+  - Real-time WebSocket updates explanation
+  - Claude Code CLI mode documentation
+  - Troubleshooting guide and keyboard shortcuts
+
+- **Component API Reference** (`docs/components/status_board_components.md`, 660 lines)
+  - StatusChip.vue: Props, visual elements, styling
+  - ActionIcons.vue: Props, events, 5 action buttons, confirmation dialogs
+  - JobReadAckIndicators.vue: Props, visual elements
+  - AgentTableView.vue: Props, events, table columns, sorting
+  - statusConfig.js: Utility functions and configurations
+  - actionConfig.js: Action availability logic
+  - useStalenessMonitor.js: Composable documentation
+  - 15+ verified code examples
+
+- **CLAUDE.md Updates** (+30 lines)
+  - Added GUI Redesign entry to Recent Updates
+  - Updated Key Folders with StatusBoard component hierarchy
+  - Added component documentation workflow
+
+**Files Modified**: 3 files (1 modified, 2 created)
+**Total Lines**: 969 lines added
+
+### Key Decisions
+
+- **No screenshots yet**: Deferred until 0240c integration testing validates final UI state
+- **Documented current state**: Based on existing 0234-0235 components
+- **0240a/0240b deferred**: Documentation prepared, awaiting future implementation
+- **All code examples verified**: Checked against actual component source
+
+### Installation Impact
+
+None - pure documentation changes.
+
+### Notes
+
+- Documentation framework ready for 0240a/0240b integration
+- Screenshots to be added after 0240c testing completes
+- All internal links and code examples verified
+- Production-ready and awaiting merge
+
+---
+
+## Combined Impact (Handovers 0225-0235 + 0240d)
 
 ### Test Coverage
 
@@ -453,6 +509,14 @@ These components are STATUS BOARD TABLE components only - **NOT the complete GUI
 - Tests: 7 files (+1,754 lines)
 
 **Total Handovers 0225-0235**: 62 files modified/created, ~9,270 lines added
+
+### Handover 0240d (3 files, +969 lines)
+**Documentation**:
+- `CLAUDE.md` (modified, +30 lines)
+- `docs/user_guides/dashboard_guide.md` (+280 lines, new)
+- `docs/components/status_board_components.md` (+660 lines, new)
+
+**Total Handovers 0225-0235 + 0240d**: 65 files modified/created, ~10,239 lines added
 
 ---
 
@@ -607,11 +671,11 @@ These components are STATUS BOARD TABLE components only - **NOT the complete GUI
 - [Handover 0232](../handovers/0232_investigation_report.md) - DEPRECATED (complete via 0231)
 - [Handover 0233](../handovers/0233_job_read_acknowledged_indicators.md) - ✅ COMPLETE
 
-**Planned Handovers (0240 Series)**:
-- [Handover 0240a](../handovers/0240a_launch_tab_visual_redesign.md) - 📋 Planning Complete
-- [Handover 0240b](../handovers/0240b_implement_tab_component_refactor.md) - 📋 Planning Complete
-- [Handover 0240c](../handovers/0240c_gui_redesign_integration_testing.md) - 📋 Planning Complete
-- [Handover 0240d](../handovers/0240d_gui_redesign_documentation.md) - 📋 Planning Complete
+**0240 Series Handovers**:
+- [Handover 0240a](../handovers/0240a_launch_tab_visual_redesign.md) - 📋 Deferred (Launch Tab visual redesign)
+- [Handover 0240b](../handovers/0240b_implement_tab_component_refactor.md) - 📋 Deferred (Implement Tab component refactor)
+- [Handover 0240c](../handovers/0240c_gui_redesign_integration_testing.md) - 📋 Pending CLI agent (integration testing)
+- [Handover 0240d](../handovers/completed/0240d_gui_redesign_documentation-C.md) - ✅ Complete (documentation)
 - [0240 Series Execution Plan](../handovers/0240_series_execution_plan.md)
 
 **Postponed Handovers** (to be refactored after 0240 series):
@@ -650,11 +714,16 @@ These components are STATUS BOARD TABLE components only - **NOT the complete GUI
 **Git Commits (Handovers 0234-0235)**:
 - [To be added after completion]
 
+**Git Commits (Handover 0240d)**:
+- 9de014c - docs: Complete GUI redesign documentation (Handover 0240d)
+
 ---
 
-**Last Updated**: 2025-11-21
+**Last Updated**: 2025-11-22
 **Series Status**:
 - ✅ Handovers 0225-0233: Complete (8 handovers, 0232 deprecated)
 - ✅ Handovers 0234-0235: Complete (table components only, not full GUI redesign)
-- 📋 Handovers 0240a-0240d: Planning complete, ready for execution
+- ✅ Handover 0240d: Complete (documentation for StatusBoard components)
+- 📋 Handovers 0240a-0240b: Deferred (GUI visual redesign, to be implemented)
+- 📋 Handover 0240c: To be completed by CLI agent (integration testing)
 - ⏸️ Handovers 0236-0239: Postponed (to be refactored after 0240 series)
