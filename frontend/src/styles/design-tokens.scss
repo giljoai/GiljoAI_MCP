@@ -1,0 +1,199 @@
+/**
+ * Design Tokens for GiljoAI MCP Dashboard
+ *
+ * Extracted from Nicepage design reference for consistent styling across UI components.
+ * Handover 0243a: Design Token Extraction & LaunchTab Container
+ *
+ * Naming Convention: $category-element-variant
+ * Organization: Colors, Spacing, Typography, Borders, Shadows
+ */
+
+// =========================================================================
+// 1. COLOR TOKENS - Background Colors
+// =========================================================================
+
+// Primary background colors
+$color-background-primary: #0e1c2d; // Dark navy - body background
+$color-background-secondary: rgba(14, 28, 45, 0.5); // Translucent navy - containers
+$color-background-tertiary: rgba(20, 35, 50, 0.8); // Panel content background
+
+// Container backgrounds (required for LaunchTab specifications)
+$color-container-background: rgba(14, 28, 45, 0.5); // Unified container background
+$color-container-border: rgba(255, 255, 255, 0.2); // Container border color
+$color-panel-background: rgba(20, 35, 50, 0.8); // Panel content background
+
+// =========================================================================
+// 2. COLOR TOKENS - Border Colors
+// =========================================================================
+
+$color-border-primary: $color-container-border; // Main container borders (20% opacity)
+$color-border-secondary: rgba(255, 255, 255, 0.1); // Table borders (10% opacity)
+$color-border-tertiary: rgba(255, 255, 255, 0.05); // Row separators (5% opacity)
+
+// =========================================================================
+// 3. COLOR TOKENS - Text Colors
+// =========================================================================
+
+$color-text-primary: #e0e0e0; // Main text
+$color-text-secondary: #999; // Labels, headers
+$color-text-tertiary: #ccc; // Subdued text
+$color-text-highlight: #ffd700; // Yellow - status, waiting
+
+// =========================================================================
+// 4. COLOR TOKENS - Agent Avatar Colors
+// =========================================================================
+
+$color-agent-orchestrator: #d4a574; // Gold/tan - primary orchestrator color
+$color-agent-analyzer: #e1564b; // Red
+$color-agent-implementor: #3493bf; // Blue
+$color-agent-tester: #d4a574; // Gold/tan variant
+$color-agent-researcher: #27ae60; // Green
+$color-agent-reviewer: #9b59b6; // Purple
+
+// Avatar text color (light)
+$color-avatar-text-light: #000; // Text on light backgrounds (orchestrator)
+
+// =========================================================================
+// 5. COLOR TOKENS - Status Colors
+// =========================================================================
+
+$color-status-waiting: #ffd700; // Yellow italic
+$color-status-working: #ffd700; // Yellow italic
+$color-status-complete: #67bd6d; // Green
+$color-status-failed: #e53935; // Red
+$color-status-cancelled: #ff9800; // Orange
+
+// =========================================================================
+// 6. SPACING & SIZING TOKENS
+// =========================================================================
+
+// Container spacing
+$spacing-container-padding: 30px; // Main container internal padding
+$spacing-container-border-radius: 16px; // Rounded corners
+
+// Panel spacing
+$spacing-panel-gap: 24px; // Gap between 3 panels
+$spacing-panel-border-radius: 10px; // Panel content rounded corners
+$spacing-panel-content-padding: 20px; // Panel internal padding
+$spacing-panel-min-height: 450px; // Minimum panel height
+
+// Button spacing
+$spacing-button-border-radius: 10px; // Standard button radius
+$spacing-button-border-radius-small: 6px; // Message composer button radius
+
+// Table spacing
+$spacing-table-cell-padding: 16px; // Cell padding
+$spacing-table-header-padding: 12px 16px; // Header cell padding
+
+// =========================================================================
+// 7. TYPOGRAPHY TOKENS
+// =========================================================================
+
+// Font family
+$typography-font-primary: "Cairo", sans-serif;
+
+// Font sizes
+$typography-font-size-header: 1.125rem; // 18px - Panel headers
+$typography-font-size-body: 0.875rem; // 14px - Body text
+$typography-font-size-small: 0.75rem; // 12px - Table headers
+$typography-font-size-tiny: 0.625rem; // 10px - Agent ID
+
+// Panel header typography
+$typography-panel-header-size: 1.125rem; // 18px
+$typography-panel-header-weight: 500; // Medium weight
+$typography-panel-header-color: $color-text-secondary; // #999
+
+// Panel content typography
+$typography-panel-content-size: 0.875rem; // 14px
+$typography-panel-content-weight: 400; // Normal weight
+$typography-panel-content-color: $color-text-primary; // #e0e0e0
+
+// Font weights
+$typography-font-weight-normal: 400;
+$typography-font-weight-medium: 500;
+$typography-font-weight-bold: 700;
+
+// =========================================================================
+// 8. BORDER TOKENS
+// =========================================================================
+
+// Border widths
+$border-width-thin: 1px; // Row separators
+$border-width-standard: 2px; // Container borders
+$border-width-thick: 3px; // Active tab borders
+
+// Border radius
+$border-radius-small: 8px; // Input fields
+$border-radius-medium: 10px; // Panels, buttons
+$border-radius-large: 16px; // Main container
+$border-radius-pill: 24px; // Orchestrator card
+
+// Container border (complete specification)
+$border-container: 2px solid rgba(255, 255, 255, 0.2);
+
+// Border radius tokens (aliases)
+$radius-container: 16px; // Main container border-radius
+$radius-panel-content: 10px; // Panel content border-radius
+$radius-small: 8px; // Small radius
+$radius-medium: 10px; // Medium radius
+$radius-large: 16px; // Large radius
+$radius-pill: 24px; // Pill-shaped radius
+$radius-scrollbar: 4px; // Scrollbar border-radius
+
+// =========================================================================
+// 9. UI COMPONENT COLORS (Orchestrator Card, Scrollbars, etc)
+// =========================================================================
+
+// Orchestrator card background
+$color-orchestrator-card-background: rgba(255, 255, 255, 0.05); // Light overlay background
+$color-orchestrator-card-border: rgba(255, 255, 255, 0.1); // Light border
+
+// Scrollbar colors
+$color-scrollbar-track-background: rgba(0, 0, 0, 0.2); // Scrollbar track
+$color-scrollbar-thumb-background: rgba(255, 255, 255, 0.2); // Scrollbar thumb
+$color-scrollbar-thumb-hover-background: rgba(255, 255, 255, 0.3); // Scrollbar thumb on hover
+
+// =========================================================================
+// 10. SHADOW TOKENS
+// =========================================================================
+
+$shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.1);
+$shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.15);
+$shadow-strong: 0 8px 16px rgba(0, 0, 0, 0.2);
+
+// =========================================================================
+// 11. MIXINS - Reusable Style Patterns
+// =========================================================================
+
+@mixin container-base {
+  border: $border-container;
+  border-radius: $radius-container;
+  padding: $spacing-container-padding;
+  background: $color-container-background;
+}
+
+@mixin panel-header-base {
+  font-size: $typography-panel-header-size;
+  font-weight: $typography-panel-header-weight;
+  color: $typography-panel-header-color;
+  margin-bottom: 12px;
+}
+
+@mixin panel-content-base {
+  background: $color-panel-background;
+  border-radius: $radius-panel-content;
+  padding: $spacing-panel-content-padding;
+  min-height: $spacing-panel-min-height;
+  font-size: $typography-panel-content-size;
+  font-weight: $typography-panel-content-weight;
+  color: $typography-panel-content-color;
+}
+
+@mixin orchestrator-card-base {
+  display: flex;
+  align-items: center;
+  background: $color-orchestrator-card-background;
+  border: 1px solid $color-orchestrator-card-border;
+  border-radius: $radius-pill;
+  padding: 8px 16px;
+}

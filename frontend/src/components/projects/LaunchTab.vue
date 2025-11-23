@@ -63,8 +63,8 @@
           <div class="panel-content">
             <!-- Orchestrator Card -->
             <div class="orchestrator-card">
-              <v-avatar color="#d4a574" size="32" class="agent-avatar">
-                <span style="color: #000; font-weight: bold;">Or</span>
+              <v-avatar :color="orchestratorAvatarColor" size="32" class="agent-avatar">
+                <span class="orchestrator-text">Or</span>
               </v-avatar>
               <span class="agent-name">Orchestrator</span>
               <v-icon size="small" class="lock-icon">mdi-lock</v-icon>
@@ -92,18 +92,11 @@
     </div>
 
     <!-- Toast Notification -->
-    <v-snackbar
-      v-model="showToast"
-      :timeout="3000"
-      color="success"
-      location="top"
-    >
+    <v-snackbar v-model="showToast" :timeout="3000" color="success" location="top">
       <v-icon start>mdi-check-circle</v-icon>
       {{ toastMessage }}
       <template #actions>
-        <v-btn variant="text" @click="showToast = false">
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="showToast = false"> Close </v-btn>
       </template>
     </v-snackbar>
   </div>
@@ -132,16 +125,16 @@ const props = defineProps({
     required: true,
     validator: (value) => {
       return value && typeof value === 'object' && ('id' in value || 'project_id' in value)
-    }
+    },
   },
   orchestrator: {
     type: Object,
-    default: null
+    default: null,
   },
   isStaging: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -150,7 +143,7 @@ const emit = defineEmits([
   'cancel-staging',
   'edit-description',
   'edit-mission',
-  'edit-agent-mission'
+  'edit-agent-mission',
 ])
 
 /**
@@ -164,6 +157,11 @@ const projectId = computed(() => {
   }
   return id
 })
+
+/**
+ * Orchestrator avatar color (from design tokens)
+ */
+const orchestratorAvatarColor = computed(() => '#d4a574') // $color-agent-orchestrator
 
 /**
  * WebSocket and Auth Setup
@@ -190,9 +188,9 @@ function getInstanceNumber(agent) {
   const agentType = agent.agent_type?.toLowerCase()
   if (!agentType) return 1
 
-  const sameTypeAgents = agents.value.filter(a => a.agent_type?.toLowerCase() === agentType)
-  const index = sameTypeAgents.findIndex(a =>
-    (a.agent_id || a.job_id) === (agent.agent_id || agent.job_id)
+  const sameTypeAgents = agents.value.filter((a) => a.agent_type?.toLowerCase() === agentType)
+  const index = sameTypeAgents.findIndex(
+    (a) => (a.agent_id || a.job_id) === (agent.agent_id || agent.job_id),
   )
 
   return index + 1
@@ -330,7 +328,7 @@ async function handleStage() {
   try {
     // Generate thin client staging prompt
     const response = await api.prompts.staging(projectId.value, {
-      tool: 'claude-code'
+      tool: 'claude-code',
     })
 
     if (!response.data?.prompt) {
@@ -352,11 +350,10 @@ async function handleStage() {
     const lineCount = prompt.split('\n').length
     console.log('[LaunchTab] Thin client prompt copied:', {
       lines: lineCount,
-      tokens: estimated_prompt_tokens
+      tokens: estimated_prompt_tokens,
     })
 
     emit('stage-project')
-
   } catch (err) {
     console.error('[LaunchTab] Failed to generate prompt:', err)
     toastMessage.value = `Staging failed: ${err.response?.data?.detail || err.message}`
@@ -401,12 +398,19 @@ onMounted(() => {
   }
 
   // Load agents from props if they exist
-  if (props.project.agents && Array.isArray(props.project.agents) && props.project.agents.length > 0) {
-    console.log('[LaunchTab] Loading existing agents from props on mount:', props.project.agents.length)
+  if (
+    props.project.agents &&
+    Array.isArray(props.project.agents) &&
+    props.project.agents.length > 0
+  ) {
+    console.log(
+      '[LaunchTab] Loading existing agents from props on mount:',
+      props.project.agents.length,
+    )
     agents.value = props.project.agents
 
     // Populate agent IDs set to prevent duplicates
-    props.project.agents.forEach(agent => {
+    props.project.agents.forEach((agent) => {
       const agentId = agent.id || agent.job_id
       if (agentId) {
         agentIds.value.add(agentId)
@@ -438,18 +442,25 @@ onUnmounted(() => {
 /**
  * Watchers
  */
-watch(() => props.project.mission, (newMission) => {
-  if (newMission) {
-    missionText.value = newMission
-    readyToLaunch.value = true
-  }
-})
+watch(
+  () => props.project.mission,
+  (newMission) => {
+    if (newMission) {
+      missionText.value = newMission
+      readyToLaunch.value = true
+    }
+  },
+)
 
-watch(() => props.project.agents, (newAgents) => {
-  if (newAgents && Array.isArray(newAgents)) {
-    agents.value = newAgents
-  }
-}, { immediate: true, deep: true })
+watch(
+  () => props.project.agents,
+  (newAgents) => {
+    if (newAgents && Array.isArray(newAgents)) {
+      agents.value = newAgents
+    }
+  },
+  { immediate: true, deep: true },
+)
 
 /**
  * Expose methods for parent component
@@ -475,14 +486,16 @@ defineExpose({
     agents.value = []
     readyToLaunch.value = false
     agentIds.value.clear()
-  }
+  },
 })
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/design-tokens.scss';
+
 .launch-tab-wrapper {
   padding: 20px;
-  background: #0e1c2d;
+  background: $color-background-primary;
   min-height: 100vh;
 
   .top-action-bar {
@@ -497,7 +510,7 @@ defineExpose({
     }
 
     .status-text {
-      color: #ffd700;
+      color: $color-text-highlight;
       font-style: italic;
       font-size: 20px;
       font-weight: 400;
@@ -510,39 +523,39 @@ defineExpose({
   }
 
   .main-container {
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 30px;
-    background: rgba(14, 28, 45, 0.5);
+    border: $border-width-standard solid $color-container-border;
+    border-radius: $border-radius-large;
+    padding: $spacing-container-padding;
+    background: $color-container-background;
 
     .three-panels {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 24px;
+      gap: $spacing-panel-gap;
 
       .panel {
         .panel-header {
-          font-size: 13px;
-          color: #999;
+          font-size: $typography-panel-header-size;
+          color: $color-text-secondary;
           margin-bottom: 12px;
-          font-weight: 400;
+          font-weight: $typography-panel-header-weight;
         }
 
         .panel-content {
-          background: rgba(20, 35, 50, 0.8);
-          border-radius: 8px;
-          padding: 20px;
-          min-height: 450px;
+          background: $color-panel-background;
+          border-radius: $radius-medium;
+          padding: $spacing-panel-content-padding;
+          min-height: $spacing-panel-min-height;
           position: relative;
-          color: #e0e0e0;
-          font-size: 14px;
+          color: $color-text-primary;
+          font-size: $typography-panel-content-size;
           line-height: 1.6;
 
           .edit-icon {
             position: absolute;
             bottom: 16px;
             right: 16px;
-            color: #ccc;
+            color: $color-text-tertiary;
           }
 
           .empty-state {
@@ -574,35 +587,35 @@ defineExpose({
   }
 
   .orchestrator-card {
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    padding: 8px 16px;
+    @include orchestrator-card-base;
     margin-bottom: 24px;
 
     .agent-avatar {
       margin-right: 12px;
     }
 
+    .orchestrator-text {
+      color: $color-avatar-text-light;
+      font-weight: 700;
+    }
+
     .agent-name {
       flex: 1;
-      color: #fff;
+      color: $color-text-primary;
       font-size: 15px;
     }
 
     .lock-icon,
     .info-icon {
       margin-left: 8px;
-      color: #ccc;
+      color: $color-text-tertiary;
     }
   }
 
   .agent-team-section {
     .agent-team-header {
       font-size: 13px;
-      color: #999;
+      color: $color-text-secondary;
       margin-bottom: 12px;
     }
 
@@ -619,16 +632,16 @@ defineExpose({
       }
 
       &::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 4px;
+        background: $color-scrollbar-track-background;
+        border-radius: $radius-scrollbar;
       }
 
       &::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
+        background: $color-scrollbar-thumb-background;
+        border-radius: $radius-scrollbar;
 
         &:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: $color-scrollbar-thumb-hover-background;
         }
       }
     }
