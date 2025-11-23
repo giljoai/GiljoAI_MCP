@@ -537,8 +537,9 @@ defineExpose({
         .panel-header {
           font-size: $typography-panel-header-size;
           color: $color-text-secondary;
-          margin-bottom: 12px;
-          font-weight: $typography-panel-header-weight;
+          margin-bottom: 16px;
+          font-weight: $typography-font-weight-bold;
+          text-transform: capitalize;
         }
 
         .panel-content {
@@ -587,36 +588,50 @@ defineExpose({
   }
 
   .orchestrator-card {
-    @include orchestrator-card-base;
-    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: $border-width-standard solid $color-text-highlight;
+    border-radius: $border-radius-pill;
+    padding: 12px 20px;
+    margin-bottom: 20px;
 
     .agent-avatar {
-      margin-right: 12px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
     .orchestrator-text {
       color: $color-avatar-text-light;
-      font-weight: 700;
+      font-weight: $typography-font-weight-bold;
+      font-size: 14px;
     }
 
     .agent-name {
       flex: 1;
       color: $color-text-primary;
-      font-size: 15px;
+      font-size: $typography-font-size-body;
     }
 
     .lock-icon,
     .info-icon {
-      margin-left: 8px;
       color: $color-text-tertiary;
+      flex-shrink: 0;
     }
   }
 
   .agent-team-section {
     .agent-team-header {
-      font-size: 13px;
+      font-size: $typography-panel-header-size;
       color: $color-text-secondary;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      font-weight: $typography-font-weight-bold;
+      text-transform: capitalize;
     }
 
     .agent-team-list {
