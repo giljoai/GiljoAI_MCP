@@ -35,8 +35,8 @@
           />
 
           <v-alert type="info" variant="tonal" class="mb-3">
-            Password changes are handled by an administrator.
-            You can reset your 4‑digit recovery PIN below.
+            Password changes are handled by an administrator. You can reset your 4‑digit recovery
+            PIN below.
           </v-alert>
 
           <v-text-field
@@ -58,7 +58,7 @@
                 density="comfortable"
                 maxlength="4"
                 counter="4"
-                @input="pin.recovery_pin = pin.recovery_pin.replace(/\D/g, '').slice(0,4)"
+                @input="pin.recovery_pin = pin.recovery_pin.replace(/\D/g, '').slice(0, 4)"
               />
             </v-col>
             <v-col cols="12" md="6">
@@ -69,18 +69,12 @@
                 density="comfortable"
                 maxlength="4"
                 counter="4"
-                @input="pin.confirm_pin = pin.confirm_pin.replace(/\D/g, '').slice(0,4)"
+                @input="pin.confirm_pin = pin.confirm_pin.replace(/\D/g, '').slice(0, 4)"
               />
             </v-col>
           </v-row>
 
-          <v-alert
-            v-if="pinError"
-            type="error"
-            variant="tonal"
-            density="compact"
-            class="mt-2"
-          >
+          <v-alert v-if="pinError" type="error" variant="tonal" density="compact" class="mt-2">
             {{ pinError }}
           </v-alert>
         </v-form>
@@ -89,7 +83,9 @@
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="close" :disabled="saving">Cancel</v-btn>
-        <v-btn color="primary" :loading="saving" :disabled="saving" @click="save">Save Changes</v-btn>
+        <v-btn color="primary" :loading="saving" :disabled="saving" @click="save"
+          >Save Changes</v-btn
+        >
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -158,9 +154,7 @@ async function save() {
 
     // 2) If PIN fields provided, set recovery PIN
     const wantsPinChange =
-      !!pin.value.current_password &&
-      !!pin.value.recovery_pin &&
-      !!pin.value.confirm_pin
+      !!pin.value.current_password && !!pin.value.recovery_pin && !!pin.value.confirm_pin
 
     if (wantsPinChange) {
       if (pin.value.recovery_pin !== pin.value.confirm_pin) {
@@ -193,6 +187,4 @@ async function save() {
 }
 </script>
 
-<style scoped>
-</style>
-
+<style scoped></style>

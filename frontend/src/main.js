@@ -61,7 +61,7 @@ console.log('[MAIN] Vuetify registered')
 // This prevents theme flashing and ensures Settings page reads correct theme
 const savedTheme = localStorage.getItem('theme-preference')
 if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
-  vuetify.theme.global.name.value = savedTheme  // TODO: Upgrade to theme.change() after Vuetify 3.7+
+  vuetify.theme.global.name.value = savedTheme // TODO: Upgrade to theme.change() after Vuetify 3.7+
   document.documentElement.setAttribute('data-theme', savedTheme)
   console.log(`[MAIN] Theme restored from localStorage: ${savedTheme}`)
 } else {

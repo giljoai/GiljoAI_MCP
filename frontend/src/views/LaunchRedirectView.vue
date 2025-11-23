@@ -3,13 +3,15 @@
     <v-progress-circular indeterminate size="64" color="primary"></v-progress-circular>
   </div>
 
-  <div v-else-if="!activeProject" class="d-flex flex-column justify-center align-center" style="height: 100vh">
+  <div
+    v-else-if="!activeProject"
+    class="d-flex flex-column justify-center align-center"
+    style="height: 100vh"
+  >
     <v-icon size="96" color="grey-darken-2">mdi-briefcase-off-outline</v-icon>
     <h2 class="text-h4 mt-4 text-grey-darken-2">No Active Project</h2>
     <p class="text-body-1 mt-2 text-grey">Activate a project to launch the jobs interface</p>
-    <v-btn color="primary" class="mt-6" to="/projects">
-      Go to Projects
-    </v-btn>
+    <v-btn color="primary" class="mt-6" to="/projects"> Go to Projects </v-btn>
   </div>
 </template>
 

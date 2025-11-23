@@ -1,5 +1,10 @@
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="800" scrollable>
+  <v-dialog
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
+    max-width="800"
+    scrollable
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start color="primary">mdi-robot-outline</v-icon>
@@ -26,7 +31,9 @@
               <li class="mb-2">Open Claude Code and navigate to the MCP Tools Marketplace</li>
               <li class="mb-2">Search for "GiljoAI Agent Orchestration MCP Server"</li>
               <li class="mb-2">Click "Install" and follow the marketplace prompts</li>
-              <li class="mb-2">When prompted for the API endpoint, enter: <code>http://your-server-ip:7272</code></li>
+              <li class="mb-2">
+                When prompted for the API endpoint, enter: <code>http://your-server-ip:7272</code>
+              </li>
               <li class="mb-2">Enter your API key from your user profile</li>
               <li class="mb-2">Test the connection and confirm installation</li>
             </ol>
@@ -36,15 +43,21 @@
           <v-window-item value="manual">
             <h3 class="text-h6 mb-3">Manual Configuration</h3>
             <p class="text-body-2 mb-3">
-              Add the following to your Claude Code MCP configuration file.
-              See <a href="https://docs.claude.com/en/docs/claude-code/mcp" target="_blank" class="text-primary">Claude Code MCP Documentation</a> for complete setup instructions.
+              Add the following to your Claude Code MCP configuration file. See
+              <a
+                href="https://docs.claude.com/en/docs/claude-code/mcp"
+                target="_blank"
+                class="text-primary"
+                >Claude Code MCP Documentation</a
+              >
+              for complete setup instructions.
             </p>
 
             <v-alert type="info" variant="tonal" class="mb-3" density="compact">
               <v-icon start size="small">mdi-file-document</v-icon>
               <strong>Configuration File Location:</strong>
-              <br>- macOS/Linux: <code>~/.claude.json</code>
-              <br>- Windows: <code>%USERPROFILE%\.claude.json</code>
+              <br />- macOS/Linux: <code>~/.claude.json</code> <br />- Windows:
+              <code>%USERPROFILE%\.claude.json</code>
             </v-alert>
 
             <v-card variant="outlined" class="mb-3">
@@ -63,7 +76,12 @@
 }</code></pre>
               </v-card-text>
               <v-card-actions>
-                <v-btn variant="text" size="small" data-test="copy-config-button" @click="copyConfig">
+                <v-btn
+                  variant="text"
+                  size="small"
+                  data-test="copy-config-button"
+                  @click="copyConfig"
+                >
                   <v-icon start>mdi-content-copy</v-icon>
                   Copy Configuration
                 </v-btn>
@@ -71,7 +89,8 @@
             </v-card>
 
             <p class="text-body-2">
-              Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
+              Replace <code>{your-api-key-here}</code> with your actual API key from your user
+              profile.
             </p>
           </v-window-item>
 
@@ -92,7 +111,9 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" data-test="close-button" @click="$emit('update:modelValue', false)">Close</v-btn>
+        <v-btn variant="text" data-test="close-button" @click="$emit('update:modelValue', false)"
+          >Close</v-btn
+        >
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -104,8 +125,8 @@ import { ref } from 'vue'
 defineProps({
   modelValue: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])

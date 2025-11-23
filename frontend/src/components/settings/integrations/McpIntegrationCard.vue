@@ -4,14 +4,17 @@
       <div class="d-flex align-center mb-3">
         <v-avatar size="40" rounded="0" class="mr-2">
           <v-img
-            :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+            :src="
+              theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
+            "
             alt="GiljoAI MCP"
           />
         </v-avatar>
         <h3 class="text-h6 mb-0">GiljoAI MCP Integration</h3>
       </div>
       <p class="text-body-2 text-medium-emphasis mb-4">
-        Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI.
+        Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and
+        Gemini CLI.
       </p>
 
       <!-- MCP Configuration Tool -->

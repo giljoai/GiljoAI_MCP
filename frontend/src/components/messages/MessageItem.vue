@@ -1,17 +1,9 @@
 <template>
-  <v-card
-    variant="outlined"
-    class="message-item mb-3"
-    :class="messageClass"
-  >
+  <v-card variant="outlined" class="message-item mb-3" :class="messageClass">
     <v-card-text class="pa-3">
       <div class="d-flex align-start">
         <!-- Sender Avatar -->
-        <v-avatar
-          :color="senderColor"
-          size="40"
-          class="mr-3"
-        >
+        <v-avatar :color="senderColor" size="40" class="mr-3">
           <v-icon :icon="senderIcon" size="24" />
         </v-avatar>
 
@@ -38,11 +30,7 @@
               >
                 {{ message.priority }}
               </v-chip>
-              <v-chip
-                :color="statusColor"
-                size="x-small"
-                variant="flat"
-              >
+              <v-chip :color="statusColor" size="x-small" variant="flat">
                 {{ message.status }}
               </v-chip>
             </div>
@@ -62,12 +50,7 @@
 
           <!-- Actions -->
           <div v-if="showActions" class="mt-2">
-            <v-btn
-              variant="text"
-              size="small"
-              color="primary"
-              @click="handleReply"
-            >
+            <v-btn variant="text" size="small" color="primary" @click="handleReply">
               <v-icon icon="mdi-reply" start />
               Reply
             </v-btn>

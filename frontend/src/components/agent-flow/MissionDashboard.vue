@@ -6,7 +6,12 @@
         <v-icon icon="mdi-target" class="mr-2" color="primary" />
         <span>Mission Overview</span>
       </div>
-      <v-chip v-if="mission" size="small" :color="getMissionStatusColor(mission.status)" variant="flat">
+      <v-chip
+        v-if="mission"
+        size="small"
+        :color="getMissionStatusColor(mission.status)"
+        variant="flat"
+      >
         {{ formatStatus(mission.status) }}
       </v-chip>
     </v-card-title>
@@ -172,13 +177,7 @@
             Resume Mission
           </v-btn>
 
-          <v-btn
-            size="small"
-            variant="outlined"
-            color="error"
-            block
-            class="action-btn"
-          >
+          <v-btn size="small" variant="outlined" color="error" block class="action-btn">
             <v-icon icon="mdi-stop" size="small" class="mr-1" />
             Stop Mission
           </v-btn>

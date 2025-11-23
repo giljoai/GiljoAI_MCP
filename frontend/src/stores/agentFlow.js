@@ -67,7 +67,10 @@ export const useAgentFlowStore = defineStore('agentFlow', () => {
 
   const averageExecutionTime = computed(() => {
     if (completedNodes.value.length === 0) return 0
-    const totalTime = completedNodes.value.reduce((sum, node) => sum + (node.data?.duration || 0), 0)
+    const totalTime = completedNodes.value.reduce(
+      (sum, node) => sum + (node.data?.duration || 0),
+      0,
+    )
     return Math.round(totalTime / completedNodes.value.length)
   })
 

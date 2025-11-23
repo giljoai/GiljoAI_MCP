@@ -18,12 +18,7 @@
     </div>
 
     <!-- Toast notification for copy feedback -->
-    <v-snackbar
-      v-model="showToast"
-      :timeout="2000"
-      color="success"
-      location="bottom right"
-    >
+    <v-snackbar v-model="showToast" :timeout="2000" color="success" location="bottom right">
       <div class="d-flex align-center gap-2">
         <v-icon icon="mdi-check-circle" />
         <span>{{ toastMessage }}</span>
@@ -155,17 +150,23 @@ function fallbackCopyCommand(text) {
   /* Tool-specific colors */
   &--claudeCode {
     background-color: var(--tool-claude-code);
-    &:hover { filter: brightness(0.9); }
+    &:hover {
+      filter: brightness(0.9);
+    }
   }
 
   &--codex {
     background-color: var(--tool-codex);
-    &:hover { filter: brightness(0.9); }
+    &:hover {
+      filter: brightness(0.9);
+    }
   }
 
   &--gemini {
     background-color: var(--tool-gemini);
-    &:hover { filter: brightness(0.9); }
+    &:hover {
+      filter: brightness(0.9);
+    }
   }
 }
 

@@ -124,7 +124,12 @@
       <v-card-title class="d-flex align-center py-3 bg-primary text-white">
         <span class="text-h6">Tasks</span>
         <v-spacer />
-        <v-btn color="white" variant="outlined" prepend-icon="mdi-plus" @click="showTaskDialog = true">
+        <v-btn
+          color="white"
+          variant="outlined"
+          prepend-icon="mdi-plus"
+          @click="showTaskDialog = true"
+        >
           New Task
         </v-btn>
       </v-card-title>
@@ -141,233 +146,234 @@
           item-value="id"
           height="600"
         >
-        <!-- Loading State -->
-        <template v-slot:loading>
-          <div class="text-center pa-4">
-            <v-progress-circular indeterminate color="primary" size="48" />
-            <p class="text-body-2 text-medium-emphasis mt-2">Loading tasks...</p>
-          </div>
-        </template>
+          <!-- Loading State -->
+          <template v-slot:loading>
+            <div class="text-center pa-4">
+              <v-progress-circular indeterminate color="primary" size="48" />
+              <p class="text-body-2 text-medium-emphasis mt-2">Loading tasks...</p>
+            </div>
+          </template>
 
-        <!-- Status Column - Inline Dropdown -->
-        <template v-slot:item.status="{ item }">
-          <div class="d-flex justify-center">
+          <!-- Status Column - Inline Dropdown -->
+          <template v-slot:item.status="{ item }">
+            <div class="d-flex justify-center">
+              <v-select
+                :model-value="item.status"
+                @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
+                :items="statusOptions"
+                variant="plain"
+                density="compact"
+                hide-details
+                class="inline-select inline-select-no-arrow"
+              >
+                <template v-slot:selection="{ item: statusItem }">
+                  <v-chip
+                    :color="getStatusColor(statusItem.value)"
+                    size="small"
+                    variant="flat"
+                    class="status-chip"
+                  >
+                    <v-icon start size="x-small">{{ getStatusIcon(statusItem.value) }}</v-icon>
+                    {{ statusItem.value }}
+                  </v-chip>
+                </template>
+                <template v-slot:item="{ props, item: statusItem }">
+                  <v-list-item v-bind="props">
+                    <template v-slot:prepend>
+                      <v-icon :color="getStatusColor(statusItem.value)" size="small">
+                        {{ getStatusIcon(statusItem.value) }}
+                      </v-icon>
+                    </template>
+                  </v-list-item>
+                </template>
+              </v-select>
+            </div>
+          </template>
+
+          <!-- Priority Column - Inline Dropdown -->
+          <template v-slot:item.priority="{ item }">
             <v-select
-              :model-value="item.status"
-              @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
-              :items="statusOptions"
+              :model-value="item.priority"
+              @update:model-value="(newPriority) => updateTaskField(item, 'priority', newPriority)"
+              :items="priorityOptions"
               variant="plain"
               density="compact"
               hide-details
               class="inline-select inline-select-no-arrow"
             >
-              <template v-slot:selection="{ item: statusItem }">
-                <v-chip :color="getStatusColor(statusItem.value)" size="small" variant="flat" class="status-chip">
-                  <v-icon start size="x-small">{{ getStatusIcon(statusItem.value) }}</v-icon>
-                  {{ statusItem.value }}
+              <template v-slot:selection="{ item: priorityItem }">
+                <v-chip :color="getPriorityColor(priorityItem.value)" size="small" label>
+                  {{ priorityItem.value }}
                 </v-chip>
               </template>
-              <template v-slot:item="{ props, item: statusItem }">
+              <template v-slot:item="{ props, item: priorityItem }">
                 <v-list-item v-bind="props">
                   <template v-slot:prepend>
-                    <v-icon :color="getStatusColor(statusItem.value)" size="small">
-                      {{ getStatusIcon(statusItem.value) }}
-                    </v-icon>
+                    <v-chip :color="getPriorityColor(priorityItem.value)" size="x-small" label />
                   </template>
                 </v-list-item>
               </template>
             </v-select>
-          </div>
-        </template>
+          </template>
 
-        <!-- Priority Column - Inline Dropdown -->
-        <template v-slot:item.priority="{ item }">
-          <v-select
-            :model-value="item.priority"
-            @update:model-value="(newPriority) => updateTaskField(item, 'priority', newPriority)"
-            :items="priorityOptions"
-            variant="plain"
-            density="compact"
-            hide-details
-            class="inline-select inline-select-no-arrow"
-          >
-            <template v-slot:selection="{ item: priorityItem }">
-              <v-chip :color="getPriorityColor(priorityItem.value)" size="small" label>
-                {{ priorityItem.value }}
-              </v-chip>
-            </template>
-            <template v-slot:item="{ props, item: priorityItem }">
-              <v-list-item v-bind="props">
-                <template v-slot:prepend>
-                  <v-chip :color="getPriorityColor(priorityItem.value)" size="x-small" label />
-                </template>
-              </v-list-item>
-            </template>
-          </v-select>
-        </template>
-
-        <!-- Title Column with Hierarchy and Drag Support -->
-        <template v-slot:item.title="{ item }">
-          <div
-            class="task-row-content"
-            :data-test="`task-row-${item.id}`"
-            @click="editTask(item)"
-            style="cursor: pointer;"
-          >
-            <!-- Task Content -->
-            <div class="task-content flex-grow-1">
-              <div class="d-flex align-center">
-                <span class="font-weight-medium">{{ item.title }}</span>
+          <!-- Title Column with Hierarchy and Drag Support -->
+          <template v-slot:item.title="{ item }">
+            <div
+              class="task-row-content"
+              :data-test="`task-row-${item.id}`"
+              @click="editTask(item)"
+              style="cursor: pointer"
+            >
+              <!-- Task Content -->
+              <div class="task-content flex-grow-1">
+                <div class="d-flex align-center">
+                  <span class="font-weight-medium">{{ item.title }}</span>
+                </div>
+                <div class="text-caption text-medium-emphasis description-truncate">
+                  {{ item.description }}
+                </div>
               </div>
-              <div class="text-caption text-medium-emphasis description-truncate">{{ item.description }}</div>
             </div>
-          </div>
-        </template>
+          </template>
 
+          <!-- Category Column - Inline Dropdown -->
+          <template v-slot:item.category="{ item }">
+            <div class="d-flex justify-center">
+              <v-select
+                :model-value="item.category"
+                @update:model-value="
+                  (newCategory) => updateTaskField(item, 'category', newCategory)
+                "
+                :items="categoryOptions"
+                variant="plain"
+                density="compact"
+                hide-details
+                class="inline-select inline-select-no-arrow"
+              >
+                <template v-slot:selection="{ item: categoryItem }">
+                  <span class="category-text">{{ categoryItem.value }}</span>
+                </template>
+              </v-select>
+            </div>
+          </template>
 
-        <!-- Category Column - Inline Dropdown -->
-        <template v-slot:item.category="{ item }">
-          <div class="d-flex justify-center">
-            <v-select
-              :model-value="item.category"
-              @update:model-value="(newCategory) => updateTaskField(item, 'category', newCategory)"
-              :items="categoryOptions"
-              variant="plain"
-              density="compact"
-              hide-details
-              class="inline-select inline-select-no-arrow"
+          <!-- Created By User Column (Phase 4) -->
+          <template v-slot:item.created_by_user_id="{ item }">
+            <v-chip size="small" variant="outlined">
+              <v-icon start size="small">mdi-account-circle</v-icon>
+              {{ getUserName(item.created_by_user_id) }}
+            </v-chip>
+          </template>
+
+          <!-- Due Date Column - Inline Calendar Picker -->
+          <template v-slot:item.due_date="{ item }">
+            <v-menu
+              :close-on-content-click="false"
+              transition="scale-transition"
+              :offset="[0, 50]"
+              location="bottom"
             >
-              <template v-slot:selection="{ item: categoryItem }">
-                <span class="category-text">{{ categoryItem.value }}</span>
+              <template v-slot:activator="{ props }">
+                <div v-bind="props" class="date-text-clickable" style="cursor: pointer">
+                  <v-icon
+                    v-if="item.due_date && isOverdue(item.due_date)"
+                    color="error"
+                    size="x-small"
+                    class="mr-1"
+                  >
+                    mdi-alert
+                  </v-icon>
+                  <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
+                  <span v-else class="text-medium-emphasis">Set date</span>
+                </div>
               </template>
-            </v-select>
-          </div>
-        </template>
+              <v-card class="compact-date-picker">
+                <v-card-title class="py-2 px-3" style="background-color: #ffc300">
+                  <span class="text-subtitle-2">Select Date</span>
+                </v-card-title>
+                <v-date-picker
+                  :model-value="item.due_date ? new Date(item.due_date) : null"
+                  @update:model-value="(newDate) => updateTaskDueDate(item, newDate)"
+                  color="primary"
+                  hide-header
+                  width="280"
+                />
+              </v-card>
+            </v-menu>
+          </template>
 
-        <!-- Created By User Column (Phase 4) -->
-        <template v-slot:item.created_by_user_id="{ item }">
-          <v-chip size="small" variant="outlined">
-            <v-icon start size="small">mdi-account-circle</v-icon>
-            {{ getUserName(item.created_by_user_id) }}
-          </v-chip>
-        </template>
-
-        <!-- Due Date Column - Inline Calendar Picker -->
-        <template v-slot:item.due_date="{ item }">
-          <v-menu
-            :close-on-content-click="false"
-            transition="scale-transition"
-            :offset="[0, 50]"
-            location="bottom"
-          >
-            <template v-slot:activator="{ props }">
-              <div
-                v-bind="props"
-                class="date-text-clickable"
-                style="cursor: pointer;"
+          <!-- Convert Column -->
+          <template v-slot:item.convert="{ item }">
+            <div class="d-flex justify-center">
+              <v-btn
+                v-if="item.status !== 'completed' && !item.converted_project_id"
+                icon
+                size="small"
+                variant="text"
+                color="#ffc300"
+                @click.stop="convertTaskToProject(item)"
               >
-                <v-icon v-if="item.due_date && isOverdue(item.due_date)" color="error" size="x-small" class="mr-1">
-                  mdi-alert
-                </v-icon>
-                <span v-if="item.due_date">{{ formatDate(item.due_date) }}</span>
-                <span v-else class="text-medium-emphasis">Set date</span>
-              </div>
-            </template>
-            <v-card class="compact-date-picker">
-              <v-card-title class="py-2 px-3" style="background-color: #ffc300;">
-                <span class="text-subtitle-2">Select Date</span>
-              </v-card-title>
-              <v-date-picker
-                :model-value="item.due_date ? new Date(item.due_date) : null"
-                @update:model-value="(newDate) => updateTaskDueDate(item, newDate)"
-                color="primary"
-                hide-header
-                width="280"
-              />
-            </v-card>
-          </v-menu>
-        </template>
+                <v-icon>mdi-folder-arrow-up</v-icon>
+                <v-tooltip activator="parent" location="top"> Convert to Project </v-tooltip>
+              </v-btn>
+              <span v-else class="text-medium-emphasis">—</span>
+            </div>
+          </template>
 
-        <!-- Convert Column -->
-        <template v-slot:item.convert="{ item }">
-          <div class="d-flex justify-center">
-            <v-btn
-              v-if="item.status !== 'completed' && !item.converted_project_id"
-              icon
-              size="small"
-              variant="text"
-              color="#ffc300"
-              @click.stop="convertTaskToProject(item)"
-            >
-              <v-icon>mdi-folder-arrow-up</v-icon>
-              <v-tooltip activator="parent" location="top">
-                Convert to Project
-              </v-tooltip>
-            </v-btn>
-            <span v-else class="text-medium-emphasis">—</span>
-          </div>
-        </template>
+          <!-- Actions Column -->
+          <template v-slot:item.actions="{ item }">
+            <v-menu>
+              <template v-slot:activator="{ props }">
+                <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
+              </template>
+              <v-list>
+                <v-list-item @click="editTask(item)">
+                  <template v-slot:prepend>
+                    <v-icon>mdi-pencil</v-icon>
+                  </template>
+                  <v-list-item-title>Edit</v-list-item-title>
+                </v-list-item>
 
-        <!-- Actions Column -->
-        <template v-slot:item.actions="{ item }">
-          <v-menu>
-            <template v-slot:activator="{ props }">
-              <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
-            </template>
-            <v-list>
-              <v-list-item @click="editTask(item)">
-                <template v-slot:prepend>
-                  <v-icon>mdi-pencil</v-icon>
-                </template>
-                <v-list-item-title>Edit</v-list-item-title>
-              </v-list-item>
+                <v-list-item v-if="item.status !== 'completed'" @click="convertTaskToProject(item)">
+                  <template v-slot:prepend>
+                    <v-icon>mdi-folder-arrow-up</v-icon>
+                  </template>
+                  <v-list-item-title>Convert to Project</v-list-item-title>
+                </v-list-item>
 
-              <v-list-item
-                v-if="item.status !== 'completed'"
-                @click="convertTaskToProject(item)"
-              >
-                <template v-slot:prepend>
-                  <v-icon>mdi-folder-arrow-up</v-icon>
-                </template>
-                <v-list-item-title>Convert to Project</v-list-item-title>
-              </v-list-item>
+                <v-list-item v-if="item.status !== 'completed'" @click="completeTask(item)">
+                  <template v-slot:prepend>
+                    <v-icon color="success">mdi-check</v-icon>
+                  </template>
+                  <v-list-item-title>Mark Complete</v-list-item-title>
+                </v-list-item>
 
-              <v-list-item
-                v-if="item.status !== 'completed'"
-                @click="completeTask(item)"
-              >
-                <template v-slot:prepend>
-                  <v-icon color="success">mdi-check</v-icon>
-                </template>
-                <v-list-item-title>Mark Complete</v-list-item-title>
-              </v-list-item>
+                <v-divider />
 
-              <v-divider />
+                <v-list-item @click="deleteTask(item)">
+                  <template v-slot:prepend>
+                    <v-icon color="error">mdi-delete</v-icon>
+                  </template>
+                  <v-list-item-title>Delete</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </template>
 
-              <v-list-item @click="deleteTask(item)">
-                <template v-slot:prepend>
-                  <v-icon color="error">mdi-delete</v-icon>
-                </template>
-                <v-list-item-title>Delete</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </template>
-
-        <!-- No Data -->
-        <template v-slot:no-data>
-          <div class="text-center py-8">
-            <v-icon size="64" color="grey-lighten-2">mdi-clipboard-text-outline</v-icon>
-            <p class="text-h6 mt-4">No tasks found</p>
-            <p class="text-body-2 text-medium-emphasis">
-              {{
-                search || statusFilter || priorityFilter || categoryFilter
-                  ? 'Try adjusting your filters'
-                  : 'Create your first task to get started'
-              }}
-            </p>
-          </div>
-        </template>
+          <!-- No Data -->
+          <template v-slot:no-data>
+            <div class="text-center py-8">
+              <v-icon size="64" color="grey-lighten-2">mdi-clipboard-text-outline</v-icon>
+              <p class="text-h6 mt-4">No tasks found</p>
+              <p class="text-body-2 text-medium-emphasis">
+                {{
+                  search || statusFilter || priorityFilter || categoryFilter
+                    ? 'Try adjusting your filters'
+                    : 'Create your first task to get started'
+                }}
+              </p>
+            </div>
+          </template>
         </v-data-table>
       </div>
     </v-card>
@@ -450,20 +456,19 @@
     <!-- No Active Product Warning Dialog -->
     <v-dialog v-model="showNoProductDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300;">
+        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300">
           <v-icon class="mr-2" size="large">mdi-alert-circle</v-icon>
           <span class="text-h6">No Active Product</span>
         </v-card-title>
         <v-card-text class="pt-6 pb-4">
           <p class="text-body-1">
-            No products are set to active state. Please activate a product before converting tasks to projects.
+            No products are set to active state. Please activate a product before converting tasks
+            to projects.
           </p>
         </v-card-text>
         <v-card-actions class="pb-4 px-4">
           <v-spacer />
-          <v-btn color="primary" variant="flat" @click="showNoProductDialog = false">
-            OK
-          </v-btn>
+          <v-btn color="primary" variant="flat" @click="showNoProductDialog = false"> OK </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -471,7 +476,7 @@
     <!-- Conversion Confirmation Dialog -->
     <v-dialog v-model="showConversionConfirmDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300;">
+        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300">
           <v-icon class="mr-2" size="large">mdi-folder-arrow-up</v-icon>
           <span class="text-h6">Convert to Project</span>
         </v-card-title>
@@ -480,17 +485,14 @@
             Convert task <strong>"{{ conversionTaskName }}"</strong> to a project?
           </p>
           <p class="text-body-2 text-medium-emphasis mt-2">
-            This will create a new project in the active product with the task's title and description.
+            This will create a new project in the active product with the task's title and
+            description.
           </p>
         </v-card-text>
         <v-card-actions class="pb-4 px-4">
           <v-spacer />
-          <v-btn variant="text" @click="showConversionConfirmDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn color="primary" variant="flat" @click="confirmConversion">
-            Convert
-          </v-btn>
+          <v-btn variant="text" @click="showConversionConfirmDialog = false"> Cancel </v-btn>
+          <v-btn color="primary" variant="flat" @click="confirmConversion"> Convert </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -498,7 +500,10 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteConfirmDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #f44336; color: white;">
+        <v-card-title
+          class="d-flex align-center py-4"
+          style="background-color: #f44336; color: white"
+        >
           <v-icon class="mr-2" size="large" color="white">mdi-delete-alert</v-icon>
           <span class="text-h6">Delete Task</span>
         </v-card-title>
@@ -506,18 +511,12 @@
           <p class="text-body-1">
             Are you sure you want to delete <strong>"{{ deleteTaskName }}"</strong>?
           </p>
-          <p class="text-body-2 text-medium-emphasis mt-2">
-            This action cannot be undone.
-          </p>
+          <p class="text-body-2 text-medium-emphasis mt-2">This action cannot be undone.</p>
         </v-card-text>
         <v-card-actions class="pb-4 px-4">
           <v-spacer />
-          <v-btn variant="text" @click="showDeleteConfirmDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn color="error" variant="flat" @click="confirmDelete">
-            Delete
-          </v-btn>
+          <v-btn variant="text" @click="showDeleteConfirmDialog = false"> Cancel </v-btn>
+          <v-btn color="error" variant="flat" @click="confirmDelete"> Delete </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -525,7 +524,10 @@
     <!-- Success Dialog -->
     <v-dialog v-model="showSuccessDialog" max-width="500">
       <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #4caf50; color: white;">
+        <v-card-title
+          class="d-flex align-center py-4"
+          style="background-color: #4caf50; color: white"
+        >
           <v-icon class="mr-2" size="large" color="white">mdi-check-circle</v-icon>
           <span class="text-h6">Success</span>
         </v-card-title>
@@ -534,9 +536,7 @@
         </v-card-text>
         <v-card-actions class="pb-4 px-4">
           <v-spacer />
-          <v-btn color="success" variant="flat" @click="showSuccessDialog = false">
-            OK
-          </v-btn>
+          <v-btn color="success" variant="flat" @click="showSuccessDialog = false"> OK </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -544,7 +544,10 @@
     <!-- Error Dialog -->
     <v-dialog v-model="showErrorDialog" max-width="500">
       <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #f44336; color: white;">
+        <v-card-title
+          class="d-flex align-center py-4"
+          style="background-color: #f44336; color: white"
+        >
           <v-icon class="mr-2" size="large" color="white">mdi-alert-circle</v-icon>
           <span class="text-h6">Error</span>
         </v-card-title>
@@ -553,9 +556,7 @@
         </v-card-text>
         <v-card-actions class="pb-4 px-4">
           <v-spacer />
-          <v-btn color="error" variant="flat" @click="showErrorDialog = false">
-            OK
-          </v-btn>
+          <v-btn color="error" variant="flat" @click="showErrorDialog = false"> OK </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -632,7 +633,6 @@ const headers = [
 const statusOptions = ['pending', 'in_progress', 'completed', 'cancelled']
 const priorityOptions = ['low', 'medium', 'high', 'critical']
 const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'docs', 'testing']
-
 
 // Computed
 const loading = computed(() => taskStore.loading)
@@ -1093,5 +1093,4 @@ onMounted(async () => {
 .inline-select :deep(.v-list-item__prepend .v-icon) {
   margin: 0 !important;
 }
-
 </style>

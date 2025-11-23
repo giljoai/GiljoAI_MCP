@@ -21,15 +21,15 @@
 <script setup lang="ts">
 /**
  * AppAlert - Application-wide alert component
- * 
+ *
  * A wrapper around Vuetify's v-alert that enforces consistent styling
  * and prevents duplicate icon issues.
- * 
+ *
  * Usage:
  *   <AppAlert type="info">Your message here</AppAlert>
  *   <AppAlert type="success" variant="tonal">Success message</AppAlert>
  *   <AppAlert type="warning" closable>Warning with close button</AppAlert>
- * 
+ *
  * Props are passed through to v-alert, so all v-alert props work.
  */
 
@@ -56,7 +56,7 @@ withDefaults(defineProps<Props>(), {
   closable: false,
   prominent: false,
   density: 'default',
-  border: false
+  border: false,
 })
 </script>
 

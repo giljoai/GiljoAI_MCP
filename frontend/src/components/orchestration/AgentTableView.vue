@@ -37,20 +37,14 @@
 
     <!-- Job Read Column (Handover 0240b) -->
     <template #item.job_read="{ item }">
-      <v-icon
-        :color="item.mission_read_at ? 'success' : 'grey'"
-        size="small"
-      >
+      <v-icon :color="item.mission_read_at ? 'success' : 'grey'" size="small">
         {{ item.mission_read_at ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
       </v-icon>
     </template>
 
     <!-- Job Acknowledged Column (Handover 0240b) -->
     <template #item.job_acknowledged="{ item }">
-      <v-icon
-        :color="item.mission_acknowledged_at ? 'success' : 'grey'"
-        size="small"
-      >
+      <v-icon :color="item.mission_acknowledged_at ? 'success' : 'grey'" size="small">
         {{ item.mission_acknowledged_at ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
       </v-icon>
     </template>
@@ -109,21 +103,11 @@
   </v-snackbar>
 
   <!-- Handover 0234: Staleness warning snackbar -->
-  <v-snackbar
-    v-model="showStaleWarning"
-    color="warning"
-    :timeout="5000"
-    location="bottom"
-  >
+  <v-snackbar v-model="showStaleWarning" color="warning" :timeout="5000" location="bottom">
     <v-icon class="mr-2">mdi-clock-alert</v-icon>
     <strong>{{ staleAgentName }}</strong> has been inactive for over 10 minutes
     <template #actions>
-      <v-btn
-        variant="text"
-        @click="showStaleWarning = false"
-      >
-        Dismiss
-      </v-btn>
+      <v-btn variant="text" @click="showStaleWarning = false"> Dismiss </v-btn>
     </template>
   </v-snackbar>
 </template>
@@ -199,7 +183,10 @@ const emitStaleWarning = (job) => {
 }
 
 // Initialize staleness monitor
-useStalenessMonitor(computed(() => props.agents), emitStaleWarning)
+useStalenessMonitor(
+  computed(() => props.agents),
+  emitStaleWarning,
+)
 
 // Table headers configuration (Handover 0240b: 8-column structure)
 const headers = [

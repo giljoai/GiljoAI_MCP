@@ -16,13 +16,7 @@
             <v-icon icon="mdi-check-circle-outline" size="large" class="mr-2" />
             <span class="text-h6">Close Project: {{ projectName }}</span>
           </div>
-          <v-btn
-            icon
-            variant="text"
-            color="white"
-            :aria-label="'Close modal'"
-            @click="handleClose"
-          >
+          <v-btn icon variant="text" color="white" :aria-label="'Close modal'" @click="handleClose">
             <v-icon icon="mdi-close" />
           </v-btn>
         </div>
@@ -39,12 +33,7 @@
         </div>
 
         <!-- Error state -->
-        <v-alert
-          v-if="error"
-          type="error"
-          variant="tonal"
-          class="mb-4"
-        >
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
           {{ error }}
         </v-alert>
 
@@ -58,7 +47,7 @@
                 v-for="(item, index) in closeoutData.checklist"
                 :key="index"
                 class="checklist-item px-0"
-                :class="{ 'checked': checkedItems.includes(index) }"
+                :class="{ checked: checkedItems.includes(index) }"
               >
                 <template #prepend>
                   <v-checkbox
@@ -84,7 +73,7 @@
               variant="outlined"
               rows="10"
               no-resize
-              style="font-family: 'Courier New', monospace; font-size: 0.875rem;"
+              style="font-family: 'Courier New', monospace; font-size: 0.875rem"
             />
 
             <!-- Copy closeout prompt button -->
@@ -163,16 +152,16 @@ import api from '@/services/api'
 const props = defineProps({
   show: {
     type: Boolean,
-    required: true
+    required: true,
   },
   projectId: {
     type: String,
-    required: true
+    required: true,
   },
   projectName: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const emit = defineEmits(['close', 'complete'])
@@ -194,13 +183,16 @@ const copySuccess = ref(false)
 const completing = ref(false)
 
 // Watch for modal open to load data
-watch(() => props.show, (newValue) => {
-  if (newValue) {
-    loadCloseoutData()
-  } else {
-    resetState()
-  }
-})
+watch(
+  () => props.show,
+  (newValue) => {
+    if (newValue) {
+      loadCloseoutData()
+    } else {
+      resetState()
+    }
+  },
+)
 
 // Methods
 const loadCloseoutData = async () => {
@@ -213,7 +205,7 @@ const loadCloseoutData = async () => {
       project_id: props.projectId,
       project_name: props.projectName,
       checklist: response.data.checklist || [],
-      closeout_prompt: response.data.closeout_prompt || ''
+      closeout_prompt: response.data.closeout_prompt || '',
     }
   } catch (err) {
     console.error('[CloseoutModal] Failed to load closeout data:', err)
@@ -283,7 +275,7 @@ const handleComplete = async () => {
 
   try {
     await api.post(`/api/projects/${props.projectId}/complete`, {
-      confirm_closeout: true
+      confirm_closeout: true,
     })
 
     emit('complete', props.projectId)
