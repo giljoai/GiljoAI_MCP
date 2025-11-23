@@ -1,23 +1,27 @@
 <template>
   <v-card class="project-tabs-container" elevation="0">
-    <!-- Tab Navigation -->
+    <!-- Tab Navigation (Handover 0243e: Fixed activation state) -->
     <v-tabs
-      v-model="activeTabIndex"
+      v-model="activeTab"
       bg-color="transparent"
-      color="white"
+      color="yellow-darken-2"
       class="tabs-header"
       align-tabs="start"
     >
-      <v-tab value="launch"> Launch </v-tab>
+      <v-tab value="launch" class="tab-link">
+        <v-icon start size="20">mdi-rocket-launch</v-icon>
+        Launch
+      </v-tab>
 
-      <v-tab value="jobs" :disabled="!store.isLaunched">
-        Implementation
+      <v-tab value="jobs" class="tab-link" :disabled="!store.isLaunched">
+        <v-icon start size="20">mdi-code-braces</v-icon>
+        Implement
         <v-badge v-if="store.unreadCount > 0" :content="store.unreadCount" color="error" inline />
       </v-tab>
     </v-tabs>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTabIndex" class="tabs-content">
+    <v-window v-model="activeTab" class="tabs-content">
       <!-- Launch Tab -->
       <v-window-item value="launch">
         <LaunchTab
@@ -66,6 +70,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
 import LaunchTab from './LaunchTab.vue'
@@ -107,13 +112,38 @@ const emit = defineEmits([
 ])
 
 /**
- * Store
+ * Store and Router
  */
 const store = useProjectTabsStore()
 const wsStore = useWebSocketStore()
+const route = useRoute()
+const router = useRouter()
 
 /**
- * Local state
+ * Local state - Tab activation (Handover 0243e)
+ * Initialize from URL query param or default to 'launch'
+ */
+const activeTab = ref('launch')
+
+// Initialize from URL query param if present
+if (route.query.tab && ['launch', 'jobs'].includes(route.query.tab)) {
+  activeTab.value = route.query.tab
+}
+
+/**
+ * Sync URL when tab changes (enables browser back/forward, bookmarking)
+ */
+watch(activeTab, (newTab) => {
+  if (route.query.tab !== newTab) {
+    router.replace({
+      query: { ...route.query, tab: newTab },
+      hash: route.hash
+    })
+  }
+})
+
+/**
+ * Backward compatibility with store
  */
 const activeTabIndex = computed({
   get: () => store.activeTab,
@@ -204,8 +234,8 @@ async function handleLaunchJobs() {
     await store.launchJobs()
     emit('launch-jobs')
 
-    // Auto-switch to Jobs tab
-    store.switchTab('jobs')
+    // Auto-switch to Jobs/Implement tab after launch (Handover 0243e)
+    activeTab.value = 'jobs'
   } catch (error) {
     console.error('Launch jobs failed:', error)
   }
@@ -315,24 +345,44 @@ async function handleSendMessage(message, recipient) {
 
 .tabs-header {
   background: transparent;
-  border-bottom: 1px solid rgba(158, 158, 158, 0.5);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 
   :deep(.v-tab) {
     text-transform: none;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0;
-    font-size: 16px;
+    font-size: 14px;
     transition: all 0.3s ease;
     min-width: auto;
-    padding: 0 16px;
+    padding: 12px 24px;
+    margin-right: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    background: rgba(20, 35, 50, 0.3);
+    color: rgba(255, 255, 255, 0.5);
+
+    .v-icon {
+      color: rgba(255, 255, 255, 0.5);
+      margin-right: 8px;
+      font-size: 20px;
+    }
   }
 
   :deep(.v-tab--selected) {
-    color: white;
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+    color: #ffd700;
+
+    .v-icon {
+      color: #ffd700;
+    }
   }
 
-  :deep(.v-tab:hover:not(.v-tab--disabled)) {
-    background: transparent;
+  :deep(.v-tab:hover:not(.v-tab--disabled):not(.v-tab--selected)) {
+    color: rgba(255, 215, 0, 0.7);
+    border-color: rgba(255, 215, 0, 0.3);
+    background: rgba(255, 215, 0, 0.05);
   }
 
   :deep(.v-tab--disabled) {
@@ -341,8 +391,8 @@ async function handleSendMessage(message, recipient) {
   }
 
   :deep(.v-tab__slider) {
-    background: white;
-    height: 2px;
+    background: #ffd700;
+    height: 3px;
   }
 }
 
