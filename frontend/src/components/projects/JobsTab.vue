@@ -73,27 +73,78 @@
 
             <!-- Actions -->
             <td class="actions-cell">
-              <v-btn
-                icon="mdi-play"
-                size="small"
-                variant="text"
-                color="yellow-darken-2"
-                @click="handlePlay(agent)"
-              />
-              <v-btn
-                icon="mdi-folder"
-                size="small"
-                variant="text"
-                color="yellow-darken-2"
-                @click="handleFolder(agent)"
-              />
-              <v-btn
-                icon="mdi-information"
-                size="small"
-                variant="text"
-                color="white"
-                @click="handleInfo(agent)"
-              />
+              <!-- Play button: only when waiting (Handover 0243d) -->
+              <v-tooltip v-if="agent.status === 'waiting'" text="Copy prompt">
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-play"
+                    size="small"
+                    variant="text"
+                    color="yellow-darken-2"
+                    @click="handlePlay(agent)"
+                  />
+                </template>
+              </v-tooltip>
+
+              <!-- Folder button: always show (Handover 0243d) -->
+              <v-tooltip text="Open workspace">
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-folder"
+                    size="small"
+                    variant="text"
+                    color="yellow-darken-2"
+                    @click="handleFolder(agent)"
+                  />
+                </template>
+              </v-tooltip>
+
+              <!-- Info button: always show (Handover 0243d) -->
+              <v-tooltip text="View details">
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-information"
+                    size="small"
+                    variant="text"
+                    color="white"
+                    @click="handleInfo(agent)"
+                  />
+                </template>
+              </v-tooltip>
+
+              <!-- Cancel button: only when working (Handover 0243d) -->
+              <v-tooltip v-if="agent.status === 'working'" text="Cancel job">
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-cancel"
+                    size="small"
+                    variant="text"
+                    color="warning"
+                    @click="confirmCancelJob(agent)"
+                  />
+                </template>
+              </v-tooltip>
+
+              <!-- Hand Over button: only for working orchestrators (Handover 0243d) -->
+              <v-tooltip
+                v-if="agent.agent_type === 'orchestrator' && agent.status === 'working'"
+                text="Hand over"
+              >
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-hand-wave"
+                    size="small"
+                    variant="text"
+                    color="warning"
+                    @click="openHandoverDialog(agent)"
+                  />
+                </template>
+              </v-tooltip>
             </td>
           </tr>
         </tbody>
@@ -113,6 +164,34 @@
       />
       <v-btn icon="mdi-play" class="send-btn" color="yellow-darken-2" @click="sendMessage" />
     </div>
+
+    <!-- Cancel Job Confirmation Dialog (Handover 0243d) -->
+    <v-dialog v-model="showCancelDialog" max-width="500">
+      <v-card>
+        <v-card-title>Cancel Agent Job?</v-card-title>
+        <v-card-text>
+          The agent will stop work on its next check-in. This action cannot be undone.
+
+          <div class="agent-info mt-4">
+            <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_type }}</div>
+            <div><strong>Job ID:</strong> {{ selectedAgent?.job_id }}</div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="showCancelDialog = false">No, keep running</v-btn>
+          <v-btn color="error" @click="cancelJob">Yes, cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Hand Over Dialog (Handover 0243d) -->
+    <LaunchSuccessorDialog
+      v-if="selectedAgent"
+      :job-id="selectedAgent.job_id || selectedAgent.agent_id"
+      :current-job="selectedAgent"
+      @succession-triggered="handleSuccessorCreated"
+    />
   </div>
 </template>
 
@@ -123,6 +202,7 @@ import { useToast } from '@/composables/useToast'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
+import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 
 /**
  * JobsTab Component - Handover 0241 + 0243c
@@ -199,6 +279,13 @@ const userStore = useUserStore()
  */
 const usingClaudeCodeSubagents = ref(false)
 const messageText = ref('')
+
+/**
+ * Cancel dialog state (Handover 0243d)
+ */
+const showCancelDialog = ref(false)
+const showHandoverDialog = ref(false)
+const selectedAgent = ref(null)
 
 /**
  * Get current tenant key for multi-tenant isolation
@@ -326,6 +413,70 @@ function handleFolder(agent) {
 function handleInfo(agent) {
   console.log('[JobsTab] Info action:', agent.agent_type)
   emit('view-details', agent)
+}
+
+/**
+ * Confirm cancel job (Handover 0243d)
+ * Opens confirmation dialog with agent details
+ */
+function confirmCancelJob(agent) {
+  selectedAgent.value = agent
+  showCancelDialog.value = true
+}
+
+/**
+ * Cancel job (Handover 0243d)
+ * Calls API to cancel job and shows confirmation toast
+ */
+async function cancelJob() {
+  try {
+    const jobId = selectedAgent.value.job_id || selectedAgent.value.agent_id
+    const response = await api.post(`/jobs/${jobId}/cancel`, {
+      reason: 'User requested cancellation'
+    })
+
+    showToast({
+      message: 'Agent job cancelled successfully',
+      type: 'success',
+      duration: 3000
+    })
+
+    showCancelDialog.value = false
+
+    // Status will update via WebSocket event (agent:status_changed)
+  } catch (error) {
+    console.error('[JobsTab] Cancel job failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to cancel agent job'
+    showToast({
+      message: msg,
+      type: 'error',
+      duration: 5000
+    })
+  }
+}
+
+/**
+ * Open hand over dialog (Handover 0243d)
+ * Shows LaunchSuccessorDialog for orchestrator succession
+ */
+function openHandoverDialog(agent) {
+  selectedAgent.value = agent
+  showHandoverDialog.value = true
+}
+
+/**
+ * Handle successor created event (Handover 0243d)
+ * Called by LaunchSuccessorDialog when succession is triggered
+ */
+function handleSuccessorCreated(successorData) {
+  console.log('[JobsTab] Successor created:', successorData)
+  showToast({
+    message: 'Orchestrator handover initiated',
+    type: 'success',
+    duration: 3000
+  })
+  showHandoverDialog.value = false
+  selectedAgent.value = null
 }
 
 /**
