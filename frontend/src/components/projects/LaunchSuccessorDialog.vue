@@ -2,23 +2,20 @@
   <v-dialog v-model="dialog" max-width="800">
     <template #activator="{ props: activatorProps }">
       <slot name="activator" :props="activatorProps">
-        <v-btn v-bind="activatorProps" color="primary">
-          Launch Successor
-        </v-btn>
+        <v-btn v-bind="activatorProps" color="primary"> Launch Successor </v-btn>
       </slot>
     </template>
 
     <v-card>
       <v-card-title>
         Launch Successor Orchestrator
-        <v-chip class="ml-2" size="small">
-          Instance {{ nextInstanceNumber }}
-        </v-chip>
+        <v-chip class="ml-2" size="small"> Instance {{ nextInstanceNumber }} </v-chip>
       </v-card-title>
 
       <v-card-text>
         <v-alert type="info" class="mb-4">
-          This will create a new orchestrator instance ({{ nextInstanceNumber }}) to continue the mission with a fresh context window.
+          This will create a new orchestrator instance ({{ nextInstanceNumber }}) to continue the
+          mission with a fresh context window.
         </v-alert>
 
         <!-- Succession Reason -->
@@ -47,8 +44,10 @@
               <div><strong>Status:</strong> {{ currentJob.status }}</div>
               <div v-if="currentJob.context_used">
                 <strong>Context Usage:</strong>
-                {{ formatNumber(currentJob.context_used) }} / {{ formatNumber(currentJob.context_budget) }} tokens
-                ({{ Math.round(contextPercentage) }}%)
+                {{ formatNumber(currentJob.context_used) }} /
+                {{ formatNumber(currentJob.context_budget) }} tokens ({{
+                  Math.round(contextPercentage)
+                }}%)
               </div>
             </div>
 
@@ -65,12 +64,7 @@
         <v-card v-if="launchPrompt" variant="tonal" class="mt-4">
           <v-card-subtitle>
             Thin-Client Launch Prompt
-            <v-btn
-              icon="mdi-content-copy"
-              size="small"
-              variant="text"
-              @click="copyPrompt"
-            />
+            <v-btn icon="mdi-content-copy" size="small" variant="text" @click="copyPrompt" />
           </v-card-subtitle>
           <v-card-text>
             <pre class="launch-prompt">{{ launchPrompt }}</pre>
@@ -85,18 +79,10 @@
       <v-card-actions>
         <v-spacer />
         <v-btn @click="dialog = false">Cancel</v-btn>
-        <v-btn
-          color="primary"
-          :loading="loading"
-          @click="triggerSuccession"
-        >
+        <v-btn color="primary" :loading="loading" @click="triggerSuccession">
           Trigger Succession
         </v-btn>
-        <v-btn
-          v-if="launchPrompt"
-          color="success"
-          @click="copyAndClose"
-        >
+        <v-btn v-if="launchPrompt" color="success" @click="copyAndClose">
           Copy Prompt & Close
         </v-btn>
       </v-card-actions>
@@ -129,12 +115,12 @@ export default {
   props: {
     jobId: {
       type: String,
-      required: true
+      required: true,
     },
     currentJob: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
 
   emits: ['succession-triggered'],
@@ -151,7 +137,7 @@ export default {
     const reasonOptions = [
       { title: 'Manual Handover', value: 'manual' },
       { title: 'Context Limit Approaching', value: 'context_limit' },
-      { title: 'Phase Transition', value: 'phase_transition' }
+      { title: 'Phase Transition', value: 'phase_transition' },
     ]
 
     // nextInstanceNumber - Computed next instance number
@@ -178,7 +164,7 @@ export default {
 
     // formatNumber(num) - Formats numbers with thousands separators
     // Returns: str - Localized number
-    const formatNumber = (num) => num ? num.toLocaleString() : 0
+    const formatNumber = (num) => (num ? num.toLocaleString() : 0)
 
     // triggerSuccession() - Calls backend API to create successor instance
     // Updates launchPrompt ref with generated thin-client prompt
@@ -192,14 +178,13 @@ export default {
         const response = await api.agentJobs.triggerSuccession(
           props.jobId,
           successionReason.value,
-          notes.value
+          notes.value,
         )
 
         launchPrompt.value = response.data.launch_prompt
 
         toast.success(`Successor instance ${response.data.instance_number} created`)
         emit('succession-triggered', response.data)
-
       } catch (err) {
         console.error('Succession trigger failed:', err)
         error.value = err.response?.data?.detail || 'Failed to trigger succession'
@@ -240,9 +225,9 @@ export default {
       formatNumber,
       triggerSuccession,
       copyPrompt,
-      copyAndClose
+      copyAndClose,
     }
-  }
+  },
 }
 </script>
 

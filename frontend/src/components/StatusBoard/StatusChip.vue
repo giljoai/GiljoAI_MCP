@@ -21,12 +21,7 @@
         {{ statusConfig.label }}
 
         <!-- Staleness indicator -->
-        <v-icon
-          v-if="isStale"
-          size="x-small"
-          class="ml-1"
-          color="warning"
-        >
+        <v-icon v-if="isStale" size="x-small" class="ml-1" color="warning">
           mdi-clock-alert
         </v-icon>
       </v-chip>
@@ -64,42 +59,37 @@ import {
   getStatusConfig,
   getHealthConfig,
   isJobStale,
-  formatLastActivity
+  formatLastActivity,
 } from '@/utils/statusConfig'
 
 const props = defineProps({
   status: {
     type: String,
     required: true,
-    validator: (value) => [
-      'waiting',
-      'working',
-      'blocked',
-      'complete',
-      'failed',
-      'cancelled',
-      'decommissioned'
-    ].includes(value)
+    validator: (value) =>
+      [
+        'waiting',
+        'working',
+        'blocked',
+        'complete',
+        'failed',
+        'cancelled',
+        'decommissioned',
+      ].includes(value),
   },
   healthStatus: {
     type: String,
     default: 'healthy',
-    validator: (value) => [
-      'healthy',
-      'warning',
-      'critical',
-      'timeout',
-      'unknown'
-    ].includes(value)
+    validator: (value) => ['healthy', 'warning', 'critical', 'timeout', 'unknown'].includes(value),
   },
   lastProgressAt: {
     type: String,
-    default: null
+    default: null,
   },
   minutesSinceProgress: {
     type: Number,
-    default: null
-  }
+    default: null,
+  },
 })
 
 const statusConfig = computed(() => getStatusConfig(props.status))
@@ -139,7 +129,8 @@ const formattedLastActivity = computed(() => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }

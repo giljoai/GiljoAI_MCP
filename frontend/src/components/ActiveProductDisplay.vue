@@ -30,18 +30,8 @@
   </div>
 
   <!-- Loading State -->
-  <v-chip
-    v-else
-    variant="text"
-    size="small"
-    class="active-product-chip-loading"
-  >
-    <v-progress-circular
-      indeterminate
-      size="18"
-      width="2"
-      class="mr-2"
-    ></v-progress-circular>
+  <v-chip v-else variant="text" size="small" class="active-product-chip-loading">
+    <v-progress-circular indeterminate size="18" width="2" class="mr-2"></v-progress-circular>
     <span class="text-caption">Loading...</span>
   </v-chip>
 </template>
@@ -83,7 +73,10 @@ onMounted(async () => {
   loading.value = true
   try {
     await productsStore.fetchActiveProduct()
-    console.log('[ActiveProductDisplay] Initial active product:', productsStore.activeProduct?.name || 'null')
+    console.log(
+      '[ActiveProductDisplay] Initial active product:',
+      productsStore.activeProduct?.name || 'null',
+    )
   } catch (err) {
     console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
   } finally {
@@ -97,10 +90,10 @@ watch(
   (newProduct, oldProduct) => {
     console.log('[ActiveProductDisplay] Active product changed:', {
       from: oldProduct?.name || 'null',
-      to: newProduct?.name || 'null'
+      to: newProduct?.name || 'null',
     })
   },
-  { immediate: false }
+  { immediate: false },
 )
 
 onUnmounted(() => {

@@ -12,18 +12,12 @@
           size="small"
         >
           <template #opposite>
-            <div class="text-caption">
-              Instance {{ instance.instance_number }}
-            </div>
+            <div class="text-caption">Instance {{ instance.instance_number }}</div>
           </template>
 
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-2">
-              <v-chip
-                :color="getStatusColor(instance)"
-                size="small"
-                class="mr-2"
-              >
+              <v-chip :color="getStatusColor(instance)" size="small" class="mr-2">
                 {{ instance.status }}
               </v-chip>
               {{ instance.agent_name }}
@@ -42,12 +36,11 @@
                   height="20"
                   class="mt-1"
                 >
-                  <template #default="{ value }">
-                    {{ Math.round(value) }}%
-                  </template>
+                  <template #default="{ value }"> {{ Math.round(value) }}% </template>
                 </v-progress-linear>
                 <div class="text-caption mt-1">
-                  {{ formatNumber(instance.context_used) }} / {{ formatNumber(instance.context_budget) }} tokens
+                  {{ formatNumber(instance.context_used) }} /
+                  {{ formatNumber(instance.context_budget) }} tokens
                 </div>
               </div>
 
@@ -60,9 +53,7 @@
               <div v-if="instance.handover_summary" class="mt-2">
                 <v-expansion-panels variant="accordion">
                   <v-expansion-panel>
-                    <v-expansion-panel-title>
-                      Handover Summary
-                    </v-expansion-panel-title>
+                    <v-expansion-panel-title> Handover Summary </v-expansion-panel-title>
                     <v-expansion-panel-text>
                       <pre class="text-caption">{{ instance.handover_summary }}</pre>
                     </v-expansion-panel-text>
@@ -72,11 +63,7 @@
             </v-card-text>
 
             <v-card-actions v-if="instance.handover_to">
-              <v-btn
-                size="small"
-                variant="text"
-                @click="scrollToInstance(instance.handover_to)"
-              >
+              <v-btn size="small" variant="text" @click="scrollToInstance(instance.handover_to)">
                 View Successor
                 <v-icon end>mdi-arrow-right</v-icon>
               </v-btn>
@@ -85,9 +72,7 @@
         </v-timeline-item>
       </v-timeline>
 
-      <v-alert v-if="instances.length === 0" type="info">
-        No succession history yet.
-      </v-alert>
+      <v-alert v-if="instances.length === 0" type="info"> No succession history yet. </v-alert>
     </v-card-text>
   </v-card>
 </template>
@@ -112,8 +97,8 @@ export default {
   props: {
     projectId: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
 
   setup(props) {
@@ -130,7 +115,7 @@ export default {
 
         // Filter orchestrators and sort by instance_number
         instances.value = response.data
-          .filter(job => job.agent_type === 'orchestrator')
+          .filter((job) => job.agent_type === 'orchestrator')
           .sort((a, b) => (a.instance_number || 1) - (b.instance_number || 1))
       } catch (error) {
         console.error('Failed to load succession history:', error)
@@ -149,7 +134,7 @@ export default {
         working: 'primary',
         completed: 'success',
         complete: 'success',
-        failed: 'error'
+        failed: 'error',
       }
       return statusColors[instance.status] || 'grey'
     }
@@ -205,9 +190,9 @@ export default {
       getContextColor,
       formatDate,
       formatNumber,
-      scrollToInstance
+      scrollToInstance,
     }
-  }
+  },
 }
 </script>
 

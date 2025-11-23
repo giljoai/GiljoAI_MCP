@@ -1,9 +1,7 @@
 # Agent Monitoring Dashboard - Design Specification
 
-**UX Designer**: Claude Code UX Designer Agent
-**Date**: November 14, 2025
-**Version**: 1.0.0
-**Status**: Production-grade implementation complete
+**UX Designer**: Claude Code UX Designer Agent **Date**: November 14, 2025
+**Version**: 1.0.0 **Status**: Production-grade implementation complete
 
 ---
 
@@ -13,7 +11,8 @@
 
 1. **User-First**: Monitoring is about observability, not aesthetics
 2. **Real-Time Clarity**: Status changes must be immediately visible
-3. **Professional Branding**: Clean, modern interface reflecting technical excellence
+3. **Professional Branding**: Clean, modern interface reflecting technical
+   excellence
 4. **Accessibility**: WCAG 2.1 AA compliance as baseline, not optional
 
 ### Visual Hierarchy
@@ -32,16 +31,19 @@ Level 4: Card details (metadata)
 ### Grid System
 
 **Desktop (> 960px)**:
+
 - 3 columns (4 columns for large screens)
 - Card width: ~300-350px
 - Gutter: 16px
 
 **Tablet (600px - 960px)**:
+
 - 2 columns
 - Card width: ~350-400px
 - Gutter: 12px
 
 **Mobile (< 600px)**:
+
 - 1 column
 - Card width: 100% - 32px padding
 - Gutter: 8px
@@ -66,15 +68,15 @@ Column padding: 8px (Vuetify default)
 
 ### Status Colors (Handover 0113 - 7-State Model)
 
-| Status         | Vuetify Color | Hex       | Usage                          |
-|----------------|---------------|-----------|--------------------------------|
-| `waiting`      | indigo        | #3F51B5   | Calm, patient state            |
-| `working`      | cyan          | #00BCD4   | Active, energetic (pulsing)    |
-| `completed`    | success       | #4CAF50   | Success, celebration           |
-| `failed`       | error         | #F44336   | Critical attention required    |
-| `decommissioned` | grey        | #9E9E9E   | Inactive, neutral              |
-| `cancelled`    | orange        | #FF9800   | Warning, user-initiated        |
-| `cancelling`   | warning       | #FFC107   | In-progress cancellation       |
+| Status           | Vuetify Color | Hex     | Usage                       |
+| ---------------- | ------------- | ------- | --------------------------- |
+| `waiting`        | indigo        | #3F51B5 | Calm, patient state         |
+| `working`        | cyan          | #00BCD4 | Active, energetic (pulsing) |
+| `completed`      | success       | #4CAF50 | Success, celebration        |
+| `failed`         | error         | #F44336 | Critical attention required |
+| `decommissioned` | grey          | #9E9E9E | Inactive, neutral           |
+| `cancelled`      | orange        | #FF9800 | Warning, user-initiated     |
+| `cancelling`     | warning       | #FFC107 | In-progress cancellation    |
 
 ### Agent Type Colors
 
@@ -129,15 +131,15 @@ Critical (>5min): #F44336 (red)
 
 ### Font Hierarchy
 
-| Element              | Class                        | Size  | Weight | Transform  |
-|----------------------|------------------------------|-------|--------|------------|
-| Section heading      | text-h5                      | 24px  | 400    | -          |
-| Subtitle             | text-body-2 text-medium-emphasis | 14px  | 400    | -          |
-| Agent type label     | agent-type-label             | 14px  | 500    | uppercase  |
-| Status label         | text-body-2 font-weight-bold | 14px  | 700    | -          |
-| Metadata label       | text-caption text-medium-emphasis | 12px  | 400    | -          |
-| Metadata value       | text-caption font-weight-medium | 12px  | 500    | -          |
-| Chip text            | v-chip (default)             | 11px  | 600    | uppercase  |
+| Element          | Class                             | Size | Weight | Transform |
+| ---------------- | --------------------------------- | ---- | ------ | --------- |
+| Section heading  | text-h5                           | 24px | 400    | -         |
+| Subtitle         | text-body-2 text-medium-emphasis  | 14px | 400    | -         |
+| Agent type label | agent-type-label                  | 14px | 500    | uppercase |
+| Status label     | text-body-2 font-weight-bold      | 14px | 700    | -         |
+| Metadata label   | text-caption text-medium-emphasis | 12px | 400    | -         |
+| Metadata value   | text-caption font-weight-medium   | 12px | 500    | -         |
+| Chip text        | v-chip (default)                  | 11px | 600    | uppercase |
 
 ---
 
@@ -174,20 +176,24 @@ Critical (>5min): #F44336 (red)
 ### Visual States
 
 **Default (Idle)**:
+
 - Border-left: 4px solid agent color
 - Elevation: 2
 - Cursor: pointer
 
 **Hover**:
+
 - Transform: translateY(-2px)
 - Elevation: 4 (shadow increase)
 - Transition: 0.2s ease
 
 **Focus** (keyboard):
+
 - Outline: 2px solid primary color
 - Outline-offset: 2px
 
 **Working/Cancelling**:
+
 - Header pulsing animation (2s ease-in-out infinite)
 - Progress bar pulsing animation (1.5s ease-in-out infinite)
 
@@ -199,8 +205,13 @@ Critical (>5min): #F44336 (red)
 
 ```css
 @keyframes pulse-header {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 animation: pulse-header 2s ease-in-out infinite;
@@ -212,8 +223,13 @@ animation: pulse-header 2s ease-in-out infinite;
 
 ```css
 @keyframes pulse-progress {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 animation: pulse-progress 1.5s ease-in-out infinite;
@@ -224,7 +240,9 @@ animation: pulse-progress 1.5s ease-in-out infinite;
 ### Card Hover
 
 ```css
-transition: transform 0.2s ease, box-shadow 0.2s ease;
+transition:
+  transform 0.2s ease,
+  box-shadow 0.2s ease;
 transform: translateY(-2px);
 ```
 
@@ -236,27 +254,30 @@ transform: translateY(-2px);
 
 ### Click Behaviors
 
-| Element             | Primary Action                     | Secondary Action (Ctrl/Cmd) |
-|---------------------|------------------------------------|-----------------------------|
-| Agent card          | Navigate to project Jobs tab       | Open in new tab             |
-| Cancel button       | Show confirmation dialog           | -                           |
-| View Messages button| Navigate to Messages view          | Open in new tab             |
-| Filter tab          | Filter agent list                  | -                           |
-| Refresh button      | Reload agent data                  | -                           |
+| Element              | Primary Action               | Secondary Action (Ctrl/Cmd) |
+| -------------------- | ---------------------------- | --------------------------- |
+| Agent card           | Navigate to project Jobs tab | Open in new tab             |
+| Cancel button        | Show confirmation dialog     | -                           |
+| View Messages button | Navigate to Messages view    | Open in new tab             |
+| Filter tab           | Filter agent list            | -                           |
+| Refresh button       | Reload agent data            | -                           |
 
 ### Loading States
 
 **Initial Load**:
+
 ```vue
 <v-progress-circular indeterminate color="primary" size="64" />
 <div class="text-body-1 mt-4">Loading agents...</div>
 ```
 
 **Refresh**:
+
 - Button shows `:loading="true"` spinner
 - Toast notification: "Agent list refreshed"
 
 **Cancellation**:
+
 - Dialog button shows `:loading="true"` spinner
 - Immediate optimistic update (status → `cancelling`)
 - Toast notification: "Agent cancellation initiated"
@@ -264,6 +285,7 @@ transform: translateY(-2px);
 ### Empty States
 
 **No Agents**:
+
 ```vue
 <v-alert type="info" variant="tonal" prominent>
   <v-icon size="64">mdi-robot-outline</v-icon>
@@ -274,6 +296,7 @@ transform: translateY(-2px);
 ```
 
 **Filtered Result = 0**:
+
 ```vue
 <v-alert type="info" variant="tonal">
   No agents found with status: working
@@ -289,20 +312,24 @@ transform: translateY(-2px);
 #### Color Contrast
 
 ✅ **Normal Text (< 18pt)**: Minimum 4.5:1
+
 - Status labels on cards: 7.2:1 (dark text on light background)
 - Agent type header: 5.8:1 (white text on colored background)
 - Chip text: 6.1:1 (white text on colored chip)
 
 ✅ **Large Text (≥ 18pt)**: Minimum 3:1
+
 - Section headings: 8.4:1
 
 ✅ **UI Components**: Minimum 3:1
+
 - Focus indicators: 4.2:1 (primary color vs background)
 - Status chips: 4.5:1 (meets higher standard)
 
 #### Keyboard Navigation
 
 ✅ **Tab Order**:
+
 1. WebSocket status chip (informational, not focusable)
 2. Active count chip (informational, not focusable)
 3. Refresh button (focusable)
@@ -311,6 +338,7 @@ transform: translateY(-2px);
 6. Card action buttons (focusable, Enter to activate)
 
 ✅ **Focus Indicators**:
+
 - 2px solid outline (primary color)
 - 2px offset for clear separation
 - Visible on all interactive elements
@@ -320,28 +348,17 @@ transform: translateY(-2px);
 #### Screen Reader Support
 
 ✅ **ARIA Labels**:
+
 ```vue
 <!-- Agent card -->
 <v-card
   role="article"
   :aria-label="`${agent.agent_type} agent: ${statusConfig.label}`"
->
-
-<!-- Refresh button -->
-<v-btn
-  icon="mdi-refresh"
-  aria-label="Refresh agent list"
-/>
-
-<!-- Status chip -->
-<v-chip
-  :color="statusConfig.color"
-  role="status"
-  :aria-label="`Status: ${statusConfig.label}`"
->
+></v-card>
 ```
 
 ✅ **Semantic HTML**:
+
 - Cards use `role="article"`
 - Status uses `role="status"` for live region
 - Headings use proper hierarchy (h2 → h3)
@@ -349,6 +366,7 @@ transform: translateY(-2px);
 #### Error Prevention
 
 ✅ **Destructive Actions**:
+
 - Cancel agent requires confirmation dialog
 - Dialog shows agent details before confirmation
 - "Keep Working" button is default (safer choice)
@@ -360,12 +378,14 @@ transform: translateY(-2px);
 ### Mobile (< 600px)
 
 **Layout**:
+
 - Single column
 - Cards full width (minus 32px padding)
 - Filter tabs scrollable
 - Header stack vertically
 
 **Optimizations**:
+
 - Larger tap targets (48px minimum)
 - Simplified card content (hide less critical metadata)
 - Sticky filter tabs (optional)
@@ -373,11 +393,13 @@ transform: translateY(-2px);
 ### Tablet (600px - 960px)
 
 **Layout**:
+
 - 2 columns
 - Cards ~350-400px wide
 - Filter tabs in single row
 
 **Optimizations**:
+
 - Balance between desktop and mobile
 - Show all card metadata
 - Maintain touch-friendly targets
@@ -385,11 +407,13 @@ transform: translateY(-2px);
 ### Desktop (> 960px)
 
 **Layout**:
+
 - 3-4 columns (based on viewport width)
 - Cards ~300-350px wide
 - All features visible
 
 **Optimizations**:
+
 - Hover states enabled
 - Keyboard shortcuts prominent
 - Dense information display
@@ -401,19 +425,22 @@ transform: translateY(-2px);
 ### Color Adjustments
 
 **Card Background**:
+
 ```css
 /* Light mode */
-background: #FFFFFF;
+background: #ffffff;
 
 /* Dark mode */
 background: rgba(255, 255, 255, 0.05);
 ```
 
 **Text Colors**:
+
 - Vuetify handles automatic text color adjustment
 - `text-medium-emphasis` class provides proper contrast
 
 **Status Colors**:
+
 - No adjustment needed (sufficient contrast in both modes)
 - Agent type colors remain consistent
 
@@ -424,15 +451,17 @@ background: rgba(255, 255, 255, 0.05);
 ### Rendering Strategy
 
 **Computed Properties**:
+
 ```javascript
 // Filter agents once, reuse in multiple places
 const filteredAgents = computed(() => {
   if (activeTab.value === 'all') return agents.value
-  return agents.value.filter(a => a.status === activeTab.value)
+  return agents.value.filter((a) => a.status === activeTab.value)
 })
 ```
 
 **Optimistic Updates**:
+
 ```javascript
 // Update UI immediately, WebSocket confirms later
 const confirmCancelAgent = async () => {
@@ -449,10 +478,11 @@ const confirmCancelAgent = async () => {
 ### WebSocket Efficiency
 
 **Targeted Updates**:
+
 ```javascript
 // Update only changed agent, not entire list
 const handleAgentStatusChange = (data) => {
-  const agentIndex = agents.value.findIndex(a => a.job_id === data.job_id)
+  const agentIndex = agents.value.findIndex((a) => a.job_id === data.job_id)
   if (agentIndex !== -1) {
     agents.value[agentIndex] = { ...agents.value[agentIndex], ...data }
   }
@@ -468,23 +498,25 @@ const handleAgentStatusChange = (data) => {
 ### Toast Notifications
 
 **Success**:
+
 - "Agent list refreshed" (refresh action)
 - "Agent {type} completed successfully" (agent completion)
 
 **Error**:
+
 - "Failed to load agent data" (fetch error)
 - "Failed to cancel agent: {reason}" (cancel error)
 
 **Info**:
+
 - "No project associated with this agent" (orphaned agent)
 - "Agent {type} was cancelled" (cancellation confirmed)
 
 ### Visual Feedback
 
-**Hover**: Card elevation increase + translateY(-2px)
-**Click**: Navigation animation (Vue Router transition)
-**Loading**: Spinner in button (cancel, refresh)
-**Status Change**: Card updates in-place (no flash)
+**Hover**: Card elevation increase + translateY(-2px) **Click**: Navigation
+animation (Vue Router transition) **Loading**: Spinner in button (cancel,
+refresh) **Status Change**: Card updates in-place (no flash)
 
 ---
 
@@ -493,11 +525,13 @@ const handleAgentStatusChange = (data) => {
 ### Why Grid Layout?
 
 **Pros**:
+
 - Scannable overview of multiple agents
 - Responsive to viewport changes
 - Familiar pattern (like Trello, GitHub Projects)
 
 **Cons**:
+
 - Requires vertical scrolling with many agents
 - Less detail per card than table view
 
@@ -506,11 +540,13 @@ const handleAgentStatusChange = (data) => {
 ### Why Filter Tabs vs Dropdown?
 
 **Pros of Tabs**:
+
 - Always visible (no interaction required)
 - Shows counts at-a-glance
 - One-click filtering
 
 **Cons of Tabs**:
+
 - Takes vertical space
 - Harder to extend (limited tab count)
 
@@ -519,6 +555,7 @@ const handleAgentStatusChange = (data) => {
 ### Why Confirmation Dialog for Cancel?
 
 **Rationale**:
+
 - Destructive action (cannot undo)
 - Prevents accidental clicks
 - Provides context before action
@@ -539,12 +576,14 @@ const handleAgentStatusChange = (data) => {
 ### Scalability
 
 **Handling 100+ Agents**:
+
 - Virtualized scrolling (vue-virtual-scroller)
 - Pagination (20-50 agents per page)
 - Server-side filtering (reduce payload)
 - Collapse completed/failed agents after 1 hour
 
 **Performance Monitoring**:
+
 - Track WebSocket message volume
 - Monitor Vue reactivity overhead
 - Measure time-to-interactive
@@ -554,6 +593,7 @@ const handleAgentStatusChange = (data) => {
 ## Design Sign-Off
 
 **Deliverables**:
+
 - ✅ AgentMonitoring.vue (13KB, production-ready)
 - ✅ AgentStatusCard.vue (9KB, production-ready)
 - ✅ Integration into DashboardView.vue
@@ -561,6 +601,7 @@ const handleAgentStatusChange = (data) => {
 - ✅ DESIGN_SPEC.md (this document)
 
 **Quality Assurance**:
+
 - ✅ Accessibility: WCAG 2.1 AA compliant
 - ✅ Responsive: Mobile, tablet, desktop tested
 - ✅ Performance: Optimized for real-time updates
@@ -571,6 +612,5 @@ const handleAgentStatusChange = (data) => {
 
 ---
 
-**UX Designer Agent**: Claude Code
-**Design Review**: November 14, 2025
+**UX Designer Agent**: Claude Code **Design Review**: November 14, 2025
 **Approved for**: Production deployment

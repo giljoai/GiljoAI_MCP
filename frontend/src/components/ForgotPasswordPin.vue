@@ -39,22 +39,12 @@
         </AppAlert>
 
         <!-- Alert for success -->
-        <AppAlert
-          v-if="success"
-          type="success"
-          variant="tonal"
-          class="mb-4"
-        >
+        <AppAlert v-if="success" type="success" variant="tonal" class="mb-4">
           {{ success }}
         </AppAlert>
 
         <!-- Lockout Warning -->
-        <AppAlert
-          v-if="lockoutMessage"
-          type="warning"
-          variant="tonal"
-          class="mb-4"
-        >
+        <AppAlert v-if="lockoutMessage" type="warning" variant="tonal" class="mb-4">
           <strong>Account Locked:</strong> {{ lockoutMessage }}
         </AppAlert>
 
@@ -72,7 +62,10 @@
             density="compact"
             class="mb-4"
           >
-            <strong>Warning:</strong> {{ attemptsRemaining }} attempt{{ attemptsRemaining !== 1 ? 's' : '' }} remaining before lockout.
+            <strong>Warning:</strong> {{ attemptsRemaining }} attempt{{
+              attemptsRemaining !== 1 ? 's' : ''
+            }}
+            remaining before lockout.
           </AppAlert>
 
           <v-form ref="pinForm" @submit.prevent="handleVerifyPin">
@@ -183,7 +176,11 @@
             <v-list density="compact" class="requirement-list mb-4">
               <v-list-item v-for="req in passwordRequirements" :key="req.text" class="px-0 py-1">
                 <template #prepend>
-                  <v-icon :color="req.met ? 'success' : 'error'" size="small" :aria-label="req.met ? 'Requirement met' : 'Requirement not met'">
+                  <v-icon
+                    :color="req.met ? 'success' : 'error'"
+                    size="small"
+                    :aria-label="req.met ? 'Requirement met' : 'Requirement not met'"
+                  >
                     {{ req.met ? 'mdi-check-circle' : 'mdi-close-circle' }}
                   </v-icon>
                 </template>
@@ -212,13 +209,7 @@
 
       <v-card-actions class="pa-4">
         <v-spacer />
-        <v-btn
-          variant="text"
-          @click="handleClose"
-          :disabled="loading"
-        >
-          Cancel
-        </v-btn>
+        <v-btn variant="text" @click="handleClose" :disabled="loading"> Cancel </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -233,8 +224,8 @@ import api from '@/services/api'
 const props = defineProps({
   show: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 // Emits
@@ -243,7 +234,7 @@ const emit = defineEmits(['update:show', 'success'])
 // Internal state
 const internalShow = computed({
   get: () => props.show,
-  set: (value) => emit('update:show', value)
+  set: (value) => emit('update:show', value),
 })
 
 // State
@@ -268,22 +259,22 @@ const rules = {
 }
 
 const pinRules = [
-  v => !!v || 'Recovery PIN is required',
-  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+  (v) => !!v || 'Recovery PIN is required',
+  (v) => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
 ]
 
 const passwordRules = [
-  v => !!v || 'Password is required',
-  v => v.length >= 12 || 'Password must be at least 12 characters',
-  v => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
-  v => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
-  v => /\d/.test(v) || 'Must contain at least one digit',
-  v => /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(v) || 'Must contain at least one special character'
+  (v) => !!v || 'Password is required',
+  (v) => v.length >= 12 || 'Password must be at least 12 characters',
+  (v) => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
+  (v) => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
+  (v) => /\d/.test(v) || 'Must contain at least one digit',
+  (v) => /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(v) || 'Must contain at least one special character',
 ]
 
 const confirmPasswordRules = [
-  v => !!v || 'Password confirmation is required',
-  v => v === newPassword.value || 'Passwords do not match'
+  (v) => !!v || 'Password confirmation is required',
+  (v) => v === newPassword.value || 'Passwords do not match',
 ]
 
 // Password requirements
@@ -293,14 +284,19 @@ const passwordRequirements = computed(() => [
   { text: 'One lowercase letter', met: /[a-z]/.test(newPassword.value) },
   { text: 'One digit', met: /\d/.test(newPassword.value) },
   { text: 'One special character', met: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(newPassword.value) },
-  { text: 'Passwords match', met: newPassword.value === confirmPassword.value && confirmPassword.value !== '' }
+  {
+    text: 'Passwords match',
+    met: newPassword.value === confirmPassword.value && confirmPassword.value !== '',
+  },
 ])
 
 const isPasswordValid = computed(() => {
-  return newPassword.value &&
+  return (
+    newPassword.value &&
     confirmPassword.value &&
     newPassword.value === confirmPassword.value &&
-    passwordRequirements.value.every(req => req.met)
+    passwordRequirements.value.every((req) => req.met)
+  )
 })
 
 // Methods
@@ -362,7 +358,8 @@ async function handleVerifyPin() {
 
     // Handle lockout
     if (err.response?.status === 429) {
-      lockoutMessage.value = err.response.data?.detail || 'Too many attempts. Please try again in 15 minutes.'
+      lockoutMessage.value =
+        err.response.data?.detail || 'Too many attempts. Please try again in 15 minutes.'
       attemptsRemaining.value = 0
     } else if (err.response?.data?.attempts_remaining !== undefined) {
       attemptsRemaining.value = err.response.data.attempts_remaining
@@ -392,7 +389,7 @@ async function handleResetPassword() {
       username: username.value,
       recovery_pin: pin.value,
       new_password: newPassword.value,
-      confirm_password: confirmPassword.value
+      confirm_password: confirmPassword.value,
     })
 
     console.log('[ForgotPassword] Password reset successful')
@@ -401,7 +398,7 @@ async function handleResetPassword() {
     success.value = 'Password reset successfully! You can now log in with your new password.'
 
     // Wait a moment to show success message
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Close modal and emit success
     resetFormState()
@@ -412,7 +409,8 @@ async function handleResetPassword() {
 
     // Handle lockout
     if (err.response?.status === 429) {
-      lockoutMessage.value = err.response.data?.detail || 'Too many attempts. Please try again in 15 minutes.'
+      lockoutMessage.value =
+        err.response.data?.detail || 'Too many attempts. Please try again in 15 minutes.'
       attemptsRemaining.value = 0
       stage.value = 'pin' // Go back to PIN stage
     } else if (err.response?.data?.detail) {
@@ -426,11 +424,14 @@ async function handleResetPassword() {
 }
 
 // Watch for dialog close to reset form
-watch(() => props.show, (newValue) => {
-  if (!newValue) {
-    resetFormState()
-  }
-})
+watch(
+  () => props.show,
+  (newValue) => {
+    if (!newValue) {
+      resetFormState()
+    }
+  },
+)
 </script>
 
 <style scoped>

@@ -116,7 +116,7 @@ const activeTab = ref('network')
 // Loading states
 const loading = ref({
   network: false,
-  security: false
+  security: false,
 })
 
 // Network settings state
@@ -236,7 +236,7 @@ async function loadCookieDomains() {
     console.error('[SECURITY] Failed to load cookie domains:', error)
     securityFeedback.value = {
       type: 'error',
-      message: 'Failed to load cookie domains. Please try again.'
+      message: 'Failed to load cookie domains. Please try again.',
     }
   } finally {
     loading.value.security = false
@@ -248,7 +248,7 @@ async function addCookieDomain(domain) {
   if (cookieDomains.value.includes(domain)) {
     securityFeedback.value = {
       type: 'warning',
-      message: `Domain "${domain}" is already in the whitelist.`
+      message: `Domain "${domain}" is already in the whitelist.`,
     }
     return
   }
@@ -258,14 +258,14 @@ async function addCookieDomain(domain) {
     cookieDomains.value.push(domain)
     securityFeedback.value = {
       type: 'success',
-      message: `Domain "${domain}" added successfully.`
+      message: `Domain "${domain}" added successfully.`,
     }
     console.log('[SECURITY] Cookie domain added:', domain)
   } catch (error) {
     console.error('[SECURITY] Failed to add cookie domain:', error)
     securityFeedback.value = {
       type: 'error',
-      message: error.response?.data?.detail || 'Failed to add domain. Please try again.'
+      message: error.response?.data?.detail || 'Failed to add domain. Please try again.',
     }
   }
 }
@@ -273,17 +273,17 @@ async function addCookieDomain(domain) {
 async function removeCookieDomain(domain) {
   try {
     await api.settings.removeCookieDomain(domain)
-    cookieDomains.value = cookieDomains.value.filter(d => d !== domain)
+    cookieDomains.value = cookieDomains.value.filter((d) => d !== domain)
     securityFeedback.value = {
       type: 'success',
-      message: `Domain "${domain}" removed successfully.`
+      message: `Domain "${domain}" removed successfully.`,
     }
     console.log('[SECURITY] Cookie domain removed:', domain)
   } catch (error) {
     console.error('[SECURITY] Failed to remove cookie domain:', error)
     securityFeedback.value = {
       type: 'error',
-      message: error.response?.data?.detail || 'Failed to remove domain. Please try again.'
+      message: error.response?.data?.detail || 'Failed to remove domain. Please try again.',
     }
   }
 }

@@ -54,11 +54,7 @@
             :active="statusFilters.has(status)"
           >
             <template v-slot:prepend>
-              <v-checkbox
-                :model-value="statusFilters.has(status)"
-                hide-details
-                size="small"
-              />
+              <v-checkbox :model-value="statusFilters.has(status)" hide-details size="small" />
             </template>
             <v-list-item-title>{{ formatStatus(status) }}</v-list-item-title>
           </v-list-item>
@@ -110,7 +106,10 @@
 
             <!-- Message Footer -->
             <div v-if="showMessageFooter(message)" class="message-footer">
-              <div v-if="message.acknowledged_by && message.acknowledged_by.length > 0" class="acks">
+              <div
+                v-if="message.acknowledged_by && message.acknowledged_by.length > 0"
+                class="acks"
+              >
                 <v-icon icon="mdi-check-circle" size="x-small" color="success" class="mr-1" />
                 <span>Acknowledged by: {{ message.acknowledged_by.join(', ') }}</span>
               </div>
@@ -469,7 +468,11 @@ onMounted(() => {
         transition: all 0.2s ease;
 
         &:hover {
-          background: linear-gradient(135deg, rgba(30, 49, 71, 0.95) 0%, rgba(24, 39, 57, 0.95) 100%);
+          background: linear-gradient(
+            135deg,
+            rgba(30, 49, 71, 0.95) 0%,
+            rgba(24, 39, 57, 0.95) 100%
+          );
           border-color: rgba(49, 80, 116, 0.6);
         }
 

@@ -240,7 +240,10 @@ export const useProductStore = defineStore('products', () => {
           return
         }
       } catch (error) {
-        console.warn('[PRODUCTS] Setup status check failed - skipping product initialization:', error)
+        console.warn(
+          '[PRODUCTS] Setup status check failed - skipping product initialization:',
+          error,
+        )
         return
       }
 
@@ -248,7 +251,7 @@ export const useProductStore = defineStore('products', () => {
 
       const storedProductId = localStorage.getItem('currentProductId')
       if (storedProductId && products.value.length > 0) {
-        const product = products.value.find(p => p.id === parseInt(storedProductId))
+        const product = products.value.find((p) => p.id === parseInt(storedProductId))
         if (product) {
           await setCurrentProduct(parseInt(storedProductId))
         } else {
@@ -380,14 +383,10 @@ export const useProductStore = defineStore('products', () => {
     const wsStore = useWebSocketStore()
 
     // Register event handlers and store unsubscribe functions
+    wsUnsubscribers.value.push(wsStore.on('product:memory:updated', handleProductMemoryUpdated))
+    wsUnsubscribers.value.push(wsStore.on('product:learning:added', handleProductLearningAdded))
     wsUnsubscribers.value.push(
-      wsStore.on('product:memory:updated', handleProductMemoryUpdated)
-    )
-    wsUnsubscribers.value.push(
-      wsStore.on('product:learning:added', handleProductLearningAdded)
-    )
-    wsUnsubscribers.value.push(
-      wsStore.on('product:github:settings:changed', handleProductGitHubSettingsChanged)
+      wsStore.on('product:github:settings:changed', handleProductGitHubSettingsChanged),
     )
 
     // Refresh active product on status changes (tenant-scoped WS event)
@@ -398,7 +397,7 @@ export const useProductStore = defineStore('products', () => {
         } catch (e) {
           console.warn('[PRODUCTS] Failed to refresh active product on WS event:', e)
         }
-      })
+      }),
     )
 
     console.log('[PRODUCTS] WebSocket event listeners initialized')

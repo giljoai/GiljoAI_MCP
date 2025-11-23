@@ -53,7 +53,6 @@
       </v-btn>
     </AppAlert>
 
-
     <!-- Header -->
     <v-row>
       <v-col cols="12">
@@ -134,11 +133,6 @@
       </v-col>
     </v-row>
 
-
-
-
-
-
     <!-- Agent Monitoring Section (Dashboard Agent Monitoring UI) -->
     <v-row class="mt-6">
       <v-col cols="12">
@@ -155,13 +149,12 @@
               <v-icon left color="primary">mdi-history</v-icon>
               Historical Projects
             </div>
-            <v-chip color="info" size="small" variant="outlined">
-              Coming Soon
-            </v-chip>
+            <v-chip color="info" size="small" variant="outlined"> Coming Soon </v-chip>
           </v-card-title>
 
           <v-card-subtitle class="text-medium-emphasis mt-2">
-            View completed, cancelled, and archived projects with full job history and agent interactions
+            View completed, cancelled, and archived projects with full job history and agent
+            interactions
           </v-card-subtitle>
 
           <v-divider class="my-4" />
@@ -206,12 +199,7 @@
                 />
               </v-col>
               <v-col cols="12" md="2" class="d-flex align-center">
-                <v-btn
-                  color="primary"
-                  variant="outlined"
-                  block
-                  disabled
-                >
+                <v-btn color="primary" variant="outlined" block disabled>
                   <v-icon left>mdi-filter</v-icon>
                   Apply Filters
                 </v-btn>
@@ -221,12 +209,7 @@
             <!-- Placeholder: Historical Project Cards -->
             <v-row v-if="historicalProjects.length === 0">
               <v-col cols="12">
-                <v-alert
-                  type="info"
-                  variant="tonal"
-                  prominent
-                  class="text-center"
-                >
+                <v-alert type="info" variant="tonal" prominent class="text-center">
                   <v-icon size="64" class="mb-4">mdi-folder-open-outline</v-icon>
                   <div class="text-h6 mb-2">No Historical Projects Yet</div>
                   <div class="text-body-2">
@@ -237,19 +220,25 @@
                       <template v-slot:prepend>
                         <v-icon color="primary">mdi-chart-timeline-variant</v-icon>
                       </template>
-                      <v-list-item-title>View full project timeline and agent activity</v-list-item-title>
+                      <v-list-item-title
+                        >View full project timeline and agent activity</v-list-item-title
+                      >
                     </v-list-item>
                     <v-list-item>
                       <template v-slot:prepend>
                         <v-icon color="primary">mdi-message-text</v-icon>
                       </template>
-                      <v-list-item-title>Review all agent messages and communications</v-list-item-title>
+                      <v-list-item-title
+                        >Review all agent messages and communications</v-list-item-title
+                      >
                     </v-list-item>
                     <v-list-item>
                       <template v-slot:prepend>
                         <v-icon color="primary">mdi-chart-bar</v-icon>
                       </template>
-                      <v-list-item-title>Analyze token usage and performance metrics</v-list-item-title>
+                      <v-list-item-title
+                        >Analyze token usage and performance metrics</v-list-item-title
+                      >
                     </v-list-item>
                     <v-list-item>
                       <template v-slot:prepend>
@@ -432,8 +421,6 @@ const fetchCallCounts = async () => {
   }
 }
 
-
-
 // Historical Projects (Handover 0077 - Dashboard Integration)
 // Placeholder state - will be populated when project completion workflow is fully tested
 const historicalProjects = ref([])
@@ -542,7 +529,9 @@ async function fetchHistoricalProjects() {
 
   // For now, keep empty array until project completion workflow is tested
   historicalProjects.value = []
-  console.log('[Dashboard] Historical Projects placeholder - awaiting implementation after job testing')
+  console.log(
+    '[Dashboard] Historical Projects placeholder - awaiting implementation after job testing',
+  )
 }
 
 // Methods
@@ -602,8 +591,6 @@ const formatDuration = (project) => {
   return `${minutes}m`
 }
 
-
-
 const checkSetupStatus = async () => {
   try {
     const status = await setupService.checkStatus()
@@ -652,9 +639,9 @@ const refreshData = async () => {
     await Promise.all([
       projectStore.fetchProjects(),
       taskStore.fetchTasks(),
-      api.get('/api/v1/stats/system').then(response => {
+      api.get('/api/v1/stats/system').then((response) => {
         systemStats.value = response.data
-      })
+      }),
     ])
   }
 }

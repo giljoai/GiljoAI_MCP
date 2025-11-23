@@ -81,12 +81,7 @@
           <v-divider />
 
           <v-card-actions class="pa-4">
-            <v-btn
-              color="primary"
-              :disabled="!canSend"
-              :loading="sending"
-              @click="sendBroadcast"
-            >
+            <v-btn color="primary" :disabled="!canSend" :loading="sending" @click="sendBroadcast">
               <v-icon icon="mdi-send" start />
               Send Broadcast
             </v-btn>
@@ -155,11 +150,7 @@
 
             <!-- History List -->
             <v-list v-else class="pa-0">
-              <v-list-item
-                v-for="broadcast in broadcastHistory"
-                :key="broadcast.id"
-                class="mb-2"
-              >
+              <v-list-item v-for="broadcast in broadcastHistory" :key="broadcast.id" class="mb-2">
                 <template v-slot:prepend>
                   <v-avatar :color="getStatusColor(broadcast.status)">
                     <v-icon :icon="getStatusIcon(broadcast.status)" />
@@ -343,10 +334,7 @@ const sendBroadcast = async () => {
   try {
     const response = await api.messages.broadcast(selectedProject.value, messageContent.value)
 
-    showToast(
-      `Broadcast sent to ${response.data.recipient_count} agents`,
-      'success'
-    )
+    showToast(`Broadcast sent to ${response.data.recipient_count} agents`, 'success')
 
     // Clear form
     messageContent.value = ''

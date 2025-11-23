@@ -3,12 +3,7 @@
     <!-- Vision Documents Section -->
     <div class="text-subtitle-1 mb-4">
       Vision Documents
-      <v-chip
-        v-if="hasPriorityBadge"
-        :color="priorityColor"
-        size="x-small"
-        class="ml-2"
-      >
+      <v-chip v-if="hasPriorityBadge" :color="priorityColor" size="x-small" class="ml-2">
         {{ priorityLabel }}
       </v-chip>
     </div>
@@ -27,54 +22,26 @@
     </v-alert>
 
     <!-- Upload progress indicator -->
-    <v-alert
-      v-if="uploading"
-      type="info"
-      variant="tonal"
-      density="compact"
-      class="mb-4"
-    >
+    <v-alert v-if="uploading" type="info" variant="tonal" density="compact" class="mb-4">
       <div class="d-flex align-center mb-2">
-        <v-progress-circular
-          indeterminate
-          size="20"
-          width="2"
-          class="mr-2"
-        />
+        <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
         <span>Uploading vision documents...</span>
       </div>
-      <v-progress-linear
-        :model-value="uploadProgress"
-        color="primary"
-        height="6"
-        class="mt-2"
-      />
+      <v-progress-linear :model-value="uploadProgress" color="primary" height="6" class="mt-2" />
     </v-alert>
 
     <!-- Chunking indicator for large files -->
-    <v-alert
-      v-if="isChunking"
-      type="info"
-      variant="tonal"
-      density="compact"
-      class="mb-4"
-    >
+    <v-alert v-if="isChunking" type="info" variant="tonal" density="compact" class="mb-4">
       <v-icon start>mdi-scissors-cutting</v-icon>
       Chunking large document... This may take a moment.
     </v-alert>
 
     <!-- Existing Documents (Edit Mode Only) -->
     <div v-if="productId && existingDocuments.length > 0" class="mb-4">
-      <div class="text-subtitle-2 mb-2">
-        Existing Documents ({{ existingDocuments.length }})
-      </div>
+      <div class="text-subtitle-2 mb-2">Existing Documents ({{ existingDocuments.length }})</div>
 
       <v-list density="compact" class="mb-3">
-        <v-list-item
-          v-for="doc in existingDocuments"
-          :key="doc.id"
-          class="border rounded mb-2"
-        >
+        <v-list-item v-for="doc in existingDocuments" :key="doc.id" class="border rounded mb-2">
           <template v-slot:prepend>
             <v-icon :color="doc.chunked ? 'success' : 'warning'">
               {{ doc.chunked ? 'mdi-check-circle' : 'mdi-clock-outline' }}
@@ -126,16 +93,10 @@
 
     <!-- File List -->
     <div v-if="visionFiles && visionFiles.length > 0">
-      <div class="text-subtitle-2 mb-2">
-        Files to Upload ({{ visionFiles.length }})
-      </div>
+      <div class="text-subtitle-2 mb-2">Files to Upload ({{ visionFiles.length }})</div>
 
       <v-list density="compact" class="mb-3">
-        <v-list-item
-          v-for="(file, index) in visionFiles"
-          :key="index"
-          class="border rounded mb-2"
-        >
+        <v-list-item v-for="(file, index) in visionFiles" :key="index" class="border rounded mb-2">
           <template v-slot:prepend>
             <v-icon color="primary">mdi-file-document</v-icon>
           </template>
@@ -173,36 +134,36 @@ import { useFieldPriority } from '@/composables/useFieldPriority'
 const props = defineProps({
   visionFiles: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   existingDocuments: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   productId: {
     type: String,
-    default: null
+    default: null,
   },
   disabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   uploadError: {
     type: String,
-    default: null
+    default: null,
   },
   uploading: {
     type: Boolean,
-    default: false
+    default: false,
   },
   uploadProgress: {
     type: Number,
-    default: 0
+    default: 0,
   },
   isChunking: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:files', 'upload', 'remove', 'removeExisting', 'clearError'])
@@ -211,16 +172,20 @@ const emit = defineEmits(['update:files', 'upload', 'remove', 'removeExisting', 
 const {
   getPriorityForField,
   getPriorityLabel: getFieldPriorityLabel,
-  getPriorityColor: getFieldPriorityColor
+  getPriorityColor: getFieldPriorityColor,
 } = useFieldPriority()
 
 // Local state for v-file-input binding
 const localFiles = ref([])
 
 // Sync localFiles with visionFiles prop
-watch(() => props.visionFiles, (newFiles) => {
-  localFiles.value = newFiles || []
-}, { immediate: true })
+watch(
+  () => props.visionFiles,
+  (newFiles) => {
+    localFiles.value = newFiles || []
+  },
+  { immediate: true },
+)
 
 // Priority badge computed properties
 const fieldPriority = computed(() => getPriorityForField('vision_documents'))
@@ -266,7 +231,7 @@ function formatDate(dateString) {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   })
 }
 
@@ -278,14 +243,14 @@ function formatDate(dateString) {
 function validateFileType(file) {
   const validExtensions = ['.md', '.txt', '.markdown']
   const fileName = file.name.toLowerCase()
-  return validExtensions.some(ext => fileName.endsWith(ext))
+  return validExtensions.some((ext) => fileName.endsWith(ext))
 }
 
 // Expose helper functions for testing
 defineExpose({
   formatFileSize,
   formatDate,
-  validateFileType
+  validateFileType,
 })
 </script>
 

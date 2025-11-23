@@ -4,7 +4,7 @@
     :class="[
       `agent-card--${agent.agent_type}`,
       `status--${agent.status}`,
-      { 'priority-card': isPriorityState }
+      { 'priority-card': isPriorityState },
     ]"
     :style="cardStyles"
     role="article"
@@ -52,12 +52,7 @@
         </v-chip>
 
         <!-- Sent Messages (Grey) -->
-        <v-chip
-          v-if="sentCount > 0"
-          color="grey-darken-2"
-          size="x-small"
-          prepend-icon="mdi-send"
-        >
+        <v-chip v-if="sentCount > 0" color="grey-darken-2" size="x-small" prepend-icon="mdi-send">
           {{ sentCount }} Sent
         </v-chip>
       </div>
@@ -128,13 +123,7 @@
           </div>
 
           <!-- Stale Warning Alert (Handover 0107) -->
-          <v-alert
-            v-if="isStale"
-            type="warning"
-            variant="tonal"
-            density="compact"
-            class="mb-3"
-          >
+          <v-alert v-if="isStale" type="warning" variant="tonal" density="compact" class="mb-3">
             <div class="d-flex align-center">
               <v-icon size="small" class="mr-2">mdi-clock-alert</v-icon>
               <span class="text-caption">
@@ -162,12 +151,7 @@
 
         <!-- Jobs Tab - Failure State (Handover 0113: Shows failure_reason) -->
         <div v-else-if="agent.status === 'failed'" class="error-content">
-          <v-alert
-            type="error"
-            density="compact"
-            variant="tonal"
-            class="mb-2"
-          >
+          <v-alert type="error" density="compact" variant="tonal" class="mb-2">
             <div class="text-caption font-weight-bold mb-1">
               Failure
               <v-chip
@@ -188,12 +172,7 @@
 
         <!-- Jobs Tab - Blocked State -->
         <div v-else-if="agent.status === 'blocked'" class="error-content">
-          <v-alert
-            type="warning"
-            density="compact"
-            variant="tonal"
-            class="mb-2"
-          >
+          <v-alert type="warning" density="compact" variant="tonal" class="mb-2">
             <div class="text-caption font-weight-bold mb-1">Blocked</div>
             <div class="text-body-2">
               {{ agent.block_reason || 'No details available' }}
@@ -209,7 +188,10 @@
         </div>
 
         <!-- Jobs Tab - Decommissioned State (Handover 0113) -->
-        <div v-else-if="agent.status === 'decommissioned'" class="decommissioned-content text-center py-4">
+        <div
+          v-else-if="agent.status === 'decommissioned'"
+          class="decommissioned-content text-center py-4"
+        >
           <v-icon size="48" color="grey-darken-1" class="mb-2">mdi-archive</v-icon>
           <div class="text-body-1 font-weight-medium">Decommissioned</div>
           <div class="text-caption text-grey mt-1">Project closeout complete</div>
@@ -219,7 +201,7 @@
         </div>
       </div>
 
-    <!-- Orchestrator special launch icons removed per UX request -->
+      <!-- Orchestrator special launch icons removed per UX request -->
     </v-card-text>
 
     <!-- Succession Timeline (Handover 0509) - Shows instance chain for orchestrators -->
@@ -232,7 +214,7 @@
     <!-- Action Button -->
     <v-card-actions class="pa-4 pt-0 agent-card-actions">
       <!-- Cancel Controls (Handover 0107) -->
-      <div v-if="canCancel && mode === 'jobs'" class="cancel-controls mb-2" style="width: 100%;">
+      <div v-if="canCancel && mode === 'jobs'" class="cancel-controls mb-2" style="width: 100%">
         <!-- Cancel Button -->
         <v-btn
           color="warning"
@@ -251,127 +233,128 @@
       <slot name="actions">
         <!-- Default Action Buttons -->
         <!-- Launch Tab: Edit Mission -->
-      <v-btn
-        v-if="mode === 'launch'"
-        variant="outlined"
-        color="primary"
-        block
-        @click="$emit('edit-mission', agent)"
-      >
-        <v-icon start>mdi-pencil</v-icon>
-        Edit Mission
-      </v-btn>
-
-      <!-- Jobs Tab: Waiting State - Launch Agent -->
-      <v-tooltip
-        v-if="mode === 'jobs' && agent.status === 'waiting'"
-        :disabled="!promptButtonDisabled"
-        location="bottom"
-      >
-        <template v-slot:activator="{ props: tooltipProps }">
-          <v-btn
-            v-bind="tooltipProps"
-            variant="elevated"
-            :color="promptButtonDisabled ? 'grey' : 'yellow-darken-2'"
-            :disabled="promptButtonDisabled"
-            block
-            @click="$emit('launch-agent', agent)"
-          >
-            <v-icon start>
-              {{ promptButtonDisabled ? 'mdi-pause-circle' : 'mdi-rocket-launch' }}
-            </v-icon>
-            {{ promptButtonDisabled ? 'Claude Code Mode' : 'Launch Agent' }}
-          </v-btn>
-        </template>
-        <span class="text-caption">
-          This agent will run as a Claude Code subagent - orchestrator will spawn it automatically
-        </span>
-      </v-tooltip>
-
-      <!-- Orchestrator: Copy Execution Prompt removed - Launch button handles prompt copy -->
-
-      <!-- Orchestrator: Hand Over (Handover 0509) - Opens LaunchSuccessorDialog -->
-      <launch-successor-dialog
-        v-if="mode === 'jobs' && isOrchestrator && agent.status === 'working'"
-        :job-id="agent.id"
-        :current-job="agent"
-        @succession-triggered="onSuccessionTriggered"
-      >
-        <template #activator="{ props: activatorProps }">
-          <v-btn
-            v-bind="activatorProps"
-            variant="outlined"
-            color="warning"
-            block
-            class="mt-2"
-          >
-            <v-icon start>mdi-hand-wave</v-icon>
-            Hand Over
-          </v-btn>
-        </template>
-      </launch-successor-dialog>
-
-      <!-- Jobs Tab: Working State - Details -->
-      <v-btn
-        v-else-if="mode === 'jobs' && agent.status === 'working'"
-        variant="outlined"
-        color="primary"
-        block
-        @click="$emit('view-details', agent)"
-      >
-        <v-icon start>mdi-information</v-icon>
-        Details
-      </v-btn>
-
-      <!-- Jobs Tab: Failure/Blocked State - View Error -->
-      <v-btn
-        v-else-if="mode === 'jobs' && (agent.status === 'failed' || agent.status === 'blocked')"
-        variant="outlined"
-        :color="agent.status === 'failed' ? 'error' : 'warning'"
-        block
-        @click="$emit('view-error', agent)"
-      >
-        <v-icon start>mdi-alert-circle</v-icon>
-        View Error
-      </v-btn>
-
-      <!-- Complete State: Continue Working OR Close Out (Handover 0113) -->
-      <div v-else-if="mode === 'jobs' && agent.status === 'complete'" class="complete-actions">
         <v-btn
+          v-if="mode === 'launch'"
           variant="outlined"
           color="primary"
           block
-          class="mb-2"
-          @click="$emit('continue-working', agent)"
+          @click="$emit('edit-mission', agent)"
         >
-          <v-icon start>mdi-play-circle</v-icon>
-          Continue Working
+          <v-icon start>mdi-pencil</v-icon>
+          Edit Mission
         </v-btn>
 
+        <!-- Jobs Tab: Waiting State - Launch Agent -->
+        <v-tooltip
+          v-if="mode === 'jobs' && agent.status === 'waiting'"
+          :disabled="!promptButtonDisabled"
+          location="bottom"
+        >
+          <template v-slot:activator="{ props: tooltipProps }">
+            <v-btn
+              v-bind="tooltipProps"
+              variant="elevated"
+              :color="promptButtonDisabled ? 'grey' : 'yellow-darken-2'"
+              :disabled="promptButtonDisabled"
+              block
+              @click="$emit('launch-agent', agent)"
+            >
+              <v-icon start>
+                {{ promptButtonDisabled ? 'mdi-pause-circle' : 'mdi-rocket-launch' }}
+              </v-icon>
+              {{ promptButtonDisabled ? 'Claude Code Mode' : 'Launch Agent' }}
+            </v-btn>
+          </template>
+          <span class="text-caption">
+            This agent will run as a Claude Code subagent - orchestrator will spawn it automatically
+          </span>
+        </v-tooltip>
+
+        <!-- Orchestrator: Copy Execution Prompt removed - Launch button handles prompt copy -->
+
+        <!-- Orchestrator: Hand Over (Handover 0509) - Opens LaunchSuccessorDialog -->
+        <launch-successor-dialog
+          v-if="mode === 'jobs' && isOrchestrator && agent.status === 'working'"
+          :job-id="agent.id"
+          :current-job="agent"
+          @succession-triggered="onSuccessionTriggered"
+        >
+          <template #activator="{ props: activatorProps }">
+            <v-btn v-bind="activatorProps" variant="outlined" color="warning" block class="mt-2">
+              <v-icon start>mdi-hand-wave</v-icon>
+              Hand Over
+            </v-btn>
+          </template>
+        </launch-successor-dialog>
+
+        <!-- Jobs Tab: Working State - Details -->
         <v-btn
-          v-if="isOrchestrator"
-          variant="elevated"
-          color="success"
+          v-else-if="mode === 'jobs' && agent.status === 'working'"
+          variant="outlined"
+          color="primary"
           block
-          @click="$emit('closeout-project')"
+          @click="$emit('view-details', agent)"
         >
-          <v-icon start>mdi-check-circle</v-icon>
-          Close Out Project
+          <v-icon start>mdi-information</v-icon>
+          Details
         </v-btn>
-      </div>
 
-      <!-- Cancelled/Decommissioned State: No actions (terminal states) -->
-      <div v-else-if="mode === 'jobs' && (agent.status === 'cancelled' || agent.status === 'decommissioned')" class="terminal-state">
-        <v-chip
-          color="grey"
-          variant="flat"
+        <!-- Jobs Tab: Failure/Blocked State - View Error -->
+        <v-btn
+          v-else-if="mode === 'jobs' && (agent.status === 'failed' || agent.status === 'blocked')"
+          variant="outlined"
+          :color="agent.status === 'failed' ? 'error' : 'warning'"
           block
-          style="width: 100%; justify-content: center; height: 36px;"
+          @click="$emit('view-error', agent)"
         >
-          <v-icon start>{{ agent.status === 'cancelled' ? 'mdi-cancel' : 'mdi-archive' }}</v-icon>
-          <span class="text-caption">{{ agent.status === 'cancelled' ? 'Cancelled' : 'Archived' }}</span>
-        </v-chip>
-      </div>
+          <v-icon start>mdi-alert-circle</v-icon>
+          View Error
+        </v-btn>
+
+        <!-- Complete State: Continue Working OR Close Out (Handover 0113) -->
+        <div v-else-if="mode === 'jobs' && agent.status === 'complete'" class="complete-actions">
+          <v-btn
+            variant="outlined"
+            color="primary"
+            block
+            class="mb-2"
+            @click="$emit('continue-working', agent)"
+          >
+            <v-icon start>mdi-play-circle</v-icon>
+            Continue Working
+          </v-btn>
+
+          <v-btn
+            v-if="isOrchestrator"
+            variant="elevated"
+            color="success"
+            block
+            @click="$emit('closeout-project')"
+          >
+            <v-icon start>mdi-check-circle</v-icon>
+            Close Out Project
+          </v-btn>
+        </div>
+
+        <!-- Cancelled/Decommissioned State: No actions (terminal states) -->
+        <div
+          v-else-if="
+            mode === 'jobs' && (agent.status === 'cancelled' || agent.status === 'decommissioned')
+          "
+          class="terminal-state"
+        >
+          <v-chip
+            color="grey"
+            variant="flat"
+            block
+            style="width: 100%; justify-content: center; height: 36px"
+          >
+            <v-icon start>{{ agent.status === 'cancelled' ? 'mdi-cancel' : 'mdi-archive' }}</v-icon>
+            <span class="text-caption">{{
+              agent.status === 'cancelled' ? 'Cancelled' : 'Archived'
+            }}</span>
+          </v-chip>
+        </div>
       </slot>
     </v-card-actions>
   </v-card>
@@ -420,39 +403,43 @@ const props = defineProps({
     type: Object,
     required: true,
     validator: (value) => {
-      return (
-        value &&
-        typeof value === 'object' &&
-        'agent_type' in value &&
-        'status' in value
-      )
-    }
+      return value && typeof value === 'object' && 'agent_type' in value && 'status' in value
+    },
   },
   mode: {
     type: String,
     default: 'jobs',
-    validator: (value) => ['launch', 'jobs'].includes(value)
+    validator: (value) => ['launch', 'jobs'].includes(value),
   },
   instanceNumber: {
     type: Number,
     default: 1,
-    validator: (value) => value >= 1
+    validator: (value) => value >= 1,
   },
   isOrchestrator: {
     type: Boolean,
-    default: false
+    default: false,
   },
   showCloseoutButton: {
     type: Boolean,
-    default: false
+    default: false,
   },
   promptButtonDisabled: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
-const emit = defineEmits(['edit-mission', 'launch-agent', 'view-details', 'view-error', 'closeout-project', 'hand-over', 'continue-working', 'refresh-jobs'])
+const emit = defineEmits([
+  'edit-mission',
+  'launch-agent',
+  'view-details',
+  'view-error',
+  'closeout-project',
+  'hand-over',
+  'continue-working',
+  'refresh-jobs',
+])
 
 /**
  * Agent color configuration
@@ -470,7 +457,7 @@ const cardStyles = computed(() => ({
   maxHeight: '400px',
   borderRadius: '20px',
   overflow: 'hidden',
-  transition: 'all 0.3s ease'
+  transition: 'all 0.3s ease',
 }))
 
 const headerStyles = computed(() => ({
@@ -478,7 +465,7 @@ const headerStyles = computed(() => ({
   color: 'white',
   padding: '16px 20px',
   textAlign: 'center',
-  borderRadius: '18px 18px 0 0'
+  borderRadius: '18px 18px 0 0',
 }))
 
 /**
@@ -499,22 +486,24 @@ const isPriorityState = computed(() => {
  * Message count calculations
  */
 const hasMessages = computed(() => {
-  return props.agent.messages && Array.isArray(props.agent.messages) && props.agent.messages.length > 0
+  return (
+    props.agent.messages && Array.isArray(props.agent.messages) && props.agent.messages.length > 0
+  )
 })
 
 const unreadCount = computed(() => {
   if (!hasMessages.value) return 0
-  return props.agent.messages.filter(m => m.status === 'pending').length
+  return props.agent.messages.filter((m) => m.status === 'pending').length
 })
 
 const acknowledgedCount = computed(() => {
   if (!hasMessages.value) return 0
-  return props.agent.messages.filter(m => m.status === 'acknowledged').length
+  return props.agent.messages.filter((m) => m.status === 'acknowledged').length
 })
 
 const sentCount = computed(() => {
   if (!hasMessages.value) return 0
-  return props.agent.messages.filter(m => m.from === 'developer').length
+  return props.agent.messages.filter((m) => m.from === 'developer').length
 })
 
 /**
@@ -579,20 +568,20 @@ const healthConfig = computed(() => {
       color: 'warning',
       icon: 'mdi-clock-alert',
       label: 'Slow response',
-      tooltip: `No activity for ${minutes.toFixed(1)} minutes`
+      tooltip: `No activity for ${minutes.toFixed(1)} minutes`,
     },
     critical: {
       color: 'error',
       icon: 'mdi-alert-circle',
       label: 'Not responding',
-      tooltip: `Agent silent for ${minutes.toFixed(1)} minutes`
+      tooltip: `Agent silent for ${minutes.toFixed(1)} minutes`,
     },
     timeout: {
       color: 'grey-darken-1',
       icon: 'mdi-clock-remove',
       label: 'Timed out',
-      tooltip: `No response for ${minutes.toFixed(1)} minutes - may need restart`
-    }
+      tooltip: `No response for ${minutes.toFixed(1)} minutes - may need restart`,
+    },
   }
 
   return configs[state] || configs.warning
@@ -640,24 +629,21 @@ const { showToast } = useToast()
 const requestCancel = async () => {
   const confirmed = confirm(
     'Cancel Agent Job?\n\n' +
-    'The agent will stop work on its next check-in (usually within 5 minutes).\n\n' +
-    'Do you want to continue?'
+      'The agent will stop work on its next check-in (usually within 5 minutes).\n\n' +
+      'Do you want to continue?',
   )
 
   if (!confirmed) return
 
   try {
     await api.post(`/jobs/${props.agent.id}/cancel`, {
-      reason: 'User requested cancellation'
+      reason: 'User requested cancellation',
     })
 
     showToast('Job cancelled successfully', 'success')
   } catch (error) {
     console.error('Failed to cancel job:', error)
-    showToast(
-      error.response?.data?.detail || 'Failed to cancel job',
-      'error'
-    )
+    showToast(error.response?.data?.detail || 'Failed to cancel job', 'error')
   }
 }
 
@@ -751,21 +737,19 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
-  .agent-id-value {
-    font-size: 10px !important;
-    font-family: 'Courier New', monospace;
-    white-space: nowrap;
-    line-height: 1.4;
-    letter-spacing: -0.2px;
-  }
+.agent-id-value {
+  font-size: 10px !important;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+}
 
 .agent-status {
   padding: 8px;
   background: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
 }
-
-
 
 .message-badges {
   min-height: 32px;
@@ -863,8 +847,13 @@ onBeforeUnmount(() => {
 }
 
 @keyframes pulse-warning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* Status-specific styling */

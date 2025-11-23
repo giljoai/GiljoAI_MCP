@@ -10,9 +10,9 @@ import api from '@/services/api'
 vi.mock('@/services/api', () => ({
   default: {
     prompts: {
-      staging: vi.fn()
-    }
-  }
+      staging: vi.fn(),
+    },
+  },
 }))
 
 // Mock WebSocket composable
@@ -21,8 +21,8 @@ vi.mock('@/composables/useWebSocket', () => ({
     on: vi.fn(),
     off: vi.fn(),
     emit: vi.fn(),
-    disconnect: vi.fn()
-  })
+    disconnect: vi.fn(),
+  }),
 }))
 
 // Mock AgentCardEnhanced component
@@ -31,8 +31,8 @@ vi.mock('@/components/projects/AgentCardEnhanced.vue', () => ({
     name: 'AgentCardEnhanced',
     template: '<div class="agent-card-mock"><slot name="actions" /></div>',
     props: ['agent', 'mode', 'isOrchestrator', 'instanceNumber'],
-    emits: ['edit-mission']
-  }
+    emits: ['edit-mission'],
+  },
 }))
 
 describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
@@ -45,7 +45,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
     name: 'Test Project',
     description: 'A test project for staging',
     status: 'active',
-    product_id: 'prod-1'
+    product_id: 'prod-1',
   }
 
   const mockOrchestrator = {
@@ -54,7 +54,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
     agent_name: 'Test Orchestrator',
     mission: 'Test mission',
     status: 'waiting',
-    progress: 0
+    progress: 0,
   }
 
   const mockPromptResponse = {
@@ -65,8 +65,8 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
       project_name: 'Test Project',
       mcp_tool_name: 'get_orchestrator_instructions',
       instructions_stored: true,
-      thin_client: true
-    }
+      thin_client: true,
+    },
   }
 
   beforeEach(() => {
@@ -78,7 +78,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
     userStore.currentUser = {
       id: 'user-1',
       username: 'testuser',
-      tenant_key: 'tenant-123'
+      tenant_key: 'tenant-123',
     }
 
     // Reset mocks
@@ -95,7 +95,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -118,9 +118,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       expect(wrapper.find('button').exists()).toBe(true)
@@ -132,7 +132,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -155,9 +155,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       // The simplified version should NOT have a metrics dialog
@@ -172,7 +172,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -195,9 +195,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       expect(wrapper.text()).toContain('A test project for staging')
@@ -209,9 +209,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
       // Setup clipboard mock for all tests in this suite
       Object.defineProperty(navigator, 'clipboard', {
         value: {
-          writeText: vi.fn().mockResolvedValue(undefined)
+          writeText: vi.fn().mockResolvedValue(undefined),
         },
-        configurable: true
+        configurable: true,
       })
     })
 
@@ -222,7 +222,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -245,16 +245,16 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
       await wrapper.vm.$nextTick()
 
       expect(api.prompts.staging).toHaveBeenCalledWith(mockProject.id, {
-        tool: 'claude-code'
+        tool: 'claude-code',
       })
     })
 
@@ -263,15 +263,15 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
 
       Object.assign(navigator, {
         clipboard: {
-          writeText: vi.fn().mockResolvedValue(undefined)
-        }
+          writeText: vi.fn().mockResolvedValue(undefined),
+        },
       })
 
       const wrapper = mount(LaunchTab, {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -294,9 +294,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -314,7 +314,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -337,9 +337,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -354,15 +354,15 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
 
       Object.assign(navigator, {
         clipboard: {
-          writeText: vi.fn().mockResolvedValue(undefined)
-        }
+          writeText: vi.fn().mockResolvedValue(undefined),
+        },
       })
 
       const wrapper = mount(LaunchTab, {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -385,9 +385,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -407,7 +407,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -430,9 +430,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -450,22 +450,22 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
     beforeEach(() => {
       Object.defineProperty(navigator, 'clipboard', {
         value: {
-          writeText: vi.fn().mockResolvedValue(undefined)
+          writeText: vi.fn().mockResolvedValue(undefined),
         },
-        configurable: true
+        configurable: true,
       })
     })
 
     it('should set loading state during API call', async () => {
       api.prompts.staging.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve(mockPromptResponse), 50))
+        () => new Promise((resolve) => setTimeout(() => resolve(mockPromptResponse), 50)),
       )
 
       const wrapper = mount(LaunchTab, {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -488,9 +488,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       const button = wrapper.find('button')
@@ -500,7 +500,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
       expect(wrapper.vm.loadingStageProject).toBe(true)
 
       // Wait for API response
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       // Should be done loading after response
       expect(wrapper.vm.loadingStageProject).toBe(false)
@@ -516,7 +516,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -539,9 +539,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -561,7 +561,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -584,9 +584,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -602,7 +602,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: true
+          isStaging: true,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -625,9 +625,9 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       // Set some state

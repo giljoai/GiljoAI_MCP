@@ -11,11 +11,7 @@
     </div>
 
     <!-- Messages Container with Virtual Scrolling -->
-    <div
-      ref="messagesContainer"
-      class="message-stream__container"
-      @scroll="handleScroll"
-    >
+    <div ref="messagesContainer" class="message-stream__container" @scroll="handleScroll">
       <!-- Loading State -->
       <div v-if="loading" class="message-stream__loading">
         <v-skeleton-loader
@@ -28,9 +24,7 @@
 
       <!-- Empty State -->
       <div v-else-if="messages.length === 0" class="message-stream__empty">
-        <v-icon size="64" color="grey-lighten-1" class="mb-4">
-          mdi-message-outline
-        </v-icon>
+        <v-icon size="64" color="grey-lighten-1" class="mb-4"> mdi-message-outline </v-icon>
         <p class="text-body-1 text-grey">No messages yet</p>
         <p class="text-caption text-grey-lighten-1">
           Messages will appear here when agents communicate
@@ -45,7 +39,7 @@
           class="message-stream__message"
           :class="{
             'message-stream__message--user': isUserMessage(message),
-            'message-stream__message--agent': !isUserMessage(message)
+            'message-stream__message--agent': !isUserMessage(message),
           }"
         >
           <!-- Chat Head Badge (for agent messages) -->
@@ -66,7 +60,10 @@
           <div class="message-stream__content">
             <!-- Message Routing -->
             <div class="message-stream__routing">
-              <span v-if="isUserMessage(message)" class="text-subtitle-2 font-weight-bold text-blue">
+              <span
+                v-if="isUserMessage(message)"
+                class="text-subtitle-2 font-weight-bold text-blue"
+              >
                 {{ developerUsername }}
               </span>
               <span v-if="isBroadcast(message)" class="text-subtitle-2 font-weight-bold">
@@ -83,10 +80,7 @@
             </div>
 
             <!-- Message Timestamp -->
-            <div
-              class="message-stream__timestamp"
-              :title="formatFullTimestamp(message.timestamp)"
-            >
+            <div class="message-stream__timestamp" :title="formatFullTimestamp(message.timestamp)">
               {{ formatRelativeTime(message.timestamp) }}
             </div>
           </div>
@@ -107,12 +101,7 @@
         aria-label="Scroll to latest messages"
       >
         <v-icon>mdi-chevron-down</v-icon>
-        <v-badge
-          v-if="unreadCount > 0"
-          :content="unreadCount"
-          color="error"
-          floating
-        />
+        <v-badge v-if="unreadCount > 0" :content="unreadCount" color="error" floating />
       </v-btn>
     </transition>
   </div>
@@ -162,7 +151,7 @@ const props = defineProps({
   messages: {
     type: Array,
     required: true,
-    default: () => []
+    default: () => [],
   },
 
   /**
@@ -170,7 +159,7 @@ const props = defineProps({
    */
   projectId: {
     type: String,
-    required: true
+    required: true,
   },
 
   /**
@@ -178,7 +167,7 @@ const props = defineProps({
    */
   autoScroll: {
     type: Boolean,
-    default: true
+    default: true,
   },
 
   /**
@@ -186,7 +175,7 @@ const props = defineProps({
    */
   developerUsername: {
     type: String,
-    default: 'Developer'
+    default: 'Developer',
   },
 
   /**
@@ -194,8 +183,8 @@ const props = defineProps({
    */
   loading: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 // Refs
@@ -314,7 +303,7 @@ function scrollToBottom(smooth = true) {
     const container = messagesContainer.value
     container.scrollTo({
       top: container.scrollHeight,
-      behavior: smooth ? 'smooth' : 'auto'
+      behavior: smooth ? 'smooth' : 'auto',
     })
 
     // Reset state
@@ -347,7 +336,7 @@ watch(
 
     lastMessageCount.value = newCount
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 /**
@@ -362,7 +351,7 @@ watch(
         scrollToBottom(false)
       })
     }
-  }
+  },
 )
 
 /**
@@ -504,7 +493,7 @@ onBeforeUnmount(() => {
     &--user {
       .message-stream__content {
         background: rgba(52, 152, 219, 0.1);
-        border-left: 3px solid var(--agent-implementor-primary, #3498DB);
+        border-left: 3px solid var(--agent-implementor-primary, #3498db);
       }
     }
 

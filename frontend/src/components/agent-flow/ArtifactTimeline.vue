@@ -96,12 +96,19 @@
               <div class="artifact-name">{{ artifact.name }}</div>
               <div class="artifact-meta">
                 <span class="agent-name">{{ artifact.agentName }}</span>
-                <span class="artifact-size" v-if="artifact.size">{{ formatFileSize(artifact.size) }}</span>
+                <span class="artifact-size" v-if="artifact.size">{{
+                  formatFileSize(artifact.size)
+                }}</span>
                 <span class="artifact-time">{{ formatTime(artifact.createdAt) }}</span>
               </div>
             </div>
 
-            <v-chip size="x-small" :color="getTypeColor(artifact.type)" variant="flat" class="type-chip">
+            <v-chip
+              size="x-small"
+              :color="getTypeColor(artifact.type)"
+              variant="flat"
+              class="type-chip"
+            >
               {{ formatType(artifact.type) }}
             </v-chip>
           </div>
@@ -205,7 +212,9 @@
             </div>
             <div class="card-meta">
               <span class="meta-label">Size:</span>
-              <span class="meta-value">{{ artifact.size ? formatFileSize(artifact.size) : 'N/A' }}</span>
+              <span class="meta-value">{{
+                artifact.size ? formatFileSize(artifact.size) : 'N/A'
+              }}</span>
             </div>
             <div class="card-time">{{ formatTime(artifact.createdAt) }}</div>
           </div>

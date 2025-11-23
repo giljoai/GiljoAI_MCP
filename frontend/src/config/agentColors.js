@@ -17,38 +17,38 @@ export const AGENT_COLORS = {
     hex: '#D4A574',
     name: 'Orchestrator',
     badge: 'Or',
-    description: 'Primary coordinator and mission planner'
+    description: 'Primary coordinator and mission planner',
   },
   analyzer: {
     hex: '#E74C3C',
     name: 'Analyzer',
     badge: 'An',
-    description: 'Architecture and analysis tasks'
+    description: 'Architecture and analysis tasks',
   },
   implementer: {
     hex: '#3498DB',
     name: 'Implementer',
     badge: 'Im',
-    description: 'Implementation and development tasks'
+    description: 'Implementation and development tasks',
   },
   documenter: {
     hex: '#27AE60',
     name: 'Documenter',
     badge: 'Do',
-    description: 'Creates and updates documentation'
+    description: 'Creates and updates documentation',
   },
   reviewer: {
     hex: '#9B59B6',
     name: 'Reviewer',
     badge: 'Rv',
-    description: 'Code review and quality assurance'
+    description: 'Code review and quality assurance',
   },
   tester: {
     hex: '#FFC300',
     name: 'Tester',
     badge: 'Te',
-    description: 'Testing and validation tasks'
-  }
+    description: 'Testing and validation tasks',
+  },
 }
 
 // Legacy/alias mapping (UI used to use these names)
@@ -62,7 +62,7 @@ const AGENT_SYNONYMS = {
   'frontend-implementer': 'implementer',
   'back-end-implementer': 'implementer',
   'backend-implementer': 'implementer',
-  documentor: 'documenter'
+  documentor: 'documenter',
 }
 
 /**
@@ -103,15 +103,21 @@ export function darkenColor(hex, percent = 10) {
   const num = parseInt(hex.replace('#', ''), 16)
   const amt = Math.round(2.55 * percent)
   const R = (num >> 16) - amt
-  const G = (num >> 8 & 0x00FF) - amt
-  const B = (num & 0x0000FF) - amt
+  const G = ((num >> 8) & 0x00ff) - amt
+  const B = (num & 0x0000ff) - amt
 
-  return '#' + (
-    0x1000000 +
-    (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-    (B < 255 ? B < 1 ? 0 : B : 255)
-  ).toString(16).slice(1).toUpperCase()
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255)
+    )
+      .toString(16)
+      .slice(1)
+      .toUpperCase()
+  )
 }
 
 /**
@@ -123,15 +129,21 @@ export function lightenColor(hex, percent = 20) {
   const num = parseInt(hex.replace('#', ''), 16)
   const amt = Math.round(2.55 * percent)
   const R = (num >> 16) + amt
-  const G = (num >> 8 & 0x00FF) + amt
-  const B = (num & 0x0000FF) + amt
+  const G = ((num >> 8) & 0x00ff) + amt
+  const B = (num & 0x0000ff) + amt
 
-  return '#' + (
-    0x1000000 +
-    (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-    (B < 255 ? B < 1 ? 0 : B : 255)
-  ).toString(16).slice(1).toUpperCase()
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255)
+    )
+      .toString(16)
+      .slice(1)
+      .toUpperCase()
+  )
 }
 
 /**
@@ -141,7 +153,7 @@ export function lightenColor(hex, percent = 20) {
 export function getAllAgentColors() {
   return Object.entries(AGENT_COLORS).map(([key, value]) => ({
     type: key,
-    ...value
+    ...value,
   }))
 }
 
@@ -152,24 +164,24 @@ export function getAllAgentColors() {
 export const AGENT_STATUS_COLORS = {
   waiting: {
     color: '#90A4AE',
-    label: 'Waiting'
+    label: 'Waiting',
   },
   working: {
     color: '#3498DB',
-    label: 'Working'
+    label: 'Working',
   },
   complete: {
     color: '#FFC300',
-    label: 'Complete'
+    label: 'Complete',
   },
   failure: {
     color: '#C6298C',
-    label: 'Failure'
+    label: 'Failure',
   },
   blocked: {
     color: '#E67E22',
-    label: 'Blocked'
-  }
+    label: 'Blocked',
+  },
 }
 
 /**
@@ -181,18 +193,18 @@ export const LAUNCH_PROMPT_TOOLS = {
     name: 'Claude Code',
     icon: 'mdi-code-braces-box',
     color: '#E67E22',
-    command: 'claude-code mcp add'
+    command: 'claude-code mcp add',
   },
   codex: {
     name: 'Codex CLI',
     icon: 'mdi-application-brackets',
     color: '#9B59B6',
-    command: 'codex mcp add'
+    command: 'codex mcp add',
   },
   gemini: {
     name: 'Gemini CLI',
     icon: 'mdi-star-four-points',
     color: '#3498DB',
-    command: 'gemini mcp add'
-  }
+    command: 'gemini mcp add',
+  },
 }

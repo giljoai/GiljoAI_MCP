@@ -71,7 +71,7 @@ class ConfigService {
         const response = await fetch(configUrl, {
           signal: controller.signal,
           headers: {
-            'Accept': 'application/json',
+            Accept: 'application/json',
           },
         })
 

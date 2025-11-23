@@ -19,7 +19,7 @@ export function useFieldPriority() {
   const getPriorityForField = (fieldPath) => {
     if (!settingsStore.fieldPriorityConfig) {
       return null
-  }
+    }
 
     const config = settingsStore.fieldPriorityConfig
 

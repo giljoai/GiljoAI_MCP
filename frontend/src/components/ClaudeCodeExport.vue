@@ -14,13 +14,19 @@
           <h4 class="text-subtitle-1 font-weight-medium mb-0 mr-2">Export Commands</h4>
           <v-tooltip location="top" max-width="400">
             <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+              <v-icon v-bind="props" size="small" color="medium-emphasis"
+                >mdi-help-circle-outline</v-icon
+              >
             </template>
-            <span>Old agents will be backed up in the .claude/agents folder and replaced with the active agents from the Agent Template Manager.</span>
+            <span
+              >Old agents will be backed up in the .claude/agents folder and replaced with the
+              active agents from the Agent Template Manager.</span
+            >
           </v-tooltip>
         </div>
         <p class="text-body-2 text-medium-emphasis mb-3">
-          Copy and paste agent import command into your AI coding tool (Claude Code, Codex CLI, or Gemini).
+          Copy and paste agent import command into your AI coding tool (Claude Code, Codex CLI, or
+          Gemini).
         </p>
 
         <!-- Agent Templates Download -->
@@ -49,7 +55,9 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">MCP Installation for Personal Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">
+                  MCP Installation for Personal Agents
+                </div>
                 <div class="text-body-2 text-medium-emphasis">
                   Uses MCP tools to install agents in your user profile (~/.claude/agents)
                 </div>
@@ -74,7 +82,9 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">MCP Installation for Product Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">
+                  MCP Installation for Product Agents
+                </div>
                 <div class="text-body-2 text-medium-emphasis">
                   Uses MCP tools to install agents in your product folder (.claude/agents)
                 </div>
@@ -142,11 +152,11 @@ async function generateAgentTemplateInstructions(installType = 'product') {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
       },
       body: JSON.stringify({
-        content_type: 'agent_templates'
-      })
+        content_type: 'agent_templates',
+      }),
     })
 
     if (!response.ok) {
@@ -157,9 +167,10 @@ async function generateAgentTemplateInstructions(installType = 'product') {
     const downloadUrl = data.download_url
 
     // Determine target folder based on install type
-    const targetFolder = installType === 'personal'
-      ? '~/.claude/agents'
-      : '.claude/agents (in your current project folder)'
+    const targetFolder =
+      installType === 'personal'
+        ? '~/.claude/agents'
+        : '.claude/agents (in your current project folder)'
 
     // Generate natural language instructions (matching slash commands format)
     const instructions = `Download the agent templates from ${downloadUrl}, extract the zip file, and install the contents to your ${targetFolder} folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window. The user must restart Claude Code. After restart verify the agents appear with /agents command.`
@@ -271,8 +282,8 @@ async function downloadPersonalAgents() {
     downloadingPersonal.value = true
     const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
     })
 
     if (!response.ok) {
@@ -299,8 +310,8 @@ async function downloadProductAgents() {
     downloadingProduct.value = true
     const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
     })
 
     if (!response.ok) {

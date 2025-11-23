@@ -5,19 +5,14 @@
       <v-col>
         <h1 class="text-h4">Project Management</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Manage orchestration projects for: <strong style="color: #ffc300">{{ activeProduct?.name || 'No Active Product' }}</strong>
+          Manage orchestration projects for:
+          <strong style="color: #ffc300">{{ activeProduct?.name || 'No Active Product' }}</strong>
         </p>
       </v-col>
     </v-row>
 
     <!-- No Active Product Alert -->
-    <v-alert
-      v-if="!activeProduct"
-      type="info"
-      variant="tonal"
-      class="ma-4"
-      closable
-    >
+    <v-alert v-if="!activeProduct" type="info" variant="tonal" class="ma-4" closable>
       No active product selected. Please activate a product to view and manage its projects.
     </v-alert>
 
@@ -187,119 +182,114 @@
           item-key="id"
           fixed-header
         >
-        <!-- Name Column with ID -->
-        <template v-slot:item.name="{ item }">
-          <div class="py-2">
-            <div class="font-weight-bold text-body-2">{{ item.name }}</div>
-            <div class="text-caption text-medium-emphasis" style="font-family: monospace">
-              Project ID: {{ item.id }}
+          <!-- Name Column with ID -->
+          <template v-slot:item.name="{ item }">
+            <div class="py-2">
+              <div class="font-weight-bold text-body-2">{{ item.name }}</div>
+              <div class="text-caption text-medium-emphasis" style="font-family: monospace">
+                Project ID: {{ item.id }}
+              </div>
             </div>
-          </div>
-        </template>
+          </template>
 
-        <!-- Status Column with Badge -->
-        <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(normalizeStatus(item.status))"
-            size="small"
-            variant="tonal"
-          >
-            {{ normalizeStatus(item.status) }}
-          </v-chip>
-        </template>
-
-        <!-- Product Column -->
-        <template v-slot:item.product="{ item }">
-          <span class="text-caption">
-            {{ activeProduct?.name || '—' }}
-          </span>
-        </template>
-
-        <!-- Staged Column -->
-        <template v-slot:item.staged="{ item }">
-          <v-chip
-            :color="isProjectStaged(item) ? 'success' : 'default'"
-            size="small"
-            variant="tonal"
-          >
-            {{ isProjectStaged(item) ? 'Yes' : 'No' }}
-          </v-chip>
-        </template>
-
-        <!-- Created Date Column -->
-        <template v-slot:item.created_at="{ item }">
-          {{ formatDateShort(item.created_at) }}
-        </template>
-
-        <!-- Completed Date Column -->
-        <template v-slot:item.completed_at="{ item }">
-          <div class="text-center">
-            {{
-              item.status === 'completed' || item.status === 'cancelled'
-                ? formatDateShort(item.completed_at || item.updated_at)
-                : '—'
-            }}
-          </div>
-        </template>
-
-        <!-- Actions Column (StatusBadge only) -->
-        <template v-slot:item.actions="{ item }">
-          <div class="d-flex align-center justify-center">
-            <StatusBadge
-              :status="normalizeStatus(item.status)"
-              :project-id="item.id"
-              @action="handleStatusAction"
-            />
-          </div>
-        </template>
-
-        <!-- Menu Column (separate) -->
-        <template v-slot:item.menu="{ item }">
-          <div class="d-flex align-center justify-center">
-            <v-menu>
-              <template v-slot:activator="{ props }">
-                <v-btn
-                  icon="mdi-dots-vertical"
-                  size="small"
-                  variant="text"
-                  v-bind="props"
-                  aria-label="Project actions"
-                ></v-btn>
-              </template>
-
-              <v-list density="compact" min-width="150">
-                <v-list-item
-                  @click="editProject(item)"
-                  prepend-icon="mdi-pencil"
-                  title="Edit Project"
-                ></v-list-item>
-                <v-divider class="my-1" />
-                <v-list-item
-                  @click="confirmDelete(item)"
-                  prepend-icon="mdi-delete"
-                  title="Delete Project"
-                ></v-list-item>
-              </v-list>
-            </v-menu>
-          </div>
-        </template>
-
-        <!-- No data state -->
-        <template v-slot:no-data>
-          <div class="text-center py-8">
-            <v-icon size="48" color="medium-emphasis" class="mb-4">mdi-folder-open</v-icon>
-            <p class="text-body-2 text-medium-emphasis">No projects found</p>
-            <v-btn
+          <!-- Status Column with Badge -->
+          <template v-slot:item.status="{ item }">
+            <v-chip
+              :color="getStatusColor(normalizeStatus(item.status))"
               size="small"
-              color="primary"
-              @click="showCreateDialog = true"
-              class="mt-4"
+              variant="tonal"
             >
-              Create First Project
-            </v-btn>
-          </div>
-        </template>
-      </v-data-table>
+              {{ normalizeStatus(item.status) }}
+            </v-chip>
+          </template>
+
+          <!-- Product Column -->
+          <template v-slot:item.product="{ item }">
+            <span class="text-caption">
+              {{ activeProduct?.name || '—' }}
+            </span>
+          </template>
+
+          <!-- Staged Column -->
+          <template v-slot:item.staged="{ item }">
+            <v-chip
+              :color="isProjectStaged(item) ? 'success' : 'default'"
+              size="small"
+              variant="tonal"
+            >
+              {{ isProjectStaged(item) ? 'Yes' : 'No' }}
+            </v-chip>
+          </template>
+
+          <!-- Created Date Column -->
+          <template v-slot:item.created_at="{ item }">
+            {{ formatDateShort(item.created_at) }}
+          </template>
+
+          <!-- Completed Date Column -->
+          <template v-slot:item.completed_at="{ item }">
+            <div class="text-center">
+              {{
+                item.status === 'completed' || item.status === 'cancelled'
+                  ? formatDateShort(item.completed_at || item.updated_at)
+                  : '—'
+              }}
+            </div>
+          </template>
+
+          <!-- Actions Column (StatusBadge only) -->
+          <template v-slot:item.actions="{ item }">
+            <div class="d-flex align-center justify-center">
+              <StatusBadge
+                :status="normalizeStatus(item.status)"
+                :project-id="item.id"
+                @action="handleStatusAction"
+              />
+            </div>
+          </template>
+
+          <!-- Menu Column (separate) -->
+          <template v-slot:item.menu="{ item }">
+            <div class="d-flex align-center justify-center">
+              <v-menu>
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    icon="mdi-dots-vertical"
+                    size="small"
+                    variant="text"
+                    v-bind="props"
+                    aria-label="Project actions"
+                  ></v-btn>
+                </template>
+
+                <v-list density="compact" min-width="150">
+                  <v-list-item
+                    @click="editProject(item)"
+                    prepend-icon="mdi-pencil"
+                    title="Edit Project"
+                  ></v-list-item>
+                  <v-divider class="my-1" />
+                  <v-list-item
+                    @click="confirmDelete(item)"
+                    prepend-icon="mdi-delete"
+                    title="Delete Project"
+                  ></v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </template>
+
+          <!-- No data state -->
+          <template v-slot:no-data>
+            <div class="text-center py-8">
+              <v-icon size="48" color="medium-emphasis" class="mb-4">mdi-folder-open</v-icon>
+              <p class="text-body-2 text-medium-emphasis">No projects found</p>
+              <v-btn size="small" color="primary" @click="showCreateDialog = true" class="mt-4">
+                Create First Project
+              </v-btn>
+            </div>
+          </template>
+        </v-data-table>
       </div>
     </v-card>
 
@@ -309,12 +299,7 @@
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="cancelEdit"
-            aria-label="Close dialog"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="cancelEdit" aria-label="Close dialog" />
         </v-card-title>
 
         <v-card-text>
@@ -374,15 +359,17 @@
               class="mb-3"
               hint="Auto-generated during staging. Clear to regenerate on next staging."
               persistent-hint
-              :placeholder="projectData.mission ? '' : 'Mission will be generated when you stage this project'"
+              :placeholder="
+                projectData.mission ? '' : 'Mission will be generated when you stage this project'
+              "
               aria-label="Orchestrator generated mission"
             >
               <template #append>
                 <v-menu>
                   <template #activator="{ props }">
-                    <v-btn 
-                      icon="mdi-dots-vertical" 
-                      v-bind="props" 
+                    <v-btn
+                      icon="mdi-dots-vertical"
+                      v-bind="props"
                       size="small"
                       variant="text"
                       aria-label="Mission actions"
@@ -421,12 +408,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            :disabled="!formValid"
-            @click="saveProject"
-          >
+          <v-btn color="primary" variant="flat" :disabled="!formValid" @click="saveProject">
             {{ editingProject ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -449,8 +431,8 @@
 
         <v-card-text>
           Are you sure you want to delete project <strong>"{{ projectToDelete?.name }}"</strong>?
-          This will move the project to <strong>Deleted Projects</strong> for 10 days.
-          It can be restored from there during that time. After 10 days it will be permanently purged.
+          This will move the project to <strong>Deleted Projects</strong> for 10 days. It can be
+          restored from there during that time. After 10 days it will be permanently purged.
         </v-card-text>
 
         <v-card-actions>
@@ -477,10 +459,7 @@
 
         <v-card-text>
           <v-list v-if="deletedProjects.length > 0" class="border rounded">
-            <v-list-item
-              v-for="(project, index) in deletedProjects"
-              :key="project.id"
-            >
+            <v-list-item v-for="(project, index) in deletedProjects" :key="project.id">
               <template v-slot:prepend>
                 <v-icon icon="mdi-folder-minus"></v-icon>
               </template>
@@ -538,7 +517,14 @@
           <v-sheet
             class="pa-4 rounded border"
             color="grey-lighten-5"
-            style="max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 0.875rem; line-height: 1.5;"
+            style="
+              max-height: 500px;
+              overflow-y: auto;
+              white-space: pre-wrap;
+              font-family: monospace;
+              font-size: 0.875rem;
+              line-height: 1.5;
+            "
           >
             {{ projectData.mission || 'No mission text available' }}
           </v-sheet>
@@ -648,7 +634,7 @@ const filteredBySearch = computed(() => {
     (p) =>
       p.name.toLowerCase().includes(query) ||
       p.mission?.toLowerCase().includes(query) ||
-      p.id.toLowerCase().includes(query)
+      p.id.toLowerCase().includes(query),
   )
 })
 
@@ -707,17 +693,17 @@ const deletedCount = computed(() => deletedProjects.value.length)
 // 1. Has agents assigned (agent_count > 0), OR
 // 2. staging_status field is set to 'staged'
 const isProjectStaged = (project) => {
-  return (project.agent_count > 0) || (project.staging_status === 'staged')
+  return project.agent_count > 0 || project.staging_status === 'staged'
 }
 
 // Launch button visibility - only show when exactly 1 active project exists
 const hasActiveProject = computed(() => {
-  return activeProductProjects.value.filter(p => p.status === 'active').length === 1
+  return activeProductProjects.value.filter((p) => p.status === 'active').length === 1
 })
 
 // Get the single active project
 const activeProject = computed(() => {
-  return activeProductProjects.value.find(p => p.status === 'active')
+  return activeProductProjects.value.find((p) => p.status === 'active')
 })
 
 // Format date with locale support (US: MM-DD-YYYY HH:MM, EU: DD-MM-YYYY HH:MM)
@@ -760,7 +746,7 @@ function getStatusColor(status) {
     active: 'success',
     inactive: 'grey',
     completed: 'info',
-    cancelled: 'warning'
+    cancelled: 'warning',
   }
   return colors[status] || 'default'
 }
@@ -874,7 +860,6 @@ async function handleStatusAction({ action, projectId }) {
 
     // Refresh project list to show updated status
     await projectStore.fetchProjects()
-
   } catch (error) {
     console.error('Failed to perform action:', error)
     // Refresh even on error to show true server state
@@ -901,7 +886,7 @@ function resetForm() {
 async function saveProject() {
   if (!formValid.value) {
     console.warn('[PROJECTS][CreateProject] Form is not valid', {
-      projectData: projectData.value
+      projectData: projectData.value,
     })
     return
   }
@@ -910,7 +895,7 @@ async function saveProject() {
     console.log('[PROJECTS][CreateProject] saveProject clicked', {
       editing: !!editingProject.value,
       activeProduct: activeProduct.value,
-      projectData: projectData.value
+      projectData: projectData.value,
     })
 
     if (editingProject.value) {

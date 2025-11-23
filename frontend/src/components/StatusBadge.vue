@@ -25,22 +25,8 @@
           @keydown.space.prevent="menuOpen = !menuOpen"
         >
           <span class="text-caption font-weight-medium">{{ statusLabel }}</span>
-          <v-icon
-            v-if="loading"
-            end
-            size="small"
-            class="ml-1 status-spinner"
-          >
-            mdi-loading
-          </v-icon>
-          <v-icon
-            v-else
-            end
-            size="small"
-            class="ml-1"
-          >
-            mdi-chevron-down
-          </v-icon>
+          <v-icon v-if="loading" end size="small" class="ml-1 status-spinner"> mdi-loading </v-icon>
+          <v-icon v-else end size="small" class="ml-1"> mdi-chevron-down </v-icon>
         </v-chip>
       </template>
 
@@ -72,10 +58,7 @@
     >
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon
-            start
-            :color="pendingAction?.destructive ? 'error' : 'warning'"
-          >
+          <v-icon start :color="pendingAction?.destructive ? 'error' : 'warning'">
             {{ pendingAction?.destructive ? 'mdi-alert-circle' : 'mdi-help-circle' }}
           </v-icon>
           <span :id="confirmDialogTitle">{{ confirmDialogTitle }}</span>
@@ -133,16 +116,17 @@ const props = defineProps({
   status: {
     type: String,
     required: true,
-    validator: (value) => ['inactive', 'active', 'completed', 'cancelled', 'deleted'].includes(value)
+    validator: (value) =>
+      ['inactive', 'active', 'completed', 'cancelled', 'deleted'].includes(value),
   },
   projectId: {
     type: String,
-    required: true
+    required: true,
   },
   projectName: {
     type: String,
-    default: 'this project'
-  }
+    default: 'this project',
+  },
 })
 
 // Emits
@@ -159,28 +143,28 @@ const statusConfig = {
   active: {
     label: 'Active',
     color: 'success',
-    icon: 'mdi-play-circle'
+    icon: 'mdi-play-circle',
   },
   inactive: {
     label: 'Inactive',
     color: 'grey',
-    icon: 'mdi-stop-circle-outline'
+    icon: 'mdi-stop-circle-outline',
   },
   completed: {
     label: 'Completed',
     color: 'info',
-    icon: 'mdi-check-circle'
+    icon: 'mdi-check-circle',
   },
   cancelled: {
     label: 'Cancelled',
     color: 'warning',
-    icon: 'mdi-cancel'
+    icon: 'mdi-cancel',
   },
   deleted: {
     label: 'Deleted',
     color: 'error',
-    icon: 'mdi-delete'
-  }
+    icon: 'mdi-delete',
+  },
 }
 
 // Action Definitions
@@ -191,7 +175,7 @@ const actionDefinitions = {
     icon: 'mdi-play',
     newStatus: 'active',
     destructive: false,
-    requiresConfirm: false
+    requiresConfirm: false,
   },
   deactivate: {
     value: 'deactivate',
@@ -199,7 +183,7 @@ const actionDefinitions = {
     icon: 'mdi-pause-circle-outline',
     newStatus: 'inactive',
     destructive: false,
-    requiresConfirm: true
+    requiresConfirm: true,
   },
   complete: {
     value: 'complete',
@@ -207,7 +191,7 @@ const actionDefinitions = {
     icon: 'mdi-check-circle',
     newStatus: 'completed',
     destructive: false,
-    requiresConfirm: true
+    requiresConfirm: true,
   },
   cancel: {
     value: 'cancel',
@@ -215,7 +199,7 @@ const actionDefinitions = {
     icon: 'mdi-cancel',
     newStatus: 'cancelled',
     destructive: true,
-    requiresConfirm: true
+    requiresConfirm: true,
   },
   reopen: {
     value: 'reopen',
@@ -223,7 +207,7 @@ const actionDefinitions = {
     icon: 'mdi-restore',
     newStatus: 'inactive',
     destructive: false,
-    requiresConfirm: false
+    requiresConfirm: false,
   },
   delete: {
     value: 'delete',
@@ -231,8 +215,8 @@ const actionDefinitions = {
     icon: 'mdi-delete',
     newStatus: null,
     destructive: true,
-    requiresConfirm: true
-  }
+    requiresConfirm: true,
+  },
 }
 
 // Context-Aware Action Mapping
@@ -240,7 +224,7 @@ const actionsByStatus = {
   inactive: ['activate', 'complete', 'cancel'],
   active: ['deactivate', 'complete', 'cancel'],
   completed: ['reopen'],
-  cancelled: ['reopen']
+  cancelled: ['reopen'],
 }
 
 // Computed
@@ -250,7 +234,7 @@ const statusIcon = computed(() => statusConfig[props.status]?.icon || 'mdi-circl
 
 const availableActions = computed(() => {
   const actions = actionsByStatus[props.status] || []
-  return actions.map(actionKey => actionDefinitions[actionKey]).filter(Boolean)
+  return actions.map((actionKey) => actionDefinitions[actionKey]).filter(Boolean)
 })
 
 const confirmDialogTitle = computed(() => {
@@ -317,7 +301,7 @@ const executeAction = (action) => {
   emit('action', {
     action: action.value,
     newStatus: action.newStatus,
-    projectId: props.projectId
+    projectId: props.projectId,
   })
 
   // Parent component is responsible for handling the action
@@ -333,18 +317,21 @@ const executeAction = (action) => {
 }
 
 // Watch for status changes to close dialogs
-watch(() => props.status, () => {
-  menuOpen.value = false
-  showConfirmDialog.value = false
-  pendingAction.value = null
-  loading.value = false
-})
+watch(
+  () => props.status,
+  () => {
+    menuOpen.value = false
+    showConfirmDialog.value = false
+    pendingAction.value = null
+    loading.value = false
+  },
+)
 
 // Expose method to reset loading state (optional, for parent control)
 defineExpose({
   resetLoading: () => {
     loading.value = false
-  }
+  },
 })
 </script>
 

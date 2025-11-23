@@ -29,7 +29,9 @@ body {
 
 html {
   /* Disable transitions during theme initialization */
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 html.no-transition,

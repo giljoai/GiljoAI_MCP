@@ -47,16 +47,16 @@ vi.mock('./AgentCardEnhanced.vue', () => ({
         <button v-if="agent.status === 'failed' || agent.status === 'blocked'" @click="$emit('view-error', agent)">View Error</button>
         <button v-if="isOrchestrator && showCloseoutButton" @click="$emit('closeout-project')">Closeout</button>
       </div>
-    `
-  }
+    `,
+  },
 }))
 
 vi.mock('./MessageStream.vue', () => ({
   default: {
     name: 'MessageStream',
     props: ['messages', 'projectId', 'autoScroll', 'loading'],
-    template: '<div class="message-stream-mock">{{ messages.length }} messages</div>'
-  }
+    template: '<div class="message-stream-mock">{{ messages.length }} messages</div>',
+  },
 }))
 
 vi.mock('./MessageInput.vue', () => ({
@@ -64,8 +64,9 @@ vi.mock('./MessageInput.vue', () => ({
     name: 'MessageInput',
     props: ['disabled'],
     emits: ['send'],
-    template: '<div class="message-input-mock"><button @click="$emit(\'send\', \'test message\', \'orchestrator\')">Send</button></div>'
-  }
+    template:
+      "<div class=\"message-input-mock\"><button @click=\"$emit('send', 'test message', 'orchestrator')\">Send</button></div>",
+  },
 }))
 
 // Test data fixtures
@@ -73,7 +74,7 @@ const createMockProject = (overrides = {}) => ({
   project_id: 'proj-12345678',
   name: 'Test Project',
   description: 'Test project description',
-  ...overrides
+  ...overrides,
 })
 
 const createMockAgent = (type, status, overrides = {}) => ({
@@ -84,9 +85,9 @@ const createMockAgent = (type, status, overrides = {}) => ({
   mission: `Mission for ${type}`,
   progress: status === 'working' ? 50 : 0,
   current_task: status === 'working' ? 'Working on task' : null,
-  block_reason: (status === 'failed' || status === 'blocked') ? 'Error occurred' : null,
+  block_reason: status === 'failed' || status === 'blocked' ? 'Error occurred' : null,
   messages: [],
-  ...overrides
+  ...overrides,
 })
 
 const createMockMessage = (from, content, overrides = {}) => ({
@@ -99,7 +100,7 @@ const createMockMessage = (from, content, overrides = {}) => ({
   timestamp: new Date().toISOString(),
   agent_type: from === 'agent' ? 'orchestrator' : null,
   instance_number: 1,
-  ...overrides
+  ...overrides,
 })
 
 describe('JobsTab Component', () => {
@@ -110,10 +111,10 @@ describe('JobsTab Component', () => {
     agents: [
       createMockAgent('orchestrator', 'working'),
       createMockAgent('analyzer', 'waiting'),
-      createMockAgent('implementor', 'complete')
+      createMockAgent('implementor', 'complete'),
     ],
     messages: [],
-    allAgentsComplete: false
+    allAgentsComplete: false,
   }
 
   beforeEach(() => {
@@ -130,7 +131,7 @@ describe('JobsTab Component', () => {
   describe('Component Rendering', () => {
     it('renders with required props', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       expect(wrapper.exists()).toBe(true)
@@ -139,7 +140,7 @@ describe('JobsTab Component', () => {
 
     it('displays project header with name and ID', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -150,7 +151,7 @@ describe('JobsTab Component', () => {
 
     it('renders correct number of agent cards', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
@@ -159,7 +160,7 @@ describe('JobsTab Component', () => {
 
     it('renders message stream and message input', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       expect(wrapper.findComponent(MessageStream).exists()).toBe(true)
@@ -170,8 +171,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       const banner = wrapper.find('.jobs-tab__complete-banner')
@@ -182,8 +183,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       const banner = wrapper.find('.jobs-tab__complete-banner')
@@ -199,18 +200,18 @@ describe('JobsTab Component', () => {
         createMockAgent('analyzer', 'working'),
         createMockAgent('researcher', 'waiting'),
         createMockAgent('reviewer', 'blocked'),
-        createMockAgent('tester', 'failed')
+        createMockAgent('tester', 'failed'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const sortedStatuses = agentCards.map(card => card.props('agent').status)
+      const sortedStatuses = agentCards.map((card) => card.props('agent').status)
 
       expect(sortedStatuses).toEqual(['failed', 'blocked', 'waiting', 'working', 'complete'])
     })
@@ -219,18 +220,18 @@ describe('JobsTab Component', () => {
       const agents = [
         createMockAgent('analyzer', 'waiting'),
         createMockAgent('orchestrator', 'waiting'),
-        createMockAgent('implementor', 'waiting')
+        createMockAgent('implementor', 'waiting'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const sortedTypes = agentCards.map(card => card.props('agent').agent_type)
+      const sortedTypes = agentCards.map((card) => card.props('agent').agent_type)
 
       expect(sortedTypes[0]).toBe('orchestrator')
     })
@@ -238,18 +239,18 @@ describe('JobsTab Component', () => {
     it('sorts alphabetically by agent type within same priority', () => {
       const agents = [
         createMockAgent('implementor', 'working'),
-        createMockAgent('analyzer', 'working')
+        createMockAgent('analyzer', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const sortedTypes = agentCards.map(card => card.props('agent').agent_type)
+      const sortedTypes = agentCards.map((card) => card.props('agent').agent_type)
 
       expect(sortedTypes).toEqual(['analyzer', 'implementor'])
     })
@@ -258,8 +259,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents: []
-        }
+          agents: [],
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
@@ -269,14 +270,14 @@ describe('JobsTab Component', () => {
     it('handles agents with unknown status', () => {
       const agents = [
         createMockAgent('analyzer', 'unknown_status'),
-        createMockAgent('implementor', 'waiting')
+        createMockAgent('implementor', 'waiting'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Should not throw error and should render all agents
@@ -287,15 +288,13 @@ describe('JobsTab Component', () => {
 
   describe('Instance Number Calculation', () => {
     it('assigns instance number 1 for single agent of type', () => {
-      const agents = [
-        createMockAgent('implementor', 'working')
-      ]
+      const agents = [createMockAgent('implementor', 'working')]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCard = wrapper.findComponent({ name: 'AgentCardEnhanced' })
@@ -306,21 +305,23 @@ describe('JobsTab Component', () => {
       const agents = [
         createMockAgent('implementor', 'working', { job_id: 'job-impl-1' }),
         createMockAgent('implementor', 'working', { job_id: 'job-impl-2' }),
-        createMockAgent('implementor', 'complete', { job_id: 'job-impl-3' })
+        createMockAgent('implementor', 'complete', { job_id: 'job-impl-3' }),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const implementorCards = agentCards.filter(card => card.props('agent').agent_type === 'implementor')
+      const implementorCards = agentCards.filter(
+        (card) => card.props('agent').agent_type === 'implementor',
+      )
 
       // All implementors should have unique instance numbers
-      const instanceNumbers = implementorCards.map(card => card.props('instanceNumber'))
+      const instanceNumbers = implementorCards.map((card) => card.props('instanceNumber'))
       expect(instanceNumbers).toEqual([1, 2, 3])
     })
 
@@ -328,24 +329,28 @@ describe('JobsTab Component', () => {
       const agents = [
         createMockAgent('implementor', 'working', { job_id: 'job-impl-1' }),
         createMockAgent('implementor', 'working', { job_id: 'job-impl-2' }),
-        createMockAgent('analyzer', 'working', { job_id: 'job-anlz-1' })
+        createMockAgent('analyzer', 'working', { job_id: 'job-anlz-1' }),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
 
-      const implementorCards = agentCards.filter(card => card.props('agent').agent_type === 'implementor')
-      const implementorInstances = implementorCards.map(card => card.props('instanceNumber'))
+      const implementorCards = agentCards.filter(
+        (card) => card.props('agent').agent_type === 'implementor',
+      )
+      const implementorInstances = implementorCards.map((card) => card.props('instanceNumber'))
       expect(implementorInstances).toEqual([1, 2])
 
-      const analyzerCards = agentCards.filter(card => card.props('agent').agent_type === 'analyzer')
-      const analyzerInstances = analyzerCards.map(card => card.props('instanceNumber'))
+      const analyzerCards = agentCards.filter(
+        (card) => card.props('agent').agent_type === 'analyzer',
+      )
+      const analyzerInstances = analyzerCards.map((card) => card.props('instanceNumber'))
       expect(analyzerInstances).toEqual([1])
     })
   })
@@ -354,45 +359,53 @@ describe('JobsTab Component', () => {
     it('identifies orchestrator agent correctly', () => {
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        createMockAgent('implementor', 'working')
-      ]
-
-      wrapper = mount(JobsTab, {
-        props: {
-          ...defaultProps,
-          agents
-        }
-      })
-
-      const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-
-      const orchestratorCard = agentCards.find(card => card.props('agent').agent_type === 'orchestrator')
-      expect(orchestratorCard.props('isOrchestrator')).toBe(true)
-
-      const implementorCard = agentCards.find(card => card.props('agent').agent_type === 'implementor')
-      expect(implementorCard.props('isOrchestrator')).toBe(false)
-    })
-
-    it('shows closeout button only on orchestrator when all complete', () => {
-      const agents = [
-        createMockAgent('orchestrator', 'complete'),
-        createMockAgent('implementor', 'complete')
+        createMockAgent('implementor', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
           agents,
-          allAgentsComplete: true
-        }
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
 
-      const orchestratorCard = agentCards.find(card => card.props('agent').agent_type === 'orchestrator')
+      const orchestratorCard = agentCards.find(
+        (card) => card.props('agent').agent_type === 'orchestrator',
+      )
+      expect(orchestratorCard.props('isOrchestrator')).toBe(true)
+
+      const implementorCard = agentCards.find(
+        (card) => card.props('agent').agent_type === 'implementor',
+      )
+      expect(implementorCard.props('isOrchestrator')).toBe(false)
+    })
+
+    it('shows closeout button only on orchestrator when all complete', () => {
+      const agents = [
+        createMockAgent('orchestrator', 'complete'),
+        createMockAgent('implementor', 'complete'),
+      ]
+
+      wrapper = mount(JobsTab, {
+        props: {
+          ...defaultProps,
+          agents,
+          allAgentsComplete: true,
+        },
+      })
+
+      const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
+
+      const orchestratorCard = agentCards.find(
+        (card) => card.props('agent').agent_type === 'orchestrator',
+      )
       expect(orchestratorCard.props('showCloseoutButton')).toBe(true)
 
-      const implementorCard = agentCards.find(card => card.props('agent').agent_type === 'implementor')
+      const implementorCard = agentCards.find(
+        (card) => card.props('agent').agent_type === 'implementor',
+      )
       expect(implementorCard.props('showCloseoutButton')).toBe(false)
     })
   })
@@ -404,8 +417,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCard = wrapper.findComponent({ name: 'AgentCardEnhanced' })
@@ -421,8 +434,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCard = wrapper.findComponent({ name: 'AgentCardEnhanced' })
@@ -438,8 +451,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCard = wrapper.findComponent({ name: 'AgentCardEnhanced' })
@@ -456,8 +469,8 @@ describe('JobsTab Component', () => {
         props: {
           ...defaultProps,
           agents,
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       const agentCard = wrapper.findComponent({ name: 'AgentCardEnhanced' })
@@ -469,7 +482,7 @@ describe('JobsTab Component', () => {
 
     it('emits send-message event when message input emits send', async () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const messageInput = wrapper.findComponent(MessageInput)
@@ -485,14 +498,14 @@ describe('JobsTab Component', () => {
       const messages = [
         createMockMessage('agent', 'Agent message 1'),
         createMockMessage('developer', 'User message 1'),
-        createMockMessage('agent', 'Agent message 2')
+        createMockMessage('agent', 'Agent message 2'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          messages
-        }
+          messages,
+        },
       })
 
       const messageStream = wrapper.findComponent(MessageStream)
@@ -502,7 +515,7 @@ describe('JobsTab Component', () => {
 
     it('passes project ID to MessageStream for ARIA label', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const messageStream = wrapper.findComponent(MessageStream)
@@ -511,7 +524,7 @@ describe('JobsTab Component', () => {
 
     it('enables auto-scroll in MessageStream', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const messageStream = wrapper.findComponent(MessageStream)
@@ -522,7 +535,7 @@ describe('JobsTab Component', () => {
   describe('Layout and Responsive Design', () => {
     it('renders 2-column layout with correct structure', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const leftColumn = wrapper.find('.jobs-tab__left-column')
@@ -541,7 +554,7 @@ describe('JobsTab Component', () => {
 
     it('has horizontal scroll container for agent cards', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const scrollContainer = wrapper.find('.jobs-tab__agents-scroll')
@@ -557,9 +570,9 @@ describe('JobsTab Component', () => {
           agents: [
             createMockAgent('orchestrator', 'working'),
             createMockAgent('analyzer', 'waiting'),
-            createMockAgent('implementor', 'complete')
-          ]
-        }
+            createMockAgent('implementor', 'complete'),
+          ],
+        },
       })
 
       const agentsHeader = wrapper.find('.jobs-tab__agents-header')
@@ -570,7 +583,7 @@ describe('JobsTab Component', () => {
   describe('Scroll Indicators', () => {
     it('renders scroll indicator buttons', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const scrollIndicators = wrapper.find('.jobs-tab__scroll-indicators')
@@ -579,7 +592,7 @@ describe('JobsTab Component', () => {
 
     it('scroll left button has correct ARIA label', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const leftButton = wrapper.find('.jobs-tab__scroll-left')
@@ -590,7 +603,7 @@ describe('JobsTab Component', () => {
 
     it('scroll right button has correct ARIA label', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const rightButton = wrapper.find('.jobs-tab__scroll-right')
@@ -603,7 +616,7 @@ describe('JobsTab Component', () => {
   describe('Keyboard Navigation', () => {
     it('agent scroll container is keyboard focusable', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const scrollContainer = wrapper.find('.jobs-tab__agents-scroll')
@@ -613,7 +626,7 @@ describe('JobsTab Component', () => {
     it('handles arrow key navigation for agent scroll', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const scrollContainer = wrapper.find('.jobs-tab__agents-scroll')
@@ -627,21 +640,21 @@ describe('JobsTab Component', () => {
       await scrollContainer.trigger('keydown', { key: 'ArrowRight' })
       expect(scrollBySpy).toHaveBeenCalledWith({
         left: 300,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
 
       // Simulate ArrowLeft key
       await scrollContainer.trigger('keydown', { key: 'ArrowLeft' })
       expect(scrollBySpy).toHaveBeenCalledWith({
         left: -300,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     })
 
     it('handles Home and End keys for agent scroll', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const scrollContainer = wrapper.find('.jobs-tab__agents-scroll')
@@ -656,14 +669,14 @@ describe('JobsTab Component', () => {
       await scrollContainer.trigger('keydown', { key: 'Home' })
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 0,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
 
       // Simulate End key
       await scrollContainer.trigger('keydown', { key: 'End' })
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 1000,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     })
   })
@@ -671,7 +684,7 @@ describe('JobsTab Component', () => {
   describe('Accessibility', () => {
     it('has correct ARIA label on main container', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const mainContainer = wrapper.find('.jobs-tab')
@@ -681,7 +694,7 @@ describe('JobsTab Component', () => {
 
     it('agent cards container has list role', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const scrollContainer = wrapper.find('.jobs-tab__agents-scroll')
@@ -690,11 +703,11 @@ describe('JobsTab Component', () => {
 
     it('agent cards have listitem role', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const agentCards = wrapper.findAll('.jobs-tab__agent-card')
-      agentCards.forEach(card => {
+      agentCards.forEach((card) => {
         expect(card.attributes('role')).toBe('listitem')
       })
     })
@@ -703,8 +716,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       const banner = wrapper.find('.jobs-tab__complete-banner')
@@ -715,7 +728,7 @@ describe('JobsTab Component', () => {
 
     it('project ID uses code element for semantic meaning', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -734,8 +747,8 @@ describe('JobsTab Component', () => {
             project: null,
             agents: [],
             messages: [],
-            allAgentsComplete: false
-          }
+            allAgentsComplete: false,
+          },
         })
       }
 
@@ -744,15 +757,13 @@ describe('JobsTab Component', () => {
     })
 
     it('handles agents without job_id or agent_id', () => {
-      const agents = [
-        { agent_type: 'implementor', status: 'working', mission: 'Test' }
-      ]
+      const agents = [{ agent_type: 'implementor', status: 'working', mission: 'Test' }]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Should render without error
@@ -760,15 +771,13 @@ describe('JobsTab Component', () => {
     })
 
     it('handles agents without agent_type', () => {
-      const agents = [
-        { job_id: 'job-1', status: 'working', mission: 'Test' }
-      ]
+      const agents = [{ job_id: 'job-1', status: 'working', mission: 'Test' }]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Should render without error (uses default instance number 1)
@@ -779,8 +788,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          messages: []
-        }
+          messages: [],
+        },
       })
 
       const messageStream = wrapper.findComponent(MessageStream)
@@ -793,8 +802,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          project: createMockProject({ name: longName })
-        }
+          project: createMockProject({ name: longName }),
+        },
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -807,8 +816,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          project: createMockProject({ project_id: longId })
-        }
+          project: createMockProject({ project_id: longId }),
+        },
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -817,14 +826,14 @@ describe('JobsTab Component', () => {
 
     it('handles large number of agents efficiently', () => {
       const manyAgents = Array.from({ length: 50 }, (_, i) =>
-        createMockAgent(`agent-${i}`, 'working')
+        createMockAgent(`agent-${i}`, 'working'),
       )
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents: manyAgents
-        }
+          agents: manyAgents,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
@@ -833,14 +842,14 @@ describe('JobsTab Component', () => {
 
     it('handles large number of messages efficiently', () => {
       const manyMessages = Array.from({ length: 100 }, (_, i) =>
-        createMockMessage('agent', `Message ${i}`)
+        createMockMessage('agent', `Message ${i}`),
       )
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          messages: manyMessages
-        }
+          messages: manyMessages,
+        },
       })
 
       const messageStream = wrapper.findComponent(MessageStream)
@@ -858,8 +867,8 @@ describe('JobsTab Component', () => {
           project: { name: 'Test' }, // Missing project_id
           agents: [],
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Vue should warn about validation failure
@@ -875,8 +884,8 @@ describe('JobsTab Component', () => {
           project: createMockProject(),
           agents: [], // Valid empty array
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       expect(wrapper.exists()).toBe(true)
@@ -886,7 +895,7 @@ describe('JobsTab Component', () => {
 
     it('accepts valid props without error', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       expect(wrapper.exists()).toBe(true)
@@ -901,8 +910,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       const agentCard = wrapper.findComponent({ name: 'AgentCardEnhanced' })
@@ -919,8 +928,8 @@ describe('JobsTab Component', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          messages
-        }
+          messages,
+        },
       })
 
       const messageStream = wrapper.findComponent(MessageStream)
@@ -932,7 +941,7 @@ describe('JobsTab Component', () => {
 
     it('passes correct props to MessageInput', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const messageInput = wrapper.findComponent(MessageInput)
@@ -946,7 +955,7 @@ describe('JobsTab Component', () => {
 
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       expect(addEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
@@ -957,7 +966,7 @@ describe('JobsTab Component', () => {
 
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       wrapper.unmount()

@@ -20,128 +20,120 @@
     </div>
 
     <!-- Scrollable Content Container -->
-    <v-container fluid class="pa-6 scrollable-content" :class="{ 'with-sticky-header': !loading && !error }">
+    <v-container
+      fluid
+      class="pa-6 scrollable-content"
+      :class="{ 'with-sticky-header': !loading && !error }"
+    >
+      <!-- Loading State -->
+      <v-row v-if="loading" class="justify-center py-12">
+        <v-col cols="12" class="text-center">
+          <v-progress-circular indeterminate color="primary" size="64" />
+          <p class="text-subtitle-1 mt-4">Loading project details...</p>
+        </v-col>
+      </v-row>
 
-    <!-- Loading State -->
-    <v-row v-if="loading" class="justify-center py-12">
-      <v-col cols="12" class="text-center">
-        <v-progress-circular indeterminate color="primary" size="64" />
-        <p class="text-subtitle-1 mt-4">Loading project details...</p>
-      </v-col>
-    </v-row>
-
-    <!-- Error State -->
-    <v-row v-else-if="error" class="mb-4">
-      <v-col cols="12">
-        <v-alert type="error" variant="tonal" closable @click:close="error = null">
-          <div>
-            <p class="font-weight-bold">Error Loading Project</p>
-            <p class="text-body-2">{{ error }}</p>
-          </div>
-        </v-alert>
-      </v-col>
-    </v-row>
-
-    <!-- PROJECT TABS COMPONENT (same as JobsView) -->
-    <v-row v-else>
-      <v-col cols="12">
-        <ProjectTabs
-          :project="project"
-          :orchestrator="orchestrator"
-          @edit-description="handleEditDescription"
-          @edit-mission="handleEditMission"
-          @edit-agent-mission="handleEditAgentMission"
-        />
-      </v-col>
-    </v-row>
-
-    <!-- Toast Notifications -->
-    <v-snackbar v-model="showToast" :timeout="3000" :color="toastColor">
-      <v-icon start :color="toastColor">{{ toastIcon }}</v-icon>
-      {{ toastMessage }}
-      <template v-slot:actions>
-        <v-btn variant="text" @click="showToast = false">
-          Close
-        </v-btn>
-      </template>
-    </v-snackbar>
-
-    <!-- Edit Project Dialog -->
-    <v-dialog v-model="showEditDialog" max-width="800" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <span>Edit Project</span>
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="cancelEdit"
-          />
-        </v-card-title>
-
-        <v-card-text>
-          <!-- Project ID Info -->
-          <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <div class="text-caption">
-              <strong>Project ID:</strong>
-              <span class="ml-2" style="font-family: monospace">{{ project?.id }}</span>
+      <!-- Error State -->
+      <v-row v-else-if="error" class="mb-4">
+        <v-col cols="12">
+          <v-alert type="error" variant="tonal" closable @click:close="error = null">
+            <div>
+              <p class="font-weight-bold">Error Loading Project</p>
+              <p class="text-body-2">{{ error }}</p>
             </div>
           </v-alert>
+        </v-col>
+      </v-row>
 
-          <!-- Form -->
-          <v-form ref="projectForm" v-model="formValid">
-            <v-text-field
-              v-model="projectData.name"
-              label="Project Name"
-              :rules="[(v) => !!v || 'Name is required']"
-              required
-              class="mb-3"
-            ></v-text-field>
+      <!-- PROJECT TABS COMPONENT (same as JobsView) -->
+      <v-row v-else>
+        <v-col cols="12">
+          <ProjectTabs
+            :project="project"
+            :orchestrator="orchestrator"
+            @edit-description="handleEditDescription"
+            @edit-mission="handleEditMission"
+            @edit-agent-mission="handleEditAgentMission"
+          />
+        </v-col>
+      </v-row>
 
-            <v-textarea
-              v-model="projectData.description"
-              label="Project Description"
-              :rules="[(v) => !!v || 'Description is required']"
-              hint="Human-written description of what you want to accomplish"
-              persistent-hint
-              rows="4"
-              required
-              class="mb-3"
-            ></v-textarea>
+      <!-- Toast Notifications -->
+      <v-snackbar v-model="showToast" :timeout="3000" :color="toastColor">
+        <v-icon start :color="toastColor">{{ toastIcon }}</v-icon>
+        {{ toastMessage }}
+        <template v-slot:actions>
+          <v-btn variant="text" @click="showToast = false"> Close </v-btn>
+        </template>
+      </v-snackbar>
 
-            <v-textarea
-              v-model="projectData.mission"
-              label="Orchestrator Mission (Optional)"
-              hint="AI-generated mission created by the orchestrator"
-              persistent-hint
-              rows="3"
-              class="mb-3"
-            ></v-textarea>
+      <!-- Edit Project Dialog -->
+      <v-dialog v-model="showEditDialog" max-width="800" persistent>
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <span>Edit Project</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" variant="text" @click="cancelEdit" />
+          </v-card-title>
 
-            <v-text-field
-              v-model.number="projectData.context_budget"
-              label="Context Budget (tokens)"
-              type="number"
-              :rules="[(v) => v > 0 || 'Must be positive']"
-              class="mb-3"
-            ></v-text-field>
-          </v-form>
-        </v-card-text>
+          <v-card-text>
+            <!-- Project ID Info -->
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              <div class="text-caption">
+                <strong>Project ID:</strong>
+                <span class="ml-2" style="font-family: monospace">{{ project?.id }}</span>
+              </div>
+            </v-alert>
 
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            :disabled="!formValid"
-            @click="saveProject"
-          >
-            Update
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+            <!-- Form -->
+            <v-form ref="projectForm" v-model="formValid">
+              <v-text-field
+                v-model="projectData.name"
+                label="Project Name"
+                :rules="[(v) => !!v || 'Name is required']"
+                required
+                class="mb-3"
+              ></v-text-field>
+
+              <v-textarea
+                v-model="projectData.description"
+                label="Project Description"
+                :rules="[(v) => !!v || 'Description is required']"
+                hint="Human-written description of what you want to accomplish"
+                persistent-hint
+                rows="4"
+                required
+                class="mb-3"
+              ></v-textarea>
+
+              <v-textarea
+                v-model="projectData.mission"
+                label="Orchestrator Mission (Optional)"
+                hint="AI-generated mission created by the orchestrator"
+                persistent-hint
+                rows="3"
+                class="mb-3"
+              ></v-textarea>
+
+              <v-text-field
+                v-model.number="projectData.context_budget"
+                label="Context Budget (tokens)"
+                type="number"
+                :rules="[(v) => v > 0 || 'Must be positive']"
+                class="mb-3"
+              ></v-text-field>
+            </v-form>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
+            <v-btn color="primary" variant="flat" :disabled="!formValid" @click="saveProject">
+              Update
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-container>
   </div>
 </template>
@@ -172,7 +164,7 @@ const projectData = ref({
   name: '',
   description: '',
   mission: '',
-  context_budget: 150000
+  context_budget: 150000,
 })
 
 async function fetchProjectDetails() {
@@ -182,9 +174,9 @@ async function fetchProjectDetails() {
     // Fetch project and orchestrator in parallel
     const [projectResponse, orchestratorResponse] = await Promise.all([
       api.projects.get(projectId.value),
-      api.projects.getOrchestrator(projectId.value)
+      api.projects.getOrchestrator(projectId.value),
     ])
-    
+
     project.value = projectResponse.data
     orchestrator.value = orchestratorResponse.data.orchestrator
   } catch (err) {
@@ -200,7 +192,7 @@ function handleEditDescription() {
     name: project.value.name,
     description: project.value.description || '',
     mission: project.value.mission || '',
-    context_budget: project.value.context_budget || 150000
+    context_budget: project.value.context_budget || 150000,
   }
   showEditDialog.value = true
 }
@@ -235,7 +227,7 @@ async function saveProject() {
       name: projectData.value.name,
       description: projectData.value.description,
       mission: projectData.value.mission,
-      context_budget: projectData.value.context_budget
+      context_budget: projectData.value.context_budget,
     }
 
     await api.projects.update(projectId.value, updateData)
@@ -253,7 +245,7 @@ async function saveProject() {
     showNotification(
       err.response?.data?.detail || 'Failed to update project',
       'error',
-      'mdi-alert-circle'
+      'mdi-alert-circle',
     )
   }
 }
@@ -264,7 +256,7 @@ function cancelEdit() {
     name: '',
     description: '',
     mission: '',
-    context_budget: 150000
+    context_budget: 150000,
   }
 }
 
@@ -312,7 +304,7 @@ onMounted(() => {
 
 /* Project name styling (matches JobsView) */
 .project-name {
-  color: #FFC300;
+  color: #ffc300;
   font-size: 2.125rem;
   font-weight: 400;
   margin-left: 16px;

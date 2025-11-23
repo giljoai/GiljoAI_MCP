@@ -1,8 +1,5 @@
 <template>
-  <v-dialog
-    v-model="isOpen"
-    max-width="600"
-  >
+  <v-dialog v-model="isOpen" max-width="600">
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-information-outline</v-icon>
@@ -45,16 +42,10 @@
 
         <!-- Vision Documents -->
         <div>
-          <div class="text-subtitle-2 mb-2">
-            Vision Documents ({{ visionDocuments.length }})
-          </div>
+          <div class="text-subtitle-2 mb-2">Vision Documents ({{ visionDocuments.length }})</div>
 
           <v-list v-if="visionDocuments.length > 0" density="compact">
-            <v-list-item
-              v-for="doc in visionDocuments"
-              :key="doc.id"
-              class="border rounded mb-1"
-            >
+            <v-list-item v-for="doc in visionDocuments" :key="doc.id" class="border rounded mb-1">
               <template v-slot:prepend>
                 <v-icon color="primary">mdi-file-document</v-icon>
               </template>
@@ -72,18 +63,14 @@
           </v-alert>
 
           <!-- Aggregate Stats (only show if documents exist) -->
-          <v-card
-            v-if="visionDocuments.length > 0"
-            variant="tonal"
-            color="primary"
-            class="mt-3"
-          >
+          <v-card v-if="visionDocuments.length > 0" variant="tonal" color="primary" class="mt-3">
             <v-card-text class="py-2">
               <div class="text-caption">
                 <v-icon size="16" class="mr-1">mdi-chart-box-outline</v-icon>
-                <strong>Total chunks:</strong> {{ totalChunks }} @ ~20K tokens each<br>
+                <strong>Total chunks:</strong> {{ totalChunks }} @ ~20K tokens each<br />
                 <v-icon size="16" class="mr-1">mdi-folder-outline</v-icon>
-                <strong>Total file sizes:</strong> {{ totalFileSize }} across {{ visionDocuments.length }} document(s)
+                <strong>Total file sizes:</strong> {{ totalFileSize }} across
+                {{ visionDocuments.length }} document(s)
               </div>
             </v-card-text>
           </v-card>
@@ -138,13 +125,17 @@
                 </div>
                 <div v-if="product.config_data.architecture.design_patterns">
                   <div class="text-caption font-weight-bold">Design Patterns:</div>
-                  <div class="text-body-2">{{ product.config_data.architecture.design_patterns }}</div>
+                  <div class="text-body-2">
+                    {{ product.config_data.architecture.design_patterns }}
+                  </div>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
 
             <!-- Features & Testing -->
-            <v-expansion-panel v-if="product.config_data?.features || product.config_data?.test_config">
+            <v-expansion-panel
+              v-if="product.config_data?.features || product.config_data?.test_config"
+            >
               <v-expansion-panel-title>
                 <v-icon start>mdi-star-outline</v-icon>
                 Features & Testing
@@ -160,7 +151,9 @@
                 </div>
                 <div v-if="product.config_data.test_config?.coverage_target">
                   <div class="text-caption font-weight-bold">Coverage Target:</div>
-                  <div class="text-body-2">{{ product.config_data.test_config.coverage_target }}%</div>
+                  <div class="text-body-2">
+                    {{ product.config_data.test_config.coverage_target }}%
+                  </div>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -190,27 +183,27 @@ import { computed } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   product: {
     type: Object,
-    default: () => ({})
+    default: () => ({}),
   },
   visionDocuments: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   stats: {
     type: Object,
-    default: () => ({ unresolved_tasks: 0, unfinished_projects: 0 })
-  }
+    default: () => ({ unresolved_tasks: 0, unfinished_projects: 0 }),
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => emit('update:modelValue', val),
 })
 
 const handleClose = () => {
@@ -240,7 +233,7 @@ function formatDate(dateString) {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   })
 }
 </script>

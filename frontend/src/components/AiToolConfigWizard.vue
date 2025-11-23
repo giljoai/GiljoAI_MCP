@@ -34,7 +34,13 @@
           </v-list-item>
         </v-list>
 
-        <v-btn :loading="busy" @click="generateQuickPrompt" block color="success" prepend-icon="mdi-wand">
+        <v-btn
+          :loading="busy"
+          @click="generateQuickPrompt"
+          block
+          color="success"
+          prepend-icon="mdi-wand"
+        >
           Generate Configuration Prompt
         </v-btn>
 
@@ -55,7 +61,9 @@
             class="font-monospace no-resize"
             append-inner-icon="mdi-content-copy"
             @click:append-inner="copyPrompt"
-            :messages="copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'"
+            :messages="
+              copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'
+            "
           />
         </div>
       </v-card-text>
@@ -113,12 +121,16 @@
             class="font-monospace no-resize"
             append-inner-icon="mdi-content-copy"
             @click:append-inner="copyPrompt"
-            :messages="copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'"
+            :messages="
+              copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'
+            "
           />
         </div>
 
         <v-divider class="my-4" />
-        <v-btn variant="text" block prepend-icon="mdi-arrow-left" @click="showAdvanced = false">Back</v-btn>
+        <v-btn variant="text" block prepend-icon="mdi-arrow-left" @click="showAdvanced = false"
+          >Back</v-btn
+        >
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -164,8 +176,12 @@ const aiTools = [
   { name: 'Cursor', value: 'cursor' },
 ]
 
-const detectedToolName = computed(() => aiTools.find(t => t.value === selectedTool.value)?.name || 'Claude Code')
-const selectedToolName = computed(() => aiTools.find(t => t.value === selectedTool.value)?.name || 'AI Tool')
+const detectedToolName = computed(
+  () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'Claude Code',
+)
+const selectedToolName = computed(
+  () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'AI Tool',
+)
 const detectedServer = computed(() => `${serverIp.value}:${serverPort.value}`)
 
 // Get the appropriate logo for the selected tool
@@ -174,7 +190,7 @@ const toolLogo = computed(() => {
     claude: '/claude_pix.svg',
     codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
-    cursor: '/claude_pix.svg' // Using Claude pix for Cursor too
+    cursor: '/claude_pix.svg', // Using Claude pix for Cursor too
   }
   return logos[selectedTool.value] || logos.claude
 })
@@ -193,7 +209,9 @@ async function generateApiKey() {
     generatedKey.value = resp.data.api_key
     try {
       window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
-    } catch (_) { /* no-op */ }
+    } catch (_) {
+      /* no-op */
+    }
   } catch (e) {
     console.error('[Wizard] Failed to generate API key', e)
   } finally {
@@ -299,9 +317,8 @@ async function copyPrompt() {
 defineExpose({
   open: () => {
     showWizard.value = true
-  }
+  },
 })
-
 </script>
 
 <style scoped>

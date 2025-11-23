@@ -84,7 +84,10 @@
                   <template #activator="{ props }">
                     <v-icon v-bind="props" size="16" class="ml-1">mdi-information-outline</v-icon>
                   </template>
-                  <span class="text-caption">At least 12 characters, one uppercase, one lowercase, one digit, and one special character.</span>
+                  <span class="text-caption"
+                    >At least 12 characters, one uppercase, one lowercase, one digit, and one
+                    special character.</span
+                  >
                 </v-tooltip>
               </div>
 
@@ -96,7 +99,8 @@
                 Recovery PIN Setup
               </h3>
               <p class="text-caption text-medium-emphasis mb-4">
-                Create a 4-digit PIN for password recovery. This PIN can be used if you forget your password.
+                Create a 4-digit PIN for password recovery. This PIN can be used if you forget your
+                password.
               </p>
 
               <!-- Recovery PIN -->
@@ -185,39 +189,39 @@ const errorMessage = ref('')
 
 // Validation rules
 const usernameRules = [
-  v => !!v || 'Username is required',
-  v => v.length >= 3 || 'Username must be at least 3 characters',
-  v => v.length <= 64 || 'Username must be less than 64 characters',
-  v => /^[a-zA-Z0-9_-]+$/.test(v) || 'Username can only contain letters, numbers, underscores, and hyphens'
+  (v) => !!v || 'Username is required',
+  (v) => v.length >= 3 || 'Username must be at least 3 characters',
+  (v) => v.length <= 64 || 'Username must be less than 64 characters',
+  (v) =>
+    /^[a-zA-Z0-9_-]+$/.test(v) ||
+    'Username can only contain letters, numbers, underscores, and hyphens',
 ]
 
-const emailRules = [
-  v => !v || /.+@.+\..+/.test(v) || 'Email must be valid'
-]
+const emailRules = [(v) => !v || /.+@.+\..+/.test(v) || 'Email must be valid']
 
 const passwordRules = [
-  v => !!v || 'Password is required',
-  v => v.length >= 12 || 'Password must be at least 12 characters',
-  v => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
-  v => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
-  v => /\d/.test(v) || 'Must contain at least one digit',
-  v => /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(v) || 'Must contain at least one special character'
+  (v) => !!v || 'Password is required',
+  (v) => v.length >= 12 || 'Password must be at least 12 characters',
+  (v) => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
+  (v) => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
+  (v) => /\d/.test(v) || 'Must contain at least one digit',
+  (v) => /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(v) || 'Must contain at least one special character',
 ]
 
 const confirmPasswordRules = [
-  v => !!v || 'Password confirmation is required',
-  v => v === password.value || 'Passwords do not match'
+  (v) => !!v || 'Password confirmation is required',
+  (v) => v === password.value || 'Passwords do not match',
 ]
 
 const pinRules = [
-  v => !!v || 'Recovery PIN is required',
-  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+  (v) => !!v || 'Recovery PIN is required',
+  (v) => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
 ]
 
 const confirmPinRules = [
-  v => !!v || 'PIN confirmation is required',
-  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
-  v => v === recoveryPin.value || 'PINs do not match'
+  (v) => !!v || 'PIN confirmation is required',
+  (v) => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+  (v) => v === recoveryPin.value || 'PINs do not match',
 ]
 
 // Password requirements
@@ -227,11 +231,14 @@ const passwordRequirements = computed(() => [
   { text: 'One lowercase letter', met: /[a-z]/.test(password.value) },
   { text: 'One digit', met: /\d/.test(password.value) },
   { text: 'One special character', met: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password.value) },
-  { text: 'Passwords match', met: password.value === confirmPassword.value && confirmPassword.value !== '' }
+  {
+    text: 'Passwords match',
+    met: password.value === confirmPassword.value && confirmPassword.value !== '',
+  },
 ])
 
 const passwordStrength = computed(() => {
-  const metRequirements = passwordRequirements.value.filter(req => req.met).length
+  const metRequirements = passwordRequirements.value.filter((req) => req.met).length
   return (metRequirements / passwordRequirements.value.length) * 100
 })
 
@@ -248,18 +255,18 @@ const passwordStrengthText = computed(() => {
 })
 
 // All requirements satisfied?
-const passwordMeetsAll = computed(() => passwordRequirements.value.every(r => r.met))
+const passwordMeetsAll = computed(() => passwordRequirements.value.every((r) => r.met))
 
 // Methods for PIN input handling
 function handlePinInput(value) {
   // Handle both string and event objects
-  const val = typeof value === 'string' ? value : (value?.target?.value || '')
+  const val = typeof value === 'string' ? value : value?.target?.value || ''
   recoveryPin.value = val.replace(/\D/g, '').slice(0, 4)
 }
 
 function handleConfirmPinInput(value) {
   // Handle both string and event objects
-  const val = typeof value === 'string' ? value : (value?.target?.value || '')
+  const val = typeof value === 'string' ? value : value?.target?.value || ''
   confirmPin.value = val.replace(/\D/g, '').slice(0, 4)
 }
 
@@ -291,12 +298,12 @@ const createAdmin = async () => {
       password: password.value,
       confirm_password: confirmPassword.value,
       recovery_pin: recoveryPin.value,
-      confirm_pin: confirmPin.value
+      confirm_pin: confirmPin.value,
     })
 
     // Success - redirect to dashboard (JWT cookie set by API)
     console.log('[CREATE_ADMIN] Admin account created successfully, redirecting to dashboard')
-    router.push('/')  // Dashboard is at root path
+    router.push('/') // Dashboard is at root path
   } catch (error) {
     console.error('[CREATE_ADMIN] Failed:', error)
 
@@ -325,7 +332,7 @@ const createAdmin = async () => {
 }
 
 .admin-title {
-  background: linear-gradient(45deg, #FFD93D, #6BCF7F);
+  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

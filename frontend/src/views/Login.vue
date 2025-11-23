@@ -243,7 +243,10 @@ async function handleLogin() {
       const detail = err.response?.data?.detail || ''
       if (detail.toLowerCase().includes('inactive')) {
         error.value = 'Account is inactive. Please contact your administrator.'
-      } else if (detail.toLowerCase().includes('must_change_password') || detail.toLowerCase().includes('change password')) {
+      } else if (
+        detail.toLowerCase().includes('must_change_password') ||
+        detail.toLowerCase().includes('change password')
+      ) {
         // Redirect to welcome page for password setup
         router.push('/welcome')
         return
@@ -252,7 +255,10 @@ async function handleLogin() {
       }
     } else if (err.response?.status === 403) {
       const detail = err.response?.data?.detail || ''
-      if (detail.toLowerCase().includes('must_change_password') || detail.toLowerCase().includes('change password')) {
+      if (
+        detail.toLowerCase().includes('must_change_password') ||
+        detail.toLowerCase().includes('change password')
+      ) {
         // Redirect to welcome page for password setup
         router.push('/welcome')
         return

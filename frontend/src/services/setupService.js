@@ -33,7 +33,7 @@ class SetupService {
     try {
       const response = await fetch(`${this.getBaseURL()}/api/setup/status`, {
         method: 'GET',
-        cache: 'no-cache'
+        cache: 'no-cache',
       })
 
       if (response.ok) {
@@ -41,7 +41,7 @@ class SetupService {
         return {
           is_fresh_install: data.is_fresh_install,
           total_users_count: data.total_users_count,
-          requires_admin_creation: data.requires_admin_creation
+          requires_admin_creation: data.requires_admin_creation,
         }
       } else {
         console.warn('[SETUP_SERVICE] Setup status endpoint failed:', response.status)
@@ -49,7 +49,7 @@ class SetupService {
         return {
           is_fresh_install: true,
           total_users_count: 0,
-          requires_admin_creation: true
+          requires_admin_creation: true,
         }
       }
     } catch (error) {
@@ -58,7 +58,7 @@ class SetupService {
       return {
         is_fresh_install: true,
         total_users_count: 0,
-        requires_admin_creation: true
+        requires_admin_creation: true,
       }
     }
   }
@@ -72,7 +72,7 @@ class SetupService {
       const status = await this.checkEnhancedStatus()
       return {
         requires_setup: false, // v3.0: Always false, no setup wizard
-        is_fresh_install: status.is_fresh_install
+        is_fresh_install: status.is_fresh_install,
       }
     } catch (error) {
       console.warn('[SETUP_SERVICE] Status check failed:', error)
@@ -320,7 +320,7 @@ class SetupService {
   async toggleSerena(enabled) {
     // Import API here to avoid circular dependency
     const { default: api } = await import('@/services/api')
-    
+
     try {
       const response = await api.serena.toggle(enabled)
       return response.data
@@ -337,7 +337,7 @@ class SetupService {
   async getSerenaStatus() {
     // Import API here to avoid circular dependency
     const { default: api } = await import('@/services/api')
-    
+
     try {
       const response = await api.serena.getStatus()
       return response.data

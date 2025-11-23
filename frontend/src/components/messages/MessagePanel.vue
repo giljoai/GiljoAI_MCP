@@ -66,16 +66,8 @@
               </v-chip>
             </div>
             <div class="d-flex align-center">
-              <v-chip
-                size="small"
-                :color="wsConnected ? 'success' : 'error'"
-                variant="flat"
-              >
-                <v-icon
-                  :icon="wsConnected ? 'mdi-wifi' : 'mdi-wifi-off'"
-                  start
-                  size="16"
-                />
+              <v-chip size="small" :color="wsConnected ? 'success' : 'error'" variant="flat">
+                <v-icon :icon="wsConnected ? 'mdi-wifi' : 'mdi-wifi-off'" start size="16" />
                 {{ wsConnected ? 'Live' : 'Disconnected' }}
               </v-chip>
               <v-btn
@@ -99,12 +91,7 @@
             </div>
 
             <!-- Error State -->
-            <v-alert
-              v-else-if="error"
-              type="error"
-              variant="tonal"
-              class="ma-4"
-            >
+            <v-alert v-else-if="error" type="error" variant="tonal" class="ma-4">
               {{ error }}
             </v-alert>
 
@@ -124,10 +111,7 @@
             </v-alert>
 
             <!-- Message List -->
-            <MessageList
-              v-else
-              :messages="filteredMessages"
-            />
+            <MessageList v-else :messages="filteredMessages" />
           </v-card-text>
         </v-card>
       </v-col>
@@ -170,10 +154,12 @@ const agentOptions = computed(() => {
     if (sender) agents.add(sender)
     msg.to_agents?.forEach((agent) => agents.add(agent))
   })
-  return Array.from(agents).sort().map((agent) => ({
-    title: agent,
-    value: agent,
-  }))
+  return Array.from(agents)
+    .sort()
+    .map((agent) => ({
+      title: agent,
+      value: agent,
+    }))
 })
 
 const messageTypeOptions = [
@@ -229,9 +215,7 @@ const filteredMessages = computed(() => {
   // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter((msg) =>
-      msg.content.toLowerCase().includes(query)
-    )
+    result = result.filter((msg) => msg.content.toLowerCase().includes(query))
   }
 
   return result

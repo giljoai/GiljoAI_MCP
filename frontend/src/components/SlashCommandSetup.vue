@@ -6,7 +6,9 @@
         <h3 class="text-h6 mb-0 mr-3">Slash Commands</h3>
         <v-tooltip location="top" max-width="400" class="ml-2">
           <template #activator="{ props }">
-            <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+            <v-icon v-bind="props" size="small" color="medium-emphasis"
+              >mdi-help-circle-outline</v-icon
+            >
           </template>
           <div>
             <strong>Three slash commands:</strong>
@@ -15,7 +17,9 @@
               <li>/gil_import_personalagents - Import agents to ~/.claude/agents</li>
               <li>/gil_handover - Trigger orchestrator succession</li>
             </ul>
-            <p class="text-caption mb-0"><em>*Only supported slash commands will be imported</em></p>
+            <p class="text-caption mb-0">
+              <em>*Only supported slash commands will be imported</em>
+            </p>
           </div>
         </v-tooltip>
       </div>
@@ -48,7 +52,9 @@
         <v-card-text class="pa-3">
           <div class="d-flex align-center justify-between">
             <div class="flex-grow-1">
-              <div class="text-subtitle-2 font-weight-medium">MCP installation for slash commands</div>
+              <div class="text-subtitle-2 font-weight-medium">
+                MCP installation for slash commands
+              </div>
               <div class="text-body-2 text-medium-emphasis">
                 Installs slash commands in your CLI Agent tool with MCP
               </div>
@@ -67,7 +73,6 @@
           </div>
         </v-card-text>
       </v-card>
-
     </v-card-text>
 
     <!-- Copy Feedback Snackbar -->
@@ -137,7 +142,8 @@ async function copySlashCommandSetup() {
 
     // Call backend MCP tool - returns natural language instructions directly
     const response = await api.downloads.generateSlashCommandsInstructions()
-    const instructions = response.data.instructions || response.data.message || 'Download link generated successfully'
+    const instructions =
+      response.data.instructions || response.data.message || 'Download link generated successfully'
 
     // Copy instructions to clipboard
     await copyToClipboard(instructions)
@@ -151,7 +157,6 @@ async function copySlashCommandSetup() {
     setTimeout(() => {
       copied.value = false
     }, 2000)
-
   } catch (error) {
     console.error('[SLASH COMMAND SETUP] Failed to generate instructions:', error)
 
@@ -201,8 +206,8 @@ async function downloadSlashCommands() {
     downloading.value = true
     const response = await fetch('/api/download/slash-commands.zip', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
     })
 
     if (!response.ok) {

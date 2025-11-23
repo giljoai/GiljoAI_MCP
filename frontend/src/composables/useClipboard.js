@@ -23,7 +23,7 @@ export function useClipboard() {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text)
         copied.value = true
-        setTimeout(() => copied.value = false, 2000)
+        setTimeout(() => (copied.value = false), 2000)
         return true
       }
 
@@ -56,7 +56,7 @@ export function useClipboard() {
 
       if (successful) {
         copied.value = true
-        setTimeout(() => copied.value = false, 2000)
+        setTimeout(() => (copied.value = false), 2000)
         return true
       }
 
@@ -82,6 +82,6 @@ export function useClipboard() {
     copied,
     error,
     copy,
-    reset
+    reset,
   }
 }
