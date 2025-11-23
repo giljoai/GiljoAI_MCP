@@ -31,4 +31,3 @@ describe('ProductsView - active products count uses is_active', () => {
     expect(vm.activeProducts).toBe(2)
   })
 })
-

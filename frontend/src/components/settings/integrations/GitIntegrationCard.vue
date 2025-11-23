@@ -10,29 +10,34 @@
             <h3 class="text-h6 mb-0 mr-2">Git + 360 Memory</h3>
             <v-tooltip location="top" max-width="400">
               <template #activator="{ props }">
-                <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+                <v-icon v-bind="props" size="small" color="medium-emphasis"
+                  >mdi-help-circle-outline</v-icon
+                >
               </template>
               <div>
                 <strong>Cumulative product knowledge tracking</strong>
                 <p class="mt-2 mb-0">
-                  When enabled, GiljoAI captures git commit history at project closeout
-                  and stores it in 360 Memory. This provides orchestrators with cumulative
-                  context across all projects, including what was built, decisions made,
-                  and implementation patterns used.
+                  When enabled, GiljoAI captures git commit history at project closeout and stores
+                  it in 360 Memory. This provides orchestrators with cumulative context across all
+                  projects, including what was built, decisions made, and implementation patterns
+                  used.
                 </p>
                 <p class="mt-2 mb-0 text-caption">
-                  <strong>Note:</strong> Git must be configured on your system with access
-                  to your repositories.
+                  <strong>Note:</strong> Git must be configured on your system with access to your
+                  repositories.
                 </p>
               </div>
             </v-tooltip>
           </div>
-          <p class="text-caption text-medium-emphasis mb-0">Track git commits in 360 Memory for orchestrator context</p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            Track git commits in 360 Memory for orchestrator context
+          </p>
         </div>
       </div>
 
       <p class="text-body-2 text-medium-emphasis mb-3">
-        Enable to automatically include git commit history in project summaries. Commits are stored in product memory for future orchestrator reference.
+        Enable to automatically include git commit history in project summaries. Commits are stored
+        in product memory for future orchestrator reference.
       </p>
 
       <div class="d-flex align-center mb-3">
@@ -77,17 +82,11 @@
           </div>
 
           <!-- Info Alert (shown when enabled) -->
-          <v-alert
-            v-if="enabled"
-            type="info"
-            variant="tonal"
-            density="compact"
-            class="mb-3"
-          >
+          <v-alert v-if="enabled" type="info" variant="tonal" density="compact" class="mb-3">
             <div class="text-body-2">
               <strong>Requirement:</strong> Git must be configured with access to your repositories
-              on your system (Windows/Linux/macOS). GiljoAI uses your local git
-              credentials - no server-side authentication needed.
+              on your system (Windows/Linux/macOS). GiljoAI uses your local git credentials - no
+              server-side authentication needed.
             </div>
           </v-alert>
 
@@ -133,36 +132,40 @@ import { ref, watch } from 'vue'
 const props = defineProps({
   enabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   config: {
     type: Object,
     default: () => ({
       commit_limit: 20,
-      default_branch: 'main'
-    })
+      default_branch: 'main',
+    }),
   },
   loading: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:enabled', 'save'])
 
 const localConfig = ref({
   commit_limit: props.config?.commit_limit ?? 20,
-  default_branch: props.config?.default_branch ?? 'main'
+  default_branch: props.config?.default_branch ?? 'main',
 })
 
-watch(() => props.config, (newVal) => {
-  if (newVal) {
-    localConfig.value = {
-      commit_limit: newVal.commit_limit ?? 20,
-      default_branch: newVal.default_branch ?? 'main'
+watch(
+  () => props.config,
+  (newVal) => {
+    if (newVal) {
+      localConfig.value = {
+        commit_limit: newVal.commit_limit ?? 20,
+        default_branch: newVal.default_branch ?? 'main',
+      }
     }
-  }
-}, { deep: true })
+  },
+  { deep: true },
+)
 
 function handleSave() {
   if (props.loading) return
@@ -170,7 +173,7 @@ function handleSave() {
   emit('save', {
     enabled: props.enabled,
     commit_limit: localConfig.value.commit_limit,
-    default_branch: localConfig.value.default_branch
+    default_branch: localConfig.value.default_branch,
   })
 }
 </script>

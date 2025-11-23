@@ -11,12 +11,18 @@
 
       <template v-else>
         <!-- Unified Architecture Info -->
-        <v-alert type="info" variant="tonal" class="mb-4" data-test="v3-unified-alert" :icon="false">
+        <v-alert
+          type="info"
+          variant="tonal"
+          class="mb-4"
+          data-test="v3-unified-alert"
+          :icon="false"
+        >
           <div class="d-flex align-center">
             <v-icon start>mdi-information</v-icon>
             <div>
-              <strong>Unified Architecture:</strong> Server binds to all interfaces with authentication always enabled.
-              OS firewall controls network access (defense in depth).
+              <strong>Unified Architecture:</strong> Server binds to all interfaces with
+              authentication always enabled. OS firewall controls network access (defense in depth).
             </div>
           </div>
         </v-alert>
@@ -63,8 +69,9 @@
         <h3 class="text-h6 mb-3 text-medium-emphasis">CORS Allowed Origins</h3>
 
         <v-alert type="info" variant="tonal" class="mb-4">
-          <strong>Foundation implementation exists.</strong> Reserved for future use when frontend and backend are hosted on separate domains (e.g., SaaS deployments).
-          Not needed for current single-server installations where frontend and backend run together.
+          <strong>Foundation implementation exists.</strong> Reserved for future use when frontend
+          and backend are hosted on separate domains (e.g., SaaS deployments). Not needed for
+          current single-server installations where frontend and backend run together.
         </v-alert>
 
         <div data-test="cors-origins-section" class="disabled-section">
@@ -96,7 +103,9 @@
           </v-list>
 
           <v-alert v-else type="info" variant="outlined" class="mb-4">
-            <span class="text-medium-emphasis">No CORS origins configured. Foundation ready for future SaaS deployments.</span>
+            <span class="text-medium-emphasis"
+              >No CORS origins configured. Foundation ready for future SaaS deployments.</span
+            >
           </v-alert>
 
           <v-text-field
@@ -123,9 +132,9 @@
             <strong>Network settings are configured during installation.</strong>
           </div>
           <div class="text-body-2">
-            To modify the external host or ports, update <code>config.yaml</code> and restart the server.
-            Authentication is always enabled for all connections (local and remote).
-            Use OS firewall to control network access.
+            To modify the external host or ports, update <code>config.yaml</code> and restart the
+            server. Authentication is always enabled for all connections (local and remote). Use OS
+            firewall to control network access.
           </div>
         </v-alert>
       </template>
@@ -137,9 +146,7 @@
         <v-icon start>mdi-refresh</v-icon>
         Reload
       </v-btn>
-      <v-btn color="primary" disabled data-test="save-button">
-        Save Changes
-      </v-btn>
+      <v-btn color="primary" disabled data-test="save-button"> Save Changes </v-btn>
     </v-card-actions>
   </v-card>
 </template>
@@ -155,16 +162,16 @@ const props = defineProps({
       externalHost: 'localhost',
       apiPort: 7272,
       frontendPort: 7274,
-    })
+    }),
   },
   corsOrigins: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   loading: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['refresh', 'save'])

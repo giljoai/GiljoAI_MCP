@@ -51,7 +51,9 @@
               @click="setAnimationSpeed(speed)"
               :active="flowStore.animationSpeed === speed"
             >
-              <v-list-item-title>{{ speed.charAt(0).toUpperCase() + speed.slice(1) }}</v-list-item-title>
+              <v-list-item-title>{{
+                speed.charAt(0).toUpperCase() + speed.slice(1)
+              }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -181,7 +183,11 @@
           :show-interactive="false"
         />
 
-        <MiniMap v-if="flowStore.showMinimap" position="bottom-right" :node-color="getNodeMinimapColor" />
+        <MiniMap
+          v-if="flowStore.showMinimap"
+          position="bottom-right"
+          :node-color="getNodeMinimapColor"
+        />
       </VueFlow>
 
       <!-- Loading State -->
@@ -529,7 +535,8 @@ onUnmounted(() => {
       background: transparent;
 
       :deep(.vue-flow__viewport) {
-        background: radial-gradient(circle at 20% 50%, rgba(49, 80, 116, 0.1) 0%, transparent 50%),
+        background:
+          radial-gradient(circle at 20% 50%, rgba(49, 80, 116, 0.1) 0%, transparent 50%),
           radial-gradient(circle at 80% 80%, rgba(103, 189, 109, 0.05) 0%, transparent 50%);
       }
 

@@ -16,17 +16,17 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
 
   // Getters
   const orchestrator = computed(() => {
-    return agents.value.find(agent => agent.is_orchestrator)
+    return agents.value.find((agent) => agent.is_orchestrator)
   })
 
   const regularAgents = computed(() => {
-    return agents.value.filter(agent => !agent.is_orchestrator)
+    return agents.value.filter((agent) => !agent.is_orchestrator)
   })
 
   const getUnreadCount = (agentId) => {
-    const agent = agents.value.find(a => a.id === agentId)
+    const agent = agents.value.find((a) => a.id === agentId)
     if (!agent || !agent.messages) return 0
-    return agent.messages.filter(msg => !msg.read).length
+    return agent.messages.filter((msg) => !msg.read).length
   }
 
   // Actions
@@ -48,14 +48,14 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
 
   const handleAgentStatusUpdate = (update) => {
     const { job_id, status, progress, current_task } = update
-    const agentIndex = agents.value.findIndex(a => a.job_id === job_id)
+    const agentIndex = agents.value.findIndex((a) => a.job_id === job_id)
 
     if (agentIndex !== -1) {
       agents.value[agentIndex] = {
         ...agents.value[agentIndex],
         status,
         progress,
-        current_task
+        current_task,
       }
     }
   }
@@ -64,7 +64,7 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
   const handleCopyPrompt = async (agentId, toolType) => {
     try {
       const response = await api.get(`/api/v1/prompts/${agentId}`, {
-        params: { tool_type: toolType }
+        params: { tool_type: toolType },
       })
       return response.data.prompt || 'Prompt not available'
     } catch (err) {
@@ -86,7 +86,7 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
   const completeProject = async (projectId) => {
     try {
       const response = await api.post(`/api/projects/${projectId}/complete`, {
-        confirm_closeout: true
+        confirm_closeout: true,
       })
       return response.data
     } catch (err) {
@@ -112,6 +112,6 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
     handleAgentStatusUpdate,
     handleCopyPrompt,
     initiateCloseout,
-    completeProject
+    completeProject,
   }
 })

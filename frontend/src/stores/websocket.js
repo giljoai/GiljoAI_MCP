@@ -266,10 +266,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // Calculate delay with exponential backoff
     const delay = Math.min(
       config.reconnectDelay * Math.pow(2, reconnectAttempts.value - 1),
-      config.maxReconnectDelay
+      config.maxReconnectDelay,
     )
 
-    log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value}/${config.maxReconnectAttempts})`)
+    log(
+      `Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value}/${config.maxReconnectAttempts})`,
+    )
 
     // Notify listeners
     notifyConnectionListeners('reconnecting', {

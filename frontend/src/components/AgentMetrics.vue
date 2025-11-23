@@ -166,7 +166,13 @@ const createRoleChart = () => {
       datasets: [
         {
           data: Object.values(data),
-          backgroundColor: [theme.global.current.value.colors.success, theme.global.current.value.colors.primary, theme.global.current.value.colors.accent, theme.global.current.value.colors.error, theme.global.current.value.colors.info],
+          backgroundColor: [
+            theme.global.current.value.colors.success,
+            theme.global.current.value.colors.primary,
+            theme.global.current.value.colors.accent,
+            theme.global.current.value.colors.error,
+            theme.global.current.value.colors.info,
+          ],
         },
       ],
     },

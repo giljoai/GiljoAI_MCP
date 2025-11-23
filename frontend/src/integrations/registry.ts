@@ -46,42 +46,47 @@ export const INTEGRATIONS: Integration[] = [
     name: 'GiljoAI MCP Integration',
     kind: 'tooling',
     userConfigComponent: 'AiToolConfigWizard',
-    description: 'Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI.',
-    icon: 'mdi-connection'
+    description:
+      'Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI.',
+    icon: 'mdi-connection',
   },
   {
     id: 'slash_commands',
     name: 'Slash Commands',
     kind: 'tooling',
     userConfigComponent: 'SlashCommandSetup',
-    description: 'Setup slash commands for AI coding tools to import agent templates and trigger orchestrator features.',
-    icon: 'mdi-slash-forward-box'
+    description:
+      'Setup slash commands for AI coding tools to import agent templates and trigger orchestrator features.',
+    icon: 'mdi-slash-forward-box',
   },
   {
     id: 'claude_code',
     name: 'Claude Code Export',
     kind: 'export',
     userConfigComponent: 'ClaudeCodeExport',
-    description: 'Export agent templates directly to Claude Code for use in your development workflow.',
-    icon: 'mdi-export'
+    description:
+      'Export agent templates directly to Claude Code for use in your development workflow.',
+    icon: 'mdi-export',
   },
   {
     id: 'serena',
     name: 'Serena MCP',
     kind: 'ai_tool',
     userConfigComponent: 'SerenaIntegrationCard',
-    description: 'Intelligent codebase understanding and navigation. Provides deep semantic code analysis and symbol navigation.',
+    description:
+      'Intelligent codebase understanding and navigation. Provides deep semantic code analysis and symbol navigation.',
     icon: 'mdi-code-braces-box',
-    adminInfoComponent: 'SerenaAdminInfo'
+    adminInfoComponent: 'SerenaAdminInfo',
   },
   {
     id: 'github',
     name: 'Git + 360 Memory',
     kind: 'scm',
     userConfigComponent: 'GitIntegrationCard',
-    description: 'Track git commits in 360 Memory for orchestrator context. Captures commit history at project closeout.',
-    icon: 'mdi-github'
-  }
+    description:
+      'Track git commits in 360 Memory for orchestrator context. Captures commit history at project closeout.',
+    icon: 'mdi-github',
+  },
 ]
 
 /**
@@ -99,7 +104,7 @@ export const INTEGRATIONS: Integration[] = [
  * ```
  */
 export function getIntegrationById(id: string): Integration | undefined {
-  return INTEGRATIONS.find(integration => integration.id === id)
+  return INTEGRATIONS.find((integration) => integration.id === id)
 }
 
 /**
@@ -115,5 +120,5 @@ export function getIntegrationById(id: string): Integration | undefined {
  * ```
  */
 export function getIntegrationsByKind(kind: IntegrationKind): Integration[] {
-  return INTEGRATIONS.filter(integration => integration.kind === kind)
+  return INTEGRATIONS.filter((integration) => integration.kind === kind)
 }

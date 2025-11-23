@@ -1,10 +1,12 @@
 # OrchestratorLaunchButton Component
 
-Production-grade Vue 3 component for launching multi-agent orchestration workflows with real-time WebSocket progress tracking.
+Production-grade Vue 3 component for launching multi-agent orchestration
+workflows with real-time WebSocket progress tracking.
 
 ## Overview
 
-The `OrchestratorLaunchButton` component provides a complete user interface for launching the GiljoAI orchestrator, including:
+The `OrchestratorLaunchButton` component provides a complete user interface for
+launching the GiljoAI orchestrator, including:
 
 - Intelligent button state management (enabled/disabled based on product status)
 - Real-time progress tracking via WebSocket events
@@ -15,9 +17,9 @@ The `OrchestratorLaunchButton` component provides a complete user interface for 
 
 ## Props
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `product` | Object | Yes | Product object with `id`, `is_active`, `has_vision_documents` properties |
+| Prop      | Type   | Required | Description                                                              |
+| --------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `product` | Object | Yes      | Product object with `id`, `is_active`, `has_vision_documents` properties |
 
 ### Product Object Structure
 
@@ -32,10 +34,10 @@ The `OrchestratorLaunchButton` component provides a complete user interface for 
 
 ## Events
 
-| Event | Payload | Description |
-|-------|---------|-------------|
+| Event      | Payload                                | Description                                      |
+| ---------- | -------------------------------------- | ------------------------------------------------ |
 | `launched` | `{ session_id, workflow_result, ... }` | Emitted when orchestrator successfully completes |
-| `error` | `{ stage, error, details }` | Emitted when orchestrator launch fails |
+| `error`    | `{ stage, error, details }`            | Emitted when orchestrator launch fails           |
 
 ## Usage
 
@@ -58,7 +60,7 @@ const currentProduct = ref({
   id: 'prod-123',
   is_active: true,
   has_vision_documents: true,
-  name: 'My Product'
+  name: 'My Product',
 })
 
 function handleLaunched(data) {
@@ -108,15 +110,15 @@ const { showToast } = useToast()
 const props = defineProps({
   product: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 function navigateToProject(data) {
   showToast({
     type: 'success',
     message: `Orchestrator launched! Project ID: ${data.project_id}`,
-    timeout: 5000
+    timeout: 5000,
   })
 
   // Navigate to project view
@@ -127,7 +129,7 @@ function showErrorNotification(error) {
   showToast({
     type: 'error',
     message: error.error || 'Failed to launch orchestrator',
-    timeout: 8000
+    timeout: 8000,
   })
 }
 </script>
@@ -142,6 +144,7 @@ The component listens for two WebSocket event types:
 Broadcasted during workflow execution to show real-time progress.
 
 **Event Structure:**
+
 ```javascript
 {
   type: "orchestrator:progress",
@@ -160,6 +163,7 @@ Broadcasted during workflow execution to show real-time progress.
 ```
 
 **Stages:**
+
 - `starting` (0%) - Initializing orchestrator
 - `processing_vision` (20%) - Processing vision documents
 - `generating_missions` (40%) - Generating mission plan
@@ -172,6 +176,7 @@ Broadcasted during workflow execution to show real-time progress.
 Broadcasted when orchestrator encounters an error.
 
 **Event Structure:**
+
 ```javascript
 {
   type: "orchestrator:error",
@@ -191,33 +196,39 @@ Broadcasted when orchestrator encounters an error.
 ## UI States
 
 ### 1. Enabled State
+
 - Product is active
 - Product has vision documents
 - Button is clickable with primary color
 - Tooltip: "Launch multi-agent orchestration workflow"
 
 ### 2. Disabled State (Inactive Product)
+
 - Product is not active
 - Button is disabled (greyed out)
 - Tooltip: "Product must be active"
 
 ### 3. Disabled State (No Vision Documents)
+
 - Product has no vision documents uploaded
 - Button is disabled (greyed out)
 - Tooltip: "Product must have vision documents"
 
 ### 4. Loading State
+
 - Button shows loading spinner
 - Progress dialog is open
 - Real-time stage updates displayed
 
 ### 5. Complete State
+
 - Progress dialog shows 100% complete
 - Success message displayed
 - "Close" button enabled
 - Green success styling
 
 ### 6. Error State
+
 - Progress dialog shows error alert
 - Error message displayed
 - "Close" and "Retry" buttons enabled
@@ -226,22 +237,26 @@ Broadcasted when orchestrator encounters an error.
 ## Progress Dialog Features
 
 ### Progress Bar
+
 - Visual representation of workflow progress (0-100%)
 - Indeterminate mode during initialization
 - Color-coded: blue (in progress), green (complete), red (error)
 
 ### Stage Timeline
+
 - Visual timeline of completed and active stages
 - Check mark icons for completed stages
 - Spinner for active stage
 - Only shows completed stages and current stage (clean progressive disclosure)
 
 ### Expandable Details Panel
+
 - Shows additional information when available
 - Automatically formats detail keys (snake_case to Title Case)
 - Only visible when details are present
 
 ### Error Alert
+
 - Red alert box with error message
 - Retry button for recovery
 - Clear, actionable error messages
@@ -276,6 +291,7 @@ Broadcasted when orchestrator encounters an error.
 The component uses the `api.orchestrator.launch()` endpoint:
 
 **Request:**
+
 ```javascript
 {
   product_id: "uuid",
@@ -286,6 +302,7 @@ The component uses the `api.orchestrator.launch()` endpoint:
 ```
 
 **Response:**
+
 ```javascript
 {
   success: true,
@@ -299,6 +316,7 @@ The component uses the `api.orchestrator.launch()` endpoint:
 ```
 
 **Error Codes:**
+
 - `400` - Invalid request data
 - `404` - Product not found
 - `409` - Product not active or missing vision documents
@@ -359,9 +377,9 @@ describe('OrchestratorLaunchButton', () => {
         product: {
           id: 'test-id',
           is_active: true,
-          has_vision_documents: true
-        }
-      }
+          has_vision_documents: true,
+        },
+      },
     })
 
     expect(wrapper.text()).toContain('Launch Orchestrator')
@@ -373,9 +391,9 @@ describe('OrchestratorLaunchButton', () => {
         product: {
           id: 'test-id',
           is_active: false,
-          has_vision_documents: true
-        }
-      }
+          has_vision_documents: true,
+        },
+      },
     })
 
     const button = wrapper.find('button')
@@ -409,7 +427,9 @@ describe('OrchestratorLaunchButton', () => {
 ## Troubleshooting
 
 ### Button Always Disabled
+
 **Solution:** Verify product object has correct properties:
+
 ```javascript
 console.log('Product:', product)
 console.log('Is Active:', product.is_active)
@@ -417,7 +437,9 @@ console.log('Has Vision:', product.has_vision_documents)
 ```
 
 ### No Progress Updates
+
 **Solution:** Check WebSocket connection:
+
 ```javascript
 import websocketService from '@/services/websocket'
 
@@ -426,13 +448,17 @@ console.log('WebSocket Connection:', websocketService.getConnectionInfo())
 ```
 
 ### API Errors
+
 **Solution:** Check network tab for request/response:
+
 - Verify endpoint URL is correct: `/api/v1/orchestration/launch`
 - Check request payload has all required fields
 - Verify tenant key is included in headers
 
 ### Memory Leaks
+
 **Solution:** Ensure component is properly unmounted:
+
 - WebSocket listeners should be cleaned up
 - Check browser DevTools Performance tab
 - Look for increasing event listener count

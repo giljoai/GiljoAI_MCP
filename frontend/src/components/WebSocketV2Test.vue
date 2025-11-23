@@ -3,11 +3,7 @@
     <v-card-title>
       WebSocket V2 Test Component
       <v-spacer />
-      <v-chip
-        :color="statusColor"
-        :prepend-icon="statusIcon"
-        label
-      >
+      <v-chip :color="statusColor" :prepend-icon="statusIcon" label>
         {{ connectionStatus }}
       </v-chip>
     </v-card-title>
@@ -121,19 +117,8 @@
       <v-row>
         <v-col cols="12">
           <h3>Received Messages ({{ messages.length }})</h3>
-          <v-btn
-            size="small"
-            color="error"
-            @click="messages = []"
-          >
-            Clear Messages
-          </v-btn>
-          <v-virtual-scroll
-            :items="messages"
-            height="400"
-            item-height="80"
-            class="mt-2"
-          >
+          <v-btn size="small" color="error" @click="messages = []"> Clear Messages </v-btn>
+          <v-virtual-scroll :items="messages" height="400" item-height="80" class="mt-2">
             <template #default="{ item }">
               <v-card class="ma-2" variant="outlined">
                 <v-card-text>

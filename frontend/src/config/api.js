@@ -6,7 +6,8 @@ import configService from '@/services/configService'
 // CRITICAL: Use window.API_BASE_URL first (set in index.html) for production mode
 const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
 const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
-const DEFAULT_BASE_URL = window.API_BASE_URL || (import.meta.env.DEV ? '' : `http://${API_HOST}:${API_PORT}`)
+const DEFAULT_BASE_URL =
+  window.API_BASE_URL || (import.meta.env.DEV ? '' : `http://${API_HOST}:${API_PORT}`)
 
 // Configuration object that will be updated after fetching from backend
 let runtimeConfig = null

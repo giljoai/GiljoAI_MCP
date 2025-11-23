@@ -18,7 +18,12 @@
 
           <!-- Contextual CTA: Get Started or Relaunch Tutorial -->
           <div class="mb-6" v-if="showTutorialCta">
-            <v-btn color="primary" size="large" @click="handleTutorialCta" prepend-icon="mdi-play-circle">
+            <v-btn
+              color="primary"
+              size="large"
+              @click="handleTutorialCta"
+              prepend-icon="mdi-play-circle"
+            >
               {{ tutorialCtaLabel }}
             </v-btn>
           </div>
@@ -67,7 +72,6 @@
       </v-col>
     </v-row>
   </v-container>
-  
 </template>
 
 <script setup>
@@ -98,21 +102,13 @@ const fullGreeting = computed(() => {
   const hour = new Date().getHours()
 
   // Prefer messages with name placeholders for correct grammar
-  const morning = [
-    'Good morning, {name}!',
-    'Morning, {name}!',
-    'Rise and shine, {name}!',
-  ]
+  const morning = ['Good morning, {name}!', 'Morning, {name}!', 'Rise and shine, {name}!']
   const afternoon = [
     'Good afternoon, {name}!',
     'Hello there, {name}!',
     'Hope your day’s going well, {name}!',
   ]
-  const evening = [
-    'Good evening, {name}!',
-    'Great to see you, {name}!',
-    'Nice to see you, {name}!',
-  ]
+  const evening = ['Good evening, {name}!', 'Great to see you, {name}!', 'Nice to see you, {name}!']
   // Generic messages without punctuation; we will add ", {name}!"
   const general = [
     'Welcome back',
@@ -128,7 +124,9 @@ const fullGreeting = computed(() => {
     'Let’s make progress',
   ]
 
-  function choose(arr) { return arr[Math.floor(Math.random() * arr.length)] }
+  function choose(arr) {
+    return arr[Math.floor(Math.random() * arr.length)]
+  }
 
   const pool = hour < 12 ? morning : hour < 17 ? afternoon : hour < 22 ? evening : general
   let msg = choose(pool)
@@ -145,9 +143,11 @@ const tutorialKey = 'giljo_tutorial_launched'
 const tutorialLaunched = ref(false)
 const showTutorialCta = computed(() => {
   // Show when there are no products OR user wants to relaunch
-  return (!productStore.hasProducts) || tutorialLaunched.value
+  return !productStore.hasProducts || tutorialLaunched.value
 })
-const tutorialCtaLabel = computed(() => (tutorialLaunched.value || productStore.hasProducts ? 'Relaunch Tutorial' : 'Get Started'))
+const tutorialCtaLabel = computed(() =>
+  tutorialLaunched.value || productStore.hasProducts ? 'Relaunch Tutorial' : 'Get Started',
+)
 
 function handleTutorialCta() {
   tutorialLaunched.value = true

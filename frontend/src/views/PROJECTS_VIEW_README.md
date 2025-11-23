@@ -2,22 +2,27 @@
 
 ## Overview
 
-ProjectsView has been completely redesigned with professional UI/UX improvements, advanced filtering and search capabilities, comprehensive status management, and multi-product isolation support.
+ProjectsView has been completely redesigned with professional UI/UX
+improvements, advanced filtering and search capabilities, comprehensive status
+management, and multi-product isolation support.
 
 ## Features
 
 ### 1. Advanced Search
 
-- **Real-time Filtering**: Search projects by name, mission, or project ID as you type
+- **Real-time Filtering**: Search projects by name, mission, or project ID as
+  you type
 - **Case-Insensitive**: Matches work regardless of letter casing
 - **Clear Button**: Quick reset of search with × button
 - **Instant Results**: Updates visible projects in real-time
 
 ### 2. Status Filtering
 
-- **Filter Tabs**: Quick-select chips for: All, Active, Inactive, Paused, Completed, Cancelled
+- **Filter Tabs**: Quick-select chips for: All, Active, Inactive, Paused,
+  Completed, Cancelled
 - **Dynamic Counts**: Each tab shows count of projects in that status
-- **Visual Indication**: Currently selected filter is highlighted with primary color
+- **Visual Indication**: Currently selected filter is highlighted with primary
+  color
 - **Combined Filtering**: Works seamlessly with search to narrow results
 
 ### 3. Sorting
@@ -58,6 +63,7 @@ Using the new **StatusBadge** component:
 ```
 
 **Columns:**
+
 - **Name**: Project name with ID below (monospace font)
 - **Status**: Interactive status badge with dropdown menu
 - **Product**: Associated product name
@@ -69,6 +75,7 @@ Using the new **StatusBadge** component:
 ### 7. Stats Cards
 
 Real-time statistics for active product:
+
 - **Total Projects**: Count of all projects
 - **Active**: Count of active projects
 - **Paused**: Count of paused projects
@@ -76,7 +83,8 @@ Real-time statistics for active product:
 
 ### 8. Product Isolation
 
-- **Active Product Required**: New Project button disabled without active product
+- **Active Product Required**: New Project button disabled without active
+  product
 - **Product-Based Filtering**: Only shows projects for active product
 - **Auto-Association**: New projects automatically linked to active product
 - **Product Display**: Active product name shown in header
@@ -127,7 +135,7 @@ None (self-contained with store integration)
 ```javascript
 emit('action', {
   action: 'activate|pause|complete|cancel|restore|delete',
-  projectId: String
+  projectId: String,
 })
 ```
 
@@ -139,51 +147,51 @@ Uses `useProjectStore` with these actions:
 
 ```javascript
 // CRUD Operations
-createProject(data)          // Create new project
-updateProject(id, updates)   // Update existing project
-deleteProject(id)            // Soft-delete project
+createProject(data) // Create new project
+updateProject(id, updates) // Update existing project
+deleteProject(id) // Soft-delete project
 
 // Status Actions
-activateProject(id)          // Change status to 'active'
-pauseProject(id)             // Change status to 'paused'
-completeProject(id)          // Change status to 'completed'
-cancelProject(id)            // Change status to 'cancelled'
-restoreProject(id)           // Change status to 'inactive' and clear deleted_at
+activateProject(id) // Change status to 'active'
+pauseProject(id) // Change status to 'paused'
+completeProject(id) // Change status to 'completed'
+cancelProject(id) // Change status to 'cancelled'
+restoreProject(id) // Change status to 'inactive' and clear deleted_at
 
 // Queries
-fetchProjects()              // Fetch all projects
-fetchProject(id)             // Fetch single project
+fetchProjects() // Fetch all projects
+fetchProject(id) // Fetch single project
 ```
 
 ### Computed Properties
 
 ```javascript
 // Filtering
-activeProductProjects       // Projects for active product only
-filteredBySearch            // Projects matching search query
-filteredProjects            // Projects after search + status filter
-sortedProjects              // Final sorted projects
+activeProductProjects // Projects for active product only
+filteredBySearch // Projects matching search query
+filteredProjects // Projects after search + status filter
+sortedProjects // Final sorted projects
 
 // Counts
-statusCounts               // { active: 1, inactive: 2, ... }
-deletedCount               // Number of deleted projects
+statusCounts // { active: 1, inactive: 2, ... }
+deletedCount // Number of deleted projects
 
 // UI State
-statusCounts.active        // Active project count
-statusCounts.inactive      // Inactive project count
-statusCounts.paused        // Paused project count
-statusCounts.completed     // Completed project count
-statusCounts.cancelled     // Cancelled project count
+statusCounts.active // Active project count
+statusCounts.inactive // Inactive project count
+statusCounts.paused // Paused project count
+statusCounts.completed // Completed project count
+statusCounts.cancelled // Cancelled project count
 ```
 
 ### Form State
 
 ```javascript
 projectData = {
-  name: '',                 // Project name
-  mission: '',              // Mission statement
-  context_budget: 150000,   // Context budget in tokens
-  status: 'inactive'        // Current status
+  name: '', // Project name
+  mission: '', // Mission statement
+  context_budget: 150000, // Context budget in tokens
+  status: 'inactive', // Current status
 }
 ```
 
@@ -202,8 +210,8 @@ editProject(project)        // Open edit dialog with data
 ### Filtering & Search
 
 ```javascript
-filterStatus               // ref - current filter value
-searchQuery                // ref - current search term
+filterStatus // ref - current filter value
+searchQuery // ref - current search term
 // Computed properties handle all filtering logic
 ```
 
@@ -218,14 +226,14 @@ async handleStatusAction({ action, projectId })
 ### Form Management
 
 ```javascript
-cancelEdit()               // Close dialog and reset form
-resetForm()                // Clear form fields
+cancelEdit() // Close dialog and reset form
+resetForm() // Clear form fields
 ```
 
 ### Date Formatting
 
 ```javascript
-formatDateShort(dateStr)   // Format as MM/DD or MM/DD/YY
+formatDateShort(dateStr) // Format as MM/DD or MM/DD/YY
 ```
 
 ## Dialog System
@@ -357,28 +365,34 @@ npm run test:coverage
 ### Settings
 
 ```javascript
-const itemsPerPage = ref(10)        // Rows per page in table
-const statusOptions = [             // Available statuses
+const itemsPerPage = ref(10) // Rows per page in table
+const statusOptions = [
+  // Available statuses
   'active',
   'inactive',
   'paused',
   'completed',
-  'cancelled'
+  'cancelled',
 ]
 ```
 
 ### Customization
 
 #### Sort Order
+
 Change default sort in `beforeEach`:
+
 ```javascript
 sortConfig.value = [{ key: 'name', order: 'asc' }]
 ```
 
 #### Deleted Projects Handling
-Projects with `deleted_at` timestamp are excluded from main view but available in deleted modal.
+
+Projects with `deleted_at` timestamp are excluded from main view but available
+in deleted modal.
 
 #### Date Format
+
 Modify `formatDateShort()` method to customize date display.
 
 ## Performance Considerations
@@ -413,16 +427,21 @@ Modify `formatDateShort()` method to customize date display.
 ### Common Issues
 
 **New Project button is disabled**
+
 - Solution: Select an active product from the Products page
 
 **Search not finding projects**
+
 - Solution: Search is case-insensitive; check exact text in name/mission
 
 **Status badge not updating**
+
 - Solution: Ensure store methods are properly called; check network requests
 
 **Deleted projects not shown**
-- Solution: Click "View Deleted" button; ensure projects have `deleted_at` timestamp
+
+- Solution: Click "View Deleted" button; ensure projects have `deleted_at`
+  timestamp
 
 ## Code Examples
 
@@ -454,7 +473,7 @@ projectData.value = {
   name: 'My Project',
   mission: 'Build feature X',
   context_budget: 200000,
-  status: 'inactive'
+  status: 'inactive',
 }
 await saveProject()
 ```
