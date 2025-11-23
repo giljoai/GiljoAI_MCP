@@ -1,8 +1,5 @@
 <template>
-  <v-card
-    class="orchestrator-card full-width-mobile"
-    elevation="3"
-  >
+  <v-card class="orchestrator-card full-width-mobile" elevation="3">
     <!-- Purple gradient header -->
     <v-card-title class="orchestrator-header purple-gradient white--text pa-4">
       <div class="d-flex align-center">
@@ -26,12 +23,7 @@
       </div>
 
       <!-- Message count badge -->
-      <v-chip
-        v-if="unreadMessageCount > 0"
-        class="message-badge mb-3"
-        color="error"
-        size="small"
-      >
+      <v-chip v-if="unreadMessageCount > 0" class="message-badge mb-3" color="error" size="small">
         <v-icon icon="mdi-message" size="small" start />
         {{ unreadMessageCount }} unread
       </v-chip>
@@ -83,30 +75,17 @@
     </v-card-text>
 
     <!-- Copy success snackbar -->
-    <v-snackbar
-      v-model="showCopySuccess"
-      :timeout="2000"
-      location="top"
-      color="success"
-    >
+    <v-snackbar v-model="showCopySuccess" :timeout="2000" location="top" color="success">
       <div role="status">Copied to clipboard!</div>
     </v-snackbar>
 
     <!-- Copy error snackbar -->
-    <v-snackbar
-      v-model="showCopyError"
-      :timeout="4000"
-      location="top"
-      color="error"
-    >
+    <v-snackbar v-model="showCopyError" :timeout="4000" location="top" color="error">
       <div role="alert">{{ copyErrorMessage }}</div>
     </v-snackbar>
 
     <!-- Close confirmation dialog -->
-    <v-dialog
-      v-model="showCloseConfirmation"
-      max-width="500"
-    >
+    <v-dialog v-model="showCloseConfirmation" max-width="500">
       <v-card>
         <v-card-title class="text-h6">Confirm Project Closure</v-card-title>
         <v-card-text>
@@ -114,19 +93,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            text
-            @click="showCloseConfirmation = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="success"
-            variant="elevated"
-            @click="confirmCloseProject"
-          >
-            Confirm
-          </v-btn>
+          <v-btn text @click="showCloseConfirmation = false"> Cancel </v-btn>
+          <v-btn color="success" variant="elevated" @click="confirmCloseProject"> Confirm </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -142,12 +110,12 @@ import api from '@/services/api'
 const props = defineProps({
   orchestrator: {
     type: Object,
-    required: true
+    required: true,
   },
   project: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const emit = defineEmits(['copy-prompt', 'close-project'])
@@ -174,7 +142,7 @@ const truncatedMission = computed(() => {
 
 const unreadMessageCount = computed(() => {
   if (!props.orchestrator.messages) return 0
-  return props.orchestrator.messages.filter(msg => !msg.read).length
+  return props.orchestrator.messages.filter((msg) => !msg.read).length
 })
 
 // Methods
@@ -185,7 +153,7 @@ const handleCopyPrompt = async (tool) => {
   try {
     // Fetch prompt from API
     const response = await api.get(`/api/v1/prompts/orchestrator/${tool}`, {
-      params: { project_id: props.project.id }
+      params: { project_id: props.project.id },
     })
     const promptText = response.data.prompt || 'Prompt not available'
 

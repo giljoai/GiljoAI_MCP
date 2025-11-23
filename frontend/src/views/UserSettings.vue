@@ -20,7 +20,16 @@
       </v-tab>
       <v-tab value="agents">
         <template #prepend>
-          <v-img :src="theme.global.current.value.dark ? '/icons/Giljo_White_Face.svg' : '/icons/Giljo_Dark_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
+          <v-img
+            :src="
+              theme.global.current.value.dark
+                ? '/icons/Giljo_White_Face.svg'
+                : '/icons/Giljo_Dark_Face.svg'
+            "
+            width="20"
+            height="20"
+            style="margin-right: 3px"
+          />
         </template>
         Agents
       </v-tab>
@@ -61,8 +70,16 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn variant="text" @click="resetGeneralSettings" data-test="reset-general-btn">Reset</v-btn>
-            <v-btn color="primary" variant="flat" @click="saveGeneralSettings" data-test="save-general-btn">Save Changes</v-btn>
+            <v-btn variant="text" @click="resetGeneralSettings" data-test="reset-general-btn"
+              >Reset</v-btn
+            >
+            <v-btn
+              color="primary"
+              variant="flat"
+              @click="saveGeneralSettings"
+              data-test="save-general-btn"
+              >Save Changes</v-btn
+            >
           </v-card-actions>
         </v-card>
       </v-window-item>
@@ -130,8 +147,14 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn variant="text" @click="resetAppearanceSettings" data-test="reset-appearance-btn">Reset</v-btn>
-            <v-btn color="primary" variant="flat" @click="saveAppearanceSettings" data-test="save-appearance-btn"
+            <v-btn variant="text" @click="resetAppearanceSettings" data-test="reset-appearance-btn"
+              >Reset</v-btn
+            >
+            <v-btn
+              color="primary"
+              variant="flat"
+              @click="saveAppearanceSettings"
+              data-test="save-appearance-btn"
               >Save Changes</v-btn
             >
           </v-card-actions>
@@ -214,8 +237,17 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn variant="text" @click="resetNotificationSettings" data-test="reset-notification-btn">Reset</v-btn>
-            <v-btn color="primary" variant="flat" @click="saveNotificationSettings" data-test="save-notification-btn"
+            <v-btn
+              variant="text"
+              @click="resetNotificationSettings"
+              data-test="reset-notification-btn"
+              >Reset</v-btn
+            >
+            <v-btn
+              color="primary"
+              variant="flat"
+              @click="saveNotificationSettings"
+              data-test="save-notification-btn"
               >Save Changes</v-btn
             >
           </v-card-actions>
@@ -264,8 +296,6 @@
         </v-card>
       </v-window-item>
     </v-window>
-
-    
 
     <!-- Serena Advanced Settings Dialog -->
     <SerenaAdvancedSettingsDialog
@@ -317,7 +347,7 @@ const serenaConfig = ref({
 const gitIntegration = ref({
   enabled: false,
   commit_limit: 20,
-  default_branch: 'main'
+  default_branch: 'main',
 })
 const savingGitIntegration = ref(false)
 
@@ -361,7 +391,7 @@ async function saveAppearanceSettings() {
   try {
     // Apply theme immediately
     if (settings.value.appearance.theme !== 'system') {
-      theme.global.name.value = settings.value.appearance.theme  // TODO: Upgrade to theme.change() after Vuetify 3.7+
+      theme.global.name.value = settings.value.appearance.theme // TODO: Upgrade to theme.change() after Vuetify 3.7+
       document.documentElement.setAttribute('data-theme', settings.value.appearance.theme)
       localStorage.setItem('theme-preference', settings.value.appearance.theme)
     }
@@ -512,7 +542,7 @@ async function loadGitIntegration() {
     gitIntegration.value = {
       enabled: response.data.enabled || false,
       commit_limit: response.data.commit_limit || 20,
-      default_branch: response.data.default_branch || 'main'
+      default_branch: response.data.default_branch || 'main',
     }
     console.log('[USER SETTINGS] Git integration loaded:', gitIntegration.value)
   } catch (error) {
@@ -521,7 +551,7 @@ async function loadGitIntegration() {
     gitIntegration.value = {
       enabled: false,
       commit_limit: 20,
-      default_branch: 'main'
+      default_branch: 'main',
     }
   }
 }
@@ -544,24 +574,20 @@ async function handleGitSave(payload) {
 
   savingGitIntegration.value = true
   try {
-    const response = await api.products.updateGitIntegration(
-      settingsStore.productInfo.id,
-      {
-        enabled: payload.enabled,
-        commit_limit: payload.commit_limit || 20,
-        default_branch: payload.default_branch || 'main'
-      }
-    )
+    const response = await api.products.updateGitIntegration(settingsStore.productInfo.id, {
+      enabled: payload.enabled,
+      commit_limit: payload.commit_limit || 20,
+      default_branch: payload.default_branch || 'main',
+    })
 
     // Update local state with response
     gitIntegration.value = {
       enabled: response.data.enabled,
       commit_limit: response.data.commit_limit,
-      default_branch: response.data.default_branch
+      default_branch: response.data.default_branch,
     }
 
     console.log('[USER SETTINGS] Git integration saved successfully')
-
   } catch (error) {
     console.error('[USER SETTINGS] Failed to save git integration:', error)
   } finally {

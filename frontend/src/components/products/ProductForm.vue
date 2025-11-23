@@ -171,12 +171,7 @@
                 class="mb-4"
               >
                 <div class="d-flex align-center mb-2">
-                  <v-progress-circular
-                    indeterminate
-                    size="20"
-                    width="2"
-                    class="mr-2"
-                  />
+                  <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
                   <span>Uploading vision documents...</span>
                 </div>
                 <v-progress-linear
@@ -247,9 +242,7 @@
 
               <!-- File List -->
               <div v-if="visionFiles && visionFiles.length > 0">
-                <div class="text-subtitle-2 mb-2">
-                  Files to Upload ({{ visionFiles.length }})
-                </div>
+                <div class="text-subtitle-2 mb-2">Files to Upload ({{ visionFiles.length }})</div>
 
                 <v-list density="compact" class="mb-3">
                   <v-list-item
@@ -267,12 +260,7 @@
                     </v-list-item-subtitle>
 
                     <template v-slot:append>
-                      <v-btn
-                        icon
-                        size="small"
-                        variant="text"
-                        @click="removeVisionFile(index)"
-                      >
+                      <v-btn icon size="small" variant="text" @click="removeVisionFile(index)">
                         <v-icon size="20">mdi-close</v-icon>
                       </v-btn>
                     </template>
@@ -643,11 +631,11 @@
         <v-btn
           color="primary"
           variant="flat"
-          @click="isEdit ? saveProduct() : (isLastTab ? saveProduct() : goNextTab())"
-          :disabled="isEdit ? (!formValid || saving) : (isLastTab ? (!formValid || saving) : saving)"
-          :loading="isEdit ? saving : (isLastTab ? saving : false)"
+          @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
+          :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving"
+          :loading="isEdit ? saving : isLastTab ? saving : false"
         >
-          {{ isEdit ? 'Save Changes' : (isLastTab ? 'Create Product' : 'Next') }}
+          {{ isEdit ? 'Save Changes' : isLastTab ? 'Create Product' : 'Next' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -661,24 +649,24 @@ import { useFieldPriority } from '@/composables/useFieldPriority'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   product: {
     type: Object,
-    default: () => null
+    default: () => null,
   },
   isEdit: {
     type: Boolean,
-    default: false
+    default: false,
   },
   existingVisionDocuments: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   autoSaveState: {
     type: Object,
-    default: () => ({ status: 'saved', enabled: true })
-  }
+    default: () => ({ status: 'saved', enabled: true }),
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'upload-vision', 'remove-vision'])
@@ -713,24 +701,24 @@ const productForm = ref({
       frontend: '',
       backend: '',
       database: '',
-      infrastructure: ''
+      infrastructure: '',
     },
     architecture: {
       pattern: '',
       design_patterns: '',
       api_style: '',
-      notes: ''
+      notes: '',
     },
     features: {
-      core: ''
+      core: '',
     },
     test_config: {
       strategy: 'TDD',
       coverage_target: 80,
       frameworks: '',
-      quality_standards: ''
-    }
-  }
+      quality_standards: '',
+    },
+  },
 })
 
 // Testing strategies
@@ -739,38 +727,38 @@ const testingStrategies = [
     value: 'TDD',
     title: 'TDD (Test-Driven Development)',
     subtitle: 'Write tests before implementation code',
-    icon: 'mdi-test-tube'
+    icon: 'mdi-test-tube',
   },
   {
     value: 'BDD',
     title: 'BDD (Behavior-Driven Development)',
     subtitle: 'Tests based on user stories and behavior specs',
-    icon: 'mdi-comment-text-multiple'
+    icon: 'mdi-comment-text-multiple',
   },
   {
     value: 'Integration-First',
     title: 'Integration-First',
     subtitle: 'Focus on testing component interactions',
-    icon: 'mdi-connection'
+    icon: 'mdi-connection',
   },
   {
     value: 'E2E-First',
     title: 'E2E-First',
     subtitle: 'Prioritize end-to-end user workflow tests',
-    icon: 'mdi-path'
+    icon: 'mdi-path',
   },
   {
     value: 'Manual',
     title: 'Manual Testing',
     subtitle: 'Human-driven QA and exploratory testing',
-    icon: 'mdi-human-male'
+    icon: 'mdi-human-male',
   },
   {
     value: 'Hybrid',
     title: 'Hybrid Approach',
     subtitle: 'Combination of multiple testing strategies',
-    icon: 'mdi-view-grid-plus'
-  }
+    icon: 'mdi-view-grid-plus',
+  },
 ]
 
 // Tab navigation
@@ -798,35 +786,35 @@ const tabValidation = computed(() => {
     basic: {
       valid: !!productForm.value.name,
       hasError: !productForm.value.name,
-      hasWarning: false
+      hasWarning: false,
     },
     vision: {
       valid: true,
       hasError: false,
-      hasWarning: visionFiles.value.length === 0 && props.existingVisionDocuments.length === 0
+      hasWarning: visionFiles.value.length === 0 && props.existingVisionDocuments.length === 0,
     },
     tech: {
       valid: true,
       hasError: false,
-      hasWarning: !productForm.value.configData.tech_stack.languages
+      hasWarning: !productForm.value.configData.tech_stack.languages,
     },
     arch: {
       valid: true,
       hasError: false,
-      hasWarning: !productForm.value.configData.architecture.pattern
+      hasWarning: !productForm.value.configData.architecture.pattern,
     },
     features: {
       valid: true,
       hasError: false,
-      hasWarning: !productForm.value.configData.features.core
-    }
+      hasWarning: !productForm.value.configData.features.core,
+    },
   }
 })
 
 // Computed v-model for dialog
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => emit('update:modelValue', val),
 })
 
 // Methods
@@ -844,7 +832,7 @@ function saveProduct() {
     name: productForm.value.name,
     description: productForm.value.description,
     project_path: productForm.value.projectPath,
-    config_data: productForm.value.configData
+    config_data: productForm.value.configData,
   }
 
   // Include visionFiles in save payload for parent to handle uploads
@@ -894,23 +882,23 @@ function loadProductData() {
         frontend: configData.tech_stack?.frontend || '',
         backend: configData.tech_stack?.backend || '',
         database: configData.tech_stack?.database || '',
-        infrastructure: configData.tech_stack?.infrastructure || ''
+        infrastructure: configData.tech_stack?.infrastructure || '',
       },
       architecture: {
         pattern: configData.architecture?.pattern || '',
         design_patterns: configData.architecture?.design_patterns || '',
         api_style: configData.architecture?.api_style || '',
-        notes: configData.architecture?.notes || ''
+        notes: configData.architecture?.notes || '',
       },
       features: {
-        core: configData.features?.core || ''
+        core: configData.features?.core || '',
       },
       test_config: {
         strategy: configData.test_config?.strategy || 'TDD',
         coverage_target: configData.test_config?.coverage_target || 80,
         frameworks: configData.test_config?.frameworks || '',
-        quality_standards: configData.test_config?.quality_standards || ''
-      }
+        quality_standards: configData.test_config?.quality_standards || '',
+      },
     }
   } else {
     // Reset form for new product
@@ -924,48 +912,55 @@ function loadProductData() {
           frontend: '',
           backend: '',
           database: '',
-          infrastructure: ''
+          infrastructure: '',
         },
         architecture: {
           pattern: '',
           design_patterns: '',
           api_style: '',
-          notes: ''
+          notes: '',
         },
         features: {
-          core: ''
+          core: '',
         },
         test_config: {
           strategy: 'TDD',
           coverage_target: 80,
           frameworks: '',
-          quality_standards: ''
-        }
-      }
+          quality_standards: '',
+        },
+      },
     }
   }
 }
 
 // Reset state when dialog opens/closes
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    // Dialog opening
-    dialogTab.value = 'basic'
-    visionFiles.value = []
-    visionUploadError.value = null
-    uploadProgress.value = 0
-    uploadingVision.value = false
-    saving.value = false
-    loadProductData()
-  }
-})
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal) {
+      // Dialog opening
+      dialogTab.value = 'basic'
+      visionFiles.value = []
+      visionUploadError.value = null
+      uploadProgress.value = 0
+      uploadingVision.value = false
+      saving.value = false
+      loadProductData()
+    }
+  },
+)
 
 // Also watch for product changes
-watch(() => props.product, () => {
-  if (props.modelValue) {
-    loadProductData()
-  }
-}, { deep: true })
+watch(
+  () => props.product,
+  () => {
+    if (props.modelValue) {
+      loadProductData()
+    }
+  },
+  { deep: true },
+)
 </script>
 
 <style scoped>

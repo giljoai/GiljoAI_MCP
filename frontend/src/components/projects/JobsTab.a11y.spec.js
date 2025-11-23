@@ -29,7 +29,7 @@ const createMockProject = (overrides = {}) => ({
   project_id: 'proj-a11y-test',
   name: 'Accessibility Test Project',
   description: 'Testing accessibility features',
-  ...overrides
+  ...overrides,
 })
 
 const createMockAgent = (type, status, overrides = {}) => ({
@@ -40,9 +40,9 @@ const createMockAgent = (type, status, overrides = {}) => ({
   mission: `Mission for ${type}`,
   progress: status === 'working' ? 50 : 0,
   current_task: status === 'working' ? 'Working on task' : null,
-  block_reason: (status === 'failed' || status === 'blocked') ? 'Error occurred' : null,
+  block_reason: status === 'failed' || status === 'blocked' ? 'Error occurred' : null,
   messages: [],
-  ...overrides
+  ...overrides,
 })
 
 describe('JobsTab Accessibility Tests', () => {
@@ -53,10 +53,10 @@ describe('JobsTab Accessibility Tests', () => {
     agents: [
       createMockAgent('orchestrator', 'working'),
       createMockAgent('analyzer', 'waiting'),
-      createMockAgent('implementor', 'complete')
+      createMockAgent('implementor', 'complete'),
     ],
     messages: [],
-    allAgentsComplete: false
+    allAgentsComplete: false,
   }
 
   beforeEach(() => {
@@ -72,7 +72,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('ARIA Labels and Roles', () => {
     it('has main role and descriptive aria-label on root element', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const root = wrapper.find('.jobs-tab')
@@ -82,7 +82,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('uses list role for agent cards container', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -92,18 +92,18 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('uses listitem role for individual agent cards', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const agentCards = wrapper.findAll('.jobs-tab__agent-card')
-      agentCards.forEach(card => {
+      agentCards.forEach((card) => {
         expect(card.attributes('role')).toBe('listitem')
       })
     })
 
     it('has descriptive aria-labels on scroll buttons', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const leftButton = wrapper.find('.jobs-tab__scroll-left')
@@ -120,7 +120,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('uses semantic HTML for project header', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -130,7 +130,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('uses code element for project ID', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -141,7 +141,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('has heading structure for agents section', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const agentsHeader = wrapper.find('.jobs-tab__agents-header')
@@ -153,7 +153,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('Keyboard Navigation', () => {
     it('agent scroll container is keyboard focusable', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -163,7 +163,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('handles ArrowRight key to scroll agents right', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -177,14 +177,14 @@ describe('JobsTab Accessibility Tests', () => {
 
       expect(scrollBySpy).toHaveBeenCalledWith({
         left: 300,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     })
 
     it('handles ArrowLeft key to scroll agents left', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -198,14 +198,14 @@ describe('JobsTab Accessibility Tests', () => {
 
       expect(scrollBySpy).toHaveBeenCalledWith({
         left: -300,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     })
 
     it('handles Home key to scroll to beginning', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -219,14 +219,14 @@ describe('JobsTab Accessibility Tests', () => {
 
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 0,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     })
 
     it('handles End key to scroll to end', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -241,14 +241,14 @@ describe('JobsTab Accessibility Tests', () => {
 
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 2000,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
     })
 
     it('prevents default behavior for navigation keys', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -265,7 +265,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('scroll buttons are keyboard accessible', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const leftButton = wrapper.find('.jobs-tab__scroll-left')
@@ -286,7 +286,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('maintains focus on agent scroll container during keyboard navigation', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -302,7 +302,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('has visible focus indicator on agent scroll container', () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -317,8 +317,8 @@ describe('JobsTab Accessibility Tests', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Banner not present
@@ -340,7 +340,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('Screen Reader Support', () => {
     it('provides meaningful context for project information', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -356,8 +356,8 @@ describe('JobsTab Accessibility Tests', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       const banner = wrapper.find('.jobs-tab__complete-banner')
@@ -375,9 +375,9 @@ describe('JobsTab Accessibility Tests', () => {
           agents: [
             createMockAgent('orchestrator', 'working'),
             createMockAgent('analyzer', 'waiting'),
-            createMockAgent('implementor', 'complete')
-          ]
-        }
+            createMockAgent('implementor', 'complete'),
+          ],
+        },
       })
 
       const agentsHeader = wrapper.find('.jobs-tab__agents-header')
@@ -387,7 +387,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('associates labels with form elements', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // MessageInput should have proper labels (tested in MessageInput.a11y.test.js)
@@ -400,15 +400,15 @@ describe('JobsTab Accessibility Tests', () => {
     it('makes error states perceivable to screen readers', async () => {
       const agents = [
         createMockAgent('implementor', 'failed', {
-          block_reason: 'Database connection failed'
-        })
+          block_reason: 'Database connection failed',
+        }),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Agent card should indicate error state
@@ -421,14 +421,14 @@ describe('JobsTab Accessibility Tests', () => {
       const agents = [
         createMockAgent('implementor', 'complete'),
         createMockAgent('analyzer', 'failed'),
-        createMockAgent('orchestrator', 'working')
+        createMockAgent('orchestrator', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Failed agent should appear first (priority sorting)
@@ -440,14 +440,14 @@ describe('JobsTab Accessibility Tests', () => {
       const agents = [
         createMockAgent('implementor', 'complete'),
         createMockAgent('analyzer', 'blocked'),
-        createMockAgent('orchestrator', 'working')
+        createMockAgent('orchestrator', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Blocked agent should appear first
@@ -459,7 +459,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('Semantic HTML Structure', () => {
     it('uses proper heading hierarchy', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // h2 for project name
@@ -473,7 +473,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('uses code element for technical identifiers', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const codeElement = wrapper.find('code.project-id-code')
@@ -483,7 +483,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('uses icon with descriptive context', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const projectHeader = wrapper.find('.jobs-tab__project-header')
@@ -496,7 +496,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('uses button elements for interactive actions', async () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       // Scroll buttons should be actual button elements
@@ -518,14 +518,14 @@ describe('JobsTab Accessibility Tests', () => {
       const agents = [
         createMockAgent('implementor', 'failed'),
         createMockAgent('analyzer', 'complete'),
-        createMockAgent('orchestrator', 'working')
+        createMockAgent('orchestrator', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          agents
-        }
+          agents,
+        },
       })
 
       // Each status should have both color AND text/icon
@@ -542,8 +542,8 @@ describe('JobsTab Accessibility Tests', () => {
       wrapper = mount(JobsTab, {
         props: {
           ...defaultProps,
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       const banner = wrapper.find('.jobs-tab__complete-banner')
@@ -559,7 +559,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('Responsive Design Accessibility', () => {
     it('maintains semantic structure on mobile', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // Structure should be same regardless of viewport
@@ -571,7 +571,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('maintains keyboard navigation on all screen sizes', () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -580,7 +580,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('maintains ARIA labels on all screen sizes', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       const root = wrapper.find('.jobs-tab')
@@ -595,7 +595,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('respects prefers-reduced-motion for scroll behavior', () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       // CSS handles reduced motion via @media query
@@ -608,7 +608,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('respects prefers-reduced-motion for animations', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // CSS handles reduced motion for cardFadeIn animation
@@ -623,7 +623,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('High Contrast Mode Support', () => {
     it('provides sufficient contrast in high contrast mode', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // CSS handles high contrast mode via @media query
@@ -637,7 +637,7 @@ describe('JobsTab Accessibility Tests', () => {
     it('maintains visible focus indicators in high contrast mode', () => {
       wrapper = mount(JobsTab, {
         props: defaultProps,
-        attachTo: document.body
+        attachTo: document.body,
       })
 
       const agentsScroll = wrapper.find('.jobs-tab__agents-scroll')
@@ -652,7 +652,7 @@ describe('JobsTab Accessibility Tests', () => {
   describe('Touch Accessibility', () => {
     it('provides adequate touch target sizes for buttons', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // Scroll buttons should be at least 44x44 CSS pixels (per WCAG)
@@ -672,7 +672,7 @@ describe('JobsTab Accessibility Tests', () => {
 
     it('maintains touch accessibility on mobile', () => {
       wrapper = mount(JobsTab, {
-        props: defaultProps
+        props: defaultProps,
       })
 
       // All interactive elements should be touch-accessible

@@ -25,7 +25,7 @@ import ChatHeadBadge from '../ChatHeadBadge.vue'
 // Mock date-fns functions
 vi.mock('date-fns', () => ({
   formatDistanceToNow: vi.fn((date) => '2 minutes ago'),
-  format: vi.fn((date, formatStr) => 'Apr 29, 2023, 9:30:00 AM')
+  format: vi.fn((date, formatStr) => 'Apr 29, 2023, 9:30:00 AM'),
 }))
 
 describe('MessageStream', () => {
@@ -41,7 +41,7 @@ describe('MessageStream', () => {
       timestamp: '2023-04-29T09:30:00Z',
       from: 'agent',
       agent_type: 'orchestrator',
-      instance_number: 1
+      instance_number: 1,
     },
     {
       id: '2',
@@ -52,14 +52,14 @@ describe('MessageStream', () => {
       timestamp: '2023-04-29T09:32:00Z',
       from: 'agent',
       agent_type: 'implementor',
-      instance_number: 1
+      instance_number: 1,
     },
     {
       id: '3',
       from: 'developer',
       type: 'user',
       content: 'How is progress going?',
-      timestamp: '2023-04-29T09:35:00Z'
+      timestamp: '2023-04-29T09:35:00Z',
     },
     {
       id: '4',
@@ -69,8 +69,8 @@ describe('MessageStream', () => {
       timestamp: '2023-04-29T09:40:00Z',
       from: 'agent',
       agent_type: 'orchestrator',
-      instance_number: 1
-    }
+      instance_number: 1,
+    },
   ]
 
   const createWrapper = (props = {}) => {
@@ -80,19 +80,19 @@ describe('MessageStream', () => {
         projectId: 'test-project-123',
         autoScroll: true,
         loading: false,
-        ...props
+        ...props,
       },
       global: {
         components: {
-          ChatHeadBadge
+          ChatHeadBadge,
         },
         stubs: {
           'v-icon': true,
           'v-btn': true,
           'v-badge': true,
-          'v-skeleton-loader': true
-        }
-      }
+          'v-skeleton-loader': true,
+        },
+      },
     })
   }
 
@@ -249,7 +249,7 @@ describe('MessageStream', () => {
     it('handles invalid timestamps gracefully', () => {
       const invalidMessage = {
         ...mockMessages[0],
-        timestamp: 'invalid-date'
+        timestamp: 'invalid-date',
       }
       wrapper = createWrapper({ messages: [invalidMessage] })
 
@@ -325,17 +325,17 @@ describe('MessageStream', () => {
       Object.defineProperty(element, 'scrollTop', {
         value: 0,
         writable: true,
-        configurable: true
+        configurable: true,
       })
       Object.defineProperty(element, 'scrollHeight', {
         value: 1000,
         writable: true,
-        configurable: true
+        configurable: true,
       })
       Object.defineProperty(element, 'clientHeight', {
         value: 500,
         writable: true,
-        configurable: true
+        configurable: true,
       })
 
       // Call handleScroll directly
@@ -415,8 +415,8 @@ describe('MessageStream', () => {
 
       expect(Element.prototype.scrollTo).toHaveBeenCalledWith(
         expect.objectContaining({
-          behavior: 'smooth'
-        })
+          behavior: 'smooth',
+        }),
       )
     })
 
@@ -444,8 +444,8 @@ describe('MessageStream', () => {
       expect(Element.prototype.scrollTo).toHaveBeenCalledWith(
         expect.objectContaining({
           top: 0,
-          behavior: 'smooth'
-        })
+          behavior: 'smooth',
+        }),
       )
     })
 
@@ -551,7 +551,7 @@ describe('MessageStream', () => {
       const largeMessageList = Array.from({ length: 1000 }, (_, i) => ({
         ...mockMessages[0],
         id: `msg-${i}`,
-        content: `Message ${i}`
+        content: `Message ${i}`,
       }))
 
       wrapper = createWrapper({ messages: largeMessageList })
@@ -593,7 +593,7 @@ describe('MessageStream', () => {
       const noAgent = {
         ...mockMessages[0],
         agent_type: null,
-        from_agent: null
+        from_agent: null,
       }
       wrapper = createWrapper({ messages: [noAgent] })
 
@@ -604,7 +604,7 @@ describe('MessageStream', () => {
     it('handles very long message content', () => {
       const longMessage = {
         ...mockMessages[0],
-        content: 'A'.repeat(10000)
+        content: 'A'.repeat(10000),
       }
       wrapper = createWrapper({ messages: [longMessage] })
 

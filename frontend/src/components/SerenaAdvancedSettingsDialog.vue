@@ -1,5 +1,9 @@
 <template>
-  <v-dialog :model-value="modelValue" max-width="560" @update:model-value="$emit('update:model-value', $event)">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="560"
+    @update:model-value="$emit('update:model-value', $event)"
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-tune</v-icon>
@@ -12,7 +16,9 @@
 
       <v-card-text>
         <v-form ref="form" v-model="valid">
-          <div class="mb-4 text-medium-emphasis">Adjust how agent prompts use Serena. Tooltips explain each option.</div>
+          <div class="mb-4 text-medium-emphasis">
+            Adjust how agent prompts use Serena. Tooltips explain each option.
+          </div>
 
           <v-row>
             <v-col cols="12">
@@ -64,7 +70,7 @@
                 v-model.number="local.max_range_lines"
                 type="number"
                 label="Max range lines"
-                :rules="[v => (v && v > 0) || 'Must be a positive number']"
+                :rules="[(v) => (v && v > 0) || 'Must be a positive number']"
                 :hint="'Largest recommended range before full-file (default 180)'"
                 persistent-hint
                 density="comfortable"
@@ -76,7 +82,7 @@
                 v-model.number="local.context_halo"
                 type="number"
                 label="Context halo lines"
-                :rules="[v => (v && v >= 0) || 'Must be zero or positive']"
+                :rules="[(v) => (v && v >= 0) || 'Must be zero or positive']"
                 :hint="'Extra lines around target ranges for context (default 12)'"
                 persistent-hint
                 density="comfortable"
@@ -111,8 +117,8 @@ const props = defineProps({
       prefer_ranges: true,
       max_range_lines: 180,
       context_halo: 12,
-    })
-  }
+    }),
+  },
 })
 
 const emit = defineEmits(['update:model-value', 'save'])
@@ -122,17 +128,20 @@ const valid = ref(true)
 const saving = ref(false)
 const local = reactive({ ...props.value })
 
-watch(() => props.value, (v) => {
-  Object.assign(local, v || {})
-})
+watch(
+  () => props.value,
+  (v) => {
+    Object.assign(local, v || {})
+  },
+)
 
 function handleSave() {
   saving.value = true
   // emit payload; parent calls API and closes dialog
-  emit('save', { ...local }, () => { saving.value = false })
+  emit('save', { ...local }, () => {
+    saving.value = false
+  })
 }
 </script>
 
-<style scoped>
-</style>
-
+<style scoped></style>

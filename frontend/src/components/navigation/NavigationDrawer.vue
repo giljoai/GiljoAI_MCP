@@ -36,12 +36,7 @@
     <v-divider></v-divider>
 
     <!-- Navigation Items -->
-    <v-list
-      density="compact"
-      nav
-      v-model:selected="selected"
-      select-strategy="single"
-    >
+    <v-list density="compact" nav v-model:selected="selected" select-strategy="single">
       <v-list-item
         v-for="item in navigationItems"
         :key="item.name"
@@ -89,16 +84,16 @@ import { useSettingsStore } from '@/stores/settings'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    default: true
+    default: true,
   },
   rail: {
     type: Boolean,
-    default: false
+    default: false,
   },
   currentUser: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:model-value'])
@@ -115,7 +110,7 @@ const selected = ref([])
 const jobsIcon = computed(() => {
   const isJobsRoute = route.path.includes('/projects/')
   const isDark = theme.global.current.value.dark
-  
+
   if (isJobsRoute) {
     // Active state: Yellow/White for dark theme, Blue/Yellow for light theme
     return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
@@ -172,7 +167,10 @@ const updateSelectedFromRoute = () => {
 }
 
 onMounted(updateSelectedFromRoute)
-watch(() => route.path, () => updateSelectedFromRoute())
+watch(
+  () => route.path,
+  () => updateSelectedFromRoute(),
+)
 
 const toggleTheme = () => {
   document.documentElement.classList.remove('no-transition')

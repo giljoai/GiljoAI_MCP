@@ -1,16 +1,19 @@
 # AgentCardEnhanced Component Suite
 
-Production-grade agent card components for GiljoAI MCP Handover 0077 dual-tab interface.
+Production-grade agent card components for GiljoAI MCP Handover 0077 dual-tab
+interface.
 
 ## Components
 
 ### AgentCardEnhanced.vue
 
-Reusable agent card that adapts to different modes (Launch Tab vs Jobs Tab) and agent states.
+Reusable agent card that adapts to different modes (Launch Tab vs Jobs Tab) and
+agent states.
 
 **Location**: `frontend/src/components/projects/AgentCardEnhanced.vue`
 
 **Props**:
+
 ```javascript
 {
   agent: Object,           // Required - Agent job object
@@ -22,11 +25,14 @@ Reusable agent card that adapts to different modes (Launch Tab vs Jobs Tab) and 
 ```
 
 **Emits**:
+
 - `edit-mission(agent)` - Edit mission button clicked (Launch Tab)
 - `launch-agent(agent)` - Launch agent button clicked (Jobs Tab, waiting state)
 - `view-details(agent)` - Details button clicked (Jobs Tab, working state)
-- `view-error(agent)` - View error button clicked (Jobs Tab, failed/blocked state)
-- `closeout-project()` - Closeout project button clicked (Orchestrator, all complete)
+- `view-error(agent)` - View error button clicked (Jobs Tab, failed/blocked
+  state)
+- `closeout-project()` - Closeout project button clicked (Orchestrator, all
+  complete)
 
 **Usage Example**:
 
@@ -54,11 +60,7 @@ Reusable agent card that adapts to different modes (Launch Tab vs Jobs Tab) and 
   />
 
   <!-- Jobs Tab - Complete State (Multi-instance) -->
-  <AgentCardEnhanced
-    :agent="completeAgent"
-    mode="jobs"
-    :instance-number="2"
-  />
+  <AgentCardEnhanced :agent="completeAgent" mode="jobs" :instance-number="2" />
 
   <!-- Jobs Tab - Orchestrator with Closeout -->
   <AgentCardEnhanced
@@ -82,7 +84,7 @@ const agent = {
   progress: 0,
   current_task: null,
   messages: [],
-  block_reason: null
+  block_reason: null,
 }
 
 function handleEditMission(agent) {
@@ -107,16 +109,22 @@ function handleCloseout() {
 
 ```typescript
 interface Agent {
-  job_id: string                // Unique job identifier
-  agent_id?: string             // Alternative identifier
-  agent_type: 'orchestrator' | 'analyzer' | 'implementor' | 'researcher' | 'reviewer' | 'tester'
-  agent_name: string            // Display name
+  job_id: string // Unique job identifier
+  agent_id?: string // Alternative identifier
+  agent_type:
+    | 'orchestrator'
+    | 'analyzer'
+    | 'implementor'
+    | 'researcher'
+    | 'reviewer'
+    | 'tester'
+  agent_name: string // Display name
   status: 'waiting' | 'working' | 'complete' | 'failed' | 'blocked'
-  mission: string               // Mission description
-  progress?: number             // 0-100 (working state only)
-  current_task?: string         // Current task description (working state only)
-  messages?: Message[]          // Array of messages
-  block_reason?: string         // Reason for failure/block
+  mission: string // Mission description
+  progress?: number // 0-100 (working state only)
+  current_task?: string // Current task description (working state only)
+  messages?: Message[] // Array of messages
+  block_reason?: string // Reason for failure/block
 }
 
 interface Message {
@@ -132,46 +140,47 @@ interface Message {
 ### Launch Tab Mode (`mode="launch"`)
 
 **Display**:
+
 - Agent ID (truncated to 12 chars)
 - Role/Mission (scrollable text area)
 - No status badges
 - No message badges
 
-**Button**: "Edit Mission"
-**Emits**: `edit-mission`
+**Button**: "Edit Mission" **Emits**: `edit-mission`
 
 ---
 
 ### Jobs Tab - Waiting State (`status="waiting"`)
 
 **Display**:
+
 - Agent ID
 - Status badge: "Waiting" (grey)
 - Message badges (if messages exist)
 - Truncated mission text
 
-**Button**: "Launch Agent" (yellow)
-**Emits**: `launch-agent`
+**Button**: "Launch Agent" (yellow) **Emits**: `launch-agent`
 
 ---
 
 ### Jobs Tab - Working State (`status="working"`)
 
 **Display**:
+
 - Agent ID
 - Status badge: "Working" (blue)
 - Message badges (if messages exist)
 - Progress bar with percentage
 - Current task text
 
-**Button**: "Details" (outlined)
-**Emits**: `view-details`
+**Button**: "Details" (outlined) **Emits**: `view-details`
 
 ---
 
 ### Jobs Tab - Complete State (`status="complete"`)
 
 **Display**:
+
 - Agent ID
 - Status badge: "Complete" (yellow)
 - Large "Complete" text (yellow, bold)
@@ -185,14 +194,14 @@ interface Message {
 ### Jobs Tab - Failed State (`status="failed"`)
 
 **Display**:
+
 - Agent ID
 - Status badge: "Failure" (magenta/purple)
 - Error alert with block reason
 - Message badges (if messages exist)
 - Priority styling (moved to top)
 
-**Button**: "View Error" (error color)
-**Emits**: `view-error`
+**Button**: "View Error" (error color) **Emits**: `view-error`
 
 **Priority**: Cards with failed status are moved to the top of the list.
 
@@ -201,14 +210,14 @@ interface Message {
 ### Jobs Tab - Blocked State (`status="blocked"`)
 
 **Display**:
+
 - Agent ID
 - Status badge: "Blocked" (orange)
 - Warning alert with block reason
 - Message badges (if messages exist)
 - Priority styling (moved to top)
 
-**Button**: "View Error" (warning color)
-**Emits**: `view-error`
+**Button**: "View Error" (warning color) **Emits**: `view-error`
 
 **Priority**: Cards with blocked status are moved to the top of the list.
 
@@ -230,14 +239,17 @@ Message badges only appear when `mode === 'jobs'` and messages exist.
 
 When `isOrchestrator={true}`:
 
-1. **Launch Prompt Icons**: Displays `LaunchPromptIcons` component with Claude Code, Codex, Gemini CLI icons
-2. **Closeout Button**: Shows green "Closeout Project" button when `showCloseoutButton={true}` (typically when all agents are complete)
+1. **Launch Prompt Icons**: Displays `LaunchPromptIcons` component with Claude
+   Code, Codex, Gemini CLI icons
+2. **Closeout Button**: Shows green "Closeout Project" button when
+   `showCloseoutButton={true}` (typically when all agents are complete)
 
 ---
 
 ## Styling and Design
 
 ### Card Dimensions
+
 - **Width**: 280px (fixed)
 - **Min Height**: 200px
 - **Max Height**: 400px
@@ -245,22 +257,26 @@ When `isOrchestrator={true}`:
 - **Border Radius**: 8px
 
 ### Header
+
 - **Background**: Linear gradient (agent color → darkened by 10%)
 - **Color**: White text
 - **Padding**: 12px 16px
 - **Font**: Bold, uppercase, letter-spacing
 
 ### Content Area
+
 - **Scrollable**: Vertical scroll when content exceeds max height
 - **Custom Scrollbar**: Styled for consistency
 - **Padding**: 16px
 
 ### Hover Effects
+
 - **Transform**: `translateY(-2px)`
 - **Shadow**: Elevated shadow (0 4px 16px)
 - **Transition**: 0.3s ease
 
 ### Priority States
+
 - **Failed/Blocked**: Box shadow with orange glow (`rgba(255, 152, 0, 0.5)`)
 - **Purpose**: Visual indicator for cards that need attention
 
@@ -269,14 +285,18 @@ When `isOrchestrator={true}`:
 ## Dependencies
 
 ### Internal Components
+
 - **ChatHeadBadge**: Circular badge with agent type abbreviation
 - **LaunchPromptIcons**: AI coding tool icons with copy functionality
 
 ### External Libraries
+
 - **Vue 3**: Composition API with `<script setup>`
-- **Vuetify 3**: Material Design components (v-card, v-chip, v-btn, v-progress-linear, v-alert)
+- **Vuetify 3**: Material Design components (v-card, v-chip, v-btn,
+  v-progress-linear, v-alert)
 
 ### Utilities
+
 - **agentColors.js**: `getAgentColor()`, `darkenColor()`, `lightenColor()`
 - **agent-colors.scss**: SCSS variables and mixins
 
@@ -285,21 +305,25 @@ When `isOrchestrator={true}`:
 ## Accessibility (a11y)
 
 ### ARIA Attributes
+
 - `role="article"` on card
 - `aria-label` with agent type and status
 - Meaningful button labels with icons
 
 ### Keyboard Navigation
+
 - All buttons are keyboard accessible
 - No negative tabindex values
 - Enter/Space activate buttons
 
 ### Screen Reader Support
+
 - Semantic HTML structure
 - Descriptive ARIA labels
 - Status changes announced
 
 ### Visual Accessibility
+
 - High contrast support (when enabled)
 - Color is not sole indicator of state
 - Text labels accompany all visual indicators
@@ -311,6 +335,7 @@ When `isOrchestrator={true}`:
 **Test File**: `frontend/tests/components/projects/AgentCardEnhanced.spec.js`
 
 **Coverage**:
+
 - ✅ Component rendering in all modes
 - ✅ All agent states (waiting, working, complete, failed, blocked)
 - ✅ Message badge calculations and display
@@ -321,6 +346,7 @@ When `isOrchestrator={true}`:
 - ✅ Edge cases and error handling
 
 **Run Tests**:
+
 ```bash
 cd frontend
 npm run test -- AgentCardEnhanced
@@ -331,12 +357,14 @@ npm run test -- AgentCardEnhanced
 ## Performance Considerations
 
 ### Optimization
+
 - Fixed card dimensions prevent layout thrashing
 - CSS transitions use `transform` (GPU-accelerated)
 - Message count computations are memoized with `computed()`
 - Conditional rendering reduces DOM nodes
 
 ### Best Practices
+
 - Use `v-if` for content that changes modes
 - Use `v-show` for content that toggles visibility
 - Avoid deep nesting in templates
@@ -403,8 +431,10 @@ const sortedAgents = computed(() => {
 
 ## Related Documentation
 
-- [Handover 0077](../../../handovers/0077_launch_jobs_dual_tab_interface.md) - Dual-tab interface specification
-- [Agent Colors Config](../../config/agentColors.js) - Color system documentation
+- [Handover 0077](../../../handovers/0077_launch_jobs_dual_tab_interface.md) -
+  Dual-tab interface specification
+- [Agent Colors Config](../../config/agentColors.js) - Color system
+  documentation
 - [Agent Color Styles](../../styles/agent-colors.scss) - SCSS styling system
 
 ---
@@ -416,11 +446,13 @@ const sortedAgents = computed(() => {
 Circular badge component for agent identification.
 
 **Props**:
+
 - `agentType`: Agent type string
 - `instanceNumber`: Instance number (default: 1)
 - `size`: 'default' (32px) | 'compact' (24px)
 
 **Display Logic**:
+
 - Instance 1: Shows badge abbreviation (e.g., "Or", "Im", "An")
 - Instance 2+: Shows first letter + number (e.g., "I2", "I3", "A2")
 
@@ -431,6 +463,7 @@ Circular badge component for agent identification.
 AI coding tool icons with copy-to-clipboard functionality.
 
 **Features**:
+
 - Claude Code (orange)
 - Codex CLI (purple)
 - Gemini CLI (blue)

@@ -28,10 +28,7 @@
 
       <!-- Message List (reuse extracted component) -->
       <v-card-text class="pa-0 message-modal-content">
-        <MessageList
-          :messages="messages"
-          @message-click="handleMessageClick"
-        />
+        <MessageList :messages="messages" @message-click="handleMessageClick" />
       </v-card-text>
 
       <v-divider />
@@ -56,20 +53,20 @@ import MessageInput from '../projects/MessageInput.vue'
 const props = defineProps({
   isOpen: {
     type: Boolean,
-    required: true
+    required: true,
   },
   jobId: {
     type: String,
-    required: true
+    required: true,
   },
   agentName: {
     type: String,
-    required: true
+    required: true,
   },
   messages: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['close', 'message-sent'])

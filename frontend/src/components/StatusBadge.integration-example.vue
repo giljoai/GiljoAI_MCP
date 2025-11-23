@@ -8,12 +8,7 @@
 <template>
   <v-container fluid>
     <!-- Projects Table -->
-    <v-data-table
-      :items="projects"
-      :headers="headers"
-      :loading="loading"
-      class="elevation-1"
-    >
+    <v-data-table :items="projects" :headers="headers" :loading="loading" class="elevation-1">
       <!-- Status Column with StatusBadge -->
       <template #item.status="{ item }">
         <StatusBadge
@@ -56,7 +51,7 @@ const headers = [
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Alias', key: 'alias', sortable: false },
   { title: 'Created', key: 'created_at', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false }
+  { title: 'Actions', key: 'actions', sortable: false },
 ]
 
 // Methods
@@ -70,7 +65,7 @@ const loadProjects = async () => {
     showToast({
       message: 'Failed to load projects',
       type: 'error',
-      duration: 5000
+      duration: 5000,
     })
   } finally {
     loading.value = false
@@ -82,28 +77,28 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
     // Handle delete action separately
     if (action === 'delete') {
       await api.projects.delete(projectId)
-      
+
       showToast({
         message: 'Project deleted successfully',
         type: 'success',
-        duration: 3000
+        duration: 3000,
       })
-      
+
       // Remove project from list
-      projects.value = projects.value.filter(p => p.id !== projectId)
+      projects.value = projects.value.filter((p) => p.id !== projectId)
       return
     }
 
     // Handle status updates
     const response = await api.projects.update(projectId, { status: newStatus })
-    
+
     // Update project in list
-    const projectIndex = projects.value.findIndex(p => p.id === projectId)
+    const projectIndex = projects.value.findIndex((p) => p.id === projectId)
     if (projectIndex !== -1) {
       projects.value[projectIndex] = {
         ...projects.value[projectIndex],
         status: newStatus,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
     }
 
@@ -113,7 +108,7 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
       deactivate: 'deactivated',
       complete: 'completed',
       cancel: 'cancelled',
-      restore: 'restored'
+      restore: 'restored',
     }
 
     const actionLabel = actionLabels[action] || 'updated'
@@ -121,16 +116,15 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
     showToast({
       message: `Project ${actionLabel} successfully`,
       type: 'success',
-      duration: 3000
+      duration: 3000,
     })
-
   } catch (error) {
     console.error('Failed to update project status:', error)
-    
+
     showToast({
       message: error.response?.data?.detail || 'Failed to update project status',
       type: 'error',
-      duration: 5000
+      duration: 5000,
     })
   }
 }
@@ -141,7 +135,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   })
 }
 

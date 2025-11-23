@@ -51,11 +51,7 @@
 
       <!-- Role badge column -->
       <template #item.role="{ item }">
-        <v-chip
-          :color="getRoleColor(item.role)"
-          size="small"
-          label
-        >
+        <v-chip :color="getRoleColor(item.role)" size="small" label>
           <v-icon start size="small">{{ getRoleIcon(item.role) }}</v-icon>
           {{ getRoleTitle(item.role) }}
         </v-chip>
@@ -63,11 +59,7 @@
 
       <!-- Status badge column -->
       <template #item.is_active="{ item }">
-        <v-chip
-          :color="item.is_active ? 'success' : 'default'"
-          size="small"
-          label
-        >
+        <v-chip :color="item.is_active ? 'success' : 'default'" size="small" label>
           <v-icon start size="small">
             {{ item.is_active ? 'mdi-check-circle' : 'mdi-cancel' }}
           </v-icon>
@@ -92,12 +84,7 @@
       <template #item.actions="{ item }">
         <v-menu>
           <template v-slot:activator="{ props }">
-            <v-btn
-              icon="mdi-dots-vertical"
-              size="small"
-              variant="text"
-              v-bind="props"
-            />
+            <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
           </template>
           <v-list density="compact">
             <v-list-item @click="openEditDialog(item)">
@@ -119,10 +106,7 @@
               <v-list-item-title>Reset Password</v-list-item-title>
             </v-list-item>
             <v-divider />
-            <v-list-item
-              @click="toggleUserStatus(item)"
-              :disabled="item.id === currentUser?.id"
-            >
+            <v-list-item @click="toggleUserStatus(item)" :disabled="item.id === currentUser?.id">
               <template v-slot:prepend>
                 <v-icon>{{ item.is_active ? 'mdi-account-off' : 'mdi-account-check' }}</v-icon>
               </template>
@@ -215,14 +199,8 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeUserDialog" :disabled="saving">
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="saveUser"
-            :loading="saving"
-          >
+          <v-btn variant="text" @click="closeUserDialog" :disabled="saving"> Cancel </v-btn>
+          <v-btn color="primary" @click="saveUser" :loading="saving">
             {{ isEditMode ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -258,11 +236,7 @@
           <v-btn variant="text" @click="closePasswordDialog" :disabled="changingPassword">
             Cancel
           </v-btn>
-          <v-btn
-            color="primary"
-            @click="changePassword"
-            :loading="changingPassword"
-          >
+          <v-btn color="primary" @click="changePassword" :loading="changingPassword">
             Change Password
           </v-btn>
         </v-card-actions>
@@ -278,9 +252,7 @@
         </v-card-title>
 
         <v-card-text class="pt-6">
-          <p class="text-body-1 mb-2">
-            You are about to reset the password for:
-          </p>
+          <p class="text-body-1 mb-2">You are about to reset the password for:</p>
           <v-card variant="outlined" class="mb-4 pa-3">
             <div class="d-flex align-center">
               <v-icon class="mr-2">mdi-account</v-icon>
@@ -297,7 +269,8 @@
           </v-alert>
 
           <v-alert type="info" variant="tonal" density="compact">
-            The user will be required to change this password on their next login. Their recovery PIN will remain unchanged.
+            The user will be required to change this password on their next login. Their recovery
+            PIN will remain unchanged.
           </v-alert>
         </v-card-text>
 
@@ -306,11 +279,7 @@
           <v-btn variant="text" @click="closeResetPasswordDialog" :disabled="resettingPassword">
             Cancel
           </v-btn>
-          <v-btn
-            color="warning"
-            @click="confirmResetPassword"
-            :loading="resettingPassword"
-          >
+          <v-btn color="warning" @click="confirmResetPassword" :loading="resettingPassword">
             Reset Password
           </v-btn>
         </v-card-actions>
@@ -342,12 +311,7 @@
             </div>
           </v-card>
 
-          <v-alert
-            v-if="statusUser?.is_active"
-            type="warning"
-            variant="tonal"
-            density="compact"
-          >
+          <v-alert v-if="statusUser?.is_active" type="warning" variant="tonal" density="compact">
             This user will no longer be able to log in to the system.
           </v-alert>
         </v-card-text>
@@ -448,16 +412,18 @@ const roleOptions = [
 const rules = {
   required: (value) => !!value || 'This field is required',
   minLength: (value) => !value || value.length >= 8 || 'Password must be at least 8 characters',
-  email: (value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Must be a valid email address',
+  email: (value) =>
+    !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Must be a valid email address',
 }
 
 // Computed
 const filteredUsers = computed(() => {
   if (!search.value) return users.value
   const searchLower = search.value.toLowerCase()
-  return users.value.filter((user) => 
-    user.username.toLowerCase().includes(searchLower) ||
-    (user.email && user.email.toLowerCase().includes(searchLower))
+  return users.value.filter(
+    (user) =>
+      user.username.toLowerCase().includes(searchLower) ||
+      (user.email && user.email.toLowerCase().includes(searchLower)),
   )
 })
 

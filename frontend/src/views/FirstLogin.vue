@@ -38,8 +38,8 @@
 
             <!-- Info Alert -->
             <AppAlert type="info" variant="tonal" class="mb-4">
-              <strong>Security Setup Required:</strong> Please create a new password and 4-digit recovery PIN.
-              Your recovery PIN can be used to reset your password if you forget it.
+              <strong>Security Setup Required:</strong> Please create a new password and 4-digit
+              recovery PIN. Your recovery PIN can be used to reset your password if you forget it.
             </AppAlert>
 
             <!-- Form -->
@@ -97,7 +97,11 @@
               <v-list density="compact" class="requirement-list mb-4">
                 <v-list-item v-for="req in passwordRequirements" :key="req.text" class="px-0 py-1">
                   <template #prepend>
-                    <v-icon :color="req.met ? 'success' : 'error'" size="small" :aria-label="req.met ? 'Requirement met' : 'Requirement not met'">
+                    <v-icon
+                      :color="req.met ? 'success' : 'error'"
+                      size="small"
+                      :aria-label="req.met ? 'Requirement met' : 'Requirement not met'"
+                    >
                       {{ req.met ? 'mdi-check-circle' : 'mdi-close-circle' }}
                     </v-icon>
                   </template>
@@ -113,7 +117,8 @@
                 Recovery PIN Setup
               </h3>
               <p class="text-caption text-medium-emphasis mb-4">
-                Create a 4-digit PIN for password recovery. This PIN can be used if you forget your password.
+                Create a 4-digit PIN for password recovery. This PIN can be used if you forget your
+                password.
               </p>
 
               <!-- Recovery PIN -->
@@ -160,7 +165,8 @@
 
               <!-- Security Warning -->
               <AppAlert type="warning" variant="tonal" density="compact" class="mb-4">
-                <strong>Important:</strong> Keep your recovery PIN secure. Do not use obvious PINs like 0000 or 1234.
+                <strong>Important:</strong> Keep your recovery PIN secure. Do not use obvious PINs
+                like 0000 or 1234.
               </AppAlert>
 
               <!-- Submit Button -->
@@ -209,28 +215,28 @@ const firstLoginForm = ref(null)
 
 // Validation rules
 const passwordRules = [
-  v => !!v || 'Password is required',
-  v => v.length >= 12 || 'Password must be at least 12 characters',
-  v => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
-  v => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
-  v => /\d/.test(v) || 'Must contain at least one digit',
-  v => /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(v) || 'Must contain at least one special character'
+  (v) => !!v || 'Password is required',
+  (v) => v.length >= 12 || 'Password must be at least 12 characters',
+  (v) => /[A-Z]/.test(v) || 'Must contain at least one uppercase letter',
+  (v) => /[a-z]/.test(v) || 'Must contain at least one lowercase letter',
+  (v) => /\d/.test(v) || 'Must contain at least one digit',
+  (v) => /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(v) || 'Must contain at least one special character',
 ]
 
 const confirmPasswordRules = [
-  v => !!v || 'Password confirmation is required',
-  v => v === newPassword.value || 'Passwords do not match'
+  (v) => !!v || 'Password confirmation is required',
+  (v) => v === newPassword.value || 'Passwords do not match',
 ]
 
 const pinRules = [
-  v => !!v || 'Recovery PIN is required',
-  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+  (v) => !!v || 'Recovery PIN is required',
+  (v) => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
 ]
 
 const confirmPinRules = [
-  v => !!v || 'PIN confirmation is required',
-  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
-  v => v === recoveryPin.value || 'PINs do not match'
+  (v) => !!v || 'PIN confirmation is required',
+  (v) => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+  (v) => v === recoveryPin.value || 'PINs do not match',
 ]
 
 // Password requirements
@@ -240,11 +246,14 @@ const passwordRequirements = computed(() => [
   { text: 'One lowercase letter', met: /[a-z]/.test(newPassword.value) },
   { text: 'One digit', met: /\d/.test(newPassword.value) },
   { text: 'One special character', met: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(newPassword.value) },
-  { text: 'Passwords match', met: newPassword.value === confirmPassword.value && confirmPassword.value !== '' }
+  {
+    text: 'Passwords match',
+    met: newPassword.value === confirmPassword.value && confirmPassword.value !== '',
+  },
 ])
 
 const passwordStrength = computed(() => {
-  const metRequirements = passwordRequirements.value.filter(req => req.met).length
+  const metRequirements = passwordRequirements.value.filter((req) => req.met).length
   return (metRequirements / passwordRequirements.value.length) * 100
 })
 
@@ -261,15 +270,17 @@ const passwordStrengthText = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  return newPassword.value &&
+  return (
+    newPassword.value &&
     confirmPassword.value &&
     newPassword.value === confirmPassword.value &&
-    passwordRequirements.value.every(req => req.met) &&
+    passwordRequirements.value.every((req) => req.met) &&
     recoveryPin.value &&
     confirmPin.value &&
     recoveryPin.value === confirmPin.value &&
     /^\d{4}$/.test(recoveryPin.value) &&
     /^\d{4}$/.test(confirmPin.value)
+  )
 })
 
 // Methods
@@ -303,7 +314,7 @@ async function handleSubmit() {
       new_password: newPassword.value,
       confirm_password: confirmPassword.value,
       recovery_pin: recoveryPin.value,
-      confirm_pin: confirmPin.value
+      confirm_pin: confirmPin.value,
     })
 
     console.log('[FirstLogin] Setup completed successfully')

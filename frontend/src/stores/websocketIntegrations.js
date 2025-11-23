@@ -146,7 +146,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('ws-progress', {
         detail: data.data || data,
-      })
+      }),
     )
   })
 
@@ -161,7 +161,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('ws-notification', {
         detail: data.data || data,
-      })
+      }),
     )
   })
 
@@ -176,7 +176,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:status_update', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -185,7 +185,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:spawned', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -194,7 +194,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:complete', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -203,7 +203,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:error', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -212,7 +212,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:message_sent', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -221,7 +221,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:message_acknowledged', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -230,7 +230,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:message_completed', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -239,7 +239,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:artifact_created', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -248,7 +248,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:directory_structure', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -257,7 +257,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:code_artifact', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -266,7 +266,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('mission:started', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -274,7 +274,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('mission:progress', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -282,7 +282,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('mission:completed', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -290,7 +290,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('mission:failed', {
         detail: data,
-      })
+      }),
     )
   })
 
@@ -314,7 +314,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:mission_read', {
         detail: { jobId: payload.job_id, timestamp: payload.mission_read_at },
-      })
+      }),
     )
   })
 
@@ -330,7 +330,7 @@ export function setupWebSocketIntegrations() {
       agentsStore.updateAgentField(
         payload.job_id,
         'mission_acknowledged_at',
-        payload.mission_acknowledged_at
+        payload.mission_acknowledged_at,
       )
     }
 
@@ -338,7 +338,7 @@ export function setupWebSocketIntegrations() {
     window.dispatchEvent(
       new CustomEvent('agent:mission_acknowledged', {
         detail: { jobId: payload.job_id, timestamp: payload.mission_acknowledged_at },
-      })
+      }),
     )
   })
 

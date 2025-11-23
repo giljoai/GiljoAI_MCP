@@ -1,12 +1,7 @@
 <template>
   <v-dialog v-model="dialog" max-width="900" persistent scrollable>
     <template v-slot:activator="{ props }">
-      <v-btn
-        color="primary"
-        variant="flat"
-        v-bind="props"
-        :prepend-icon="'mdi-connection'"
-      >
+      <v-btn color="primary" variant="flat" v-bind="props" :prepend-icon="'mdi-connection'">
         Connect AI Tools
       </v-btn>
     </template>
@@ -22,8 +17,8 @@
       <v-card-text class="pt-6">
         <!-- Tool Selection -->
         <v-alert type="info" variant="tonal" class="mb-6">
-          Generate configuration for your AI tool to connect to this GiljoAI MCP server.
-          Copy and paste the configuration, or download a complete setup guide.
+          Generate configuration for your AI tool to connect to this GiljoAI MCP server. Copy and
+          paste the configuration, or download a complete setup guide.
         </v-alert>
 
         <v-select
@@ -59,9 +54,7 @@
         <v-alert v-if="error" type="error" variant="tonal" class="mt-6">
           <div class="d-flex align-center">
             <v-icon start>mdi-alert-circle</v-icon>
-            <div>
-              <strong>Error:</strong> {{ error }}
-            </div>
+            <div><strong>Error:</strong> {{ error }}</div>
           </div>
         </v-alert>
 
@@ -80,8 +73,8 @@
               <v-icon start>mdi-shield-alert</v-icon>
               Save this API key now!
             </v-alert-title>
-            This API key will only be shown ONCE. After closing this dialog, you will not
-            be able to retrieve it again. Make sure to copy the configuration below.
+            This API key will only be shown ONCE. After closing this dialog, you will not be able to
+            retrieve it again. Make sure to copy the configuration below.
           </v-alert>
 
           <!-- API Key Success Message -->
@@ -158,7 +151,11 @@
                 >
                   <template v-slot:prepend>
                     <v-icon
-                      :icon="index === configData.instructions.length - 1 ? 'mdi-check-circle' : 'mdi-numeric-' + (index + 1) + '-circle'"
+                      :icon="
+                        index === configData.instructions.length - 1
+                          ? 'mdi-check-circle'
+                          : 'mdi-numeric-' + (index + 1) + '-circle'
+                      "
                       :color="index === configData.instructions.length - 1 ? 'success' : 'primary'"
                     />
                   </template>
@@ -216,7 +213,7 @@ const showApiKeyWarning = ref(false)
 async function loadSupportedTools() {
   try {
     const response = await api.aiTools.getSupportedTools()
-    supportedTools.value = response.data.tools.filter(tool => tool.supported)
+    supportedTools.value = response.data.tools.filter((tool) => tool.supported)
   } catch (err) {
     console.error('[AIToolSetup] Failed to load supported tools:', err)
     // Fallback to default tools if API fails
@@ -224,7 +221,7 @@ async function loadSupportedTools() {
       { id: 'claude', name: 'Claude Code CLI', supported: true },
       { id: 'codex', name: 'Codex CLI', supported: true },
       { id: 'gemini', name: 'Gemini CLI', supported: false },
-      { id: 'serena', name: 'Serena MCP', supported: true }
+      { id: 'serena', name: 'Serena MCP', supported: true },
     ]
     error.value = 'Using default tool list. Some features may be limited.'
   }
@@ -292,11 +289,11 @@ async function generateConfig() {
         'Locate your Claude Code MCP configuration file:',
         '  • macOS/Linux: ~/.claude.json',
         '  • Windows: %USERPROFILE%\.claude.json',
-        'Open the file in a text editor (create if it doesn\'t exist)',
+        "Open the file in a text editor (create if it doesn't exist)",
         'Copy and paste the configuration above into the file',
         'Save the file and restart Claude Code',
         'Verify GiljoAI MCP tools appear in Claude Code',
-        'Documentation: https://docs.claude.com/en/docs/claude-code/mcp'
+        'Documentation: https://docs.claude.com/en/docs/claude-code/mcp',
       )
     } else if (selectedTool.value === 'codex') {
       configContent = generateCodexConfig(generatedApiKey.value, serverUrl)
@@ -311,7 +308,7 @@ async function generateConfig() {
         'Save the file and restart Codex CLI',
         'Test the connection with your first agent command',
         'MCP Documentation: https://developers.openai.com/codex/mcp',
-        'CLI Configuration: https://developers.openai.com/codex/local-config#cli'
+        'CLI Configuration: https://developers.openai.com/codex/local-config#cli',
       )
     } else if (selectedTool.value === 'serena') {
       configContent = generateGenericConfig(generatedApiKey.value, serverUrl)
@@ -323,7 +320,7 @@ async function generateConfig() {
         `  • Server URL: ${serverUrl}`,
         `  • API Key: Your generated key above`,
         'Enable Serena in User Settings → API & Integrations',
-        'Visit https://github.com/oraios/serena for more details'
+        'Visit https://github.com/oraios/serena for more details',
       )
     } else {
       configContent = generateGenericConfig(generatedApiKey.value, serverUrl)
@@ -332,7 +329,7 @@ async function generateConfig() {
       instructions.push(
         'Use the API key in your HTTP requests',
         'Include it in the X-API-Key header',
-        'See the example code above for usage'
+        'See the example code above for usage',
       )
     }
 
@@ -343,7 +340,10 @@ async function generateConfig() {
       download_filename: downloadFilename,
     }
 
-    console.log('[AIToolSetup] Configuration generated successfully with API key for', selectedTool.value)
+    console.log(
+      '[AIToolSetup] Configuration generated successfully with API key for',
+      selectedTool.value,
+    )
   } catch (err) {
     console.error('[AIToolSetup] Failed to generate config:', err)
     error.value = err.message || 'Failed to generate configuration. Please try again.'
@@ -375,7 +375,7 @@ async function downloadMarkdownGuide() {
 
   try {
     const response = await fetch(
-      `${getApiBaseURL()}/api/ai-tools/config-generator/${selectedTool.value}/markdown`
+      `${getApiBaseURL()}/api/ai-tools/config-generator/${selectedTool.value}/markdown`,
     )
 
     if (!response.ok) {
@@ -407,7 +407,7 @@ function getToolIcon(toolId) {
     claude: 'mdi-chat-processing',
     codex: 'mdi-code-braces',
     gemini: 'mdi-diamond-stone',
-    serena: 'mdi-brain'
+    serena: 'mdi-brain',
   }
   return icons[toolId] || 'mdi-robot'
 }
@@ -417,7 +417,7 @@ function getToolLogo(toolId) {
     claude: '/claude_pix.svg',
     codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
-    serena: '/Serena.png'
+    serena: '/Serena.png',
   }
   return logos[toolId] || '/icons/robot.svg'
 }

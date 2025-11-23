@@ -11,9 +11,8 @@
         <div class="mt-2">
           Users configure their AI coding tools (Claude Code, Codex CLI, Gemini CLI) in
           <router-link to="/settings" class="text-primary font-weight-bold">
-            My Settings -> MCP Configuration
-          </router-link>.
-          This section provides an admin overview of available integrations.
+            My Settings -> MCP Configuration </router-link
+          >. This section provides an admin overview of available integrations.
         </div>
       </v-alert>
 
@@ -29,21 +28,28 @@
             </v-avatar>
             <div>
               <h3 class="text-h6">Claude Code CLI</h3>
-              <p class="text-caption text-medium-emphasis mb-0">AI-powered development with MCP integration</p>
+              <p class="text-caption text-medium-emphasis mb-0">
+                AI-powered development with MCP integration
+              </p>
             </div>
           </div>
 
           <p class="text-body-2 mb-3">
-            GiljoAI Agent Orchestration MCP Server integrates seamlessly with Claude Code CLI, leveraging MCP
-            configuration via a single command-line setup in each user's
-            <router-link to="/settings" class="text-primary font-weight-bold">My Settings -> API and Integrations -> MCP Configuration</router-link>.
+            GiljoAI Agent Orchestration MCP Server integrates seamlessly with Claude Code CLI,
+            leveraging MCP configuration via a single command-line setup in each user's
+            <router-link to="/settings" class="text-primary font-weight-bold"
+              >My Settings -> API and Integrations -> MCP Configuration</router-link
+            >.
           </p>
 
           <p class="text-body-2 mb-3">
-            <strong>Sub-agent Architecture:</strong> Claude Code integration utilizes Claude Code native sub-agent tools. This application
-            will copy templated agents, or user-customized agents, into the Claude Code agents folder (either on a per-user or per-project basis).
-            The user can choose to also launch each agent in its own Claude Code terminal window. Agent integration can be found under
-            <strong>My Settings -> API and Integrations -> Integrations</strong>, in the <strong>Claude Code Agent Export</strong> section.
+            <strong>Sub-agent Architecture:</strong> Claude Code integration utilizes Claude Code
+            native sub-agent tools. This application will copy templated agents, or user-customized
+            agents, into the Claude Code agents folder (either on a per-user or per-project basis).
+            The user can choose to also launch each agent in its own Claude Code terminal window.
+            Agent integration can be found under
+            <strong>My Settings -> API and Integrations -> Integrations</strong>, in the
+            <strong>Claude Code Agent Export</strong> section.
           </p>
         </v-card-text>
       </v-card>
@@ -55,25 +61,31 @@
             <v-avatar size="48" class="mr-4">
               <CodexMarkIcon
                 class="codex-mark"
-                :style="{ color: theme.global.current.value.dark ? '#ffffff' : '#000000', width: '53px', height: '53px' }"
+                :style="{
+                  color: theme.global.current.value.dark ? '#ffffff' : '#000000',
+                  width: '53px',
+                  height: '53px',
+                }"
               />
             </v-avatar>
             <div>
               <h3 class="text-h6">Codex CLI</h3>
-              <p class="text-caption text-medium-emphasis mb-0">Advanced code generation and analysis</p>
+              <p class="text-caption text-medium-emphasis mb-0">
+                Advanced code generation and analysis
+              </p>
             </div>
           </div>
 
           <p class="text-body-2 mb-3">
-            Codex CLI integrates with our sub-agent architecture to provide powerful code generation and
-            analysis capabilities. Sub-agents coordinate through GiljoAI MCP for complex development workflows,
-            maintaining context and state across multiple coding sessions.
+            Codex CLI integrates with our sub-agent architecture to provide powerful code generation
+            and analysis capabilities. Sub-agents coordinate through GiljoAI MCP for complex
+            development workflows, maintaining context and state across multiple coding sessions.
           </p>
           <p class="text-body-2 mb-3">
-            <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user runs an
-            orchestrator session in one Codex CLI terminal and starts each agent in its own terminal using our
-            prepared activation prompts. This allows each agent to work autonomously and stay focused while
-            coordinating through MCP messages.
+            <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user
+            runs an orchestrator session in one Codex CLI terminal and starts each agent in its own
+            terminal using our prepared activation prompts. This allows each agent to work
+            autonomously and stay focused while coordinating through MCP messages.
           </p>
         </v-card-text>
       </v-card>
@@ -87,20 +99,22 @@
             </v-avatar>
             <div>
               <h3 class="text-h6">Gemini CLI</h3>
-              <p class="text-caption text-medium-emphasis mb-0">Google's advanced AI development platform</p>
+              <p class="text-caption text-medium-emphasis mb-0">
+                Google's advanced AI development platform
+              </p>
             </div>
           </div>
 
           <p class="text-body-2 mb-3">
-            Google Gemini CLI integrates with our sub-agent architecture to provide powerful AI-driven
-            development capabilities. Sub-agents coordinate through GiljoAI MCP for advanced development
-            workflows with enhanced reasoning and multi-modal capabilities.
+            Google Gemini CLI integrates with our sub-agent architecture to provide powerful
+            AI-driven development capabilities. Sub-agents coordinate through GiljoAI MCP for
+            advanced development workflows with enhanced reasoning and multi-modal capabilities.
           </p>
           <p class="text-body-2 mb-3">
-            <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user runs an
-            orchestrator session in one Gemini CLI terminal and starts each agent in its own terminal using our
-            prepared activation prompts. This allows each agent to work autonomously and stay focused while
-            coordinating through MCP messages.
+            <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user
+            runs an orchestrator session in one Gemini CLI terminal and starts each agent in its own
+            terminal using our prepared activation prompts. This allows each agent to work
+            autonomously and stay focused while coordinating through MCP messages.
           </p>
         </v-card-text>
       </v-card>
@@ -119,30 +133,37 @@
             </v-avatar>
             <div>
               <h3 class="text-h6">Serena MCP</h3>
-              <p class="text-caption text-medium-emphasis mb-0">Intelligent codebase understanding and navigation</p>
+              <p class="text-caption text-medium-emphasis mb-0">
+                Intelligent codebase understanding and navigation
+              </p>
             </div>
           </div>
 
           <p class="text-body-2 mb-3">
-            Serena provides deep semantic code analysis, intelligent symbol navigation, and contextual
-            understanding of your codebase. It enables agents to efficiently explore and understand
-            project structure without reading unnecessary code, significantly improving performance
-            and reducing token usage.
+            Serena provides deep semantic code analysis, intelligent symbol navigation, and
+            contextual understanding of your codebase. It enables agents to efficiently explore and
+            understand project structure without reading unnecessary code, significantly improving
+            performance and reducing token usage.
           </p>
 
           <div class="d-flex align-center mb-3">
-            <v-btn variant="text" size="small" color="light-blue" href="https://github.com/oraios/serena" target="_blank">
+            <v-btn
+              variant="text"
+              size="small"
+              color="light-blue"
+              href="https://github.com/oraios/serena"
+              target="_blank"
+            >
               <v-icon start>mdi-github</v-icon>
               GitHub Repository
             </v-btn>
-            <span class="text-caption text-medium-emphasis ml-3">
-              Credit: Oraios
-            </span>
+            <span class="text-caption text-medium-emphasis ml-3"> Credit: Oraios </span>
           </div>
 
           <v-alert type="info" variant="tonal" class="mb-0">
             <v-icon start>mdi-account-cog</v-icon>
-            <strong>User Configuration:</strong> Each user enables Serena under User Settings -> Integrations
+            <strong>User Configuration:</strong> Each user enables Serena under User Settings ->
+            Integrations
           </v-alert>
         </v-card-text>
       </v-card>

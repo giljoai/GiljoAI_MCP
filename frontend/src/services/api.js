@@ -53,7 +53,11 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
 
-      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/welcome') && !originalRequest?._retry) {
+      if (
+        !window.location.pathname.includes('/login') &&
+        !window.location.pathname.includes('/welcome') &&
+        !originalRequest?._retry
+      ) {
         originalRequest._retry = true
 
         // CRITICAL FIX (Handover 0034): Check fresh install status BEFORE redirecting
@@ -61,7 +65,7 @@ apiClient.interceptors.response.use(
         try {
           const setupResponse = await fetch(`${apiClient.defaults.baseURL}/api/setup/status`, {
             method: 'GET',
-            cache: 'no-cache'
+            cache: 'no-cache',
           })
 
           if (setupResponse.ok) {
@@ -113,7 +117,7 @@ export const api = {
         name: data.name,
         description: data.description || null,
         project_path: data.projectPath || null,
-        config_data: data.configData || null,  // FIX: Add config_data (Handover 0507)
+        config_data: data.configData || null, // FIX: Add config_data (Handover 0507)
       }
       return apiClient.post('/api/v1/products/', payload)
     },
@@ -124,7 +128,7 @@ export const api = {
       if (data.name !== undefined) payload.name = data.name
       if (data.description !== undefined) payload.description = data.description
       if (data.projectPath !== undefined) payload.project_path = data.projectPath
-      if (data.configData !== undefined) payload.config_data = data.configData  // FIX: Add config_data (Handover 0507)
+      if (data.configData !== undefined) payload.config_data = data.configData // FIX: Add config_data (Handover 0507)
       if (data.isActive !== undefined) payload.is_active = data.isActive
       return apiClient.put(`/api/v1/products/${id}/`, payload)
     },
@@ -134,7 +138,7 @@ export const api = {
     // Vision document endpoints (Handover 0507: Consolidated to /vision)
     uploadVision: (id, file) => {
       const formData = new FormData()
-      formData.append('file', file)  // Backend expects 'file' parameter
+      formData.append('file', file) // Backend expects 'file' parameter
       return apiClient.post(`/api/v1/products/${id}/vision`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
@@ -152,7 +156,8 @@ export const api = {
     restoreProduct: (id) => apiClient.post(`/api/v1/products/${id}/restore`),
     // Git integration endpoints (Handover 013B)
     getGitIntegration: (id) => apiClient.get(`/api/v1/products/${id}/git-integration`),
-    updateGitIntegration: (id, settings) => apiClient.post(`/api/v1/products/${id}/git-integration`, settings),
+    updateGitIntegration: (id, settings) =>
+      apiClient.post(`/api/v1/products/${id}/git-integration`, settings),
   },
 
   // Projects
@@ -168,10 +173,12 @@ export const api = {
     status: (id) => apiClient.get(`/api/v1/projects/${id}/status/`),
     fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
     // Status change endpoints - use PATCH for generic status updates
-    changeStatus: (id, newStatus) => apiClient.patch(`/api/v1/projects/${id}/`, { status: newStatus }),
+    changeStatus: (id, newStatus) =>
+      apiClient.patch(`/api/v1/projects/${id}/`, { status: newStatus }),
     // Specific action endpoints (Handover 0507: Added force and reason parameters)
     activate: (id, force = false) => apiClient.post(`/api/v1/projects/${id}/activate`, { force }),
-    deactivate: (id, reason = null) => apiClient.post(`/api/v1/projects/${id}/deactivate`, { reason }),
+    deactivate: (id, reason = null) =>
+      apiClient.post(`/api/v1/projects/${id}/deactivate`, { reason }),
     complete: (id) => apiClient.post(`/api/v1/projects/${id}/complete`),
     cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
     restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
@@ -189,36 +196,78 @@ export const api = {
   // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
   agents: {
     list: () => {
-      console.error('DEPRECATED: api.agents.list() is removed. Use api.agentJobs.list() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error('DEPRECATED: api.agents.list() is removed. Use api.agentJobs.list() instead.')
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     get: () => {
-      console.error('DEPRECATED: api.agents.get() is removed. Use api.agentJobs.get() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error('DEPRECATED: api.agents.get() is removed. Use api.agentJobs.get() instead.')
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     create: () => {
-      console.error('DEPRECATED: api.agents.create() is removed. Use api.agentJobs.spawn() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error(
+        'DEPRECATED: api.agents.create() is removed. Use api.agentJobs.spawn() instead.',
+      )
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     health: () => {
-      console.error('DEPRECATED: api.agents.health() is removed. Use api.agentJobs.status() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error(
+        'DEPRECATED: api.agents.health() is removed. Use api.agentJobs.status() instead.',
+      )
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     assign: () => {
-      console.error('DEPRECATED: api.agents.assign() is removed. Use agentJobs.spawn() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error('DEPRECATED: api.agents.assign() is removed. Use agentJobs.spawn() instead.')
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     decommission: () => {
-      console.error('DEPRECATED: api.agents.decommission() is removed. Use api.agentJobs.terminate() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error(
+        'DEPRECATED: api.agents.decommission() is removed. Use api.agentJobs.terminate() instead.',
+      )
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     tree: () => {
-      console.error('DEPRECATED: api.agents.tree() is removed. Use api.agentJobs.hierarchy() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error(
+        'DEPRECATED: api.agents.tree() is removed. Use api.agentJobs.hierarchy() instead.',
+      )
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
     metrics: () => {
-      console.error('DEPRECATED: api.agents.metrics() is removed. Use api.agentJobs.metrics() instead.');
-      return Promise.reject(new Error('Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.'));
+      console.error(
+        'DEPRECATED: api.agents.metrics() is removed. Use api.agentJobs.metrics() instead.',
+      )
+      return Promise.reject(
+        new Error(
+          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
+        ),
+      )
     },
   },
 
@@ -271,7 +320,8 @@ export const api = {
   // Vision Documents (Multi-Document Support - Handover 0043)
   visionDocuments: {
     // List all vision documents for a product
-    listByProduct: (productId) => apiClient.get(`/api/vision-documents/product/${productId}?active_only=false`),
+    listByProduct: (productId) =>
+      apiClient.get(`/api/vision-documents/product/${productId}?active_only=false`),
     // Get a specific vision document
     get: (documentId) => apiClient.get(`/api/vision-documents/${documentId}`),
     // Upload a new vision document (accepts FormData)
@@ -330,7 +380,8 @@ export const api = {
     // User settings - cookie domain management
     getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),
     addCookieDomain: (domain) => apiClient.post('/api/v1/user/settings/cookie-domains', { domain }),
-    removeCookieDomain: (domain) => apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),
+    removeCookieDomain: (domain) =>
+      apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),
   },
 
   // Session Info
@@ -350,7 +401,8 @@ export const api = {
     get: (id) => apiClient.get(`/api/v1/templates/${id}/`),
     create: (data) => apiClient.post('/api/v1/templates/', data),
     update: (id, data) => apiClient.put(`/api/v1/templates/${id}/`, data),
-    delete: (id, archive = false) => apiClient.delete(`/api/v1/templates/${id}/`, { params: { archive } }),
+    delete: (id, archive = false) =>
+      apiClient.delete(`/api/v1/templates/${id}/`, { params: { archive } }),
     history: (id, limit = 10) =>
       apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
     restore: (templateId, archiveId) =>
@@ -377,7 +429,8 @@ export const api = {
     // Password reset endpoints (Handover 0023)
     checkFirstLogin: (username) => apiClient.post('/api/auth/check-first-login', { username }),
     completeFirstLogin: (data) => apiClient.post('/api/auth/complete-first-login', data),
-    verifyPinAndResetPassword: (data) => apiClient.post('/api/auth/verify-pin-and-reset-password', data),
+    verifyPinAndResetPassword: (data) =>
+      apiClient.post('/api/auth/verify-pin-and-reset-password', data),
     setRecoveryPin: (data) => apiClient.post('/api/auth/set-recovery-pin', data),
     resetUserPassword: (userId) => apiClient.post(`/api/users/${userId}/reset-password`),
   },
@@ -393,7 +446,8 @@ export const api = {
   aiTools: {
     getSupportedTools: () => apiClient.get('/api/ai-tools/supported'),
     generateConfig: (toolName) => apiClient.get(`/api/ai-tools/config-generator/${toolName}`),
-    downloadSetupGuide: (toolName) => apiClient.get(`/api/ai-tools/config-generator/${toolName}/markdown`),
+    downloadSetupGuide: (toolName) =>
+      apiClient.get(`/api/ai-tools/config-generator/${toolName}/markdown`),
   },
 
   // Serena MCP Integration
@@ -414,8 +468,10 @@ export const api = {
     spawn: (data) => apiClient.post('/api/agent-jobs/spawn', data),
     status: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
     terminate: (jobId, reason) => apiClient.post(`/api/agent-jobs/${jobId}/terminate`, { reason }),
-    hierarchy: (projectId) => apiClient.get('/api/agent-jobs/hierarchy', { params: { project_id: projectId } }),
-    metrics: (projectId, hours = 24) => apiClient.get('/api/agent-jobs/metrics', { params: { project_id: projectId, hours } }),
+    hierarchy: (projectId) =>
+      apiClient.get('/api/agent-jobs/hierarchy', { params: { project_id: projectId } }),
+    metrics: (projectId, hours = 24) =>
+      apiClient.get('/api/agent-jobs/metrics', { params: { project_id: projectId, hours } }),
 
     // Additional job-specific endpoints (new functionality)
     acknowledge: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/acknowledge`),
@@ -425,8 +481,7 @@ export const api = {
     // Orchestrator succession endpoints (Handover 0507)
     triggerSuccession: (jobId, reason = 'manual', notes = null) =>
       apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, { reason, notes }),
-    checkSuccessionStatus: (jobId) =>
-      apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
+    checkSuccessionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
 
     // Message and communication endpoints (Handover 0066 - Kanban Dashboard)
     messages: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
@@ -446,13 +501,14 @@ export const api = {
     triggerSuccession: (jobId, reason = 'manual', notes = '') =>
       apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, {
         reason,
-        notes
+        notes,
       }),
     successionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
 
     // Legacy aliases for backward compatibility (deprecated but functional)
     getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
-    listJobs: (projectId, params = {}) => apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
+    listJobs: (projectId, params = {}) =>
+      apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
     getStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
   },
 
@@ -460,7 +516,8 @@ export const api = {
   orchestrator: {
     launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
     launchProject: (data) => apiClient.post('/api/agent-jobs/launch-project', data),
-    getWorkflowStatus: (projectId) => apiClient.get(`/api/v1/orchestration/workflow-status/${projectId}`),
+    getWorkflowStatus: (projectId) =>
+      apiClient.get(`/api/v1/orchestration/workflow-status/${projectId}`),
     getMetrics: (projectId) => apiClient.get(`/api/v1/orchestration/metrics/${projectId}`),
     createMissions: (data) => apiClient.post('/api/v1/orchestration/create-missions', data),
     spawnTeam: (data) => apiClient.post('/api/v1/orchestration/spawn-team', data),
@@ -470,10 +527,11 @@ export const api = {
   // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
   prompts: {
     estimateTokens: (data) => apiClient.post('/api/v1/prompts/estimate-tokens', data),
-    staging: (projectId, params) => apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),
+    staging: (projectId, params) =>
+      apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),
     execution: (orchestratorJobId, claudeCodeMode) =>
       apiClient.get(`/api/v1/prompts/execution/${orchestratorJobId}`, {
-        params: { claude_code_mode: claudeCodeMode }
+        params: { claude_code_mode: claudeCodeMode },
       }),
     agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
   },

@@ -6,7 +6,11 @@
         <template #activator="{ props }">
           <v-icon v-bind="props" color="warning" size="small" class="ml-2">mdi-alert</v-icon>
         </template>
-        <span><strong>Context Budget Recommendation:</strong> Template manager is limiting to 8 agents types maximum. Each agent description consumes context budget, reducing available tokens for your project during implementation.</span>
+        <span
+          ><strong>Context Budget Recommendation:</strong> Template manager is limiting to 8 agents
+          types maximum. Each agent description consumes context budget, reducing available tokens
+          for your project during implementation.</span
+        >
       </v-tooltip>
       <v-spacer />
       <v-btn
@@ -35,7 +39,8 @@
               {{ totalActiveAgents }} / {{ totalCapacity }}
             </span>
             <span class="text-medium-emphasis ml-2">
-              ({{ remainingUserSlots }} user slots remaining — {{ systemReservedSlots }} reserved for Orchestrator)
+              ({{ remainingUserSlots }} user slots remaining — {{ systemReservedSlots }} reserved
+              for Orchestrator)
             </span>
           </div>
           <v-chip
@@ -48,8 +53,8 @@
           </v-chip>
         </div>
         <div v-if="remainingUserSlots === 0" class="text-body-2 mt-2">
-          Maximum user-managed agents reached ({{ userAgentLimit }}). Orchestrator remains always-on and reserved.
-          Deactivate an agent to enable another.
+          Maximum user-managed agents reached ({{ userAgentLimit }}). Orchestrator remains always-on
+          and reserved. Deactivate an agent to enable another.
         </div>
       </v-alert>
 
@@ -97,19 +102,19 @@
         class="elevation-1 templates-table"
         item-key="id"
         :items-per-page="10"
-        :item-class="(item) => item.is_active ? '' : 'inactive-template'"
+        :item-class="(item) => (item.is_active ? '' : 'inactive-template')"
       >
         <template v-slot:item.name="{ item }">
           <div class="font-weight-medium">{{ item.name }}</div>
         </template>
 
         <template v-slot:item.role="{ item }">
-          <v-chip 
-            size="small" 
-            :style="{ 
-              backgroundColor: getCategoryColor(item.role), 
+          <v-chip
+            size="small"
+            :style="{
+              backgroundColor: getCategoryColor(item.role),
               color: '#1e3a5f',
-              opacity: item.is_active ? 1 : 0.4 
+              opacity: item.is_active ? 1 : 0.4,
             }"
           >
             {{ item.role }}
@@ -119,7 +124,11 @@
         <template v-slot:item.preferred_tool="{ item }">
           <v-chip size="small" variant="outlined">
             <template v-slot:prepend>
-              <v-avatar size="18" class="mr-1" :class="{ 'codex-icon': item.preferred_tool === 'codex' }">
+              <v-avatar
+                size="18"
+                class="mr-1"
+                :class="{ 'codex-icon': item.preferred_tool === 'codex' }"
+              >
                 <v-img
                   :src="getToolLogo(item.preferred_tool || 'claude')"
                   :alt="getToolName(item.preferred_tool || 'claude')"
@@ -161,10 +170,7 @@
               @update:model-value="handleToggleActive(item, $event)"
               :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
             />
-            <v-tooltip
-              v-if="!item.is_active && remainingUserSlots === 0"
-              location="top"
-            >
+            <v-tooltip v-if="!item.is_active && remainingUserSlots === 0" location="top">
               <template v-slot:activator="{ props }">
                 <v-icon v-bind="props" color="warning" size="small" class="ml-1">
                   mdi-information-outline
@@ -258,7 +264,9 @@
                   CLI Tool
                   <v-tooltip location="right">
                     <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-help-circle</v-icon>
+                      <v-icon v-bind="props" size="small" color="primary" class="ml-1"
+                        >mdi-help-circle</v-icon
+                      >
                     </template>
                     <span>Select the AI coding tool for this agent template</span>
                   </v-tooltip>
@@ -278,7 +286,12 @@
                   >
                     <template v-slot:label>
                       <div class="d-flex align-center">
-                        <v-avatar v-if="tool.logo" size="20" class="mr-2" :class="{ 'codex-icon': tool.value === 'codex' }">
+                        <v-avatar
+                          v-if="tool.logo"
+                          size="20"
+                          class="mr-2"
+                          :class="{ 'codex-icon': tool.value === 'codex' }"
+                        >
                           <v-img :src="tool.logo" :alt="tool.title" />
                         </v-avatar>
                         <span>{{ tool.title }}</span>
@@ -325,7 +338,10 @@
                       <template v-slot:activator="{ props }">
                         <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
                       </template>
-                      <span>Add a suffix to customize the agent name (e.g., 'implementer-fastapi')</span>
+                      <span
+                        >Add a suffix to customize the agent name (e.g.,
+                        'implementer-fastapi')</span
+                      >
                     </v-tooltip>
                   </template>
                 </v-text-field>
@@ -385,9 +401,13 @@
                   <template v-slot:append-inner>
                     <v-tooltip location="top">
                       <template v-slot:activator="{ props }">
-                        <v-icon v-bind="props" size="small" color="info">mdi-information-outline</v-icon>
+                        <v-icon v-bind="props" size="small" color="info"
+                          >mdi-information-outline</v-icon
+                        >
                       </template>
-                      <span>Model determined by {{ editingTemplate.cli_tool }} CLI configuration</span>
+                      <span
+                        >Model determined by {{ editingTemplate.cli_tool }} CLI configuration</span
+                      >
                     </v-tooltip>
                   </template>
                 </v-text-field>
@@ -399,15 +419,23 @@
                   <span class="text-subtitle-2">System Prompt</span>
                   <v-tooltip location="top">
                     <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-help-circle</v-icon>
+                      <v-icon v-bind="props" size="small" color="primary" class="ml-2"
+                        >mdi-help-circle</v-icon
+                      >
                     </template>
-                    <span>Required field - Enter the agent's system prompt (minimum 20 characters)</span>
+                    <span
+                      >Required field - Enter the agent's system prompt (minimum 20
+                      characters)</span
+                    >
                   </v-tooltip>
                 </div>
                 <v-textarea
                   v-model="editingTemplate.template"
                   label="System Prompt"
-                  :rules="[(v) => !!v || 'System prompt is required', (v) => v && v.length >= 20 || 'Minimum 20 characters required']"
+                  :rules="[
+                    (v) => !!v || 'System prompt is required',
+                    (v) => (v && v.length >= 20) || 'Minimum 20 characters required',
+                  ]"
                   rows="12"
                   variant="outlined"
                   density="compact"
@@ -684,11 +712,7 @@
         </div>
       </div>
       <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="errorSnackbar = false"
-          aria-label="Close error notification"
-        >
+        <v-btn variant="text" @click="errorSnackbar = false" aria-label="Close error notification">
           Close
         </v-btn>
       </template>
@@ -798,16 +822,16 @@ const editingTemplate = ref({
   id: null,
   name: '',
   role: '',
-  cli_tool: 'claude',        // NEW
-  custom_suffix: '',         // NEW
-  background_color: '',      // NEW
+  cli_tool: 'claude', // NEW
+  custom_suffix: '', // NEW
+  background_color: '', // NEW
   description: '',
   template: '',
-  model: 'sonnet',           // NEW
-  tools: null,               // NEW
+  model: 'sonnet', // NEW
+  tools: null, // NEW
   variables: [],
   augmentation_slots: '',
-  preferred_tool: 'claude',  // KEEP for legacy
+  preferred_tool: 'claude', // KEEP for legacy
 })
 
 // Template being previewed
@@ -842,11 +866,7 @@ const headers = [
 ]
 
 // Categories
-const categories = [
-  'role',
-  'project_type',
-  'custom',
-]
+const categories = ['role', 'project_type', 'custom']
 
 // Role options (for category = 'role')
 const roleOptions = [
@@ -932,7 +952,10 @@ const generatedName = computed(() => {
   if (!role) return ''
   if (!suffix) return role
   // Slugify: lowercase, hyphens only
-  const cleanSuffix = suffix.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-')
+  const cleanSuffix = suffix
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/\s+/g, '-')
   return `${role}-${cleanSuffix}`
 })
 
@@ -989,11 +1012,12 @@ const loadActiveCount = async () => {
     const response = await api.templates.activeCount()
     const data = response.data || {}
     activeStats.value = {
-      totalActive: data.total_active ?? ((data.active_count || 0) + (data.system_reserved || 1)),
-      totalCapacity: data.total_capacity ?? ((data.max_allowed || 7) + (data.system_reserved || 1)),
+      totalActive: data.total_active ?? (data.active_count || 0) + (data.system_reserved || 1),
+      totalCapacity: data.total_capacity ?? (data.max_allowed || 7) + (data.system_reserved || 1),
       userActive: data.active_count ?? 0,
       userLimit: data.max_allowed ?? 7,
-      remainingUserSlots: data.remaining_slots ?? Math.max(0, (data.max_allowed || 7) - (data.active_count || 0)),
+      remainingUserSlots:
+        data.remaining_slots ?? Math.max(0, (data.max_allowed || 7) - (data.active_count || 0)),
       systemReserved: data.system_reserved ?? 1,
     }
   } catch (error) {
@@ -1010,7 +1034,7 @@ const handleToggleActive = async (template, newValue) => {
   try {
     // Attempt to update
     await api.templates.update(template.id, {
-      is_active: newValue
+      is_active: newValue,
     })
 
     // Update local template state
@@ -1031,7 +1055,6 @@ const handleToggleActive = async (template, newValue) => {
       console.info('[TEMPLATE MANAGER] Agent deactivated')
       localStorage.setItem('agent_export_stale', 'true')
     }
-
   } catch (error) {
     // Validation failed (8-agent limit)
     const errorMsg = error.response?.data?.detail || 'Failed to update agent'
@@ -1207,7 +1230,7 @@ const copyPreview = async () => {
       console.error('Failed to copy preview:', error)
       errorMessage.value = 'Failed to copy to clipboard'
       errorSnackbar.value = true
-    }
+    },
   )
 }
 
@@ -1320,15 +1343,15 @@ const handleRestore = async (version) => {
 const getCategoryColor = (role) => {
   // Colors synced with frontend/src/styles/agent-colors.scss
   const colors = {
-    orchestrator: '#D4A574',  // Tan/Beige
-    analyzer: '#E74C3C',      // Red
-    researcher: '#E74C3C',    // Red (alias → analyzer)
-    implementer: '#3498DB',   // Blue
-    implementor: '#3498DB',   // Blue (alias)
-    tester: '#FFC300',        // Yellow
-    reviewer: '#9B59B6',      // Purple
-    documenter: '#27AE60',    // Green
-    custom: '#90A4AE',        // Gray
+    orchestrator: '#D4A574', // Tan/Beige
+    analyzer: '#E74C3C', // Red
+    researcher: '#E74C3C', // Red (alias → analyzer)
+    implementer: '#3498DB', // Blue
+    implementor: '#3498DB', // Blue (alias)
+    tester: '#FFC300', // Yellow
+    reviewer: '#9B59B6', // Purple
+    documenter: '#27AE60', // Green
+    custom: '#90A4AE', // Gray
   }
   return colors[role] || '#90A4AE'
 }
@@ -1391,7 +1414,6 @@ const viewDiff = async (template) => {
     // Show error notification
   }
 }
-
 
 // Lifecycle
 onMounted(() => {
@@ -1533,7 +1555,7 @@ watch(
   :deep(.v-switch__thumb) {
     background-color: rgba(33, 150, 243, 0.4) !important; // Faded blue when OFF
   }
-  
+
   :deep(.v-switch__track) {
     background-color: rgba(33, 150, 243, 0.2) !important; // Faded blue track when OFF
   }
@@ -1543,7 +1565,7 @@ watch(
   .v-switch__thumb {
     background-color: #4caf50 !important; // Green when ON
   }
-  
+
   .v-switch__track {
     background-color: rgba(76, 175, 80, 0.3) !important; // Green track when ON
   }

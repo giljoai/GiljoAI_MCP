@@ -8,26 +8,26 @@ import api from '@/services/api'
 vi.mock('@/services/api', () => ({
   default: {
     agentJobs: {
-      triggerSuccession: vi.fn()
-    }
-  }
+      triggerSuccession: vi.fn(),
+    },
+  },
 }))
 
 // Mock useToast composable
 const mockToast = {
   success: vi.fn(),
-  error: vi.fn()
+  error: vi.fn(),
 }
 
 vi.mock('@/composables/useToast', () => ({
-  useToast: () => mockToast
+  useToast: () => mockToast,
 }))
 
 // Mock clipboard API
 Object.assign(navigator, {
   clipboard: {
-    writeText: vi.fn().mockResolvedValue()
-  }
+    writeText: vi.fn().mockResolvedValue(),
+  },
 })
 
 describe('LaunchSuccessorDialog.vue', () => {
@@ -43,7 +43,7 @@ describe('LaunchSuccessorDialog.vue', () => {
     instance_number: 1,
     status: 'working',
     context_used: 150000,
-    context_budget: 200000
+    context_budget: 200000,
   }
 
   const mockSuccessionResponse = {
@@ -53,8 +53,8 @@ describe('LaunchSuccessorDialog.vue', () => {
       launch_prompt: 'Launch successor with this prompt...',
       handover_summary: 'Handover summary here',
       succession_reason: 'manual',
-      created_at: '2025-01-15T15:00:00Z'
-    }
+      created_at: '2025-01-15T15:00:00Z',
+    },
   }
 
   const createWrapper = (props = {}) => {
@@ -62,14 +62,14 @@ describe('LaunchSuccessorDialog.vue', () => {
       props: {
         jobId: 'job-1',
         currentJob: mockCurrentJob,
-        ...props
+        ...props,
       },
       global: {
         plugins: [vuetify],
         stubs: {
-          teleport: true
-        }
-      }
+          teleport: true,
+        },
+      },
     })
   }
 
@@ -148,7 +148,7 @@ describe('LaunchSuccessorDialog.vue', () => {
       const wrapper = createWrapper()
       const options = wrapper.vm.reasonOptions
       expect(options).toHaveLength(3)
-      expect(options.map(o => o.value)).toEqual(['manual', 'context_limit', 'phase_transition'])
+      expect(options.map((o) => o.value)).toEqual(['manual', 'context_limit', 'phase_transition'])
     })
 
     it('allows selecting different reasons', async () => {
@@ -206,7 +206,9 @@ describe('LaunchSuccessorDialog.vue', () => {
 
     it('sets loading state during API call', async () => {
       let resolvePromise
-      const promise = new Promise(resolve => { resolvePromise = resolve })
+      const promise = new Promise((resolve) => {
+        resolvePromise = resolve
+      })
       api.agentJobs.triggerSuccession.mockReturnValue(promise)
 
       const wrapper = createWrapper()
@@ -225,9 +227,9 @@ describe('LaunchSuccessorDialog.vue', () => {
       const errorResponse = {
         response: {
           data: {
-            detail: 'Job not found'
-          }
-        }
+            detail: 'Job not found',
+          },
+        },
       }
       api.agentJobs.triggerSuccession.mockRejectedValue(errorResponse)
       const wrapper = createWrapper()
@@ -273,7 +275,9 @@ describe('LaunchSuccessorDialog.vue', () => {
 
       await wrapper.vm.copyPrompt()
 
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Launch successor with this prompt...')
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        'Launch successor with this prompt...',
+      )
       expect(mockToast.success).toHaveBeenCalledWith('Launch prompt copied to clipboard')
     })
 
@@ -304,7 +308,9 @@ describe('LaunchSuccessorDialog.vue', () => {
 
       await wrapper.vm.copyAndClose()
 
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Launch successor with this prompt...')
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        'Launch successor with this prompt...',
+      )
       expect(wrapper.vm.dialog).toBe(false)
     })
   })
@@ -322,14 +328,16 @@ describe('LaunchSuccessorDialog.vue', () => {
 
     it('shows loading state on trigger button', async () => {
       let resolvePromise
-      const promise = new Promise(resolve => { resolvePromise = resolve })
+      const promise = new Promise((resolve) => {
+        resolvePromise = resolve
+      })
       api.agentJobs.triggerSuccession.mockReturnValue(promise)
 
       const wrapper = createWrapper()
       const successionPromise = wrapper.vm.triggerSuccession()
 
       await wrapper.vm.$nextTick()
-      const button = wrapper.findAll('button').find(b => b.text().includes('Trigger Succession'))
+      const button = wrapper.findAll('button').find((b) => b.text().includes('Trigger Succession'))
       expect(wrapper.vm.loading).toBe(true)
 
       resolvePromise(mockSuccessionResponse)

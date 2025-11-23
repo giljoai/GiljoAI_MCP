@@ -13,5 +13,5 @@ export {
   getIntegrationById,
   getIntegrationsByKind,
   type Integration,
-  type IntegrationKind
+  type IntegrationKind,
 } from './registry'

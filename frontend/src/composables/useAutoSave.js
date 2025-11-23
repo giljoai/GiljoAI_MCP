@@ -23,13 +23,7 @@ import { ref, watch, onUnmounted } from 'vue'
 import { debounce } from 'lodash-es'
 
 export function useAutoSave(options = {}) {
-  const {
-    key,
-    data,
-    saveFunction,
-    debounceMs = 500,
-    enableBackgroundSave = false,
-  } = options
+  const { key, data, saveFunction, debounceMs = 500, enableBackgroundSave = false } = options
 
   // Reactive state
   const saveStatus = ref('saved') // 'saved' | 'saving' | 'unsaved' | 'error'
@@ -143,7 +137,7 @@ export function useAutoSave(options = {}) {
       saveStatus.value = 'unsaved'
       debouncedSave()
     },
-    { deep: true }
+    { deep: true },
   )
 
   /**

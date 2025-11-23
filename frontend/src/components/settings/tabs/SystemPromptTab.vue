@@ -1,13 +1,15 @@
 <template>
   <v-card>
     <v-card-title>System Orchestrator Prompt</v-card-title>
-    <v-card-subtitle>Core instructions for the Giljo Orchestrator (admin override only)</v-card-subtitle>
+    <v-card-subtitle
+      >Core instructions for the Giljo Orchestrator (admin override only)</v-card-subtitle
+    >
 
     <v-card-text>
       <v-alert type="warning" variant="tonal" class="mb-4">
         <v-icon start>mdi-alert</v-icon>
-        Editing this prompt can break orchestrator coordination. Only proceed if you understand the full impact.
-        Always keep a backup and verify flows after saving.
+        Editing this prompt can break orchestrator coordination. Only proceed if you understand the
+        full impact. Always keep a backup and verify flows after saving.
       </v-alert>
 
       <v-alert

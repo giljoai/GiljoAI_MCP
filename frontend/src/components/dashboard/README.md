@@ -1,18 +1,22 @@
 # Dashboard Agent Monitoring Components
 
-**Date**: November 14, 2025
-**Agent**: UX Designer Agent
-**Purpose**: Real-time agent monitoring dashboard for GiljoAI MCP orchestration platform
+**Date**: November 14, 2025 **Agent**: UX Designer Agent **Purpose**: Real-time
+agent monitoring dashboard for GiljoAI MCP orchestration platform
 
 ---
 
 ## Overview
 
-This directory contains Vue 3 components for real-time agent status visualization on the Dashboard. The components provide a live "message center" view of all AI agents working across projects.
+This directory contains Vue 3 components for real-time agent status
+visualization on the Dashboard. The components provide a live "message center"
+view of all AI agents working across projects.
 
 ### Product Context
 
-GiljoAI MCP is a commercial orchestration visualization platform where agents work in separate CLI terminals outside the application. The dashboard serves as a **message center** where MCP communications aggregate in real-time, allowing users to monitor agent activity and nudge agents when needed.
+GiljoAI MCP is a commercial orchestration visualization platform where agents
+work in separate CLI terminals outside the application. The dashboard serves as
+a **message center** where MCP communications aggregate in real-time, allowing
+users to monitor agent activity and nudge agents when needed.
 
 ---
 
@@ -20,9 +24,11 @@ GiljoAI MCP is a commercial orchestration visualization platform where agents wo
 
 ### 1. **AgentMonitoring.vue** (Main Component)
 
-**Purpose**: Container component that displays all active agents across all projects
+**Purpose**: Container component that displays all active agents across all
+projects
 
 **Features**:
+
 - Real-time WebSocket updates for agent status changes
 - Filter tabs (All, Working, Waiting, Completed, Failed)
 - Live connection status indicator
@@ -32,6 +38,7 @@ GiljoAI MCP is a commercial orchestration visualization platform where agents wo
 - Responsive grid layout (3 cols desktop, 2 tablet, 1 mobile)
 
 **WebSocket Events Listened**:
+
 - `agent:status_changed` - Agent status updates
 - `agent:completed` - Agent completion events
 - `agent:failed` - Agent failure events
@@ -40,6 +47,7 @@ GiljoAI MCP is a commercial orchestration visualization platform where agents wo
 - `job:status_changed` - Alias for agent status changes
 
 **API Calls**:
+
 - `api.agentJobs.list()` - Fetch all agent jobs
 - `api.agentJobs.terminate(jobId, reason)` - Cancel agent
 
@@ -54,17 +62,21 @@ GiljoAI MCP is a commercial orchestration visualization platform where agents wo
 **Purpose**: Individual agent status card with visual branding
 
 **Features**:
+
 - Colored header matching agent type (Orchestrator, Implementer, etc.)
-- 7-state status model (waiting, working, completed, failed, decommissioned, cancelled, cancelling)
+- 7-state status model (waiting, working, completed, failed, decommissioned,
+  cancelled, cancelling)
 - Progress bar with pulse animation for working agents
 - Current task display
-- Last heartbeat with color-coded health (green < 2min, yellow < 5min, red > 5min)
+- Last heartbeat with color-coded health (green < 2min, yellow < 5min, red >
+  5min)
 - Message counts (sent/received badges)
 - Quick actions (Cancel, View Messages)
 - Accessible (ARIA labels, keyboard navigation, focus indicators)
 - Responsive hover effects
 
 **Props**:
+
 ```javascript
 {
   agent: {
@@ -85,11 +97,13 @@ GiljoAI MCP is a commercial orchestration visualization platform where agents wo
 ```
 
 **Emits**:
+
 - `click(agent)` - Card clicked (navigate to project)
 - `cancel(agent)` - Cancel button clicked
 - `view-messages(agent)` - View messages button clicked
 
 **Styling**:
+
 - Pulsing header animation for working/cancelling agents
 - Color-coded left border (agent type color)
 - Hover elevation effect
@@ -134,15 +148,15 @@ import AgentMonitoring from '@/components/dashboard/AgentMonitoring.vue'
 
 Following backend 7-state model (Handover 0113):
 
-| Status         | Color        | Icon                | Description                      |
-|----------------|--------------|---------------------|----------------------------------|
-| `waiting`      | Indigo       | `mdi-clock-outline` | Agent waiting for assignment     |
-| `working`      | Cyan (pulse) | `mdi-cog`           | Agent actively working           |
-| `completed`    | Success      | `mdi-check-circle`  | Task completed successfully      |
-| `failed`       | Error        | `mdi-alert-circle`  | Task failed with error           |
-| `decommissioned` | Grey       | `mdi-pause-circle`  | Agent deactivated                |
-| `cancelled`    | Orange       | `mdi-cancel`        | Agent cancelled by user          |
-| `cancelling`   | Warning (pulse) | `mdi-timer-sand` | Cancellation in progress         |
+| Status           | Color           | Icon                | Description                  |
+| ---------------- | --------------- | ------------------- | ---------------------------- |
+| `waiting`        | Indigo          | `mdi-clock-outline` | Agent waiting for assignment |
+| `working`        | Cyan (pulse)    | `mdi-cog`           | Agent actively working       |
+| `completed`      | Success         | `mdi-check-circle`  | Task completed successfully  |
+| `failed`         | Error           | `mdi-alert-circle`  | Task failed with error       |
+| `decommissioned` | Grey            | `mdi-pause-circle`  | Agent deactivated            |
+| `cancelled`      | Orange          | `mdi-cancel`        | Agent cancelled by user      |
+| `cancelling`     | Warning (pulse) | `mdi-timer-sand`    | Cancellation in progress     |
 
 ---
 
@@ -150,14 +164,14 @@ Following backend 7-state model (Handover 0113):
 
 From `config/agentColors.js`:
 
-| Agent Type    | Hex Color | Badge | Description                      |
-|---------------|-----------|-------|----------------------------------|
-| Orchestrator  | #D4A574   | Or    | Primary coordinator              |
-| Analyzer      | #E74C3C   | An    | Architecture and analysis        |
-| Implementer   | #3498DB   | Im    | Implementation and development   |
-| Documenter    | #27AE60   | Do    | Documentation tasks              |
-| Reviewer      | #9B59B6   | Rv    | Code review and QA               |
-| Tester        | #FFC300   | Te    | Testing and validation           |
+| Agent Type   | Hex Color | Badge | Description                    |
+| ------------ | --------- | ----- | ------------------------------ |
+| Orchestrator | #D4A574   | Or    | Primary coordinator            |
+| Analyzer     | #E74C3C   | An    | Architecture and analysis      |
+| Implementer  | #3498DB   | Im    | Implementation and development |
+| Documenter   | #27AE60   | Do    | Documentation tasks            |
+| Reviewer     | #9B59B6   | Rv    | Code review and QA             |
+| Tester       | #FFC300   | Te    | Testing and validation         |
 
 ---
 
@@ -193,7 +207,9 @@ onUnmounted(() => {
 
 ### Optimistic Updates
 
-When cancelling an agent, the UI updates immediately (status → `cancelling`) before the WebSocket confirmation arrives. This provides instant feedback to the user.
+When cancelling an agent, the UI updates immediately (status → `cancelling`)
+before the WebSocket confirmation arrives. This provides instant feedback to the
+user.
 
 ---
 
@@ -206,7 +222,7 @@ Navigates to the project's Jobs tab with the agent highlighted:
 ```javascript
 router.push({
   path: `/projects/${agent.project_id}/launch`,
-  query: { tab: 'jobs', agent: agent.job_id }
+  query: { tab: 'jobs', agent: agent.job_id },
 })
 ```
 
@@ -225,7 +241,7 @@ Navigates to Messages view filtered by agent:
 ```javascript
 router.push({
   path: '/messages',
-  query: { agent: agent.job_id }
+  query: { agent: agent.job_id },
 })
 ```
 
@@ -236,7 +252,8 @@ router.push({
 ### WCAG 2.1 AA Compliance
 
 - **Keyboard Navigation**: All cards focusable with Tab, activatable with Enter
-- **ARIA Labels**: `role="article"` on cards, descriptive `aria-label` attributes
+- **ARIA Labels**: `role="article"` on cards, descriptive `aria-label`
+  attributes
 - **Focus Indicators**: 2px solid outline on focus
 - **Color Contrast**: Status chips and text meet 4.5:1 ratio
 - **Screen Reader Support**: Status changes announced, tooltips accessible
@@ -277,7 +294,8 @@ router.push({
 
 1. **Launch project** → Agents appear in dashboard
 2. **Agent completes** → Card turns green, shows success icon
-3. **Cancel agent** → Confirmation dialog → Status changes to cancelling → cancelled
+3. **Cancel agent** → Confirmation dialog → Status changes to cancelling →
+   cancelled
 4. **WebSocket disconnect** → Red "Disconnected" chip appears
 5. **Filter tabs** → Show correct subsets of agents
 6. **Responsive design** → Test on mobile, tablet, desktop
@@ -296,7 +314,7 @@ test('displays agent type and status', () => {
     job_id: 'abc123',
     agent_type: 'implementer',
     status: 'working',
-    progress: 50
+    progress: 50,
   }
 
   const wrapper = mount(AgentStatusCard, { props: { agent } })
@@ -312,7 +330,8 @@ test('displays agent type and status', () => {
 
 ### Potential Improvements
 
-1. **Agent Health Indicators**: Visual warnings for stale agents (> 5min no update)
+1. **Agent Health Indicators**: Visual warnings for stale agents (> 5min no
+   update)
 2. **Bulk Actions**: Select multiple agents for batch cancellation
 3. **Sort Options**: Sort by status, last update, agent type
 4. **Search/Filter**: Search agents by ID, project, or task
@@ -359,7 +378,8 @@ test('displays agent type and status', () => {
 
 1. `/f/GiljoAI_MCP/frontend/src/views/DashboardView.vue`
    - Added `AgentMonitoring` import
-   - Added `<AgentMonitoring />` component to template (before Historical Projects section)
+   - Added `<AgentMonitoring />` component to template (before Historical
+     Projects section)
 
 ---
 
@@ -368,6 +388,7 @@ test('displays agent type and status', () => {
 **Status**: Production-grade implementation complete
 
 **Quality Assurance**:
+
 - ✅ Component structure verified (template, script, style)
 - ✅ WebSocket integration follows existing patterns
 - ✅ API calls use existing `api.agentJobs.*` methods
@@ -377,12 +398,14 @@ test('displays agent type and status', () => {
 - ✅ Dark mode support via Vuetify theme
 
 **Not Tested** (requires running app):
+
 - WebSocket event handling in live environment
 - API endpoint responses
 - Actual cancellation workflow
 - Router navigation
 
 **Next Steps for Testing**:
+
 1. Run `npm run dev` in frontend directory
 2. Launch a project with agents
 3. Verify real-time updates in dashboard
@@ -392,5 +415,5 @@ test('displays agent type and status', () => {
 
 ---
 
-**Generated**: November 14, 2025
-**UX Designer Agent**: Production-grade dashboard monitoring UI complete
+**Generated**: November 14, 2025 **UX Designer Agent**: Production-grade
+dashboard monitoring UI complete

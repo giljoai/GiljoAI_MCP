@@ -133,7 +133,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.changeStatus(id, 'active')
-      
+
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         projects.value[index] = response.data
@@ -220,7 +220,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.complete(id)
-      
+
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         projects.value[index] = response.data
@@ -245,7 +245,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.cancel(id)
-      
+
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         projects.value[index] = response.data
@@ -270,10 +270,10 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.restore(id)
-      
+
       // Remove from deleted projects list
       deletedProjects.value = deletedProjects.value.filter((p) => p.id !== id)
-      
+
       // Add to active projects list
       projects.value.push(response.data)
 
@@ -292,7 +292,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.restoreCompleted(id)
-      
+
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         projects.value[index] = response.data
@@ -341,7 +341,11 @@ export const useProjectStore = defineStore('projects', () => {
 
       if (update_type === 'closed') {
         project.status = 'closed'
-      } else if (update_type === 'status_changed' || update_type === 'activated' || update_type === 'deactivated') {
+      } else if (
+        update_type === 'status_changed' ||
+        update_type === 'activated' ||
+        update_type === 'deactivated'
+      ) {
         // Handle status changes including activation/deactivation
         if (status) {
           project.status = status

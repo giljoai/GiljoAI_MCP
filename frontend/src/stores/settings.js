@@ -60,7 +60,10 @@ export const useSettingsStore = defineStore('settings', () => {
 
         // Re-check theme-preference after server load
         const currentThemePreference = localStorage.getItem('theme-preference')
-        if (currentThemePreference && (currentThemePreference === 'dark' || currentThemePreference === 'light')) {
+        if (
+          currentThemePreference &&
+          (currentThemePreference === 'dark' || currentThemePreference === 'light')
+        ) {
           settings.value.theme = currentThemePreference
         }
 
@@ -137,7 +140,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function applyTheme() {
-    theme.global.name.value = settings.value.theme  // TODO: Upgrade to theme.change() after Vuetify 3.7+
+    theme.global.name.value = settings.value.theme // TODO: Upgrade to theme.change() after Vuetify 3.7+
   }
 
   function saveToLocalStorage() {

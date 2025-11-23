@@ -10,15 +10,17 @@
             <h3 class="text-h6 mb-0 mr-2">Serena MCP</h3>
             <v-tooltip location="top" max-width="400">
               <template #activator="{ props }">
-                <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+                <v-icon v-bind="props" size="small" color="medium-emphasis"
+                  >mdi-help-circle-outline</v-icon
+                >
               </template>
               <div>
                 <strong>Intelligent codebase understanding and navigation</strong>
                 <p class="mt-2 mb-0">
-                  Serena provides deep semantic code analysis, intelligent symbol navigation, and contextual
-                  understanding of your codebase. It enables agents to efficiently explore and understand
-                  project structure without reading unnecessary code, significantly improving performance
-                  and reducing token usage.
+                  Serena provides deep semantic code analysis, intelligent symbol navigation, and
+                  contextual understanding of your codebase. It enables agents to efficiently
+                  explore and understand project structure without reading unnecessary code,
+                  significantly improving performance and reducing token usage.
                 </p>
                 <p class="mt-2 mb-0 text-caption">
                   <strong>Note:</strong> Serena must be installed separately in your AI coding tool.
@@ -26,22 +28,29 @@
               </div>
             </v-tooltip>
           </div>
-          <p class="text-caption text-medium-emphasis mb-0">Intelligent codebase understanding and navigation</p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            Intelligent codebase understanding and navigation
+          </p>
         </div>
       </div>
 
       <p class="text-body-2 text-medium-emphasis mb-3">
-        Enabling adds Serena tool instructions to agent prompts. Disabling removes them from agent tool startup.
+        Enabling adds Serena tool instructions to agent prompts. Disabling removes them from agent
+        tool startup.
       </p>
 
       <div class="d-flex align-center mb-3">
-        <v-btn variant="text" size="small" color="light-blue" href="https://github.com/oraios/serena" target="_blank">
+        <v-btn
+          variant="text"
+          size="small"
+          color="light-blue"
+          href="https://github.com/oraios/serena"
+          target="_blank"
+        >
           <v-icon start>mdi-github</v-icon>
           GitHub Repository
         </v-btn>
-        <span class="text-caption text-medium-emphasis ml-3">
-          Credit: Oraios
-        </span>
+        <span class="text-caption text-medium-emphasis ml-3"> Credit: Oraios </span>
       </div>
 
       <!-- Serena Controls -->
@@ -80,7 +89,7 @@
 defineProps({
   enabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   config: {
     type: Object,
@@ -91,12 +100,12 @@ defineProps({
       prefer_ranges: true,
       max_range_lines: 180,
       context_halo: 12,
-    })
+    }),
   },
   loading: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 defineEmits(['update:enabled', 'openAdvanced'])

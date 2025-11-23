@@ -235,7 +235,9 @@ router.beforeEach(async (to, from, next) => {
 
       if (setupState.is_fresh_install) {
         // Fresh install (0 users) - redirect to create admin account
-        console.log('[ROUTER] Fresh install detected (0 users), redirecting to create admin account')
+        console.log(
+          '[ROUTER] Fresh install detected (0 users), redirecting to create admin account',
+        )
         next('/welcome')
         return
       }
@@ -253,7 +255,11 @@ router.beforeEach(async (to, from, next) => {
         const setupState = await setupService.checkEnhancedStatus()
         if (!setupState.is_fresh_install) {
           // Users exist - block welcome page access
-          console.warn('[SECURITY] Blocking /welcome access - users exist (total:', setupState.total_users_count, ')')
+          console.warn(
+            '[SECURITY] Blocking /welcome access - users exist (total:',
+            setupState.total_users_count,
+            ')',
+          )
           next('/login')
           return
         }

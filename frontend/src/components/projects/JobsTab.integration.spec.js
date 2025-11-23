@@ -35,11 +35,11 @@ const mockWebSocket = {
       mockWebSocket.handlers[event](data)
     }
   }),
-  handlers: {}
+  handlers: {},
 }
 
 vi.mock('@/services/websocket', () => ({
-  default: mockWebSocket
+  default: mockWebSocket,
 }))
 
 // Test data fixtures
@@ -47,7 +47,7 @@ const createMockProject = (overrides = {}) => ({
   project_id: 'proj-integration-test',
   name: 'Integration Test Project',
   description: 'Testing real-time integration',
-  ...overrides
+  ...overrides,
 })
 
 const createMockAgent = (type, status, overrides = {}) => ({
@@ -60,7 +60,7 @@ const createMockAgent = (type, status, overrides = {}) => ({
   current_task: null,
   block_reason: null,
   messages: [],
-  ...overrides
+  ...overrides,
 })
 
 const createMockMessage = (from, content, overrides = {}) => ({
@@ -73,7 +73,7 @@ const createMockMessage = (from, content, overrides = {}) => ({
   timestamp: new Date().toISOString(),
   agent_type: from === 'agent' ? 'orchestrator' : null,
   instance_number: 1,
-  ...overrides
+  ...overrides,
 })
 
 describe('JobsTab Integration Tests', () => {
@@ -95,7 +95,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        createMockAgent('implementor', 'waiting')
+        createMockAgent('implementor', 'waiting'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -103,13 +103,13 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Find the waiting implementor agent card
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const waitingCard = agentCards.find(card => card.props('agent').status === 'waiting')
+      const waitingCard = agentCards.find((card) => card.props('agent').status === 'waiting')
 
       expect(waitingCard).toBeTruthy()
 
@@ -125,17 +125,15 @@ describe('JobsTab Integration Tests', () => {
     it('completes send message workflow', async () => {
       const project = createMockProject()
       const agents = [createMockAgent('orchestrator', 'working')]
-      const messages = [
-        createMockMessage('agent', 'Initial message from orchestrator')
-      ]
+      const messages = [createMockMessage('agent', 'Initial message from orchestrator')]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages,
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Find message input and send a message
@@ -152,7 +150,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'complete'),
-        createMockAgent('implementor', 'complete')
+        createMockAgent('implementor', 'complete'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -160,8 +158,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       // Verify banner is shown
@@ -170,8 +168,8 @@ describe('JobsTab Integration Tests', () => {
 
       // Find orchestrator card
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const orchestratorCard = agentCards.find(card =>
-        card.props('agent').agent_type === 'orchestrator'
+      const orchestratorCard = agentCards.find(
+        (card) => card.props('agent').agent_type === 'orchestrator',
       )
 
       expect(orchestratorCard.props('showCloseoutButton')).toBe(true)
@@ -190,8 +188,8 @@ describe('JobsTab Integration Tests', () => {
       const agents = [
         createMockAgent('implementor', 'working', {
           progress: 75,
-          current_task: 'Implementing feature X'
-        })
+          current_task: 'Implementing feature X',
+        }),
       ]
 
       wrapper = mount(JobsTab, {
@@ -199,8 +197,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Find working agent card
@@ -219,8 +217,8 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('implementor', 'failed', {
-          block_reason: 'Database connection failed'
-        })
+          block_reason: 'Database connection failed',
+        }),
       ]
 
       wrapper = mount(JobsTab, {
@@ -228,8 +226,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Find failed agent card
@@ -248,17 +246,15 @@ describe('JobsTab Integration Tests', () => {
   describe('Real-time Agent Status Updates', () => {
     it('updates UI when agent transitions from waiting to working', async () => {
       const project = createMockProject()
-      const agents = [
-        createMockAgent('implementor', 'waiting')
-      ]
+      const agents = [createMockAgent('implementor', 'waiting')]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initially waiting
@@ -267,7 +263,7 @@ describe('JobsTab Integration Tests', () => {
 
       // Update agent status to working
       const updatedAgents = [
-        { ...agents[0], status: 'working', progress: 10, current_task: 'Starting work' }
+        { ...agents[0], status: 'working', progress: 10, current_task: 'Starting work' },
       ]
 
       await wrapper.setProps({ agents: updatedAgents })
@@ -281,17 +277,15 @@ describe('JobsTab Integration Tests', () => {
 
     it('updates UI when agent transitions from working to complete', async () => {
       const project = createMockProject()
-      const agents = [
-        createMockAgent('implementor', 'working', { progress: 90 })
-      ]
+      const agents = [createMockAgent('implementor', 'working', { progress: 90 })]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initially working
@@ -299,9 +293,7 @@ describe('JobsTab Integration Tests', () => {
       expect(agentCard.props('agent').status).toBe('working')
 
       // Update agent status to complete
-      const updatedAgents = [
-        { ...agents[0], status: 'complete', progress: 100 }
-      ]
+      const updatedAgents = [{ ...agents[0], status: 'complete', progress: 100 }]
 
       await wrapper.setProps({ agents: updatedAgents })
       await nextTick()
@@ -313,17 +305,15 @@ describe('JobsTab Integration Tests', () => {
 
     it('updates UI when agent encounters error', async () => {
       const project = createMockProject()
-      const agents = [
-        createMockAgent('implementor', 'working', { progress: 50 })
-      ]
+      const agents = [createMockAgent('implementor', 'working', { progress: 50 })]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initially working
@@ -335,8 +325,8 @@ describe('JobsTab Integration Tests', () => {
         {
           ...agents[0],
           status: 'failed',
-          block_reason: 'API timeout error'
-        }
+          block_reason: 'API timeout error',
+        },
       ]
 
       await wrapper.setProps({ agents: updatedAgents })
@@ -353,7 +343,7 @@ describe('JobsTab Integration Tests', () => {
       const agents = [
         createMockAgent('orchestrator', 'working'),
         createMockAgent('implementor', 'working'),
-        createMockAgent('analyzer', 'complete')
+        createMockAgent('analyzer', 'complete'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -361,20 +351,20 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initial order: orchestrator, implementor, analyzer
       let agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      let order = agentCards.map(card => card.props('agent').agent_type)
+      let order = agentCards.map((card) => card.props('agent').agent_type)
       expect(order).toEqual(['orchestrator', 'implementor', 'analyzer'])
 
       // Implementor fails (should move to top)
       const updatedAgents = [
         agents[0], // orchestrator still working
         { ...agents[1], status: 'failed', block_reason: 'Error' }, // implementor failed
-        agents[2] // analyzer still complete
+        agents[2], // analyzer still complete
       ]
 
       await wrapper.setProps({ agents: updatedAgents })
@@ -382,7 +372,7 @@ describe('JobsTab Integration Tests', () => {
 
       // New order: implementor (failed), orchestrator (working), analyzer (complete)
       agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      order = agentCards.map(card => card.props('agent').agent_type)
+      order = agentCards.map((card) => card.props('agent').agent_type)
       expect(order).toEqual(['implementor', 'orchestrator', 'analyzer'])
     })
   })
@@ -391,17 +381,15 @@ describe('JobsTab Integration Tests', () => {
     it('displays new messages in real-time', async () => {
       const project = createMockProject()
       const agents = [createMockAgent('orchestrator', 'working')]
-      const initialMessages = [
-        createMockMessage('agent', 'Initial message')
-      ]
+      const initialMessages = [createMockMessage('agent', 'Initial message')]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages: initialMessages,
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initially 1 message
@@ -411,7 +399,7 @@ describe('JobsTab Integration Tests', () => {
       // Add new message
       const updatedMessages = [
         ...initialMessages,
-        createMockMessage('agent', 'New message from agent')
+        createMockMessage('agent', 'New message from agent'),
       ]
 
       await wrapper.setProps({ messages: updatedMessages })
@@ -431,14 +419,14 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Add messages rapidly
       for (let i = 0; i < 10; i++) {
         const messages = Array.from({ length: i + 1 }, (_, idx) =>
-          createMockMessage('agent', `Message ${idx}`)
+          createMockMessage('agent', `Message ${idx}`),
         )
 
         await wrapper.setProps({ messages })
@@ -455,7 +443,7 @@ describe('JobsTab Integration Tests', () => {
       const agents = [createMockAgent('orchestrator', 'working')]
       const messages = [
         createMockMessage('agent', 'Agent message'),
-        createMockMessage('developer', 'User message', { from: 'developer' })
+        createMockMessage('developer', 'User message', { from: 'developer' }),
       ]
 
       wrapper = mount(JobsTab, {
@@ -463,8 +451,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages,
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       const messageStream = wrapper.findComponent({ name: 'MessageStream' })
@@ -483,7 +471,7 @@ describe('JobsTab Integration Tests', () => {
       const agents = [
         createMockAgent('implementor', 'working', { job_id: 'job-impl-1' }),
         createMockAgent('implementor', 'waiting', { job_id: 'job-impl-2' }),
-        createMockAgent('implementor', 'complete', { job_id: 'job-impl-3' })
+        createMockAgent('implementor', 'complete', { job_id: 'job-impl-3' }),
       ]
 
       wrapper = mount(JobsTab, {
@@ -491,35 +479,33 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const implementorCards = agentCards.filter(card =>
-        card.props('agent').agent_type === 'implementor'
+      const implementorCards = agentCards.filter(
+        (card) => card.props('agent').agent_type === 'implementor',
       )
 
       expect(implementorCards).toHaveLength(3)
 
       // Each should have unique instance number
-      const instanceNumbers = implementorCards.map(card => card.props('instanceNumber'))
+      const instanceNumbers = implementorCards.map((card) => card.props('instanceNumber'))
       expect(instanceNumbers).toEqual([1, 2, 3])
     })
 
     it('handles agent addition dynamically', async () => {
       const project = createMockProject()
-      const agents = [
-        createMockAgent('orchestrator', 'working')
-      ]
+      const agents = [createMockAgent('orchestrator', 'working')]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initially 1 agent
@@ -527,10 +513,7 @@ describe('JobsTab Integration Tests', () => {
       expect(agentCards).toHaveLength(1)
 
       // Add new agent
-      const updatedAgents = [
-        ...agents,
-        createMockAgent('implementor', 'waiting')
-      ]
+      const updatedAgents = [...agents, createMockAgent('implementor', 'waiting')]
 
       await wrapper.setProps({ agents: updatedAgents })
       await nextTick()
@@ -544,7 +527,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        createMockAgent('implementor', 'complete')
+        createMockAgent('implementor', 'complete'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -552,8 +535,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Initially 2 agents
@@ -578,7 +561,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        createMockAgent('implementor', 'working')
+        createMockAgent('implementor', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -586,23 +569,21 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Update multiple props simultaneously
       const updatedAgents = [
         { ...agents[0], progress: 50 },
-        { ...agents[1], status: 'complete' }
+        { ...agents[1], status: 'complete' },
       ]
-      const newMessages = [
-        createMockMessage('agent', 'Progress update')
-      ]
+      const newMessages = [createMockMessage('agent', 'Progress update')]
 
       await wrapper.setProps({
         agents: updatedAgents,
         messages: newMessages,
-        allAgentsComplete: false
+        allAgentsComplete: false,
       })
       await nextTick()
 
@@ -619,7 +600,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        createMockAgent('implementor', 'working')
+        createMockAgent('implementor', 'working'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -627,8 +608,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Banner not shown initially
@@ -637,12 +618,12 @@ describe('JobsTab Integration Tests', () => {
       // All agents complete
       const updatedAgents = [
         { ...agents[0], status: 'complete' },
-        { ...agents[1], status: 'complete' }
+        { ...agents[1], status: 'complete' },
       ]
 
       await wrapper.setProps({
         agents: updatedAgents,
-        allAgentsComplete: true
+        allAgentsComplete: true,
       })
       await nextTick()
 
@@ -654,7 +635,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'complete'),
-        createMockAgent('implementor', 'complete')
+        createMockAgent('implementor', 'complete'),
       ]
 
       wrapper = mount(JobsTab, {
@@ -662,22 +643,19 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: true
-        }
+          allAgentsComplete: true,
+        },
       })
 
       // Banner shown
       expect(wrapper.find('.jobs-tab__complete-banner').exists()).toBe(true)
 
       // One agent starts working again
-      const updatedAgents = [
-        { ...agents[0], status: 'working' },
-        agents[1]
-      ]
+      const updatedAgents = [{ ...agents[0], status: 'working' }, agents[1]]
 
       await wrapper.setProps({
         agents: updatedAgents,
-        allAgentsComplete: false
+        allAgentsComplete: false,
       })
       await nextTick()
 
@@ -691,7 +669,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        { status: 'working' } // Missing agent_type and job_id
+        { status: 'working' }, // Missing agent_type and job_id
       ]
 
       wrapper = mount(JobsTab, {
@@ -699,8 +677,8 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Should still render without crashing
@@ -716,14 +694,14 @@ describe('JobsTab Integration Tests', () => {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Rapidly change props
       for (let i = 0; i < 20; i++) {
         await wrapper.setProps({
-          agents: [{ ...agents[0], progress: i * 5 }]
+          agents: [{ ...agents[0], progress: i * 5 }],
         })
       }
 
@@ -735,22 +713,20 @@ describe('JobsTab Integration Tests', () => {
 
     it('maintains functionality after error state', async () => {
       const project = createMockProject()
-      const agents = [
-        createMockAgent('implementor', 'working')
-      ]
+      const agents = [createMockAgent('implementor', 'working')]
 
       wrapper = mount(JobsTab, {
         props: {
           project,
           agents,
           messages: [],
-          allAgentsComplete: false
-        }
+          allAgentsComplete: false,
+        },
       })
 
       // Agent encounters error
       await wrapper.setProps({
-        agents: [{ ...agents[0], status: 'failed', block_reason: 'Error' }]
+        agents: [{ ...agents[0], status: 'failed', block_reason: 'Error' }],
       })
       await nextTick()
 
@@ -764,7 +740,7 @@ describe('JobsTab Integration Tests', () => {
 
       // Agent recovers (hypothetically)
       await wrapper.setProps({
-        agents: [{ ...agents[0], status: 'working', block_reason: null }]
+        agents: [{ ...agents[0], status: 'working', block_reason: null }],
       })
       await nextTick()
 

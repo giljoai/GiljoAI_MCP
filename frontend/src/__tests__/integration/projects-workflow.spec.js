@@ -147,26 +147,26 @@ describe('Projects Workflow Integration Tests', () => {
     projectStore.deleteProject = vi.fn((id) => {
       projectStore.$patch({
         projects: projectStore.projects.map((p) =>
-          p.id === id ? { ...p, deleted_at: new Date().toISOString() } : p
+          p.id === id ? { ...p, deleted_at: new Date().toISOString() } : p,
         ),
       })
       return Promise.resolve()
     })
 
     projectStore.activateProject = vi.fn((id) =>
-      projectStore.updateProject(id, { status: 'active' })
+      projectStore.updateProject(id, { status: 'active' }),
     )
     projectStore.deactivateProject = vi.fn((id) =>
-      projectStore.updateProject(id, { status: 'inactive' })
+      projectStore.updateProject(id, { status: 'inactive' }),
     )
     projectStore.completeProject = vi.fn((id) =>
-      projectStore.updateProject(id, { status: 'completed' })
+      projectStore.updateProject(id, { status: 'completed' }),
     )
     projectStore.cancelProject = vi.fn((id) =>
-      projectStore.updateProject(id, { status: 'cancelled' })
+      projectStore.updateProject(id, { status: 'cancelled' }),
     )
     projectStore.restoreProject = vi.fn((id) =>
-      projectStore.updateProject(id, { status: 'inactive', deleted_at: null })
+      projectStore.updateProject(id, { status: 'inactive', deleted_at: null }),
     )
 
     productStore.fetchProducts = vi.fn().mockResolvedValue()
@@ -278,13 +278,11 @@ describe('Projects Workflow Integration Tests', () => {
           name: 'Frontend UI Framework',
           mission: 'Build component library for product',
           product_id: 'prod-1',
-        })
+        }),
       )
 
       // Verify project was added to store
-      const newProject = projectStore.projects.find(
-        (p) => p.name === 'Frontend UI Framework'
-      )
+      const newProject = projectStore.projects.find((p) => p.name === 'Frontend UI Framework')
       expect(newProject).toBeDefined()
     })
 
@@ -301,9 +299,7 @@ describe('Projects Workflow Integration Tests', () => {
 
       await wrapper.vm.saveProject()
 
-      const newProject = projectStore.projects.find(
-        (p) => p.name === 'Testing Suite'
-      )
+      const newProject = projectStore.projects.find((p) => p.name === 'Testing Suite')
       expect(newProject.product_id).toBe('prod-1')
     })
 
@@ -345,9 +341,7 @@ describe('Projects Workflow Integration Tests', () => {
 
     it('deactivates active project', async () => {
       const wrapper = createWrapper()
-      const userAuthProject = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const userAuthProject = projectStore.projects.find((p) => p.id === 'proj-user-auth')
 
       expect(userAuthProject.status).toBe('active')
 
@@ -357,9 +351,7 @@ describe('Projects Workflow Integration Tests', () => {
       })
 
       expect(projectStore.deactivateProject).toHaveBeenCalledWith('proj-user-auth')
-      const updated = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const updated = projectStore.projects.find((p) => p.id === 'proj-user-auth')
       expect(updated.status).toBe('inactive')
     })
 
@@ -372,9 +364,7 @@ describe('Projects Workflow Integration Tests', () => {
       })
 
       expect(projectStore.completeProject).toHaveBeenCalledWith('proj-user-auth')
-      const updated = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const updated = projectStore.projects.find((p) => p.id === 'proj-user-auth')
       expect(updated.status).toBe('completed')
     })
 
@@ -484,9 +474,7 @@ describe('Projects Workflow Integration Tests', () => {
       const wrapper = createWrapper()
 
       // Delete a project first
-      const projectToDelete = projectStore.projects.find(
-        (p) => p.id === 'proj-api'
-      )
+      const projectToDelete = projectStore.projects.find((p) => p.id === 'proj-api')
       await projectStore.deleteProject('proj-api')
       await wrapper.vm.$nextTick()
 
@@ -504,25 +492,19 @@ describe('Projects Workflow Integration Tests', () => {
   describe('Scenario 6: Edit Existing Project', () => {
     it('loads project data into form for editing', async () => {
       const wrapper = createWrapper()
-      const projectToEdit = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const projectToEdit = projectStore.projects.find((p) => p.id === 'proj-user-auth')
 
       wrapper.vm.editProject(projectToEdit)
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.projectData.name).toBe('User Authentication')
-      expect(wrapper.vm.projectData.mission).toBe(
-        'Implement OAuth2 authentication with JWT tokens'
-      )
+      expect(wrapper.vm.projectData.mission).toBe('Implement OAuth2 authentication with JWT tokens')
       expect(wrapper.vm.editingProject.id).toBe('proj-user-auth')
     })
 
     it('updates project with new data', async () => {
       const wrapper = createWrapper()
-      const projectToEdit = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const projectToEdit = projectStore.projects.find((p) => p.id === 'proj-user-auth')
 
       wrapper.vm.editProject(projectToEdit)
       wrapper.vm.projectData.mission = 'Updated mission with new requirements'
@@ -534,20 +516,16 @@ describe('Projects Workflow Integration Tests', () => {
         'proj-user-auth',
         expect.objectContaining({
           mission: 'Updated mission with new requirements',
-        })
+        }),
       )
 
-      const updated = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const updated = projectStore.projects.find((p) => p.id === 'proj-user-auth')
       expect(updated.mission).toBe('Updated mission with new requirements')
     })
 
     it('does not modify product_id when updating', async () => {
       const wrapper = createWrapper()
-      const projectToEdit = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const projectToEdit = projectStore.projects.find((p) => p.id === 'proj-user-auth')
 
       wrapper.vm.editProject(projectToEdit)
       wrapper.vm.projectData.name = 'Updated Name'
@@ -555,9 +533,7 @@ describe('Projects Workflow Integration Tests', () => {
 
       await wrapper.vm.saveProject()
 
-      const updated = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const updated = projectStore.projects.find((p) => p.id === 'proj-user-auth')
       expect(updated.product_id).toBe('prod-1')
     })
   })
@@ -618,9 +594,7 @@ describe('Projects Workflow Integration Tests', () => {
 
       await wrapper.vm.saveProject()
 
-      const newProject = projectStore.projects.find(
-        (p) => p.name === 'New Isolated Project'
-      )
+      const newProject = projectStore.projects.find((p) => p.name === 'New Isolated Project')
       expect(newProject.product_id).toBe('prod-1')
     })
   })
@@ -629,23 +603,19 @@ describe('Projects Workflow Integration Tests', () => {
     it('handles project status changes in real-time', async () => {
       const wrapper = createWrapper()
 
-      const initialStatus = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      ).status
+      const initialStatus = projectStore.projects.find((p) => p.id === 'proj-user-auth').status
       expect(initialStatus).toBe('active')
 
       // Simulate real-time status update
       projectStore.$patch({
         projects: projectStore.projects.map((p) =>
-          p.id === 'proj-user-auth' ? { ...p, status: 'inactive' } : p
+          p.id === 'proj-user-auth' ? { ...p, status: 'inactive' } : p,
         ),
       })
 
       await wrapper.vm.$nextTick()
 
-      const updated = projectStore.projects.find(
-        (p) => p.id === 'proj-user-auth'
-      )
+      const updated = projectStore.projects.find((p) => p.id === 'proj-user-auth')
       expect(updated.status).toBe('inactive')
       expect(wrapper.vm.statusCounts.active).toBe(0)
       expect(wrapper.vm.statusCounts.inactive).toBe(2)
@@ -674,9 +644,7 @@ describe('Projects Workflow Integration Tests', () => {
 
       await wrapper.vm.$nextTick()
 
-      expect(
-        projectStore.projects.find((p) => p.id === 'proj-new-realtime')
-      ).toBeDefined()
+      expect(projectStore.projects.find((p) => p.id === 'proj-new-realtime')).toBeDefined()
       expect(wrapper.vm.activeProductProjects.length).toBe(5)
     })
   })

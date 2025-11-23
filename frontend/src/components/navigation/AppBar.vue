@@ -37,12 +37,7 @@
       <div style="flex: 0 0 auto; display: flex; align-items: center">
         <ActiveProductDisplay class="mr-3" />
         <ConnectionStatus class="mr-2" />
-        <v-btn
-          icon="mdi-bell"
-          variant="text"
-          aria-label="View notifications"
-          class="mr-2"
-        ></v-btn>
+        <v-btn icon="mdi-bell" variant="text" aria-label="View notifications" class="mr-2"></v-btn>
 
         <!-- User Menu -->
         <v-menu offset-y>
@@ -84,7 +79,10 @@
             </v-list-item>
 
             <!-- Admin Settings - Only visible to admin users -->
-            <v-list-item v-if="currentUser && currentUser.role === 'admin'" :to="{ name: 'SystemSettings' }">
+            <v-list-item
+              v-if="currentUser && currentUser.role === 'admin'"
+              :to="{ name: 'SystemSettings' }"
+            >
               <template v-slot:prepend>
                 <v-icon color="error">mdi-cog</v-icon>
               </template>
@@ -129,12 +127,12 @@ import api from '@/services/api'
 const props = defineProps({
   currentUser: {
     type: Object,
-    default: null
+    default: null,
   },
   rail: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['toggle-drawer', 'toggle-rail'])

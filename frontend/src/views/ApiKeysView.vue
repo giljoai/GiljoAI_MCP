@@ -6,8 +6,8 @@
     </p>
 
     <v-alert type="info" variant="tonal" class="mb-4" data-test="api-key-info-alert">
-      API keys authenticate your coding tools with the GiljoAI MCP server.
-      These are NOT used for dashboard login (use your username/password for that).
+      API keys authenticate your coding tools with the GiljoAI MCP server. These are NOT used for
+      dashboard login (use your username/password for that).
     </v-alert>
 
     <ApiKeyManager />

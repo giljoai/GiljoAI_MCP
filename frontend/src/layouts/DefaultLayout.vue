@@ -69,10 +69,11 @@ onMounted(async () => {
   // This prevents race condition where DefaultLayout redirects to /login
   // before router guard can redirect to /welcome
   try {
-    const apiBaseUrl = window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:7272'
+    const apiBaseUrl =
+      window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:7272'
     const setupResponse = await fetch(`${apiBaseUrl}/api/setup/status`, {
       method: 'GET',
-      cache: 'no-cache'
+      cache: 'no-cache',
     })
 
     if (setupResponse.ok) {

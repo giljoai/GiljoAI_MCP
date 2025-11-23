@@ -1,5 +1,10 @@
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="800" scrollable>
+  <v-dialog
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
+    max-width="800"
+    scrollable
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start color="success">mdi-sparkles</v-icon>
@@ -22,14 +27,20 @@
           <v-window-item value="manual">
             <h3 class="text-h6 mb-3">Manual Configuration</h3>
             <p class="text-body-2 mb-3">
-              Add the following to your Gemini CLI settings file.
-              See <a href="https://github.com/google-gemini/gemini-cli" target="_blank" class="text-primary">Gemini CLI Documentation</a> for complete setup instructions.
+              Add the following to your Gemini CLI settings file. See
+              <a
+                href="https://github.com/google-gemini/gemini-cli"
+                target="_blank"
+                class="text-primary"
+                >Gemini CLI Documentation</a
+              >
+              for complete setup instructions.
             </p>
 
             <v-alert type="info" variant="tonal" class="mb-3" density="compact">
               <v-icon start size="small">mdi-file-document</v-icon>
               <strong>Configuration File Location:</strong>
-              <br>- All platforms: <code>~/.gemini/settings.json</code>
+              <br />- All platforms: <code>~/.gemini/settings.json</code>
             </v-alert>
 
             <v-card variant="outlined" class="mb-3">
@@ -50,7 +61,12 @@
 }</code></pre>
               </v-card-text>
               <v-card-actions>
-                <v-btn variant="text" size="small" data-test="copy-config-button" @click="copyConfig">
+                <v-btn
+                  variant="text"
+                  size="small"
+                  data-test="copy-config-button"
+                  @click="copyConfig"
+                >
                   <v-icon start>mdi-content-copy</v-icon>
                   Copy Configuration
                 </v-btn>
@@ -58,7 +74,8 @@
             </v-card>
 
             <p class="text-body-2">
-              Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
+              Replace <code>{your-api-key-here}</code> with your actual API key from your user
+              profile.
             </p>
           </v-window-item>
 
@@ -79,7 +96,9 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" data-test="close-button" @click="$emit('update:modelValue', false)">Close</v-btn>
+        <v-btn variant="text" data-test="close-button" @click="$emit('update:modelValue', false)"
+          >Close</v-btn
+        >
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -91,8 +110,8 @@ import { ref } from 'vue'
 defineProps({
   modelValue: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])

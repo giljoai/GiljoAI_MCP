@@ -1,9 +1,5 @@
 <template>
-  <v-dialog
-    v-model="isOpen"
-    max-width="650"
-    persistent
-  >
+  <v-dialog v-model="isOpen" max-width="650" persistent>
     <v-card>
       <v-card-title class="d-flex align-center bg-warning text-h5">
         <v-icon class="mr-2" color="warning">mdi-alert-circle</v-icon>
@@ -13,12 +9,7 @@
       <v-divider></v-divider>
 
       <v-card-text class="pt-4">
-        <v-alert
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="mb-4"
-        >
+        <v-alert type="warning" variant="tonal" density="compact" class="mb-4">
           <div class="text-body-1">
             Switching the active product will change the context for all new AI agent operations.
           </div>
@@ -47,12 +38,12 @@
         >
           <div class="font-weight-bold mb-2">Project Impact:</div>
           <strong>{{ currentActive.active_projects_count }}</strong>
-          active project{{ currentActive.active_projects_count > 1 ? 's' : '' }}
-          under <strong>{{ currentActive.name }}</strong> will be deactivated.
+          active project{{ currentActive.active_projects_count > 1 ? 's' : '' }} under
+          <strong>{{ currentActive.name }}</strong> will be deactivated.
 
           <div class="text-caption mt-2">
-            Only one project can be active at a time. You can reactivate
-            projects after switching back to this product.
+            Only one project can be active at a time. You can reactivate projects after switching
+            back to this product.
           </div>
         </v-alert>
 
@@ -74,7 +65,8 @@
                   The Orchestrator switches context to <strong>{{ newProduct?.name }}</strong>
                 </li>
                 <li class="mb-2">
-                  Running agent jobs for <strong>{{ currentActive?.name }}</strong> continue but cannot spawn new jobs
+                  Running agent jobs for <strong>{{ currentActive?.name }}</strong> continue but
+                  cannot spawn new jobs
                 </li>
               </ul>
             </v-expansion-panel-text>
@@ -86,19 +78,8 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
-          @click="handleCancel"
-          :disabled="isActivating"
-        >
-          Cancel
-        </v-btn>
-        <v-btn
-          color="warning"
-          variant="flat"
-          @click="handleConfirm"
-          :loading="isActivating"
-        >
+        <v-btn variant="text" @click="handleCancel" :disabled="isActivating"> Cancel </v-btn>
+        <v-btn color="warning" variant="flat" @click="handleConfirm" :loading="isActivating">
           Switch to {{ newProduct?.name }}
         </v-btn>
       </v-card-actions>
@@ -112,7 +93,7 @@ import { ref, computed, watch } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   newProduct: {
     type: Object,
@@ -121,12 +102,12 @@ const props = defineProps({
     validator: (val) => {
       // Allow empty object or object with name
       return !val || typeof val.name === 'string' || Object.keys(val).length === 0
-    }
+    },
   },
   currentActive: {
     type: Object,
-    default: () => ({})
-  }
+    default: () => ({}),
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
@@ -135,7 +116,7 @@ const isActivating = ref(false)
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => emit('update:modelValue', val),
 })
 
 const handleConfirm = () => {
@@ -151,11 +132,14 @@ const handleCancel = () => {
 }
 
 // Reset loading state when dialog closes
-watch(() => props.modelValue, (newVal) => {
-  if (!newVal) {
-    isActivating.value = false
-  }
-})
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (!newVal) {
+      isActivating.value = false
+    }
+  },
+)
 </script>
 
 <style scoped>

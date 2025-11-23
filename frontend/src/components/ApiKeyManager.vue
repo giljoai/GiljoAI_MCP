@@ -18,7 +18,8 @@
     <v-card-text>
       <!-- Empty State -->
       <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4">
-        No API keys created yet. Generate a new integration key to connect AI tools like Claude Code, Codex, or other external applications.
+        No API keys created yet. Generate a new integration key to connect AI tools like Claude
+        Code, Codex, or other external applications.
       </v-alert>
 
       <!-- API Keys Table -->
@@ -82,9 +83,7 @@
         </v-card-title>
 
         <v-card-text class="pt-6">
-          <p class="text-body-1 mb-2">
-            You are about to revoke the API key:
-          </p>
+          <p class="text-body-1 mb-2">You are about to revoke the API key:</p>
           <v-card variant="outlined" class="mb-4 pa-3">
             <div class="d-flex align-center">
               <v-icon class="mr-2">mdi-label</v-icon>
@@ -114,9 +113,7 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="cancelRevoke" :disabled="revoking">
-            Cancel
-          </v-btn>
+          <v-btn variant="text" @click="cancelRevoke" :disabled="revoking"> Cancel </v-btn>
           <v-btn
             color="error"
             @click="revokeKey"
@@ -208,7 +205,7 @@ async function revokeKey() {
 
     // Optimistically remove from list, then reload to ensure consistency
     const revokedId = keyToRevoke.value.id
-    apiKeys.value = apiKeys.value.filter(k => k.id !== revokedId)
+    apiKeys.value = apiKeys.value.filter((k) => k.id !== revokedId)
     await loadKeys()
 
     // Close dialog

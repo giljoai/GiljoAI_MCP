@@ -106,11 +106,7 @@
     </v-tooltip>
 
     <!-- Confirmation Dialog -->
-    <v-dialog
-      v-model="showConfirmDialog"
-      max-width="500"
-      data-test="confirm-dialog"
-    >
+    <v-dialog v-model="showConfirmDialog" max-width="500" data-test="confirm-dialog">
       <v-card>
         <v-card-title class="text-h5">
           {{ confirmationConfig.title }}
@@ -142,19 +138,15 @@
     </v-dialog>
 
     <!-- Copy Success Snackbar -->
-    <v-snackbar
-      v-model="showCopySuccess"
-      color="success"
-      timeout="2000"
-    >
+    <v-snackbar v-model="showCopySuccess" color="success" timeout="2000">
       Prompt copied to clipboard!
     </v-snackbar>
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue';
-import { getAvailableActions, getActionConfig } from '@/utils/actionConfig';
+import { ref, computed } from 'vue'
+import { getAvailableActions, getActionConfig } from '@/utils/actionConfig'
 
 export default {
   name: 'ActionIcons',
@@ -169,141 +161,135 @@ export default {
         agent_type: 'implementer',
         unread_count: 0,
         context_used: 0,
-        context_budget: 0
-      })
+        context_budget: 0,
+      }),
     },
     claudeCodeCliMode: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
 
-  emits: [
-    'launch',
-    'copy-prompt',
-    'view-messages',
-    'cancel',
-    'hand-over'
-  ],
+  emits: ['launch', 'copy-prompt', 'view-messages', 'cancel', 'hand-over'],
 
   setup(props, { emit }) {
     const loadingStates = ref({
       launch: false,
       copyPrompt: false,
       cancel: false,
-      handOver: false
-    });
+      handOver: false,
+    })
 
-    const showConfirmDialog = ref(false);
-    const confirmationConfig = ref({});
-    const confirmationLoading = ref(false);
-    const pendingAction = ref(null);
-    const showCopySuccess = ref(false);
+    const showConfirmDialog = ref(false)
+    const confirmationConfig = ref({})
+    const confirmationLoading = ref(false)
+    const pendingAction = ref(null)
+    const showCopySuccess = ref(false)
 
     const availableActions = computed(() => {
-      return getAvailableActions(props.job, props.claudeCodeCliMode);
-    });
+      return getAvailableActions(props.job, props.claudeCodeCliMode)
+    })
 
     const getActionColor = (action) => {
-      const config = getActionConfig(action);
-      return config?.color || 'grey';
-    };
+      const config = getActionConfig(action)
+      return config?.color || 'grey'
+    }
 
     const getActionTooltip = (action) => {
-      const config = getActionConfig(action);
-      return config?.tooltip || '';
-    };
+      const config = getActionConfig(action)
+      return config?.tooltip || ''
+    }
 
     const handleLaunch = async () => {
-      loadingStates.value.launch = true;
+      loadingStates.value.launch = true
       try {
-        emit('launch', props.job);
+        emit('launch', props.job)
       } finally {
-        loadingStates.value.launch = false;
+        loadingStates.value.launch = false
       }
-    };
+    }
 
     const handleCopyPrompt = async () => {
-      loadingStates.value.copyPrompt = true;
+      loadingStates.value.copyPrompt = true
       try {
-        emit('copy-prompt', props.job);
-        showCopySuccess.value = true;
+        emit('copy-prompt', props.job)
+        showCopySuccess.value = true
       } finally {
-        loadingStates.value.copyPrompt = false;
+        loadingStates.value.copyPrompt = false
       }
-    };
+    }
 
     const handleViewMessages = () => {
-      emit('view-messages', props.job);
-    };
+      emit('view-messages', props.job)
+    }
 
     const handleCancel = () => {
-      const config = getActionConfig('cancel');
+      const config = getActionConfig('cancel')
       if (config.confirmation) {
-        showConfirmation('cancel', config);
+        showConfirmation('cancel', config)
       } else {
-        executeCancel();
+        executeCancel()
       }
-    };
+    }
 
     const handleHandOver = () => {
-      const config = getActionConfig('handOver');
+      const config = getActionConfig('handOver')
       if (config.confirmation) {
-        showConfirmation('handOver', config);
+        showConfirmation('handOver', config)
       } else {
-        executeHandOver();
+        executeHandOver()
       }
-    };
+    }
 
     const showConfirmation = (action, config) => {
       confirmationConfig.value = {
         title: config.confirmationTitle,
         message: config.confirmationMessage,
         color: config.color,
-        confirmText: config.label
-      };
-      pendingAction.value = action;
-      showConfirmDialog.value = true;
-    };
+        confirmText: config.label,
+      }
+      pendingAction.value = action
+      showConfirmDialog.value = true
+    }
 
     const cancelConfirmation = () => {
-      showConfirmDialog.value = false;
-      pendingAction.value = null;
-      confirmationLoading.value = false;
-    };
+      showConfirmDialog.value = false
+      pendingAction.value = null
+      confirmationLoading.value = false
+    }
 
     const executeConfirmedAction = async () => {
-      confirmationLoading.value = true;
+      confirmationLoading.value = true
       try {
         if (pendingAction.value === 'cancel') {
-          await executeCancel();
+          await executeCancel()
         } else if (pendingAction.value === 'handOver') {
-          await executeHandOver();
+          await executeHandOver()
         }
       } finally {
-        confirmationLoading.value = false;
-        showConfirmDialog.value = false;
-        pendingAction.value = null;
+        confirmationLoading.value = false
+        showConfirmDialog.value = false
+        pendingAction.value = null
       }
-    };
+    }
 
     const executeCancel = async () => {
-      loadingStates.value.cancel = true;
+      loadingStates.value.cancel = true
       try {
-        emit('cancel', props.job);
+        emit('cancel', props.job)
       } finally {
-        loadingStates.value.cancel = false;
+        loadingStates.value.cancel = false
       }
-    };
+    }
 
     const executeHandOver = async () => {
-      loadingStates.value.handOver = true;
+      loadingStates.value.handOver = true
       try {
-        emit('hand-over', props.job);
+        emit('hand-over', props.job)
       } finally {
-        loadingStates.value.handOver = false;
+        loadingStates.value.handOver = false
       }
-    };
+    }
 
     return {
       availableActions,
@@ -320,10 +306,10 @@ export default {
       handleCancel,
       handleHandOver,
       cancelConfirmation,
-      executeConfirmedAction
-    };
-  }
-};
+      executeConfirmedAction,
+    }
+  },
+}
 </script>
 
 <style scoped>

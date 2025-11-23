@@ -12,7 +12,11 @@
           <v-stepper-header>
             <v-stepper-item :complete="currentStep > 1" :value="1" title="Name"></v-stepper-item>
             <v-divider></v-divider>
-            <v-stepper-item :complete="currentStep > 2" :value="2" title="Generate"></v-stepper-item>
+            <v-stepper-item
+              :complete="currentStep > 2"
+              :value="2"
+              title="Generate"
+            ></v-stepper-item>
           </v-stepper-header>
         </v-stepper>
       </v-card-text>
@@ -22,7 +26,9 @@
         <!-- Step 1: Name Your Key -->
         <div v-if="currentStep === 1" data-test="step-1">
           <h3 class="text-h6 mb-2">Name Your Integration Key</h3>
-          <p class="text-subtitle-2 text-medium-emphasis mb-4">Choose a descriptive name for this integration API key</p>
+          <p class="text-subtitle-2 text-medium-emphasis mb-4">
+            Choose a descriptive name for this integration API key
+          </p>
           <v-text-field
             v-model="keyName"
             label="Key Name"
@@ -36,7 +42,8 @@
           />
           <v-alert type="info" variant="tonal" class="mt-4" density="compact">
             <v-icon start size="small">mdi-information</v-icon>
-            This key will enable AI tools and external applications to access GiljoAI MCP server endpoints.
+            This key will enable AI tools and external applications to access GiljoAI MCP server
+            endpoints.
           </v-alert>
         </div>
 
@@ -47,21 +54,11 @@
             Copy and save this key securely - it will only be shown once!
           </p>
 
-          <v-alert
-            v-if="!generatedKey && !errorMessage"
-            type="info"
-            variant="tonal"
-            class="mb-4"
-          >
+          <v-alert v-if="!generatedKey && !errorMessage" type="info" variant="tonal" class="mb-4">
             Click "Generate Key" to create your new API key
           </v-alert>
 
-          <v-alert
-            v-if="errorMessage"
-            type="error"
-            variant="tonal"
-            class="mb-4"
-          >
+          <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
             {{ errorMessage }}
           </v-alert>
 
@@ -71,8 +68,8 @@
                 <v-icon start>mdi-shield-alert</v-icon>
                 Save this key now!
               </v-alert-title>
-              This API key will only be shown ONCE. After closing this wizard, you will not
-              be able to retrieve it again.
+              This API key will only be shown ONCE. After closing this wizard, you will not be able
+              to retrieve it again.
             </v-alert>
 
             <v-text-field
@@ -97,13 +94,7 @@
               </template>
             </v-text-field>
 
-            <v-alert
-              v-if="copiedKey"
-              type="success"
-              variant="tonal"
-              density="compact"
-              class="mb-4"
-            >
+            <v-alert v-if="copiedKey" type="success" variant="tonal" density="compact" class="mb-4">
               <v-icon start size="small">mdi-check-circle</v-icon>
               API key copied to clipboard!
             </v-alert>
@@ -115,10 +106,7 @@
               Use this configuration for your AI tools and integrations:
             </p>
 
-            <ToolConfigSnippet
-              :config="configSnippet"
-              :language="configLanguage"
-            />
+            <ToolConfigSnippet :config="configSnippet" :language="configLanguage" />
 
             <v-divider class="my-4" />
 
@@ -136,22 +124,13 @@
       <v-divider />
 
       <v-card-actions>
-        <v-btn
-          v-if="currentStep > 1 && !generatedKey"
-          variant="text"
-          @click="previousStep"
-        >
+        <v-btn v-if="currentStep > 1 && !generatedKey" variant="text" @click="previousStep">
           Back
         </v-btn>
         <v-spacer />
         <v-btn variant="text" @click="close" :disabled="generating">Cancel</v-btn>
 
-        <v-btn
-          v-if="currentStep < 2"
-          color="primary"
-          @click="nextStep"
-          data-test="next-button"
-        >
+        <v-btn v-if="currentStep < 2" color="primary" @click="nextStep" data-test="next-button">
           Next
         </v-btn>
 
@@ -271,11 +250,7 @@ async function generateApiKey() {
     const pythonPath = getPythonPath(projectPath, detectOS())
 
     // Default to Claude Code config for integration keys
-    configSnippet.value = generateClaudeCodeConfig(
-      generatedKey.value,
-      serverUrl,
-      pythonPath
-    )
+    configSnippet.value = generateClaudeCodeConfig(generatedKey.value, serverUrl, pythonPath)
     configLanguage.value = 'json'
   } catch (err) {
     console.error('Failed to generate API key:', err)

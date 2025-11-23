@@ -17,24 +17,21 @@
       <h3 class="text-h6 mb-3">Cookie Domain Whitelist</h3>
 
       <p class="text-body-2 mb-3">
-        Configure which domain names are allowed for cross-port authentication cookies.
-        This enables secure authentication when accessing the dashboard from different ports
-        or subdomains on the same machine.
+        Configure which domain names are allowed for cross-port authentication cookies. This enables
+        secure authentication when accessing the dashboard from different ports or subdomains on the
+        same machine.
       </p>
 
       <v-alert type="info" variant="tonal" class="mb-4" :icon="false">
         <v-icon start>mdi-information</v-icon>
-        IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com, localhost).
+        IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com,
+        localhost).
       </v-alert>
 
       <!-- Domain List -->
       <div v-if="cookieDomains.length > 0" class="mb-4">
         <v-list density="compact" class="mb-3">
-          <v-list-item
-            v-for="domain in cookieDomains"
-            :key="domain"
-            :title="domain"
-          >
+          <v-list-item v-for="domain in cookieDomains" :key="domain" :title="domain">
             <template v-slot:append>
               <v-btn
                 icon="mdi-delete"
@@ -52,12 +49,7 @@
       </div>
 
       <!-- Empty State -->
-      <v-alert
-        v-else
-        type="info"
-        variant="outlined"
-        class="mb-4"
-      >
+      <v-alert v-else type="info" variant="outlined" class="mb-4">
         No domain names configured. IP-based access only.
       </v-alert>
 
@@ -105,12 +97,7 @@
 
     <v-card-actions>
       <v-spacer />
-      <v-btn
-        variant="text"
-        data-test="reload-btn"
-        :disabled="loading"
-        @click="reload"
-      >
+      <v-btn variant="text" data-test="reload-btn" :disabled="loading" @click="reload">
         <v-icon start>mdi-refresh</v-icon>
         Reload
       </v-btn>
@@ -159,7 +146,8 @@ function validateDomain(value) {
   }
 
   // Validate domain format
-  const domainPattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+  const domainPattern =
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
   if (!domainPattern.test(trimmed)) {
     domainError.value = 'Invalid domain format. Example: app.example.com'
     return false

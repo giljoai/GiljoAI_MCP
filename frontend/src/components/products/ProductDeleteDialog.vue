@@ -1,9 +1,5 @@
 <template>
-  <v-dialog
-    v-model="isOpen"
-    max-width="500"
-    persistent
-  >
+  <v-dialog v-model="isOpen" max-width="500" persistent>
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start color="warning">mdi-delete</v-icon>
@@ -24,8 +20,8 @@
           <v-alert type="warning" variant="tonal" density="compact" class="mb-4">
             <div class="text-subtitle-1 font-weight-bold mb-2">Move to Trash?</div>
             <div>
-              <strong>{{ product.name }}</strong> will be moved to trash and can be recovered for 10 days.
-              After 10 days, it will be permanently deleted.
+              <strong>{{ product.name }}</strong> will be moved to trash and can be recovered for 10
+              days. After 10 days, it will be permanently deleted.
             </div>
           </v-alert>
 
@@ -81,11 +77,7 @@
           <!-- Simplified Confirmation -->
           <v-divider class="my-4"></v-divider>
 
-          <v-checkbox
-            v-model="deleteConfirmationCheck"
-            density="compact"
-            hide-details
-          >
+          <v-checkbox v-model="deleteConfirmationCheck" density="compact" hide-details>
             <template #label>
               <span>I understand this product will be recoverable for 10 days</span>
             </template>
@@ -97,13 +89,7 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
-          @click="handleCancel"
-          :disabled="deleting"
-        >
-          Cancel
-        </v-btn>
+        <v-btn variant="text" @click="handleCancel" :disabled="deleting"> Cancel </v-btn>
         <v-btn
           color="warning"
           variant="flat"
@@ -124,11 +110,11 @@ import { ref, computed, watch } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   product: {
     type: Object,
-    default: () => ({})
+    default: () => ({}),
   },
   cascadeImpact: {
     type: Object,
@@ -138,17 +124,17 @@ const props = defineProps({
       unresolved_tasks: 0,
       tasks_count: 0,
       vision_documents_count: 0,
-      total_chunks: 0
-    })
+      total_chunks: 0,
+    }),
   },
   loading: {
     type: Boolean,
-    default: false
+    default: false,
   },
   deleting: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
@@ -157,7 +143,7 @@ const deleteConfirmationCheck = ref(false)
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => emit('update:modelValue', val),
 })
 
 const handleConfirm = () => {
@@ -172,9 +158,12 @@ const handleCancel = () => {
 }
 
 // Reset state when dialog opens or closes
-watch(() => props.modelValue, (newVal) => {
-  deleteConfirmationCheck.value = false
-})
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    deleteConfirmationCheck.value = false
+  },
+)
 </script>
 
 <style scoped>

@@ -103,11 +103,7 @@
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="text-body-2">
-                  <div
-                    v-for="(value, key) in currentDetails"
-                    :key="key"
-                    class="mb-2"
-                  >
+                  <div v-for="(value, key) in currentDetails" :key="key" class="mb-2">
                     <strong>{{ formatDetailKey(key) }}:</strong> {{ value }}
                   </div>
                 </div>
@@ -133,12 +129,7 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            v-if="canClose"
-            variant="text"
-            @click="handleClose"
-            aria-label="Close dialog"
-          >
+          <v-btn v-if="canClose" variant="text" @click="handleClose" aria-label="Close dialog">
             Close
           </v-btn>
           <v-btn
@@ -178,12 +169,14 @@ const props = defineProps({
     type: Object,
     required: true,
     validator: (val) => {
-      return val &&
-             typeof val.id === 'string' &&
-             typeof val.is_active === 'boolean' &&
-             typeof val.has_vision_documents === 'boolean'
-    }
-  }
+      return (
+        val &&
+        typeof val.id === 'string' &&
+        typeof val.is_active === 'boolean' &&
+        typeof val.has_vision_documents === 'boolean'
+      )
+    },
+  },
 })
 
 const emit = defineEmits(['launched', 'error'])
@@ -206,50 +199,50 @@ const STAGE_CONFIG = {
     label: 'Initializing Orchestrator',
     progress: 0,
     icon: 'mdi-rocket-launch-outline',
-    color: 'primary'
+    color: 'primary',
   },
   processing_vision: {
     key: 'processing_vision',
     label: 'Processing Vision Documents',
     progress: 20,
     icon: 'mdi-file-document-multiple',
-    color: 'primary'
+    color: 'primary',
   },
   generating_missions: {
     key: 'generating_missions',
     label: 'Generating Mission Plan',
     progress: 40,
     icon: 'mdi-file-chart',
-    color: 'primary'
+    color: 'primary',
   },
   selecting_agents: {
     key: 'selecting_agents',
     label: 'Selecting Optimal Agents',
     progress: 60,
     icon: 'mdi-account-group',
-    color: 'primary'
+    color: 'primary',
   },
   creating_workflow: {
     key: 'creating_workflow',
     label: 'Coordinating Workflow',
     progress: 80,
     icon: 'mdi-source-branch',
-    color: 'primary'
+    color: 'primary',
   },
   complete: {
     key: 'complete',
     label: 'Orchestrator Launched',
     progress: 100,
     icon: 'mdi-check-circle',
-    color: 'success'
+    color: 'success',
   },
   error: {
     key: 'error',
     label: 'Error Occurred',
     progress: 0,
     icon: 'mdi-alert-circle',
-    color: 'error'
-  }
+    color: 'error',
+  },
 }
 
 // Computed properties
@@ -303,7 +296,13 @@ const currentStageIcon = computed(() => {
 
 const completedStages = computed(() => {
   const stages = []
-  const stageOrder = ['starting', 'processing_vision', 'generating_missions', 'selecting_agents', 'creating_workflow']
+  const stageOrder = [
+    'starting',
+    'processing_vision',
+    'generating_missions',
+    'selecting_agents',
+    'creating_workflow',
+  ]
 
   for (const stageKey of stageOrder) {
     const config = STAGE_CONFIG[stageKey]
@@ -315,7 +314,7 @@ const completedStages = computed(() => {
       stages.push({
         ...config,
         isComplete,
-        isActive
+        isActive,
       })
     }
   }
@@ -375,7 +374,7 @@ function handleErrorUpdate(data) {
   emit('error', {
     stage: data.stage,
     error: data.error,
-    details: data.details
+    details: data.details,
   })
 
   // Announce error to screen readers
@@ -404,7 +403,7 @@ async function handleLaunch() {
       product_id: props.product.id,
       project_description: 'Generated from product vision documents',
       workflow_type: 'waterfall',
-      auto_start: true
+      auto_start: true,
     })
 
     // Store session ID for WebSocket filtering
@@ -414,7 +413,6 @@ async function handleLaunch() {
 
     // WebSocket will handle progress updates
     // Final completion will be handled by handleProgressUpdate
-
   } catch (error) {
     console.error('[OrchestratorLaunchButton] Launch failed:', error)
 
@@ -435,7 +433,7 @@ async function handleLaunch() {
 
     emit('error', {
       error: errorMessage.value,
-      response: error.response
+      response: error.response,
     })
   }
 }
@@ -482,7 +480,7 @@ function handleClose() {
 function formatDetailKey(key) {
   return key
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
 

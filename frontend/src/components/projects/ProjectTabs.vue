@@ -8,21 +8,11 @@
       class="tabs-header"
       align-tabs="start"
     >
-      <v-tab value="launch">
-        Launch
-      </v-tab>
+      <v-tab value="launch"> Launch </v-tab>
 
-      <v-tab
-        value="jobs"
-        :disabled="!store.isLaunched"
-      >
+      <v-tab value="jobs" :disabled="!store.isLaunched">
         Implementation
-        <v-badge
-          v-if="store.unreadCount > 0"
-          :content="store.unreadCount"
-          color="error"
-          inline
-        />
+        <v-badge v-if="store.unreadCount > 0" :content="store.unreadCount" color="error" inline />
       </v-tab>
     </v-tabs>
 
@@ -64,21 +54,11 @@
     </v-window>
 
     <!-- Error Snackbar -->
-    <v-snackbar
-      v-model="errorVisible"
-      color="error"
-      :timeout="5000"
-      location="top"
-    >
+    <v-snackbar v-model="errorVisible" color="error" :timeout="5000" location="top">
       <v-icon start>mdi-alert-circle</v-icon>
       {{ store.error }}
       <template #actions>
-        <v-btn
-          variant="text"
-          @click="errorVisible = false"
-        >
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="errorVisible = false"> Close </v-btn>
       </template>
     </v-snackbar>
   </v-card>
@@ -97,16 +77,16 @@ import JobsTab from './JobsTab.vue'
 const props = defineProps({
   project: {
     type: Object,
-    required: true
+    required: true,
   },
   orchestrator: {
     type: Object,
-    default: null
+    default: null,
   },
   readonly: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 /**
@@ -123,7 +103,7 @@ const emit = defineEmits([
   'view-details',
   'view-error',
   'closeout-project',
-  'send-message'
+  'send-message',
 ])
 
 /**
@@ -137,7 +117,7 @@ const wsStore = useWebSocketStore()
  */
 const activeTabIndex = computed({
   get: () => store.activeTab,
-  set: (value) => store.switchTab(value)
+  set: (value) => store.switchTab(value),
 })
 
 const errorVisible = ref(false)
@@ -151,7 +131,7 @@ watch(
     if (newError) {
       errorVisible.value = true
     }
-  }
+  },
 )
 
 /**
@@ -201,7 +181,7 @@ watch(
       }
     }
   },
-  { deep: true }
+  { deep: true },
 )
 
 /**
@@ -279,8 +259,8 @@ async function handleHandOver(agent) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
     })
 
     if (!response.ok) {
@@ -295,11 +275,12 @@ async function handleHandOver(agent) {
 
     // TODO: Show LaunchSuccessorDialog with result.launch_prompt
     // For now, show simple confirmation
-    alert(`✅ ${result.message}\n\n📋 Launch Prompt (copy to clipboard):\n\n${result.launch_prompt}`)
+    alert(
+      `✅ ${result.message}\n\n📋 Launch Prompt (copy to clipboard):\n\n${result.launch_prompt}`,
+    )
 
     // Refresh agents to show new successor
     await store.loadAgents(project.value.id)
-
   } catch (error) {
     console.error('Hand over failed:', error)
     alert(`❌ Failed to trigger succession: ${error.message}`)

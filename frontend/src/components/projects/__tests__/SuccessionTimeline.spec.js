@@ -8,14 +8,14 @@ import api from '@/services/api'
 vi.mock('@/services/api', () => ({
   default: {
     agentJobs: {
-      list: vi.fn()
-    }
-  }
+      list: vi.fn(),
+    },
+  },
 }))
 
 // Mock date-fns
 vi.mock('date-fns', () => ({
-  format: vi.fn((date, formatStr) => '2025-01-15 14:30')
+  format: vi.fn((date, formatStr) => '2025-01-15 14:30'),
 }))
 
 describe('SuccessionTimeline.vue', () => {
@@ -38,7 +38,7 @@ describe('SuccessionTimeline.vue', () => {
       context_budget: 200000,
       succession_reason: 'context_limit',
       handover_summary: 'Completed phase 1',
-      handover_to: 'job-2'
+      handover_to: 'job-2',
     },
     {
       id: 'job-2',
@@ -51,22 +51,22 @@ describe('SuccessionTimeline.vue', () => {
       context_budget: 200000,
       succession_reason: null,
       handover_summary: null,
-      handover_to: null
-    }
+      handover_to: null,
+    },
   ]
 
   const createWrapper = (props = {}) => {
     return mount(SuccessionTimeline, {
       props: {
         projectId: 'proj-123',
-        ...props
+        ...props,
       },
       global: {
         plugins: [vuetify],
         stubs: {
-          teleport: true
-        }
-      }
+          teleport: true,
+        },
+      },
     })
   }
 
@@ -119,15 +119,15 @@ describe('SuccessionTimeline.vue', () => {
         {
           id: 'job-3',
           agent_type: 'specialist',
-          instance_number: 1
-        }
+          instance_number: 1,
+        },
       ]
       api.agentJobs.list.mockResolvedValue({ data: mixedJobs })
       const wrapper = createWrapper()
       await flushPromises()
 
       expect(wrapper.vm.instances).toHaveLength(2)
-      expect(wrapper.vm.instances.every(i => i.agent_type === 'orchestrator')).toBe(true)
+      expect(wrapper.vm.instances.every((i) => i.agent_type === 'orchestrator')).toBe(true)
     })
 
     it('sorts instances by instance_number', async () => {
@@ -176,13 +176,19 @@ describe('SuccessionTimeline.vue', () => {
       await flushPromises()
 
       // Green for < 70%
-      expect(wrapper.vm.getContextColor({ context_used: 50000, context_budget: 200000 })).toBe('success')
+      expect(wrapper.vm.getContextColor({ context_used: 50000, context_budget: 200000 })).toBe(
+        'success',
+      )
 
       // Warning for 70-89%
-      expect(wrapper.vm.getContextColor({ context_used: 150000, context_budget: 200000 })).toBe('warning')
+      expect(wrapper.vm.getContextColor({ context_used: 150000, context_budget: 200000 })).toBe(
+        'warning',
+      )
 
       // Error for >= 90%
-      expect(wrapper.vm.getContextColor({ context_used: 190000, context_budget: 200000 })).toBe('error')
+      expect(wrapper.vm.getContextColor({ context_used: 190000, context_budget: 200000 })).toBe(
+        'error',
+      )
     })
 
     it('displays token counts with formatting', async () => {
@@ -220,7 +226,7 @@ describe('SuccessionTimeline.vue', () => {
       await flushPromises()
 
       const chips = wrapper.findAllComponents({ name: 'VChip' })
-      const successionChip = chips.find(c => c.text().includes('Succession:'))
+      const successionChip = chips.find((c) => c.text().includes('Succession:'))
       expect(successionChip).toBeUndefined()
     })
   })
@@ -267,7 +273,7 @@ describe('SuccessionTimeline.vue', () => {
     it('scrolls to instance when view successor is clicked', async () => {
       const scrollIntoView = vi.fn()
       const querySelector = vi.spyOn(document, 'querySelector').mockReturnValue({
-        scrollIntoView
+        scrollIntoView,
       })
 
       api.agentJobs.list.mockResolvedValue({ data: [mockInstances[0]] })
