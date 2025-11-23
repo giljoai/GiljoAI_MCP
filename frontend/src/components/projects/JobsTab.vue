@@ -63,13 +63,19 @@
             </td>
 
             <!-- Messages Sent -->
-            <td class="count-cell">{{ formatCount(agent.messages_sent) }}</td>
+            <td class="messages-sent-cell text-center">
+              <span class="message-count">{{ getMessagesSent(agent) }}</span>
+            </td>
 
             <!-- Messages Waiting -->
-            <td class="count-cell">{{ formatCount(agent.messages_waiting) }}</td>
+            <td class="messages-waiting-cell text-center">
+              <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
+            </td>
 
             <!-- Messages Read -->
-            <td class="count-cell">{{ formatCount(agent.messages_read) }}</td>
+            <td class="messages-read-cell text-center">
+              <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
+            </td>
 
             <!-- Actions -->
             <td class="actions-cell">
@@ -153,16 +159,44 @@
 
     <!-- Message Composer (Bottom) -->
     <div class="message-composer">
-      <v-btn class="recipient-btn" variant="outlined" rounded> Orchestrator </v-btn>
-      <v-btn class="broadcast-btn" variant="outlined" rounded> Broadcast </v-btn>
-      <input
-        type="text"
-        class="message-input"
-        placeholder=""
+      <v-btn
+        class="recipient-btn"
+        :variant="selectedRecipient === 'orchestrator' ? 'flat' : 'outlined'"
+        rounded
+        color="yellow-darken-2"
+        @click="selectedRecipient = 'orchestrator'"
+      >
+        Orchestrator
+      </v-btn>
+
+      <v-btn
+        class="broadcast-btn"
+        :variant="selectedRecipient === 'broadcast' ? 'flat' : 'outlined'"
+        rounded
+        color="yellow-darken-2"
+        @click="selectedRecipient = 'broadcast'"
+      >
+        Broadcast
+      </v-btn>
+
+      <v-text-field
         v-model="messageText"
+        class="message-input"
+        placeholder="Type message..."
+        variant="outlined"
+        density="compact"
+        hide-details
         @keyup.enter="sendMessage"
       />
-      <v-btn icon="mdi-play" class="send-btn" color="yellow-darken-2" @click="sendMessage" />
+
+      <v-btn
+        icon="mdi-play"
+        class="send-btn"
+        color="yellow-darken-2"
+        :loading="sending"
+        :disabled="!messageText.trim()"
+        @click="sendMessage"
+      />
     </div>
 
     <!-- Cancel Job Confirmation Dialog (Handover 0243d) -->
@@ -279,6 +313,8 @@ const userStore = useUserStore()
  */
 const usingClaudeCodeSubagents = ref(false)
 const messageText = ref('')
+const selectedRecipient = ref('orchestrator')
+const sending = ref(false)
 
 /**
  * Cancel dialog state (Handover 0243d)
@@ -362,6 +398,36 @@ function getAgentAbbr(agentType) {
  */
 function formatCount(count) {
   return count && count > 0 ? count.toString() : ''
+}
+
+/**
+ * Get count of messages sent from developer to this agent
+ */
+function getMessagesSent(agent) {
+  if (!agent.messages || !Array.isArray(agent.messages)) return 0
+  return agent.messages.filter(
+    (m) => m.from === 'developer' || m.direction === 'outbound'
+  ).length
+}
+
+/**
+ * Get count of messages waiting to be read by agent
+ */
+function getMessagesWaiting(agent) {
+  if (!agent.messages || !Array.isArray(agent.messages)) return 0
+  return agent.messages.filter(
+    (m) => m.status === 'pending' || m.status === 'sent'
+  ).length
+}
+
+/**
+ * Get count of messages acknowledged/read by agent
+ */
+function getMessagesRead(agent) {
+  if (!agent.messages || !Array.isArray(agent.messages)) return 0
+  return agent.messages.filter(
+    (m) => m.status === 'acknowledged' || m.status === 'read'
+  ).length
 }
 
 /**
@@ -480,15 +546,47 @@ function handleSuccessorCreated(successorData) {
 }
 
 /**
- * Send message
+ * Send message via API (Handover 0243e)
+ * Integrates with backend message service with API call, error handling, and toast notifications
  */
-function sendMessage() {
-  if (!messageText.value.trim()) return
+async function sendMessage() {
+  if (!messageText.value.trim()) {
+    showToast({ message: 'Message cannot be empty', type: 'warning', duration: 3000 })
+    return
+  }
 
-  console.log('[JobsTab] Send message:', messageText.value)
-  emit('send-message', messageText.value, null)
+  sending.value = true
 
-  messageText.value = ''
+  try {
+    const payload = {
+      to_agent: selectedRecipient.value === 'broadcast' ? 'all' : 'orchestrator',
+      message: messageText.value.trim(),
+      priority: 'medium'
+    }
+
+    await api.messages.send(payload)
+
+    showToast({
+      message: 'Message sent successfully',
+      type: 'success',
+      duration: 3000
+    })
+
+    messageText.value = ''
+
+    // Message counts will update via WebSocket event
+    emit('send-message', messageText.value, selectedRecipient.value)
+  } catch (error) {
+    console.error('[JobsTab] Send message failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to send message'
+    showToast({
+      message: `Failed to send message: ${msg}`,
+      type: 'error',
+      duration: 5000
+    })
+  } finally {
+    sending.value = false
+  }
 }
 
 /**
@@ -515,6 +613,90 @@ async function copyToClipboard(text) {
     document.execCommand('copy')
   } finally {
     document.body.removeChild(textArea)
+  }
+}
+
+/**
+ * Handle message sent event (developer -> agent)
+ * Updates agent's message list when a message is successfully sent
+ */
+const handleMessageSent = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    return
+  }
+
+  console.log('[JobsTab] Message sent event:', data)
+
+  // Add message to agent's messages array
+  const agent = props.agents.find(
+    (a) => a.id === data.to_agent || a.agent_id === data.to_agent
+  )
+  if (agent) {
+    if (!agent.messages) agent.messages = []
+    agent.messages.push({
+      id: data.message_id,
+      from: 'developer',
+      direction: 'outbound',
+      status: 'sent',
+      text: data.message,
+      priority: data.priority || 'medium',
+      timestamp: data.timestamp || new Date().toISOString()
+    })
+  }
+}
+
+/**
+ * Handle message acknowledged event (agent read message)
+ * Updates message status when agent acknowledges receipt
+ */
+const handleMessageAcknowledged = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    return
+  }
+
+  console.log('[JobsTab] Message acknowledged event:', data)
+
+  // Update message status
+  const agent = props.agents.find(
+    (a) => a.id === data.agent_id || a.agent_id === data.agent_id
+  )
+  if (agent && agent.messages) {
+    const message = agent.messages.find((m) => m.id === data.message_id)
+    if (message) {
+      message.status = 'acknowledged'
+    }
+  }
+}
+
+/**
+ * Handle new message event (agent -> developer)
+ * Adds incoming messages from agents to the message list
+ */
+const handleNewMessage = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    return
+  }
+
+  console.log('[JobsTab] New message event:', data)
+
+  // Add message to agent's messages array
+  const agent = props.agents.find(
+    (a) => a.id === data.from_agent || a.agent_id === data.from_agent
+  )
+  if (agent) {
+    if (!agent.messages) agent.messages = []
+    agent.messages.push({
+      id: data.message_id,
+      from: 'agent',
+      direction: 'inbound',
+      status: 'pending',
+      text: data.message,
+      priority: data.priority || 'medium',
+      timestamp: data.timestamp || new Date().toISOString()
+    })
   }
 }
 
@@ -547,10 +729,16 @@ const handleStatusUpdate = (data) => {
  */
 onMounted(() => {
   on('agent:status_changed', handleStatusUpdate)
+  on('message:sent', handleMessageSent)
+  on('message:acknowledged', handleMessageAcknowledged)
+  on('message:new', handleNewMessage)
 })
 
 onUnmounted(() => {
   off('agent:status_changed', handleStatusUpdate)
+  off('message:sent', handleMessageSent)
+  off('message:acknowledged', handleMessageAcknowledged)
+  off('message:new', handleNewMessage)
 })
 </script>
 
@@ -674,36 +862,100 @@ onUnmounted(() => {
     display: flex;
     gap: 12px;
     align-items: center;
+    padding: 16px;
+    background: rgba(20, 35, 50, 0.6);
+    border-radius: 12px;
+    margin-bottom: 20px;
 
     .recipient-btn,
     .broadcast-btn {
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      color: #ccc;
+      border: 2px solid rgba(255, 215, 0, 0.4);
+      border-radius: 6px;
       text-transform: none;
+      font-size: 14px;
       font-weight: 400;
+      padding: 8px 16px;
+      color: rgba(255, 215, 0, 0.7);
+      transition: all 0.2s ease;
+
+      &.v-btn--variant-flat {
+        background: #ffd700;
+        color: #000;
+        font-weight: 600;
+        border-color: #ffd700;
+
+        &:hover {
+          background: #ffed4e;
+        }
+      }
+
+      &.v-btn--variant-outlined {
+        &:hover {
+          background: rgba(255, 215, 0, 0.1);
+          border-color: rgba(255, 215, 0, 0.6);
+          color: rgba(255, 215, 0, 0.9);
+        }
+      }
     }
 
     .message-input {
       flex: 1;
-      background: rgba(20, 35, 50, 0.8);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 12px 16px;
-      color: #fff;
-      font-size: 14px;
-      outline: none;
 
-      &::placeholder {
-        color: #666;
-      }
+      ::v-deep(.v-field) {
+        background: rgba(20, 35, 50, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 8px;
 
-      &:focus {
-        border-color: rgba(255, 255, 255, 0.4);
+        input {
+          color: #fff;
+          font-size: 14px;
+          padding: 8px 12px;
+
+          &::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+          }
+        }
+
+        &:hover {
+          border-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        &.v-field--focused {
+          border-color: #ffd700 !important;
+        }
       }
     }
 
     .send-btn {
       min-width: auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+
+      &:disabled {
+        opacity: 0.4;
+      }
+    }
+  }
+
+  .message-count {
+    display: inline-block;
+    min-width: 24px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    font-size: 12px;
+    font-weight: 600;
+
+    &.message-waiting {
+      background: rgba(255, 152, 0, 0.2);
+      color: #ff9800;
+    }
+
+    &.message-read {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
     }
   }
 }
