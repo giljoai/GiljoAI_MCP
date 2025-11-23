@@ -8,9 +8,7 @@
           <v-icon size="small" color="primary" class="mr-2">mdi-lock</v-icon>
           <span class="text-subtitle-2 font-weight-medium">Project Context</span>
         </div>
-        <v-chip size="small" color="primary" variant="flat">
-          Always High
-        </v-chip>
+        <v-chip size="small" color="primary" variant="flat"> Always High </v-chip>
       </div>
 
       <v-divider class="mb-3" />
@@ -67,33 +65,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
 // Context definitions
 const contexts = [
   { key: 'product_description', label: 'Product Description' },
-  { key: 'vision_documents', label: 'Vision Documents', options: ['none', 'light', 'moderate', 'heavy'] },
+  {
+    key: 'vision_documents',
+    label: 'Vision Documents',
+    options: ['none', 'light', 'moderate', 'heavy'],
+  },
   { key: 'tech_stack', label: 'Tech Stack' },
   { key: 'architecture', label: 'Architecture' },
   { key: 'testing', label: 'Testing' },
   { key: 'agent_templates', label: 'Agent Templates', options: ['type_only', 'full'] },
   { key: 'memory_360', label: '360 Memory', options: [1, 3, 5, 10] },
   { key: 'git_history', label: 'Git History', options: [0, 5, 15, 25] },
-];
+]
 
 const priorityOptions = [
   { title: 'High', value: 'high' },
   { title: 'Medium', value: 'medium' },
   { title: 'Low', value: 'low' },
-];
+]
 
 // State
 interface ContextConfig {
-  enabled: boolean;
-  priority: string;
-  depth?: string;
-  count?: number;
+  enabled: boolean
+  priority: string
+  depth?: string
+  count?: number
 }
 
 const config = ref<Record<string, ContextConfig>>({
@@ -105,105 +107,105 @@ const config = ref<Record<string, ContextConfig>>({
   agent_templates: { enabled: true, priority: 'medium', depth: 'type_only' },
   memory_360: { enabled: true, priority: 'low', count: 3 },
   git_history: { enabled: true, priority: 'low', count: 15 },
-});
+})
 
-const loading = ref(false);
-const saving = ref(false);
+const loading = ref(false)
+const saving = ref(false)
 
 // Methods
 function toggleContext(key: string) {
-  config.value[key].enabled = !config.value[key].enabled;
-  saveConfig(); // Auto-save
+  config.value[key].enabled = !config.value[key].enabled
+  saveConfig() // Auto-save
 }
 
 function updatePriority(key: string, value: string) {
-  config.value[key].priority = value;
-  saveConfig(); // Auto-save
+  config.value[key].priority = value
+  saveConfig() // Auto-save
 }
 
 function updateDepth(key: string, value: string | number) {
-  const contextDef = contexts.find(c => c.key === key);
-  if (!contextDef) return;
+  const contextDef = contexts.find((c) => c.key === key)
+  if (!contextDef) return
 
   // Determine if this is a count-based or depth-based context
   if (key === 'memory_360' || key === 'git_history') {
-    config.value[key].count = value as number;
+    config.value[key].count = value as number
   } else {
-    config.value[key].depth = value as string;
+    config.value[key].depth = value as string
   }
-  saveConfig(); // Auto-save
+  saveConfig() // Auto-save
 }
 
 function getDepthValue(key: string): string | number | undefined {
-  const contextConfig = config.value[key];
-  if (!contextConfig) return undefined;
+  const contextConfig = config.value[key]
+  if (!contextConfig) return undefined
 
   if (key === 'memory_360' || key === 'git_history') {
-    return contextConfig.count;
+    return contextConfig.count
   }
-  return contextConfig.depth;
+  return contextConfig.depth
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  if (!context.options) return [];
+  if (!context.options) return []
 
-  return context.options.map(opt => {
+  return context.options.map((opt) => {
     if (typeof opt === 'number') {
       if (context.key === 'memory_360') {
-        return { title: `${opt} project${opt === 1 ? '' : 's'}`, value: opt };
+        return { title: `${opt} project${opt === 1 ? '' : 's'}`, value: opt }
       } else if (context.key === 'git_history') {
-        if (opt === 0) return { title: 'None', value: opt };
-        return { title: `${opt} commits`, value: opt };
+        if (opt === 0) return { title: 'None', value: opt }
+        return { title: `${opt} commits`, value: opt }
       }
-      return { title: String(opt), value: opt };
+      return { title: String(opt), value: opt }
     }
     // String options - capitalize first letter
-    return { title: opt.charAt(0).toUpperCase() + opt.slice(1).replace('_', ' '), value: opt };
-  });
+    return { title: opt.charAt(0).toUpperCase() + opt.slice(1).replace('_', ' '), value: opt }
+  })
 }
 
 async function fetchConfig() {
-  loading.value = true;
+  loading.value = true
   try {
-    const response = await axios.get('/api/v1/users/me/context/depth');
+    const response = await axios.get('/api/v1/users/me/context/depth')
     if (response.data?.contexts) {
       // Merge server config with defaults
-      Object.keys(response.data.contexts).forEach(key => {
+      Object.keys(response.data.contexts).forEach((key) => {
         if (config.value[key]) {
           config.value[key] = {
             ...config.value[key],
             ...response.data.contexts[key],
-          };
+          }
         }
-      });
+      })
     }
-    console.log('[CONTEXT PRIORITY CONFIG] Configuration loaded from server');
+    console.log('[CONTEXT PRIORITY CONFIG] Configuration loaded from server')
   } catch (error) {
-    console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error);
+    console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error)
     // Keep default values on error
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 async function saveConfig() {
-  saving.value = true;
+  saving.value = true
   try {
     await axios.put('/api/v1/users/me/context/depth', {
       contexts: config.value,
-    });
-    console.log('[CONTEXT PRIORITY CONFIG] Configuration saved successfully');
+    })
+    console.log('[CONTEXT PRIORITY CONFIG] Configuration saved successfully')
   } catch (error) {
-    console.error('[CONTEXT PRIORITY CONFIG] Failed to save config:', error);
+    console.error('[CONTEXT PRIORITY CONFIG] Failed to save config:', error)
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 // Lifecycle
 onMounted(() => {
-  fetchConfig();
-});
+  fetchConfig()
+})
 
 // Expose for testing
 defineExpose({
@@ -216,7 +218,7 @@ defineExpose({
   updatePriority,
   updateDepth,
   saveConfig,
-});
+})
 </script>
 
 <style scoped>

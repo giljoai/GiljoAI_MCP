@@ -1,28 +1,15 @@
 <template>
   <div class="message-list">
-    <v-virtual-scroll
-      v-if="messages.length > 0"
-      :items="messages"
-      :item-height="120"
-      height="600"
-    >
+    <v-virtual-scroll v-if="messages.length > 0" :items="messages" :item-height="120" height="600">
       <template #default="{ item }">
         <div class="px-4 pt-3" @click="$emit('message-click', item)">
-          <MessageItem
-            :message="item"
-            :show-actions="false"
-          />
+          <MessageItem :message="item" :show-actions="false" />
         </div>
       </template>
     </v-virtual-scroll>
 
     <!-- Empty state -->
-    <v-alert
-      v-else
-      type="info"
-      variant="tonal"
-      class="ma-4"
-    >
+    <v-alert v-else type="info" variant="tonal" class="ma-4">
       <div class="empty-state text-center">
         <v-icon size="64" color="grey-lighten-1">mdi-message-text-outline</v-icon>
         <p class="text-grey-lighten-1 mt-4">No messages yet</p>
@@ -40,7 +27,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  messages: () => []
+  messages: () => [],
 })
 
 const emit = defineEmits<{

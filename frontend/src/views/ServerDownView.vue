@@ -71,12 +71,7 @@
           </v-card-text>
 
           <v-card-actions class="pa-6 pt-0">
-            <v-btn
-              variant="text"
-              prepend-icon="mdi-logout"
-              @click="logout"
-              block
-            >
+            <v-btn variant="text" prepend-icon="mdi-logout" @click="logout" block>
               Return to Login
             </v-btn>
           </v-card-actions>

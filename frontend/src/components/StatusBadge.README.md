@@ -1,6 +1,7 @@
 # StatusBadge Component
 
-A reusable Vue 3 component for displaying and managing project status with an interactive dropdown menu.
+A reusable Vue 3 component for displaying and managing project status with an
+interactive dropdown menu.
 
 ## Features
 
@@ -42,7 +43,7 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
       showToast({
         message: 'Project deleted successfully',
         type: 'success',
-        duration: 3000
+        duration: 3000,
       })
       // Refresh project list or navigate away
       return
@@ -50,11 +51,11 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 
     // Handle status updates
     await api.projects.update(projectId, { status: newStatus })
-    
+
     showToast({
       message: `Project status updated to ${newStatus}`,
       type: 'success',
-      duration: 3000
+      duration: 3000,
     })
 
     // Refresh project data
@@ -64,7 +65,7 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
     showToast({
       message: 'Failed to update project status',
       type: 'error',
-      duration: 5000
+      duration: 5000,
     })
   }
 }
@@ -73,51 +74,54 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 
 ### Props
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `status` | String | Yes | - | Current project status. Must be one of: `inactive`, `active`, `paused`, `completed`, `cancelled`, `archived` |
-| `projectId` | String | Yes | - | Unique project identifier for API calls |
-| `projectName` | String | No | `'this project'` | Project name used in confirmation dialogs |
+| Prop          | Type   | Required | Default          | Description                                                                                                  |
+| ------------- | ------ | -------- | ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `status`      | String | Yes      | -                | Current project status. Must be one of: `inactive`, `active`, `paused`, `completed`, `cancelled`, `archived` |
+| `projectId`   | String | Yes      | -                | Unique project identifier for API calls                                                                      |
+| `projectName` | String | No       | `'this project'` | Project name used in confirmation dialogs                                                                    |
 
 ### Events
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `@action` | `{ action: string, newStatus: string, projectId: string }` | Emitted when user selects an action. Parent component should handle API calls. |
-| `@loading` | `{ loading: boolean }` | Emitted when loading state changes (action starts/completes) |
-| `@error` | `{ error: string }` | Reserved for future error handling |
+| Event      | Payload                                                    | Description                                                                    |
+| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `@action`  | `{ action: string, newStatus: string, projectId: string }` | Emitted when user selects an action. Parent component should handle API calls. |
+| `@loading` | `{ loading: boolean }`                                     | Emitted when loading state changes (action starts/completes)                   |
+| `@error`   | `{ error: string }`                                        | Reserved for future error handling                                             |
 
 ### Status Colors
 
-| Status | Color | Hex | Icon |
-|--------|-------|-----|------|
-| active | Green | #4CAF50 | mdi-play-circle |
-| inactive | Grey | #9E9E9E | mdi-circle-outline |
-| paused | Amber | #FFC107 | mdi-pause-circle |
-| completed | Blue | #2196F3 | mdi-check-circle |
-| cancelled | Red | #F44336 | mdi-cancel |
-| archived | Dark Grey | - | mdi-archive |
+| Status    | Color     | Hex     | Icon               |
+| --------- | --------- | ------- | ------------------ |
+| active    | Green     | #4CAF50 | mdi-play-circle    |
+| inactive  | Grey      | #9E9E9E | mdi-circle-outline |
+| paused    | Amber     | #FFC107 | mdi-pause-circle   |
+| completed | Blue      | #2196F3 | mdi-check-circle   |
+| cancelled | Red       | #F44336 | mdi-cancel         |
+| archived  | Dark Grey | -       | mdi-archive        |
 
 ### Available Actions by Status
 
-| Current Status | Available Actions |
-|---------------|-------------------|
-| inactive | Activate, Pause, Complete, Cancel, Archive, Delete |
-| active | Pause, Complete, Cancel, Deactivate, Delete |
-| paused | Resume, Complete, Cancel, Deactivate, Delete |
-| completed | Reopen, Archive, Delete |
-| cancelled | Reopen, Archive, Delete |
-| archived | Restore, Delete |
+| Current Status | Available Actions                                  |
+| -------------- | -------------------------------------------------- |
+| inactive       | Activate, Pause, Complete, Cancel, Archive, Delete |
+| active         | Pause, Complete, Cancel, Deactivate, Delete        |
+| paused         | Resume, Complete, Cancel, Deactivate, Delete       |
+| completed      | Reopen, Archive, Delete                            |
+| cancelled      | Reopen, Archive, Delete                            |
+| archived       | Restore, Delete                                    |
 
 ### Action Behavior
 
 **Non-Destructive Actions** (no confirmation):
+
 - Activate, Deactivate, Pause, Resume, Reopen, Restore
 
 **Requires Confirmation**:
+
 - Complete, Archive
 
 **Destructive Actions** (requires confirmation with warning):
+
 - Cancel, Delete
 
 ## Accessibility Features
@@ -131,13 +135,13 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
 
 ### Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| Tab | Navigate to badge |
-| Enter/Space | Open/close dropdown menu |
-| Arrow Up/Down | Navigate menu items |
-| Enter | Select menu item |
-| Escape | Close menu/dialog |
+| Key           | Action                   |
+| ------------- | ------------------------ |
+| Tab           | Navigate to badge        |
+| Enter/Space   | Open/close dropdown menu |
+| Arrow Up/Down | Navigate menu items      |
+| Enter         | Select menu item         |
+| Escape        | Close menu/dialog        |
 
 ## Integration with ProjectsView
 
@@ -179,7 +183,7 @@ const statusBadgeRef = ref(null)
 const handleStatusAction = async ({ action, newStatus, projectId }) => {
   try {
     await api.projects.update(projectId, { status: newStatus })
-    
+
     // Manually reset loading state
     statusBadgeRef.value?.resetLoading()
   } catch (error) {
@@ -206,8 +210,8 @@ describe('StatusBadge', () => {
       global: { plugins: [vuetify] },
       props: {
         status: 'active',
-        projectId: '123'
-      }
+        projectId: '123',
+      },
     })
 
     expect(wrapper.find('.v-chip').classes()).toContain('bg-success')
@@ -219,21 +223,21 @@ describe('StatusBadge', () => {
       global: { plugins: [vuetify] },
       props: {
         status: 'active',
-        projectId: '123'
-      }
+        projectId: '123',
+      },
     })
 
     // Click badge to open menu
     await wrapper.find('.status-badge-chip').trigger('click')
-    
+
     // Click "Pause" action
     await wrapper.findAll('.v-list-item')[0].trigger('click')
-    
+
     expect(wrapper.emitted('action')).toBeTruthy()
     expect(wrapper.emitted('action')[0][0]).toEqual({
       action: 'pause',
       newStatus: 'paused',
-      projectId: '123'
+      projectId: '123',
     })
   })
 
@@ -242,19 +246,19 @@ describe('StatusBadge', () => {
       global: { plugins: [vuetify] },
       props: {
         status: 'active',
-        projectId: '123'
-      }
+        projectId: '123',
+      },
     })
 
     // Click badge to open menu
     await wrapper.find('.status-badge-chip').trigger('click')
-    
+
     // Find and click "Delete" action
-    const deleteAction = wrapper.findAll('.v-list-item').find(item => 
-      item.text().includes('Delete')
-    )
+    const deleteAction = wrapper
+      .findAll('.v-list-item')
+      .find((item) => item.text().includes('Delete'))
     await deleteAction.trigger('click')
-    
+
     // Confirm dialog should be visible
     expect(wrapper.find('.v-dialog').exists()).toBe(true)
     expect(wrapper.text()).toContain('Delete Project?')
@@ -264,15 +268,23 @@ describe('StatusBadge', () => {
 
 ## Design Decisions
 
-1. **Event-Driven Architecture**: Component emits events rather than making API calls directly, allowing parent components to handle business logic and maintain separation of concerns.
+1. **Event-Driven Architecture**: Component emits events rather than making API
+   calls directly, allowing parent components to handle business logic and
+   maintain separation of concerns.
 
-2. **Context-Aware Actions**: Menu items dynamically change based on current status, reducing cognitive load and preventing invalid state transitions.
+2. **Context-Aware Actions**: Menu items dynamically change based on current
+   status, reducing cognitive load and preventing invalid state transitions.
 
-3. **Progressive Disclosure**: Non-destructive actions execute immediately, while destructive actions require explicit confirmation, following established UX patterns.
+3. **Progressive Disclosure**: Non-destructive actions execute immediately,
+   while destructive actions require explicit confirmation, following
+   established UX patterns.
 
-4. **Loading States**: Visual feedback during async operations prevents double-submission and provides clear user feedback.
+4. **Loading States**: Visual feedback during async operations prevents
+   double-submission and provides clear user feedback.
 
-5. **Accessibility First**: Full keyboard navigation, ARIA labels, and semantic HTML ensure the component is usable by all users, including those with disabilities.
+5. **Accessibility First**: Full keyboard navigation, ARIA labels, and semantic
+   HTML ensure the component is usable by all users, including those with
+   disabilities.
 
 ## Future Enhancements
 

@@ -13,7 +13,8 @@
  */
 export function generateClaudeCodeConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
-  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
+  const defaultServerUrl =
+    serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
   // Generate HTTP transport command for Claude Code
   // Uses zero-dependency HTTP transport - no Python or local packages required
@@ -30,7 +31,8 @@ export function generateClaudeCodeConfig(apiKey, serverUrl = null) {
  */
 export function generateCodexConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
-  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
+  const defaultServerUrl =
+    serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
   // Native MCP integration via command-line
   const command = `# Codex CLI MCP Integration (Bearer token)
@@ -51,7 +53,8 @@ codex mcp add --url ${defaultServerUrl}/mcp --bearer-token-env-var GILJO_API_KEY
  */
 export function generateGeminiConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
-  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
+  const defaultServerUrl =
+    serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
   // Native MCP integration via command-line
   const command = `# Gemini CLI MCP Integration (HTTP + header)
@@ -71,7 +74,8 @@ gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${defaultServerUrl}/m
  */
 export function generateGenericConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
-  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
+  const defaultServerUrl =
+    serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
   return `# Generic API Integration
 
 Use this API key in your HTTP requests:

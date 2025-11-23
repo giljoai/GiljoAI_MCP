@@ -1,5 +1,8 @@
 <template>
-  <div class="message-input" :class="[`position-${position}`, { 'message-input--disabled': disabled }]">
+  <div
+    class="message-input"
+    :class="[`position-${position}`, { 'message-input--disabled': disabled }]"
+  >
     <div class="message-input__container">
       <!-- User icon -->
       <div class="message-input__user-icon" aria-hidden="true">
@@ -81,7 +84,7 @@ const props = defineProps({
    */
   jobId: {
     type: String,
-    required: true
+    required: true,
   },
   /**
    * Position mode: inline (default), modal (in dialog), sticky (bottom)
@@ -89,15 +92,15 @@ const props = defineProps({
   position: {
     type: String,
     default: 'inline',
-    validator: (value) => ['inline', 'modal', 'sticky'].includes(value)
+    validator: (value) => ['inline', 'modal', 'sticky'].includes(value),
   },
   /**
    * Disable input and submission
    */
   disabled: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['send', 'message-sent'])
@@ -117,7 +120,7 @@ const recipient = ref('orchestrator')
  */
 const recipientOptions = [
   { label: 'Orchestrator', value: 'orchestrator' },
-  { label: 'Broadcast', value: 'broadcast' }
+  { label: 'Broadcast', value: 'broadcast' },
 ]
 
 /**
@@ -136,7 +139,7 @@ const canSend = computed(() => {
  * Get recipient label for display
  */
 function getRecipientLabel(value) {
-  const option = recipientOptions.find(opt => opt.value === value)
+  const option = recipientOptions.find((opt) => opt.value === value)
   return option?.label || 'Unknown'
 }
 
@@ -168,7 +171,7 @@ function handleSubmit() {
   emit('message-sent', {
     content: trimmedMessage,
     recipient: recipient.value,
-    jobId: props.jobId
+    jobId: props.jobId,
   })
 
   // Clear input after sending

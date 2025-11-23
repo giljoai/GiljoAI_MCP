@@ -10,9 +10,9 @@ import api from '@/services/api'
 vi.mock('@/services/api', () => ({
   default: {
     prompts: {
-      staging: vi.fn()
-    }
-  }
+      staging: vi.fn(),
+    },
+  },
 }))
 
 // Mock WebSocket composable
@@ -21,8 +21,8 @@ vi.mock('@/composables/useWebSocket', () => ({
     on: vi.fn(),
     off: vi.fn(),
     emit: vi.fn(),
-    disconnect: vi.fn()
-  })
+    disconnect: vi.fn(),
+  }),
 }))
 
 // Mock AgentCardEnhanced component
@@ -31,8 +31,8 @@ vi.mock('@/components/projects/AgentCardEnhanced.vue', () => ({
     name: 'AgentCardEnhanced',
     template: '<div class="agent-card-mock"><slot name="actions" /></div>',
     props: ['agent', 'mode', 'isOrchestrator', 'instanceNumber'],
-    emits: ['edit-mission']
-  }
+    emits: ['edit-mission'],
+  },
 }))
 
 describe('LaunchTab Component - Simplified UI Production Tests', () => {
@@ -45,7 +45,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
     name: 'Test Project',
     description: 'A test project for staging',
     status: 'active',
-    product_id: 'prod-1'
+    product_id: 'prod-1',
   }
 
   const mockOrchestrator = {
@@ -54,7 +54,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
     agent_name: 'Test Orchestrator',
     mission: 'Test mission',
     status: 'waiting',
-    progress: 0
+    progress: 0,
   }
 
   const mockPromptResponse = {
@@ -65,8 +65,8 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
       project_name: 'Test Project',
       mcp_tool_name: 'get_orchestrator_instructions',
       instructions_stored: true,
-      thin_client: true
-    }
+      thin_client: true,
+    },
   }
 
   beforeEach(() => {
@@ -78,7 +78,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
     userStore.currentUser = {
       id: 'user-1',
       username: 'testuser',
-      tenant_key: 'tenant-123'
+      tenant_key: 'tenant-123',
     }
 
     vi.clearAllMocks()
@@ -90,7 +90,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -113,9 +113,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       // Key validation: no metrics dialog exists
@@ -128,7 +128,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -151,9 +151,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       expect(wrapper.find('button').exists()).toBe(true)
@@ -169,7 +169,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -192,9 +192,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       // Spy on clipboard to prevent errors
@@ -205,15 +205,13 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
 
       // Verify API was called
       expect(api.prompts.staging).toHaveBeenCalledWith(mockProject.id, {
-        tool: 'claude-code'
+        tool: 'claude-code',
       })
     })
 
     it('should show loading state during API call', async () => {
       api.prompts.staging.mockImplementation(
-        () => new Promise(resolve =>
-          setTimeout(() => resolve(mockPromptResponse), 50)
-        )
+        () => new Promise((resolve) => setTimeout(() => resolve(mockPromptResponse), 50)),
       )
 
       vi.spyOn(document, 'execCommand').mockReturnValue(true)
@@ -222,7 +220,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -245,9 +243,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       // Click and immediately check loading state
@@ -256,7 +254,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
 
       // Wait for completion
       await clickPromise
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       // After completion, loading should be false
       expect(wrapper.vm.loadingStageProject).toBe(false)
@@ -270,7 +268,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -293,9 +291,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -313,7 +311,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -336,9 +334,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -357,7 +355,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -380,9 +378,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       await wrapper.find('button').trigger('click')
@@ -400,7 +398,7 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
         props: {
           project: mockProject,
           orchestrator: mockOrchestrator,
-          isStaging: false
+          isStaging: false,
         },
         global: {
           plugins: [pinia, vuetify],
@@ -423,9 +421,9 @@ describe('LaunchTab Component - Simplified UI Production Tests', () => {
             VList: true,
             VListItem: true,
             VListItemTitle: true,
-            VCardActions: true
-          }
-        }
+            VCardActions: true,
+          },
+        },
       })
 
       // Set some state

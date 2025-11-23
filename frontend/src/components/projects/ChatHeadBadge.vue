@@ -42,12 +42,18 @@ const props = defineProps({
     validator: (value) => {
       const validTypes = [
         // Canonical roles
-        'orchestrator', 'analyzer', 'implementer', 'documenter', 'reviewer', 'tester',
+        'orchestrator',
+        'analyzer',
+        'implementer',
+        'documenter',
+        'reviewer',
+        'tester',
         // Legacy aliases kept for backward compatibility
-        'implementor', 'researcher'
+        'implementor',
+        'researcher',
       ]
       return validTypes.includes(value.toLowerCase())
-    }
+    },
   },
 
   /**
@@ -57,7 +63,7 @@ const props = defineProps({
   instanceNumber: {
     type: Number,
     default: 1,
-    validator: (value) => value >= 1 && value <= 99
+    validator: (value) => value >= 1 && value <= 99,
   },
 
   /**
@@ -66,8 +72,8 @@ const props = defineProps({
   size: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'small', 'compact'].includes(value)
-  }
+    validator: (value) => ['default', 'small', 'compact'].includes(value),
+  },
 })
 
 /**
@@ -144,7 +150,9 @@ const ariaLabel = computed(() => {
   flex-shrink: 0;
   user-select: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: scale(1.05);

@@ -201,11 +201,7 @@ describe('Projects View - Accessibility (a11y)', () => {
     it('buttons have proper ARIA labels', () => {
       const wrapper = createWrapper()
 
-      const buttons = [
-        'Create new project',
-        'Search projects by name',
-        'View deleted projects',
-      ]
+      const buttons = ['Create new project', 'Search projects by name', 'View deleted projects']
 
       buttons.forEach((label) => {
         const button = wrapper.find(`[aria-label*="${label}"]`)
@@ -446,7 +442,7 @@ describe('Projects View - Accessibility (a11y)', () => {
 
       wrapper.vm.filterStatus = 'active'
       const currentFilter = wrapper.vm.filterOptions.find(
-        (o) => o.value === wrapper.vm.filterStatus
+        (o) => o.value === wrapper.vm.filterStatus,
       )
       expect(currentFilter).toBeDefined()
     })

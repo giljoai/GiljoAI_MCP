@@ -4,7 +4,9 @@
     <div class="d-flex justify-space-between align-center mb-6">
       <div>
         <h1 class="text-h4 mb-2">MCP Tool Integration</h1>
-        <p class="text-subtitle-1">Download installer scripts or generate share links for your team</p>
+        <p class="text-subtitle-1">
+          Download installer scripts or generate share links for your team
+        </p>
       </div>
     </div>
 
@@ -17,9 +19,9 @@
 
       <v-card-text>
         <p class="text-body-1 mb-4">
-          Download a pre-configured installer script that automatically sets up GiljoAI MCP integration
-          in supported coding tools (Claude Code, Cursor, Windsurf, etc.). The script includes your API credentials
-          and server connection details.
+          Download a pre-configured installer script that automatically sets up GiljoAI MCP
+          integration in supported coding tools (Claude Code, Cursor, Windsurf, etc.). The script
+          includes your API credentials and server connection details.
         </p>
 
         <!-- Download Buttons -->
@@ -81,8 +83,8 @@
 
       <v-card-text>
         <p class="text-body-1 mb-4">
-          Generate secure, temporary download links to share with your team. Links expire after 7 days
-          and include embedded credentials for easy setup.
+          Generate secure, temporary download links to share with your team. Links expire after 7
+          days and include embedded credentials for easy setup.
         </p>
 
         <!-- Generate Button -->
@@ -157,7 +159,8 @@
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-card variant="outlined" class="pa-4 bg-grey-lighten-4">
-                  <pre class="email-template">Subject: GiljoAI MCP Setup Instructions
+                  <pre class="email-template">
+Subject: GiljoAI MCP Setup Instructions
 
 Hi team,
 
@@ -176,7 +179,8 @@ Installation is simple:
 These links expire on {{ formatExpiryDate(shareLinks.expires_at) }}.
 
 Questions? Let me know!
-</pre>
+</pre
+                  >
                   <v-btn
                     variant="outlined"
                     class="mt-2"
@@ -191,12 +195,7 @@ Questions? Let me know!
           </v-expansion-panels>
 
           <!-- Regenerate Button -->
-          <v-btn
-            variant="text"
-            class="mt-4"
-            @click="resetShareLinks"
-            prepend-icon="mdi-refresh"
-          >
+          <v-btn variant="text" class="mt-4" @click="resetShareLinks" prepend-icon="mdi-refresh">
             Generate New Links
           </v-btn>
         </div>
@@ -223,8 +222,8 @@ Questions? Let me know!
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <p class="text-body-2 mb-4">
-                If you prefer to manually configure your MCP tools, add the following JSON to your tool's
-                configuration file:
+                If you prefer to manually configure your MCP tools, add the following JSON to your
+                tool's configuration file:
               </p>
 
               <!-- JSON Config Display -->
@@ -253,7 +252,9 @@ Questions? Let me know!
                     <li><strong>Claude Code:</strong> <code>~/.claude.json</code></li>
                     <li><strong>Cursor:</strong> <code>~/.cursor/mcp.json</code></li>
                     <li><strong>Windsurf:</strong> <code>~/.windsurf/mcp.json</code></li>
-                    <li><strong>VSCode (Continue):</strong> <code>~/.continue/config.json</code></li>
+                    <li>
+                      <strong>VSCode (Continue):</strong> <code>~/.continue/config.json</code>
+                    </li>
                   </ul>
                 </div>
               </v-alert>
@@ -299,8 +300,8 @@ Questions? Let me know!
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <p class="mb-3">
-                The installer looks for common MCP tool configuration files. If your tool is installed
-                in a non-standard location:
+                The installer looks for common MCP tool configuration files. If your tool is
+                installed in a non-standard location:
               </p>
               <ol class="ml-4">
                 <li>Use the Manual Configuration section above</li>
@@ -318,9 +319,7 @@ Questions? Let me know!
               Python not found
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <p class="mb-3">
-                GiljoAI MCP requires Python 3.8 or higher. Install Python from:
-              </p>
+              <p class="mb-3">GiljoAI MCP requires Python 3.8 or higher. Install Python from:</p>
               <v-list density="compact">
                 <v-list-item>
                   <v-list-item-title>
@@ -382,11 +381,7 @@ Questions? Let me know!
     >
       {{ snackbar.message }}
       <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="snackbar.show = false"
-          icon="mdi-close"
-        />
+        <v-btn variant="text" @click="snackbar.show = false" icon="mdi-close" />
       </template>
     </v-snackbar>
   </v-container>
@@ -563,7 +558,7 @@ Questions? Let me know!`
 
 function formatExpiryDate(dateString) {
   try {
-    return format(new Date(dateString), 'MMMM d, yyyy \'at\' h:mm a')
+    return format(new Date(dateString), "MMMM d, yyyy 'at' h:mm a")
   } catch (error) {
     return dateString
   }
