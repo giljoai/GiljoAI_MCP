@@ -19,204 +19,213 @@
     <div class="products-content">
       <v-row>
         <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <span>All Products</span>
-            <v-spacer></v-spacer>
-            <v-btn
-              variant="outlined"
-              :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
-              prepend-icon="mdi-delete-restore"
-              @click="showDeletedProductsDialog = true"
-              :disabled="deletedProductsCount === 0"
-              class="mr-3"
-              style="height: 40px;"
-            >
-              Deleted ({{ deletedProductsCount }})
-            </v-btn>
-            <v-select
-              v-model="sortBy"
-              :items="sortOptions"
-              item-title="label"
-              item-value="value"
-              prepend-inner-icon="mdi-sort"
-              label="Sort by"
-              variant="outlined"
-              density="compact"
-              hide-details
-              class="mr-3"
-              style="max-width: 200px"
-            ></v-select>
-            <v-text-field
-              v-model="search"
-              prepend-inner-icon="mdi-magnify"
-              label="Search products..."
-              single-line
-              hide-details
-              variant="outlined"
-              density="compact"
-              style="max-width: 300px"
-            ></v-text-field>
-          </v-card-title>
-
-          <v-card-text>
-            <v-row v-if="loading">
-              <v-col cols="12" class="text-center py-8">
-                <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                <div class="text-medium-emphasis mt-4">Loading products...</div>
-              </v-col>
-            </v-row>
-
-            <v-row v-else-if="filteredProducts.length === 0">
-              <v-col cols="12" class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
-                <div class="text-h6 text-medium-emphasis mt-4">No products found</div>
-                <div class="text-body-2 text-medium-emphasis">
-                  {{
-                    search
-                      ? 'Try adjusting your search'
-                      : 'Create your first product to get started'
-                  }}
-                </div>
-              </v-col>
-            </v-row>
-
-            <v-row v-else>
-              <v-col
-                v-for="product in filteredProducts"
-                :key="product.id"
-                cols="12"
-                sm="6"
-                md="4"
-                lg="3"
+          <v-card>
+            <v-card-title class="d-flex align-center">
+              <span>All Products</span>
+              <v-spacer></v-spacer>
+              <v-btn
+                variant="outlined"
+                :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
+                prepend-icon="mdi-delete-restore"
+                @click="showDeletedProductsDialog = true"
+                :disabled="deletedProductsCount === 0"
+                class="mr-3"
+                style="height: 40px"
               >
-                <v-card
-                  :elevation="0"
-                  class="product-card h-100"
+                Deleted ({{ deletedProductsCount }})
+              </v-btn>
+              <v-select
+                v-model="sortBy"
+                :items="sortOptions"
+                item-title="label"
+                item-value="value"
+                prepend-inner-icon="mdi-sort"
+                label="Sort by"
+                variant="outlined"
+                density="compact"
+                hide-details
+                class="mr-3"
+                style="max-width: 200px"
+              ></v-select>
+              <v-text-field
+                v-model="search"
+                prepend-inner-icon="mdi-magnify"
+                label="Search products..."
+                single-line
+                hide-details
+                variant="outlined"
+                density="compact"
+                style="max-width: 300px"
+              ></v-text-field>
+            </v-card-title>
+
+            <v-card-text>
+              <v-row v-if="loading">
+                <v-col cols="12" class="text-center py-8">
+                  <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                  <div class="text-medium-emphasis mt-4">Loading products...</div>
+                </v-col>
+              </v-row>
+
+              <v-row v-else-if="filteredProducts.length === 0">
+                <v-col cols="12" class="text-center py-8">
+                  <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
+                  <div class="text-h6 text-medium-emphasis mt-4">No products found</div>
+                  <div class="text-body-2 text-medium-emphasis">
+                    {{
+                      search
+                        ? 'Try adjusting your search'
+                        : 'Create your first product to get started'
+                    }}
+                  </div>
+                </v-col>
+              </v-row>
+
+              <v-row v-else>
+                <v-col
+                  v-for="product in filteredProducts"
+                  :key="product.id"
+                  cols="12"
+                  sm="6"
+                  md="4"
+                  lg="3"
                 >
-                  <v-card-text>
-                    <div class="d-flex align-center justify-space-between mb-2">
-                      <div
-                        class="text-h6"
-                        :style="isProductActive(product) ? 'color: #ffc300' : ''"
-                      >
-                        {{ product.name }}
-                      </div>
-                      <v-chip
-                        v-if="isProductActive(product)"
-                      color="success"
-                      size="small"
-                      variant="flat"
-                    >
-                      Active
-                      </v-chip>
-                    </div>
-
-                    <div class="text-caption text-medium-emphasis mb-3">
-                      Created: {{ formatDate(product.created_at) }}
-                    </div>
-
-                    <div class="mb-3">
-                      <div class="text-caption text-medium-emphasis">Product ID:</div>
-                      <div class="font-monospace" style="font-size: 0.65rem; word-break: break-all; line-height: 1.3;">
-                        {{ product.id }}
-                      </div>
-                    </div>
-
-                    <!-- Statistics -->
-                    <v-divider class="my-3 product-divider"></v-divider>
-                    <v-row dense>
-                      <v-col cols="4" class="text-center">
-                        <div class="text-caption text-medium-emphasis">Tasks</div>
-                        <div class="text-h6" style="color: #ffc300">
-                          {{ product.task_count || 0 }}
-                        </div>
-                      </v-col>
-                      <v-col cols="4" class="text-center">
-                        <div class="text-caption text-medium-emphasis">Projects</div>
-                        <div class="text-h6" style="color: #ffc300">
-                          {{ product.project_count || 0 }}
-                        </div>
-                      </v-col>
-                      <v-col cols="4" class="text-center">
-                        <div class="text-caption text-medium-emphasis">Completed</div>
-                        <div class="text-h6" style="color: #ffc300">
-                          {{ getCompletedProjectsCount(product) }}
-                        </div>
-                      </v-col>
-                    </v-row>
-                  </v-card-text>
-
-                  <v-card-actions class="justify-center">
-                    <v-tooltip location="top" content-class="branded-tooltip">
-                      <template v-slot:activator="{ props }">
-                        <v-btn
-                          icon
-                          size="small"
-                          variant="text"
-                          v-bind="props"
-                          @click="showProductDetails(product)"
-                          :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
-                        >
-                          <v-icon>mdi-information-outline</v-icon>
-                        </v-btn>
-                      </template>
-                      <span>View Product Details</span>
-                    </v-tooltip>
-                    <v-tooltip location="top" content-class="branded-tooltip">
-                      <template v-slot:activator="{ props }">
-                        <v-btn
-                          icon
-                          size="small"
-                          variant="text"
-                          v-bind="props"
-                          @click="toggleProductActivation(product)"
+                  <v-card :elevation="0" class="product-card h-100">
+                    <v-card-text>
+                      <div class="d-flex align-center justify-space-between mb-2">
+                        <div
+                          class="text-h6"
                           :style="isProductActive(product) ? 'color: #ffc300' : ''"
                         >
-                          <v-icon>{{ isProductActive(product) ? 'mdi-stop' : 'mdi-play' }}</v-icon>
-                        </v-btn>
-                      </template>
-                      <span>{{ isProductActive(product) ? 'Deactivate Product' : 'Activate Product' }}</span>
-                    </v-tooltip>
-                    <v-tooltip location="top" content-class="branded-tooltip">
-                      <template v-slot:activator="{ props }">
-                        <v-btn
-                          icon
+                          {{ product.name }}
+                        </div>
+                        <v-chip
+                          v-if="isProductActive(product)"
+                          color="success"
                           size="small"
-                          variant="text"
-                          v-bind="props"
-                          @click="editProduct(product)"
-                          :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
+                          variant="flat"
                         >
-                          <v-icon>mdi-pencil</v-icon>
-                        </v-btn>
-                      </template>
-                      <span>Edit Product</span>
-                    </v-tooltip>
-                    <v-tooltip location="top" content-class="branded-tooltip">
-                      <template v-slot:activator="{ props }">
-                        <v-btn
-                          icon
-                          size="small"
-                          variant="text"
-                          color="error"
-                          v-bind="props"
-                          @click="confirmDelete(product)"
+                          Active
+                        </v-chip>
+                      </div>
+
+                      <div class="text-caption text-medium-emphasis mb-3">
+                        Created: {{ formatDate(product.created_at) }}
+                      </div>
+
+                      <div class="mb-3">
+                        <div class="text-caption text-medium-emphasis">Product ID:</div>
+                        <div
+                          class="font-monospace"
+                          style="font-size: 0.65rem; word-break: break-all; line-height: 1.3"
                         >
-                          <v-icon>mdi-delete</v-icon>
-                        </v-btn>
-                      </template>
-                      <span>Delete Product</span>
-                    </v-tooltip>
-                  </v-card-actions>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-    </div><!-- End products-content -->
+                          {{ product.id }}
+                        </div>
+                      </div>
+
+                      <!-- Statistics -->
+                      <v-divider class="my-3 product-divider"></v-divider>
+                      <v-row dense>
+                        <v-col cols="4" class="text-center">
+                          <div class="text-caption text-medium-emphasis">Tasks</div>
+                          <div class="text-h6" style="color: #ffc300">
+                            {{ product.task_count || 0 }}
+                          </div>
+                        </v-col>
+                        <v-col cols="4" class="text-center">
+                          <div class="text-caption text-medium-emphasis">Projects</div>
+                          <div class="text-h6" style="color: #ffc300">
+                            {{ product.project_count || 0 }}
+                          </div>
+                        </v-col>
+                        <v-col cols="4" class="text-center">
+                          <div class="text-caption text-medium-emphasis">Completed</div>
+                          <div class="text-h6" style="color: #ffc300">
+                            {{ getCompletedProjectsCount(product) }}
+                          </div>
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+
+                    <v-card-actions class="justify-center">
+                      <v-tooltip location="top" content-class="branded-tooltip">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            icon
+                            size="small"
+                            variant="text"
+                            v-bind="props"
+                            @click="showProductDetails(product)"
+                            :style="
+                              product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
+                            "
+                          >
+                            <v-icon>mdi-information-outline</v-icon>
+                          </v-btn>
+                        </template>
+                        <span>View Product Details</span>
+                      </v-tooltip>
+                      <v-tooltip location="top" content-class="branded-tooltip">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            icon
+                            size="small"
+                            variant="text"
+                            v-bind="props"
+                            @click="toggleProductActivation(product)"
+                            :style="isProductActive(product) ? 'color: #ffc300' : ''"
+                          >
+                            <v-icon>{{
+                              isProductActive(product) ? 'mdi-stop' : 'mdi-play'
+                            }}</v-icon>
+                          </v-btn>
+                        </template>
+                        <span>{{
+                          isProductActive(product) ? 'Deactivate Product' : 'Activate Product'
+                        }}</span>
+                      </v-tooltip>
+                      <v-tooltip location="top" content-class="branded-tooltip">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            icon
+                            size="small"
+                            variant="text"
+                            v-bind="props"
+                            @click="editProduct(product)"
+                            :style="
+                              product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
+                            "
+                          >
+                            <v-icon>mdi-pencil</v-icon>
+                          </v-btn>
+                        </template>
+                        <span>Edit Product</span>
+                      </v-tooltip>
+                      <v-tooltip location="top" content-class="branded-tooltip">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            icon
+                            size="small"
+                            variant="text"
+                            color="error"
+                            v-bind="props"
+                            @click="confirmDelete(product)"
+                          >
+                            <v-icon>mdi-delete</v-icon>
+                          </v-btn>
+                        </template>
+                        <span>Delete Product</span>
+                      </v-tooltip>
+                    </v-card-actions>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </div>
+    <!-- End products-content -->
 
     <!-- Extracted Component Dialogs -->
 
@@ -268,7 +277,6 @@
       @confirm="confirmActivation"
       @cancel="cancelActivation"
     />
-
   </v-container>
 </template>
 
@@ -319,8 +327,8 @@ const visionUploadError = ref(null)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
 const deleteConfirmationCheck = ref(false)
-const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
-const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
+const dialogTab = ref('basic') // Handover 0042: Tab for product dialog (basic, tech, arch, features)
+const autoSave = ref(null) // Handover 0051: Auto-save composable instance
 
 // Handover 0050: Activation warning dialog state
 const showActivationWarning = ref(false)
@@ -379,7 +387,7 @@ const productForm = ref({
       strategy: 'TDD',
       coverage_target: 80,
       frameworks: '',
-      quality_standards: '',  // Handover 0316: New field
+      quality_standards: '', // Handover 0316: New field
     },
   },
 })
@@ -510,9 +518,7 @@ const filteredProducts = computed(() => {
 
 const totalProducts = computed(() => productStore.productCount)
 // Handover 0320: Use store as single source of truth
-const activeProducts = computed(
-  () => productStore.activeProduct ? 1 : 0,
-)
+const activeProducts = computed(() => (productStore.activeProduct ? 1 : 0))
 
 const totalTasks = computed(() => {
   return Object.values(productStore.productMetrics).reduce(
@@ -703,7 +709,7 @@ async function removeVisionDocument(doc) {
     await api.visionDocuments.delete(doc.id)
 
     // Remove from existing documents list
-    const index = existingVisionDocuments.value.findIndex(d => d.id === doc.id)
+    const index = existingVisionDocuments.value.findIndex((d) => d.id === doc.id)
     if (index > -1) {
       existingVisionDocuments.value.splice(index, 1)
     }
@@ -734,9 +740,7 @@ function validateVisionFile(file) {
   }
 
   // Validate file type
-  const hasValidExtension = ALLOWED_EXTENSIONS.some(ext =>
-    file.name.toLowerCase().endsWith(ext)
-  )
+  const hasValidExtension = ALLOWED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))
 
   if (!hasValidExtension) {
     return `Invalid file type. Please upload .md or .txt files.`
@@ -792,7 +796,7 @@ async function showProductDetails(product) {
 
 async function editProduct(product) {
   editingProduct.value = product
-  
+
   // Handover 0042: Default config structure
   const defaultConfig = {
     tech_stack: {
@@ -815,7 +819,7 @@ async function editProduct(product) {
       strategy: 'TDD',
       coverage_target: 80,
       frameworks: '',
-      quality_standards: '',  // Handover 0316: New field
+      quality_standards: '', // Handover 0316: New field
     },
   }
 
@@ -909,15 +913,15 @@ async function saveProduct(payload) {
       product = await productStore.updateProduct(editingProduct.value.id, {
         name: productData.name,
         description: productData.description,
-        projectPath: productData.project_path,  // Handover 0084: Project path for agent export
-        configData: productData.config_data,  // Handover 0042
+        projectPath: productData.project_path, // Handover 0084: Project path for agent export
+        configData: productData.config_data, // Handover 0042
       })
     } else {
       product = await productStore.createProduct({
         name: productData.name,
         description: productData.description,
-        projectPath: productData.project_path,  // Handover 0084: Project path for agent export
-        configData: productData.config_data,  // Handover 0042
+        projectPath: productData.project_path, // Handover 0084: Project path for agent export
+        configData: productData.config_data, // Handover 0042
       })
     }
 
@@ -977,7 +981,6 @@ async function saveProduct(payload) {
               duration: 3000,
             })
           }
-
         } catch (uploadError) {
           console.error(`Failed to upload ${file.name}:`, uploadError)
 
@@ -1126,7 +1129,7 @@ function closeDialog() {
   editingProduct.value = null
   visionFiles.value = []
   existingVisionDocuments.value = []
-  dialogTab.value = 'basic'  // Handover 0042: Reset tab
+  dialogTab.value = 'basic' // Handover 0042: Reset tab
   productForm.value = {
     name: '',
     description: '',
@@ -1135,15 +1138,15 @@ function closeDialog() {
     // Handover 0042: Reset config_data
     configData: {
       tech_stack: {
-      languages: '',
-      frontend: '',
-      backend: '',
-      database: '',
-      infrastructure: '',
-    },
-    architecture: {
-      pattern: '',
-      design_patterns: '',
+        languages: '',
+        frontend: '',
+        backend: '',
+        database: '',
+        infrastructure: '',
+      },
+      architecture: {
+        pattern: '',
+        design_patterns: '',
         api_style: '',
         notes: '',
       },
@@ -1151,10 +1154,10 @@ function closeDialog() {
         core: '',
       },
       test_config: {
-      strategy: 'TDD',
-      coverage_target: 80,
-      frameworks: '',
-      quality_standards: '',  // Handover 0316: New field
+        strategy: 'TDD',
+        coverage_target: 80,
+        frameworks: '',
+        quality_standards: '', // Handover 0316: New field
       },
     },
   }

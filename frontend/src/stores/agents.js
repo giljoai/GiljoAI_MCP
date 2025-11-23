@@ -156,9 +156,8 @@ export const useAgentStore = defineStore('agents', () => {
   // MIGRATION NOTE (Handover 0119): Migrated from api.agents.metrics() to api.agentJobs.metrics()
   async function fetchAgentMetrics(projectId, timeRange = '24h') {
     try {
-      const hours = typeof timeRange === 'string' && timeRange.endsWith('h')
-        ? parseInt(timeRange)
-        : 24
+      const hours =
+        typeof timeRange === 'string' && timeRange.endsWith('h') ? parseInt(timeRange) : 24
       const response = await api.agentJobs.metrics(projectId, isNaN(hours) ? 24 : hours)
       agentMetrics.value = response.data
       return response.data
@@ -182,7 +181,15 @@ export const useAgentStore = defineStore('agents', () => {
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
-    const { agent_name, project_id, status, health, active_jobs, context_used, progress_percentage } = data
+    const {
+      agent_name,
+      project_id,
+      status,
+      health,
+      active_jobs,
+      context_used,
+      progress_percentage,
+    } = data
 
     // Find agent by name and project
     const agent = agents.value.find((a) => a.name === agent_name && a.project_id === project_id)
@@ -282,7 +289,8 @@ export const useAgentStore = defineStore('agents', () => {
 
   // Handle health alert events (Handover 0106)
   function handleHealthAlert(data) {
-    const { job_id, health_state, minutes_since_update, issue_description, recommended_action } = data
+    const { job_id, health_state, minutes_since_update, issue_description, recommended_action } =
+      data
 
     // Find agent by job_id
     const agent = agents.value.find((a) => a.job_id === job_id)
@@ -302,7 +310,7 @@ export const useAgentStore = defineStore('agents', () => {
         minutes_since_update,
         issue_description,
         recommended_action,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       }
 
       // If this is the current agent, update it too

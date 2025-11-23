@@ -269,7 +269,7 @@ describe('SystemSettings - Download Button Handlers', () => {
 
       expect(window_open_spy).toHaveBeenCalledWith(
         'http://localhost:7272/api/download/temp/token-123/slash_commands.zip',
-        '_blank'
+        '_blank',
       )
     })
 
@@ -286,7 +286,7 @@ describe('SystemSettings - Download Button Handlers', () => {
                 },
               })
             }, 100)
-          })
+          }),
       )
 
       wrapper = mount(SystemSettings, {
@@ -432,7 +432,7 @@ describe('SystemSettings - Download Button Handlers', () => {
 
       expect(window_open_spy).toHaveBeenCalledWith(
         'http://localhost:7272/api/download/temp/token-456/agent_templates.zip',
-        '_blank'
+        '_blank',
       )
     })
 
@@ -449,7 +449,7 @@ describe('SystemSettings - Download Button Handlers', () => {
                 },
               })
             }, 100)
-          })
+          }),
       )
 
       wrapper = mount(SystemSettings, {
@@ -664,7 +664,7 @@ describe('SystemSettings - Download Button Handlers', () => {
                 },
               })
             }, 200)
-          })
+          }),
       )
 
       wrapper = mount(SystemSettings, {

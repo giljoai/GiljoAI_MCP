@@ -31,11 +31,7 @@
       </div>
       <div class="info-item">
         <span class="label">Status</span>
-        <v-chip
-          size="x-small"
-          :color="edge.data?.animated ? 'success' : 'grey'"
-          variant="flat"
-        >
+        <v-chip size="x-small" :color="edge.data?.animated ? 'success' : 'grey'" variant="flat">
           {{ edge.data?.animated ? 'Active' : 'Idle' }}
         </v-chip>
       </div>
@@ -67,7 +63,10 @@
             <p class="message-preview">{{ truncate(msg.content, 60) }}</p>
           </div>
 
-          <div v-if="msg.acknowledged_by && msg.acknowledged_by.length > 0" class="flow-message-acks">
+          <div
+            v-if="msg.acknowledged_by && msg.acknowledged_by.length > 0"
+            class="flow-message-acks"
+          >
             <v-chip
               v-for="agent in msg.acknowledged_by"
               :key="agent"

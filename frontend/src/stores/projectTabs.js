@@ -34,7 +34,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
     // Loading states
     loading: false,
-    error: null
+    error: null,
   }),
 
   getters: {
@@ -49,7 +49,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         blocked: 2,
         waiting: 3,
         working: 4,
-        complete: 5
+        complete: 5,
       }
       return [...state.agents].sort((a, b) => {
         const aPriority = priority[a.status] || 999
@@ -59,11 +59,11 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     },
 
     orchestrator: (state) => {
-      return state.agents.find(a => a.agent_type === 'orchestrator')
+      return state.agents.find((a) => a.agent_type === 'orchestrator')
     },
 
     agentsByStatus: (state) => (status) => {
-      return state.agents.filter(a => a.status === status)
+      return state.agents.filter((a) => a.status === status)
     },
 
     agentCount: (state) => state.agents.length,
@@ -71,7 +71,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     // Multi-instance agents
     agentInstances: (state) => {
       const instances = {}
-      state.agents.forEach(agent => {
+      state.agents.forEach((agent) => {
         const type = agent.agent_type
         if (!instances[type]) {
           instances[type] = []
@@ -83,33 +83,27 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
     // Message queries
     unreadMessages: (state) => {
-      return state.messages.filter(m => m.status === 'pending')
+      return state.messages.filter((m) => m.status === 'pending')
     },
 
     unreadCount: (state) => {
-      return state.messages.filter(m => m.status === 'pending').length
+      return state.messages.filter((m) => m.status === 'pending').length
     },
 
     messagesByAgent: (state) => (agentId) => {
-      return state.messages.filter(m =>
-        m.to_agent === agentId || m.from_agent === agentId
-      )
+      return state.messages.filter((m) => m.to_agent === agentId || m.from_agent === agentId)
     },
 
     // Completion state
     allAgentsComplete(state) {
       if (state.agents.length === 0) return false
-      return state.agents.every(a => a.status === 'complete')
+      return state.agents.every((a) => a.status === 'complete')
     },
 
     // Ready state
     readyToLaunch(state) {
-      return (
-        state.orchestratorMission &&
-        state.agents.length > 0 &&
-        !state.isStaging
-      )
-    }
+      return state.orchestratorMission && state.agents.length > 0 && !state.isStaging
+    },
   },
 
   actions: {
@@ -150,11 +144,10 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       // A project is considered "launched" if it has agent jobs (excluding just orchestrator in waiting state)
       // This handles page reload scenarios where the project was previously launched
       const hasNonOrchestratorAgents = this.agents.some(
-        agent => agent.agent_type !== 'orchestrator'
+        (agent) => agent.agent_type !== 'orchestrator',
       )
       const hasActiveOrchestrator = this.agents.some(
-        agent => agent.agent_type === 'orchestrator' &&
-                 agent.status !== 'waiting'
+        (agent) => agent.agent_type === 'orchestrator' && agent.status !== 'waiting',
       )
 
       // Set isLaunched flag based on agent state
@@ -165,7 +158,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       // Log state for debugging (production-safe)
       if (this.isLaunched) {
         console.info(
-          `[ProjectTabs] Project "${project.name || project.id}" loaded with ${this.agents.length} agents - Jobs tab enabled`
+          `[ProjectTabs] Project "${project.name || project.id}" loaded with ${this.agents.length} agents - Jobs tab enabled`,
         )
       }
     },
@@ -204,10 +197,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       this.error = null
 
       try {
-        const response = await api.prompts.staging(
-          this.currentProject.id,
-          { tool: 'claude-code' }
-        )
+        const response = await api.prompts.staging(this.currentProject.id, { tool: 'claude-code' })
 
         if (!response.data?.prompt) {
           throw new Error('Invalid response from staging endpoint - no prompt returned')
@@ -307,10 +297,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       if (!this.currentProject) return
 
       try {
-        await api.orchestrator.updateMission(
-          this.currentProject.id,
-          missionText
-        )
+        await api.orchestrator.updateMission(this.currentProject.id, missionText)
         this.orchestratorMission = missionText
       } catch (error) {
         console.error('Failed to update mission:', error)
@@ -326,7 +313,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {Object} agent - Agent object
      */
     addAgent(agent) {
-      const exists = this.agents.find(a => a.job_id === agent.job_id)
+      const exists = this.agents.find((a) => a.job_id === agent.job_id)
       if (!exists) {
         this.agents.push(agent)
       }
@@ -338,7 +325,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {Object} updates - Update fields
      */
     updateAgent(agentId, updates) {
-      const index = this.agents.findIndex(a => a.job_id === agentId)
+      const index = this.agents.findIndex((a) => a.job_id === agentId)
       if (index !== -1) {
         this.agents[index] = { ...this.agents[index], ...updates }
       }
@@ -349,7 +336,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {string} agentId - Agent job_id
      */
     removeAgent(agentId) {
-      this.agents = this.agents.filter(a => a.job_id !== agentId)
+      this.agents = this.agents.filter((a) => a.job_id !== agentId)
     },
 
     /**
@@ -371,7 +358,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         this.updateAgent(agentId, {
           status: 'active',
           acknowledged: true,
-          started_at: new Date().toISOString()
+          started_at: new Date().toISOString(),
         })
       } catch (error) {
         console.error('Failed to acknowledge agent:', error)
@@ -388,7 +375,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         await api.agent_jobs.completeJob(agentId)
         this.updateAgent(agentId, {
           status: 'complete',
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
         })
       } catch (error) {
         console.error('Failed to complete agent:', error)
@@ -407,7 +394,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         this.updateAgent(agentId, {
           status: 'failed',
           completed_at: new Date().toISOString(),
-          block_reason: error
+          block_reason: error,
         })
       } catch (err) {
         console.error('Failed to fail agent:', err)
@@ -426,7 +413,9 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         const response = await api.messages.list({ project_id: projectId })
         if (response.data && Array.isArray(response.data)) {
           this.messages = response.data
-          console.log(`[ProjectTabs] Loaded ${response.data.length} existing messages for project ${projectId}`)
+          console.log(
+            `[ProjectTabs] Loaded ${response.data.length} existing messages for project ${projectId}`,
+          )
         }
       } catch (error) {
         console.error('[ProjectTabs] Failed to load messages:', error)
@@ -438,7 +427,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {Object} message - Message object
      */
     addMessage(message) {
-      const exists = this.messages.find(m => m.id === message.id)
+      const exists = this.messages.find((m) => m.id === message.id)
       if (!exists) {
         this.messages.push(message)
       }
@@ -457,7 +446,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
           // Use broadcast endpoint for broadcast messages
           const response = await api.agentJobs.broadcast({
             project_id: this.currentProject.id,
-            content
+            content,
           })
 
           // Add broadcast message to local messages
@@ -468,11 +457,11 @@ export const useProjectTabsStore = defineStore('projectTabs', {
             content,
             type: 'broadcast',
             timestamp: new Date().toISOString(),
-            status: 'sent'
+            status: 'sent',
           })
         } else {
           // Find the orchestrator job for this project to send targeted message
-          const orchestratorJob = this.agents.find(a => a.agent_type === 'orchestrator')
+          const orchestratorJob = this.agents.find((a) => a.agent_type === 'orchestrator')
 
           if (!orchestratorJob) {
             throw new Error('Orchestrator not found - cannot send message')
@@ -480,7 +469,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
           const response = await api.agentJobs.sendMessage(orchestratorJob.job_id, {
             content,
-            to: recipient
+            to: recipient,
           })
 
           // Add message to local messages
@@ -491,7 +480,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
             content,
             type: 'message',
             timestamp: response.timestamp,
-            status: response.status
+            status: response.status,
           })
         }
       } catch (error) {
@@ -509,7 +498,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         await api.agent_jobs.acknowledgeMessage(messageId)
 
         // Update local message
-        const index = this.messages.findIndex(m => m.id === messageId)
+        const index = this.messages.findIndex((m) => m.id === messageId)
         if (index !== -1) {
           this.messages[index].status = 'acknowledged'
           this.messages[index].acknowledged_at = new Date().toISOString()
@@ -558,7 +547,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         status,
         progress,
         current_task,
-        block_reason
+        block_reason,
       })
     },
 
@@ -578,6 +567,6 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       if (this.currentProject && data.project_id === this.currentProject.id) {
         this.currentProject = { ...this.currentProject, ...data }
       }
-    }
-  }
+    },
+  },
 })

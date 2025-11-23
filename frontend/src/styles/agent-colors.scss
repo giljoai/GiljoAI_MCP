@@ -9,59 +9,59 @@
 
 :root {
   /* Orchestrator - Tan/Beige */
-  --agent-orchestrator-primary: #D4A574;
-  --agent-orchestrator-dark: #B8905E;
-  --agent-orchestrator-light: #E5C9A3;
+  --agent-orchestrator-primary: #d4a574;
+  --agent-orchestrator-dark: #b8905e;
+  --agent-orchestrator-light: #e5c9a3;
 
   /* Analyzer - Red */
-  --agent-analyzer-primary: #E74C3C;
-  --agent-analyzer-dark: #C0392B;
-  --agent-analyzer-light: #F1948A;
+  --agent-analyzer-primary: #e74c3c;
+  --agent-analyzer-dark: #c0392b;
+  --agent-analyzer-light: #f1948a;
 
   /* Implementer/Implementor - Blue */
-  --agent-implementor-primary: #3498DB;
-  --agent-implementor-dark: #2980B9;
-  --agent-implementor-light: #85C1E9;
+  --agent-implementor-primary: #3498db;
+  --agent-implementor-dark: #2980b9;
+  --agent-implementor-light: #85c1e9;
   /* Alias variables for canonical naming */
   --agent-implementer-primary: var(--agent-implementor-primary);
   --agent-implementer-dark: var(--agent-implementor-dark);
   --agent-implementer-light: var(--agent-implementor-light);
 
   /* Documenter/Researcher - Green */
-  --agent-researcher-primary: #27AE60;
+  --agent-researcher-primary: #27ae60;
   --agent-researcher-dark: #229954;
-  --agent-researcher-light: #7DCEA0;
+  --agent-researcher-light: #7dcea0;
   /* Alias variables for canonical naming */
   --agent-documenter-primary: var(--agent-researcher-primary);
   --agent-documenter-dark: var(--agent-researcher-dark);
   --agent-documenter-light: var(--agent-researcher-light);
 
   /* Reviewer - Purple */
-  --agent-reviewer-primary: #9B59B6;
-  --agent-reviewer-dark: #8E44AD;
-  --agent-reviewer-light: #C39BD3;
+  --agent-reviewer-primary: #9b59b6;
+  --agent-reviewer-dark: #8e44ad;
+  --agent-reviewer-light: #c39bd3;
 
   /* Tester - Yellow */
-  --agent-tester-primary: #FFC300;
-  --agent-tester-dark: #E6B000;
-  --agent-tester-light: #FFD633;
+  --agent-tester-primary: #ffc300;
+  --agent-tester-dark: #e6b000;
+  --agent-tester-light: #ffd633;
 
   /* Agent Card Base Colors */
-  --agent-card-bg: #2C5F77;
+  --agent-card-bg: #2c5f77;
   --agent-card-border: rgba(255, 255, 255, 0.1);
   --agent-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 
   /* Status Badge Colors */
-  --status-waiting: #90A4AE;
-  --status-working: #3498DB;
-  --status-complete: #FFC300;
-  --status-failure: #C6298C;
-  --status-blocked: #E67E22;
+  --status-waiting: #90a4ae;
+  --status-working: #3498db;
+  --status-complete: #ffc300;
+  --status-failure: #c6298c;
+  --status-blocked: #e67e22;
 
   /* Launch Prompt Tool Colors */
-  --tool-claude-code: #E67E22;
-  --tool-codex: #9B59B6;
-  --tool-gemini: #3498DB;
+  --tool-claude-code: #e67e22;
+  --tool-codex: #9b59b6;
+  --tool-gemini: #3498db;
 }
 
 /* Agent Card Styling Mixins */
@@ -173,11 +173,13 @@
       @include agent-card-header(var(--agent-orchestrator-primary));
     }
 
-    &--analyzer, &--researcher {
+    &--analyzer,
+    &--researcher {
       @include agent-card-header(var(--agent-analyzer-primary));
     }
 
-    &--implementor, &--implementer {
+    &--implementor,
+    &--implementer {
       @include agent-card-header(var(--agent-implementor-primary));
     }
 
@@ -202,11 +204,13 @@
     @include agent-card-border(var(--agent-orchestrator-primary));
   }
 
-  &--analyzer, &--researcher {
+  &--analyzer,
+  &--researcher {
     @include agent-card-border(var(--agent-analyzer-primary));
   }
 
-  &--implementor, &--implementer {
+  &--implementor,
+  &--implementer {
     @include agent-card-border(var(--agent-implementor-primary));
   }
 
@@ -228,11 +232,13 @@
     @include chat-head-badge(var(--agent-orchestrator-primary));
   }
 
-  &--analyzer, &--researcher {
+  &--analyzer,
+  &--researcher {
     @include chat-head-badge(var(--agent-analyzer-primary));
   }
 
-  &--implementor, &--implementer {
+  &--implementor,
+  &--implementer {
     @include chat-head-badge(var(--agent-implementor-primary));
   }
 

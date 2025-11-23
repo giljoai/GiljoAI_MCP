@@ -11,34 +11,34 @@ vi.mock('@/services/api', () => ({
   default: {
     agentJobs: {
       list: vi.fn(),
-      triggerSuccession: vi.fn()
+      triggerSuccession: vi.fn(),
     },
-    post: vi.fn()
-  }
+    post: vi.fn(),
+  },
 }))
 
 // Mock composables
 const mockToast = {
   success: vi.fn(),
-  error: vi.fn()
+  error: vi.fn(),
 }
 
 vi.mock('@/composables/useToast', () => ({
-  useToast: () => mockToast
+  useToast: () => mockToast,
 }))
 
 const mockWebSocket = {
   on: vi.fn(),
-  off: vi.fn()
+  off: vi.fn(),
 }
 
 vi.mock('@/composables/useWebSocket', () => ({
-  useWebSocket: () => mockWebSocket
+  useWebSocket: () => mockWebSocket,
 }))
 
 // Mock date-fns
 vi.mock('date-fns', () => ({
-  format: vi.fn((date, formatStr) => '2025-01-15 14:30')
+  format: vi.fn((date, formatStr) => '2025-01-15 14:30'),
 }))
 
 describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () => {
@@ -60,7 +60,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     context_used: 150000,
     context_budget: 200000,
     mission: 'Test mission',
-    messages: []
+    messages: [],
   }
 
   const mockSpecialistAgent = {
@@ -68,7 +68,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     id: 'job-2',
     job_id: 'job-2',
     agent_type: 'specialist',
-    agent_name: 'Specialist'
+    agent_name: 'Specialist',
   }
 
   const createWrapper = (props = {}) => {
@@ -77,16 +77,16 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
         agent: mockOrchestratorAgent,
         mode: 'jobs',
         isOrchestrator: true,
-        ...props
+        ...props,
       },
       global: {
         plugins: [vuetify],
         stubs: {
           teleport: true,
           SuccessionTimeline: true,
-          LaunchSuccessorDialog: true
-        }
-      }
+          LaunchSuccessorDialog: true,
+        },
+      },
     })
   }
 
@@ -106,7 +106,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     it('hides SuccessionTimeline for non-orchestrator agents', () => {
       const wrapper = createWrapper({
         agent: mockSpecialistAgent,
-        isOrchestrator: false
+        isOrchestrator: false,
       })
       const timeline = wrapper.findComponent(SuccessionTimeline)
       expect(timeline.exists()).toBe(false)
@@ -122,7 +122,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
   describe('Hand Over Button Integration', () => {
     it('shows LaunchSuccessorDialog for working orchestrator', () => {
       const wrapper = createWrapper({
-        agent: { ...mockOrchestratorAgent, status: 'working' }
+        agent: { ...mockOrchestratorAgent, status: 'working' },
       })
       const dialog = wrapper.findComponent(LaunchSuccessorDialog)
       expect(dialog.exists()).toBe(true)
@@ -142,7 +142,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
 
     it('hides dialog for non-working status', () => {
       const wrapper = createWrapper({
-        agent: { ...mockOrchestratorAgent, status: 'complete' }
+        agent: { ...mockOrchestratorAgent, status: 'complete' },
       })
       const dialog = wrapper.findComponent(LaunchSuccessorDialog)
       expect(dialog.exists()).toBe(false)
@@ -151,7 +151,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     it('hides dialog for non-orchestrator agents', () => {
       const wrapper = createWrapper({
         agent: mockSpecialistAgent,
-        isOrchestrator: false
+        isOrchestrator: false,
       })
       const dialog = wrapper.findComponent(LaunchSuccessorDialog)
       expect(dialog.exists()).toBe(false)
@@ -172,7 +172,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
       const successorData = {
         successor_job_id: 'job-2',
         instance_number: 2,
-        launch_prompt: 'Test prompt'
+        launch_prompt: 'Test prompt',
       }
 
       await dialog.vm.$emit('succession-triggered', successorData)
@@ -187,7 +187,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
 
       const successorData = {
         successor_job_id: 'job-2',
-        instance_number: 2
+        instance_number: 2,
       }
 
       await dialog.vm.$emit('succession-triggered', successorData)
@@ -203,7 +203,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
 
       const successorData = {
         successor_job_id: 'job-2',
-        instance_number: 2
+        instance_number: 2,
       }
 
       await dialog.vm.$emit('succession-triggered', successorData)
@@ -261,7 +261,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     it('hides succession features for specialist agents', () => {
       const wrapper = createWrapper({
         agent: mockSpecialistAgent,
-        isOrchestrator: false
+        isOrchestrator: false,
       })
       const timeline = wrapper.findComponent(SuccessionTimeline)
       const dialog = wrapper.findComponent(LaunchSuccessorDialog)
@@ -274,7 +274,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
   describe('Edge Cases', () => {
     it('handles agent with no project_id gracefully', () => {
       const wrapper = createWrapper({
-        agent: { ...mockOrchestratorAgent, project_id: null }
+        agent: { ...mockOrchestratorAgent, project_id: null },
       })
       const timeline = wrapper.findComponent(SuccessionTimeline)
       expect(timeline.props('projectId')).toBeNull()
@@ -282,7 +282,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
 
     it('handles agent with no instance_number', () => {
       const wrapper = createWrapper({
-        agent: { ...mockOrchestratorAgent, instance_number: null }
+        agent: { ...mockOrchestratorAgent, instance_number: null },
       })
       const dialog = wrapper.findComponent(LaunchSuccessorDialog)
       expect(dialog.props('currentJob').instance_number).toBeNull()
@@ -291,9 +291,9 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     it('handles different orchestrator statuses', () => {
       const statuses = ['waiting', 'working', 'complete', 'failed']
 
-      statuses.forEach(status => {
+      statuses.forEach((status) => {
         const wrapper = createWrapper({
-          agent: { ...mockOrchestratorAgent, status }
+          agent: { ...mockOrchestratorAgent, status },
         })
         const dialog = wrapper.findComponent(LaunchSuccessorDialog)
 

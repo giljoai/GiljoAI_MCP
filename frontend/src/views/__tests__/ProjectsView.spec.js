@@ -274,9 +274,7 @@ describe('ProjectsView.vue', () => {
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.filteredProjects).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ status: 'active' }),
-        ])
+        expect.arrayContaining([expect.objectContaining({ status: 'active' })]),
       )
       wrapper.vm.filteredProjects.forEach((p) => {
         expect(p.status).toBe('active')
@@ -384,7 +382,7 @@ describe('ProjectsView.vue', () => {
       const sortedProjects = wrapper.vm.sortedProjects
       for (let i = 0; i < sortedProjects.length - 1; i++) {
         expect(
-          sortedProjects[i].name.toLowerCase() <= sortedProjects[i + 1].name.toLowerCase()
+          sortedProjects[i].name.toLowerCase() <= sortedProjects[i + 1].name.toLowerCase(),
         ).toBe(true)
       }
     })
@@ -396,9 +394,7 @@ describe('ProjectsView.vue', () => {
 
       const sortedProjects = wrapper.vm.sortedProjects
       for (let i = 0; i < sortedProjects.length - 1; i++) {
-        expect(
-          sortedProjects[i].status <= sortedProjects[i + 1].status
-        ).toBe(true)
+        expect(sortedProjects[i].status <= sortedProjects[i + 1].status).toBe(true)
       }
     })
   })
@@ -447,7 +443,7 @@ describe('ProjectsView.vue', () => {
         'proj-1',
         expect.objectContaining({
           name: 'Updated Project',
-        })
+        }),
       )
     })
 

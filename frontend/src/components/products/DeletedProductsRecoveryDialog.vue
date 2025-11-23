@@ -1,9 +1,5 @@
 <template>
-  <v-dialog
-    v-model="isOpen"
-    max-width="800"
-    persistent
-  >
+  <v-dialog v-model="isOpen" max-width="800" persistent>
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start color="warning">mdi-delete-restore</v-icon>
@@ -18,7 +14,8 @@
 
       <v-card-text style="max-height: 500px; overflow-y: auto">
         <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-          Products are recoverable for 10 days after deletion. After that, they will be permanently purged.
+          Products are recoverable for 10 days after deletion. After that, they will be permanently
+          purged.
         </v-alert>
 
         <div v-if="loading" class="text-center py-8">
@@ -59,7 +56,8 @@
               <div class="d-flex align-center justify-space-between">
                 <div class="text-caption">
                   <v-icon size="16" class="mr-1">mdi-folder-multiple</v-icon>
-                  {{ product.project_count }} {{ product.project_count === 1 ? 'project' : 'projects' }}
+                  {{ product.project_count }}
+                  {{ product.project_count === 1 ? 'project' : 'projects' }}
                   <span class="mx-1">|</span>
                   <v-icon size="16" class="mr-1">mdi-file-document</v-icon>
                   {{ product.vision_documents_count }} vision docs
@@ -100,27 +98,27 @@ import { computed } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   deletedProducts: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   restoringProductId: {
     type: String,
-    default: null
+    default: null,
   },
   loading: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'restore'])
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => emit('update:modelValue', val),
 })
 
 const closeDialog = () => {
@@ -148,7 +146,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   })
 }
 </script>
