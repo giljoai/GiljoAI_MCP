@@ -3,10 +3,7 @@
     <!-- Claude Subagents Toggle -->
     <div class="claude-toggle-bar">
       <span class="toggle-label">Claude Subagents</span>
-      <div
-        class="toggle-indicator"
-        :class="{ active: usingClaudeCodeSubagents }"
-      ></div>
+      <div class="toggle-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
     </div>
 
     <!-- Agent Table Container -->
@@ -22,18 +19,15 @@
             <th>Messages Sent</th>
             <th>Messages waiting</th>
             <th>Messages Read</th>
-            <th></th> <!-- Actions -->
+            <th></th>
+            <!-- Actions -->
           </tr>
         </thead>
         <tbody>
           <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id">
             <!-- Agent Type: Avatar + Name -->
             <td class="agent-type-cell">
-              <v-avatar
-                :color="getAgentColor(agent.agent_type)"
-                size="32"
-                class="agent-avatar"
-              >
+              <v-avatar :color="getAgentColor(agent.agent_type)" size="32" class="agent-avatar">
                 <span class="avatar-text">{{ getAgentAbbr(agent.agent_type) }}</span>
               </v-avatar>
               <span class="agent-name">{{ agent.agent_type }}</span>
@@ -42,8 +36,16 @@
             <!-- Agent ID: FULL UUID -->
             <td class="agent-id-cell">{{ agent.job_id || agent.agent_id }}</td>
 
-            <!-- Agent Status: Yellow italic -->
-            <td class="status-cell">Waiting.</td>
+            <!-- Agent Status: Dynamic binding from agent.status -->
+            <td
+              class="status-cell"
+              :style="{
+                color: getStatusColor(agent.status),
+                fontStyle: isStatusItalic(agent.status) ? 'italic' : 'normal'
+              }"
+            >
+              {{ getStatusLabel(agent.status) }}
+            </td>
 
             <!-- Job Read -->
             <td class="checkbox-cell">
@@ -52,7 +54,12 @@
 
             <!-- Job Acknowledged -->
             <td class="checkbox-cell">
-              <v-icon v-if="agent.mission_acknowledged_at" size="small" color="white" icon="mdi-check" />
+              <v-icon
+                v-if="agent.mission_acknowledged_at"
+                size="small"
+                color="white"
+                icon="mdi-check"
+              />
             </td>
 
             <!-- Messages Sent -->
@@ -95,20 +102,8 @@
 
     <!-- Message Composer (Bottom) -->
     <div class="message-composer">
-      <v-btn
-        class="recipient-btn"
-        variant="outlined"
-        rounded
-      >
-        Orchestrator
-      </v-btn>
-      <v-btn
-        class="broadcast-btn"
-        variant="outlined"
-        rounded
-      >
-        Broadcast
-      </v-btn>
+      <v-btn class="recipient-btn" variant="outlined" rounded> Orchestrator </v-btn>
+      <v-btn class="broadcast-btn" variant="outlined" rounded> Broadcast </v-btn>
       <input
         type="text"
         class="message-input"
@@ -116,28 +111,28 @@
         v-model="messageText"
         @keyup.enter="sendMessage"
       />
-      <v-btn
-        icon="mdi-play"
-        class="send-btn"
-        color="yellow-darken-2"
-        @click="sendMessage"
-      />
+      <v-btn icon="mdi-play" class="send-btn" color="yellow-darken-2" @click="sendMessage" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useWebSocketV2 } from '@/composables/useWebSocket'
+import { useUserStore } from '@/stores/user'
+import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
 
 /**
- * JobsTab Component - Handover 0241
+ * JobsTab Component - Handover 0241 + 0243c
  *
  * Complete rewrite to match screenshot design exactly.
  * Pure table layout with inline actions and message composer.
+ * Dynamic status display from agent.status field with WebSocket updates (0243c).
  *
  * Reference: F:\GiljoAI_MCP\handovers\Launch-Jobs_panels2\IMplement tab.jpg
+ * Handover 0243c: JobsTab Dynamic Status Fix (CRITICAL 0242b)
  */
 
 const props = defineProps({
@@ -152,10 +147,10 @@ const props = defineProps({
       return (
         value &&
         typeof value === 'object' &&
-        (('project_id' in value) || ('id' in value)) &&
+        ('project_id' in value || 'id' in value) &&
         'name' in value
       )
-    }
+    },
   },
 
   /**
@@ -164,7 +159,7 @@ const props = defineProps({
   agents: {
     type: Array,
     required: true,
-    default: () => []
+    default: () => [],
   },
 
   /**
@@ -172,7 +167,7 @@ const props = defineProps({
    */
   messages: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
 
   /**
@@ -180,8 +175,8 @@ const props = defineProps({
    */
   allAgentsComplete: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -189,19 +184,26 @@ const emit = defineEmits([
   'view-details',
   'view-error',
   'closeout-project',
-  'send-message'
+  'send-message',
 ])
 
 /**
  * Composables
  */
 const { showToast } = useToast()
+const { on, off } = useWebSocketV2()
+const userStore = useUserStore()
 
 /**
  * State
  */
 const usingClaudeCodeSubagents = ref(false)
 const messageText = ref('')
+
+/**
+ * Get current tenant key for multi-tenant isolation
+ */
+const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 
 /**
  * Agent sorting priority map
@@ -211,7 +213,7 @@ const AGENT_PRIORITY = {
   blocked: 2,
   waiting: 3,
   working: 4,
-  complete: 5
+  complete: 5,
 }
 
 /**
@@ -247,10 +249,10 @@ const sortedAgents = computed(() => {
  */
 function getAgentColor(agentType) {
   const colors = {
-    orchestrator: '#d4a574',  // Tan
-    analyzer: '#e53935',       // Red
-    implementor: '#1976d2',    // Blue
-    tester: '#fbc02d'          // Yellow
+    orchestrator: '#d4a574', // Tan
+    analyzer: '#e53935', // Red
+    implementor: '#1976d2', // Blue
+    tester: '#fbc02d', // Yellow
   }
   return colors[agentType?.toLowerCase()] || '#666'
 }
@@ -263,7 +265,7 @@ function getAgentAbbr(agentType) {
     orchestrator: 'Or',
     analyzer: 'An',
     implementor: 'Im',
-    tester: 'Te'
+    tester: 'Te',
   }
   return abbrs[agentType?.toLowerCase()] || agentType?.slice(0, 2).toUpperCase()
 }
@@ -272,7 +274,7 @@ function getAgentAbbr(agentType) {
  * Format count - show number or empty string for 0/null
  */
 function formatCount(count) {
-  return (count && count > 0) ? count.toString() : ''
+  return count && count > 0 ? count.toString() : ''
 }
 
 /**
@@ -286,7 +288,7 @@ async function handlePlay(agent) {
       // Orchestrator prompt depends on Claude Code subagent toggle
       const response = await api.prompts.execution(
         agent.job_id || agent.agent_id,
-        usingClaudeCodeSubagents.value
+        usingClaudeCodeSubagents.value,
       )
       promptText = response.data?.prompt || ''
     } else {
@@ -364,6 +366,41 @@ async function copyToClipboard(text) {
     document.body.removeChild(textArea)
   }
 }
+
+/**
+ * Handle agent status updates from WebSocket
+ * CRITICAL: Multi-tenant isolation - reject events from other tenants
+ * Handover 0243c: Real-time status display
+ */
+const handleStatusUpdate = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    console.warn('[JobsTab] Status update rejected: tenant mismatch', {
+      expected: currentTenantKey.value,
+      received: data.tenant_key,
+    })
+    return
+  }
+
+  // Find agent and update status
+  const agent = props.agents.find((a) => a.job_id === data.job_id || a.agent_id === data.job_id)
+  if (agent) {
+    agent.status = data.status
+  } else {
+    console.warn(`[JobsTab] Agent not found for status update: ${data.job_id}`)
+  }
+}
+
+/**
+ * Lifecycle hooks - WebSocket event management
+ */
+onMounted(() => {
+  on('agent:status_changed', handleStatusUpdate)
+})
+
+onUnmounted(() => {
+  off('agent:status_changed', handleStatusUpdate)
+})
 </script>
 
 <style scoped lang="scss">
