@@ -267,6 +267,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         project_id: str,
         tenant_key: str,
         parent_job_id: Optional[str] = None,
+        template_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Create specialist agent job for EXECUTION (orchestrator assigns work during STAGING).
@@ -296,6 +297,10 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         - Agent calls get_agent_mission() to fetch full mission
         - WebSocket broadcast updates UI (agent appears in grid)
 
+        HANDOVER 0244a:
+        - template_id links agent job to its source template
+        - Enables (i) icon functionality to display template metadata
+
         Args:
             agent_type: Type of agent (backend-tester, frontend-dev, etc.)
             agent_name: Human-readable name for the agent
@@ -303,6 +308,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             project_id: Project UUID
             tenant_key: Tenant isolation key
             parent_job_id: Optional parent orchestrator ID (for tracking)
+            template_id: Optional template ID this job was spawned from (Handover 0244a)
 
         Returns:
             {
@@ -370,6 +376,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     agent_type=agent_type,
                     mission=mission,  # STORED HERE, not in prompt
                     spawned_by=parent_job_id,
+                    template_id=template_id,  # Handover 0244a: Link to source template
                     status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
                     metadata={
                         "created_via": "thin_client_spawn",
