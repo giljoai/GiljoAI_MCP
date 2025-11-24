@@ -1,24 +1,52 @@
 <template>
   <v-card class="project-tabs-container" elevation="0">
-    <!-- Tab Navigation (Handover 0243e: Fixed activation state) -->
-    <v-tabs
-      v-model="activeTab"
-      bg-color="transparent"
-      color="yellow-darken-2"
-      class="tabs-header"
-      align-tabs="start"
-    >
-      <v-tab value="launch" class="tab-link">
-        <v-icon start size="20">mdi-rocket-launch</v-icon>
-        Launch
-      </v-tab>
+    <!-- Tab Navigation with Action Buttons (Handover 0243e: Fixed activation state) -->
+    <div class="tabs-header-container">
+      <v-tabs
+        v-model="activeTab"
+        bg-color="transparent"
+        color="yellow-darken-2"
+        class="tabs-header"
+        align-tabs="start"
+      >
+        <v-tab value="launch" class="tab-link">
+          <v-icon start size="20">mdi-rocket-launch</v-icon>
+          Launch
+        </v-tab>
 
-      <v-tab value="jobs" class="tab-link" :disabled="!store.isLaunched">
-        <v-icon start size="20">mdi-code-braces</v-icon>
-        Implement
-        <v-badge v-if="store.unreadCount > 0" :content="store.unreadCount" color="error" inline />
-      </v-tab>
-    </v-tabs>
+        <v-tab value="jobs" class="tab-link">
+          <v-icon start size="20">mdi-code-braces</v-icon>
+          Implement
+          <v-badge v-if="store.unreadCount > 0" :content="store.unreadCount" color="error" inline />
+        </v-tab>
+      </v-tabs>
+
+      <!-- Action Buttons (relocated from LaunchTab) -->
+      <div class="action-buttons ml-auto d-flex align-center gap-2">
+        <v-btn
+          class="stage-button"
+          variant="outlined"
+          color="yellow-darken-2"
+          rounded
+          :loading="loadingStageProject"
+          @click="handleStageProject"
+        >
+          Stage project
+        </v-btn>
+
+        <span class="status-text">Waiting:</span>
+
+        <v-btn
+          class="launch-button"
+          :disabled="!readyToLaunch"
+          :color="readyToLaunch ? 'yellow-darken-2' : 'grey'"
+          rounded
+          @click="handleLaunchJobs"
+        >
+          Launch jobs
+        </v-btn>
+      </div>
+    </div>
 
     <!-- Tab Content -->
     <v-window v-model="activeTab" class="tabs-content">
@@ -41,7 +69,6 @@
       <!-- Jobs Tab -->
       <v-window-item value="jobs">
         <JobsTab
-          v-if="store.isLaunched"
           :project="project"
           :agents="store.sortedAgents"
           :messages="store.messages"
@@ -73,6 +100,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
+import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 
@@ -151,6 +179,14 @@ const activeTabIndex = computed({
 })
 
 const errorVisible = ref(false)
+const loadingStageProject = ref(false)
+
+/**
+ * Computed: Ready to launch (based on store state)
+ */
+const readyToLaunch = computed(() => {
+  return store.readyToLaunch
+})
 
 /**
  * Watch for errors
@@ -215,14 +251,80 @@ watch(
 )
 
 /**
+ * Production-grade clipboard copy function
+ */
+async function copyPromptToClipboard(text) {
+  if (!text) {
+    return false
+  }
+
+  try {
+    // Try modern Clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch (clipErr) {
+    console.warn('[ProjectTabs] Clipboard API failed, trying fallback:', clipErr)
+  }
+
+  // Fallback for HTTP
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '0'
+    document.body.appendChild(textarea)
+
+    textarea.focus()
+    textarea.select()
+    textarea.setSelectionRange(0, textarea.value.length)
+
+    const success = document.execCommand('copy')
+    document.body.removeChild(textarea)
+
+    if (success) return true
+  } catch (err) {
+    console.error('[ProjectTabs] All copy methods failed:', err)
+  }
+
+  return false
+}
+
+/**
  * Handle stage project
  */
 async function handleStageProject() {
+  loadingStageProject.value = true
+
   try {
-    await store.stageProject()
+    // Generate thin client staging prompt
+    const response = await api.prompts.staging(props.project.id, {
+      tool: 'claude-code',
+    })
+
+    if (!response.data?.prompt) {
+      throw new Error('Invalid response from staging endpoint')
+    }
+
+    const { prompt } = response.data
+
+    // Copy to clipboard immediately
+    const copied = await copyPromptToClipboard(prompt)
+
+    if (copied) {
+      console.log('[ProjectTabs] Orchestrator prompt copied to clipboard')
+    } else {
+      alert(`Please manually copy this prompt:\n\n${prompt}`)
+    }
+
     emit('stage-project')
   } catch (error) {
     console.error('Stage project failed:', error)
+    store.error = error.message || 'Failed to stage project'
+  } finally {
+    loadingStageProject.value = false
   }
 }
 
@@ -343,9 +445,16 @@ async function handleSendMessage(message, recipient) {
   flex-direction: column;
 }
 
+.tabs-header-container {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  padding-right: 16px;
+}
+
 .tabs-header {
   background: transparent;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  flex: 0 0 auto;
 
   :deep(.v-tab) {
     text-transform: none;
@@ -396,6 +505,31 @@ async function handleSendMessage(message, recipient) {
   }
 }
 
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+
+  .stage-button {
+    text-transform: none;
+    font-weight: 500;
+  }
+
+  .status-text {
+    color: #ffd700;
+    font-style: italic;
+    font-size: 16px;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .launch-button {
+    text-transform: none;
+    font-weight: 500;
+  }
+}
+
 .tabs-content {
   flex: 1;
   overflow: hidden;
@@ -408,6 +542,11 @@ async function handleSendMessage(message, recipient) {
 
 /* Mobile Responsive */
 @media (max-width: 600px) {
+  .tabs-header-container {
+    flex-wrap: wrap;
+    padding-right: 8px;
+  }
+
   .tabs-header {
     :deep(.v-tab) {
       font-size: 12px;
@@ -416,6 +555,18 @@ async function handleSendMessage(message, recipient) {
       .v-icon {
         font-size: 18px;
       }
+    }
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+
+    .status-text {
+      font-size: 14px;
     }
   }
 }
