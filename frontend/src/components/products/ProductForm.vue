@@ -64,8 +64,7 @@
         <!-- Tabbed interface for product configuration -->
         <v-tabs
           v-model="dialogTab"
-          class="mb-4 tabs-with-arrows"
-          color="primary"
+          class="mb-4 tabs-with-arrows global-tabs"
           show-arrows
           prev-icon="mdi-chevron-left"
           next-icon="mdi-chevron-right"
@@ -78,7 +77,7 @@
         </v-tabs>
 
         <v-form ref="formRef" v-model="formValid">
-          <v-tabs-window v-model="dialogTab">
+          <v-tabs-window v-model="dialogTab" class="global-tabs-window">
             <!-- Basic Info Tab -->
             <v-tabs-window-item value="basic">
               <div class="text-subtitle-1 mb-4">Product Information</div>
