@@ -273,6 +273,125 @@ describe('LaunchTab - After Button Relocation', () => {
     })
   })
 
+  // ==================== ICON TESTS ====================
+
+  describe('Agent Icons', () => {
+    it('orchestrator card displays eye icon (view-only)', () => {
+      const orchestratorCard = wrapper.find('.orchestrator-card')
+      expect(orchestratorCard.exists()).toBe(true)
+
+      const eyeIcon = orchestratorCard.find('.eye-icon')
+      expect(eyeIcon.exists()).toBe(true)
+      expect(eyeIcon.text()).toContain('mdi-eye')
+    })
+
+    it('orchestrator card does not display lock icon', () => {
+      const orchestratorCard = wrapper.find('.orchestrator-card')
+      const lockIcon = orchestratorCard.find('.lock-icon')
+      expect(lockIcon.exists()).toBe(false)
+    })
+
+    it('orchestrator card displays info icon', () => {
+      const orchestratorCard = wrapper.find('.orchestrator-card')
+      const infoIcon = orchestratorCard.find('.info-icon')
+      expect(infoIcon.exists()).toBe(true)
+      expect(infoIcon.text()).toContain('mdi-information')
+    })
+
+    it('agent team cards display pencil icon (edit)', () => {
+      const wrapperWithAgents = mount(LaunchTab, {
+        props: {
+          project: {
+            ...mockProject,
+            agents: [
+              { job_id: 'agent-1', agent_type: 'implementor' },
+              { job_id: 'agent-2', agent_type: 'tester' }
+            ]
+          },
+          orchestrator: null,
+          isStaging: false
+        }
+      })
+
+      const agentCards = wrapperWithAgents.findAll('.agent-slim-card')
+      expect(agentCards.length).toBeGreaterThan(0)
+
+      agentCards.forEach(card => {
+        const editIcon = card.find('.edit-icon')
+        expect(editIcon.exists()).toBe(true)
+        expect(editIcon.text()).toContain('mdi-pencil')
+      })
+    })
+
+    it('agent team cards do not display lock icon', () => {
+      const wrapperWithAgents = mount(LaunchTab, {
+        props: {
+          project: {
+            ...mockProject,
+            agents: [{ job_id: 'agent-1', agent_type: 'implementor' }]
+          },
+          orchestrator: null,
+          isStaging: false
+        }
+      })
+
+      const agentCard = wrapperWithAgents.find('.agent-slim-card')
+      const lockIcon = agentCard.find('.lock-icon')
+      expect(lockIcon.exists()).toBe(false)
+    })
+
+    it('agent team cards display info icon', () => {
+      const wrapperWithAgents = mount(LaunchTab, {
+        props: {
+          project: {
+            ...mockProject,
+            agents: [{ job_id: 'agent-1', agent_type: 'implementor' }]
+          },
+          orchestrator: null,
+          isStaging: false
+        }
+      })
+
+      const agentCard = wrapperWithAgents.find('.agent-slim-card')
+      const infoIcon = agentCard.find('.info-icon')
+      expect(infoIcon.exists()).toBe(true)
+      expect(infoIcon.text()).toContain('mdi-information')
+    })
+
+    it('info icon click handler still works for orchestrator', async () => {
+      const orchestratorCard = wrapper.find('.orchestrator-card')
+      const infoIcon = orchestratorCard.find('.info-icon')
+
+      await infoIcon.trigger('click')
+
+      expect(wrapper.vm.showDetailsModal).toBe(true)
+      expect(wrapper.vm.selectedAgent).toBeDefined()
+      expect(wrapper.vm.selectedAgent.agent_type).toBe('orchestrator')
+    })
+
+    it('info icon click handler still works for agent team', async () => {
+      const wrapperWithAgent = mount(LaunchTab, {
+        props: {
+          project: {
+            ...mockProject,
+            agents: [{ job_id: 'agent-1', agent_type: 'implementor' }]
+          },
+          orchestrator: null,
+          isStaging: false
+        }
+      })
+
+      const agentCard = wrapperWithAgent.find('.agent-slim-card')
+      const infoIcon = agentCard.find('.info-icon')
+
+      await infoIcon.trigger('click')
+
+      expect(wrapperWithAgent.vm.showDetailsModal).toBe(true)
+      expect(wrapperWithAgent.vm.selectedAgent).toBeDefined()
+      expect(wrapperWithAgent.vm.selectedAgent.agent_type).toBe('implementor')
+    })
+  })
+
   // ==================== WEBSOCKET INTEGRATION ====================
 
   describe('WebSocket Integration', () => {
