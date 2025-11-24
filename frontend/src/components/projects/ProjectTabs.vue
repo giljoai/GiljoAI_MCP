@@ -28,9 +28,11 @@
           color="yellow-darken-2"
           rounded
           :loading="loadingStageProject"
+          :disabled="hasActiveOrchestrator"
+          :title="hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt'"
           @click="handleStageProject"
         >
-          Stage project
+          {{ hasActiveOrchestrator ? 'Orchestrator Active' : 'Stage project' }}
         </v-btn>
 
         <span class="status-text">Waiting:</span>
@@ -209,6 +211,14 @@ const toastDuration = ref(3000)
  */
 const readyToLaunch = computed(() => {
   return store.readyToLaunch
+})
+
+/**
+ * Computed: Check if orchestrator is already active
+ */
+const hasActiveOrchestrator = computed(() => {
+  const orchestrator = store.agents.find(a => a.agent_type === 'orchestrator')
+  return orchestrator && ['waiting', 'working'].includes(orchestrator.status)
 })
 
 /**
@@ -405,7 +415,20 @@ async function handleStageProject() {
     emit('stage-project')
   } catch (error) {
     console.error('Stage project failed:', error)
-    store.error = error.message || 'Failed to stage project'
+
+    // Check if error is about existing orchestrator
+    const errorMsg = error.response?.data?.detail || error.message || 'Failed to stage project'
+
+    if (errorMsg.toLowerCase().includes('orchestrator already exists')) {
+      // Show informative message about existing orchestrator
+      toastMessage.value = 'An orchestrator is already active for this project. The existing orchestrator will be reused.'
+      toastColor.value = 'info'
+      toastDuration.value = 4000
+      toastVisible.value = true
+    } else {
+      // Show error for other failures
+      store.error = errorMsg
+    }
   } finally {
     loadingStageProject.value = false
   }
