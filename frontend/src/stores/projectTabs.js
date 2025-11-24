@@ -114,10 +114,6 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {string} tabName - 'launch' | 'jobs'
      */
     switchTab(tabName) {
-      if (tabName === 'jobs' && !this.isLaunched) {
-        console.warn('Cannot switch to Jobs tab before launching')
-        return
-      }
       this.activeTab = tabName
     },
 
