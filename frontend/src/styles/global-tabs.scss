@@ -1,0 +1,72 @@
+/**
+ * Global Tab Styling
+ *
+ * Standardized tab styling applied across the entire application.
+ * All components using v-tabs should apply the "global-tabs" class.
+ *
+ * Design Standards:
+ * - Inactive tabs: opacity 0.6 (faded appearance)
+ * - Active tab: opacity 1.0 (full visibility)
+ * - Smooth transitions (0.3s ease)
+ * - No color overrides (use Vuetify defaults)
+ * - Clean, minimal CSS
+ *
+ * Usage:
+ * <v-tabs class="global-tabs">
+ *   <v-tab>Tab 1</v-tab>
+ *   <v-tab>Tab 2</v-tab>
+ * </v-tabs>
+ */
+
+/* Global Tabs Container */
+.global-tabs {
+  /* Inactive tabs - faded appearance */
+  .v-tab:not(.v-tab--selected) {
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Active tab - full visibility */
+  .v-tab.v-tab--selected {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Hover state for inactive tabs */
+  .v-tab:not(.v-tab--selected):hover {
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Disabled tabs */
+  .v-tab--disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed;
+  }
+}
+
+/* Optional: Disable sliding animations for v-window (used with v-tabs-window) */
+/* Apply this class to v-window components if you want simple fade transitions */
+.global-tabs-window {
+  .v-window__container {
+    overflow: visible !important;
+  }
+
+  .v-window-item {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .v-window-item--active {
+    animation: fade-in 0.2s ease-in !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
