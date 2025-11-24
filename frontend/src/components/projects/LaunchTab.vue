@@ -593,6 +593,7 @@ defineExpose({
     .eye-icon {
       color: $color-text-tertiary;
       flex-shrink: 0;
+      margin-right: 8px;  // Match spacing with edit-icon
     }
 
     .info-icon {
