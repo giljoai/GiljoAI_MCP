@@ -618,7 +618,6 @@ defineExpose({
 
     .agent-team-list {
       min-height: 200px;
-      border-right: 2px solid rgba(255, 255, 255, 0.1);
       padding-right: 8px;
       overflow-y: auto;
       max-height: 350px;
