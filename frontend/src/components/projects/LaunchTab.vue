@@ -41,12 +41,13 @@
                 <span class="orchestrator-text">Or</span>
               </v-avatar>
               <span class="agent-name">Orchestrator</span>
-              <v-icon size="small" class="lock-icon">mdi-lock</v-icon>
+              <v-icon size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
               <v-icon
                 size="small"
                 class="info-icon"
                 role="button"
                 tabindex="0"
+                title="View orchestrator template"
                 @click="handleOrchestratorInfo"
                 @keydown.enter="handleOrchestratorInfo"
               >
@@ -68,12 +69,13 @@
                     {{ getAgentInitials(agent.agent_type) }}
                   </div>
                   <span class="agent-name">{{ agent.agent_type }}</span>
-                  <v-icon size="small" class="lock-icon">mdi-lock</v-icon>
+                  <v-icon size="small" class="edit-icon" title="Edit agent configuration">mdi-pencil</v-icon>
                   <v-icon
                     size="small"
                     class="info-icon"
                     role="button"
                     tabindex="0"
+                    title="View agent template"
                     @click="handleAgentInfo(agent)"
                     @keydown.enter="handleAgentInfo(agent)"
                   >
@@ -578,7 +580,7 @@ defineExpose({
       font-size: $typography-font-size-body;
     }
 
-    .lock-icon {
+    .eye-icon {
       color: $color-text-tertiary;
       flex-shrink: 0;
     }
@@ -661,8 +663,9 @@ defineExpose({
         text-transform: capitalize;
       }
 
-      .lock-icon {
+      .edit-icon {
         color: $color-text-secondary;
+        flex-shrink: 0;
 
         &:hover {
           color: $color-text-primary;
@@ -671,6 +674,7 @@ defineExpose({
 
       .info-icon {
         color: $color-text-secondary;
+        flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
 
