@@ -505,12 +505,6 @@ defineExpose({
           line-height: 1.6;
           overflow-y: auto; // Enable scrolling when content exceeds height
 
-          .edit-icon {
-            position: absolute;
-            bottom: 16px;
-            right: 16px;
-            color: $color-text-tertiary;
-          }
 
           .empty-state {
             position: absolute;
