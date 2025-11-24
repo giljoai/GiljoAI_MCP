@@ -37,7 +37,7 @@
           <div class="panel-content">
             <!-- Orchestrator Card -->
             <div class="orchestrator-card">
-              <v-avatar :color="orchestratorAvatarColor" size="32" class="agent-avatar">
+              <v-avatar :color="orchestratorAvatarColor" size="40" class="agent-avatar">
                 <span class="orchestrator-text">Or</span>
               </v-avatar>
               <span class="agent-name">Orchestrator</span>
@@ -591,13 +591,13 @@ defineExpose({
     }
 
     .eye-icon {
-      color: $color-text-tertiary;
+      color: $color-text-secondary;  // Changed from tertiary to match edit-icon
       flex-shrink: 0;
       margin-right: 4px;  // Reduced to 4px for tighter spacing
     }
 
     .info-icon {
-      color: $color-text-tertiary;
+      color: $color-text-secondary;  // Changed from tertiary to match other icons
       flex-shrink: 0;
       cursor: pointer;
       transition: color 0.2s ease;
@@ -679,12 +679,6 @@ defineExpose({
         cursor: pointer;
         transition: color 0.2s ease;
         margin-right: 4px;  // Reduced from 8px to match orchestrator
-        display: inline-flex;  // Ensure icon renders properly
-        align-items: center;   // Vertically center within flex container
-        justify-content: center; // Center icon content
-        min-width: 24px;       // Minimum width to ensure visibility
-        visibility: visible;   // Explicit visibility
-        opacity: 1;            // Ensure full opacity
 
         &:hover {
           color: $color-text-highlight;
@@ -696,12 +690,6 @@ defineExpose({
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
-        display: inline-flex;  // Ensure icon renders properly
-        align-items: center;   // Vertically center within flex container
-        justify-content: center; // Center icon content
-        min-width: 24px;       // Minimum width to ensure visibility
-        visibility: visible;   // Explicit visibility
-        opacity: 1;            // Ensure full opacity
 
         &:hover {
           color: $color-text-highlight;
