@@ -1,32 +1,6 @@
 <template>
   <div class="launch-tab-wrapper">
-    <!-- Top Action Bar (outside main container) -->
-    <div class="top-action-bar">
-      <v-btn
-        class="stage-button"
-        variant="outlined"
-        color="yellow-darken-2"
-        rounded
-        :loading="loadingStageProject"
-        @click="handleStage"
-      >
-        Stage project
-      </v-btn>
-
-      <span class="status-text">Waiting:</span>
-
-      <v-btn
-        class="launch-button"
-        :disabled="!readyToLaunch"
-        :color="readyToLaunch ? 'yellow-darken-2' : 'grey'"
-        rounded
-        @click="handleLaunch"
-      >
-        Launch jobs
-      </v-btn>
-    </div>
-
-    <!-- Main Container (unified border) -->
+    <!-- Main Container (unified border) - buttons moved to ProjectTabs -->
     <div class="main-container">
       <div class="three-panels">
         <!-- Panel 1: Project Description -->
@@ -134,7 +108,6 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
-import api from '@/services/api'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 
 /**
@@ -166,9 +139,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'stage-project',
-  'launch-jobs',
-  'cancel-staging',
   'edit-description',
   'edit-mission',
   'edit-agent-mission',
@@ -241,10 +211,8 @@ const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 const missionText = ref('')
 const agentIds = ref(new Set())
 const agents = ref([])
-const readyToLaunch = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
-const loadingStageProject = ref(false)
 const showDetailsModal = ref(false)
 const selectedAgent = ref(null)
 
@@ -283,7 +251,6 @@ const handleMissionUpdate = (data) => {
 
   // Update mission text reactively
   missionText.value = data.mission
-  readyToLaunch.value = true
 
   toastMessage.value = `Mission generated (${data.token_estimate || 0} tokens)`
   showToast.value = true
@@ -343,101 +310,6 @@ const handleAgentCreated = (data) => {
 }
 
 /**
- * Production-grade clipboard copy function
- */
-async function copyPromptToClipboard(text) {
-  if (!text) {
-    toastMessage.value = 'No prompt to copy'
-    showToast.value = true
-    return false
-  }
-
-  try {
-    // Try modern Clipboard API first
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch (clipErr) {
-    console.warn('[LaunchTab] Clipboard API failed, trying fallback:', clipErr)
-  }
-
-  // Fallback for HTTP
-  try {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.style.position = 'fixed'
-    textarea.style.left = '-9999px'
-    textarea.style.top = '0'
-    document.body.appendChild(textarea)
-
-    textarea.focus()
-    textarea.select()
-    textarea.setSelectionRange(0, textarea.value.length)
-
-    const success = document.execCommand('copy')
-    document.body.removeChild(textarea)
-
-    if (success) return true
-  } catch (err) {
-    console.error('[LaunchTab] All copy methods failed:', err)
-  }
-
-  return false
-}
-
-/**
- * Handle Stage Project button click
- */
-async function handleStage() {
-  loadingStageProject.value = true
-
-  try {
-    // Generate thin client staging prompt
-    const response = await api.prompts.staging(projectId.value, {
-      tool: 'claude-code',
-    })
-
-    if (!response.data?.prompt) {
-      throw new Error('Invalid response from staging endpoint')
-    }
-
-    const { prompt, estimated_prompt_tokens } = response.data
-
-    // Copy to clipboard immediately
-    const copied = await copyPromptToClipboard(prompt)
-
-    if (copied) {
-      toastMessage.value = 'Orchestrator prompt copied to clipboard!'
-      showToast.value = true
-    } else {
-      alert(`Please manually copy this prompt:\n\n${prompt}`)
-    }
-
-    const lineCount = prompt.split('\n').length
-    console.log('[LaunchTab] Thin client prompt copied:', {
-      lines: lineCount,
-      tokens: estimated_prompt_tokens,
-    })
-
-    emit('stage-project')
-  } catch (err) {
-    console.error('[LaunchTab] Failed to generate prompt:', err)
-    toastMessage.value = `Staging failed: ${err.response?.data?.detail || err.message}`
-    showToast.value = true
-  } finally {
-    loadingStageProject.value = false
-  }
-}
-
-/**
- * Handle Launch jobs button click
- */
-function handleLaunch() {
-  emit('launch-jobs')
-}
-
-/**
  * Handle Edit Description button
  */
 function editDescription() {
@@ -484,7 +356,6 @@ onMounted(() => {
   if (props.project.mission) {
     console.log('[LaunchTab] Loading existing mission from props on mount')
     missionText.value = props.project.mission
-    readyToLaunch.value = true
   }
 
   // Load agents from props if they exist
@@ -537,7 +408,6 @@ watch(
   (newMission) => {
     if (newMission) {
       missionText.value = newMission
-      readyToLaunch.value = true
     }
   },
 )
@@ -558,7 +428,6 @@ watch(
 defineExpose({
   setMission: (mission) => {
     missionText.value = mission
-    readyToLaunch.value = true
   },
   addAgent: (agent) => {
     const agentId = agent.id || agent.job_id
@@ -574,7 +443,6 @@ defineExpose({
   resetStaging: () => {
     missionText.value = ''
     agents.value = []
-    readyToLaunch.value = false
     agentIds.value.clear()
   },
 })
@@ -587,30 +455,6 @@ defineExpose({
   padding: 20px;
   background: $color-background-primary;
   min-height: 100vh;
-
-  .top-action-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-
-    .stage-button {
-      text-transform: none;
-      font-weight: 500;
-    }
-
-    .status-text {
-      color: $color-text-highlight;
-      font-style: italic;
-      font-size: 20px;
-      font-weight: 400;
-    }
-
-    .launch-button {
-      text-transform: none;
-      font-weight: 500;
-    }
-  }
 
   .main-container {
     border: $border-width-standard solid $color-container-border;
