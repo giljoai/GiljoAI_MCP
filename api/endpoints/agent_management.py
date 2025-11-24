@@ -67,6 +67,7 @@ class AgentJobResponse(BaseModel):
     mission: str
     status: str
     spawned_by: Optional[str]
+    template_id: Optional[str] = None  # Handover 0244a: Link to source template
     context_chunks: List[str]
     messages: List[Dict[str, Any]]
     acknowledged: bool
@@ -119,6 +120,7 @@ async def get_active_agent_jobs(
                     mission=job.mission,
                     status=job.status,
                     spawned_by=job.spawned_by,
+                    template_id=job.template_id,  # Handover 0244a
                     context_chunks=job.context_chunks or [],
                     messages=job.messages or [],
                     acknowledged=job.acknowledged,
@@ -173,6 +175,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
                 mission=job.mission,
                 status=job.status,
                 spawned_by=job.spawned_by,
+                template_id=job.template_id,  # Handover 0244a
                 context_chunks=job.context_chunks or [],
                 messages=job.messages or [],
                 acknowledged=job.acknowledged,
