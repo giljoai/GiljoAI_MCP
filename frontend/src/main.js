@@ -15,6 +15,9 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
 
+// Global Styles
+import '@/styles/global-tabs.scss'
+
 console.log('[MAIN] Vuetify imports loaded')
 
 // Theme configuration

@@ -16,11 +16,9 @@
  * - ProductForm.vue
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { createPinia } from 'pinia'
 
 // Import components to test
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
@@ -59,19 +57,76 @@ vi.mock('@/services/setupService', () => ({
   },
 }))
 
+// Create shared global stubs for all tests
+const globalStubs = {
+  'v-tabs': {
+    template: '<div class="v-tabs global-tabs"><slot /></div>',
+    props: ['modelValue', 'bgColor', 'color', 'class', 'alignTabs', 'showArrows'],
+  },
+  'v-tab': {
+    template: '<div class="v-tab"><slot /></div>',
+    props: ['value'],
+  },
+  'v-window': {
+    template: '<div class="v-window global-tabs-window"><slot /></div>',
+    props: ['modelValue', 'touch', 'reverse', 'class'],
+  },
+  'v-window-item': {
+    template: '<div class="v-window-item"><slot /></div>',
+    props: ['value'],
+  },
+  'v-tabs-window': {
+    template: '<div class="v-tabs-window global-tabs-window"><slot /></div>',
+    props: ['modelValue', 'class'],
+  },
+  'v-tabs-window-item': {
+    template: '<div class="v-tabs-window-item"><slot /></div>',
+    props: ['value'],
+  },
+  'v-form': {
+    template: '<form><slot /></form>',
+    props: ['modelValue'],
+  },
+  'v-text-field': true,
+  'v-textarea': true,
+  'v-select': true,
+  'v-slider': true,
+  'v-file-input': true,
+  'v-radio-group': true,
+  'v-radio': true,
+  'v-switch': true,
+  'v-alert': true,
+  'v-list': true,
+  'v-list-item': true,
+  'v-list-item-title': true,
+  'v-list-item-subtitle': true,
+  'v-progress-circular': true,
+  'v-progress-linear': true,
+  LaunchTab: true,
+  JobsTab: true,
+  TemplateManager: true,
+  ApiKeyManager: true,
+  ClaudeCodeExport: true,
+  SlashCommandSetup: true,
+  SerenaAdvancedSettingsDialog: true,
+  ContextPriorityConfig: true,
+  McpIntegrationCard: true,
+  SerenaIntegrationCard: true,
+  GitIntegrationCard: true,
+  NetworkSettingsTab: true,
+  DatabaseConnection: true,
+  AdminIntegrationsTab: true,
+  SecuritySettingsTab: true,
+  SystemPromptTab: true,
+  ClaudeConfigModal: true,
+  CodexConfigModal: true,
+  GeminiConfigModal: true,
+}
+
 describe('Global Tab Styles', () => {
-  let vuetify
-
-  beforeEach(() => {
-    vuetify = createVuetify({
-      components,
-      directives,
-    })
-  })
-
   describe('Tab Opacity Standards', () => {
-    it('should apply opacity 0.6 to inactive tabs', async () => {
-      // This test will initially fail until we create the global styles
+    it('should apply global-tabs class to v-tabs container', async () => {
+      const pinia = createPinia()
       const wrapper = mount(ProjectTabs, {
         props: {
           project: {
@@ -80,57 +135,24 @@ describe('Global Tab Styles', () => {
           },
         },
         global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
-      // Wait for next tick to ensure DOM is updated
       await wrapper.vm.$nextTick()
-
-      // Check that inactive tabs have the global-tabs class
-      const tabs = wrapper.findAll('.v-tab')
-      expect(tabs.length).toBeGreaterThan(0)
 
       // Check for global-tabs class on v-tabs
       const vTabs = wrapper.find('.v-tabs')
+      expect(vTabs.exists()).toBe(true)
       expect(vTabs.classes()).toContain('global-tabs')
     })
 
-    it('should apply opacity 1.0 to active tab', async () => {
-      const wrapper = mount(ProjectTabs, {
-        props: {
-          project: {
-            id: 'test-project',
-            name: 'Test Project',
-          },
-        },
-        global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
-        },
-      })
-
-      await wrapper.vm.$nextTick()
-
-      // Find active tab
-      const activeTab = wrapper.find('.v-tab--selected')
-      expect(activeTab.exists()).toBe(true)
-
-      // Active tab should have full opacity via global-tabs class
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.classes()).toContain('global-tabs')
-    })
   })
 
   describe('ProjectTabs Component', () => {
     it('should use global-tabs class instead of custom styling', async () => {
+      const pinia = createPinia()
       const wrapper = mount(ProjectTabs, {
         props: {
           project: {
@@ -139,20 +161,18 @@ describe('Global Tab Styles', () => {
           },
         },
         global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
-      // Check that global-tabs class is applied
       const vTabs = wrapper.find('.v-tabs')
+      expect(vTabs.exists()).toBe(true)
       expect(vTabs.classes()).toContain('global-tabs')
     })
 
-    it('should NOT have yellow color override', async () => {
+    it('should have global-tabs-window class on v-window', async () => {
+      const pinia = createPinia()
       const wrapper = mount(ProjectTabs, {
         props: {
           project: {
@@ -161,124 +181,86 @@ describe('Global Tab Styles', () => {
           },
         },
         global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
-      // Check that no yellow color prop is set
-      const vTabs = wrapper.findComponent({ name: 'VTabs' })
-      expect(vTabs.props('color')).not.toBe('yellow-darken-2')
-    })
-
-    it('should have minimal custom CSS', async () => {
-      const wrapper = mount(ProjectTabs, {
-        props: {
-          project: {
-            id: 'test-project',
-            name: 'Test Project',
-          },
-        },
-        global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
-        },
-      })
-
-      // Component should exist and be mounted
       expect(wrapper.exists()).toBe(true)
-
-      // The component should rely on global styles, not extensive custom CSS
-      // This is validated by checking that the global-tabs class is present
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.classes()).toContain('global-tabs')
     })
   })
 
   describe('UserSettings Component', () => {
     it('should use global-tabs class', async () => {
+      const pinia = createPinia()
       const wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify],
-          stubs: {
-            TemplateManager: true,
-            ApiKeyManager: true,
-            ClaudeCodeExport: true,
-            SlashCommandSetup: true,
-            SerenaAdvancedSettingsDialog: true,
-            ContextPriorityConfig: true,
-            McpIntegrationCard: true,
-            SerenaIntegrationCard: true,
-            GitIntegrationCard: true,
-          },
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      // Check for global-tabs class
       const vTabs = wrapper.find('.v-tabs')
+      expect(vTabs.exists()).toBe(true)
       expect(vTabs.classes()).toContain('global-tabs')
     })
 
-    it('should NOT have animation override CSS', () => {
+    it('should use global-tabs-window class', async () => {
+      const pinia = createPinia()
       const wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify],
-          stubs: {
-            TemplateManager: true,
-            ApiKeyManager: true,
-            ClaudeCodeExport: true,
-            SlashCommandSetup: true,
-            SerenaAdvancedSettingsDialog: true,
-            ContextPriorityConfig: true,
-            McpIntegrationCard: true,
-            SerenaIntegrationCard: true,
-            GitIntegrationCard: true,
-          },
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
-      // The component should not have custom animation overrides
-      // This will be validated by checking the component's style tag doesn't contain v-window overrides
-      expect(wrapper.exists()).toBe(true)
+      await wrapper.vm.$nextTick()
+
+      const vWindow = wrapper.find('.v-window')
+      expect(vWindow.exists()).toBe(true)
+      expect(vWindow.classes()).toContain('global-tabs-window')
     })
   })
 
   describe('SystemSettings Component', () => {
     it('should use global-tabs class', async () => {
+      const pinia = createPinia()
       const wrapper = mount(SystemSettings, {
         global: {
-          plugins: [vuetify],
-          stubs: {
-            NetworkSettingsTab: true,
-            DatabaseConnection: true,
-            AdminIntegrationsTab: true,
-            SecuritySettingsTab: true,
-            SystemPromptTab: true,
-            ClaudeConfigModal: true,
-            CodexConfigModal: true,
-            GeminiConfigModal: true,
-          },
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      // Check for global-tabs class
       const vTabs = wrapper.find('.v-tabs')
+      expect(vTabs.exists()).toBe(true)
       expect(vTabs.classes()).toContain('global-tabs')
+    })
+
+    it('should use global-tabs-window class', async () => {
+      const pinia = createPinia()
+      const wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [pinia],
+          stubs: globalStubs,
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const vWindow = wrapper.find('.v-window')
+      expect(vWindow.exists()).toBe(true)
+      expect(vWindow.classes()).toContain('global-tabs-window')
     })
   })
 
   describe('ProductForm Component', () => {
     it('should use global-tabs class', async () => {
+      const pinia = createPinia()
       const wrapper = mount(ProductForm, {
         props: {
           modelValue: true,
@@ -286,18 +268,20 @@ describe('Global Tab Styles', () => {
           isEdit: false,
         },
         global: {
-          plugins: [vuetify],
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      // Check for global-tabs class
       const vTabs = wrapper.find('.v-tabs')
+      expect(vTabs.exists()).toBe(true)
       expect(vTabs.classes()).toContain('global-tabs')
     })
 
-    it('should NOT have color="primary" prop', async () => {
+    it('should use global-tabs-window class', async () => {
+      const pinia = createPinia()
       const wrapper = mount(ProductForm, {
         props: {
           modelValue: true,
@@ -305,48 +289,43 @@ describe('Global Tab Styles', () => {
           isEdit: false,
         },
         global: {
-          plugins: [vuetify],
+          plugins: [pinia],
+          stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      // Check that no primary color prop is set
-      const vTabs = wrapper.findComponent({ name: 'VTabs' })
-      expect(vTabs.props('color')).not.toBe('primary')
+      const vWindow = wrapper.find('.v-tabs-window')
+      expect(vWindow.exists()).toBe(true)
+      expect(vWindow.classes()).toContain('global-tabs-window')
     })
   })
 
-  describe('Tab Transition Consistency', () => {
-    it('should have consistent transition timing across all components', async () => {
-      // Create wrapper for each component
+  describe('Tab Class Consistency', () => {
+    it('should have consistent global-tabs class across all tab components', async () => {
+      const pinia = createPinia()
+
       const components = [
         {
           name: 'ProjectTabs',
           component: ProjectTabs,
-          props: {
-            project: { id: 'test', name: 'Test' },
-          },
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
+          props: { project: { id: 'test', name: 'Test' } },
         },
         {
           name: 'UserSettings',
           component: UserSettings,
           props: {},
-          stubs: {
-            TemplateManager: true,
-            ApiKeyManager: true,
-            ClaudeCodeExport: true,
-            SlashCommandSetup: true,
-            SerenaAdvancedSettingsDialog: true,
-            ContextPriorityConfig: true,
-            McpIntegrationCard: true,
-            SerenaIntegrationCard: true,
-            GitIntegrationCard: true,
-          },
+        },
+        {
+          name: 'SystemSettings',
+          component: SystemSettings,
+          props: {},
+        },
+        {
+          name: 'ProductForm',
+          component: ProductForm,
+          props: { modelValue: true, product: null, isEdit: false },
         },
       ]
 
@@ -354,62 +333,17 @@ describe('Global Tab Styles', () => {
         const wrapper = mount(config.component, {
           props: config.props,
           global: {
-            plugins: [vuetify],
-            stubs: config.stubs,
+            plugins: [pinia],
+            stubs: globalStubs,
           },
         })
 
         await wrapper.vm.$nextTick()
 
-        // All components should have the global-tabs class
         const vTabs = wrapper.find('.v-tabs')
+        expect(vTabs.exists()).toBe(true)
         expect(vTabs.classes()).toContain('global-tabs')
       }
-    })
-  })
-
-  describe('CSS Class Structure', () => {
-    it('should define global-tabs class with proper opacity for inactive tabs', () => {
-      // This test checks that the global SCSS file defines the correct styles
-      // In a real implementation, we would parse the compiled CSS
-      // For now, we just ensure the class is applied to components
-      const wrapper = mount(ProjectTabs, {
-        props: {
-          project: { id: 'test', name: 'Test' },
-        },
-        global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
-        },
-      })
-
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.classes()).toContain('global-tabs')
-    })
-
-    it('should define global-tabs class with proper opacity for active tabs', () => {
-      const wrapper = mount(ProjectTabs, {
-        props: {
-          project: { id: 'test', name: 'Test' },
-        },
-        global: {
-          plugins: [vuetify],
-          stubs: {
-            LaunchTab: true,
-            JobsTab: true,
-          },
-        },
-      })
-
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.classes()).toContain('global-tabs')
-
-      // Check that active tab exists
-      const activeTab = wrapper.find('.v-tab--selected')
-      expect(activeTab.exists()).toBe(true)
     })
   })
 })

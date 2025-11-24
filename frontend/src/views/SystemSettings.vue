@@ -5,7 +5,7 @@
     <p class="text-subtitle-1 mb-4">Configure server and system-wide settings (Admin only)</p>
 
     <!-- Settings Tabs -->
-    <v-tabs v-model="activeTab" class="mb-6">
+    <v-tabs v-model="activeTab" class="mb-6 global-tabs">
       <v-tab value="network">
         <v-icon start>mdi-network-outline</v-icon>
         Network
@@ -30,7 +30,7 @@
     </v-tabs>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTab">
+    <v-window v-model="activeTab" class="global-tabs-window">
       <!-- Network Settings -->
       <v-window-item value="network">
         <NetworkSettingsTab
