@@ -99,6 +99,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -145,6 +146,11 @@ const store = useProjectTabsStore()
 const wsStore = useWebSocketStore()
 const route = useRoute()
 const router = useRouter()
+
+/**
+ * Toast composable
+ */
+const { showToast } = useToast()
 
 /**
  * Local state - Tab activation (Handover 0243e)
@@ -314,6 +320,12 @@ async function handleStageProject() {
 
     if (copied) {
       console.log('[ProjectTabs] Orchestrator prompt copied to clipboard')
+      // Show success toast
+      showToast({
+        message: 'Launch prompt copied to clipboard',
+        type: 'success',
+        duration: 3000
+      })
     } else {
       alert(`Please manually copy this prompt:\n\n${prompt}`)
     }
