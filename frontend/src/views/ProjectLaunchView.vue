@@ -171,14 +171,21 @@ async function fetchProjectDetails() {
   loading.value = true
   error.value = null
   try {
-    // Fetch project and orchestrator in parallel
-    const [projectResponse, orchestratorResponse] = await Promise.all([
+    // Fetch project, orchestrator, and agent jobs in parallel
+    const [projectResponse, orchestratorResponse, agentJobsResponse] = await Promise.all([
       api.projects.get(projectId.value),
       api.projects.getOrchestrator(projectId.value),
+      api.agentJobs.list(projectId.value),
     ])
 
     project.value = projectResponse.data
     orchestrator.value = orchestratorResponse.data.orchestrator
+
+    // Add the agent jobs to the project object so LaunchTab can display them
+    if (agentJobsResponse.data && Array.isArray(agentJobsResponse.data)) {
+      project.value.agents = agentJobsResponse.data
+      console.log('[ProjectLaunchView] Loaded agent jobs:', agentJobsResponse.data.length)
+    }
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || 'Failed to load project'
   } finally {
