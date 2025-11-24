@@ -225,3 +225,26 @@ class JobHealthResponse(BaseModel):
     last_message_check_at: Optional[datetime] = None
     minutes_since_progress: Optional[float] = None
     is_stale: bool
+
+
+# ============================================================================
+# Mission Update Models (Handover 0244b)
+# ============================================================================
+
+class UpdateMissionRequest(BaseModel):
+    """Request model for updating agent mission."""
+
+    mission: str = Field(
+        ...,
+        min_length=1,
+        max_length=50000,
+        description="Updated mission/instructions for the agent"
+    )
+
+
+class UpdateMissionResponse(BaseModel):
+    """Response model for mission update."""
+
+    success: bool = Field(..., description="Whether update succeeded")
+    job_id: str = Field(..., description="Job ID that was updated")
+    mission: str = Field(..., description="Updated mission text")
