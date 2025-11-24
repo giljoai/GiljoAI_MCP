@@ -1,12 +1,13 @@
 """
-Agent Job Operations Endpoints - Handover 0107
+Agent Job Operations Endpoints - Handovers 0107, 0244b
 
 Handles agent job operational controls:
 - POST /api/jobs/{job_id}/cancel - Cancel agent job
 - POST /api/jobs/{job_id}/force-fail - Force-fail agent job
 - GET /api/jobs/{job_id}/health - Get job health metrics
+- PATCH /api/jobs/{job_id}/mission - Update agent mission (Handover 0244b)
 
-All operations use standalone functions from agent_job_manager module.
+Operations use standalone functions from agent_job_manager module or direct database access.
 """
 
 import logging
@@ -30,6 +31,8 @@ from .models import (
     ForceFailJobRequest,
     ForceFailJobResponse,
     JobHealthResponse,
+    UpdateMissionRequest,
+    UpdateMissionResponse,
 )
 
 
@@ -265,4 +268,97 @@ async def get_job_health(
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get job health: {str(e)}"
+        )
+
+
+
+@router.patch("/{job_id}/mission")
+async def update_agent_mission(
+    job_id: str,
+    request: UpdateMissionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db_manager: DatabaseManager = Depends(get_db_manager),
+) -> UpdateMissionResponse:
+    """
+    Update agent mission with validation and WebSocket broadcast (Handover 0244b).
+
+    Allows users to modify the mission/instructions for an agent job.
+    The mission is the task instructions created by the orchestrator.
+
+    Args:
+        job_id: Job ID to update
+        request: Update request with new mission text
+        current_user: Authenticated user (from dependency)
+        db_manager: Database manager (from dependency)
+
+    Returns:
+        UpdateMissionResponse with success status and updated mission
+
+    Raises:
+        HTTPException 404: Job not found
+        HTTPException 403: User not authorized (tenant mismatch)
+        HTTPException 422: Validation error (empty or too long)
+        HTTPException 500: Internal server error
+    """
+    logger.debug(f"User {current_user.username} updating mission for job {job_id}")
+
+    try:
+        async with db_manager.get_session_async() as session:
+            # Get job with tenant isolation
+            stmt = select(MCPAgentJob).where(
+                MCPAgentJob.tenant_key == current_user.tenant_key,
+                MCPAgentJob.job_id == job_id,
+            )
+            result = await session.execute(stmt)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                raise HTTPException(
+                    status_code=http_status.HTTP_404_NOT_FOUND,
+                    detail=f"Agent job {job_id} not found"
+                )
+
+            # Update mission and timestamp
+            job.mission = request.mission
+            job.updated_at = datetime.now(timezone.utc)
+
+            await session.commit()
+            await session.refresh(job)
+
+            logger.info(
+                f"Mission updated for job {job_id} by user {current_user.username}. "
+                f"New length: {len(request.mission)} chars"
+            )
+
+            # Emit WebSocket event for real-time updates
+            from api.websocket_manager import manager as websocket_manager
+
+            await websocket_manager.emit_to_tenant(
+                current_user.tenant_key,
+                "agent:mission_updated",
+                {
+                    "job_id": job_id,
+                    "agent_type": job.agent_type,
+                    "agent_name": job.agent_name,
+                    "mission": job.mission,
+                    "project_id": job.project_id,
+                },
+            )
+
+            # Return success response
+            return UpdateMissionResponse(
+                success=True,
+                job_id=job_id,
+                mission=job.mission,
+            )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+
+    except Exception as e:
+        logger.error(f"Unexpected error updating mission for job {job_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update mission: {str(e)}"
         )
