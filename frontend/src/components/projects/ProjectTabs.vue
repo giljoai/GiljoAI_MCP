@@ -91,6 +91,15 @@
         <v-btn variant="text" @click="errorVisible = false"> Close </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Success Toast -->
+    <v-snackbar v-model="toastVisible" :color="toastColor" :timeout="toastDuration" location="top">
+      <v-icon start>mdi-check-circle</v-icon>
+      {{ toastMessage }}
+      <template #actions>
+        <v-btn variant="text" @click="toastVisible = false"> Close </v-btn>
+      </template>
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -99,7 +108,6 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
-import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -148,11 +156,6 @@ const route = useRoute()
 const router = useRouter()
 
 /**
- * Toast composable
- */
-const { showToast } = useToast()
-
-/**
  * Local state - Tab activation (Handover 0243e)
  * Initialize from URL query param or default to 'launch'
  */
@@ -185,6 +188,12 @@ const activeTabIndex = computed({
 
 const errorVisible = ref(false)
 const loadingStageProject = ref(false)
+
+// Toast state
+const toastVisible = ref(false)
+const toastMessage = ref('')
+const toastColor = ref('success')
+const toastDuration = ref(3000)
 
 /**
  * Computed: Ready to launch (based on store state)
@@ -321,11 +330,10 @@ async function handleStageProject() {
     if (copied) {
       console.log('[ProjectTabs] Orchestrator prompt copied to clipboard')
       // Show success toast
-      showToast({
-        message: 'Launch prompt copied to clipboard',
-        type: 'success',
-        duration: 3000
-      })
+      toastMessage.value = 'Launch prompt copied to clipboard'
+      toastColor.value = 'success'
+      toastDuration.value = 3000
+      toastVisible.value = true
     } else {
       alert(`Please manually copy this prompt:\n\n${prompt}`)
     }
