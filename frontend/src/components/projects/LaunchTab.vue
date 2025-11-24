@@ -480,11 +480,12 @@ defineExpose({
           background: $color-panel-background;
           border-radius: $radius-medium;
           padding: $spacing-panel-content-padding;
-          min-height: $spacing-panel-min-height;
+          height: $spacing-panel-min-height; // Fixed height to lock all panels same size
           position: relative;
           color: $color-text-primary;
           font-size: $typography-panel-content-size;
           line-height: 1.6;
+          overflow-y: auto; // Enable scrolling when content exceeds height
 
           .edit-icon {
             position: absolute;
@@ -509,9 +510,8 @@ defineExpose({
             word-break: break-word;
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.875rem;
-            max-height: calc(100vh - 280px);
-            overflow-y: auto;
-            padding-right: 8px;
+            padding: 10px; // 10px buffer all around the text
+            padding-right: 18px; // 10px + 8px for scrollbar
 
             /* Custom Scrollbar - match agent team list styling */
             &::-webkit-scrollbar {
