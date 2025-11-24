@@ -101,6 +101,13 @@
       :agent="selectedAgent"
     />
 
+    <!-- Agent Mission Edit Modal -->
+    <AgentMissionEditModal
+      v-model="showMissionEditModal"
+      :agent="selectedAgentForEdit"
+      @mission-updated="handleMissionUpdated"
+    />
+
     <!-- Toast Notification -->
     <v-snackbar v-model="showToast" :timeout="3000" color="success" location="top">
       <v-icon start>mdi-check-circle</v-icon>
@@ -116,7 +123,9 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
+import { useToast } from '@/composables/useToast'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
+import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
@@ -214,6 +223,7 @@ const getAgentInitials = (agentType) => {
  * WebSocket and Auth Setup
  */
 const { on, off } = useWebSocket()
+const { showToast: showToastNotification } = useToast()
 const userStore = useUserStore()
 const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 
@@ -227,6 +237,8 @@ const showToast = ref(false)
 const toastMessage = ref('')
 const showDetailsModal = ref(false)
 const selectedAgent = ref(null)
+const showMissionEditModal = ref(false)
+const selectedAgentForEdit = ref(null)
 
 /**
  * Get instance number for multi-instance agents
@@ -364,10 +376,59 @@ function handleAgentInfo(agent) {
  * Handle Edit icon click for Agent Team members
  */
 function handleAgentEdit(agent) {
-  // TODO: Implement agent editing functionality
-  console.log('Edit agent:', agent)
-  // For now, show a message that editing will be implemented
-  alert('Agent editing functionality coming soon!')
+  if (agent.agent_type === 'orchestrator') {
+    // Orchestrators don't have editable missions
+    showToastNotification({
+      message: 'Orchestrator configuration cannot be edited here',
+      type: 'info',
+      timeout: 3000,
+    })
+    return
+  }
+
+  selectedAgentForEdit.value = agent
+  showMissionEditModal.value = true
+}
+
+/**
+ * Handle mission updated event from modal
+ */
+function handleMissionUpdated({ jobId, mission }) {
+  // Update local agent data
+  const agentIndex = agents.value.findIndex((a) => a.id === jobId)
+  if (agentIndex !== -1) {
+    agents.value[agentIndex].mission = mission
+  }
+
+  // Show success message
+  showToastNotification({
+    message: 'Agent mission updated successfully',
+    type: 'success',
+    timeout: 3000,
+  })
+}
+
+/**
+ * Handle agent mission updated via WebSocket (real-time updates)
+ */
+function handleAgentMissionUpdatedViaWebSocket(data) {
+  console.log('[LaunchTab] Received agent:mission_updated event:', data)
+
+  // Update agent in local state if it matches
+  const agentIndex = agents.value.findIndex((a) => a.id === data.job_id)
+  if (agentIndex !== -1) {
+    agents.value[agentIndex].mission = data.mission
+
+    // Show notification if not the current user's action
+    // (if modal is closed, it means another user made the change)
+    if (!showMissionEditModal.value) {
+      showToastNotification({
+        message: `Mission updated for ${data.agent_name}`,
+        type: 'info',
+        timeout: 3000,
+      })
+    }
+  }
 }
 
 /**
@@ -405,6 +466,7 @@ onMounted(() => {
   on('project:mission_updated', handleMissionUpdate)
   on('orchestrator:instructions_fetched', handleMissionUpdate)
   on('agent:created', handleAgentCreated)
+  on('agent:mission_updated', handleAgentMissionUpdatedViaWebSocket)
 
   console.log('[LaunchTab] WebSocket listeners registered for project:', projectId.value)
   console.log('[LaunchTab] Current tenant key:', currentTenantKey.value)
@@ -415,6 +477,7 @@ onUnmounted(() => {
   off('project:mission_updated', handleMissionUpdate)
   off('orchestrator:instructions_fetched', handleMissionUpdate)
   off('agent:created', handleAgentCreated)
+  off('agent:mission_updated', handleAgentMissionUpdatedViaWebSocket)
 
   // Clear agent tracking Set
   agentIds.value.clear()

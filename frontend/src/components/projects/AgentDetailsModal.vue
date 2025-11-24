@@ -41,68 +41,163 @@
 
         <!-- Template Content (Regular Agents) -->
         <div v-else-if="!isOrchestrator && templateData">
-          <!-- Template Description -->
-          <div v-if="templateData.description" class="mb-4">
-            <div class="text-subtitle-2 mb-1">Description</div>
-            <div class="text-body-2">{{ templateData.description }}</div>
-          </div>
+          <!-- Template Overview Card -->
+          <v-card variant="outlined" class="mb-4">
+            <v-list density="compact">
+              <!-- Role -->
+              <v-list-item v-if="templateData.role">
+                <template #prepend>
+                  <v-icon color="primary">mdi-account-badge</v-icon>
+                </template>
+                <v-list-item-title class="font-weight-bold">Role</v-list-item-title>
+                <v-list-item-subtitle>{{ templateData.role }}</v-list-item-subtitle>
+              </v-list-item>
 
-          <!-- Template Metadata -->
-          <v-row v-if="hasMetadata" dense class="mb-4">
-            <v-col v-if="templateData.model" cols="12" sm="6">
-              <div class="text-caption font-weight-bold">Model:</div>
-              <v-chip size="small" color="primary" variant="tonal" label>
-                {{ templateData.model }}
-              </v-chip>
-            </v-col>
-            <v-col v-if="templateData.variables?.length > 0" cols="12" sm="6">
-              <div class="text-caption font-weight-bold mb-1">Variables:</div>
-              <div class="d-flex flex-wrap gap-1">
-                <v-chip
-                  v-for="variable in templateData.variables"
-                  :key="variable"
-                  size="x-small"
-                  variant="outlined"
-                  label
-                >
-                  {{ variable }}
-                </v-chip>
-              </div>
-            </v-col>
-            <v-col v-if="templateData.tools?.length > 0" cols="12">
-              <div class="text-caption font-weight-bold mb-1">Tools:</div>
-              <div class="d-flex flex-wrap gap-1">
-                <v-chip
-                  v-for="tool in templateData.tools"
-                  :key="tool"
-                  size="x-small"
-                  color="secondary"
-                  variant="tonal"
-                  label
-                >
-                  {{ tool }}
-                </v-chip>
-              </div>
-            </v-col>
-          </v-row>
+              <v-divider v-if="templateData.role"></v-divider>
 
-          <!-- Template Content -->
-          <div class="mb-3">
-            <div class="d-flex align-center justify-space-between mb-2">
-              <div class="text-subtitle-2">Template Content</div>
-              <v-btn
-                size="small"
-                variant="tonal"
-                prepend-icon="mdi-content-copy"
-                @click="copyToClipboard(templateData.template_content)"
-              >
-                Copy
-              </v-btn>
+              <!-- CLI Tool -->
+              <v-list-item v-if="templateData.cli_tool">
+                <template #prepend>
+                  <v-icon color="secondary">mdi-console</v-icon>
+                </template>
+                <v-list-item-title class="font-weight-bold">CLI Tool</v-list-item-title>
+                <v-list-item-subtitle>{{ templateData.cli_tool }}</v-list-item-subtitle>
+              </v-list-item>
+
+              <v-divider v-if="templateData.cli_tool"></v-divider>
+
+              <!-- Model -->
+              <v-list-item v-if="templateData.model">
+                <template #prepend>
+                  <v-icon color="tertiary">mdi-robot</v-icon>
+                </template>
+                <v-list-item-title class="font-weight-bold">Model</v-list-item-title>
+                <v-list-item-subtitle>{{ templateData.model }}</v-list-item-subtitle>
+              </v-list-item>
+
+              <v-divider v-if="templateData.model"></v-divider>
+
+              <!-- Description -->
+              <v-list-item v-if="templateData.description">
+                <template #prepend>
+                  <v-icon color="info">mdi-text</v-icon>
+                </template>
+                <v-list-item-title class="font-weight-bold">Description</v-list-item-title>
+                <v-list-item-subtitle class="text-wrap">
+                  {{ templateData.description }}
+                </v-list-item-subtitle>
+              </v-list-item>
+
+              <v-divider v-if="templateData.description"></v-divider>
+
+              <!-- Custom Suffix -->
+              <v-list-item v-if="templateData.custom_suffix">
+                <template #prepend>
+                  <v-icon color="warning">mdi-tag</v-icon>
+                </template>
+                <v-list-item-title class="font-weight-bold">Custom Suffix</v-list-item-title>
+                <v-list-item-subtitle>{{ templateData.custom_suffix }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-card>
+
+          <!-- Tools Section -->
+          <div v-if="templateData.tools?.length > 0" class="mb-4">
+            <div class="text-subtitle-2 mb-2">
+              <v-icon start size="small">mdi-wrench</v-icon>
+              MCP Tools ({{ templateData.tools.length }})
             </div>
-            <v-card variant="outlined" class="template-content-card">
-              <pre class="template-content">{{ templateData.template_content || 'No content available' }}</pre>
-            </v-card>
+            <div class="d-flex flex-wrap gap-1">
+              <v-chip
+                v-for="tool in templateData.tools"
+                :key="tool"
+                size="small"
+                color="secondary"
+                variant="tonal"
+                label
+              >
+                {{ tool }}
+              </v-chip>
+            </div>
           </div>
+
+          <!-- Instructions Expansion Panels -->
+          <v-expansion-panels variant="accordion" class="mb-3">
+            <!-- System Instructions -->
+            <v-expansion-panel v-if="templateData.system_instructions">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center">
+                  <v-icon start size="small">mdi-cog</v-icon>
+                  <span class="font-weight-medium">System Instructions</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div class="d-flex justify-end mb-2">
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-content-copy"
+                    @click="copyToClipboard(templateData.system_instructions)"
+                  >
+                    Copy
+                  </v-btn>
+                </div>
+                <v-card variant="outlined" class="template-content-card">
+                  <pre class="template-content">{{ templateData.system_instructions }}</pre>
+                </v-card>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- User Instructions -->
+            <v-expansion-panel v-if="templateData.user_instructions">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center">
+                  <v-icon start size="small">mdi-account</v-icon>
+                  <span class="font-weight-medium">User Instructions</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div class="d-flex justify-end mb-2">
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-content-copy"
+                    @click="copyToClipboard(templateData.user_instructions)"
+                  >
+                    Copy
+                  </v-btn>
+                </div>
+                <v-card variant="outlined" class="template-content-card">
+                  <pre class="template-content">{{ templateData.user_instructions }}</pre>
+                </v-card>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- Template Content (for backward compatibility) -->
+            <v-expansion-panel v-if="templateData.template_content">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center">
+                  <v-icon start size="small">mdi-file-document</v-icon>
+                  <span class="font-weight-medium">Template Content</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div class="d-flex justify-end mb-2">
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-content-copy"
+                    @click="copyToClipboard(templateData.template_content)"
+                  >
+                    Copy
+                  </v-btn>
+                </div>
+                <v-card variant="outlined" class="template-content-card">
+                  <pre class="template-content">{{ templateData.template_content }}</pre>
+                </v-card>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </div>
 
         <!-- Orchestrator Prompt Content -->
@@ -193,14 +288,6 @@ const isOpen = computed({
 
 const isOrchestrator = computed(() => {
   return props.agent?.agent_type === 'orchestrator'
-})
-
-const hasMetadata = computed(() => {
-  return (
-    templateData.value?.model ||
-    templateData.value?.variables?.length > 0 ||
-    templateData.value?.tools?.length > 0
-  )
 })
 
 // Methods
