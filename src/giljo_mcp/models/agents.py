@@ -187,8 +187,17 @@ class MCPAgentJob(Base):
         comment="Timestamp when agent acknowledged mission via status transition to 'working' (Handover 0233)"
     )
 
+    # Handover 0244a: Template tracking field
+    template_id = Column(
+        String(36),
+        ForeignKey("agent_templates.id"),
+        nullable=True,
+        comment="Agent template ID this job was spawned from (Handover 0244a)"
+    )
+
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
+    template = relationship("AgentTemplate", back_populates="jobs")
 
     __table_args__ = (
         Index("idx_mcp_agent_jobs_tenant_status", "tenant_key", "status"),
