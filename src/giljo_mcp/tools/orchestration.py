@@ -326,7 +326,42 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 if not project:
                     return {"error": "NOT_FOUND", "message": "Project not found"}
 
-                # Create agent job with mission STORED in database
+                # ORCHESTRATOR DUPLICATION PREVENTION
+                # Check if we're trying to create an orchestrator
+                if agent_type == "orchestrator":
+                    # Query for existing orchestrators in this project with active statuses
+                    result = await session.execute(
+                        select(MCPAgentJob).where(
+                            and_(
+                                MCPAgentJob.project_id == project_id,
+                                MCPAgentJob.tenant_key == tenant_key,
+                                MCPAgentJob.agent_type == "orchestrator",
+                                MCPAgentJob.status.in_(["waiting", "working"])
+                            )
+                        )
+                    )
+                    existing_orchestrator = result.scalar_one_or_none()
+
+                    if existing_orchestrator:
+                        # Active orchestrator already exists - prevent duplicate
+                        logger.warning(
+                            f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
+                            extra={
+                                "project_id": project_id,
+                                "tenant_key": tenant_key,
+                                "existing_job_id": existing_orchestrator.job_id,
+                                "existing_status": existing_orchestrator.status
+                            }
+                        )
+                        return {
+                            "success": False,
+                            "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
+                                     f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
+                            "existing_job_id": existing_orchestrator.job_id,
+                            "existing_status": existing_orchestrator.status
+                        }
+
+                # No duplicate found (or not an orchestrator) - proceed with creation
                 agent_job_id = str(uuid4())
                 agent_job = MCPAgentJob(
                     job_id=agent_job_id,
@@ -1431,6 +1466,8 @@ async def spawn_agent_job(
     project_id: str,
     tenant_key: str,
     parent_job_id: Optional[str] = None,
+    db_manager: Optional["DatabaseManager"] = None,
+    session: Optional["AsyncSession"] = None,
 ) -> dict[str, Any]:
     """
     Spawn agent job (standalone for testing).
@@ -1442,6 +1479,8 @@ async def spawn_agent_job(
         project_id: Project UUID
         tenant_key: Tenant isolation key
         parent_job_id: Optional parent job UUID
+        db_manager: Optional DatabaseManager instance (for testing)
+        session: Optional AsyncSession (for testing with transaction isolation)
 
     Returns:
         Spawn result dict
@@ -1449,48 +1488,113 @@ async def spawn_agent_job(
     from uuid import uuid4
 
     from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.config_manager import get_config
 
-    db_manager = DatabaseManager()
+    # If session is provided, use it directly (for testing with transaction isolation)
+    if session is not None:
+        return await _spawn_agent_job_impl(
+            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id
+        )
+
+    # Otherwise, create session from db_manager
+    if db_manager is None:
+        config = get_config()
+        db_url = config.database.database_url
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
+
     async with db_manager.get_session_async() as session:
-        from giljo_mcp.models import MCPAgentJob
+        return await _spawn_agent_job_impl(
+            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id
+        )
 
-        try:
-            agent_job_id = str(uuid4())
 
-            agent_job = MCPAgentJob(
-                job_id=agent_job_id,
-                tenant_key=tenant_key,
-                project_id=project_id,
-                agent_type=agent_type,
-                agent_name=agent_name,
-                mission=mission,
-                status="pending",
-                context_budget=10000,
-                context_used=0,
+async def _spawn_agent_job_impl(
+    session,
+    agent_type: str,
+    agent_name: str,
+    mission: str,
+    project_id: str,
+    tenant_key: str,
+    parent_job_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Internal implementation of spawn_agent_job."""
+    from uuid import uuid4
+    from sqlalchemy import and_, select
+    from giljo_mcp.models import MCPAgentJob
+
+    try:
+        # ORCHESTRATOR DUPLICATION PREVENTION
+        # Check if we're trying to create an orchestrator
+        if agent_type == "orchestrator":
+            # Query for existing orchestrators in this project with active statuses
+            result = await session.execute(
+                select(MCPAgentJob).where(
+                    and_(
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.tenant_key == tenant_key,
+                        MCPAgentJob.agent_type == "orchestrator",
+                        MCPAgentJob.status.in_(["waiting", "working"])
+                    )
+                )
             )
+            existing_orchestrator = result.scalar_one_or_none()
 
-            session.add(agent_job)
-            await session.commit()
+            if existing_orchestrator:
+                # Active orchestrator already exists - prevent duplicate
+                logger.warning(
+                    f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
+                    extra={
+                        "project_id": project_id,
+                        "tenant_key": tenant_key,
+                        "existing_job_id": existing_orchestrator.job_id,
+                        "existing_status": existing_orchestrator.status
+                    }
+                )
+                return {
+                    "success": False,
+                    "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
+                             f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
+                    "existing_job_id": existing_orchestrator.job_id,
+                    "existing_status": existing_orchestrator.status
+                }
 
-            # Generate thin prompt (not full mission)
-            thin_prompt = f"""I am {agent_name} for Project.
+        # No duplicate found (or not an orchestrator) - proceed with creation
+        agent_job_id = str(uuid4())
+
+        agent_job = MCPAgentJob(
+            job_id=agent_job_id,
+            tenant_key=tenant_key,
+            project_id=project_id,
+            agent_type=agent_type,
+            agent_name=agent_name,
+            mission=mission,
+            status="waiting",  # Use 'waiting' instead of 'pending'
+            context_budget=10000,
+            context_used=0,
+        )
+
+        session.add(agent_job)
+        await session.commit()
+
+        # Generate thin prompt (not full mission)
+        thin_prompt = f"""I am {agent_name} for Project.
 
 FETCH MISSION:
 mcp__giljo-mcp__get_agent_mission('{agent_job_id}', '{tenant_key}')
 
 Execute mission and report back."""
 
-            mission_tokens = len(mission) // 4
-            prompt_tokens = len(thin_prompt) // 4
+        mission_tokens = len(mission) // 4
+        prompt_tokens = len(thin_prompt) // 4
 
-            return {
-                "success": True,
-                "agent_job_id": agent_job_id,
-                "agent_prompt": thin_prompt,
-                "prompt_tokens": prompt_tokens,
-                "mission_tokens": mission_tokens,
-            }
+        return {
+            "success": True,
+            "agent_job_id": agent_job_id,
+            "agent_prompt": thin_prompt,
+            "prompt_tokens": prompt_tokens,
+            "mission_tokens": mission_tokens,
+        }
 
-        except Exception as e:
-            logger.error(f"Error in spawn_agent_job: {e}", exc_info=True)
-            return {"success": False, "error": f"Failed to spawn agent: {e!s}"}
+    except Exception as e:
+        logger.error(f"Error in spawn_agent_job: {e}", exc_info=True)
+        return {"success": False, "error": f"Failed to spawn agent: {e!s}"}
