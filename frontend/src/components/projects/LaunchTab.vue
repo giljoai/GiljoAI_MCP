@@ -38,9 +38,9 @@
             <!-- Orchestrator Card -->
             <div class="orchestrator-card">
               <v-avatar :color="orchestratorAvatarColor" size="40" class="agent-avatar">
-                <span class="orchestrator-text">Or</span>
+                <span class="orchestrator-text">OR</span>
               </v-avatar>
-              <span class="agent-name">Orchestrator</span>
+              <span class="agent-name">ORCHESTRATOR</span>
               <v-icon size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
               <v-icon
                 size="small"
@@ -68,7 +68,7 @@
                   <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_type) }">
                     {{ getAgentInitials(agent.agent_type) }}
                   </div>
-                  <span class="agent-name">{{ agent.agent_type }}</span>
+                  <span class="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
                   <v-icon
                     size="small"
                     class="edit-icon"
@@ -167,7 +167,7 @@ const projectId = computed(() => {
 /**
  * Orchestrator avatar color (from design tokens)
  */
-const orchestratorAvatarColor = computed(() => '#d4a574') // $color-agent-orchestrator
+const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from branding guide
 
 /**
  * Filter out orchestrator from agents list (since it's shown in Default Agent)
@@ -181,14 +181,16 @@ const nonOrchestratorAgents = computed(() => {
  */
 const getAgentColor = (agentType) => {
   const colors = {
-    orchestrator: '#d4a574', // tan
-    analyzer: '#e1564b',     // red
-    implementor: '#3493bf',  // blue
-    tester: '#d4a574',       // gold/tan variant
-    researcher: '#27ae60',   // green
-    reviewer: '#9b59b6'      // purple
+    orchestrator: '#D4A574', // Tan/Beige - Project coordination
+    analyzer: '#E74C3C',     // Red - Analysis & research
+    implementer: '#3498DB',  // Blue - Code implementation
+    implementor: '#3498DB',  // Blue - Code implementation (alias)
+    tester: '#FFC300',       // Yellow - Testing & QA
+    reviewer: '#9B59B6',     // Purple - Code review
+    documenter: '#27AE60',   // Green - Documentation
+    researcher: '#27AE60',   // Green - Research (alias)
   }
-  return colors[agentType?.toLowerCase()] || '#666'
+  return colors[agentType?.toLowerCase()] || '#90A4AE' // Gray for custom agents
 }
 
 /**
@@ -197,12 +199,14 @@ const getAgentColor = (agentType) => {
 const getAgentInitials = (agentType) => {
   if (!agentType) return '??'
   const type = agentType.toLowerCase()
-  if (type === 'orchestrator') return 'Or'
-  if (type === 'analyzer') return 'An'
-  if (type === 'implementor') return 'Im'
-  if (type === 'tester') return 'Te'
-  if (type === 'researcher') return 'Re'
-  if (type === 'reviewer') return 'Rv'
+  if (type === 'orchestrator') return 'OR'
+  if (type === 'analyzer') return 'AN'
+  if (type === 'implementer') return 'IM'
+  if (type === 'implementor') return 'IM' // alias
+  if (type === 'tester') return 'TE'
+  if (type === 'reviewer') return 'RV'
+  if (type === 'documenter') return 'DO'
+  if (type === 'researcher') return 'RE'
   return agentType.substring(0, 2).toUpperCase()
 }
 
