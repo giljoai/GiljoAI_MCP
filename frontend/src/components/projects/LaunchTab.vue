@@ -77,9 +77,7 @@
                     title="Edit agent configuration"
                     @click="handleAgentEdit(agent)"
                     @keydown.enter="handleAgentEdit(agent)"
-                  >
-                    mdi-pencil
-                  </v-icon>
+                  >mdi-pencil</v-icon>
                   <v-icon
                     size="small"
                     class="info-icon"
@@ -88,9 +86,7 @@
                     title="View agent template"
                     @click="handleAgentInfo(agent)"
                     @keydown.enter="handleAgentInfo(agent)"
-                  >
-                    mdi-information
-                  </v-icon>
+                  >mdi-information</v-icon>
                 </div>
               </div>
             </div>
@@ -688,9 +684,10 @@ defineExpose({
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
+        margin-right: 8px;  // Add spacing between edit and info icons
 
         &:hover {
-          color: $color-text-primary;
+          color: $color-text-highlight;  // Use highlight color like info icon
         }
       }
 

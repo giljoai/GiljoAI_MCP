@@ -2497,14 +2497,16 @@ pg_restore -l {backup_file.name} | head -20
 
         Removes:
         - AI-generated mission
-        - Spawned agents (status='waiting' or 'preparing')
-        - Agent jobs
+        - ALL agent jobs (any status)
+        - Tasks
         - Messages
+        - Orchestrator summary
+        - Context tracking
+        - Staging status
 
         Keeps:
         - Project name
         - Project description
-        - Project status
         - Metadata (human-entered data)
         """
         if psycopg2 is None:
@@ -2535,13 +2537,15 @@ pg_restore -l {backup_file.name} | head -20
             f"UUID: {project_uuid}\n\n"
             "This will remove:\n"
             "✗ AI-generated mission\n"
-            "✗ Spawned agents (waiting/preparing)\n"
-            "✗ Agent jobs\n"
-            "✗ Messages\n\n"
+            "✗ ALL agent jobs (any status)\n"
+            "✗ Tasks\n"
+            "✗ Messages\n"
+            "✗ Orchestrator summary\n"
+            "✗ Context tracking\n"
+            "✗ Staging status\n\n"
             "This will keep:\n"
             "✓ Project name\n"
             "✓ Project description\n"
-            "✓ Project status\n"
             "✓ Metadata\n\n"
             "Continue?",
             icon="question",
@@ -2579,37 +2583,50 @@ pg_restore -l {backup_file.name} | head -20
                 project_name = project_row[1] if project_row[1] else "Unnamed Project"
                 project_description = project_row[2] if project_row[2] else ""
 
-                # Step 2: Count agents to delete (waiting/preparing)
-                self.update_status_message("Counting agents to delete...")
+                # Step 2: Count ALL agent jobs to delete
+                self.update_status_message("Counting agent jobs to delete...")
                 cur.execute("""
                     SELECT COUNT(*) FROM mcp_agent_jobs
                     WHERE project_id = %s
-                    AND status IN ('waiting', 'preparing')
                 """, (project_uuid,))
                 agent_count = cur.fetchone()[0]
 
-                # Step 3: Count messages to delete
+                # Step 3: Count tasks to delete
+                cur.execute("SELECT COUNT(*) FROM tasks WHERE project_id = %s", (project_uuid,))
+                task_count = cur.fetchone()[0]
+
+                # Step 4: Count messages to delete
                 cur.execute("SELECT COUNT(*) FROM messages WHERE project_id = %s", (project_uuid,))
                 message_count = cur.fetchone()[0]
 
-                # Step 4: Delete messages
+                # Step 5: Delete messages
                 self.update_status_message(f"Deleting {message_count} messages...")
                 cur.execute("DELETE FROM messages WHERE project_id = %s", (project_uuid,))
 
-                # Step 5: Delete spawned agents (waiting/preparing only)
-                self.update_status_message(f"Deleting {agent_count} spawned agents...")
+                # Step 6: Delete tasks
+                self.update_status_message(f"Deleting {task_count} tasks...")
+                cur.execute("DELETE FROM tasks WHERE project_id = %s", (project_uuid,))
+
+                # Step 7: Delete ALL agent jobs (any status)
+                self.update_status_message(f"Deleting {agent_count} agent jobs...")
                 cur.execute("""
                     DELETE FROM mcp_agent_jobs
                     WHERE project_id = %s
-                    AND status IN ('waiting', 'preparing')
                 """, (project_uuid,))
 
-                # Step 6: Clear AI-generated mission (but keep project name/description)
-                self.update_status_message("Clearing AI mission...")
+                # Step 8: Clear project to pristine pre-staged state
+                self.update_status_message("Resetting project to pre-staged state...")
                 cur.execute("""
                     UPDATE projects
                     SET mission = '',
                         staging_status = NULL,
+                        orchestrator_summary = NULL,
+                        context_used = 0,
+                        context_budget = NULL,
+                        activated_at = NULL,
+                        paused_at = NULL,
+                        completed_at = NULL,
+                        meta_data = '{}',
                         updated_at = NOW()
                     WHERE id = %s
                 """, (project_uuid,))
@@ -2622,17 +2639,21 @@ pg_restore -l {backup_file.name} | head -20
             self.update_status_message("Project cleared successfully")
             messagebox.showinfo(
                 "Success",
-                f"Project cleared successfully!\n\n"
+                f"Project cleared to pre-staged state!\n\n"
                 f"Project: {project_name}\n"
                 f"UUID: {project_uuid}\n\n"
                 f"Removed:\n"
-                f"✗ {agent_count} spawned agent(s)\n"
+                f"✗ {agent_count} agent job(s)\n"
+                f"✗ {task_count} task(s)\n"
                 f"✗ {message_count} message(s)\n"
-                f"✗ AI-generated mission\n\n"
+                f"✗ AI-generated mission\n"
+                f"✗ Orchestrator summary\n"
+                f"✗ Context tracking\n"
+                f"✗ All staging flags\n\n"
                 f"Kept:\n"
                 f"✓ Project name: {project_name}\n"
-                f"✓ Description: {project_description[:50]}{'...' if len(project_description) > 50 else ''}\n"
-                f"✓ Status and metadata"
+                f"✓ Description: {project_description[:50]}{'...' if len(project_description) > 50 else ''}\n\n"
+                f"Project is now ready for fresh staging."
             )
 
             # Clear the UUID entry field

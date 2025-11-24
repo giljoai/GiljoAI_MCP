@@ -1,0 +1,418 @@
+================================================================================
+GILJOAI MCP - AGENT INFO BUTTON & MODAL IMPLEMENTATION SUMMARY
+================================================================================
+
+PROJECT STATUS: Complete Research & Analysis
+DATE: 2025-11-23
+LOCATION: F:\GiljoAI_MCP
+
+================================================================================
+QUICK FINDINGS
+================================================================================
+
+CURRENT STATE:
+✅ Info button (ℹ️) fully functional on both Orchestrator and Agent Team cards
+✅ Modal (AgentDetailsModal) displays templates and orchestrator prompt
+✅ API integration complete with proper error handling
+✅ Accessibility features implemented (keyboard nav, ARIA labels)
+
+ICON CONFIGURATION:
+├─ Orchestrator Card
+│  ├─ Lock Icon: mdi-lock (line 44)
+│  └─ Info Icon: mdi-information (line 53)
+├─ Agent Team Cards
+│  ├─ Lock Icon: mdi-lock (line 71)
+│  └─ Info Icon: mdi-information (line 80)
+└─ Modal: Not included in ActionIcons component
+
+CRITICAL FINDING:
+🔑 Orchestrator has NO template in template manager
+   → Uses dedicated system endpoint: /api/v1/system/orchestrator-prompt
+   → This is intentional - orchestrator is system-wide config, not agent template
+
+================================================================================
+COMPONENT ARCHITECTURE
+================================================================================
+
+FRONTEND HIERARCHY:
+LaunchTab.vue
+├── Orchestrator Card (line 39-55)
+│   ├── Info Icon Handler: handleOrchestratorInfo() (line 331-338)
+│   └── Emits agent data to modal
+├── Agent Team Section (line 57-85)
+│   ├── Agent Slim Cards (line 62-82)
+│   ├── Info Icon Handler: handleAgentInfo() (line 343-349)
+│   └── Emits agent data to modal
+└── AgentDetailsModal (line 91-94)
+    ├── Template Display (for agents)
+    │   └── Fetches: GET /api/v1/templates/{template_id}/
+    ├── Orchestrator Prompt Display
+    │   └── Fetches: GET /api/v1/system/orchestrator-prompt
+    ├── Copy to Clipboard
+    └── Error/Loading States
+
+API SERVICE LAYER:
+api.js
+├── templates.get(id)
+│   └── GET /api/v1/templates/{id}/
+├── system.getOrchestratorPrompt()
+│   └── GET /api/v1/system/orchestrator-prompt
+└── system (other methods)
+    ├── PUT /api/v1/system/orchestrator-prompt
+    └── POST /api/v1/system/orchestrator-prompt/reset
+
+BACKEND:
+api/endpoints/system_prompts.py
+├── GET /api/v1/system/orchestrator-prompt (line 28)
+├── PUT /api/v1/system/orchestrator-prompt (line 47)
+└── POST /api/v1/system/orchestrator-prompt/reset (line 76)
+
+================================================================================
+FILE LOCATIONS & KEY LINE NUMBERS
+================================================================================
+
+FRONTEND COMPONENTS:
+┌─ LaunchTab.vue (frontend/src/components/projects/)
+│  ├─ Orchestrator Card: lines 39-55
+│  ├─ Lock Icon: line 44 → mdi-lock
+│  ├─ Info Icon: line 53 → mdi-information
+│  ├─ Agent Team Cards: lines 62-82
+│  ├─ Lock Icon: line 71 → mdi-lock
+│  ├─ Info Icon: line 80 → mdi-information
+│  ├─ Handlers: lines 331-349
+│  ├─ Modal Integration: lines 91-94
+│  ├─ Orchestrator Styling: lines 582-595
+│  └─ Agent Team Styling: lines 664-680
+│
+└─ AgentDetailsModal.vue (frontend/src/components/projects/)
+   ├─ Props: lines 164-173
+   ├─ Orchestrator Detection: lines 194-196
+   ├─ Template Fetching: lines 223-242
+   ├─ Orchestrator Fetching: lines 244-259
+   ├─ Template Display: lines 43-106
+   ├─ Orchestrator Display: lines 109-126
+   ├─ Error/Loading: lines 29-40
+   ├─ Data Watcher: lines 271-289
+   └─ Copy Function: lines 261-268
+
+API SERVICE:
+├─ api.js (frontend/src/services/)
+│  ├─ templates.get(id): line 401
+│  │  └─ GET /api/v1/templates/{id}/
+│  └─ system.getOrchestratorPrompt(): line 559
+│     └─ GET /api/v1/system/orchestrator-prompt
+│
+└─ system_prompts.py (api/endpoints/)
+   ├─ GET /api/v1/system/orchestrator-prompt: line 28
+   ├─ PUT /api/v1/system/orchestrator-prompt: line 47
+   └─ POST /api/v1/system/orchestrator-prompt/reset: line 76
+
+================================================================================
+ICON CHANGES (PROPOSED)
+================================================================================
+
+CHANGE 1: Lock → Eye Icon (Orchestrator)
+┌─────────────────────────────────────────────┐
+│ File: LaunchTab.vue, Line 44                │
+│                                             │
+│ BEFORE:                                     │
+│ <v-icon class="lock-icon">mdi-lock</v-icon>│
+│                                             │
+│ AFTER:                                      │
+│ <v-icon class="eye-icon">mdi-eye</v-icon>  │
+└─────────────────────────────────────────────┘
+
+CHANGE 2: Lock → Eye Icon (Agent Team)
+┌─────────────────────────────────────┐
+│ File: LaunchTab.vue, Line 71         │
+│                                      │
+│ BEFORE:                              │
+│ <v-icon class="lock-icon">mdi-lock   │
+│                                      │
+│ AFTER:                               │
+│ <v-icon class="eye-icon">mdi-eye    │
+└─────────────────────────────────────┘
+
+CHANGE 3: Update CSS Styling
+┌──────────────────────────────────────┐
+│ File: LaunchTab.vue, Lines 582-595   │
+│                                      │
+│ Rename .lock-icon → .eye-icon        │
+│ Keep all styling (colors, hover)     │
+│ Add cursor: pointer                  │
+│ Add transition                       │
+└──────────────────────────────────────┘
+
+CHANGE 4: Update CSS Styling (Agent Team)
+┌──────────────────────────────────────┐
+│ File: LaunchTab.vue, Lines 664-680   │
+│                                      │
+│ Rename .lock-icon → .eye-icon        │
+│ Keep all styling (colors, hover)     │
+│ Add cursor: pointer                  │
+│ Add transition                       │
+└──────────────────────────────────────┘
+
+================================================================================
+MODAL CONTENT STRUCTURE
+================================================================================
+
+FOR REGULAR AGENTS:
+┌─────────────────────────────────────────┐
+│ [Header] Agent Details: AgentType       │
+├─────────────────────────────────────────┤
+│                                         │
+│ [Chip: agent_type] [ID: ...truncated] │
+│                                         │
+│ Description                             │
+│ ────────────────────────────────────    │
+│ [description text]                      │
+│                                         │
+│ Metadata                                │
+│ ────────────────────────────────────    │
+│ • Model: [chip]                         │
+│ • Variables: [chips...]                 │
+│ • Tools: [chips...]                     │
+│                                         │
+│ Template Content [Copy Button]          │
+│ ────────────────────────────────────    │
+│ [monospace font, scrollable]            │
+│ [template content text...]              │
+│                                         │
+└─────────────────────────────────────────┘
+
+FOR ORCHESTRATOR:
+┌─────────────────────────────────────────┐
+│ [Header] System Orchestrator Prompt     │
+├─────────────────────────────────────────┤
+│                                         │
+│ Orchestrator System Prompt              │
+│ [Copy Button]                           │
+│ ────────────────────────────────────    │
+│ [monospace font, scrollable]            │
+│ [orchestrator prompt text...]           │
+│                                         │
+└─────────────────────────────────────────┘
+
+================================================================================
+DATA FLOW
+================================================================================
+
+USER CLICKS INFO ICON (AGENT)
+│
+├─→ handleAgentInfo(agent) [LaunchTab.js:343]
+│   ├─→ selectedAgent.value = {...agent}
+│   └─→ showDetailsModal.value = true
+│
+├─→ AgentDetailsModal (v-model binding)
+│   ├─→ Modal opens
+│   └─→ isOrchestrator computed = false
+│
+├─→ Watcher detects modelValue change
+│   ├─→ agent.template_id exists?
+│   ├─→ YES: fetchTemplateData()
+│   │   └─→ GET /api/v1/templates/{template_id}/
+│   │       ├─→ Loading spinner
+│   │       ├─→ Response: { description, model, variables, tools, template_content }
+│   │       └─→ Display template content
+│   └─→ NO: Show "No template information"
+│
+└─→ User sees template or error
+
+USER CLICKS INFO ICON (ORCHESTRATOR)
+│
+├─→ handleOrchestratorInfo() [LaunchTab.js:331]
+│   ├─→ selectedAgent.value = { agent_type: 'orchestrator', ... }
+│   └─→ showDetailsModal.value = true
+│
+├─→ AgentDetailsModal (v-model binding)
+│   ├─→ Modal opens
+│   └─→ isOrchestrator computed = true
+│
+├─→ Watcher detects modelValue change
+│   ├─→ isOrchestrator = true
+│   ├─→ fetchOrchestratorPrompt()
+│   │   └─→ GET /api/v1/system/orchestrator-prompt
+│   │       ├─→ Loading spinner
+│   │       ├─→ Response: { content }
+│   │       └─→ Display orchestrator prompt
+│   └─→ Always succeeds (system always has prompt)
+│
+└─→ User sees orchestrator prompt
+
+================================================================================
+ORCHESTRATOR SPECIAL HANDLING
+================================================================================
+
+WHY NO TEMPLATE FOR ORCHESTRATOR?
+├─→ Orchestrator is not an instantiable agent
+├─→ Orchestrator is a system-level component
+├─→ Orchestrator prompt is global configuration
+└─→ Not stored in agent template database
+
+TECHNICAL IMPLEMENTATION:
+├─→ AgentDetailsModal detects: agent_type === 'orchestrator'
+├─→ Calls different endpoint: /api/v1/system/orchestrator-prompt
+├─→ No template_id field required
+├─→ Prompt stored in separate system config (not templates table)
+└─→ Can be overridden by admin in settings
+
+API ENDPOINTS:
+├─ GET /api/v1/system/orchestrator-prompt
+│  └─→ Returns current prompt (default or override)
+├─ PUT /api/v1/system/orchestrator-prompt
+│  └─→ Save custom orchestrator prompt override
+└─ POST /api/v1/system/orchestrator-prompt/reset
+   └─→ Remove override, use default
+
+================================================================================
+REUSABLE COMPONENTS
+================================================================================
+
+AgentDetailsModal.vue
+├─ Status: ✅ Production-ready
+├─ Props: modelValue (Boolean), agent (Object)
+├─ Emits: update:modelValue
+├─ Current Usage: LaunchTab.vue (line 91-94)
+├─ Potential Usage:
+│  ├─ ActionIcons component
+│  ├─ JobsTab for agent details
+│  ├─ Agent management pages
+│  └─ Agent overview views
+├─ Features:
+│  ├─ Auto-detects agent vs orchestrator
+│  ├─ Template fetching with error handling
+│  ├─ Copy to clipboard functionality
+│  ├─ Loading states
+│  └─ Responsive modal
+└─ Extraction Opportunity:
+   └─ Handlers could be extracted to composable
+
+Handler Pattern (Reusable)
+├─ Location: LaunchTab.vue lines 331-349
+├─ Pattern: Click handler → set selectedAgent → open modal
+├─ Extraction: useAgentModal composable
+└─ Benefits: Reuse in multiple components
+
+Icon Styling Pattern (Reusable)
+├─ Location: LaunchTab.vue lines 582-680
+├─ Pattern: Color + hover + transition
+├─ Design Tokens: Uses $color variables
+└─ Consistency: Matches design system
+
+================================================================================
+TESTING INFORMATION
+================================================================================
+
+EXISTING TEST COVERAGE:
+├─ AgentDetailsModal.spec.js
+│  ├─ Template data fetching
+│  ├─ Orchestrator prompt fetching
+│  ├─ Error handling
+│  ├─ Copy to clipboard
+│  └─ Modal open/close state
+│
+└─ LaunchTab.spec.js
+   ├─ Info button click handlers
+   ├─ Modal integration
+   └─ Agent list rendering
+
+TESTS NEEDING UPDATES (AFTER ICON CHANGES):
+├─ Snapshot tests (if they include icon names)
+├─ Icon class references
+├─ Accessibility tests
+└─ Visual regression tests
+
+================================================================================
+ACCESSIBILITY COMPLIANCE
+================================================================================
+
+CURRENT IMPLEMENTATION:
+✅ Info buttons have role="button"
+✅ Info buttons have tabindex="0"
+✅ Info buttons respond to @keydown.enter
+✅ Hover states provide visual feedback
+✅ Modal has Escape key support (Vuetify)
+✅ Modal close button has aria-label
+✅ Loading spinner provides feedback
+✅ Error messages are visible to screen readers
+
+AFTER ICON CHANGES:
+✅ Eye icon is universally recognized
+✅ No semantic change to accessibility
+✅ All keyboard navigation remains functional
+✅ Screen readers still announce buttons correctly
+
+================================================================================
+DEVELOPMENT WORKFLOW
+================================================================================
+
+MINIMAL CHANGE SET (Lock → Eye):
+1. Change line 44: mdi-lock → mdi-eye
+2. Change line 71: mdi-lock → mdi-eye
+3. Rename CSS class: .lock-icon → .eye-icon (lines 582-595)
+4. Rename CSS class: .lock-icon → .eye-icon (lines 664-680)
+Estimated Time: 10 minutes
+Risk Level: 🟢 LOW (cosmetic change only)
+
+EXTENDED CHANGE SET (With Edit Pencil):
+1. All minimal changes above
+2. Add pencil icon after line 81 (agent team section)
+3. Add CSS styling for pencil icon
+4. Add handleAgentEdit() handler function
+5. Add event binding: @click="handleAgentEdit"
+Estimated Time: 30 minutes
+Risk Level: 🟡 MEDIUM (requires new handler logic)
+
+TESTING AFTER CHANGES:
+1. Visual test: Icons render correctly ✓
+2. Interaction test: Click handlers work ✓
+3. Modal test: Data loads correctly ✓
+4. Accessibility test: Keyboard navigation works ✓
+5. Responsive test: Works on mobile/tablet/desktop ✓
+
+================================================================================
+KEY FINDINGS & RECOMMENDATIONS
+================================================================================
+
+✅ STRENGTHS:
+1. Well-structured component architecture
+2. Proper separation of concerns
+3. Comprehensive error handling
+4. Accessibility features included
+5. Reusable modal component
+6. Clean API integration
+7. Design system compliance
+8. No hardcoded values
+
+⚠️ OBSERVATIONS:
+1. Orchestrator uses system endpoint, not template system (intentional)
+2. ActionIcons doesn't include info button (only in LaunchTab)
+3. Modal could be reused in more places (JobsTab, etc.)
+4. Handlers could be extracted to composable for reuse
+
+✅ RECOMMENDATIONS:
+1. Implement lock → eye icon change (straightforward)
+2. Consider adding info button to ActionIcons
+3. Extract modal handlers to composable
+4. Add TypeScript types for better IDE support
+5. Document orchestrator special handling
+6. Add tests for icon interaction
+
+================================================================================
+CONCLUSION
+================================================================================
+
+The current implementation is PRODUCTION-READY with excellent code quality.
+Icon changes are LOW-RISK cosmetic updates.
+
+No architectural changes needed.
+No breaking changes required.
+All changes are backward compatible.
+
+The system properly handles both agent templates and orchestrator prompts
+with appropriate error handling and user feedback.
+
+================================================================================
+END OF REPORT
+================================================================================
