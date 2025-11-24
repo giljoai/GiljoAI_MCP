@@ -11,27 +11,20 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
+import api from '@/services/api'
+
+// Mock the API module
+vi.mock('@/services/api')
 
 describe('AgentDetailsModal Component', () => {
   let vuetify
-  let mockApi
 
   beforeEach(() => {
     vuetify = createVuetify({
       components,
       directives,
     })
-
-    // Mock API for template and orchestrator prompt fetching
-    mockApi = {
-      templates: {
-        get: vi.fn(),
-        preview: vi.fn(),
-      },
-      system: {
-        getOrchestratorPrompt: vi.fn(),
-      },
-    }
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -53,10 +46,6 @@ describe('AgentDetailsModal Component', () => {
       },
       global: {
         plugins: [vuetify],
-        mocks: {
-          $api: mockApi,
-          ...options.mocks,
-        },
         stubs: {
           'v-dialog': {
             template: '<div class="v-dialog" v-if="modelValue"><slot /></div>',
@@ -140,7 +129,7 @@ describe('AgentDetailsModal Component', () => {
   describe('Regular Agent Template Display', () => {
     beforeEach(() => {
       // Mock template response
-      mockApi.templates.get.mockResolvedValue({
+      api.templates.get.mockResolvedValue({
         data: {
           id: 'template-456',
           name: 'Implementer Template',
@@ -154,7 +143,7 @@ describe('AgentDetailsModal Component', () => {
       })
 
       // Mock preview response
-      mockApi.templates.preview.mockResolvedValue({
+      api.templates.preview.mockResolvedValue({
         data: {
           mission: 'Generated mission for Test Implementer\n\nProject: Test Project',
         },
@@ -171,8 +160,8 @@ describe('AgentDetailsModal Component', () => {
 
       await flushPromises()
 
-      expect(mockApi.templates.get).toHaveBeenCalledWith('template-456')
-      expect(mockApi.system.getOrchestratorPrompt).not.toHaveBeenCalled()
+      expect(api.templates.get).toHaveBeenCalledWith('template-456')
+      expect(api.system?.getOrchestratorPrompt).not.toHaveBeenCalled()
     })
 
     it('displays template content in monospace font', async () => {
@@ -246,8 +235,9 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('shows loading state while fetching template', async () => {
-      mockApi.templates.get.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: {} }), 100))
+      let resolveFunc
+      api.templates.get.mockImplementation(
+        () => new Promise((resolve) => { resolveFunc = resolve })
       )
 
       const wrapper = createWrapper({
@@ -257,12 +247,19 @@ describe('AgentDetailsModal Component', () => {
         },
       })
 
+      // Wait for watcher to trigger
+      await flushPromises()
+
       // Should show loading indicator
       expect(wrapper.text()).toContain('Loading')
+
+      // Cleanup: resolve promise
+      if (resolveFunc) resolveFunc({ data: {} })
+      await flushPromises()
     })
 
     it('handles template fetch error gracefully', async () => {
-      mockApi.templates.get.mockRejectedValue(new Error('Failed to fetch template'))
+      api.templates.get.mockRejectedValue(new Error('Failed to fetch template'))
 
       const wrapper = createWrapper({
         agent: {
@@ -287,14 +284,14 @@ describe('AgentDetailsModal Component', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('No template')
-      expect(mockApi.templates.get).not.toHaveBeenCalled()
+      expect(api.templates.get).not.toHaveBeenCalled()
     })
   })
 
   describe('Orchestrator Prompt Display', () => {
     beforeEach(() => {
       // Mock orchestrator prompt response
-      mockApi.system.getOrchestratorPrompt.mockResolvedValue({
+      api.system.getOrchestratorPrompt.mockResolvedValue({
         data: {
           content:
             'You are the System Orchestrator...\n\nCoordinate all agents and manage workflow.',
@@ -312,8 +309,8 @@ describe('AgentDetailsModal Component', () => {
 
       await flushPromises()
 
-      expect(mockApi.system.getOrchestratorPrompt).toHaveBeenCalled()
-      expect(mockApi.templates.get).not.toHaveBeenCalled()
+      expect(api.system.getOrchestratorPrompt).toHaveBeenCalled()
+      expect(api.templates?.get).not.toHaveBeenCalled()
     })
 
     it('displays orchestrator prompt in monospace font', async () => {
@@ -325,8 +322,12 @@ describe('AgentDetailsModal Component', () => {
 
       await flushPromises()
 
-      const preElements = wrapper.findAll('pre')
-      expect(preElements.length).toBeGreaterThan(0)
+      // Check for template content element with class
+      const contentCard = wrapper.find('.template-content-card')
+      expect(contentCard.exists()).toBe(true)
+
+      const preElement = contentCard.find('pre.template-content')
+      expect(preElement.exists()).toBe(true)
       expect(wrapper.text()).toContain('You are the System Orchestrator')
     })
 
@@ -344,7 +345,7 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('handles orchestrator prompt fetch error', async () => {
-      mockApi.system.getOrchestratorPrompt.mockRejectedValue(
+      api.system.getOrchestratorPrompt.mockRejectedValue(
         new Error('Failed to fetch orchestrator prompt')
       )
 
@@ -362,7 +363,7 @@ describe('AgentDetailsModal Component', () => {
 
   describe('Content Display Formatting', () => {
     beforeEach(() => {
-      mockApi.templates.get.mockResolvedValue({
+      api.templates.get.mockResolvedValue({
         data: {
           template_content:
             'Line 1\nLine 2\nLine 3\n\n# Section\n\nMore content with **markdown**',
@@ -380,9 +381,13 @@ describe('AgentDetailsModal Component', () => {
 
       await flushPromises()
 
-      const preElement = wrapper.find('pre')
+      // Check if pre element exists in the content card
+      const contentCard = wrapper.find('.template-content-card')
+      expect(contentCard.exists()).toBe(true)
+
+      // Pre element should be within the content card
+      const preElement = contentCard.find('pre.template-content')
       expect(preElement.exists()).toBe(true)
-      // Pre element should preserve formatting
     })
 
     it('displays content as read-only', async () => {
@@ -442,16 +447,16 @@ describe('AgentDetailsModal Component', () => {
         },
         global: {
           plugins: [vuetify],
-          mocks: { $api: mockApi },
         },
       })
 
       expect(wrapper.exists()).toBe(true)
-      // Should show placeholder or error message
+      // Should show warning message
+      expect(wrapper.text()).toContain('No agent information')
     })
 
     it('handles empty template content', async () => {
-      mockApi.templates.get.mockResolvedValue({
+      api.templates.get.mockResolvedValue({
         data: {
           template_content: '',
         },
@@ -466,11 +471,12 @@ describe('AgentDetailsModal Component', () => {
 
       await flushPromises()
 
-      expect(wrapper.text()).toContain('No content')
+      // Empty content should show fallback text
+      expect(wrapper.text()).toContain('No content available')
     })
 
     it('handles template with no variables', async () => {
-      mockApi.templates.get.mockResolvedValue({
+      api.templates.get.mockResolvedValue({
         data: {
           template_content: 'Simple template',
           variables: [],
@@ -491,7 +497,7 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('handles template with no tools', async () => {
-      mockApi.templates.get.mockResolvedValue({
+      api.templates.get.mockResolvedValue({
         data: {
           template_content: 'Simple template',
           tools: [],
@@ -514,7 +520,7 @@ describe('AgentDetailsModal Component', () => {
 
   describe('Copy to Clipboard Feature', () => {
     beforeEach(() => {
-      mockApi.templates.get.mockResolvedValue({
+      api.templates.get.mockResolvedValue({
         data: {
           template_content: 'Test template content for copying',
         },
@@ -538,10 +544,14 @@ describe('AgentDetailsModal Component', () => {
 
       await flushPromises()
 
-      const buttons = wrapper.findAll('button')
-      const copyBtn = buttons.find((btn) => btn.text().includes('Copy'))
+      // Look for copy button text in the component
+      expect(wrapper.text()).toContain('Copy')
 
-      expect(copyBtn).toBeTruthy()
+      // Verify button with copy icon exists
+      const copyButtons = wrapper.findAll('button').filter(btn =>
+        btn.text().includes('Copy')
+      )
+      expect(copyButtons.length).toBeGreaterThan(0)
     })
 
     it('copies template content to clipboard when copy button clicked', async () => {
@@ -613,8 +623,9 @@ describe('AgentDetailsModal Component', () => {
     })
 
     it('loading state is announced', async () => {
-      mockApi.templates.get.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: {} }), 100))
+      let resolveFunc
+      api.templates.get.mockImplementation(
+        () => new Promise((resolve) => { resolveFunc = resolve })
       )
 
       const wrapper = createWrapper({
@@ -624,7 +635,15 @@ describe('AgentDetailsModal Component', () => {
         },
       })
 
+      // Wait for watcher to trigger
+      await flushPromises()
+
+      // Loading should be visible while promise is pending
       expect(wrapper.text()).toContain('Loading')
+
+      // Cleanup: resolve promise
+      if (resolveFunc) resolveFunc({ data: {} })
+      await flushPromises()
     })
   })
 })
