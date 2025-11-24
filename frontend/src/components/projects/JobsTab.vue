@@ -226,6 +226,12 @@
       :current-job="selectedAgent"
       @succession-triggered="handleSuccessorCreated"
     />
+
+    <!-- Agent Details Modal (Info button) -->
+    <AgentDetailsModal
+      v-model="showAgentDetailsModal"
+      :agent="selectedAgent"
+    />
   </div>
 </template>
 
@@ -237,6 +243,7 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
+import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 
 /**
  * JobsTab Component - Handover 0241 + 0243c
@@ -321,6 +328,7 @@ const sending = ref(false)
  */
 const showCancelDialog = ref(false)
 const showHandoverDialog = ref(false)
+const showAgentDetailsModal = ref(false)
 const selectedAgent = ref(null)
 
 /**
@@ -475,10 +483,12 @@ function handleFolder(agent) {
 
 /**
  * Handle Info button click
+ * Opens AgentDetailsModal to show template or orchestrator prompt
  */
 function handleInfo(agent) {
   console.log('[JobsTab] Info action:', agent.agent_type)
-  emit('view-details', agent)
+  selectedAgent.value = agent
+  showAgentDetailsModal.value = true
 }
 
 /**
