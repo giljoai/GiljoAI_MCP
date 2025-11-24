@@ -593,7 +593,7 @@ defineExpose({
     .eye-icon {
       color: $color-text-tertiary;
       flex-shrink: 0;
-      margin-right: 8px;  // Match spacing with edit-icon
+      margin-right: 4px;  // Reduced to 4px for tighter spacing
     }
 
     .info-icon {
@@ -678,7 +678,7 @@ defineExpose({
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
-        margin-right: 8px;
+        margin-right: 4px;  // Reduced from 8px to match orchestrator
         display: inline-flex;  // Ensure icon renders properly
         align-items: center;   // Vertically center within flex container
         justify-content: center; // Center icon content
