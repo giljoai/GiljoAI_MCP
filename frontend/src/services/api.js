@@ -478,6 +478,9 @@ export const api = {
     reportProgress: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/progress`, data),
     complete: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/complete`, data),
 
+    // Mission update endpoint (Handover 0244b)
+    updateMission: (jobId, data) => apiClient.patch(`/api/agent-jobs/${jobId}/mission`, data),
+
     // Orchestrator succession endpoints (Handover 0507)
     triggerSuccession: (jobId, reason = 'manual', notes = null) =>
       apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, { reason, notes }),
