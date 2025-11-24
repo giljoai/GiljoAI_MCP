@@ -30,7 +30,7 @@
               <v-avatar :color="getAgentColor(agent.agent_type)" size="32" class="agent-avatar">
                 <span class="avatar-text">{{ getAgentAbbr(agent.agent_type) }}</span>
               </v-avatar>
-              <span class="agent-name">{{ agent.agent_type }}</span>
+              <span class="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
             </td>
 
             <!-- Agent ID: FULL UUID -->
@@ -376,27 +376,35 @@ const sortedAgents = computed(() => {
 })
 
 /**
- * Get agent avatar color
+ * Get agent avatar color - matches BRANDING_GUIDE.md
  */
 function getAgentColor(agentType) {
   const colors = {
-    orchestrator: '#d4a574', // Tan
-    analyzer: '#e53935', // Red
-    implementor: '#1976d2', // Blue
-    tester: '#fbc02d', // Yellow
+    orchestrator: '#D4A574', // Tan/Beige - Project coordination
+    analyzer: '#E74C3C', // Red - Analysis & research
+    implementer: '#3498DB', // Blue - Code implementation
+    implementor: '#3498DB', // Blue - Code implementation (alias)
+    tester: '#FFC300', // Yellow - Testing & QA
+    reviewer: '#9B59B6', // Purple - Code review
+    documenter: '#27AE60', // Green - Documentation
+    researcher: '#27AE60', // Green - Research (alias)
   }
-  return colors[agentType?.toLowerCase()] || '#666'
+  return colors[agentType?.toLowerCase()] || '#90A4AE' // Gray for custom agents
 }
 
 /**
- * Get agent avatar abbreviation
+ * Get agent avatar abbreviation - updated to match branding
  */
 function getAgentAbbr(agentType) {
   const abbrs = {
-    orchestrator: 'Or',
-    analyzer: 'An',
-    implementor: 'Im',
-    tester: 'Te',
+    orchestrator: 'OR',
+    analyzer: 'AN',
+    implementer: 'IM',
+    implementor: 'IM', // alias
+    tester: 'TE',
+    reviewer: 'RV',
+    documenter: 'DO',
+    researcher: 'RE',
   }
   return abbrs[agentType?.toLowerCase()] || agentType?.slice(0, 2).toUpperCase()
 }
