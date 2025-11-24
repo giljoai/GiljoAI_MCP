@@ -684,10 +684,16 @@ defineExpose({
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
-        margin-right: 8px;  // Add spacing between edit and info icons
+        margin-right: 8px;
+        display: inline-flex;  // Ensure icon renders properly
+        align-items: center;   // Vertically center within flex container
+        justify-content: center; // Center icon content
+        min-width: 24px;       // Minimum width to ensure visibility
+        visibility: visible;   // Explicit visibility
+        opacity: 1;            // Ensure full opacity
 
         &:hover {
-          color: $color-text-highlight;  // Use highlight color like info icon
+          color: $color-text-highlight;
         }
       }
 
@@ -696,6 +702,12 @@ defineExpose({
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
+        display: inline-flex;  // Ensure icon renders properly
+        align-items: center;   // Vertically center within flex container
+        justify-content: center; // Center icon content
+        min-width: 24px;       // Minimum width to ensure visibility
+        visibility: visible;   // Explicit visibility
+        opacity: 1;            // Ensure full opacity
 
         &:hover {
           color: $color-text-highlight;
