@@ -69,7 +69,17 @@
                     {{ getAgentInitials(agent.agent_type) }}
                   </div>
                   <span class="agent-name">{{ agent.agent_type }}</span>
-                  <v-icon size="small" class="edit-icon" title="Edit agent configuration">mdi-pencil</v-icon>
+                  <v-icon
+                    size="small"
+                    class="edit-icon"
+                    role="button"
+                    tabindex="0"
+                    title="Edit agent configuration"
+                    @click="handleAgentEdit(agent)"
+                    @keydown.enter="handleAgentEdit(agent)"
+                  >
+                    mdi-pencil
+                  </v-icon>
                   <v-icon
                     size="small"
                     class="info-icon"
@@ -348,6 +358,16 @@ function handleAgentInfo(agent) {
     id: agent.id || agent.job_id,
   }
   showDetailsModal.value = true
+}
+
+/**
+ * Handle Edit icon click for Agent Team members
+ */
+function handleAgentEdit(agent) {
+  // TODO: Implement agent editing functionality
+  console.log('Edit agent:', agent)
+  // For now, show a message that editing will be implemented
+  alert('Agent editing functionality coming soon!')
 }
 
 /**
@@ -666,6 +686,8 @@ defineExpose({
       .edit-icon {
         color: $color-text-secondary;
         flex-shrink: 0;
+        cursor: pointer;
+        transition: color 0.2s ease;
 
         &:hover {
           color: $color-text-primary;
