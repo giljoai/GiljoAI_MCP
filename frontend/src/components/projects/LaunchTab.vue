@@ -68,28 +68,56 @@
               </v-avatar>
               <span class="agent-name">Orchestrator</span>
               <v-icon size="small" class="lock-icon">mdi-lock</v-icon>
-              <v-icon size="small" class="info-icon">mdi-information</v-icon>
+              <v-icon
+                size="small"
+                class="info-icon"
+                role="button"
+                tabindex="0"
+                @click="handleOrchestratorInfo"
+                @keydown.enter="handleOrchestratorInfo"
+              >
+                mdi-information
+              </v-icon>
             </div>
 
             <!-- Agent Team Section -->
             <div class="agent-team-section">
               <div class="agent-team-header">Agent Team</div>
               <div class="agent-team-list">
-                <!-- Agent cards will populate here from WebSocket events -->
-                <AgentCard
-                  v-for="agent in agents"
+                <!-- Slim agent cards (exclude orchestrator as it's shown above) -->
+                <div
+                  v-for="agent in nonOrchestratorAgents"
                   :key="agent.agent_id || agent.job_id"
-                  :agent="agent"
-                  mode="launch"
-                  :instance-number="getInstanceNumber(agent)"
-                  @edit-mission="handleEditAgentMission"
-                />
+                  class="agent-slim-card"
+                >
+                  <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_type) }">
+                    {{ getAgentInitials(agent.agent_type) }}
+                  </div>
+                  <span class="agent-name">{{ agent.agent_type }}</span>
+                  <v-icon size="small" class="lock-icon">mdi-lock</v-icon>
+                  <v-icon
+                    size="small"
+                    class="info-icon"
+                    role="button"
+                    tabindex="0"
+                    @click="handleAgentInfo(agent)"
+                    @keydown.enter="handleAgentInfo(agent)"
+                  >
+                    mdi-information
+                  </v-icon>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Agent Details Modal -->
+    <AgentDetailsModal
+      v-model="showDetailsModal"
+      :agent="selectedAgent"
+    />
 
     <!-- Toast Notification -->
     <v-snackbar v-model="showToast" :timeout="3000" color="success" location="top">
@@ -104,10 +132,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import AgentCard from '@/components/AgentCard.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
+import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
@@ -164,6 +192,43 @@ const projectId = computed(() => {
 const orchestratorAvatarColor = computed(() => '#d4a574') // $color-agent-orchestrator
 
 /**
+ * Filter out orchestrator from agents list (since it's shown in Default Agent)
+ */
+const nonOrchestratorAgents = computed(() => {
+  return agents.value.filter(agent => agent.agent_type !== 'orchestrator')
+})
+
+/**
+ * Get agent color based on type
+ */
+const getAgentColor = (agentType) => {
+  const colors = {
+    orchestrator: '#d4a574', // tan
+    analyzer: '#e1564b',     // red
+    implementor: '#3493bf',  // blue
+    tester: '#d4a574',       // gold/tan variant
+    researcher: '#27ae60',   // green
+    reviewer: '#9b59b6'      // purple
+  }
+  return colors[agentType?.toLowerCase()] || '#666'
+}
+
+/**
+ * Get agent initials
+ */
+const getAgentInitials = (agentType) => {
+  if (!agentType) return '??'
+  const type = agentType.toLowerCase()
+  if (type === 'orchestrator') return 'Or'
+  if (type === 'analyzer') return 'An'
+  if (type === 'implementor') return 'Im'
+  if (type === 'tester') return 'Te'
+  if (type === 'researcher') return 'Re'
+  if (type === 'reviewer') return 'Rv'
+  return agentType.substring(0, 2).toUpperCase()
+}
+
+/**
  * WebSocket and Auth Setup
  */
 const { on, off } = useWebSocket()
@@ -180,6 +245,8 @@ const readyToLaunch = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
 const loadingStageProject = ref(false)
+const showDetailsModal = ref(false)
+const selectedAgent = ref(null)
 
 /**
  * Get instance number for multi-instance agents
@@ -387,6 +454,29 @@ function handleEditAgentMission(agent) {
 }
 
 /**
+ * Handle Info icon click for Orchestrator
+ */
+function handleOrchestratorInfo() {
+  selectedAgent.value = {
+    agent_type: 'orchestrator',
+    agent_name: 'Orchestrator',
+    id: 'orchestrator',
+  }
+  showDetailsModal.value = true
+}
+
+/**
+ * Handle Info icon click for Agent Team members
+ */
+function handleAgentInfo(agent) {
+  selectedAgent.value = {
+    ...agent,
+    id: agent.id || agent.job_id,
+  }
+  showDetailsModal.value = true
+}
+
+/**
  * Lifecycle Hooks
  */
 onMounted(() => {
@@ -575,6 +665,32 @@ defineExpose({
             word-break: break-word;
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.875rem;
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+            padding-right: 8px;
+
+            /* Custom Scrollbar - match agent team list styling */
+            &::-webkit-scrollbar {
+              width: 8px;
+            }
+
+            &::-webkit-scrollbar-track {
+              background: $color-scrollbar-track-background;
+              border-radius: $radius-scrollbar;
+            }
+
+            &::-webkit-scrollbar-thumb {
+              background: $color-scrollbar-thumb-background;
+              border-radius: $radius-scrollbar;
+
+              &:hover {
+                background: $color-scrollbar-thumb-hover-background;
+              }
+            }
+
+            /* Firefox scrollbar */
+            scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
+            scrollbar-width: thin;
           }
 
           .description-text {
@@ -618,10 +734,20 @@ defineExpose({
       font-size: $typography-font-size-body;
     }
 
-    .lock-icon,
+    .lock-icon {
+      color: $color-text-tertiary;
+      flex-shrink: 0;
+    }
+
     .info-icon {
       color: $color-text-tertiary;
       flex-shrink: 0;
+      cursor: pointer;
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: $color-text-highlight;
+      }
     }
   }
 
@@ -657,6 +783,55 @@ defineExpose({
 
         &:hover {
           background: $color-scrollbar-thumb-hover-background;
+        }
+      }
+    }
+
+    // Slim agent card (matches orchestrator card style)
+    .agent-slim-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 2px solid $color-text-highlight; // yellow border
+      border-radius: $border-radius-pill; // 24px pill shape
+      padding: 12px 20px;
+      margin-bottom: 12px;
+      background: transparent;
+
+      .agent-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: $typography-font-weight-bold;
+        font-size: 14px;
+      }
+
+      .agent-name {
+        flex: 1;
+        color: $color-text-primary;
+        font-size: $typography-font-size-body;
+        text-transform: capitalize;
+      }
+
+      .lock-icon {
+        color: $color-text-secondary;
+
+        &:hover {
+          color: $color-text-primary;
+        }
+      }
+
+      .info-icon {
+        color: $color-text-secondary;
+        cursor: pointer;
+        transition: color 0.2s ease;
+
+        &:hover {
+          color: $color-text-highlight;
         }
       }
     }
