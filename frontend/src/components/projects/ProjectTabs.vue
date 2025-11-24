@@ -108,6 +108,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useWebSocket } from '@/composables/useWebSocket'
+import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -154,6 +156,13 @@ const store = useProjectTabsStore()
 const wsStore = useWebSocketStore()
 const route = useRoute()
 const router = useRouter()
+
+/**
+ * WebSocket setup
+ */
+const { on, off } = useWebSocket()
+const userStore = useUserStore()
+const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 
 /**
  * Local state - Tab activation (Handover 0243e)
@@ -215,6 +224,51 @@ watch(
 )
 
 /**
+ * WebSocket event handlers
+ */
+const handleMissionUpdate = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    return
+  }
+
+  // Project isolation check
+  const projectId = props.project?.id || props.project?.project_id
+  if (data.project_id !== projectId) {
+    return
+  }
+
+  // Update store mission
+  store.setMission(data.mission)
+  console.log('[ProjectTabs] Updated store mission from WebSocket event')
+}
+
+const handleAgentCreated = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    return
+  }
+
+  // Project isolation check
+  const projectId = props.project?.id || props.project?.project_id
+  if (data.project_id !== projectId) {
+    return
+  }
+
+  // Add agent to store
+  const agent = {
+    id: data.agent_id || data.agent_job_id,
+    job_id: data.agent_id || data.agent_job_id,
+    agent_type: data.agent_type,
+    agent_name: data.agent_name,
+    status: data.status || 'waiting'
+  }
+
+  store.addAgent(agent)
+  console.log('[ProjectTabs] Added agent to store from WebSocket event')
+}
+
+/**
  * Set project on mount
  */
 onMounted(async () => {
@@ -233,6 +287,11 @@ onMounted(async () => {
     const pid = props.project.project_id || props.project.id
     if (pid) wsStore.subscribeToProject(pid)
   }
+
+  // Register WebSocket event listeners
+  on('project:mission_updated', handleMissionUpdate)
+  on('orchestrator:instructions_fetched', handleMissionUpdate)
+  on('agent:created', handleAgentCreated)
 })
 
 /**
@@ -244,6 +303,11 @@ onBeforeUnmount(() => {
     const pid = props.project.project_id || props.project.id
     if (pid) wsStore.unsubscribe('project', pid)
   }
+
+  // Remove WebSocket event listeners
+  off('project:mission_updated', handleMissionUpdate)
+  off('orchestrator:instructions_fetched', handleMissionUpdate)
+  off('agent:created', handleAgentCreated)
 })
 
 /**
