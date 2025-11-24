@@ -5,7 +5,7 @@
     <p class="text-subtitle-1 mb-4">Manage your personal preferences</p>
 
     <!-- Settings Tabs -->
-    <v-tabs v-model="activeTab" class="mb-6">
+    <v-tabs v-model="activeTab" class="mb-6 global-tabs">
       <v-tab value="general">
         <v-icon start>mdi-cog</v-icon>
         Setup
@@ -48,7 +48,7 @@
     </v-tabs>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTab" :touch="false" :reverse="false">
+    <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
       <!-- Context Settings -->
       <v-window-item value="context">
         <ContextPriorityConfig />
@@ -604,24 +604,5 @@ async function handleGitSave(payload) {
   opacity: 0.3 !important;
 }
 
-/* Disable sliding transitions, use simple fade instead */
-:deep(.v-window__container) {
-  overflow: visible !important;
-}
-:deep(.v-window-item) {
-  transition: none !important;
-  transform: none !important;
-}
-:deep(.v-window-item--active) {
-  animation: fade-in 0.2s ease-in !important;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
+/* Tab animations are handled by global-tabs-window class */
 </style>

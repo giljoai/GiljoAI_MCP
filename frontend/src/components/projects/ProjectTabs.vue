@@ -5,8 +5,7 @@
       <v-tabs
         v-model="activeTab"
         bg-color="transparent"
-        color="yellow-darken-2"
-        class="tabs-header"
+        class="tabs-header global-tabs"
         align-tabs="start"
       >
         <v-tab value="launch" class="tab-link">
@@ -455,54 +454,7 @@ async function handleSendMessage(message, recipient) {
 .tabs-header {
   background: transparent;
   flex: 0 0 auto;
-
-  :deep(.v-tab) {
-    text-transform: none;
-    font-weight: 600;
-    letter-spacing: 0;
-    font-size: 14px;
-    transition: all 0.3s ease;
-    min-width: auto;
-    padding: 12px 24px;
-    margin-right: 4px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-bottom: none;
-    border-radius: 10px 10px 0 0;
-    background: rgba(20, 35, 50, 0.3);
-    color: rgba(255, 255, 255, 0.5);
-
-    .v-icon {
-      color: rgba(255, 255, 255, 0.5);
-      margin-right: 8px;
-      font-size: 20px;
-    }
-  }
-
-  :deep(.v-tab--selected) {
-    border-color: #ffd700;
-    background: rgba(255, 215, 0, 0.1);
-    color: #ffd700;
-
-    .v-icon {
-      color: #ffd700;
-    }
-  }
-
-  :deep(.v-tab:hover:not(.v-tab--disabled):not(.v-tab--selected)) {
-    color: rgba(255, 215, 0, 0.7);
-    border-color: rgba(255, 215, 0, 0.3);
-    background: rgba(255, 215, 0, 0.05);
-  }
-
-  :deep(.v-tab--disabled) {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  :deep(.v-tab__slider) {
-    background: #ffd700;
-    height: 3px;
-  }
+  /* Custom tab styling is handled by global-tabs class */
 }
 
 .action-buttons {
