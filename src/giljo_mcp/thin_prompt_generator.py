@@ -192,12 +192,13 @@ class ThinClientPromptGenerator:
 
         # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
         # This prevents duplicate orchestrator creation on every "Stage Project" button click
+        # Fixed: Include "working" status, remove invalid "active" and "pending" statuses
         existing_orch_stmt = select(MCPAgentJob).where(
             and_(
                 MCPAgentJob.project_id == project_id,
                 MCPAgentJob.agent_type == "orchestrator",
                 MCPAgentJob.tenant_key == self.tenant_key,
-                MCPAgentJob.status.in_(["waiting", "active", "pending"])  # Active statuses only
+                MCPAgentJob.status.in_(["waiting", "working"])  # Only active orchestrator statuses
             )
         ).order_by(MCPAgentJob.created_at.desc())  # Get most recent if multiple exist
 
