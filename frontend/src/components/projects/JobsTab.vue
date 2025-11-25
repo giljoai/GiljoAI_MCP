@@ -1,8 +1,14 @@
 <template>
   <div class="implement-tab-wrapper">
-    <!-- Claude Subagents Toggle -->
-    <div class="claude-toggle-bar">
-      <span class="toggle-label">Claude Subagents</span>
+    <!-- Claude Code CLI Toggle -->
+    <div class="claude-toggle-bar" @click="toggleExecutionMode">
+      <span class="toggle-label">Enable Claude Code CLI</span>
+      <v-tooltip location="bottom">
+        <template v-slot:activator="{ props: tooltipProps }">
+          <v-icon v-bind="tooltipProps" size="small" class="ml-1 help-icon">mdi-help-circle-outline</v-icon>
+        </template>
+        <span>When enabled, the orchestrator uses Claude Code CLI's Task tool to spawn subagents in a single terminal. When disabled, you'll need to manually launch each agent in separate terminals.</span>
+      </v-tooltip>
       <div class="toggle-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
     </div>
 
@@ -447,6 +453,20 @@ function getMessagesRead(agent) {
 }
 
 /**
+ * Toggle execution mode (Claude Code CLI vs Manual)
+ */
+function toggleExecutionMode() {
+  usingClaudeCodeSubagents.value = !usingClaudeCodeSubagents.value
+  showToast({
+    message: usingClaudeCodeSubagents.value
+      ? 'Claude Code CLI mode enabled'
+      : 'Manual mode enabled',
+    type: 'info',
+    duration: 3000
+  })
+}
+
+/**
  * Handle Play button click
  */
 async function handlePlay(agent) {
@@ -771,10 +791,29 @@ onUnmounted(() => {
     align-items: center;
     gap: 12px;
     margin-bottom: 20px;
+    padding: 12px 16px;
+    background: rgba(20, 35, 50, 0.6);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: rgba(20, 35, 50, 0.8);
+    }
 
     .toggle-label {
       color: #ccc;
       font-size: 14px;
+      font-weight: 500;
+    }
+
+    .help-icon {
+      color: rgba(255, 215, 0, 0.6);
+      cursor: help;
+
+      &:hover {
+        color: rgba(255, 215, 0, 0.9);
+      }
     }
 
     .toggle-indicator {
@@ -782,10 +821,12 @@ onUnmounted(() => {
       height: 16px;
       border-radius: 50%;
       background: #666;
-      transition: background 0.3s;
+      transition: background 0.3s, box-shadow 0.3s;
+      margin-left: auto;
 
       &.active {
         background: #00ff00;
+        box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
       }
     }
   }
