@@ -59,7 +59,7 @@ class TestMultiTerminalModeWorkflow:
     """E2E tests for Multi-Terminal execution mode workflow."""
 
     async def test_complete_multi_terminal_workflow(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Complete Multi-Terminal workflow:
@@ -75,8 +75,8 @@ class TestMultiTerminalModeWorkflow:
 
         # Step 1: Create project
         project_service = ProjectService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         project_result = await project_service.create_project({
@@ -98,8 +98,8 @@ class TestMultiTerminalModeWorkflow:
 
         # Step 3: Stage project (spawn orchestrator)
         orchestrator_service = OrchestrationService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         # Create orchestrator job (simulates "Stage Project" button click)
@@ -197,7 +197,7 @@ class TestMultiTerminalModeWorkflow:
         print(f"  6. Successor uses message passing: ✓")
 
     async def test_multi_terminal_mode_agent_communication(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that Multi-Terminal mode uses message passing for agent communication
@@ -269,7 +269,7 @@ class TestMultiTerminalModeWorkflow:
         print(f"  - Includes communication instructions: ✓")
 
     async def test_multi_terminal_mode_token_efficiency(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that Multi-Terminal mode also achieves token reduction target
@@ -338,7 +338,7 @@ class TestMultiTerminalModeWorkflow:
         print(f"  - Reduction from old (880): {reduction_from_old:.1f}%")
 
     async def test_legacy_projects_default_to_multi_terminal(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that legacy projects (no execution_mode set) default to multi-terminal.

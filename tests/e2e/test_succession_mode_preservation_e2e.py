@@ -61,7 +61,7 @@ class TestSuccessionModePreservationE2E:
     """E2E tests for succession mode preservation across chains."""
 
     async def test_succession_chain_a_b_c_preserves_mode(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test succession chain (A→B→C) preserves execution mode:
@@ -90,8 +90,8 @@ class TestSuccessionModePreservationE2E:
         await db_session.refresh(project)
 
         orchestration_service = OrchestrationService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         # Step 2: Spawn Orchestrator A
@@ -119,8 +119,9 @@ class TestSuccessionModePreservationE2E:
         await db_session.commit()
 
         result_ab = await orchestration_service.trigger_succession(
-            current_job_id=str(orchestrator_a.job_id),
-            reason="context_limit"
+            job_id=str(orchestrator_a.job_id),
+            reason="context_limit",
+            tenant_key=tenant_key
         )
 
         assert result_ab["success"] is True
@@ -144,8 +145,9 @@ class TestSuccessionModePreservationE2E:
         await db_session.commit()
 
         result_bc = await orchestration_service.trigger_succession(
-            current_job_id=str(orchestrator_b.job_id),
-            reason="context_limit"
+            job_id=str(orchestrator_b.job_id),
+            reason="context_limit",
+            tenant_key=tenant_key
         )
 
         assert result_bc["success"] is True
@@ -168,7 +170,7 @@ class TestSuccessionModePreservationE2E:
         print(f"  Mode preserved through chain: ✓")
 
     async def test_mode_change_affects_new_orchestrator(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that changing execution mode in project metadata
@@ -244,7 +246,7 @@ class TestSuccessionModePreservationE2E:
         print(f"  New orchestrator D uses: {orchestrator_d.metadata['execution_mode']}")
 
     async def test_succession_preserves_mode_but_respects_manual_override(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that succession preserves mode from predecessor,
@@ -287,13 +289,14 @@ class TestSuccessionModePreservationE2E:
 
         # Trigger succession (A→B)
         orchestration_service = OrchestrationService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         result = await orchestration_service.trigger_succession(
-            current_job_id=str(orchestrator_a.job_id),
-            reason="context_limit"
+            job_id=str(orchestrator_a.job_id),
+            reason="context_limit",
+            tenant_key=tenant_key
         )
 
         assert result["success"] is True
@@ -318,8 +321,9 @@ class TestSuccessionModePreservationE2E:
         await db_session.commit()
 
         result_bc = await orchestration_service.trigger_succession(
-            current_job_id=str(orchestrator_b.job_id),
-            reason="context_limit"
+            job_id=str(orchestrator_b.job_id),
+            reason="context_limit",
+            tenant_key=tenant_key
         )
 
         assert result_bc["success"] is True
@@ -339,7 +343,7 @@ class TestSuccessionModePreservationE2E:
         print(f"  C: {orchestrator_c.metadata['execution_mode']} (inherited from B)")
 
     async def test_succession_chain_generates_different_prompts_per_mode(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that succession chain generates mode-specific prompts
@@ -396,13 +400,14 @@ class TestSuccessionModePreservationE2E:
 
         # Trigger succession (A→B)
         orchestration_service = OrchestrationService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         result = await orchestration_service.trigger_succession(
-            current_job_id=str(orchestrator_a.job_id),
-            reason="context_limit"
+            job_id=str(orchestrator_a.job_id),
+            reason="context_limit",
+            tenant_key=tenant_key
         )
 
         orchestrator_b_id = result["data"]["successor_id"]
