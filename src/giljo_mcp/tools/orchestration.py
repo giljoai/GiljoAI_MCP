@@ -1149,6 +1149,61 @@ The agent templates are now being updated...
         }
 
     @mcp.tool()
+    async def get_available_agents(tenant_key: str, active_only: bool = True) -> dict[str, Any]:
+        """
+        Get available agent templates with version metadata (Handover 0246c).
+
+        PURPOSE: Dynamic agent discovery without embedding templates in prompts.
+        Orchestrators call this to discover which agents are available for spawning.
+
+        Args:
+            tenant_key: Tenant isolation key
+            active_only: Filter to active templates only (default: True)
+
+        Returns:
+            {
+                "success": True,
+                "data": {
+                    "agents": [
+                        {
+                            "name": "implementer",
+                            "role": "Code Implementation Specialist",
+                            "description": "...",
+                            "version_tag": "1.2.0",
+                            "expected_filename": "implementer_1.2.0.md",
+                            "created_at": "2025-11-24T12:00:00"
+                        }
+                    ],
+                    "count": 5,
+                    "fetched_at": "2025-11-24T12:30:00",
+                    "note": "Templates fetched dynamically (not embedded in prompt)"
+                }
+            }
+
+        Example:
+            agents = await get_available_agents(tenant_key="tk_abc123")
+            for agent in agents["data"]["agents"]:
+                print(f"Available: {agent['name']} v{agent['version_tag']}")
+        """
+        from src.giljo_mcp.tools.agent_discovery import get_available_agents as get_agents
+
+        logger.info(
+            "Orchestrator requesting available agents",
+            extra={"tenant_key": tenant_key, "active_only": active_only}
+        )
+
+        async with db_manager.get_session_async() as session:
+            result = await get_agents(session, tenant_key)
+
+        if result["success"]:
+            logger.info(
+                f"Returned {result['data']['count']} available agents",
+                extra={"tenant_key": tenant_key}
+            )
+
+        return result
+
+    @mcp.tool()
     async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Fetch context for orchestrator to CREATE mission plan (Handover 0088).
