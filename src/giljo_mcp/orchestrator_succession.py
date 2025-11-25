@@ -159,6 +159,7 @@ class OrchestratorSuccessionManager:
         - Status = 'waiting' (for manual launch)
         - Same tenant_key and project_id
         - Linkage via spawned_by field
+        - Preserved execution_mode from parent (Handover 0247 Gap 4)
 
         Args:
             orchestrator: Parent orchestrator job
@@ -188,6 +189,23 @@ class OrchestratorSuccessionManager:
         # Generate handover mission
         handover_mission = self._generate_handover_mission(orchestrator)
 
+        # Handover 0247 Gap 4: Preserve execution_mode from parent orchestrator
+        # Extract execution_mode from parent's job_metadata (default: "multi-terminal")
+        parent_metadata = orchestrator.job_metadata or {}
+        execution_mode = parent_metadata.get("execution_mode", "multi-terminal")
+        
+        # Build successor metadata preserving execution_mode and other critical fields
+        successor_metadata = {
+            "execution_mode": execution_mode,
+            "predecessor_id": orchestrator.job_id,
+            "succession_reason": reason,
+            "field_priorities": parent_metadata.get("field_priorities", {}),
+            "depth_config": parent_metadata.get("depth_config", {}),
+            "user_id": parent_metadata.get("user_id"),
+            "tool": parent_metadata.get("tool", "universal"),
+            "created_via": "orchestrator_succession"
+        }
+
         # Create successor job
         successor = MCPAgentJob(
             tenant_key=self.tenant_key,
@@ -203,6 +221,7 @@ class OrchestratorSuccessionManager:
             context_chunks=[],  # Will be populated from handover summary
             messages=[],  # Fresh message queue
             acknowledged=False,
+            job_metadata=successor_metadata,  # Handover 0247 Gap 4: Preserve metadata
         )
 
         # Add to session and commit
@@ -213,7 +232,7 @@ class OrchestratorSuccessionManager:
         logger.info(
             f"Created successor orchestrator {successor.job_id} "
             f"(instance {successor.instance_number}) for {orchestrator.job_id}, "
-            f"reason: {reason}"
+            f"reason: {reason}, execution_mode: {execution_mode}"
         )
 
         return successor
