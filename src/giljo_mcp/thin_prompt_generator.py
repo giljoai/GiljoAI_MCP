@@ -968,6 +968,10 @@ No previous project learnings available. Starting fresh.
         6. Agent Job Spawning
         7. Activation
 
+        Handover 0247 Gaps:
+        - Gap 1: Version comparison logic added to Task 4
+        - Gap 2: CLAUDE.md reading instruction added to Task 3
+
         Args:
             orchestrator_id: Orchestrator job UUID
             project_id: Project UUID
@@ -1044,7 +1048,7 @@ TASK 3: ENVIRONMENT UNDERSTANDING
 {'='*70}
 Understand project environment.
 
-1. Read CLAUDE.MD
+1. Read CLAUDE.md in project folder (if exists)
 2. Extract tech stack
 3. Parse structure
 4. Load config
@@ -1056,14 +1060,19 @@ TASK 4: AGENT DISCOVERY & VERSION CHECK
 {'='*70}
 Discover agents and validate compatibility.
 
-1. Call get_available_agents() MCP tool
+1. Call get_available_agents(include_versions=true) MCP tool
    Returns: agents with version, capabilities, type
-2. For each agent:
-   - Extract version
+2. Execute: ls ~/.claude/agents/*.md (or Windows equivalent)
+   Compare expected vs actual filenames
+3. For each agent:
+   - Extract version from MCP response
+   - Verify file exists with correct version date
    - Check compatibility
    - Validate capabilities
    - Verify initialization
-3. Build compatibility matrix
+4. Build compatibility matrix
+5. WARN USER if version mismatch detected
+   Example: MCP expects implementer_11242024.md but found implementer_11222024.md
 
 Criteria: version >= min_required, has required_capabilities, status=initialized
 
@@ -1149,6 +1158,8 @@ END STAGING WORKFLOW
 
         User manually launches agents in separate terminals.
         Orchestrator coordinates their work via MCP.
+        
+        Handover 0247 Gap 3: Added Product ID to identity section.
         """
         # Format agent list
         agent_list_lines = []
@@ -1163,6 +1174,8 @@ END STAGING WORKFLOW
         return f"""PROJECT EXECUTION PHASE - MULTI-TERMINAL MODE
 
 Orchestrator ID: {orchestrator_id}
+Project ID: {project.id}
+Product ID: {project.product_id}
 Project: {project.name}
 Tenant Key: {self.tenant_key}
 
@@ -1199,6 +1212,8 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
 
         Orchestrator spawns sub-agents using Task tool.
         Sub-agents receive identity via instructions string.
+        
+        Handover 0247 Gap 3: Added Product ID to identity section.
         """
         # Format agent list with missions
         agent_spawn_lines = []
@@ -1216,34 +1231,30 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
 
         agent_list = "\n\n".join(agent_spawn_lines)
 
-        return f"""PROJECT EXECUTION PHASE - CLAUDE CODE SUBAGENT MODE
-
-Orchestrator ID: {orchestrator_id}
-Project: {project.name}
-Tenant Key: {self.tenant_key}
-
-YOUR ROLE: SPAWN & COORDINATE SUB-AGENTS
-
-STEP 1: ACTIVATE AGENT TEAM
-For each agent below, spawn Claude Code sub-agent using Task tool:
-
-{agent_list}
-
-(Pattern: spawn_agent_job() already called during staging - use existing IDs)
-
-STEP 2: REMIND EACH SUB-AGENT
-- acknowledge_job(job_id="{{job_id}}", agent_id="{{agent_id}}", tenant_key="{self.tenant_key}")
-- report_progress() after milestones
-- receive_messages() for commands
-- complete_job() when done
-
-STEP 3: COORDINATE WORKFLOW
-- Monitor via get_workflow_status()
-- Respond to agent messages
-- Handle blockers
-
-Reference: See Handover 0106b for full sub-agent spawn instructions
-"""
+        sections = [
+            "PROJECT EXECUTION PHASE - CLAUDE CODE SUBAGENT MODE\n",
+            f"Orchestrator ID: {orchestrator_id}",
+            f"Project ID: {project.id}",
+            f"Product ID: {project.product_id}",
+            f"Project: {project.name}",
+            f"Tenant Key: {self.tenant_key}\n",
+            "YOUR ROLE: SPAWN & COORDINATE SUB-AGENTS\n",
+            "STEP 1: ACTIVATE AGENT TEAM",
+            "For each agent below, spawn Claude Code sub-agent using Task tool:\n",
+            agent_list + "\n",
+            "(Pattern: spawn_agent_job() already called during staging - use existing IDs)\n",
+            "STEP 2: REMIND EACH SUB-AGENT",
+            f"- acknowledge_job(job_id=\"{{{{job_id}}}}\", agent_id=\"{{{{agent_id}}}}\", tenant_key=\"{self.tenant_key}\")",
+            "- report_progress() after milestones",
+            "- receive_messages() for commands",
+            "- complete_job() when done\n",
+            "STEP 3: COORDINATE WORKFLOW",
+            "- Monitor via get_workflow_status()",
+            "- Respond to agent messages",
+            "- Handle blockers\n",
+            "Reference: See Handover 0106b for full sub-agent spawn instructions"
+        ]
+        
         return "\n".join(sections)
 
     def _get_field_priority(self, field_name: str, user_priorities: Optional[dict]) -> Optional[int]:
