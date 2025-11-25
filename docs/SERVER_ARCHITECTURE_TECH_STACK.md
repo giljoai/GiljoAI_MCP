@@ -1683,6 +1683,97 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 
 ---
 
+## Client-Server Execution Model
+
+### What Runs Where
+
+**SERVER (F:\GiljoAI_MCP)**:
+- **Database Storage**: PostgreSQL (agent templates, missions, projects, products, vision documents)
+- **MCP HTTP Endpoint Provider**: FastAPI server at `POST /mcp` (port 7272)
+- **Tool Implementations**: orchestration.py, agent_discovery.py, context_tools.py, etc.
+- **WebSocket Server**: Real-time UI updates for dashboard
+- **Vue Dashboard**: Frontend UI for product/project management
+- **DOES NOT**: Execute orchestrators, execute agents, store project files
+
+**CLIENT PC (Remote Developer Machine)**:
+- **Claude Code Terminal**: Orchestrator execution environment
+- **Separate Terminals**: Agent execution (multi-terminal mode)
+- **Project Files**: Local filesystem at `/path/to/my-project/`
+- **MCP HTTP Client**: Calls server endpoints via HTTP POST
+- **DOES NOT**: Store missions, agent templates, product data
+
+### Communication Flow
+
+```
+CLIENT PC                          SERVER (F:\GiljoAI_MCP)
+─────────────────────────────────  ────────────────────────────────────
+
+1. Orchestrator starts in
+   Claude Code terminal
+
+2. Calls get_orchestrator_     ──→  3. Receives HTTP POST /mcp
+   instructions()                      {method: "tools/call",
+   (HTTP POST)                          name: "get_orchestrator_instructions"}
+
+                                    4. Fetches from PostgreSQL:
+                                       - Project data
+                                       - Product context
+                                       - Vision documents
+                                       - Git history
+                                       - 360 memory
+
+5. Receives mission data       ←──  6. Returns mission (~10K tokens)
+   (~10K tokens)                       via JSON-RPC response
+
+7. Orchestrator executes
+   7-task staging workflow
+   on CLIENT PC
+
+8. Calls get_available_agents() ──→ 9. Queries agent_templates table
+
+10. Receives agent list        ←── 11. Returns agents with versions
+
+12. Spawns agent jobs              12. Creates MCPAgentJob records
+    (database records only)    ──→     in PostgreSQL
+
+13. Agent 1 starts in
+    separate terminal
+
+14. Calls get_agent_mission()  ──→ 15. Fetches agent-specific mission
+
+16. Agent executes on          ←── 17. Returns mission + context
+    CLIENT PC with project
+    files from local filesystem
+```
+
+### Key Implications
+
+1. **Project Files Location**: Client PC local filesystem (NOT server)
+   - Orchestrator: `/path/to/my-project/src/`
+   - Agent: `/path/to/my-project/tests/`
+   - Server has zero access to project files
+
+2. **Code Execution**: All orchestrator/agent code runs on CLIENT PC
+   - Server only provides data via HTTP endpoints
+   - No code execution on server side (only database queries)
+   - Orchestrator and agents read/write files on client filesystem
+
+3. **Multi-Tenant Isolation**: Enforced at database level
+   - All MCP tools filter by `tenant_key`
+   - Client authenticates via X-API-Key header
+   - Session tied to tenant context
+   - No cross-tenant data leakage possible
+
+4. **Network Requirements**:
+   - Client needs HTTP access to server (port 7272)
+   - WebSocket connection optional (for real-time dashboard updates)
+   - No VPN required (uses standard HTTP/HTTPS)
+   - Can work across internet with proper firewall configuration
+
+**See Also**: [Staging Workflow Architecture](components/STAGING_WORKFLOW.md#architecture-overview) for orchestrator execution details.
+
+---
+
 ## Security Architecture
 
 ### Authentication Flow
