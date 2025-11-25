@@ -41,9 +41,9 @@
     </div>
 
     <!-- Table View (NEW - Handover 0228) -->
-    <AgentTableView
+<AgentTableView
       v-else
-      :agents="allAgentsForTable"
+      :agents="tableAgents"
       :using-claude-code-subagents="usingClaudeCodeSubagents"
       mode="jobs"
       @row-click="handleRowClick"
@@ -53,9 +53,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useOrchestrationStore } from '@/stores/orchestration'
+import { useAgentJobsStore } from '@/stores/agentJobs'
 import AgentCard from '@/components/AgentCard.vue'
 import OrchestratorCard from './OrchestratorCard.vue'
 import AgentTableView from './AgentTableView.vue' // NEW - Handover 0228
@@ -86,6 +87,7 @@ const STATUS_ORDER = {
 
 // Store
 const orchestrationStore = useOrchestrationStore()
+const agentJobsStore = useAgentJobsStore()
 
 // Reactive state
 const expandedAgentId = ref(null)
@@ -124,6 +126,8 @@ const allAgentsForTable = computed(() => {
   }
   return agents
 })
+
+const tableAgents = computed(() => agentJobsStore.sortedAgents)
 
 const gridStyles = computed(() => {
   return {
@@ -203,6 +207,7 @@ const handleCloseProject = () => {
 
 const handleAgentStatusUpdate = (event) => {
   orchestrationStore.handleAgentStatusUpdate(event)
+  agentJobsStore.updateAgent(event)
 }
 
 // NEW - Handover 0228: Table view event handlers
@@ -229,6 +234,14 @@ onUnmounted(() => {
   // Unregister WebSocket listener
   off('agent:status_changed', handleAgentStatusUpdate)
 })
+
+watch(
+  allAgentsForTable,
+  (agents) => {
+    agentJobsStore.setAgents(agents)
+  },
+  { immediate: true, deep: true },
+)
 
 // Load agents from store
 const loadAgents = async () => {
