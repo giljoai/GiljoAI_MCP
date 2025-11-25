@@ -83,7 +83,8 @@ class TestFullStackModeFlow:
     """Full stack integration test for execution mode flow."""
 
     async def test_complete_flow_toggle_discovery_succession(
-        self, client: AsyncClient, db_session, test_project, test_tenant, test_user
+        self, client: AsyncClient, db_session, db_manager, tenant_manager,
+        test_project, test_tenant, test_user
     ):
         """
         Test complete flow across all 3 components:
@@ -184,20 +185,21 @@ class TestFullStackModeFlow:
         await db_session.commit()
 
         service = OrchestrationService(
-            session=db_session,
-            tenant_key=test_tenant
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         result = await service.trigger_succession(
-            current_job_id=str(orchestrator.job_id),
-            reason="context_limit"
+            job_id=str(orchestrator.job_id),
+            reason="context_limit",
+            tenant_key=test_tenant
         )
 
         assert result["success"] is True, \
             "Succession must succeed"
 
         # Verify successor created
-        successor_id = result["data"]["successor_id"]
+        successor_id = result["successor_job_id"]
         stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == successor_id)
         result_successor = await db_session.execute(stmt)
         successor = result_successor.scalar_one()

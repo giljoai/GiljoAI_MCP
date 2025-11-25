@@ -59,7 +59,7 @@ class TestClaudeCodeModeWorkflow:
     """E2E tests for Claude Code execution mode workflow."""
 
     async def test_complete_claude_code_workflow(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Complete Claude Code workflow:
@@ -75,8 +75,8 @@ class TestClaudeCodeModeWorkflow:
 
         # Step 1: Create project
         project_service = ProjectService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         project_result = await project_service.create_project({
@@ -96,8 +96,8 @@ class TestClaudeCodeModeWorkflow:
 
         # Step 3: Stage project (spawn orchestrator)
         orchestrator_service = OrchestrationService(
-            session=db_session,
-            tenant_key=tenant_key
+            db_manager=db_manager,
+            tenant_manager=tenant_manager
         )
 
         # Create orchestrator job (simulates "Stage Project" button click)
@@ -191,7 +191,7 @@ class TestClaudeCodeModeWorkflow:
         print(f"  6. Successor uses Task tool: ✓")
 
     async def test_claude_code_mode_agent_spawning(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that Claude Code mode spawns agents via Task tool
@@ -262,7 +262,7 @@ class TestClaudeCodeModeWorkflow:
         print(f"  - Includes spawning instructions: ✓")
 
     async def test_claude_code_mode_token_efficiency(
-        self, db_session, test_user, test_product
+        self, db_session, db_manager, tenant_manager, test_user, test_product
     ):
         """
         Test that Claude Code mode achieves token reduction target
