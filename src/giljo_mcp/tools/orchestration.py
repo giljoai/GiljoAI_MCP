@@ -26,6 +26,136 @@ from giljo_mcp.orchestrator import ProjectOrchestrator
 logger = logging.getLogger(__name__)
 
 
+
+
+def _infer_execution_mode_from_tool(tool_type: str | None) -> str:
+    """
+    Infer execution_mode from tool_type when not explicitly specified.
+
+    Args:
+        tool_type: Tool type from orchestrator job (claude-code, codex, gemini, universal, None)
+
+    Returns:
+        Inferred execution mode ('claude-code' or 'legacy')
+
+    Examples:
+        >>> _infer_execution_mode_from_tool('claude-code')
+        'claude-code'
+        >>> _infer_execution_mode_from_tool('universal')
+        'legacy'
+        >>> _infer_execution_mode_from_tool(None)
+        'legacy'
+    """
+    if tool_type == "claude-code":
+        return "claude-code"
+    # Default to legacy for all other cases (codex, gemini, universal, None)
+    return "legacy"
+
+
+def _build_mode_instructions(execution_mode: str, agent_templates: list[dict]) -> str:
+    """
+    Build mode-specific instructions for orchestrator.
+
+    Args:
+        execution_mode: Execution mode ('claude-code' or 'legacy')
+        agent_templates: List of agent template dictionaries
+
+    Returns:
+        Mode-specific instruction text
+
+    Examples:
+        Claude Code mode returns instructions for spawning sub-agents via Task tool.
+        Legacy mode returns instructions for manual terminal launches.
+    """
+    if execution_mode == "claude-code":
+        # Claude Code mode - orchestrator spawns sub-agents
+        instructions = """**CLAUDE CODE MODE - Sub-Agent Spawning**
+
+You can spawn specialist agents as sub-agents using the Task tool.
+
+**Workflow**:
+1. Review agent templates below for available specialists
+2. Use spawn_agent_job() MCP tool to create agent job in database
+3. Spawn sub-agent via Task tool with agent's launch_instructions
+4. Monitor progress via get_workflow_status()
+
+**Example**:
+```python
+# Step 1: Create agent job via MCP
+result = await spawn_agent_job(
+    agent_type="implementer",
+    agent_name="Backend Implementer",
+    mission="Implement user authentication",
+    project_id=project_id,
+    tenant_key=tenant_key
+)
+
+# Step 2: Spawn sub-agent using Task tool with launch_instructions
+# Use the launch_instructions from agent template below
+```
+
+**Agent Launch Instructions**:
+Each agent template below includes launch_instructions showing how to start the agent.
+"""
+        return instructions
+    else:
+        # Legacy mode - manual terminal launches
+        instructions = """**LEGACY MODE - Manual Agent Launches**
+
+Specialist agents must be launched manually in separate terminals.
+
+**Workflow**:
+1. Use spawn_agent_job() MCP tool to create agent jobs
+2. Copy each agent's launch_instructions from templates below
+3. User manually pastes commands into separate terminal windows
+4. Monitor progress via get_workflow_status()
+
+**Agent Launch Instructions**:
+Each agent template below includes launch_instructions for manual copying.
+"""
+        return instructions
+
+
+def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
+    """
+    Format agent templates with launch_instructions for the given execution mode.
+
+    Args:
+        templates: SQLAlchemy AgentTemplate model instances
+        execution_mode: Execution mode ('claude-code' or 'legacy')
+
+    Returns:
+        List of formatted agent template dictionaries with launch_instructions
+
+    Examples:
+        >>> templates = [AgentTemplate(name='implementer', ...)]
+        >>> formatted = _format_agent_templates(templates, 'claude-code')
+        >>> formatted[0]['launch_instructions']
+        'cd $PROJECT_PATH && claude-code --agent implementer'
+    """
+    formatted_templates = []
+
+    for template in templates:
+        template_dict = {
+            "name": template.name,
+            "role": template.role,
+            "description": template.description[:200] if template.description else "",
+        }
+
+        # Extract launch_instructions from meta_data
+        if template.meta_data and "launch_instructions" in template.meta_data:
+            template_dict["launch_instructions"] = template.meta_data["launch_instructions"]
+        else:
+            # Provide default launch instruction if not specified
+            template_dict["launch_instructions"] = (
+                f"cd $PROJECT_PATH && {execution_mode} --agent {template.name}"
+            )
+
+        formatted_templates.append(template_dict)
+
+    return formatted_templates
+
+
 def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> None:
     """
     Register orchestration tools with the MCP server.
@@ -257,6 +387,86 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "Contact support if issue persists",
                 ],
                 "severity": "ERROR",
+            }
+
+    @mcp.tool()
+    async def get_generic_agent_template(
+        agent_id: str,
+        job_id: str,
+        product_id: str,
+        project_id: str,
+        tenant_key: str,
+    ) -> dict[str, Any]:
+        """
+        Get generic agent template with injected variables for multi-terminal mode.
+
+        Used by Orchestrator to spawn agents in Generic/Legacy mode.
+        Template provides unified protocol for all agent types.
+
+        Handover 0246b: Generic Agent Template Implementation
+
+        Args:
+            agent_id: UUID of agent instance
+            job_id: UUID of job in MCP_AGENT_JOBS
+            product_id: UUID of product context
+            project_id: UUID of project context
+            tenant_key: Tenant isolation key
+
+        Returns:
+            {
+                "success": true,
+                "template": "<rendered prompt>",
+                "variables_injected": {...},
+                "protocol_version": "1.0",
+                "estimated_tokens": 2400
+            }
+        """
+        try:
+            from src.giljo_mcp.templates.generic_agent_template import GenericAgentTemplate
+
+            template = GenericAgentTemplate()
+            rendered = template.render(
+                agent_id=agent_id,
+                job_id=job_id,
+                product_id=product_id,
+                project_id=project_id,
+                tenant_key=tenant_key,
+            )
+
+            logger.info(
+                "Generic agent template rendered",
+                extra={
+                    "agent_id": agent_id,
+                    "job_id": job_id,
+                    "template_version": template.version,
+                    "tenant_key": tenant_key,
+                },
+            )
+
+            return {
+                "success": True,
+                "template": rendered,
+                "variables_injected": {
+                    "agent_id": agent_id,
+                    "job_id": job_id,
+                    "product_id": product_id,
+                    "project_id": project_id,
+                    "tenant_key": tenant_key,
+                },
+                "protocol_version": template.version,
+                "estimated_tokens": len(rendered) // 4,  # Rough estimate
+            }
+
+        except Exception as e:
+            logger.error(
+                f"Failed to render generic agent template: {e}",
+                extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "agent_id": agent_id,
+                "job_id": job_id,
             }
 
     @mcp.tool()
@@ -1464,6 +1674,94 @@ async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any
         except Exception as e:
             logger.error(f"Error in get_agent_mission: {e}", exc_info=True)
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+
+
+async def get_generic_agent_template(
+    session: "AsyncSession",
+    agent_id: str,
+    job_id: str,
+    product_id: str,
+    project_id: str,
+    tenant_key: str,
+) -> dict[str, Any]:
+    """
+    Get generic agent template with injected variables.
+
+    Used by Orchestrator to spawn agents in Generic/Legacy mode.
+    Template provides unified protocol for all agent types.
+
+    Handover 0246b: Generic Agent Template Implementation
+
+    Args:
+        session: AsyncSession for database operations
+        agent_id: UUID of agent instance
+        job_id: UUID of job in MCP_AGENT_JOBS
+        product_id: UUID of product context
+        project_id: UUID of project context
+        tenant_key: Tenant isolation key
+
+    Returns:
+        {
+            "success": true,
+            "template": "<rendered prompt>",
+            "variables_injected": {
+                "agent_id": "...",
+                "job_id": "...",
+                "product_id": "...",
+                "project_id": "...",
+                "tenant_key": "..."
+            },
+            "protocol_version": "1.0",
+            "estimated_tokens": 2400
+        }
+    """
+    try:
+        from src.giljo_mcp.templates.generic_agent_template import GenericAgentTemplate
+
+        template = GenericAgentTemplate()
+        rendered = template.render(
+            agent_id=agent_id,
+            job_id=job_id,
+            product_id=product_id,
+            project_id=project_id,
+            tenant_key=tenant_key,
+        )
+
+        logger.info(
+            "Generic agent template rendered",
+            extra={
+                "agent_id": agent_id,
+                "job_id": job_id,
+                "template_version": template.version,
+                "tenant_key": tenant_key,
+            },
+        )
+
+        return {
+            "success": True,
+            "template": rendered,
+            "variables_injected": {
+                "agent_id": agent_id,
+                "job_id": job_id,
+                "product_id": product_id,
+                "project_id": project_id,
+                "tenant_key": tenant_key,
+            },
+            "protocol_version": template.version,
+            "estimated_tokens": len(rendered) // 4,  # Rough estimate
+        }
+
+    except Exception as e:
+        logger.error(
+            f"Failed to render generic agent template: {e}",
+            extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
+        )
+        return {
+            "success": False,
+            "error": str(e),
+            "agent_id": agent_id,
+            "job_id": job_id,
+        }
 
 
 async def spawn_agent_job(
