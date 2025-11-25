@@ -753,6 +753,373 @@ GiljoAI's context management system uses a 2-dimensional model to give users fin
 
 ---
 
+## Orchestrator Staging & Agent Spawning Architecture (v3.2)
+
+### Overview
+
+**Implementation Date**: 2025-11-24 (Handovers 0246a, 0246b)
+**Status**: Production-ready orchestrator staging and agent execution workflows
+
+GiljoAI v3.2 introduces a comprehensive **7-task staging workflow** that prepares projects for multi-agent execution. This workflow validates environment readiness, discovers available agents dynamically, and establishes execution context before spawning agent jobs.
+
+### Staging Workflow (7 Tasks)
+
+The orchestrator executes this sequence before beginning agent coordination:
+
+```
+Project Launch Request
+        │
+        ▼
+┌─────────────────────────────────────────────┐
+│  TASK 1: Identity & Context Verification    │
+│  - Verify project ID, name, scope           │
+│  - Confirm tenant isolation                 │
+│  - Validate orchestrator connection         │
+│  - Include Product ID for context tracking  │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│  TASK 2: MCP Health Check                   │
+│  - Verify MCP server responsive             │
+│  - Check all required tools available       │
+│  - Validate authentication tokens           │
+│  - Test connection stability                │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│  TASK 3: Environment Understanding          │
+│  - Read CLAUDE.md configuration             │
+│  - Understand tech stack                    │
+│  - Parse project structure                  │
+│  - Identify critical paths                  │
+│  - Load context management settings         │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│  TASK 4: Agent Discovery & Version Check    │
+│  - Call get_available_agents() MCP tool     │
+│  - Discover all available agents            │
+│  - Check version compatibility              │
+│  - Validate agent capabilities              │
+│  - NO EMBEDDED TEMPLATES (dynamic only)     │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│  TASK 5: Context Prioritization & Mission   │
+│  - Apply user's context priority settings   │
+│  - Fetch product context via tools          │
+│  - Fetch relevant vision documents          │
+│  - Fetch git history for context            │
+│  - Generate unified orchestrator mission    │
+│  - Condense into <10K tokens                │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│  TASK 6: Agent Job Spawning                 │
+│  - Create MCPAgentJob records               │
+│  - Assign execution mode                    │
+│  - Set initial status to 'waiting'          │
+│  - Store staging result in database         │
+└────────────┬────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────┐
+│  TASK 7: Activation                         │
+│  - Transition project to 'active' status    │
+│  - Enable WebSocket event broadcasts        │
+│  - Start monitoring orchestrator health     │
+│  - Begin agent job polling                  │
+└─────────────────────────────────────────────┘
+        │
+        ▼
+   Orchestrator Ready for Execution
+```
+
+**Token Budget**: 931 tokens (22% under 1200-token staging limit)
+
+**Key Features**:
+- **Dynamic Agent Discovery**: No embedded templates (fetched via MCP tools)
+- **Version Compatibility**: Validates agent versions match project requirements
+- **Context Prioritization**: Applies user's configured priority/depth settings
+- **Environment Validation**: Comprehensive health checks before execution
+- **Graceful Failure**: Clear error messages at each stage
+
+**Code Reference**: `src/giljo_mcp/prompts/thin_prompt_generator.py::_build_staging_prompt()`
+
+### Agent Execution Modes
+
+GiljoAI supports two distinct execution modes for agents:
+
+#### Mode 1: Claude Code CLI (Single Terminal)
+
+**Characteristics**:
+- Orchestrator spawns sub-agents via Task tool
+- All agents run in single Claude Code CLI session
+- Mission-specific prompts generated per agent
+- Real-time coordination via message queue
+- Optimized for local development workflows
+
+**Workflow**:
+```
+Orchestrator (Claude Code)
+    │
+    ├─→ Task("implementer", mission=<condensed>)
+    │   └─→ Sub-agent executes in same terminal
+    │
+    ├─→ Task("tester", mission=<condensed>)
+    │   └─→ Sub-agent executes in same terminal
+    │
+    └─→ Task("reviewer", mission=<condensed>)
+        └─→ Sub-agent executes in same terminal
+```
+
+#### Mode 2: Manual Multi-Terminal (Generic Template)
+
+**Characteristics**:
+- Each agent runs in separate terminal/session
+- Generic unified template for all agent types
+- Mission fetched from database at runtime
+- Orchestrator coordinates via MCPAgentJob records
+- Optimized for distributed execution
+
+**Workflow**:
+```
+Terminal 1 (Orchestrator)
+    │
+    ├─→ spawn_agent_job(type="implementer", status="waiting")
+    │   └─→ Database: MCPAgentJob record created
+    │
+    └─→ Monitors job statuses via WebSocket
+
+Terminal 2 (Implementer Agent)
+    │
+    ├─→ Load generic_agent_template
+    ├─→ Call get_agent_mission(job_id, tenant_key)
+    ├─→ Execute fetched mission
+    └─→ Report completion to database
+
+Terminal 3 (Tester Agent)
+    │
+    ├─→ Load generic_agent_template
+    ├─→ Call get_agent_mission(job_id, tenant_key)
+    ├─→ Execute fetched mission
+    └─→ Report completion to database
+```
+
+### Generic Agent Template Protocol
+
+**Purpose**: Unified protocol for all agents in multi-terminal mode
+
+**Variable Injection** (by Orchestrator):
+```
+{agent_id}      = UUID of this agent instance
+{job_id}        = UUID of this job in MCP_AGENT_JOBS table
+{product_id}    = UUID of the product/project context
+{project_id}    = UUID of the specific project
+{tenant_key}    = Tenant isolation key
+```
+
+**Mission Fetching** (by Agent at Runtime):
+```
+- Full mission text (MCPAgentJob.mission)
+- Project context and requirements
+- Product information and constraints
+- Previous agent outputs (message history)
+- Current status of any ongoing work
+```
+
+**Six-Phase Execution Protocol**:
+
+1. **Initialization**
+   - Verify identity (agent_id, job_id)
+   - Check MCP health
+   - Load CLAUDE.md
+
+2. **Mission Fetch**
+   - Call: `get_agent_mission(job_id, tenant_key)`
+   - Receive: Full mission + context
+   - Validate: Mission is non-empty
+
+3. **Work Execution**
+   - Read mission requirements
+   - Perform assigned work
+   - Track time and progress
+   - Collect outputs
+
+4. **Progress Reporting**
+   - Call: `update_job_progress(job_id, percent, status_message)`
+   - Report: At 25%, 50%, 75%, 100%
+   - Include: Detailed status info
+
+5. **Communication**
+   - Send: `send_message(to_agent_id, content)`
+   - Receive: `receive_messages(agent_id)`
+   - Acknowledge: `acknowledge_message(message_id)`
+
+6. **Completion**
+   - Call: `complete_job(job_id, result_summary)`
+   - Include: Deliverables, test results, documentation
+   - Notify: Orchestrator of completion
+
+**Token Budget**: ~2400 tokens per agent (protocol + GiljoAI standards)
+
+**Code Reference**:
+- Template: `src/giljo_mcp/templates/generic_agent_template.py`
+- MCP Tool: `src/giljo_mcp/tools/orchestration.py::get_generic_agent_template()`
+
+### Dynamic Agent Discovery
+
+**No Embedded Templates**: GiljoAI v3.2 eliminates hardcoded agent templates from prompts.
+
+**Discovery Mechanism**:
+```python
+# Orchestrator calls during staging
+result = get_available_agents()
+
+# Returns:
+{
+  "agents": [
+    {
+      "name": "implementer",
+      "version": "1.0.3",
+      "type": "role",
+      "required_context": ["tech_stack", "architecture"],
+      "capabilities": ["code_generation", "refactoring"]
+    },
+    {
+      "name": "tester",
+      "version": "1.0.2",
+      "type": "role",
+      "required_context": ["tech_stack", "testing_config"],
+      "capabilities": ["unit_testing", "integration_testing"]
+    }
+  ]
+}
+```
+
+**Version Compatibility Validation**:
+- Checks agent version >= minimum_required_version
+- Validates capabilities include required_capabilities
+- Verifies agent status == 'initialized'
+- Reports conflicts (e.g., incompatible versions)
+
+**Token Savings**: 142 tokens (no embedded templates in staging prompt)
+
+**Code Reference**: `src/giljo_mcp/tools/orchestration.py::get_available_agents()`
+
+### Execution Flow Diagram
+
+```
+User Clicks "Launch Project"
+        │
+        ▼
+┌──────────────────────────────────────┐
+│  Frontend: POST /projects/{id}/launch │
+└────────────┬─────────────────────────┘
+             │
+             ▼
+┌──────────────────────────────────────┐
+│  Backend: ProjectService.launch()    │
+│  - Validates project status           │
+│  - Creates orchestrator job           │
+│  - Generates staging prompt           │
+└────────────┬─────────────────────────┘
+             │
+             ▼
+┌──────────────────────────────────────┐
+│  Orchestrator: Execute Staging (7)   │
+│  1. Identity verification             │
+│  2. MCP health check                  │
+│  3. Environment understanding         │
+│  4. Agent discovery                   │
+│  5. Context prioritization            │
+│  6. Job spawning                      │
+│  7. Activation                        │
+└────────────┬─────────────────────────┘
+             │
+             ▼
+    ┌────────────────┐
+    │ Execution Mode? │
+    └───┬────────┬───┘
+        │        │
+  ┌─────┘        └──────┐
+  │                     │
+  ▼                     ▼
+┌──────────────┐  ┌──────────────────┐
+│ Claude Code  │  │ Multi-Terminal   │
+│ CLI Mode     │  │ Generic Mode     │
+│              │  │                  │
+│ Task tool    │  │ Generic template │
+│ spawns       │  │ with variable    │
+│ sub-agents   │  │ injection        │
+└──────────────┘  └──────────────────┘
+```
+
+### MCP Tools for Staging & Execution
+
+**Staging Tools**:
+1. `get_available_agents()` - Discovers agents dynamically
+2. `health_check()` - Validates MCP server connectivity
+3. `fetch_product_context()` - Retrieves product metadata
+4. `fetch_vision_document()` - Fetches vision docs (paginated)
+5. `fetch_git_history()` - Retrieves commit history
+6. `fetch_360_memory()` - Fetches project closeout summaries
+
+**Agent Execution Tools**:
+1. `get_generic_agent_template(agent_id, job_id, ...)` - Renders template
+2. `get_agent_mission(job_id, tenant_key)` - Fetches mission from database
+3. `update_job_progress(job_id, percent, status)` - Reports progress
+4. `send_message(to_agent_id, message)` - Agent-to-agent communication
+5. `receive_messages(agent_id)` - Retrieves incoming messages
+6. `acknowledge_message(message_id)` - Acknowledges receipt
+7. `complete_job(job_id, result)` - Marks job complete
+8. `report_error(job_id, error)` - Reports errors for orchestrator review
+
+**Code Reference**: `src/giljo_mcp/tools/orchestration.py`
+
+### Database Schema Extensions
+
+**MCPAgentJob Table** (updated for staging):
+```sql
+ALTER TABLE mcp_agent_jobs ADD COLUMN execution_mode VARCHAR(50);
+ALTER TABLE mcp_agent_jobs ADD COLUMN staging_result JSONB;
+ALTER TABLE mcp_agent_jobs ADD COLUMN agent_version VARCHAR(20);
+```
+
+**Execution Modes**:
+- `claude_code_cli` - Single terminal with Task tool
+- `multi_terminal_generic` - Multiple terminals with generic template
+
+**Staging Result** (JSONB):
+```json
+{
+  "staging_tasks_completed": [
+    "identity_verification",
+    "mcp_health_check",
+    "environment_understanding",
+    "agent_discovery",
+    "context_prioritization",
+    "job_spawning",
+    "activation"
+  ],
+  "agents_discovered": [
+    {"name": "implementer", "version": "1.0.3", "compatible": true},
+    {"name": "tester", "version": "1.0.2", "compatible": true}
+  ],
+  "context_budget_used": 8743,
+  "staging_duration_ms": 2341
+}
+```
+
+**Code Reference**: `src/giljo_mcp/models.py::MCPAgentJob`
+
+---
+
 ## Component Architecture
 
 ### API Server Structure
