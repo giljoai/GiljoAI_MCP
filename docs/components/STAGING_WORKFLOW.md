@@ -1,7 +1,7 @@
 # Orchestrator Staging Workflow
 
 **Version**: v3.2+
-**Implementation**: Handover 0246a
+**Implementation**: Handovers 0246a, 0246b, 0246c
 **Last Updated**: 2025-11-24
 
 ## Overview
@@ -11,6 +11,12 @@ The **Orchestrator Staging Workflow** is a 7-task validation sequence that prepa
 **Purpose**: Prevent execution failures through comprehensive pre-flight validation
 
 **Token Budget**: 931 tokens (22% under 1200-token staging limit)
+
+**Complete 0246 Series Integration**:
+- **Handover 0246a**: 7-task staging workflow implementation (931 tokens)
+- **Handover 0246b**: Generic agent template with 6-phase protocol (1,253 tokens per agent)
+- **Handover 0246c**: Dynamic agent discovery via MCP tool (71% token savings, 420 tokens)
+- **Total Impact**: 85% reduction in orchestrator prompts (~3,500 → ~450-550 tokens)
 
 ---
 
@@ -629,15 +635,66 @@ if not product_context:
 
 ---
 
+## Key MCP Tools (0246 Series)
+
+The orchestrator workflow relies on three critical MCP tools introduced in the 0246 series:
+
+### 1. get_available_agents() (Handover 0246c)
+**File**: `src/giljo_mcp/tools/agent_discovery.py` (167 lines)
+**Purpose**: Dynamic agent discovery (replaces embedded templates)
+**Token Savings**: 420 tokens (71% reduction)
+
+**Features**:
+- Multi-tenant isolation (tenant_key filtering)
+- Version metadata tracking
+- Active-only filtering
+- Returns: Agent name, version, type, capabilities
+- Graceful error handling
+
+**Before**: 5-8 agent templates embedded (~430 tokens)
+**After**: Single MCP call (~10 tokens)
+
+### 2. get_generic_agent_template() (Handover 0246b)
+**File**: `src/giljo_mcp/templates/generic_agent_template.py`
+**Purpose**: Unified template for all agent types in multi-terminal mode
+**Token Budget**: ~1,253 tokens per agent
+
+**Features**:
+- 6-phase execution protocol (Initialization → Mission Fetch → Work Execution → Progress Reporting → Communication → Completion)
+- Variable injection: {agent_id}, {job_id}, {product_id}, {project_id}, {tenant_key}
+- Mission fetched via get_agent_mission() at runtime
+- Supports all agent types (implementer, tester, reviewer, analyzer, documenter, orchestrator)
+
+### 3. _build_staging_prompt() (Handover 0246a)
+**File**: `src/giljo_mcp/prompts/thin_prompt_generator.py`
+**Purpose**: Generate 7-task staging workflow prompt
+**Token Budget**: 931 tokens (22% under 1200 limit)
+
+**Features**:
+- Complete staging workflow (Tasks 1-7)
+- Identity verification, MCP health check, environment understanding
+- Agent discovery via get_available_agents()
+- Context prioritization (9 MCP context tools)
+- Job spawning and activation
+
+**Code Tests**:
+- Unit Tests: `tests/unit/test_staging_prompt.py` (19 tests, 100% passing)
+- Unit Tests: `tests/unit/test_generic_agent_template.py` (11 tests, 100% passing)
+- Unit Tests: `tests/unit/test_agent_discovery.py` (11 tests, 100% passing)
+- Integration Tests: `tests/integration/test_orchestrator_discovery.py` (6 tests)
+
 ## Related Documentation
 
 - **Architecture**: [SERVER_ARCHITECTURE_TECH_STACK.md](../SERVER_ARCHITECTURE_TECH_STACK.md#orchestrator-staging--agent-spawning-architecture-v32)
 - **Orchestrator**: [ORCHESTRATOR.md](../ORCHESTRATOR.md#orchestrator-staging-workflow-v32)
 - **User Guide**: [AGENT_EXECUTION_MODES.md](../user_guides/AGENT_EXECUTION_MODES.md)
-- **Code Reference**: `src/giljo_mcp/prompts/thin_prompt_generator.py::_build_staging_prompt()`
+- **Handover Documents**:
+  - Handover 0246a: Staging Prompt Implementation
+  - Handover 0246b: Generic Agent Template
+  - Handover 0246c: Dynamic Agent Discovery
 
 ---
 
 **Last Updated**: 2025-11-24
 **Version**: v3.2+
-**Implementation**: Handover 0246a
+**Implementation**: Handovers 0246a, 0246b, 0246c

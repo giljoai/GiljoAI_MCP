@@ -1062,16 +1062,22 @@ User Clicks "Launch Project"
 
 ### MCP Tools for Staging & Execution
 
-**Staging Tools**:
-1. `get_available_agents()` - Discovers agents dynamically
+**Staging Tools** (Phase 1 - Orchestrator Preparation):
+1. `get_available_agents(tenant_key, active_only)` - **Dynamic agent discovery** (Handover 0246c)
+   - Returns: Agent metadata (name, version, type, capabilities)
+   - Token savings: 420 tokens (71% reduction vs embedded templates)
+   - Multi-tenant isolation enforced
 2. `health_check()` - Validates MCP server connectivity
 3. `fetch_product_context()` - Retrieves product metadata
 4. `fetch_vision_document()` - Fetches vision docs (paginated)
 5. `fetch_git_history()` - Retrieves commit history
 6. `fetch_360_memory()` - Fetches project closeout summaries
 
-**Agent Execution Tools**:
-1. `get_generic_agent_template(agent_id, job_id, ...)` - Renders template
+**Agent Execution Tools** (Phases 3-4 - Agent Spawning & Execution):
+1. `get_generic_agent_template(agent_id, job_id, ...)` - Renders unified template (Handover 0246b)
+   - Token budget: ~1,253 tokens per agent
+   - 6-phase execution protocol included
+   - Variable injection: {agent_id}, {job_id}, {product_id}, {project_id}, {tenant_key}
 2. `get_agent_mission(job_id, tenant_key)` - Fetches mission from database
 3. `update_job_progress(job_id, percent, status)` - Reports progress
 4. `send_message(to_agent_id, message)` - Agent-to-agent communication
@@ -1080,7 +1086,18 @@ User Clicks "Launch Project"
 7. `complete_job(job_id, result)` - Marks job complete
 8. `report_error(job_id, error)` - Reports errors for orchestrator review
 
-**Code Reference**: `src/giljo_mcp/tools/orchestration.py`
+**MCP Tool Architecture Principles**:
+- **Thin Client Approach**: Server provides data via HTTP endpoints, client executes code
+- **Token Optimization**: Dynamic fetching (not embedded content) → 85% reduction
+- **Multi-Tenant Isolation**: All tools filter by tenant_key (zero cross-tenant leakage)
+- **Client-Server Separation**: Server = tool provider (HTTP), Client = executor (local filesystem)
+- **On-Demand Fetching**: Templates and missions fetched only when needed
+
+**Code References**:
+- Orchestration Tools: `src/giljo_mcp/tools/orchestration.py`
+- Agent Discovery: `src/giljo_mcp/tools/agent_discovery.py` (167 lines, Handover 0246c)
+- Generic Template: `src/giljo_mcp/templates/generic_agent_template.py` (Handover 0246b)
+- Thin Prompt Generator: `src/giljo_mcp/prompts/thin_prompt_generator.py::_build_staging_prompt()` (Handover 0246a)
 
 ### Database Schema Extensions
 
@@ -1117,6 +1134,12 @@ ALTER TABLE mcp_agent_jobs ADD COLUMN agent_version VARCHAR(20);
 ```
 
 **Code Reference**: `src/giljo_mcp/models.py::MCPAgentJob`
+
+**Related Documentation**:
+- Orchestrator workflow details: [ORCHESTRATOR.md](ORCHESTRATOR.md#complete-orchestrator-workflow-pipeline-v32)
+- 7-task staging workflow: [components/STAGING_WORKFLOW.md](components/STAGING_WORKFLOW.md)
+- Dynamic agent discovery: [ORCHESTRATOR.md](ORCHESTRATOR.md#dynamic-agent-discovery)
+- Generic agent template: [ORCHESTRATOR.md](ORCHESTRATOR.md#generic-agent-template-protocol-v32)
 
 ---
 
@@ -1769,6 +1792,55 @@ CLIENT PC                          SERVER (F:\GiljoAI_MCP)
    - WebSocket connection optional (for real-time dashboard updates)
    - No VPN required (uses standard HTTP/HTTPS)
    - Can work across internet with proper firewall configuration
+
+### Architecture Correctness Verification (Handover 0246c)
+
+The implementation correctly follows the distributed client-server architecture:
+
+**Server Responsibilities (F:\GiljoAI_MCP)**:
+- ✅ Database storage (agent templates, missions, prompts, messages)
+- ✅ MCP tool HTTP endpoints provider (POST /mcp at port 7272)
+- ✅ Web UI and WebSocket server for dashboard
+- ✅ Multi-tenant data isolation enforcement
+- ❌ Does NOT execute orchestrators or agents
+- ❌ Does NOT have access to client project files
+
+**Client Responsibilities (Remote Developer Machine)**:
+- ✅ Orchestrator execution in Claude Code terminal
+- ✅ Agent execution in separate terminals (multi-terminal mode)
+- ✅ Project file access on local filesystem
+- ✅ MCP tool calls via HTTP POST to server
+- ❌ Does NOT store missions, agent templates, or product data
+
+**Communication Flow Verification**:
+```
+1. User clicks "Stage Project" in browser (client PC)
+   ↓
+2. Browser calls SERVER API → generates staging prompt
+   ↓
+3. CLIENT orchestrator (Claude Code) calls get_orchestrator_instructions() MCP tool
+   ↓
+4. SERVER returns prompt via HTTP JSON-RPC
+   ↓
+5. CLIENT orchestrator executes 7-task staging workflow locally
+   ↓
+6. CLIENT orchestrator calls get_available_agents() MCP tool
+   ↓
+7. SERVER returns agent list from database (no embedded templates)
+   ↓
+8. CLIENT orchestrator spawns agents (Claude Code Task tool or multi-terminal)
+   ↓
+9. CLIENT agents call get_agent_mission() for their specific work
+   ↓
+10. CLIENT agents execute on local project files
+```
+
+**Key Architectural Benefits**:
+- **Zero Server-Side Code Execution**: Server is pure data provider (security + scalability)
+- **Client-Side File Access**: Agents work directly with project files (performance)
+- **HTTP Transport**: No SSH/VPN complexity (simple firewall configuration)
+- **Token Optimization**: Thin prompts (~450-550 tokens) via dynamic fetching
+- **Multi-Tenant Security**: Database-level isolation (zero cross-tenant leakage)
 
 **See Also**: [Staging Workflow Architecture](components/STAGING_WORKFLOW.md#architecture-overview) for orchestrator execution details.
 
