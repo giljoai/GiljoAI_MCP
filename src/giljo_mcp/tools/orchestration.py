@@ -1412,18 +1412,8 @@ The agent templates are now being updated...
                     product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
                 )
 
-                # Get agent templates
-                result = await session.execute(
-                    select(AgentTemplate)
-                    .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
-                    .limit(8)  # Max 8 agent types
-                )
-                templates = result.scalars().all()
-
-                template_list = [
-                    {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
-                    for t in templates
-                ]
+                # Handover 0246c: Agent templates no longer embedded
+                # Use get_available_agents() MCP tool instead
 
                 # Calculate token estimate
                 estimated_tokens = len(condensed_mission) // 4  # 1 token ≈ 4 chars
@@ -1467,7 +1457,7 @@ The agent templates are now being updated...
                     "mission": condensed_mission,
                     "context_budget": orchestrator.context_budget or 150000,
                     "context_used": orchestrator.context_used or 0,
-                    "agent_templates": template_list,
+                "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
                     "estimated_tokens": estimated_tokens,
@@ -1648,18 +1638,9 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, d
                 product=product, project=project, field_priorities=field_priorities, user_id=user_id
             )
 
-            # Get agent templates
-            result = await session.execute(
-                select(AgentTemplate)
-                .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
-                .limit(8)
-            )
-            templates = result.scalars().all()
+            # Handover 0246c: Agent templates no longer embedded
+            # Use get_available_agents() MCP tool instead
 
-            template_list = [
-                {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
-                for t in templates
-            ]
 
             # Calculate token estimate
             estimated_tokens = len(condensed_mission) // 4
@@ -1672,7 +1653,7 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, d
                 "mission": condensed_mission,
                 "context_budget": orchestrator.context_budget or 150000,
                 "context_used": orchestrator.context_used or 0,
-                "agent_templates": template_list,
+                "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
                 "estimated_tokens": estimated_tokens,
