@@ -33,6 +33,14 @@ HTTP-only MCP (Nov 2025)
 - MCP-over-HTTP JSON-RPC endpoint (/mcp) is authoritative
 - Stdio adapter is deprecated; use HTTP transport with X-API-Key
 
+**Backend Refactoring (v3.1)**: Handovers 0120-0130 completed backend transformation (Nov 2025):
+- ✅ 89% Complete (8/9 handovers, 1 deferred)
+- Service layer extracted: 5 services (ProjectService, TemplateService, TaskService, MessageService, ContextService, OrchestrationService)
+- ToolAccessor reduced 48%: 2,324 → 1,200 lines
+- Endpoints modularized: 4 monoliths → 24 focused modules
+- Test coverage: >80% achieved
+- See: `handovers/completed/REFACTORING_ROADMAP_0120-0130.md` (RETIRED - Mission Accomplished)
+
 **Critical Remediation (v3.1.1)**: Handovers 0500-0515 completed major remediation after 0120-0130 refactoring:
 - Vision upload with chunking (<25K tokens per chunk)
 - Project lifecycle methods (activate, deactivate, summary, launch)
@@ -42,6 +50,12 @@ HTTP-only MCP (Nov 2025)
 - E2E integration tests for critical workflows
 
 **Database Migrations (v3.1+)**: Single baseline migration approach (Handover 0601) • Fresh installs in <1 second • 32 tables from pristine SQLAlchemy models • See [Migration Strategy](docs/architecture/migration-strategy.md)
+
+**Roadmap Management (Nov 2025)**: Active roadmap tracking and retirement strategy:
+- ✅ **RETIRED**: `REFACTORING_ROADMAP_0120-0130.md` (89% complete - backend refactoring mission accomplished)
+- ⛔ **RETIRED**: `REFACTORING_ROADMAP_0131-0200_OLD.md` (11% complete - superseded by Context Management, Remediation, GUI Redesign)
+- ⚡ **ACTIVE**: `handovers/0300_EXECUTION_ROADMAP_REACTIVATED.md` (71% v2.0 complete - final phase, 2 handovers remaining: 0316, 0318)
+- **Strategy**: Focused roadmaps (10-15 handovers) complete successfully; massive roadmaps (90+ handovers) stall due to changing priorities
 
 ## 📋 Quick Reference
 
