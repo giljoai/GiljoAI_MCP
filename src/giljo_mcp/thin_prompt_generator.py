@@ -161,7 +161,7 @@ class ThinClientPromptGenerator:
         # Handover 0315: Fetch user priorities and depth config if user_id provided
         if user_id and (not field_priorities or not depth_config):
             from src.giljo_mcp.models.auth import User
-            
+
             user_stmt = select(User).where(
                 and_(
                     User.id == user_id,
@@ -175,7 +175,7 @@ class ThinClientPromptGenerator:
                 # Use user config if not provided
                 if not field_priorities and user.field_priority_config:
                     field_priorities = user.field_priority_config
-                
+
                 if not depth_config and user.depth_config:
                     depth_config = user.depth_config
 
@@ -466,6 +466,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
 
         # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
         from pathlib import Path
+
         import yaml
 
         try:
@@ -522,7 +523,7 @@ Priority 1 (CRITICAL - Fetch First):
             prompt += "  (No CRITICAL context tools configured)\n"
 
         prompt += "\nPriority 2 (IMPORTANT - Fetch if Budget Allows):\n"
-        
+
         # Add Priority 2 tools
         if priority_groups[2]:
             for tool_ref in priority_groups[2]:
@@ -531,7 +532,7 @@ Priority 1 (CRITICAL - Fetch First):
             prompt += "  (No IMPORTANT context tools configured)\n"
 
         prompt += "\nPriority 3 (NICE_TO_HAVE - Fetch if Extra Budget):\n"
-        
+
         # Add Priority 3 tools
         if priority_groups[3]:
             for tool_ref in priority_groups[3]:
@@ -948,12 +949,199 @@ No previous project learnings available. Starting fresh.
                 project=project,
                 agent_jobs=agent_jobs
             )
-        else:
-            return self._build_multi_terminal_execution_prompt(
-                orchestrator_id=orchestrator_job_id,
-                project=project,
-                agent_jobs=agent_jobs
+        return self._build_multi_terminal_execution_prompt(
+            orchestrator_id=orchestrator_job_id,
+            project=project,
+            agent_jobs=agent_jobs
+        )
+
+    async def generate_staging_prompt(
+        self,
+        orchestrator_id: str,
+        project_id: str,
+        claude_code_mode: bool = False
+    ) -> str:
+        """
+        Generate staging phase prompt with 7-task workflow.
+
+        Handover 0246a: Implements complete staging workflow with:
+        1. Identity & Context Verification
+        2. MCP Health Check
+        3. Environment Understanding
+        4. Agent Discovery & Version Check (CRITICAL)
+        5. Context Prioritization & Mission Creation
+        6. Agent Job Spawning
+        7. Activation
+
+        Args:
+            orchestrator_id: Orchestrator job UUID
+            project_id: Project UUID
+            claude_code_mode: Use Claude Code CLI mode (default: False)
+
+        Returns:
+            Staging prompt (~800-1000 tokens with all tasks)
+
+        Raises:
+            ValueError: If project or product not found
+        """
+        logger.info(
+            "Generating staging prompt",
+            extra={
+                "orchestrator_id": orchestrator_id,
+                "project_id": project_id,
+                "claude_code_mode": claude_code_mode,
+                "tenant_key": self.tenant_key
+            }
+        )
+
+        # Fetch required data (reuse existing helpers)
+        project = await self._fetch_project(project_id)
+        product = await self._fetch_product(project_id)
+
+        if not project or not product:
+            logger.error(
+                f"Project {project_id} or product not found",
+                extra={"project_id": project_id, "tenant_key": self.tenant_key}
             )
+            raise ValueError(f"Project {project_id} or its product not found")
+
+        # Determine execution mode label
+        execution_mode = "Claude Code CLI" if claude_code_mode else "Manual Multi-Terminal"
+
+        # Build 7-task staging prompt (optimized for <1200 tokens)
+        prompt = f"""STAGING WORKFLOW: {project.name}
+{'='*70}
+IDENTITY
+Project ID: {project_id}
+Product ID: {product.id}
+Tenant: {self.tenant_key}
+Orchestrator: {orchestrator_id}
+Mode: {execution_mode}
+WebSocket: Active
+
+{'='*70}
+TASK 1: IDENTITY & CONTEXT VERIFICATION
+{'='*70}
+Verify project identity and orchestrator connection.
+
+1. Confirm project ID: {project_id}
+2. Confirm product ID: {product.id}
+3. Confirm tenant: {self.tenant_key}
+4. Verify orchestrator: {orchestrator_id}
+5. Check WebSocket
+
+Result: All identifiers confirmed | Timeout: 10s
+
+{'='*70}
+TASK 2: MCP HEALTH CHECK
+{'='*70}
+Verify MCP server health and tool availability.
+
+1. Call health_check() MCP tool
+2. Verify response < 2s
+3. List MCP tools
+4. Validate: get_available_agents(), fetch_product_context(), fetch_vision_document(), fetch_git_history(), fetch_360_memory()
+
+Result: MCP confirmed | Timeout: 10s
+
+{'='*70}
+TASK 3: ENVIRONMENT UNDERSTANDING
+{'='*70}
+Understand project environment.
+
+1. Read CLAUDE.MD
+2. Extract tech stack
+3. Parse structure
+4. Load config
+
+Result: Environment analyzed | Timeout: 30s
+
+{'='*70}
+TASK 4: AGENT DISCOVERY & VERSION CHECK
+{'='*70}
+Discover agents and validate compatibility.
+
+1. Call get_available_agents() MCP tool
+   Returns: agents with version, capabilities, type
+2. For each agent:
+   - Extract version
+   - Check compatibility
+   - Validate capabilities
+   - Verify initialization
+3. Build compatibility matrix
+
+Criteria: version >= min_required, has required_capabilities, status=initialized
+
+CRITICAL: Call get_available_agents() - do NOT hardcode agents
+
+Result: Compatible agents discovered | Timeout: 30s
+
+{'='*70}
+TASK 5: CONTEXT PRIORITIZATION & MISSION
+{'='*70}
+Build unified mission with user priorities.
+
+1. Fetch context via MCP tools:
+   - fetch_product_context()
+   - fetch_vision_document()
+   - fetch_git_history()
+   - fetch_360_memory()
+2. Synthesize mission (<10K tokens)
+3. Store via update_project_mission()
+
+Result: Mission created | Timeout: 60s
+
+{'='*70}
+TASK 6: AGENT JOB SPAWNING
+{'='*70}
+Create agent jobs.
+
+1. For each compatible agent:
+   - spawn_agent_job()
+   - status: waiting
+   - mode: {(claude_code_mode and 'claude_code') or 'manual'}
+   - mission from Task 5
+2. Verify creation
+
+Result: Jobs created | Timeout: 30s
+
+{'='*70}
+TASK 7: PROJECT ACTIVATION
+{'='*70}
+Activate project and begin orchestration.
+
+1. Set status: active
+2. Enable WebSocket
+3. Init health monitor
+4. Start polling (5s)
+5. Track context usage
+6. Emit project:activated
+7. Log start
+
+Result: Project active | Timeout: 10s | Status: COMPLETE
+
+{'='*70}
+END STAGING WORKFLOW
+{'='*70}
+"""
+
+        # Calculate token count (conservative estimate: 1 token ≈ 4 characters)
+        estimated_tokens = len(prompt) // 4
+
+        logger.info(
+            "Staging prompt generated successfully",
+            extra={
+                "orchestrator_id": orchestrator_id,
+                "project_id": project_id,
+                "project_name": project.name,
+                "estimated_tokens": estimated_tokens,
+                "prompt_length": len(prompt),
+                "execution_mode": execution_mode,
+                "tenant_key": self.tenant_key
+            }
+        )
+
+        return prompt
 
     def _build_multi_terminal_execution_prompt(
         self,
@@ -1084,6 +1272,7 @@ Reference: See Handover 0106b for full sub-agent spawn instructions
             ]
         """
         from sqlalchemy import select
+
         from src.giljo_mcp.models import AgentTemplate
 
         # Query agent templates for this tenant's products
