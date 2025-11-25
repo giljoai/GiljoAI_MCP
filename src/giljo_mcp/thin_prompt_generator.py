@@ -440,7 +440,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
                 f"fetch_vision_document(product_id='{product.id}', tenant_key='{self.tenant_key}', chunking='{depth_config.get('vision_chunking', 'moderate')}')"
             ],
             "agent_templates": [
-                f"fetch_agent_templates(product_id='{product.id}', tenant_key='{self.tenant_key}', detail='{depth_config.get('agent_template_detail', 'standard')}')"
+                f"get_available_agents(tenant_key='{self.tenant_key}', active_only=True)"
             ],
             "project_context": [
                 # Inline project data (small, ~200 tokens) - NOT an MCP tool
@@ -823,13 +823,8 @@ No previous project learnings available. Starting fresh.
         git_section = self._inject_git_instructions(product)
 
         # Handover 0306: Inject Agent Templates (CONDITIONAL - based on priority)
-        agent_section = ""
-        agent_priority = self._get_field_priority("agent_templates", field_priorities)
-
-        if agent_priority:  # Not unassigned
-            templates = await self._get_agent_templates()
-            if templates:
-                agent_section = self._format_agent_templates(templates, agent_priority)
+        # Handover 0246c: Agent templates no longer embedded (use get_available_agents MCP tool)
+        agent_section = ""  # Deprecated: templates fetched via MCP tool
 
         # Insert injections BEFORE "YOUR ROLE" section
         # This places context EARLY in the prompt for maximum impact
@@ -1249,125 +1244,6 @@ STEP 3: COORDINATE WORKFLOW
 
 Reference: See Handover 0106b for full sub-agent spawn instructions
 """
-
-    async def _get_agent_templates(self) -> list[dict]:
-        """
-        Retrieve agent templates for the current tenant.
-
-        Returns list of agent template dictionaries with metadata.
-        Uses tenant_key from instance for multi-tenant isolation.
-
-        Returns:
-            List of agent template dicts with name, role, capabilities, etc.
-
-        Example:
-            [
-                {
-                    "name": "implementer",
-                    "role": "Backend implementation specialist",
-                    "capabilities": ["Python", "FastAPI"],
-                    "expertise": ["API design"],
-                    "typical_tasks": ["Implement features"]
-                }
-            ]
-        """
-        from sqlalchemy import select
-
-        from src.giljo_mcp.models import AgentTemplate
-
-        # Query agent templates for this tenant's products
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == self.tenant_key,
-            AgentTemplate.is_active == True
-        ).order_by(AgentTemplate.name)
-
-        result = await self.db.execute(stmt)
-        templates = result.scalars().all()
-
-        # Convert to dict format for formatting
-        template_list = []
-        for template in templates:
-            template_dict = {
-                "name": template.name,
-                "role": template.role or "Specialized agent",
-                "description": template.description
-            }
-
-            # Extract capabilities, expertise, typical_tasks from meta_data
-            if template.meta_data:
-                template_dict["capabilities"] = template.meta_data.get("capabilities", [])
-                template_dict["expertise"] = template.meta_data.get("expertise", [])
-                template_dict["typical_tasks"] = template.meta_data.get("typical_tasks", [])
-
-            template_list.append(template_dict)
-
-        return template_list
-
-    def _format_agent_templates(self, templates: list[dict], priority: int) -> str:
-        """
-        Format agent templates based on priority level.
-
-        Args:
-            templates: List of agent template dictionaries
-            priority: Priority level (1=full, 2=summary, 3=names-only)
-
-        Returns:
-            Formatted markdown string with agent template section
-
-        Priority Levels:
-            1 (Full): Name, role, capabilities, expertise, typical tasks
-            2 (Summary): Name, role, capabilities only
-            3 (Names): Name and role only
-        """
-        if not templates:
-            return ""
-
-        sections = ["\n## Available Agents\n"]
-        sections.append("You have access to the following specialized agents for this project:\n")
-
-        for template in templates:
-            name = template.get("name", "Unknown Agent")
-            role = template.get("role", "Specialized agent")
-
-            # Priority 1: Full detail
-            if priority == 1:
-                sections.append(f"\n### {name.title()} Agent")
-                sections.append(f"- **Role**: {role}")
-
-                if capabilities := template.get("capabilities"):
-                    if isinstance(capabilities, list):
-                        sections.append(f"- **Capabilities**: {', '.join(capabilities)}")
-                    else:
-                        sections.append(f"- **Capabilities**: {capabilities}")
-
-                if expertise := template.get("expertise"):
-                    if isinstance(expertise, list):
-                        sections.append(f"- **Expertise**: {', '.join(expertise)}")
-                    else:
-                        sections.append(f"- **Expertise**: {expertise}")
-
-                if typical_tasks := template.get("typical_tasks"):
-                    if isinstance(typical_tasks, list):
-                        sections.append(f"- **Typical Tasks**: {', '.join(typical_tasks)}")
-                    else:
-                        sections.append(f"- **Typical Tasks**: {typical_tasks}")
-
-            # Priority 2: Summary (role and capabilities only)
-            elif priority == 2:
-                sections.append(f"\n### {name.title()}")
-                sections.append(f"- **Role**: {role}")
-
-                if capabilities := template.get("capabilities"):
-                    if isinstance(capabilities, list):
-                        sections.append(f"- **Capabilities**: {', '.join(capabilities)}")
-                    else:
-                        sections.append(f"- **Capabilities**: {capabilities}")
-
-            # Priority 3: Names and roles only
-            elif priority == 3:
-                sections.append(f"- **{name.title()}**: {role}")
-
-        sections.append("\n")
         return "\n".join(sections)
 
     def _get_field_priority(self, field_name: str, user_priorities: Optional[dict]) -> Optional[int]:
