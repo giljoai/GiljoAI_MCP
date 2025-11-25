@@ -225,7 +225,7 @@ class TestSuccessionModePreservationE2E:
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Orchestrator D",
             job_metadata={
                 "user_id": test_user.id,
