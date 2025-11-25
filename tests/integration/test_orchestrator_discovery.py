@@ -68,7 +68,8 @@ async def test_project(db_session: AsyncSession, test_user: User, test_product: 
         description="Test project for token reduction",
         tenant_key=test_user.tenant_key,
         product_id=test_product.id,
-        status="active"
+        status="active",
+        mission="Test mission for token reduction"
     )
     db_session.add(project)
     await db_session.commit()
@@ -117,7 +118,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate_prompt(
+        prompt = await generator.generate(
             instance_number=1,
             tool="claude-code"
         )
@@ -173,7 +174,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate_prompt(
+        prompt = await generator.generate(
             instance_number=1,
             tool="claude-code"
         )
@@ -263,7 +264,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate_prompt(
+        prompt = await generator.generate(
             instance_number=1,
             tool="claude-code"
         )
@@ -325,7 +326,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate_prompt(
+        prompt = await generator.generate(
             instance_number=1,
             tool="claude-code"
         )
