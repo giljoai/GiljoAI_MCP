@@ -79,20 +79,27 @@ class TestMultiTerminalModeWorkflow:
             tenant_manager=tenant_manager
         )
 
-        project_result = await project_service.create_project({
-            "name": f"Multi-Terminal E2E Project {uuid4().hex[:8]}",
-            "description": "E2E test for Multi-Terminal mode",
-            "product_id": test_product.id,
-            "mission": "Test Multi-Terminal workflow",
-            "meta_data": {}  # No execution_mode → defaults to multi-terminal
-        })
+        project_result = await project_service.create_project(
+            name=f"Multi-Terminal E2E Project {uuid4().hex[:8]}",
+            mission="Test Multi-Terminal workflow",
+            description="E2E test for Multi-Terminal mode",
+            product_id=str(test_product.id),
+            tenant_key=tenant_key
+        )
 
         assert project_result["success"] is True
-        project = project_result["data"]
+        project_id = project_result["project_id"]
+
+        # Fetch project from database
+        from sqlalchemy import select
+        from src.giljo_mcp.models.projects import Project
+        stmt = select(Project).where(Project.id == project_id)
+        result = await db_session.execute(stmt)
+        project = result.scalar_one()
 
         # Step 2: Verify default mode is multi-terminal
         # (or leave it unset, which means multi-terminal by default)
-        default_mode = project.meta_data.get("execution_mode", "multi-terminal")
+        default_mode = project.meta_data.get("execution_mode", "multi-terminal") if project.meta_data else "multi-terminal"
         assert default_mode == "multi-terminal", \
             "Default execution mode should be multi-terminal"
 
@@ -107,7 +114,7 @@ class TestMultiTerminalModeWorkflow:
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission=f"Orchestrate {project.name}",
             job_metadata={
                 "user_id": test_user.id,
@@ -297,7 +304,7 @@ class TestMultiTerminalModeWorkflow:
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test",
             job_metadata={
                 "user_id": test_user.id,
@@ -365,7 +372,7 @@ class TestMultiTerminalModeWorkflow:
             project_id=legacy_project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Legacy test",
             job_metadata={
                 "user_id": test_user.id

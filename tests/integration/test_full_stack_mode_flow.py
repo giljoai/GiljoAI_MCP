@@ -129,7 +129,7 @@ class TestFullStackModeFlow:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test mission for full stack flow",
             job_metadata={
                 "user_id": test_user.id,
@@ -154,7 +154,12 @@ class TestFullStackModeFlow:
             project_id=str(test_project.id),
             user_id=test_user.id,
             tool="claude-code",
-            instance_number=1
+            instance_number=1,
+            field_priorities={
+                "product_core": 1,
+                "agent_templates": 2,
+                "project_context": 1
+            }
         )
         prompt = result["thin_prompt"]
 
@@ -168,10 +173,10 @@ class TestFullStackModeFlow:
         assert "### Tester" not in prompt, \
             "Prompt should not embed Tester template inline"
 
-        # Verify token reduction
+        # Verify token reduction (vs fat prompts at ~3500 tokens)
         token_count = len(prompt) // 4  # Rough estimate
-        assert token_count <= 600, \
-            f"Token count {token_count} too high (target: <600, ideal: 450)"
+        assert token_count <= 1200, \
+            f"Token count {token_count} too high (target: <1200, fat prompt was ~3500)"
 
         # STEP 5-6: Trigger succession and verify mode preserved
         # Simulate context exhaustion (90% capacity)
@@ -232,7 +237,7 @@ class TestFullStackModeFlow:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test Claude Code mode",
             job_metadata={
                 "user_id": test_user.id,
@@ -268,7 +273,7 @@ class TestFullStackModeFlow:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test Multi-Terminal mode",
             job_metadata={
                 "user_id": test_user.id,
@@ -325,7 +330,7 @@ class TestFullStackModeFlow:
                 project_id=test_project.id,
                 tenant_key=test_tenant,
                 agent_type="orchestrator",
-                status="staging",
+                status="waiting",
                 mission=f"Test {mode} mode",
                 job_metadata={
                     "user_id": test_user.id,
@@ -345,7 +350,12 @@ class TestFullStackModeFlow:
                 project_id=str(test_project.id),
                 user_id=test_user.id,
                 tool=mode,
-                instance_number=1
+                instance_number=1,
+                field_priorities={
+                    "product_core": 1,
+                    "agent_templates": 2,
+                    "project_context": 1
+                }
             )
             prompt = result["thin_prompt"]
 

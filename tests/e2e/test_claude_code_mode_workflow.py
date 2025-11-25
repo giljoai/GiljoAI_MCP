@@ -79,16 +79,23 @@ class TestClaudeCodeModeWorkflow:
             tenant_manager=tenant_manager
         )
 
-        project_result = await project_service.create_project({
-            "name": f"Claude Code E2E Project {uuid4().hex[:8]}",
-            "description": "E2E test for Claude Code mode",
-            "product_id": test_product.id,
-            "mission": "Test Claude Code workflow",
-            "meta_data": {}
-        })
+        project_result = await project_service.create_project(
+            name=f"Claude Code E2E Project {uuid4().hex[:8]}",
+            mission="Test Claude Code workflow",
+            description="E2E test for Claude Code mode",
+            product_id=str(test_product.id),
+            tenant_key=tenant_key
+        )
 
         assert project_result["success"] is True
-        project = project_result["data"]
+        project_id = project_result["project_id"]
+
+        # Fetch project from database
+        from sqlalchemy import select
+        from src.giljo_mcp.models.projects import Project
+        stmt = select(Project).where(Project.id == project_id)
+        result = await db_session.execute(stmt)
+        project = result.scalar_one()
 
         # Step 2: Toggle execution mode to "claude-code"
         project.meta_data = {"execution_mode": "claude-code"}
@@ -105,7 +112,7 @@ class TestClaudeCodeModeWorkflow:
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission=f"Orchestrate {project.name}",
             job_metadata={
                 "user_id": test_user.id,
@@ -290,7 +297,7 @@ class TestClaudeCodeModeWorkflow:
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test",
             job_metadata={
                 "user_id": test_user.id,
