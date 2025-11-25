@@ -9,12 +9,70 @@ GiljoAI MCP orchestrators have **automatic context tracking**, **staging workflo
 
 **Key Features (v3.2)**:
 - **7-Task Staging Workflow**: Validates environment before agent execution (Handover 0246a)
-- **Dynamic Agent Discovery**: Discovers agents via MCP tools (no embedded templates)
+- **Dynamic Agent Discovery**: Discovers agents via MCP tools (no embedded templates, 71% token reduction)
 - **Generic Agent Template**: Unified protocol for multi-terminal mode (Handover 0246b)
 - **Automatic Succession**: Spawns successor at 90% context capacity
 - **Context Prioritization**: Condenses missions to <10K tokens for handover
+- **Token Optimization**: 85% reduction in orchestrator prompts (~3,500 → ~450-550 tokens)
 
 **Key Benefit**: **context prioritization and orchestration** through mission condensation + **unlimited project duration** through graceful succession + **environment validation** through comprehensive staging.
+
+### Complete Orchestrator Workflow Pipeline (v3.2)
+
+**Implementation**: Handovers 0246a, 0246b, 0246c
+**Total Token Savings**: 85% reduction (3,000+ tokens per orchestrator instance)
+
+The orchestrator workflow consists of four key phases:
+
+```
+User Action: "Launch Project"
+        ↓
+┌─────────────────────────────────────────────────────┐
+│ PHASE 1: STAGING (7 Tasks)                         │
+│ - Identity & Context Verification                   │
+│ - MCP Health Check                                  │
+│ - Environment Understanding                         │
+│ - Agent Discovery (get_available_agents)            │
+│ - Context Prioritization (9 MCP context tools)      │
+│ - Agent Job Spawning (MCPAgentJob records)          │
+│ - Activation (project → active status)              │
+│ Token Budget: 931 tokens (22% under 1200 limit)     │
+└────────────┬────────────────────────────────────────┘
+             ↓
+┌─────────────────────────────────────────────────────┐
+│ PHASE 2: DISCOVERY                                  │
+│ - Call get_available_agents() MCP tool              │
+│ - Receives agent metadata (name, version, type)     │
+│ - Validates version compatibility                   │
+│ - NO EMBEDDED TEMPLATES (71% token savings)         │
+│ Token Savings: 420 tokens (dynamic vs embedded)     │
+└────────────┬────────────────────────────────────────┘
+             ↓
+┌─────────────────────────────────────────────────────┐
+│ PHASE 3: SPAWNING                                   │
+│ - Claude Code CLI Mode: Task tool spawns sub-agents │
+│ - Multi-Terminal Mode: get_generic_agent_template() │
+│ - Agent calls get_agent_mission(job_id)             │
+│ - Agent receives mission-specific context           │
+│ Token Budget: ~1,253 tokens per agent (generic)     │
+└────────────┬────────────────────────────────────────┘
+             ↓
+┌─────────────────────────────────────────────────────┐
+│ PHASE 4: EXECUTION                                  │
+│ - Agents execute 6-phase protocol                   │
+│ - Real-time coordination via messaging              │
+│ - Context tracking (90% → auto succession)          │
+│ - Progress reporting via WebSocket                  │
+└─────────────────────────────────────────────────────┘
+```
+
+**Token Optimization Breakdown**:
+- **Baseline (pre-0246)**: ~3,500 tokens per orchestrator (fat prompt)
+- **After 0246a (staging)**: ~931 tokens (staging workflow)
+- **After 0246b (generic template)**: +1,253 tokens per agent
+- **After 0246c (dynamic discovery)**: -420 tokens (removed embedded templates)
+- **Final Result**: ~450-550 tokens per orchestrator prompt
+- **Total Savings**: ~3,000 tokens (85% reduction)
 
 ---
 
@@ -111,6 +169,11 @@ staging_prompt = generator._build_staging_prompt()
 
 **Code Reference**: `src/giljo_mcp/prompts/thin_prompt_generator.py::_build_staging_prompt()`
 
+**Related Documentation**:
+- Complete technical details: [SERVER_ARCHITECTURE_TECH_STACK.md](SERVER_ARCHITECTURE_TECH_STACK.md#orchestrator-staging--agent-spawning-architecture-v32)
+- Step-by-step workflow: [components/STAGING_WORKFLOW.md](components/STAGING_WORKFLOW.md)
+- Quick reference: [CLAUDE.md](../CLAUDE.md#orchestrator-workflow-pipeline-v32-handovers-0246a-c)
+
 ### Dynamic Agent Discovery
 
 **No Embedded Templates**: GiljoAI v3.2 eliminates hardcoded agent templates from staging prompts.
@@ -147,9 +210,34 @@ result = get_available_agents()
 - Verifies: `agent.status == 'initialized'`
 - Reports: Version conflicts and incompatibilities
 
-**Token Savings**: 142 tokens (no embedded templates)
+**Token Savings**: 420 tokens (71% reduction vs embedded templates)
 
-**Code Reference**: `src/giljo_mcp/tools/orchestration.py::get_available_agents()`
+**Implementation Details** (Handover 0246c):
+- **New MCP Tool**: `src/giljo_mcp/tools/agent_discovery.py` (167 lines)
+- **Function**: `get_available_agents(session, tenant_key, active_only=True)`
+- **Features**:
+  - Multi-tenant isolation (tenant_key filtering)
+  - Version metadata tracking
+  - Active-only filtering option
+  - Graceful error handling
+  - Production-grade logging
+
+**Before (embedded templates in prompts)**:
+- 5-8 agent templates fully embedded in staging prompt
+- Each template: ~71-86 tokens
+- Total overhead: ~430 tokens per orchestrator
+
+**After (dynamic discovery)**:
+- Single MCP call: `get_available_agents(tenant_key, active_only=True)`
+- Overhead: ~10 tokens (just the function call)
+- Agent metadata returned (name, version, type, capabilities)
+- Templates fetched on-demand when needed
+
+**Code References**:
+- Discovery Tool: `src/giljo_mcp/tools/agent_discovery.py`
+- Integration: `src/giljo_mcp/tools/orchestration.py::get_available_agents()`
+- Tests: `tests/unit/test_agent_discovery.py` (11 tests, 100% passing)
+- Integration Tests: `tests/integration/test_orchestrator_discovery.py` (6 tests)
 
 ### Staging Result Storage
 
@@ -900,11 +988,26 @@ if not job.handover_context_refs:
 
 ## Related Documentation
 
+### Core Documentation
+- **Architecture**: [SERVER_ARCHITECTURE_TECH_STACK.md](SERVER_ARCHITECTURE_TECH_STACK.md) - Complete system architecture
+- **Staging Workflow**: [components/STAGING_WORKFLOW.md](components/STAGING_WORKFLOW.md) - 7-task staging details
 - **Services**: [SERVICES.md](SERVICES.md) - OrchestrationService API
 - **Testing**: [TESTING.md](TESTING.md) - Succession test patterns
-- **User Guide**: [docs/user_guides/orchestrator_succession_guide.md](user_guides/orchestrator_succession_guide.md)
-- **Developer Guide**: [docs/developer_guides/orchestrator_succession_developer_guide.md](developer_guides/orchestrator_succession_developer_guide.md)
+
+### User Guides
+- **Orchestrator Succession**: [user_guides/orchestrator_succession_guide.md](user_guides/orchestrator_succession_guide.md)
+- **Agent Execution Modes**: [user_guides/AGENT_EXECUTION_MODES.md](user_guides/AGENT_EXECUTION_MODES.md)
+
+### Developer Guides
+- **Succession Developer Guide**: [developer_guides/orchestrator_succession_developer_guide.md](developer_guides/orchestrator_succession_developer_guide.md)
+- **Quick Reference**: [../CLAUDE.md](../CLAUDE.md#orchestrator-workflow-pipeline-v32-handovers-0246a-c)
+
+### Handover Documents (0246 Series)
+- **Handover 0246a**: Staging Prompt Implementation (7-task workflow, 931 tokens)
+- **Handover 0246b**: Generic Agent Template (6-phase protocol, 1,253 tokens)
+- **Handover 0246c**: Dynamic Agent Discovery (71% token savings, 420 tokens)
+- **Summary**: [../handovers/orchestrator_workflow_after246.md](../handovers/orchestrator_workflow_after246.md)
 
 ---
 
-**Last Updated**: 2025-11-15 (Post-Remediation v3.1.1)
+**Last Updated**: 2025-11-24 (v3.2 - Handovers 0246a-c integrated)
