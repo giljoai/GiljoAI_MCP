@@ -386,17 +386,17 @@ class TestSuccessionModePreservationE2E:
 
         # Generate prompt for A
         generator_a = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator_a.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt_a = await generator_a.generate(
-            instance_number=1,
-            tool="claude-code"
+        result_a = await generator_a.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt_a = result_a["thin_prompt"]
 
         # Trigger succession (A→B)
         orchestration_service = OrchestrationService(
@@ -418,17 +418,17 @@ class TestSuccessionModePreservationE2E:
 
         # Generate prompt for B
         generator_b = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator_b.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt_b = await generator_b.generate(
-            instance_number=2,
-            tool="claude-code"
+        result_b = await generator_b.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=2
         )
+        prompt_b = result_b["thin_prompt"]
 
         # Both prompts should use Claude Code mode
         assert "Task" in prompt_a or "task tool" in prompt_a.lower()
