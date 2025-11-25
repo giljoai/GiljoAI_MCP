@@ -1,13 +1,404 @@
 # Orchestrator Context Tracking & Succession
 
-**Version**: v3.1+ (Handover 0080, 0502)
-**Last Updated**: 2025-11-15
+**Version**: v3.2+ (Handover 0080, 0246a, 0246b)
+**Last Updated**: 2025-11-24
 
 ## Overview
 
-GiljoAI MCP orchestrators have **automatic context tracking** and **succession mechanisms** to handle unlimited project duration. When an orchestrator's context window reaches 90% capacity, a successor is automatically spawned with a condensed handover summary (<10K tokens).
+GiljoAI MCP orchestrators have **automatic context tracking**, **staging workflows**, and **succession mechanisms** to handle complex multi-agent execution.
 
-**Key Benefit**: **context prioritization and orchestration** through mission condensation + **unlimited project duration** through graceful succession.
+**Key Features (v3.2)**:
+- **7-Task Staging Workflow**: Validates environment before agent execution (Handover 0246a)
+- **Dynamic Agent Discovery**: Discovers agents via MCP tools (no embedded templates)
+- **Generic Agent Template**: Unified protocol for multi-terminal mode (Handover 0246b)
+- **Automatic Succession**: Spawns successor at 90% context capacity
+- **Context Prioritization**: Condenses missions to <10K tokens for handover
+
+**Key Benefit**: **context prioritization and orchestration** through mission condensation + **unlimited project duration** through graceful succession + **environment validation** through comprehensive staging.
+
+---
+
+## Orchestrator Staging Workflow (v3.2)
+
+### Overview
+
+**Implementation**: Handover 0246a
+**Purpose**: Prepare project for multi-agent execution through comprehensive validation
+
+Before spawning any agents, the orchestrator executes a **7-task staging workflow** that validates:
+- MCP server health and connectivity
+- Environment understanding (CLAUDE.md, tech stack)
+- Available agents (via dynamic discovery)
+- Context prioritization settings
+- Agent job spawning readiness
+
+### The 7 Staging Tasks
+
+```
+1. IDENTITY & CONTEXT VERIFICATION
+   ├─ Verify project ID, name, scope
+   ├─ Confirm tenant isolation
+   ├─ Validate orchestrator connection
+   └─ Include Product ID for context tracking
+
+2. MCP HEALTH CHECK
+   ├─ Verify MCP server responsive
+   ├─ Check all required MCP tools available
+   ├─ Validate authentication tokens
+   └─ Test connection stability
+
+3. ENVIRONMENT UNDERSTANDING
+   ├─ Read CLAUDE.md configuration
+   ├─ Understand tech stack (Python, FastAPI, Vue3)
+   ├─ Parse project structure
+   ├─ Identify critical paths
+   └─ Load context management settings
+
+4. AGENT DISCOVERY & VERSION CHECK
+   ├─ Call get_available_agents() MCP tool
+   ├─ Discover all available agents in system
+   ├─ Check version compatibility for each agent
+   ├─ Validate agent capabilities match project needs
+   └─ NO EMBEDDED TEMPLATES (fetch dynamically)
+
+5. CONTEXT PRIORITIZATION & MISSION
+   ├─ Apply user's context priority settings
+   ├─ Fetch product context via context tools
+   ├─ Fetch relevant vision documents
+   ├─ Fetch git history for context
+   ├─ Generate unified orchestrator mission
+   └─ Condense into <10K tokens
+
+6. AGENT JOB SPAWNING
+   ├─ Create MCPAgentJob records for each agent
+   ├─ Assign execution mode (claude-code or multi-terminal)
+   ├─ Set initial status to 'waiting'
+   └─ Store staging result in database
+
+7. ACTIVATION
+   ├─ Transition project to 'active' status
+   ├─ Enable WebSocket event broadcasts
+   ├─ Start monitoring orchestrator health
+   └─ Begin agent job polling
+```
+
+### Staging Prompt Generation
+
+**Token Budget**: 931 tokens (22% under 1200-token limit)
+
+**Implementation**:
+```python
+from src.giljo_mcp.prompts.thin_prompt_generator import ThinClientPromptGenerator
+
+generator = ThinClientPromptGenerator(
+    project_id=project_id,
+    product_id=product_id,
+    tenant_key=tenant_key
+)
+
+# Generate 7-task staging prompt
+staging_prompt = generator._build_staging_prompt()
+
+# Prompt includes:
+# - Identity section (project_id, product_id, tenant_key)
+# - MCP health check instructions
+# - Environment understanding tasks
+# - Agent discovery via get_available_agents() tool
+# - Context prioritization guidance
+# - Job spawning protocol
+# - Activation checklist
+```
+
+**Code Reference**: `src/giljo_mcp/prompts/thin_prompt_generator.py::_build_staging_prompt()`
+
+### Dynamic Agent Discovery
+
+**No Embedded Templates**: GiljoAI v3.2 eliminates hardcoded agent templates from staging prompts.
+
+**Discovery Process**:
+```python
+# Orchestrator calls during Task 4
+result = get_available_agents()
+
+# Returns agent metadata:
+{
+  "agents": [
+    {
+      "name": "implementer",
+      "version": "1.0.3",
+      "type": "role",
+      "required_context": ["tech_stack", "architecture"],
+      "capabilities": ["code_generation", "refactoring"]
+    },
+    {
+      "name": "tester",
+      "version": "1.0.2",
+      "type": "role",
+      "required_context": ["tech_stack", "testing_config"],
+      "capabilities": ["unit_testing", "integration_testing"]
+    }
+  ]
+}
+```
+
+**Version Compatibility Validation**:
+- Checks: `agent.version >= minimum_required_version`
+- Validates: `required_capabilities ⊆ agent.capabilities`
+- Verifies: `agent.status == 'initialized'`
+- Reports: Version conflicts and incompatibilities
+
+**Token Savings**: 142 tokens (no embedded templates)
+
+**Code Reference**: `src/giljo_mcp/tools/orchestration.py::get_available_agents()`
+
+### Staging Result Storage
+
+After successful staging, results are stored in `MCPAgentJob.staging_result`:
+
+```json
+{
+  "staging_tasks_completed": [
+    "identity_verification",
+    "mcp_health_check",
+    "environment_understanding",
+    "agent_discovery",
+    "context_prioritization",
+    "job_spawning",
+    "activation"
+  ],
+  "agents_discovered": [
+    {"name": "implementer", "version": "1.0.3", "compatible": true},
+    {"name": "tester", "version": "1.0.2", "compatible": true},
+    {"name": "reviewer", "version": "1.0.1", "compatible": true}
+  ],
+  "context_budget_used": 8743,
+  "staging_duration_ms": 2341,
+  "execution_mode": "claude_code_cli"
+}
+```
+
+**Code Reference**: `src/giljo_mcp/models.py::MCPAgentJob.staging_result`
+
+---
+
+## Agent Execution Modes (v3.2)
+
+### Overview
+
+**Implementation**: Handover 0246b
+**Purpose**: Support both single-terminal (Claude Code) and multi-terminal (Generic) execution
+
+GiljoAI v3.2 supports two distinct agent execution modes:
+
+### Mode 1: Claude Code CLI (Single Terminal)
+
+**When to Use**:
+- Local development workflows
+- Single developer working on project
+- Rapid iteration with sub-agent spawning
+- Real-time agent coordination
+
+**Characteristics**:
+- Orchestrator spawns sub-agents via Task tool
+- All agents run in single Claude Code CLI session
+- Mission-specific prompts generated per agent
+- Direct message queue communication
+- Optimized for developer productivity
+
+**Implementation**:
+```python
+# Orchestrator uses Task tool
+Task(
+    agent_type="implementer",
+    mission="Implement user authentication with JWT tokens",
+    context=condensed_context
+)
+
+# Sub-agent executes in same terminal
+# Reports completion back to orchestrator
+```
+
+**Code Reference**: Claude Code Task tool integration
+
+### Mode 2: Manual Multi-Terminal (Generic Template)
+
+**When to Use**:
+- Distributed team execution
+- Multiple terminals/sessions required
+- Agent independence preferred
+- Debugging specific agent behaviors
+
+**Characteristics**:
+- Each agent runs in separate terminal/session
+- Generic unified template for all agent types
+- Mission fetched from database at runtime
+- Orchestrator coordinates via MCPAgentJob records
+- Optimized for distributed execution
+
+**Implementation**:
+```python
+# Terminal 1: Orchestrator spawns job
+job = await spawn_agent_job(
+    agent_type="implementer",
+    execution_mode="multi_terminal_generic",
+    mission="Implement authentication system",
+    status="waiting"
+)
+
+# Terminal 2: Implementer agent
+template = get_generic_agent_template(
+    agent_id=agent_id,
+    job_id=job.id,
+    product_id=product_id,
+    project_id=project_id,
+    tenant_key=tenant_key
+)
+
+# Agent calls get_agent_mission() to fetch work
+mission = get_agent_mission(job_id=job.id, tenant_key=tenant_key)
+
+# Agent executes mission and reports completion
+complete_job(job_id=job.id, result=result_summary)
+```
+
+**Code Reference**:
+- Template: `src/giljo_mcp/templates/generic_agent_template.py`
+- Tool: `src/giljo_mcp/tools/orchestration.py::get_generic_agent_template()`
+
+---
+
+## Generic Agent Template Protocol (v3.2)
+
+### Overview
+
+**Implementation**: Handover 0246b
+**Purpose**: Unified protocol for all agents in multi-terminal mode
+
+The Generic Agent Template provides a **single template** used by **all agent types** (implementer, tester, reviewer, analyzer, documenter).
+
+### Variable Injection
+
+**Orchestrator Injects**:
+```python
+{
+    "agent_id": "550e8400-e29b-41d4-a716-446655440000",
+    "job_id": "7e57d004-2b97-0e7a-b45f-5387367791cd",
+    "product_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "project_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "tenant_key": "user_alice_tenant_001"
+}
+```
+
+**Agent Fetches at Runtime**:
+```python
+# Call MCP tool
+mission_data = get_agent_mission(
+    job_id="7e57d004-2b97-0e7a-b45f-5387367791cd",
+    tenant_key="user_alice_tenant_001"
+)
+
+# Receives:
+{
+    "success": true,
+    "mission": "Implement user authentication with JWT tokens...",
+    "context": {
+        "project_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "product_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "agent_type": "implementer",
+        "priority": "high",
+        "related_agents": ["tester", "reviewer"]
+    },
+    "previous_work": [
+        {"agent": "analyzer", "summary": "Analyzed authentication requirements"}
+    ]
+}
+```
+
+### Six-Phase Execution Protocol
+
+All agents follow this standard protocol:
+
+**Phase 1: Initialization**
+- Verify identity (agent_id, job_id)
+- Check MCP health via `health_check()`
+- Read CLAUDE.md for project context and standards
+
+**Phase 2: Mission Fetch**
+- Call `get_agent_mission(job_id, tenant_key)`
+- Parse received mission and requirements
+- Understand scope and deliverables
+- Identify dependencies
+
+**Phase 3: Work Execution**
+- Execute the mission as specified
+- Follow GiljoAI standards (see CLAUDE.md)
+- Track progress at 25%, 50%, 75%, 100%
+- Collect all outputs (code, tests, documentation)
+
+**Phase 4: Progress Reporting**
+```python
+# Report at each milestone
+update_job_progress(
+    job_id=job_id,
+    percent_complete=25,
+    status_message="Initialization phase complete"
+)
+
+update_job_progress(
+    job_id=job_id,
+    percent_complete=50,
+    status_message="Core implementation complete"
+)
+
+# Continue at 75%, 100%
+```
+
+**Phase 5: Communication**
+```python
+# Send message to another agent
+send_message(
+    to_agent_id=tester_agent_id,
+    message="Authentication implementation complete. Ready for testing."
+)
+
+# Receive messages
+messages = receive_messages(agent_id=agent_id)
+
+# Acknowledge receipt
+for msg in messages:
+    acknowledge_message(message_id=msg['id'])
+```
+
+**Phase 6: Completion**
+```python
+# Mark job complete with results
+complete_job(
+    job_id=job_id,
+    result={
+        "status": "success",
+        "summary": "Implemented JWT-based authentication system",
+        "deliverables": [
+            "api/endpoints/auth.py",
+            "tests/test_auth.py",
+            "docs/AUTHENTICATION.md"
+        ],
+        "test_results": {"passed": 15, "failed": 0},
+        "documentation_updated": true,
+        "notes": "Ready for security review"
+    }
+)
+```
+
+### Template Token Budget
+
+**Token Count**: ~2400 tokens per agent
+
+**Breakdown**:
+- Protocol phases: ~1200 tokens
+- GiljoAI standards: ~800 tokens
+- Communication examples: ~400 tokens
+
+**Code Reference**: `src/giljo_mcp/templates/generic_agent_template.py::GenericAgentTemplate.render()`
 
 ---
 
