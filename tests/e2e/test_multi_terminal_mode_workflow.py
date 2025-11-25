@@ -121,17 +121,17 @@ class TestMultiTerminalModeWorkflow:
 
         # Step 4: Verify orchestrator prompt uses message passing
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="multi-terminal"
+        result = await generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="multi-terminal",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Multi-Terminal mode should reference message passing tools
         message_tools = ["send_message", "receive_messages", "spawn_agent_job"]
@@ -171,17 +171,17 @@ class TestMultiTerminalModeWorkflow:
 
         # Generate successor prompt
         successor_generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(successor.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        successor_prompt = await successor_generator.generate(
-            instance_number=2,  # Instance 2 after succession
-            tool="multi-terminal"
+        successor_result = await successor_generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="multi-terminal",
+            instance_number=2  # Instance 2 after succession
         )
+        successor_prompt = successor_result["thin_prompt"]
 
         # Successor should also use message passing
         has_message_tools_successor = any(tool in successor_prompt for tool in message_tools)
@@ -237,17 +237,17 @@ class TestMultiTerminalModeWorkflow:
 
         # Generate prompt
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="multi-terminal"
+        result = await generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="multi-terminal",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Verify message passing tools present
         assert "send_message" in prompt or "message passing" in prompt.lower(), \
@@ -309,17 +309,17 @@ class TestMultiTerminalModeWorkflow:
 
         # Generate prompt
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="multi-terminal"
+        result = await generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="multi-terminal",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Token estimation
         token_count = len(prompt) // 4
@@ -377,17 +377,17 @@ class TestMultiTerminalModeWorkflow:
 
         # Generate prompt
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(legacy_project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="multi-terminal"  # Default should be multi-terminal
+        result = await generator.generate(
+            project_id=str(legacy_project.id),
+            user_id=test_user.id,
+            tool="multi-terminal",  # Default should be multi-terminal
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Legacy projects should use message passing (multi-terminal default)
         message_tools = ["send_message", "receive_messages", "spawn_agent_job"]

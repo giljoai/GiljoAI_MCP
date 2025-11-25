@@ -119,17 +119,17 @@ class TestClaudeCodeModeWorkflow:
 
         # Step 4: Verify orchestrator prompt uses Task tool
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Claude Code mode should reference Task tool for agent spawning
         assert "Task" in prompt or "task tool" in prompt.lower(), \
@@ -166,17 +166,17 @@ class TestClaudeCodeModeWorkflow:
 
         # Generate successor prompt
         successor_generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(successor.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        successor_prompt = await successor_generator.generate(
-            instance_number=2,  # Instance 2 after succession
-            tool="claude-code"
+        successor_result = await successor_generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=2  # Instance 2 after succession
         )
+        successor_prompt = successor_result["thin_prompt"]
 
         # Successor should also use Task tool
         assert "Task" in successor_prompt or "task tool" in successor_prompt.lower(), \
@@ -231,17 +231,17 @@ class TestClaudeCodeModeWorkflow:
 
         # Generate prompt
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Verify Task tool instructions present
         assert "Task" in prompt, \
@@ -302,17 +302,17 @@ class TestClaudeCodeModeWorkflow:
 
         # Generate prompt
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(project.id),
-            tenant_key=tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Token estimation
         token_count = len(prompt) // 4

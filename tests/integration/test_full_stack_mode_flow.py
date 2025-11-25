@@ -16,7 +16,6 @@ Expected: Tests FAIL initially until all components integrated
 import pytest
 import pytest_asyncio
 from uuid import uuid4
-from httpx import AsyncClient
 
 from src.giljo_mcp.models import Project, MCPAgentJob, Product, User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -83,7 +82,7 @@ class TestFullStackModeFlow:
     """Full stack integration test for execution mode flow."""
 
     async def test_complete_flow_toggle_discovery_succession(
-        self, client: AsyncClient, db_session, db_manager, tenant_manager,
+        self, db_session, db_manager, tenant_manager,
         test_project, test_tenant, test_user
     ):
         """
@@ -147,17 +146,17 @@ class TestFullStackModeFlow:
         await db_session.refresh(orchestrator)
 
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_tenant,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_tenant
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(test_project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Verify dynamic discovery used (not embedded templates)
         assert "get_available_agents" in prompt.lower(), \
@@ -245,17 +244,17 @@ class TestFullStackModeFlow:
         await db_session.refresh(orchestrator_cc)
 
         generator_cc = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator_cc.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_tenant,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_tenant
         )
 
-        prompt_cc = await generator_cc.generate(
-            instance_number=1,
-            tool="claude-code"
+        result_cc = await generator_cc.generate(
+            project_id=str(test_project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt_cc = result_cc["thin_prompt"]
 
         # Claude Code mode should mention Task tool
         assert "Task" in prompt_cc or "task tool" in prompt_cc.lower(), \
@@ -281,17 +280,17 @@ class TestFullStackModeFlow:
         await db_session.refresh(orchestrator_mt)
 
         generator_mt = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator_mt.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_tenant,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_tenant
         )
 
-        prompt_mt = await generator_mt.generate(
-            instance_number=1,
-            tool="multi-terminal"
+        result_mt = await generator_mt.generate(
+            project_id=str(test_project.id),
+            user_id=test_user.id,
+            tool="multi-terminal",
+            instance_number=1
         )
+        prompt_mt = result_mt["thin_prompt"]
 
         # Multi-Terminal mode should mention message passing
         assert "message" in prompt_mt.lower() or "terminal" in prompt_mt.lower(), \
@@ -338,17 +337,17 @@ class TestFullStackModeFlow:
             await db_session.refresh(orchestrator)
 
             generator = ThinClientPromptGenerator(
-                session=db_session,
-                orchestrator_id=str(orchestrator.job_id),
-                project_id=str(test_project.id),
-                tenant_key=test_tenant,
-                user_id=test_user.id
+                db=db_session,
+                tenant_key=test_tenant
             )
 
-            prompt = await generator.generate(
-                instance_number=1,
-                tool=mode
+            result = await generator.generate(
+                project_id=str(test_project.id),
+                user_id=test_user.id,
+                tool=mode,
+                instance_number=1
             )
+            prompt = result["thin_prompt"]
 
             token_count = len(prompt) // 4  # Rough estimate
             token_counts[mode] = token_count
