@@ -317,6 +317,30 @@ TOTAL                                               194    132     4.89%
 
 ---
 
+## REFERENCE DOCUMENT - TDD RED PHASE RESULTS (2025-11-25)
+
+**Status**: REFERENCE MATERIAL ✅ - Moved to `handovers/completed/references/`
+
+This document preserved the TDD RED phase test results from Handover 0246d. The GREEN phase was completed through:
+- ✅ **0246d**: GREEN phase partial completion (47/61 tests passing)
+- ✅ **0247**: Integration gaps completion (52/52 unit tests passing)
+- ⚠️ **0248**: E2E test infrastructure refactoring (remaining work)
+
+**Purpose**: Preserved as reference for understanding:
+- Original TDD RED phase test structure (61 tests created)
+- Known schema issues (template_id column)
+- API signature mismatches identified
+- Coverage baseline (4.89% before implementation)
+
+**Implementation Evidence**:
+- Unit tests: 52/52 passing (100% on integration gap code)
+- Integration tests: Infrastructure issues identified (session isolation)
+- E2E tests: 14 tests created (infrastructure fixes pending in 0248)
+
+**Test Infrastructure Issues**: Documented in Handover 0248 for remediation (session isolation, invalid status values, API signatures)
+
+---
+
 **Handover Document**: `F:\GiljoAI_MCP\handovers\0246d_comprehensive_testing_integration.md`
 **Test Results**: This document (`0246d_test_results_red_phase.md`)
 **Coverage Report**: Run `pytest tests/ --cov=src/giljo_mcp --cov-report=html` after GREEN phase
