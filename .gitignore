@@ -72,6 +72,7 @@ dmypy.json
 # Claude and Serena (AI assistants)
 .claude/
 .serena/
+serena/
 
 # Logs
 *.log
@@ -145,6 +146,7 @@ CLAUDE.md
 
 # Serena MCP configuration (system-specific)
 .serena/
+serena/
 cleanup_auto.ps1
 cleanup_for_fresh_install.ps1
 IMPORTANT.txt
