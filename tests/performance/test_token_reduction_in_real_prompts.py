@@ -153,11 +153,8 @@ class TestTokenReductionInRealPrompts:
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_user.tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_user.tenant_key
         )
 
         # Generate staging prompt
@@ -214,17 +211,17 @@ class TestTokenReductionInRealPrompts:
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_user.tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_user.tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(test_project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Token estimation
         token_count = len(prompt) // 4
@@ -270,17 +267,17 @@ class TestTokenReductionInRealPrompts:
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_user.tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_user.tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(test_project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         # Should NOT contain embedded template sections
         embedded_indicators = [
@@ -335,17 +332,17 @@ class TestTokenReductionInRealPrompts:
             await db_session.commit()
 
             generator = ThinClientPromptGenerator(
-                session=db_session,
-                orchestrator_id=str(orchestrator.job_id),
-                project_id=str(test_project.id),
-                tenant_key=test_user.tenant_key,
-                user_id=test_user.id
+                db=db_session,
+                tenant_key=test_user.tenant_key
             )
 
-            prompt = await generator.generate(
-                instance_number=1,
-                tool=mode
+            result = await generator.generate(
+                project_id=str(test_project.id),
+                user_id=test_user.id,
+                tool=mode,
+                instance_number=1
             )
+            prompt = result["thin_prompt"]
 
             token_counts[mode] = len(prompt) // 4
 
@@ -406,17 +403,17 @@ class TestTokenReductionInRealPrompts:
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(
-            session=db_session,
-            orchestrator_id=str(orchestrator.job_id),
-            project_id=str(test_project.id),
-            tenant_key=test_user.tenant_key,
-            user_id=test_user.id
+            db=db_session,
+            tenant_key=test_user.tenant_key
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        result = await generator.generate(
+            project_id=str(test_project.id),
+            user_id=test_user.id,
+            tool="claude-code",
+            instance_number=1
         )
+        prompt = result["thin_prompt"]
 
         token_count = len(prompt) // 4
 
