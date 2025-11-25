@@ -1,0 +1,331 @@
+"""
+Phase 3: E2E Claude Code Mode Workflow Test (Handover 0246d)
+
+Tests complete user workflow for Claude Code execution mode:
+1. Create project
+2. Toggle execution mode to "claude-code"
+3. Stage project (spawn orchestrator)
+4. Verify orchestrator prompt uses Task tool
+5. Trigger succession
+6. Verify successor uses Task tool
+
+TDD Phase: RED (Tests written BEFORE E2E implementation)
+Expected: Tests MAY FAIL initially until E2E workflow complete
+"""
+
+import pytest
+import pytest_asyncio
+from uuid import uuid4
+
+from src.giljo_mcp.models import Project, MCPAgentJob, Product, User
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    """Create test user"""
+    user = User(
+        username=f"testuser_{uuid4().hex[:8]}",
+        email=f"test_{uuid4().hex[:8]}@example.com",
+        tenant_key=f"tenant_{uuid4().hex[:8]}",
+        role="developer",
+        password_hash="hashed_password"
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_product(db_session, test_user):
+    """Create test product"""
+    product = Product(
+        name=f"Test Product {uuid4().hex[:8]}",
+        description="E2E test product",
+        tenant_key=test_user.tenant_key,
+        is_active=True
+    )
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+    return product
+
+
+@pytest.mark.asyncio
+class TestClaudeCodeModeWorkflow:
+    """E2E tests for Claude Code execution mode workflow."""
+
+    async def test_complete_claude_code_workflow(
+        self, db_session, test_user, test_product
+    ):
+        """
+        Complete Claude Code workflow:
+        1. Create project
+        2. Toggle mode to "claude-code"
+        3. Stage project → spawn orchestrator
+        4. Verify orchestrator uses Task tool
+        5. Trigger succession
+        6. Verify successor uses Task tool
+        """
+
+        tenant_key = test_user.tenant_key
+
+        # Step 1: Create project
+        project_service = ProjectService(
+            session=db_session,
+            tenant_key=tenant_key
+        )
+
+        project_result = await project_service.create_project({
+            "name": f"Claude Code E2E Project {uuid4().hex[:8]}",
+            "description": "E2E test for Claude Code mode",
+            "product_id": test_product.id,
+            "mission": "Test Claude Code workflow",
+            "meta_data": {}
+        })
+
+        assert project_result["success"] is True
+        project = project_result["data"]
+
+        # Step 2: Toggle execution mode to "claude-code"
+        project.meta_data = {"execution_mode": "claude-code"}
+        await db_session.commit()
+
+        # Step 3: Stage project (spawn orchestrator)
+        orchestrator_service = OrchestrationService(
+            session=db_session,
+            tenant_key=tenant_key
+        )
+
+        # Create orchestrator job (simulates "Stage Project" button click)
+        orchestrator = MCPAgentJob(
+            project_id=project.id,
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            status="staging",
+            mission=f"Orchestrate {project.name}",
+            job_metadata={
+                "user_id": test_user.id,
+                "execution_mode": "claude-code",
+                "instance_number": 1
+            }
+        )
+        db_session.add(orchestrator)
+        await db_session.commit()
+        await db_session.refresh(orchestrator)
+
+        # Step 4: Verify orchestrator prompt uses Task tool
+        generator = ThinClientPromptGenerator(
+            session=db_session,
+            orchestrator_id=str(orchestrator.job_id),
+            project_id=str(project.id),
+            tenant_key=tenant_key,
+            user_id=test_user.id
+        )
+
+        prompt = await generator.generate(
+            instance_number=1,
+            tool="claude-code"
+        )
+
+        # Claude Code mode should reference Task tool for agent spawning
+        assert "Task" in prompt or "task tool" in prompt.lower(), \
+            "Claude Code mode orchestrator must reference Task tool"
+
+        # Should NOT use message passing (that's for multi-terminal mode)
+        message_passing_keywords = ["send_message(", "receive_messages("]
+        message_passing_found = any(kw in prompt for kw in message_passing_keywords)
+        assert not message_passing_found, \
+            "Claude Code mode should NOT use message passing (uses Task tool instead)"
+
+        # Step 5: Trigger succession (simulate context exhaustion)
+        orchestrator.context_used = 90000
+        orchestrator.context_budget = 100000
+        await db_session.commit()
+
+        succession_result = await orchestrator_service.trigger_succession(
+            current_job_id=str(orchestrator.job_id),
+            reason="context_limit"
+        )
+
+        assert succession_result["success"] is True
+
+        # Step 6: Verify successor uses Task tool
+        successor_id = succession_result["data"]["successor_id"]
+        from sqlalchemy import select
+        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == successor_id)
+        result = await db_session.execute(stmt)
+        successor = result.scalar_one()
+
+        # Successor should inherit Claude Code mode
+        assert successor.metadata.get("execution_mode") == "claude-code", \
+            "Successor must inherit Claude Code mode"
+
+        # Generate successor prompt
+        successor_generator = ThinClientPromptGenerator(
+            session=db_session,
+            orchestrator_id=str(successor.job_id),
+            project_id=str(project.id),
+            tenant_key=tenant_key,
+            user_id=test_user.id
+        )
+
+        successor_prompt = await successor_generator.generate(
+            instance_number=2,  # Instance 2 after succession
+            tool="claude-code"
+        )
+
+        # Successor should also use Task tool
+        assert "Task" in successor_prompt or "task tool" in successor_prompt.lower(), \
+            "Successor orchestrator must also use Task tool"
+
+        print("\n✓ Complete Claude Code workflow validated:")
+        print(f"  1. Project created: {project.name}")
+        print(f"  2. Mode toggled: claude-code")
+        print(f"  3. Orchestrator staged: {orchestrator.job_id}")
+        print(f"  4. Orchestrator uses Task tool: ✓")
+        print(f"  5. Succession triggered: {orchestrator.job_id} → {successor.job_id}")
+        print(f"  6. Successor uses Task tool: ✓")
+
+    async def test_claude_code_mode_agent_spawning(
+        self, db_session, test_user, test_product
+    ):
+        """
+        Test that Claude Code mode spawns agents via Task tool
+        (not message passing).
+        """
+
+        tenant_key = test_user.tenant_key
+
+        # Create project in Claude Code mode
+        project = Project(
+            name=f"Claude Code Agent Spawn Test {uuid4().hex[:8]}",
+            description="Test agent spawning in Claude Code mode",
+            tenant_key=tenant_key,
+            product_id=test_product.id,
+            status="active",
+            mission="Test agent spawning",
+            meta_data={"execution_mode": "claude-code"}
+        )
+        db_session.add(project)
+        await db_session.commit()
+        await db_session.refresh(project)
+
+        # Create orchestrator
+        orchestrator = MCPAgentJob(
+            project_id=project.id,
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            status="active",
+            mission="Test agent spawning",
+            job_metadata={
+                "user_id": test_user.id,
+                "execution_mode": "claude-code"
+            }
+        )
+        db_session.add(orchestrator)
+        await db_session.commit()
+
+        # Generate prompt
+        generator = ThinClientPromptGenerator(
+            session=db_session,
+            orchestrator_id=str(orchestrator.job_id),
+            project_id=str(project.id),
+            tenant_key=tenant_key,
+            user_id=test_user.id
+        )
+
+        prompt = await generator.generate(
+            instance_number=1,
+            tool="claude-code"
+        )
+
+        # Verify Task tool instructions present
+        assert "Task" in prompt, \
+            "Prompt must reference Task tool for agent spawning"
+
+        # Verify agent discovery instructions
+        assert "get_available_agents" in prompt.lower(), \
+            "Prompt must reference get_available_agents() for dynamic discovery"
+
+        # Claude Code mode should spawn agents like this:
+        # Task(description="...", prompt="...", subagent_type="implementer")
+        assert "subagent" in prompt.lower() or "spawn" in prompt.lower(), \
+            "Prompt should include agent spawning instructions"
+
+        print("\n✓ Claude Code mode agent spawning validated:")
+        print(f"  - Uses Task tool: ✓")
+        print(f"  - Discovers agents dynamically: ✓")
+        print(f"  - Includes spawning instructions: ✓")
+
+    async def test_claude_code_mode_token_efficiency(
+        self, db_session, test_user, test_product
+    ):
+        """
+        Test that Claude Code mode achieves token reduction target
+        (<600 tokens, ideal ~450).
+        """
+
+        tenant_key = test_user.tenant_key
+
+        # Create project in Claude Code mode
+        project = Project(
+            name=f"Token Efficiency Test {uuid4().hex[:8]}",
+            description="Test token reduction in Claude Code mode",
+            tenant_key=tenant_key,
+            product_id=test_product.id,
+            status="active",
+            mission="Test tokens",
+            meta_data={"execution_mode": "claude-code"}
+        )
+        db_session.add(project)
+        await db_session.commit()
+        await db_session.refresh(project)
+
+        # Create orchestrator
+        orchestrator = MCPAgentJob(
+            project_id=project.id,
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            status="staging",
+            mission="Test",
+            job_metadata={
+                "user_id": test_user.id,
+                "execution_mode": "claude-code"
+            }
+        )
+        db_session.add(orchestrator)
+        await db_session.commit()
+
+        # Generate prompt
+        generator = ThinClientPromptGenerator(
+            session=db_session,
+            orchestrator_id=str(orchestrator.job_id),
+            project_id=str(project.id),
+            tenant_key=tenant_key,
+            user_id=test_user.id
+        )
+
+        prompt = await generator.generate(
+            instance_number=1,
+            tool="claude-code"
+        )
+
+        # Token estimation
+        token_count = len(prompt) // 4
+        reduction_from_old = ((880 - token_count) / 880) * 100  # Old: ~880 tokens
+
+        assert token_count < 600, \
+            f"Token count {token_count} exceeds target (<600)"
+
+        # Ideally should be around 450 tokens
+        is_ideal = 400 <= token_count <= 500
+
+        print("\n✓ Claude Code mode token efficiency:")
+        print(f"  - Token count: ~{token_count} tokens")
+        print(f"  - Target: <600 tokens")
+        print(f"  - Ideal range (400-500): {is_ideal}")
+        print(f"  - Reduction from old (880): {reduction_from_old:.1f}%")
