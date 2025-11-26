@@ -21,7 +21,7 @@ Design Principles:
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select
@@ -101,18 +101,11 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 # Check for duplicate name (excluding soft-deleted)
                 stmt = select(Product).where(
-                    and_(
-                        Product.tenant_key == self.tenant_key,
-                        Product.name == name,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.tenant_key == self.tenant_key, Product.name == name, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 if result.scalar_one_or_none():
-                    return {
-                        "success": False,
-                        "error": f"Product '{name}' already exists"
-                    }
+                    return {"success": False, "error": f"Product '{name}' already exists"}
 
                 # Create product
                 # Handover 0135: Initialize product_memory with default structure
@@ -154,11 +147,7 @@ class ProductService:
             self._logger.exception(f"Failed to create product: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_product(
-        self,
-        product_id: str,
-        include_metrics: bool = True
-    ) -> Dict[str, Any]:
+    async def get_product(self, product_id: str, include_metrics: bool = True) -> Dict[str, Any]:
         """
         Get a specific product by ID with optional metrics.
 
@@ -177,23 +166,22 @@ class ProductService:
         try:
             async with self.db_manager.get_session_async() as session:
                 # Eagerly load vision_documents to prevent lazy-loading issues
-                stmt = select(Product).options(
-                    selectinload(Product.vision_documents)
-                ).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
+                stmt = (
+                    select(Product)
+                    .options(selectinload(Product.vision_documents))
+                    .where(
+                        and_(
+                            Product.id == product_id,
+                            Product.tenant_key == self.tenant_key,
+                            Product.deleted_at.is_(None),
+                        )
                     )
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Handover 0136: Ensure product_memory is initialized (backward compatibility)
                 await self._ensure_product_memory_initialized(session, product)
@@ -220,20 +208,13 @@ class ProductService:
                     metrics = await self._get_product_metrics(session, product_id)
                     product_data.update(metrics)
 
-                return {
-                    "success": True,
-                    "product": product_data
-                }
+                return {"success": True, "product": product_data}
 
         except Exception as e:
             self._logger.exception(f"Failed to get product: {e}")
             return {"success": False, "error": str(e)}
 
-    async def list_products(
-        self,
-        include_inactive: bool = False,
-        include_metrics: bool = True
-    ) -> Dict[str, Any]:
+    async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> Dict[str, Any]:
         """
         List all products for tenant with optional filtering.
 
@@ -251,10 +232,7 @@ class ProductService:
         """
         try:
             async with self.db_manager.get_session_async() as session:
-                conditions = [
-                    Product.tenant_key == self.tenant_key,
-                    Product.deleted_at.is_(None)
-                ]
+                conditions = [Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None)]
 
                 if not include_inactive:
                     conditions.append(Product.is_active == True)
@@ -299,20 +277,13 @@ class ProductService:
 
                 self._logger.debug(f"Found {len(product_list)} products for tenant {self.tenant_key}")
 
-                return {
-                    "success": True,
-                    "products": product_list
-                }
+                return {"success": True, "products": product_list}
 
         except Exception as e:
             self._logger.exception(f"Failed to list products: {e}")
             return {"success": False, "error": str(e)}
 
-    async def update_product(
-        self,
-        product_id: str,
-        **updates
-    ) -> Dict[str, Any]:
+    async def update_product(self, product_id: str, **updates) -> Dict[str, Any]:
         """
         Update a product.
 
@@ -334,20 +305,13 @@ class ProductService:
         try:
             async with self.db_manager.get_session_async() as session:
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Apply updates
                 for field, value in updates.items():
@@ -365,10 +329,7 @@ class ProductService:
                 if "product_memory" in updates:
                     await self._emit_websocket_event(
                         event_type="product:memory:updated",
-                        data={
-                            "product_id": product_id,
-                            "product_memory": product.product_memory
-                        }
+                        data={"product_id": product_id, "product_memory": product.product_memory},
                     )
 
                 return {
@@ -378,7 +339,7 @@ class ProductService:
                         "name": product.name,
                         "description": product.description,
                         "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                    }
+                    },
                 }
 
         except Exception as e:
@@ -429,8 +390,8 @@ class ProductService:
             extra={
                 "product_id": product_id,
                 "tenant_key": tenant_key,
-                "has_quality_standards": bool(quality_standards)
-            }
+                "has_quality_standards": bool(quality_standards),
+            },
         )
 
         async with self.db_manager.get_session_async() as session:
@@ -441,11 +402,7 @@ class ProductService:
             if not product or product.tenant_key != tenant_key:
                 self._logger.warning(
                     f"Product {product_id} not found or wrong tenant",
-                    extra={
-                        "product_id": product_id,
-                        "tenant_key": tenant_key,
-                        "operation": "update_quality_standards"
-                    }
+                    extra={"product_id": product_id, "tenant_key": tenant_key, "operation": "update_quality_standards"},
                 )
                 raise ValueError(f"Product {product_id} not found")
 
@@ -462,24 +419,17 @@ class ProductService:
                     "product_id": product_id,
                     "tenant_key": tenant_key,
                     "old_value": old_value[:50] if old_value else None,
-                    "new_value": quality_standards[:50] if quality_standards else None
-                }
+                    "new_value": quality_standards[:50] if quality_standards else None,
+                },
             )
 
             # Emit WebSocket event for real-time UI updates
             await self._emit_websocket_event(
                 event_type="product_updated",
-                data={
-                    "product_id": product_id,
-                    "field": "quality_standards",
-                    "quality_standards": quality_standards
-                }
+                data={"product_id": product_id, "field": "quality_standards", "quality_standards": quality_standards},
             )
 
-            return {
-                "product_id": product_id,
-                "quality_standards": quality_standards
-            }
+            return {"product_id": product_id, "quality_standards": quality_standards}
 
     # ============================================================================
     # Lifecycle Management
@@ -504,29 +454,18 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 # Verify product exists
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Deactivate all other products for tenant FIRST
                 # Must flush deactivation before activation due to unique constraint
                 deactivate_stmt = select(Product).where(
-                    and_(
-                        Product.tenant_key == self.tenant_key,
-                        Product.is_active == True,
-                        Product.id != product_id
-                    )
+                    and_(Product.tenant_key == self.tenant_key, Product.is_active == True, Product.id != product_id)
                 )
                 deactivate_result = await session.execute(deactivate_stmt)
                 products_to_deactivate = deactivate_result.scalars().all()
@@ -546,9 +485,7 @@ class ProductService:
                 await session.commit()
                 await session.refresh(product)
 
-                self._logger.info(
-                    f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)"
-                )
+                self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
                 return {
                     "success": True,
@@ -557,7 +494,7 @@ class ProductService:
                         "name": product.name,
                         "is_active": product.is_active,
                     },
-                    "deactivated_count": len(products_to_deactivate)
+                    "deactivated_count": len(products_to_deactivate),
                 }
 
         except Exception as e:
@@ -580,20 +517,13 @@ class ProductService:
         try:
             async with self.db_manager.get_session_async() as session:
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 product.is_active = False
                 product.updated_at = datetime.now(timezone.utc)
@@ -609,7 +539,7 @@ class ProductService:
                         "id": str(product.id),
                         "name": product.name,
                         "is_active": product.is_active,
-                    }
+                    },
                 }
 
         except Exception as e:
@@ -632,20 +562,13 @@ class ProductService:
         try:
             async with self.db_manager.get_session_async() as session:
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Soft delete
                 product.deleted_at = datetime.now(timezone.utc)
@@ -683,19 +606,14 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 stmt = select(Product).where(
                     and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.isnot(None)
+                        Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.isnot(None)
                     )
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Deleted product not found"
-                    }
+                    return {"success": False, "error": "Deleted product not found"}
 
                 # Restore
                 product.deleted_at = None
@@ -713,7 +631,7 @@ class ProductService:
                         "id": str(product.id),
                         "name": product.name,
                         "is_active": product.is_active,
-                    }
+                    },
                 }
 
         except Exception as e:
@@ -736,12 +654,11 @@ class ProductService:
             PURGE_DAYS = 30  # 30-day purge policy
 
             async with self.db_manager.get_session_async() as session:
-                stmt = select(Product).where(
-                    and_(
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.isnot(None)
-                    )
-                ).order_by(Product.deleted_at.desc())
+                stmt = (
+                    select(Product)
+                    .where(and_(Product.tenant_key == self.tenant_key, Product.deleted_at.isnot(None)))
+                    .order_by(Product.deleted_at.desc())
+                )
 
                 result = await session.execute(stmt)
                 deleted_products = result.scalars().all()
@@ -757,26 +674,23 @@ class ProductService:
                         select(func.count(Project.id)).where(Project.product_id == product.id)
                     )
                     vision_count = await session.execute(
-                        select(func.count(VisionDocument.id)).where(
-                            VisionDocument.product_id == product.id
-                        )
+                        select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product.id)
                     )
 
-                    product_list.append({
-                        "id": str(product.id),
-                        "name": product.name,
-                        "description": product.description,
-                        "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
-                        "days_until_purge": days_until_purge,
-                        "purge_date": purge_date.isoformat(),
-                        "project_count": project_count.scalar() or 0,
-                        "vision_documents_count": vision_count.scalar() or 0,
-                    })
+                    product_list.append(
+                        {
+                            "id": str(product.id),
+                            "name": product.name,
+                            "description": product.description,
+                            "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
+                            "days_until_purge": days_until_purge,
+                            "purge_date": purge_date.isoformat(),
+                            "project_count": project_count.scalar() or 0,
+                            "vision_documents_count": vision_count.scalar() or 0,
+                        }
+                    )
 
-                return {
-                    "success": True,
-                    "products": product_list
-                }
+                return {"success": True, "products": product_list}
 
         except Exception as e:
             self._logger.exception(f"Failed to list deleted products: {e}")
@@ -800,24 +714,22 @@ class ProductService:
         """
         try:
             async with self.db_manager.get_session_async() as session:
-                stmt = select(Product).options(
-                    selectinload(Product.vision_documents)
-                ).where(
-                    and_(
-                        Product.tenant_key == self.tenant_key,
-                        Product.is_active == True,
-                        Product.deleted_at.is_(None)
+                stmt = (
+                    select(Product)
+                    .options(selectinload(Product.vision_documents))
+                    .where(
+                        and_(
+                            Product.tenant_key == self.tenant_key,
+                            Product.is_active == True,
+                            Product.deleted_at.is_(None),
+                        )
                     )
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": True,
-                        "product": None,
-                        "message": "No active product"
-                    }
+                    return {"success": True, "product": None, "message": "No active product"}
 
                 # Get metrics for active product
                 metrics = await self._get_product_metrics(session, product.id)
@@ -835,8 +747,8 @@ class ProductService:
                         "config_data": product.config_data,
                         "has_config_data": bool(product.config_data),
                         "is_active": product.is_active,
-                        **metrics
-                    }
+                        **metrics,
+                    },
                 }
 
         except Exception as e:
@@ -865,20 +777,13 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 # Verify product exists
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 metrics = await self._get_product_metrics(session, product_id)
 
@@ -891,7 +796,7 @@ class ProductService:
                         **metrics,
                         "created_at": product.created_at.isoformat() if product.created_at else None,
                         "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                    }
+                    },
                 }
 
         except Exception as e:
@@ -918,39 +823,27 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 # Verify product exists
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Count related entities
                 project_count = await session.execute(
                     select(func.count(Project.id)).where(
                         and_(
-                            Project.product_id == product_id,
-                            or_(Project.status != "deleted", Project.status.is_(None))
+                            Project.product_id == product_id, or_(Project.status != "deleted", Project.status.is_(None))
                         )
                     )
                 )
 
-                task_count = await session.execute(
-                    select(func.count(Task.id)).where(Task.product_id == product_id)
-                )
+                task_count = await session.execute(select(func.count(Task.id)).where(Task.product_id == product_id))
 
                 vision_count = await session.execute(
-                    select(func.count(VisionDocument.id)).where(
-                        VisionDocument.product_id == product_id
-                    )
+                    select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product_id)
                 )
 
                 return {
@@ -961,8 +854,8 @@ class ProductService:
                         "total_projects": project_count.scalar() or 0,
                         "total_tasks": task_count.scalar() or 0,
                         "total_vision_documents": vision_count.scalar() or 0,
-                        "warning": "Deleting this product will soft-delete all related entities"
-                    }
+                        "warning": "Deleting this product will soft-delete all related entities",
+                    },
                 }
 
         except Exception as e:
@@ -978,10 +871,10 @@ class ProductService:
     ) -> Dict[str, Any]:
         """
         DEPRECATED: Use update_git_integration() instead (Handover 013B).
-        
+
         This method is kept for backward compatibility but should not be used.
         It will be removed in a future version.
-        
+
         Update GitHub integration settings for a product.
 
         Settings are stored in product_memory.github field with structure:
@@ -1018,28 +911,18 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 # Verify product exists
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Validate repo_url when integration is enabled
                 if enabled:
                     if not repo_url:
-                        return {
-                            "success": False,
-                            "error": "repo_url is required when enabling GitHub integration"
-                        }
+                        return {"success": False, "error": "repo_url is required when enabling GitHub integration"}
 
                         # URL validation removed (Handover 013B - handled by CLI agents)
 
@@ -1053,21 +936,18 @@ class ProductService:
                         "enabled": True,
                         "repo_url": repo_url,
                         "auto_commit": auto_commit,
-                        "last_sync": datetime.now(timezone.utc).isoformat()
+                        "last_sync": datetime.now(timezone.utc).isoformat(),
                     }
                 else:
                     # Disable integration
-                    product.product_memory["github"] = {
-                        "enabled": False,
-                        "repo_url": None,
-                        "auto_commit": False
-                    }
+                    product.product_memory["github"] = {"enabled": False, "repo_url": None, "auto_commit": False}
 
                 product.updated_at = datetime.now(timezone.utc)
 
                 # Force SQLAlchemy to detect JSONB change (skip in tests with mock objects)
                 try:
                     from sqlalchemy.orm.attributes import flag_modified
+
                     flag_modified(product, "product_memory")
                 except AttributeError:
                     # Mock object in tests - flag_modified will fail
@@ -1076,23 +956,15 @@ class ProductService:
                 await session.commit()
                 await session.refresh(product)
 
-                self._logger.info(
-                    f"Updated GitHub settings for product {product_id}: enabled={enabled}"
-                )
+                self._logger.info(f"Updated GitHub settings for product {product_id}: enabled={enabled}")
 
                 # Handover 0139a: Emit WebSocket event for GitHub settings change
                 await self._emit_websocket_event(
                     event_type="product:github:settings:changed",
-                    data={
-                        "product_id": product_id,
-                        "settings": product.product_memory["github"]
-                    }
+                    data={"product_id": product_id, "settings": product.product_memory["github"]},
                 )
 
-                return {
-                    "success": True,
-                    "settings": product.product_memory["github"]
-                }
+                return {"success": True, "settings": product.product_memory["github"]}
 
         except Exception as e:
             self._logger.exception(f"Failed to update GitHub settings: {e}")
@@ -1139,20 +1011,13 @@ class ProductService:
             async with self.db_manager.get_session_async() as session:
                 # Verify product exists
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {
-                        "success": False,
-                        "error": "Product not found"
-                    }
+                    return {"success": False, "error": "Product not found"}
 
                 # Ensure product_memory exists
                 if not product.product_memory:
@@ -1176,6 +1041,7 @@ class ProductService:
                 # Force SQLAlchemy to detect JSONB change
                 try:
                     from sqlalchemy.orm.attributes import flag_modified
+
                     flag_modified(product, "product_memory")
                 except AttributeError:
                     # Mock object in tests - flag_modified will fail
@@ -1184,29 +1050,19 @@ class ProductService:
                 await session.commit()
                 await session.refresh(product)
 
-                self._logger.info(
-                    f"Updated git integration for product {product_id}: enabled={enabled}"
-                )
+                self._logger.info(f"Updated git integration for product {product_id}: enabled={enabled}")
 
                 # Handover 013B: Emit WebSocket event for git settings change
                 await self._emit_websocket_event(
                     event_type="product:git:settings:changed",
-                    data={
-                        "product_id": product_id,
-                        "settings": product.product_memory["git_integration"]
-                    }
+                    data={"product_id": product_id, "settings": product.product_memory["git_integration"]},
                 )
 
-                return {
-                    "success": True,
-                    "settings": product.product_memory["git_integration"]
-                }
+                return {"success": True, "settings": product.product_memory["git_integration"]}
 
         except Exception as e:
             self._logger.exception(f"Failed to update git integration: {e}")
             return {"success": False, "error": str(e)}
-
-
 
     async def upload_vision_document(
         self,
@@ -1218,17 +1074,17 @@ class ProductService:
     ) -> Dict[str, Any]:
         """
         Upload and optionally chunk vision document for product.
-        
+
         Uses VisionDocumentChunker for intelligent chunking at semantic boundaries.
         Documents exceeding max_tokens are automatically split into chunks.
-        
+
         Args:
             product_id: Product UUID
             content: Document content (text/markdown)
             filename: Document filename
             auto_chunk: Auto-chunk if content exceeds max_tokens (default: True)
             max_tokens: Max tokens per chunk (default: 25000 for 32K models)
-        
+
         Returns:
             Dict with success status and document/chunk details
             {
@@ -1239,10 +1095,10 @@ class ProductService:
                 "total_tokens": int,
                 "error": str (if failed)
             }
-        
+
         Raises:
             ValueError: If product not found or user lacks access
-        
+
         Example:
             >>> result = await service.upload_vision_document(
             ...     product_id="abc-123",
@@ -1252,33 +1108,26 @@ class ProductService:
             >>> print(f"Created {result['chunks_created']} chunks")
         """
         try:
-            from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
             from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
-            
+            from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+
             async with self.db_manager.get_session_async() as session:
                 # Verify product exists and belongs to tenant
                 stmt = select(Product).where(
-                    and_(
-                        Product.id == product_id,
-                        Product.tenant_key == self.tenant_key,
-                        Product.deleted_at.is_(None)
-                    )
+                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
-                
+
                 if not product:
-                    return {
-                        "success": False,
-                        "error": f"Product {product_id} not found or access denied"
-                    }
-                
+                    return {"success": False, "error": f"Product {product_id} not found or access denied"}
+
                 # Create vision document via repository
                 vision_repo = VisionDocumentRepository(db_manager=self.db_manager)
-                
+
                 # Calculate file size
-                file_size = len(content.encode('utf-8'))
-                
+                file_size = len(content.encode("utf-8"))
+
                 # Create document (inline storage)
                 doc = await vision_repo.create(
                     session=session,
@@ -1292,36 +1141,31 @@ class ProductService:
                     is_active=True,
                     display_order=0,
                 )
-                
+
                 await session.commit()
-                
-                self._logger.info(
-                    f"Created vision document {doc.id} for product {product_id}"
-                )
-                
+
+                self._logger.info(f"Created vision document {doc.id} for product {product_id}")
+
                 # Auto-chunk if enabled
                 chunks_created = 0
                 total_tokens = 0
-                
+
                 if auto_chunk:
                     chunker = VisionDocumentChunker(target_chunk_size=max_tokens)
-                    
+
                     # Chunk the document
                     chunk_result = await chunker.chunk_vision_document(
-                        session=session,
-                        tenant_key=self.tenant_key,
-                        vision_document_id=str(doc.id)
+                        session=session, tenant_key=self.tenant_key, vision_document_id=str(doc.id)
                     )
-                    
+
                     await session.commit()
-                    
+
                     if chunk_result["success"]:
                         chunks_created = chunk_result["chunks_created"]
                         total_tokens = chunk_result["total_tokens"]
-                        
+
                         self._logger.info(
-                            f"Chunked document {doc.id}: {chunks_created} chunks, "
-                            f"{total_tokens} tokens"
+                            f"Chunked document {doc.id}: {chunks_created} chunks, " f"{total_tokens} tokens"
                         )
                     else:
                         # Chunking failed but document created
@@ -1329,7 +1173,7 @@ class ProductService:
                             f"Document {doc.id} created but chunking failed: "
                             f"{chunk_result.get('error', 'Unknown error')}"
                         )
-                
+
                 return {
                     "success": True,
                     "document_id": str(doc.id),
@@ -1337,7 +1181,7 @@ class ProductService:
                     "chunks_created": chunks_created,
                     "total_tokens": total_tokens,
                 }
-                
+
         except ValueError as e:
             self._logger.error(f"Validation error uploading vision document: {e}")
             return {"success": False, "error": str(e)}
@@ -1404,11 +1248,7 @@ class ProductService:
     # WebSocket Event Emission (Handover 0139a)
     # ============================================================================
 
-    async def _emit_websocket_event(
-        self,
-        event_type: str,
-        data: Dict[str, Any]
-    ) -> None:
+    async def _emit_websocket_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """
         Emit WebSocket event to tenant clients (Handover 0139a).
 
@@ -1431,9 +1271,7 @@ class ProductService:
         """
         if not self._websocket_manager:
             # No WebSocket manager - gracefully skip event emission
-            self._logger.debug(
-                f"No WebSocket manager available for event: {event_type}"
-            )
+            self._logger.debug(f"No WebSocket manager available for event: {event_type}")
             return
 
         try:
@@ -1441,36 +1279,25 @@ class ProductService:
             event_data_with_timestamp = {
                 **data,
                 "tenant_key": self.tenant_key,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             # Broadcast to tenant clients
             await self._websocket_manager.broadcast_to_tenant(
-                tenant_key=self.tenant_key,
-                event_type=event_type,
-                data=event_data_with_timestamp
+                tenant_key=self.tenant_key, event_type=event_type, data=event_data_with_timestamp
             )
 
-            self._logger.debug(
-                f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}"
-            )
+            self._logger.debug(f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}")
 
         except Exception as e:
             # Log error but don't fail the operation
-            self._logger.warning(
-                f"Failed to emit WebSocket event {event_type}: {e}",
-                exc_info=True
-            )
+            self._logger.warning(f"Failed to emit WebSocket event {event_type}: {e}", exc_info=True)
 
     # ============================================================================
     # Private Helper Methods
     # ============================================================================
 
-    async def _ensure_product_memory_initialized(
-        self,
-        session: AsyncSession,
-        product: Product
-    ) -> None:
+    async def _ensure_product_memory_initialized(self, session: AsyncSession, product: Product) -> None:
         """
         Ensure product_memory is initialized with default structure (Handover 0136).
 
@@ -1507,9 +1334,7 @@ class ProductService:
             # NULL case - replace with default
             product.product_memory = default_structure
             needs_update = True
-            self._logger.debug(
-                f"Product {product.id}: Initialized NULL product_memory"
-            )
+            self._logger.debug(f"Product {product.id}: Initialized NULL product_memory")
         elif not isinstance(product.product_memory, dict):
             # Invalid type - replace with default
             product.product_memory = default_structure
@@ -1522,9 +1347,7 @@ class ProductService:
             # Empty dict - replace with default
             product.product_memory = default_structure
             needs_update = True
-            self._logger.debug(
-                f"Product {product.id}: Initialized empty dict product_memory"
-            )
+            self._logger.debug(f"Product {product.id}: Initialized empty dict product_memory")
         else:
             # Partial structure - ensure all required keys exist
             # Create a copy to ensure SQLAlchemy detects the change
@@ -1533,9 +1356,7 @@ class ProductService:
                 if key not in updated_memory:
                     updated_memory[key] = default_value
                     needs_update = True
-                    self._logger.debug(
-                        f"Product {product.id}: Added missing '{key}' key to product_memory"
-                    )
+                    self._logger.debug(f"Product {product.id}: Added missing '{key}' key to product_memory")
 
             if needs_update:
                 product.product_memory = updated_memory
@@ -1545,15 +1366,9 @@ class ProductService:
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
             await session.refresh(product)
-            self._logger.info(
-                f"Product {product.id}: Updated product_memory structure"
-            )
+            self._logger.info(f"Product {product.id}: Updated product_memory structure")
 
-    async def _get_product_metrics(
-        self,
-        session: AsyncSession,
-        product_id: str
-    ) -> Dict[str, Any]:
+    async def _get_product_metrics(self, session: AsyncSession, product_id: str) -> Dict[str, Any]:
         """
         Get metrics for a product (projects, tasks, vision documents).
 
@@ -1567,10 +1382,7 @@ class ProductService:
         # Count projects
         projects_result = await session.execute(
             select(func.count(Project.id)).where(
-                and_(
-                    Project.product_id == product_id,
-                    or_(Project.status != "deleted", Project.status.is_(None))
-                )
+                and_(Project.product_id == product_id, or_(Project.status != "deleted", Project.status.is_(None)))
             )
         )
         project_count = projects_result.scalar() or 0
@@ -1578,27 +1390,19 @@ class ProductService:
         # Count unfinished projects
         unfinished_result = await session.execute(
             select(func.count(Project.id)).where(
-                and_(
-                    Project.product_id == product_id,
-                    Project.status.in_(["active", "inactive"])
-                )
+                and_(Project.product_id == product_id, Project.status.in_(["active", "inactive"]))
             )
         )
         unfinished_projects = unfinished_result.scalar() or 0
 
         # Count tasks
-        tasks_result = await session.execute(
-            select(func.count(Task.id)).where(Task.product_id == product_id)
-        )
+        tasks_result = await session.execute(select(func.count(Task.id)).where(Task.product_id == product_id))
         task_count = tasks_result.scalar() or 0
 
         # Count unresolved tasks
         unresolved_result = await session.execute(
             select(func.count(Task.id)).where(
-                and_(
-                    Task.product_id == product_id,
-                    Task.status.in_(["pending", "in_progress"])
-                )
+                and_(Task.product_id == product_id, Task.status.in_(["pending", "in_progress"]))
             )
         )
         unresolved_tasks = unresolved_result.scalar() or 0
@@ -1606,9 +1410,7 @@ class ProductService:
         # Count vision documents
         # Note: VisionDocument doesn't support soft delete (no deleted_at field)
         vision_result = await session.execute(
-            select(func.count(VisionDocument.id)).where(
-                VisionDocument.product_id == product_id
-            )
+            select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product_id)
         )
         vision_documents_count = vision_result.scalar() or 0
 
@@ -1620,6 +1422,33 @@ class ProductService:
             "vision_documents_count": vision_documents_count,
             "has_vision": vision_documents_count > 0,
         }
+
+    def _validate_history_entry(self, entry: dict[str, Any]) -> None:
+        """
+        Validate sequential_history entry structure.
+
+        Args:
+            entry: History entry dict to validate
+
+        Raises:
+            ValueError: If entry structure is invalid
+        """
+        if not isinstance(entry, dict):
+            raise ValueError("History entry must be a dictionary")
+
+        # Required fields
+        required_fields = {"type", "timestamp"}
+        missing = required_fields - set(entry.keys())
+        if missing:
+            raise ValueError(f"History entry missing required fields: {missing}")
+
+        # Validate type field (warn if unknown type)
+        valid_types = {"project_closeout", "manual_entry", "import"}
+        if entry.get("type") not in valid_types:
+            self._logger.warning(
+                f"Unknown history entry type: {entry.get('type')}",
+                extra={"entry_type": entry.get("type"), "valid_types": list(valid_types)},
+            )
 
     async def add_learning_to_product_memory(
         self,
@@ -1677,11 +1506,11 @@ class ProductService:
         existing_history = product.product_memory.get("sequential_history", [])
         next_sequence = 1
         if existing_history:
-            max_sequence = max(
-                entry.get("sequence", 0)
-                for entry in existing_history
-            )
+            max_sequence = max(entry.get("sequence", 0) for entry in existing_history)
             next_sequence = max_sequence + 1
+
+        # Validate entry structure before adding (Handover 0248a Task 2)
+        self._validate_history_entry(learning_entry)
 
         # Add sequence to learning entry
         learning_with_sequence = {**learning_entry, "sequence": next_sequence}
@@ -1696,17 +1525,11 @@ class ProductService:
         # Update timestamp
         product.updated_at = datetime.now(timezone.utc)
 
-        self._logger.info(
-            f"Added learning entry (sequence {next_sequence}) to product {product_id}"
-        )
+        self._logger.info(f"Added learning entry (sequence {next_sequence}) to product {product_id}")
 
         # Handover 0139a: Emit WebSocket event for history addition
         await self._emit_websocket_event(
-            event_type="product:history:added",
-            data={
-                "product_id": product_id,
-                "history": learning_with_sequence
-            }
+            event_type="product:history:added", data={"product_id": product_id, "history": learning_with_sequence}
         )
 
         return product
