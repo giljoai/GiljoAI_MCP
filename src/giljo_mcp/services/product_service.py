@@ -84,7 +84,7 @@ class ProductService:
             description: Product description
             project_path: File system path to product folder
             config_data: Rich configuration data (architecture, tech_stack, etc.)
-            product_memory: 360 Memory data (GitHub, learnings, context) - Handover 0135
+            product_memory: 360 Memory data (GitHub, sequential_history, context) - Handover 0135
 
         Returns:
             Dict with success status and product details or error
@@ -118,8 +118,8 @@ class ProductService:
                 # Handover 0135: Initialize product_memory with default structure
                 default_memory = {
                     "github": {},
-                    "learnings": [],
-                    "context": {}
+                    "sequential_history": [],
+                    "context": {},
                 }
 
                 product = Product(
@@ -1045,7 +1045,7 @@ class ProductService:
 
                 # Ensure product_memory exists
                 if not product.product_memory:
-                    product.product_memory = {"github": {}, "learnings": [], "context": {}}
+                    product.product_memory = {"github": {}, "sequential_history": [], "context": {}}
 
                 # Update GitHub settings
                 if enabled:
@@ -1156,7 +1156,7 @@ class ProductService:
 
                 # Ensure product_memory exists
                 if not product.product_memory:
-                    product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
+                    product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
 
                 # Update Git integration settings
                 if enabled:
@@ -1491,13 +1491,13 @@ class ProductService:
 
         Example:
             >>> await self._ensure_product_memory_initialized(session, product)
-            >>> assert product.product_memory == {"github": {}, "learnings": [], "context": {}}
+            >>> assert product.product_memory == {"github": {}, "sequential_history": [], "context": {}}
         """
         # Default structure per Handover 0135
         default_structure = {
             "github": {},
-            "learnings": [],
-            "context": {}
+            "sequential_history": [],
+            "context": {},
         }
 
         # Check if product_memory needs initialization
@@ -1628,7 +1628,7 @@ class ProductService:
         learning_entry: dict[str, Any],
     ) -> Product:
         """
-        Add learning entry to product_memory.learnings (Handover 0138).
+        Add history entry to product_memory.sequential_history (Handover 0138+).
 
         This helper method provides a clean interface for adding learning entries
         to product memory. It handles:
@@ -1639,7 +1639,7 @@ class ProductService:
         Args:
             session: Async database session
             product_id: Product UUID
-            learning_entry: Learning entry dict (without sequence - will be auto-assigned)
+            learning_entry: History entry dict (without sequence - will be auto-assigned)
 
         Returns:
             Updated Product instance
@@ -1657,7 +1657,7 @@ class ProductService:
             >>> product = await service.add_learning_to_product_memory(
             ...     session, product_id, learning
             ... )
-            >>> assert product.product_memory["learnings"][-1]["sequence"] == 1
+            >>> assert product.product_memory["sequential_history"][-1]["sequence"] == 1
         """
         # Fetch product
         query = select(Product).where(
@@ -1674,23 +1674,23 @@ class ProductService:
         await self._ensure_product_memory_initialized(session, product)
 
         # Calculate next sequence number
-        existing_learnings = product.product_memory.get("learnings", [])
+        existing_history = product.product_memory.get("sequential_history", [])
         next_sequence = 1
-        if existing_learnings:
+        if existing_history:
             max_sequence = max(
-                learning.get("sequence", 0)
-                for learning in existing_learnings
+                entry.get("sequence", 0)
+                for entry in existing_history
             )
             next_sequence = max_sequence + 1
 
         # Add sequence to learning entry
         learning_with_sequence = {**learning_entry, "sequence": next_sequence}
 
-        # Append to learnings (create new dict for SQLAlchemy change detection)
+        # Append to sequential_history (create new dict for SQLAlchemy change detection)
         updated_memory = dict(product.product_memory)
-        updated_learnings = list(updated_memory.get("learnings", []))
-        updated_learnings.append(learning_with_sequence)
-        updated_memory["learnings"] = updated_learnings
+        updated_history = list(updated_memory.get("sequential_history", []))
+        updated_history.append(learning_with_sequence)
+        updated_memory["sequential_history"] = updated_history
         product.product_memory = updated_memory
 
         # Update timestamp
@@ -1700,12 +1700,12 @@ class ProductService:
             f"Added learning entry (sequence {next_sequence}) to product {product_id}"
         )
 
-        # Handover 0139a: Emit WebSocket event for learning addition
+        # Handover 0139a: Emit WebSocket event for history addition
         await self._emit_websocket_event(
-            event_type="product:learning:added",
+            event_type="product:history:added",
             data={
                 "product_id": product_id,
-                "learning": learning_with_sequence
+                "history": learning_with_sequence
             }
         )
 
