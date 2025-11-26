@@ -622,38 +622,38 @@ Begin by verifying MCP connection, then fetch context by priority, and CREATE th
             product: Product model with product_memory JSONB field
 
         Returns:
-            Formatted 360 memory section (always present, even if no learnings)
+            Formatted 360 memory section (always present, even if no history)
 
         Examples:
-            With learnings:
+            With history:
                 ## 360 Memory System
-                Product has 5 previous project learnings.
+                Product has 5 previous project history entries.
                 Review these to inform decisions and avoid past mistakes.
 
-            Without learnings:
+            Without history:
                 ## 360 Memory System
-                No previous project learnings yet. You're starting fresh.
+                No previous project history yet. You're starting fresh.
         """
         if not product or not product.product_memory:
             return """
 ## 360 Memory System
-No previous project learnings available. Starting fresh.
+No previous project history available. Starting fresh.
 """
 
-        learnings = product.product_memory.get("learnings", [])
+        history_entries = product.product_memory.get("sequential_history", [])
         context_data = product.product_memory.get("context", {})
         objectives = context_data.get("objectives", []) if isinstance(context_data, dict) else []
 
-        learning_count = len(learnings)
+        history_count = len(history_entries)
 
         # Build memory section
         memory_lines = ["\n## 360 Memory System"]
 
-        if learning_count > 0:
-            memory_lines.append(f"Product has {learning_count} previous project learnings.")
+        if history_count > 0:
+            memory_lines.append(f"Product has {history_count} previous project history entries.")
             memory_lines.append("Review these to inform decisions and avoid past mistakes.")
         else:
-            memory_lines.append("No previous project learnings yet. You're starting fresh.")
+            memory_lines.append("No previous project history yet. You're starting fresh.")
 
         # Add objectives if available
         if objectives:
@@ -661,7 +661,7 @@ No previous project learnings available. Starting fresh.
             for obj in objectives[:3]:  # Limit to top 3 objectives
                 memory_lines.append(f"- {obj}")
 
-        memory_lines.append("\nAccess via: product_memory.learnings and product_memory.context")
+        memory_lines.append("\nAccess via: product_memory.sequential_history and product_memory.context")
 
         return "\n".join(memory_lines)
 

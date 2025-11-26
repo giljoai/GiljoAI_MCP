@@ -1,7 +1,7 @@
 """MCP tool for fetching 360 memory (sequential project history) with depth control.
 
 Reuses logic from:
-- mission_planner._extract_product_learnings() (lines 1432-1555)
+- mission_planner._extract_product_history()
 - Product.product_memory JSONB field structure (Handovers 0135-0139)
 
 Token Budget by Depth:
@@ -40,7 +40,7 @@ async def get_360_memory(
     """
     Fetch 360 memory (sequential project history) for given product with depth control and pagination.
 
-    Reuses extraction logic from mission_planner._extract_product_learnings().
+    Reuses extraction logic from mission_planner._extract_product_history().
     Returns the last N projects from product_memory.sequential_history array.
 
     Args:
