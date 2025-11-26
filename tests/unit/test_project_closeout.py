@@ -81,6 +81,7 @@ def mock_product(sample_product_id, tenant_key):
     product.product_memory = {
         "github": {},
         "learnings": [],
+        "sequential_history": [],
         "context": {}
     }
     product.updated_at = datetime.now(timezone.utc)
@@ -110,7 +111,7 @@ class TestProjectCloseoutBasics:
         self, mock_product, mock_project, tenant_key
     ):
         """
-        BEHAVIOR: Project closeout stores learning entry in product_memory.learnings
+        BEHAVIOR: Project closeout stores rich entry in product_memory.sequential_history (and legacy learnings)
 
         GIVEN: A product with empty learnings array
         WHEN: close_project_and_update_memory() is called
@@ -135,7 +136,7 @@ class TestProjectCloseoutBasics:
         assert "learning_id" in result
         assert result["sequence"] == 1
 
-        # Verify learning was added to product_memory.learnings
+        # Verify entry was added to product_memory.learnings (legacy)
         assert len(mock_product.product_memory["learnings"]) == 1
         learning = mock_product.product_memory["learnings"][0]
         assert learning["sequence"] == 1
@@ -146,6 +147,15 @@ class TestProjectCloseoutBasics:
         assert learning["key_outcomes"] == ["Secure token storage", "Refresh token rotation"]
         assert learning["decisions_made"] == ["Chose JWT over sessions"]
         assert "timestamp" in learning
+
+        # Verify sequential_history rich entry mirrors learning with priority metadata
+        history = mock_product.product_memory["sequential_history"]
+        assert len(history) == 1
+        entry = history[0]
+        assert entry["priority"] == 3
+        assert entry["significance_score"] == 0.5
+        assert entry["sequence"] == 1
+        assert entry["summary"] == learning["summary"]
 
     @pytest.mark.asyncio
     async def test_sequential_numbering_increments(

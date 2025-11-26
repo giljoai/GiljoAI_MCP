@@ -199,13 +199,28 @@ class WebSocketManager:
 
         # Iterate through all active connections
         logger.info(f"[BROADCAST DEBUG] Total active connections: {len(self.active_connections)}, Target tenant: {tenant_key}")
-        for client_id, websocket in self.active_connections.items():
+        for client_id, connection in self.active_connections.items():
+            websocket = connection
+            if hasattr(connection, "websocket"):
+                websocket = connection.websocket
+
             # Skip excluded client if specified
             if exclude_client and client_id == exclude_client:
                 continue
 
             # Check tenant isolation - CRITICAL for multi-tenant security
             auth_context = self.auth_contexts.get(client_id, {})
+            if not auth_context:
+                derived_tenant = getattr(connection, "tenant_key", None) or getattr(websocket, "tenant_key", None)
+                derived_user = getattr(connection, "user_id", None)
+                derived_username = getattr(connection, "username", None)
+                if derived_tenant:
+                    auth_context = {
+                        "tenant_key": derived_tenant,
+                        "user_id": derived_user,
+                        "username": derived_username,
+                    }
+                    self.auth_contexts[client_id] = auth_context
             client_tenant = auth_context.get("tenant_key")
 
             logger.info(f"[BROADCAST DEBUG] Client {client_id[:8]}: tenant={client_tenant}, target={tenant_key}, match={client_tenant == tenant_key}")
