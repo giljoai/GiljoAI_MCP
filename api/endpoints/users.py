@@ -200,6 +200,12 @@ class FieldPriorityConfig(BaseModel):
         return v
 
 
+class ExecutionModeUpdate(BaseModel):
+    """Request model for updating execution mode."""
+
+    execution_mode: str = Field(..., description="Execution mode: claude_code or multi_terminal")
+
+
 class DepthConfig(BaseModel):
     """
     Depth configuration for context extraction granularity (Handover 0314).
@@ -936,6 +942,38 @@ async def update_depth_config(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=get_result["error"])
 
     return {"depth_config": get_result["config"]}
+
+# ---------------------------------------------------------------------------
+# Execution mode settings (0248c)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/settings/execution_mode")
+async def get_execution_mode(
+    current_user: User = Depends(get_current_active_user),
+    user_service: UserService = Depends(get_user_service),
+) -> Dict[str, str]:
+    """Get the current user's execution mode."""
+    result = await user_service.get_execution_mode(str(current_user.id))
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    return {"execution_mode": result["execution_mode"]}
+
+
+@router.put("/me/settings/execution_mode")
+async def update_execution_mode(
+    payload: ExecutionModeUpdate,
+    current_user: User = Depends(get_current_active_user),
+    user_service: UserService = Depends(get_user_service),
+) -> Dict[str, str]:
+    """Update the current user's execution mode."""
+    result = await user_service.update_execution_mode(
+        user_id=str(current_user.id),
+        execution_mode=payload.execution_mode,
+    )
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    return {"execution_mode": result["execution_mode"]}
 
 
 # AI Tools Configurator Endpoint (relocated from /setup/ai-tools)

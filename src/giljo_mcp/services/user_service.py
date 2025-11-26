@@ -91,6 +91,14 @@ class UserService:
         try:
             # Use provided session if available (test mode)
             if self._session:
+                sync_session = getattr(self._session, "sync_session", None)
+                if (
+                    getattr(self._session, "closed", False)
+                    or not getattr(self._session, "is_active", True)
+                    or (sync_session is not None and (getattr(sync_session, "closed", False) or not getattr(sync_session, "is_active", True)))
+                    or getattr(self._session, "_is_ctx_manager_closed", False)
+                ):
+                    raise RuntimeError("Session is closed")
                 return await self._list_users_impl(self._session)
 
             # Otherwise create new session (production mode)
@@ -176,6 +184,8 @@ class UserService:
                 "success": False,
                 "error": "User not found"
             }
+
+        self._logger.info("Fetched user", extra={"user_id": user_id})
 
         return {
             "success": True,
@@ -1197,6 +1207,102 @@ class UserService:
             "success": True,
             "message": "Depth config updated successfully"
         }
+
+    # ------------------------------------------------------------------
+    # Execution mode (stored in depth_config.execution_mode)
+    # ------------------------------------------------------------------
+
+    async def get_execution_mode(self, user_id: str) -> Dict[str, Any]:
+        """Get user's execution mode or default."""
+        try:
+            if self._session:
+                return await self._get_execution_mode_impl(self._session, user_id)
+
+            async with self.db_manager.get_session_async() as session:
+                return await self._get_execution_mode_impl(session, user_id)
+        except Exception as e:
+            logger.error(f"Failed to get execution mode for user {user_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {"success": False, "error": "User not found"}
+
+        depth_config = user.depth_config or {}
+        mode = depth_config.get("execution_mode", "claude_code")
+
+        return {"success": True, "execution_mode": mode}
+
+    async def update_execution_mode(self, user_id: str, execution_mode: str) -> Dict[str, Any]:
+        """Update user's execution mode with validation."""
+        try:
+            if self._session:
+                return await self._update_execution_mode_impl(self._session, user_id, execution_mode)
+
+            async with self.db_manager.get_session_async() as session:
+                return await self._update_execution_mode_impl(session, user_id, execution_mode)
+        except Exception as e:
+            logger.error(f"Failed to update execution mode for user {user_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def _update_execution_mode_impl(
+        self, session: AsyncSession, user_id: str, execution_mode: str
+    ) -> Dict[str, Any]:
+        valid_modes = {"claude_code", "multi_terminal"}
+        if execution_mode not in valid_modes:
+            return {"success": False, "error": "Invalid execution_mode. Must be claude_code or multi_terminal"}
+
+        stmt = select(User).where(
+            and_(
+                User.id == user_id,
+                User.tenant_key == self.tenant_key
+            )
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {"success": False, "error": "User not found"}
+
+        depth_config = user.depth_config or {
+            "vision_chunking": "moderate",
+            "memory_last_n_projects": 3,
+            "git_commits": 25,
+            "agent_template_detail": "standard",
+            "tech_stack_sections": "all",
+            "architecture_depth": "overview",
+        }
+        depth_config = dict(depth_config)
+        depth_config["execution_mode"] = execution_mode
+
+        # Reuse depth config update path for consistency
+        user.depth_config = depth_config
+        await session.commit()
+        await session.refresh(user)
+
+        await self._emit_websocket_event(
+            event_type="execution_mode_updated",
+            data={
+                "user_id": user_id,
+                "execution_mode": execution_mode,
+            },
+        )
+
+        self._logger.info(
+            "Updated execution mode",
+            extra={"user_id": user_id, "execution_mode": execution_mode},
+        )
+
+        return {"success": True, "execution_mode": execution_mode}
 
     # ============================================================================
     # Private Helper Methods

@@ -18,6 +18,12 @@ from giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Pr
 from giljo_mcp.tenant import TenantManager
 
 from .chunking import EnhancedChunker
+from .context_tools.framing_helpers import (
+    apply_rich_entry_framing,
+    build_framed_context_response,
+    build_priority_excluded_response,
+    get_user_priority,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -1275,7 +1281,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         tenant_key: str,
         chunking: str = "moderate",
         offset: int = 0,
-        limit: int = None
+        limit: int = None,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch vision document chunks with configurable depth and pagination (Handover 0315 Amendment).
@@ -1286,12 +1293,26 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             chunking: Depth level ("none", "light", "moderate", "heavy")
             offset: Number of chunks to skip (for pagination)
             limit: Max chunks to return (None = use chunking default)
+            user_id: Optional user ID for priority framing
 
         Returns:
             Vision chunks with metadata and pagination fields (has_more, next_offset)
         """
         from .context_tools.get_vision_document import get_vision_document
-        return await get_vision_document(product_id, tenant_key, chunking, offset, limit, db_manager)
+
+        priority = await get_user_priority("vision_documents", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("vision_documents", "vision_documents", tenant_key, priority)
+
+        raw_result = await get_vision_document(product_id, tenant_key, chunking, offset, limit, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "vision_documents",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_360_memory(
@@ -1299,7 +1320,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         tenant_key: str,
         last_n_projects: int = 3,
         offset: int = 0,
-        limit: int = None
+        limit: int = None,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch 360 memory (sequential project history) with configurable depth and pagination (Handover 0315 Amendment).
@@ -1310,12 +1332,42 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             last_n_projects: Number of recent projects to consider (1, 3, 5, 10)
             offset: Number of projects to skip (for pagination)
             limit: Max projects to return (None = return all up to last_n_projects)
+            user_id: Optional user ID for priority framing
 
         Returns:
             Sequential history with metadata and pagination fields (has_more, next_offset)
         """
         from .context_tools.get_360_memory import get_360_memory
-        return await get_360_memory(product_id, tenant_key, last_n_projects, offset, limit, db_manager)
+
+        priority = await get_user_priority("memory_360", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("360_memory", "memory_360", tenant_key, priority)
+
+        def format_360(raw: dict[str, Any]) -> str:
+            entries = raw.get("data", []) or []
+            formatted_entries: list[str] = []
+            for entry in entries:
+                try:
+                    formatted_entries.append(apply_rich_entry_framing(entry))
+                except ValueError as exc:
+                    logger.warning(
+                        "Skipping malformed sequential_history entry",
+                        extra={"error": str(exc), "entry_keys": list(entry.keys()) if isinstance(entry, dict) else None},
+                    )
+            if not formatted_entries:
+                return "No sequential history available."
+            return "\n\n".join(formatted_entries)
+
+        raw_result = await get_360_memory(product_id, tenant_key, last_n_projects, offset, limit, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "memory_360",
+            tenant_key,
+            user_id,
+            db_manager,
+            content_formatter=format_360,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_git_history(
@@ -1323,7 +1375,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         tenant_key: str,
         commits: int = 25,
         offset: int = 0,
-        limit: int = None
+        limit: int = None,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch git commit history with configurable depth (Handover 0315 Amendment).
@@ -1334,12 +1387,26 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             commits: Number of recent commits to return (10, 25, 50, 100)
             offset: Reserved for future pagination (currently ignored)
             limit: Reserved for future pagination (currently ignored)
+            user_id: Optional user ID for priority framing
 
         Returns:
             Git commits with metadata (pagination_supported=False)
         """
         from .context_tools.get_git_history import get_git_history
-        return await get_git_history(product_id, tenant_key, commits, offset, limit, db_manager)
+
+        priority = await get_user_priority("git_history", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("git_history", "git_history", tenant_key, priority)
+
+        raw_result = await get_git_history(product_id, tenant_key, commits, offset, limit, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "git_history",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_agent_templates(
@@ -1347,7 +1414,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         tenant_key: str,
         detail: str = "standard",
         offset: int = 0,
-        limit: int = None
+        limit: int = None,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch agent templates with configurable detail level (Handover 0315 Amendment).
@@ -1358,12 +1426,25 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             detail: Detail level ("minimal", "standard", "full")
             offset: Reserved for future pagination (currently ignored)
             limit: Reserved for future pagination (currently ignored)
+            user_id: Optional user ID for priority framing
 
         Returns:
             Agent templates with metadata (pagination_supported=False)
         """
         from .context_tools.get_agent_templates import get_agent_templates
-        return await get_agent_templates(product_id, tenant_key, detail, offset, limit, db_manager)
+        priority = await get_user_priority("agent_templates", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("agent_templates", "agent_templates", tenant_key, priority)
+
+        raw_result = await get_agent_templates(product_id, tenant_key, detail, offset, limit, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "agent_templates",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_tech_stack(
@@ -1371,7 +1452,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         tenant_key: str,
         sections: str = "all",
         offset: int = 0,
-        limit: int = None
+        limit: int = None,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch tech stack information with configurable sections (Handover 0315 Amendment).
@@ -1382,12 +1464,26 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             sections: Section level ("required" or "all")
             offset: Reserved for future pagination (currently ignored)
             limit: Reserved for future pagination (currently ignored)
+            user_id: Optional user ID for priority framing (maps to product_core category)
 
         Returns:
             Tech stack data with metadata (pagination_supported=False)
         """
         from .context_tools.get_tech_stack import get_tech_stack
-        return await get_tech_stack(product_id, tenant_key, sections, offset, limit, db_manager)
+        # product_core category mapping covers product description + tech_stack (Handover 0248a)
+        priority = await get_user_priority("product_core", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("tech_stack", "product_core", tenant_key, priority)
+
+        raw_result = await get_tech_stack(product_id, tenant_key, sections, offset, limit, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "product_core",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_architecture(
@@ -1395,7 +1491,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         tenant_key: str,
         depth: str = "overview",
         offset: int = 0,
-        limit: int = None
+        limit: int = None,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch architecture documentation with configurable depth (Handover 0315 Amendment).
@@ -1406,18 +1503,32 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             depth: Depth level ("overview" or "detailed")
             offset: Reserved for future pagination (currently ignored)
             limit: Reserved for future pagination (currently ignored)
+            user_id: Optional user ID for priority framing (maps to project_context category)
 
         Returns:
             Architecture notes with metadata (pagination_supported=False)
         """
         from .context_tools.get_architecture import get_architecture
-        return await get_architecture(product_id, tenant_key, depth, offset, limit, db_manager)
+        priority = await get_user_priority("project_context", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("architecture", "project_context", tenant_key, priority)
+
+        raw_result = await get_architecture(product_id, tenant_key, depth, offset, limit, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "project_context",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_product_context(
         product_id: str,
         tenant_key: str,
         include_metadata: bool = False,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch general product information (Product Core).
@@ -1428,18 +1539,32 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             product_id: Product UUID
             tenant_key: Tenant isolation key
             include_metadata: Include meta_data JSONB field (default: False)
+            user_id: Optional user ID for priority framing
 
         Returns:
             Product context with core information
         """
         from .context_tools.get_product_context import get_product_context
-        return await get_product_context(product_id, tenant_key, include_metadata, db_manager)
+        priority = await get_user_priority("product_core", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("product_context", "product_core", tenant_key, priority)
+
+        raw_result = await get_product_context(product_id, tenant_key, include_metadata, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "product_core",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_project_context(
         project_id: str,
         tenant_key: str,
         include_summary: bool = False,
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch current project context.
@@ -1451,18 +1576,32 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             project_id: Project UUID
             tenant_key: Tenant isolation key
             include_summary: Include orchestrator_summary if completed (default: False)
+            user_id: Optional user ID for priority framing (project_context category)
 
         Returns:
             Project context with current status
         """
         from .context_tools.get_project import get_project
-        return await get_project(project_id, tenant_key, include_summary, db_manager)
+        priority = await get_user_priority("project_context", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("project_context", "project_context", tenant_key, priority)
+
+        raw_result = await get_project(project_id, tenant_key, include_summary, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "project_context",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     @mcp.tool()
     async def fetch_testing_config(
         product_id: str,
         tenant_key: str,
         depth: str = "full",
+        user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Fetch testing strategy and quality standards.
@@ -1473,12 +1612,25 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             product_id: Product UUID
             tenant_key: Tenant isolation key
             depth: Detail level ("none", "basic", "full")
+            user_id: Optional user ID for priority framing (project_context category)
 
         Returns:
             Testing configuration and quality standards
         """
         from .context_tools.get_testing import get_testing
-        return await get_testing(product_id, tenant_key, depth, db_manager)
+        priority = await get_user_priority("project_context", tenant_key, user_id, db_manager)
+        if priority == 4:
+            return build_priority_excluded_response("testing", "project_context", tenant_key, priority)
+
+        raw_result = await get_testing(product_id, tenant_key, depth, db_manager)
+        return await build_framed_context_response(
+            raw_result,
+            "project_context",
+            tenant_key,
+            user_id,
+            db_manager,
+            priority_override=priority,
+        )
 
     logger.info("Context and discovery tools registered (including 9 thin client context tools)")
 
