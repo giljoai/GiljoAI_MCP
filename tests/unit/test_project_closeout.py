@@ -448,3 +448,316 @@ class TestWebSocketEvents:
             call_args = mock_emit.call_args[1]
             assert call_args["event_type"] == "product_memory_updated"
             assert call_args["product_id"] == str(mock_product.id)
+
+
+class TestErrorHandlingAndEdgeCases:
+    """Test error handling paths and edge cases for coverage"""
+
+    @pytest.mark.asyncio
+    async def test_github_api_failure_doesnt_block_closeout(
+        self, mock_product, mock_project, tenant_key
+    ):
+        """
+        BEHAVIOR: GitHub API failure should not prevent closeout
+
+        GIVEN: GitHub integration enabled but API fails
+        WHEN: close_project_and_update_memory() is called
+        THEN: Closeout succeeds with empty git_commits array
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        # Enable GitHub integration
+        mock_product.product_memory["github"] = {
+            "enabled": True,
+            "repo_url": "https://github.com/user/test-repo",
+            "access_token": "ghp_testtoken123",
+        }
+
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+
+        # Mock fetch_github_commits to raise exception
+        with patch('giljo_mcp.tools.project_closeout.fetch_github_commits') as mock_fetch:
+            mock_fetch.side_effect = Exception("GitHub API Error")
+
+            result = await close_project_and_update_memory(
+                project_id=str(mock_project.id),
+                summary="Test summary",
+                key_outcomes=["Outcome 1"],
+                decisions_made=["Decision 1"],
+                tenant_key=tenant_key,
+                db_manager=mock_db_manager,
+            )
+
+            # Should succeed despite GitHub error
+            assert result["success"] is True
+
+            # Verify product was updated
+            memory = mock_product.product_memory
+            assert len(memory["sequential_history"]) == 1
+            assert memory["sequential_history"][0]["git_commits"] == []  # Empty due to error
+
+    @pytest.mark.asyncio
+    async def test_database_error_rolls_back_transaction(
+        self, mock_product, mock_project, tenant_key
+    ):
+        """
+        BEHAVIOR: Database error should rollback entire transaction
+
+        GIVEN: Database commit fails
+        WHEN: close_project_and_update_memory() is called
+        THEN: Returns error result
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+
+        # Mock session to fail during commit
+        mock_session.commit.side_effect = Exception("DB Error")
+
+        result = await close_project_and_update_memory(
+            project_id=str(mock_project.id),
+            summary="Test summary",
+            key_outcomes=["Outcome 1"],
+            decisions_made=["Decision 1"],
+            tenant_key=tenant_key,
+            db_manager=mock_db_manager,
+        )
+
+        # Should fail
+        assert result["success"] is False
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_closeout_with_empty_arrays(
+        self, mock_product, mock_project, tenant_key
+    ):
+        """
+        BEHAVIOR: Empty arrays for outcomes/decisions should be valid
+
+        GIVEN: Empty key_outcomes and decisions_made arrays
+        WHEN: close_project_and_update_memory() is called
+        THEN: Closeout succeeds with empty arrays stored
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+
+        result = await close_project_and_update_memory(
+            project_id=str(mock_project.id),
+            summary="Test summary",
+            key_outcomes=[],  # Empty
+            decisions_made=[],  # Empty
+            tenant_key=tenant_key,
+            db_manager=mock_db_manager,
+        )
+
+        assert result["success"] is True
+
+        entry = mock_product.product_memory["sequential_history"][0]
+        assert entry["key_outcomes"] == []
+        assert entry["decisions_made"] == []
+
+    @pytest.mark.asyncio
+    async def test_closeout_with_non_list_arrays(
+        self, mock_product, mock_project, tenant_key
+    ):
+        """
+        BEHAVIOR: Non-list arrays should be normalized to empty lists
+
+        GIVEN: key_outcomes and decisions_made are not lists
+        WHEN: close_project_and_update_memory() is called
+        THEN: They are normalized to empty lists with warning logged
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+
+        result = await close_project_and_update_memory(
+            project_id=str(mock_project.id),
+            summary="Test summary",
+            key_outcomes="not a list",  # Invalid type
+            decisions_made="also not a list",  # Invalid type
+            tenant_key=tenant_key,
+            db_manager=mock_db_manager,
+        )
+
+        assert result["success"] is True
+
+        entry = mock_product.product_memory["sequential_history"][0]
+        assert entry["key_outcomes"] == []
+        assert entry["decisions_made"] == []
+
+    @pytest.mark.asyncio
+    async def test_missing_db_manager_fails(self, tenant_key, sample_project_id):
+        """
+        BEHAVIOR: Missing db_manager should fail gracefully
+
+        GIVEN: db_manager is None
+        WHEN: close_project_and_update_memory() is called
+        THEN: Returns error about missing db_manager
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        result = await close_project_and_update_memory(
+            project_id=sample_project_id,
+            summary="Test summary",
+            key_outcomes=["Outcome 1"],
+            decisions_made=["Decision 1"],
+            tenant_key=tenant_key,
+            db_manager=None,  # Missing
+        )
+
+        assert result["success"] is False
+        assert "db_manager" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_product_not_found_for_project(
+        self, mock_project, tenant_key
+    ):
+        """
+        BEHAVIOR: Missing product for project should fail
+
+        GIVEN: Project exists but product doesn't
+        WHEN: close_project_and_update_memory() is called
+        THEN: Returns error about missing product
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        mock_session = AsyncMock()
+        mock_db_manager = MagicMock()
+        mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
+
+        # Project found, but product not found
+        call_counter = {'count': 0}
+
+        async def mock_execute_side_effect(*args, **kwargs):
+            mock_result = MagicMock()
+            if call_counter['count'] == 0:
+                # First call: return project
+                mock_result.scalar_one_or_none.return_value = mock_project
+            else:
+                # Second call: product not found
+                mock_result.scalar_one_or_none.return_value = None
+
+            call_counter['count'] += 1
+            return mock_result
+
+        mock_session.execute.side_effect = mock_execute_side_effect
+
+        result = await close_project_and_update_memory(
+            project_id=str(mock_project.id),
+            summary="Test summary",
+            key_outcomes=["Outcome 1"],
+            decisions_made=["Decision 1"],
+            tenant_key=tenant_key,
+            db_manager=mock_db_manager,
+        )
+
+        assert result["success"] is False
+        assert "product not found" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_normalized_git_commits_with_invalid_format(
+        self, mock_product, mock_project, tenant_key
+    ):
+        """
+        BEHAVIOR: Git commits with invalid format should be normalized
+
+        GIVEN: GitHub returns commits in unexpected format
+        WHEN: close_project_and_update_memory() is called
+        THEN: Commits are normalized safely
+        """
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        # Enable GitHub integration
+        mock_product.product_memory["github"] = {
+            "enabled": True,
+            "repo_url": "https://github.com/user/test-repo",
+        }
+
+        mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
+
+        # Mock GitHub API with invalid/mixed format commits
+        invalid_commits = [
+            "string commit",  # Not a dict
+            {"sha": "abc123", "message": "Direct message"},  # Direct message field
+            {"sha": "def456", "commit": {"message": "Nested message"}},  # Nested message
+        ]
+
+        with patch("giljo_mcp.tools.project_closeout.fetch_github_commits", return_value=invalid_commits):
+            result = await close_project_and_update_memory(
+                project_id=str(mock_project.id),
+                summary="Test summary",
+                key_outcomes=["Outcome 1"],
+                decisions_made=["Decision 1"],
+                tenant_key=tenant_key,
+                db_manager=mock_db_manager,
+            )
+
+        assert result["success"] is True
+        learning = mock_product.product_memory["learnings"][0]
+        assert len(learning["git_commits"]) == 3
+        # First commit normalized from string
+        assert learning["git_commits"][0]["message"] == "string commit"
+        # Second commit uses direct message
+        assert learning["git_commits"][1]["message"] == "Direct message"
+        # Third commit uses nested message
+        assert learning["git_commits"][2]["message"] == "Nested message"
+
+    @pytest.mark.asyncio
+    async def test_mcp_wrapper_function(self, tenant_key):
+        """
+        BEHAVIOR: MCP wrapper function injects db_manager correctly
+
+        GIVEN: MCP wrapper is called with project closeout parameters
+        WHEN: close_project_and_update_memory_wrapper() is called
+        THEN: It delegates to close_project_and_update_memory with db_manager
+        """
+        from giljo_mcp.tools.project_closeout import register_project_closeout_tools
+        from fastmcp import FastMCP
+        from unittest.mock import MagicMock
+
+        # Create mock MCP and db_manager
+        mock_mcp = MagicMock(spec=FastMCP)
+        mock_db_manager = MagicMock()
+        mock_tenant_manager = MagicMock()
+
+        # Track the registered tool
+        registered_tool = None
+
+        def capture_tool(func=None):
+            nonlocal registered_tool
+            if func is not None:
+                registered_tool = func
+                return func
+
+            def decorator(f):
+                nonlocal registered_tool
+                registered_tool = f
+                return f
+            return decorator
+
+        mock_mcp.tool = capture_tool
+
+        # Register tools
+        register_project_closeout_tools(mock_mcp, mock_db_manager, mock_tenant_manager)
+
+        # Verify tool was registered
+        assert registered_tool is not None
+
+        # Test that wrapper correctly passes db_manager
+        with patch('giljo_mcp.tools.project_closeout.close_project_and_update_memory') as mock_close:
+            mock_close.return_value = {"success": True}
+
+            await registered_tool(
+                project_id="test-id",
+                summary="Test summary",
+                key_outcomes=["Outcome 1"],
+                decisions_made=["Decision 1"],
+                tenant_key=tenant_key,
+            )
+
+            # Verify db_manager was injected
+            mock_close.assert_called_once()
+            call_kwargs = mock_close.call_args[1]
+            assert call_kwargs["db_manager"] == mock_db_manager
