@@ -14,6 +14,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from api.schemas.prompt import ProjectCloseoutDataResponse
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.project_service import ProjectService
@@ -84,6 +85,37 @@ async def complete_project(
         message_count=proj.get("message_count", 0),
         agents=[],
     )
+
+
+@router.get(
+    "/{project_id}/closeout",
+    response_model=ProjectCloseoutDataResponse,
+    summary="Get project closeout data (checklist + prompt)",
+)
+async def get_project_closeout_data(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectCloseoutDataResponse:
+    """
+    Get dynamic closeout checklist and prompt for project completion.
+
+    Called by CloseoutModal.vue when the user initiates project closeout.
+    """
+    logger.info(f"User {current_user.username} fetching closeout data for project {project_id}")
+
+    result = await project_service.get_closeout_data(project_id=project_id)
+
+    if not result.get("success"):
+        error_msg = result.get("error", "Project not found")
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in error_msg.lower() or "access denied" in error_msg.lower()
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        raise HTTPException(status_code=status_code, detail=error_msg)
+
+    return ProjectCloseoutDataResponse(**result["data"])
 
 
 @router.post("/{project_id}/close-out", response_model=ProjectCloseOutResponse)
