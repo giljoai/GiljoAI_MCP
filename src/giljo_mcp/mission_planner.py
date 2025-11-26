@@ -38,7 +38,7 @@ DEFAULT_FIELD_PRIORITIES = {
     "codebase_summary": 6,  # Moderate detail (50% context prioritization)
     "architecture": 4,  # Abbreviated detail (context prioritization and orchestration) - Legacy
     "tech_stack": 8,  # Moderate-high detail (tech stack is critical context)
-    "product_memory.learnings": 7,  # Moderate: Last 5 learnings with outcomes (Handover 0311)
+    "product_memory.sequential_history": 7,  # Moderate: recent project history with outcomes
     # Config data fields (Handover 0303)
     "config_data.architecture": 4,  # Abbreviated detail (context prioritization and orchestration)
     "config_data.test_methodology": 6,  # Moderate - important for agents
@@ -1119,7 +1119,7 @@ Success Criteria:
         # Vision document is foundational context that orchestrator needs
         # NEW: Use chunked vision if available, fallback to full text
 
-        vision_priority = field_priorities.get("product_vision", 10)  # Default: MANDATORY
+        vision_priority = effective_priorities.get("product_vision", 10)  # Default: MANDATORY
         if vision_priority > 0:
             # Check if vision is chunked
             product_has_chunks = any(
@@ -1217,7 +1217,7 @@ Success Criteria:
 
         # === Codebase Summary Section ===
         # Use specialized abbreviation methods that preserve structure
-        codebase_priority = field_priorities.get("codebase_summary", 0)
+        codebase_priority = effective_priorities.get("codebase_summary", 0)
         if codebase_priority > 0:
             codebase_detail = self._get_detail_level(codebase_priority)
             codebase_original = project.codebase_summary or ""
@@ -1266,9 +1266,9 @@ Success Criteria:
             legacy_key = field_name if field_name == "architecture" else None
 
             # Try new format first, then fall back to legacy
-            field_priority = field_priorities.get(field_key, 0)
+            field_priority = effective_priorities.get(field_key, 0)
             if field_priority == 0 and legacy_key:
-                field_priority = field_priorities.get(legacy_key, 0)
+                field_priority = effective_priorities.get(legacy_key, 0)
 
             if field_priority > 0:
                 field_detail = self._get_detail_level(field_priority)
@@ -1302,7 +1302,7 @@ Success Criteria:
 
         # === Tech Stack Section ===
         # Extract from product.config_data (JSONB field) - Handover 0302
-        tech_stack_priority = field_priorities.get("tech_stack", 0)
+        tech_stack_priority = effective_priorities.get("tech_stack", 0)
         if tech_stack_priority > 0 and product.config_data:
             tech_stack_detail = self._get_detail_level(tech_stack_priority)
 
@@ -1369,20 +1369,20 @@ Success Criteria:
         # Both are controlled by field priorities and user toggles
 
         # 360 Memory extraction (priority-based)
-        learnings_priority = field_priorities.get("product_memory.learnings", 0)
-        if learnings_priority > 0:
-            learnings_context = await self._extract_product_learnings(product, learnings_priority, max_entries=10)
-            if learnings_context:
-                context_sections.append(learnings_context)
-                learnings_tokens = self._count_tokens(learnings_context)
-                total_tokens += learnings_tokens
+        history_priority = effective_priorities.get("product_memory.sequential_history", 0)
+        if history_priority > 0:
+            history_context = await self._extract_product_history(product, history_priority, max_entries=10)
+            if history_context:
+                context_sections.append(history_context)
+                history_tokens = self._count_tokens(history_context)
+                total_tokens += history_tokens
 
                 logger.debug(
-                    f"Added 360 Memory context: {learnings_tokens} tokens (priority={learnings_priority})",
+                    f"Added 360 Memory context: {history_tokens} tokens (priority={history_priority})",
                     extra={
-                        "field": "product_memory.learnings",
-                        "priority": learnings_priority,
-                        "tokens": learnings_tokens,
+                        "field": "product_memory.sequential_history",
+                        "priority": history_priority,
+                        "tokens": history_tokens,
                         "product_id": str(product.id),
                     },
                 )
@@ -1430,80 +1430,64 @@ Success Criteria:
         # Join all sections with double newlines for readability
         return "\n\n".join(context_sections)
 
-    async def _extract_product_learnings(self, product: Product, priority: int, max_entries: int = 10) -> str:
+    async def _extract_product_history(self, product: Product, priority: int, max_entries: int = 10) -> str:
         """
-        Extract learnings from product_memory.learnings array with priority-based detail levels.
-
-        This method implements the 9th context source from the PDF spec (Handover 0311).
-        Learnings are historical project outcomes stored in 360 Memory system (Handovers 0135-0139).
+        Extract project history from product_memory.sequential_history with priority-based detail levels.
 
         Priority-based detail levels:
-        - 10 (full): All learnings (up to max_entries) with summary + outcomes + decisions
-        - 7-9 (moderate): Last 5 learnings with summary + outcomes
-        - 4-6 (abbreviated): Last 3 learnings with summary only
-        - 1-3 (minimal): Last 1 learning with summary only
+        - 10 (full): All history entries (up to max_entries) with summary + outcomes + decisions
+        - 7-9 (moderate): Last 5 entries with summary + outcomes
+        - 4-6 (abbreviated): Last 3 entries with summary only
+        - 1-3 (minimal): Last 1 entry with summary only
         - 0 (exclude): Return empty string
 
         Args:
-            product: Product model with product_memory JSONB field containing learnings array
+            product: Product model with product_memory JSONB field containing sequential_history array
             priority: Field priority (0-10 scale) controlling detail level
-            max_entries: Maximum learnings to include for full detail (default: 10)
+            max_entries: Maximum entries to include for full detail (default: 10)
 
         Returns:
             Formatted markdown string with historical context, or empty string if excluded/no data
 
         Multi-Tenant Isolation:
             Product is already tenant-filtered by upstream code. No additional filtering needed.
-
-        Token Budget:
-            - Minimal (priority 1-3): ~100-200 tokens
-            - Abbreviated (priority 4-6): ~300-500 tokens
-            - Moderate (priority 7-9): ~400-600 tokens
-            - Full (priority 10): ~800-1200 tokens (varies with learning count)
-
-        Example:
-            learnings_context = await planner._extract_product_learnings(
-                product=product,
-                priority=7,  # Moderate detail
-                max_entries=10
-            )
         """
         # Priority 0: Exclude entirely
         if priority == 0:
             return ""
 
-        # Check if product has learnings
+        # Check if product has history
         if not product.product_memory:
             return ""
 
-        learnings = product.product_memory.get("learnings", [])
-        if not learnings:
+        history = product.product_memory.get("sequential_history", [])
+        if not history:
             return ""
 
         # Sort by sequence descending (most recent first)
-        sorted_learnings = sorted(learnings, key=lambda x: x.get("sequence", 0), reverse=True)
+        sorted_history = sorted(history, key=lambda x: x.get("sequence", 0), reverse=True)
 
         # Determine detail level based on priority
         detail_level = self._get_detail_level(priority)
 
         # Determine how many entries to include based on detail level
         if detail_level == "minimal":
-            entries_to_show = sorted_learnings[:1]
+            entries_to_show = sorted_history[:1]
         elif detail_level == "abbreviated":
-            entries_to_show = sorted_learnings[:3]
+            entries_to_show = sorted_history[:3]
         elif detail_level == "moderate":
-            entries_to_show = sorted_learnings[:5]
+            entries_to_show = sorted_history[:5]
         else:  # full
-            entries_to_show = sorted_learnings[:max_entries]
+            entries_to_show = sorted_history[:max_entries]
 
         # Build formatted context
         sections = ["## Historical Context (360 Memory)\n"]
         sections.append(
-            f"Product has {len(learnings)} previous project(s) in learning history. "
+            f"Product has {len(history)} previous project(s) in history. "
             f"Showing {len(entries_to_show)} most recent:\n"
         )
 
-        # Format each learning entry
+        # Format each history entry
         for entry in entries_to_show:
             seq = entry.get("sequence", "?")
             project_name = entry.get("project_name", "Unknown Project")
@@ -1534,21 +1518,21 @@ Success Criteria:
 
         # Add guidance note
         sections.append(
-            "\n**Note**: Use these learnings to inform your decisions, "
+            "\n**Note**: Use this project history to inform your decisions, "
             "avoid repeating past mistakes, and build on successful patterns.\n"
         )
 
         result = "\n".join(sections)
 
         logger.debug(
-            f"Extracted 360 Memory learnings: {len(entries_to_show)} entries, "
+            f"Extracted 360 Memory history: {len(entries_to_show)} entries, "
             f"{self._count_tokens(result)} tokens (detail={detail_level})",
             extra={
                 "product_id": str(product.id),
                 "priority": priority,
                 "detail_level": detail_level,
                 "entries_shown": len(entries_to_show),
-                "total_learnings": len(learnings),
+                "total_entries": len(history),
                 "tokens": self._count_tokens(result),
             },
         )
@@ -1603,7 +1587,7 @@ Success Criteria:
             "# See what changed in recent commits",
             "git show --stat HEAD~5..HEAD",
             "```\n",
-            "**Important**: Combine git history with 360 Memory learnings above for complete context.\n",
+            "**Important**: Combine git history with 360 Memory history above for complete context.\n",
         ]
 
         result = "\n".join(instructions)

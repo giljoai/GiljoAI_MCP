@@ -1,11 +1,11 @@
 """
 Project Closeout MCP Tool (Handover 013B - Refactored)
 
-Handles project completion and updates product memory with learnings.
+Handles project completion and updates product memory with sequential history entries.
 
 REMOVED: GitHub API integration (over-engineered)
 Git integration is handled by CLI agents (Claude Code, Codex, Gemini).
-This tool now only stores project learnings in product_memory.
+This tool now only stores project history in product_memory.sequential_history.
 """
 
 import logging
