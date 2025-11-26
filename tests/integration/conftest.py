@@ -64,6 +64,36 @@ async def test_user_2(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
+async def auth_headers(test_user: User) -> dict:
+    """Generate authentication headers for primary test user."""
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
+
+    token = JWTManager.create_access_token(
+        user_id=test_user.id,
+        username=test_user.username,
+        role=test_user.role,
+        tenant_key=test_user.tenant_key
+    )
+
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def auth_headers_user_2(test_user_2: User) -> dict:
+    """Generate authentication headers for secondary test user."""
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
+
+    token = JWTManager.create_access_token(
+        user_id=test_user_2.id,
+        username=test_user_2.username,
+        role=test_user_2.role,
+        tenant_key=test_user_2.tenant_key
+    )
+
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
 async def test_product(db_session: AsyncSession, test_user: User):
     """Create test product with VisionDocument (Handover 0128e migration)"""
     from src.giljo_mcp.models import VisionDocument

@@ -26,6 +26,7 @@ async def test_get_closeout_data_all_agents_complete(
         status="active",
     )
     db_session.add(project)
+    await db_session.flush()
 
     for i in range(3):
         db_session.add(
@@ -68,6 +69,7 @@ async def test_get_closeout_data_with_failed_agents(
         status="active",
     )
     db_session.add(project)
+    await db_session.flush()
 
     db_session.add(
         MCPAgentJob(
