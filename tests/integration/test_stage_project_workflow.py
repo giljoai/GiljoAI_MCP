@@ -18,13 +18,13 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app import create_app
 from api.dependencies.websocket import WebSocketDependency
 from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import AgentJob, Product, Project, User
+from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
 
 
 @pytest.fixture
@@ -40,72 +40,9 @@ def test_client(test_app):
     return TestClient(test_app)
 
 
-@pytest.fixture
-def test_user(db: Session):
-    """Create test user with tenant"""
-    user = User(
-        username=f"testuser_{uuid4().hex[:8]}",
-        email=f"test_{uuid4().hex[:8]}@example.com",
-        tenant_key=f"tenant_{uuid4().hex[:8]}",
-        role="developer",
-        password_hash="hashed_password",
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@pytest.fixture
-def test_user_2(db: Session):
-    """Create second test user (different tenant for isolation tests)"""
-    user = User(
-        username=f"testuser2_{uuid4().hex[:8]}",
-        email=f"test2_{uuid4().hex[:8]}@example.com",
-        tenant_key=f"tenant2_{uuid4().hex[:8]}",
-        role="developer",
-        password_hash="hashed_password",
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@pytest.fixture
-def test_product(db: Session, test_user: User):
-    """Create test product"""
-    product = Product(
-        name=f"Test Product {uuid4().hex[:8]}",
-        vision_document="# Product Vision\n\nComprehensive product vision document with all details.",
-        tenant_key=test_user.tenant_key,
-        status="active",
-        config_data={
-            "architecture": "Microservices architecture with event-driven design.",
-            "tech_stack": "Python, FastAPI, PostgreSQL, Vue 3",
-        },
-    )
-    db.add(product)
-    db.commit()
-    db.refresh(product)
-    return product
-
-
-@pytest.fixture
-def test_project(db: Session, test_user: User, test_product: Product):
-    """Create test project"""
-    project = Project(
-        name=f"Test Project {uuid4().hex[:8]}",
-        description="Comprehensive project description for testing mission generation.",
-        product_id=test_product.id,
-        tenant_key=test_user.tenant_key,
-        status="active",
-        codebase_summary="# Codebase Summary\n\nLarge codebase with multiple modules and components.",
-    )
-    db.add(project)
-    db.commit()
-    db.refresh(project)
-    return project
+# Note: test_user, test_user_2, test_product, and test_project fixtures
+# should be imported from conftest.py or created in shared fixtures.
+# For now, these tests rely on the db_session fixture from conftest.
 
 
 @pytest.mark.asyncio
@@ -116,7 +53,7 @@ class TestStageProjectWorkflow:
     """
 
     async def test_complete_staging_workflow_with_user_config(
-        self, db: Session, test_user: User, test_project: Project
+        self, db_manager, test_user: User, test_project: Project
     ):
         """
         PRODUCTION-GRADE: Complete staging workflow with user field priorities
@@ -134,7 +71,7 @@ class TestStageProjectWorkflow:
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
         # Act: Generate mission with user config
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mission_result = await mission_planner.generate_mission(
             project_id=test_project.id, user_id=test_user.id, field_priorities=user_config, ws_dep=mock_ws_dep
         )
@@ -161,12 +98,12 @@ class TestStageProjectWorkflow:
     Validates context prioritization through field priority system
     """
 
-    async def test_mission_generation_with_field_priorities(self, db: Session, test_user: User, test_project: Project):
+    async def test_mission_generation_with_field_priorities(self, db_manager, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Validate context prioritization and orchestration through field priorities
         """
         # Arrange: Generate baseline mission (no priorities)
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
 
         baseline_mission = await mission_planner._build_context_with_priorities(
             product=test_project.product,
@@ -204,7 +141,7 @@ class TestStageProjectWorkflow:
     Validates agent creation with real-time WebSocket events
     """
 
-    async def test_agent_creation_and_websocket_broadcasts(self, db: Session, test_user: User, test_project: Project):
+    async def test_agent_creation_and_websocket_broadcasts(self, db_manager, db_session: AsyncSession, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Agent creation with WebSocket broadcast validation
         """
@@ -213,7 +150,7 @@ class TestStageProjectWorkflow:
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=3)
 
         # Act: Create agent via agent selector
-        agent_selector = AgentSelector(db=db)
+        agent_selector = AgentSelector(db_manager=db_manager)
         agent_data = await agent_selector.create_agent_for_project(
             project_id=test_project.id,
             agent_type="implementor",
@@ -223,11 +160,15 @@ class TestStageProjectWorkflow:
         )
 
         # Assert: Agent created in database
-        agent = (
-            db.query(AgentJob)
-            .filter_by(project_id=test_project.id, tenant_key=test_user.tenant_key, agent_type="implementor")
-            .first()
+        from sqlalchemy import select
+        result = await db_session.execute(
+            select(MCPAgentJob).filter_by(
+                project_id=test_project.id,
+                tenant_key=test_user.tenant_key,
+                agent_type="implementor"
+            )
         )
+        agent = result.scalar_one_or_none()
 
         assert agent is not None
         assert agent.mission == "Implement feature X"
@@ -246,7 +187,7 @@ class TestStageProjectWorkflow:
     """
 
     async def test_multi_tenant_isolation_across_workflow(
-        self, db: Session, test_user: User, test_user_2: User, test_project: Project
+        self, db_manager, db_session: AsyncSession, test_user: User, test_user_2: User, test_project: Project
     ):
         """
         PRODUCTION-GRADE: Multi-tenant isolation validation (security critical)
@@ -256,7 +197,7 @@ class TestStageProjectWorkflow:
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
         # Act: Generate mission for tenant A (test_user)
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mission_result = await mission_planner.generate_mission(
             project_id=test_project.id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
         )
@@ -266,37 +207,35 @@ class TestStageProjectWorkflow:
         assert call_args.kwargs["tenant_key"] == test_user.tenant_key
 
         # Assert: Tenant B cannot access mission
-        with pytest.raises(Exception):
-            # Attempt to access project from different tenant (should fail)
-            other_project = (
-                db.query(Project)
-                .filter_by(
-                    id=test_project.id,
-                    tenant_key=test_user_2.tenant_key,  # Wrong tenant
-                )
-                .first()
+        from sqlalchemy import select
+        result = await db_session.execute(
+            select(Project).filter_by(
+                id=test_project.id,
+                tenant_key=test_user_2.tenant_key,  # Wrong tenant
             )
-            assert other_project is None
+        )
+        other_project = result.scalar_one_or_none()
+        assert other_project is None
 
     """
     Test 5: Serena toggle integration
     Validates Serena MCP integration in staging workflow
     """
 
-    async def test_serena_toggle_integration(self, db: Session, test_user: User, test_project: Project):
+    async def test_serena_toggle_integration(self, db_manager, db_session: AsyncSession, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Serena MCP toggle affects mission generation
         """
         # Arrange: Enable Serena for user
         test_user.config_data = {"serena_enabled": True}
-        db.commit()
+        await db_session.commit()
 
         # Mock WebSocket dependency
         mock_ws_dep = AsyncMock(spec=WebSocketDependency)
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
         # Act: Generate mission with Serena enabled
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mission_result = await mission_planner.generate_mission(
             project_id=test_project.id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
         )
@@ -315,19 +254,23 @@ class TestStageProjectWorkflow:
     """
 
     async def test_token_reduction_validation_70_percent_target(
-        self, db: Session, test_user: User, test_project: Project
+        self, db_manager, db_session: AsyncSession, test_user: User, test_project: Project
     ):
         """
         PRODUCTION-GRADE: Validate core business value (context prioritization and orchestration)
         """
         # Arrange: Create large product vision and project
-        test_project.product.vision_document = "# Vision\n\n" + ("Detailed section. " * 500)
+        # Update vision via VisionDocument (not deprecated vision_document field)
+        if test_project.product.vision_documents:
+            vision_doc = test_project.product.vision_documents[0]
+            vision_doc.vision_document = "# Vision\n\n" + ("Detailed section. " * 500)
+
         test_project.description = "Description. " * 200
-        test_project.codebase_summary = "# Codebase\n\n" + ("Module details. " * 300)
-        db.commit()
+        # Note: Project model doesn't have codebase_summary field (removed in model refactor)
+        await db_session.commit()
 
         # Baseline: Full detail (no priorities)
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         baseline_mission = await mission_planner._build_context_with_priorities(
             product=test_project.product,
             project=test_project,
@@ -368,7 +311,7 @@ class TestStageProjectWorkflow:
     Validates graceful error handling and recovery
     """
 
-    async def test_error_handling_in_staging_workflow(self, db: Session, test_user: User):
+    async def test_error_handling_in_staging_workflow(self, db_manager, test_user: User):
         """
         PRODUCTION-GRADE: Error boundaries and graceful degradation
         """
@@ -379,7 +322,7 @@ class TestStageProjectWorkflow:
         mock_ws_dep = AsyncMock(spec=WebSocketDependency)
 
         # Act & Assert: Should raise meaningful error
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         with pytest.raises(Exception) as exc_info:
             await mission_planner.generate_mission(
                 project_id=invalid_project_id, user_id=test_user.id, field_priorities={}, ws_dep=mock_ws_dep
@@ -393,7 +336,7 @@ class TestStageProjectWorkflow:
     Validates race condition prevention in concurrent scenarios
     """
 
-    async def test_concurrent_staging_requests(self, db: Session, test_user: User, test_project: Project):
+    async def test_concurrent_staging_requests(self, db_manager, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Race condition prevention for concurrent requests
         """
@@ -402,7 +345,7 @@ class TestStageProjectWorkflow:
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
         # Act: 10 concurrent mission generation requests
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
 
         async def generate_mission():
             return await mission_planner.generate_mission(
@@ -425,12 +368,12 @@ class TestStageProjectWorkflow:
     Validates mission regeneration endpoint with field priority overrides
     """
 
-    async def test_mission_regeneration_with_overrides(self, db: Session, test_user: User, test_project: Project):
+    async def test_mission_regeneration_with_overrides(self, db_manager, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Mission regeneration with user-specified overrides
         """
         # Arrange: Generate initial mission
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mock_ws_dep = AsyncMock(spec=WebSocketDependency)
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
@@ -458,7 +401,7 @@ class TestStageProjectWorkflow:
     Validates user_id propagates through entire workflow
     """
 
-    async def test_user_config_propagation_chain(self, db: Session, test_user: User, test_project: Project):
+    async def test_user_config_propagation_chain(self, db_manager, test_user: User, test_project: Project):
         """
         PRODUCTION-GRADE: Validate user_id parameter chain (Task 2.1)
         """
@@ -467,7 +410,7 @@ class TestStageProjectWorkflow:
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
         # Act: Generate mission with user_id
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mission_result = await mission_planner.generate_mission(
             project_id=test_project.id,
             user_id=test_user.id,  # User ID provided
@@ -500,7 +443,7 @@ class TestStageProjectWorkflow:
 class TestStageProjectEdgeCases:
     """Edge cases and error scenarios"""
 
-    async def test_staging_with_missing_product(self, db: Session, test_user: User):
+    async def test_staging_with_missing_product(self, db_manager, db_session: AsyncSession, test_user: User):
         """
         Validate error handling when product is missing
         """
@@ -512,11 +455,11 @@ class TestStageProjectEdgeCases:
             tenant_key=test_user.tenant_key,
             status="active",
         )
-        db.add(project)
-        db.commit()
+        db_session.add(project)
+        await db_session.commit()
 
         # Act & Assert: Should fail gracefully
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mock_ws_dep = AsyncMock(spec=WebSocketDependency)
 
         with pytest.raises(Exception) as exc_info:
@@ -526,12 +469,12 @@ class TestStageProjectEdgeCases:
 
         assert "product" in str(exc_info.value).lower()
 
-    async def test_staging_with_empty_field_priorities(self, db: Session, test_user: User, test_project: Project):
+    async def test_staging_with_empty_field_priorities(self, db_manager, test_user: User, test_project: Project):
         """
         Validate default behavior when field_priorities is empty
         """
         # Arrange: Empty field priorities
-        mission_planner = MissionPlanner(db=db)
+        mission_planner = MissionPlanner(db_manager=db_manager)
         mock_ws_dep = AsyncMock(spec=WebSocketDependency)
         mock_ws_dep.broadcast_to_tenant = AsyncMock(return_value=2)
 
