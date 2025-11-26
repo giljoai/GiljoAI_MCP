@@ -1101,7 +1101,14 @@ class ProjectService:
                 if project.product_id:
                     from giljo_mcp.models.products import Product
 
-                    product_result = await session.execute(select(Product).where(Product.id == project.product_id))
+                    product_result = await session.execute(
+                        select(Product).where(
+                            and_(
+                                Product.id == project.product_id,
+                                Product.tenant_key == self.tenant_manager.get_current_tenant()
+                            )
+                        )
+                    )
                     product = product_result.scalar_one_or_none()
                     if product:
                         product_name = product.name
