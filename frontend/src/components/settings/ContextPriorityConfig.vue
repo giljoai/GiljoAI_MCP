@@ -85,28 +85,29 @@ const contexts = [
 ]
 
 const priorityOptions = [
-  { title: 'High', value: 'high' },
-  { title: 'Medium', value: 'medium' },
-  { title: 'Low', value: 'low' },
+  { title: 'Critical', value: 1 },
+  { title: 'Important', value: 2 },
+  { title: 'Reference', value: 3 },
+  { title: 'Exclude', value: 4 },
 ]
 
 // State
 interface ContextConfig {
   enabled: boolean
-  priority: string
+  priority: number
   depth?: string
   count?: number
 }
 
 const config = ref<Record<string, ContextConfig>>({
-  product_description: { enabled: true, priority: 'high' },
-  vision_documents: { enabled: true, priority: 'medium', depth: 'moderate' },
-  tech_stack: { enabled: true, priority: 'medium' },
-  architecture: { enabled: true, priority: 'medium' },
-  testing: { enabled: true, priority: 'low' },
-  agent_templates: { enabled: true, priority: 'medium', depth: 'type_only' },
-  memory_360: { enabled: true, priority: 'low', count: 3 },
-  git_history: { enabled: true, priority: 'low', count: 15 },
+  product_description: { enabled: true, priority: 1 },
+  vision_documents: { enabled: true, priority: 2, depth: 'moderate' },
+  tech_stack: { enabled: true, priority: 2 },
+  architecture: { enabled: true, priority: 2 },
+  testing: { enabled: true, priority: 3 },
+  agent_templates: { enabled: true, priority: 2, depth: 'type_only' },
+  memory_360: { enabled: true, priority: 3, count: 3 },
+  git_history: { enabled: true, priority: 3, count: 15 },
 })
 
 const loading = ref(false)
@@ -118,7 +119,7 @@ function toggleContext(key: string) {
   saveConfig() // Auto-save
 }
 
-function updatePriority(key: string, value: string) {
+function updatePriority(key: string, value: number) {
   config.value[key].priority = value
   saveConfig() // Auto-save
 }
@@ -167,19 +168,21 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
 async function fetchConfig() {
   loading.value = true
   try {
-    const response = await axios.get('/api/v1/users/me/context/depth')
-    if (response.data?.contexts) {
-      // Merge server config with defaults
-      Object.keys(response.data.contexts).forEach((key) => {
-        if (config.value[key]) {
-          config.value[key] = {
-            ...config.value[key],
-            ...response.data.contexts[key],
-          }
+    const response = await axios.get('/api/v1/users/me/field-priority')
+    const priorities = response.data?.priorities || {}
+
+    Object.entries(priorities).forEach(([key, value]) => {
+      const numericPriority = typeof value === 'number' ? value : Number(value)
+      if (config.value[key]) {
+        config.value[key] = {
+          ...config.value[key],
+          enabled: numericPriority !== 4,
+          priority: numericPriority || 3,
         }
-      })
-    }
-    console.log('[CONTEXT PRIORITY CONFIG] Configuration loaded from server')
+      }
+    })
+
+    console.log('[CONTEXT PRIORITY CONFIG] Field priorities loaded from server')
   } catch (error) {
     console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error)
     // Keep default values on error
@@ -191,15 +194,25 @@ async function fetchConfig() {
 async function saveConfig() {
   saving.value = true
   try {
-    await axios.put('/api/v1/users/me/context/depth', {
-      contexts: config.value,
+    await axios.put('/api/v1/users/me/field-priority', {
+      version: '2.0',
+      priorities: convertToBackendFormat(config.value),
     })
-    console.log('[CONTEXT PRIORITY CONFIG] Configuration saved successfully')
+    console.log('[CONTEXT PRIORITY CONFIG] Field priorities saved successfully')
   } catch (error) {
     console.error('[CONTEXT PRIORITY CONFIG] Failed to save config:', error)
   } finally {
     saving.value = false
   }
+}
+
+function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Record<string, number> {
+  const priorities: Record<string, number> = {}
+  Object.entries(localConfig).forEach(([key, value]) => {
+    const priority = value.enabled ? value.priority : 4
+    priorities[key] = priority
+  })
+  return priorities
 }
 
 // Lifecycle
