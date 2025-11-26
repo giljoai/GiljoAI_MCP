@@ -543,57 +543,25 @@ Priority 1 (CRITICAL - Fetch First):
         # Add workflow instructions
         prompt += """
 
-CLAUDE CODE INPUT LIMITS:
-Each MCP tool call is limited to ~24K tokens (Claude Code technical constraint).
-
-For content exceeding 24K, use pagination:
-
-Vision Documents (Full Pagination Support):
-  - Call 1: fetch_vision_document(product_id='{product_id}', tenant_key='{self.tenant_key}', chunking='heavy', offset=0, limit=4)
-  - Check metadata.has_more to determine if additional calls needed
-  - Call 2: fetch_vision_document(..., offset=metadata.next_offset, limit=4)
-  - Repeat until has_more=False
-
-360 Memory (Full Pagination Support):
-  - Call 1: fetch_360_memory(product_id='{product_id}', tenant_key='{self.tenant_key}', last_n_projects=10, offset=0, limit=5)
-  - Call 2: fetch_360_memory(..., offset=5, limit=5)
-  - Returns projects in batches to stay within 24K limit
-
-Other Tools (Future Pagination):
-  - Git history, agent templates, tech stack, architecture
-  - Accept offset/limit parameters (currently ignored)
-  - Full pagination support coming in future handover
-
-Key Points:
-  - No aggregate limit - make unlimited calls as needed
-  - Depth controls per-call content amount
-  - Pagination enables fetching large content across multiple calls
-  - Each call stays within 24K safety margin
+MCP TOOL LIMITS:
+Each tool call returns <24K tokens. For large content:
+- Vision/Memory tools support pagination (offset/limit)
+- Check metadata.has_more for additional calls
+- Make unlimited calls as needed
 
 WORKFLOW:
-1. Assess your token budget (e.g., 200,000 tokens)
-2. Fetch CRITICAL context via MCP tools (Priority 1)
-3. Calculate remaining budget after each fetch
-4. Fetch IMPORTANT context if budget allows (Priority 2)
-5. Fetch NICE_TO_HAVE context if extra budget (Priority 3)
-6. Analyze all fetched context + inline project data
-7. CREATE MISSION: Generate condensed execution plan (context prioritization active)
-8. PERSIST MISSION: mcp__giljo-mcp__update_project_mission('{project_id}', your_created_mission)
-9. SPAWN AGENTS: mcp__giljo-mcp__spawn_agent_job() to create specialist agent jobs
-10. Monitor progress via mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}')
+1. Fetch context by priority (1→2→3) within token budget
+2. Create condensed mission plan from fetched context
+3. Persist mission: update_project_mission(project_id, mission)
+4. Spawn specialist agents: spawn_agent_job()
+5. Monitor: get_workflow_status(project_id, tenant_key)
 
-CONTEXT MANAGEMENT:
-- Fetch tools in priority order (1 → 2 → 3)
-- Respect 24K per-call limit (prevents Claude Code input failures)
-- Use pagination for content >24K (vision + 360 memory support this)
-- Make multiple calls with offset/limit for large content
-- Stop fetching if budget reaches 90% capacity
-- Trigger succession if context usage exceeds 90%
-- Use get_orchestrator_instructions() for full mission details if needed
+Trigger succession if context usage >90%.
+Claude Code: Use TodoWrite tool to track workflow progress.
 
 CRITICAL DISTINCTIONS:
 - Project.description = User-written requirements (already provided above)
-- Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 7)
+- Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 2)
 - Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
 
 MCP CORE TOOLS (Always Available):
