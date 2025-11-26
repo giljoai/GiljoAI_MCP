@@ -447,3 +447,87 @@ async def test_closeout_multi_tenant_isolation_complete(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_get_closeout_data_endpoint_success(
+    client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
+):
+    """GET /closeout returns checklist and prompt for the project."""
+    project = Project(
+        id="closeout-data-1",
+        tenant_key=test_user.tenant_key,
+        name="Closeout Data Project",
+        mission="Complete the data pipeline",
+        description="Data pipeline work",
+        status="active",
+    )
+    db_session.add(project)
+
+    # Mix of agent statuses
+    db_session.add(
+        MCPAgentJob(
+            job_id="closeout-complete-1",
+            tenant_key=test_user.tenant_key,
+            project_id=project.id,
+            agent_type="developer",
+            mission="Implement",
+            status="complete",
+        )
+    )
+    db_session.add(
+        MCPAgentJob(
+            job_id="closeout-working-1",
+            tenant_key=test_user.tenant_key,
+            project_id=project.id,
+            agent_type="analyst",
+            mission="Analyze",
+            status="working",
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get(f"/api/v1/projects/{project.id}/closeout", headers=auth_headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data["project_id"] == project.id
+    assert data["project_name"] == project.name
+    assert "checklist" in data and len(data["checklist"]) >= 3
+    assert "close_project_and_update_memory" in data["closeout_prompt"]
+    assert data["agent_count"] == 2
+    assert data["all_agents_complete"] is False
+
+
+@pytest.mark.asyncio
+async def test_get_closeout_data_endpoint_not_found(client: AsyncClient, auth_headers: dict):
+    """Closeout data returns 404 for missing project."""
+    response = await client.get("/api/v1/projects/does-not-exist/closeout", headers=auth_headers)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_get_closeout_data_tenant_isolation(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    test_user: User,
+    test_user_2: User,
+    auth_headers_user_2: dict,
+):
+    """Closeout data enforces tenant isolation."""
+    project = Project(
+        id="closeout-tenant-1",
+        tenant_key=test_user.tenant_key,
+        name="Tenant Protected Project",
+        mission="Isolation mission",
+        description="Isolation details",
+        status="active",
+    )
+    db_session.add(project)
+    await db_session.commit()
+
+    response = await client.get(f"/api/v1/projects/{project.id}/closeout", headers=auth_headers_user_2)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
