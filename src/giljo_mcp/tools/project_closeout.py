@@ -26,6 +26,12 @@ from giljo_mcp.tenant import TenantManager
 logger = logging.getLogger(__name__)
 
 
+# Field length constraints (added for validation)
+MAX_SUMMARY_LENGTH = 10000  # ~2,500 tokens
+MAX_KEY_OUTCOMES = 100
+MAX_DECISIONS_MADE = 100
+
+
 
 
 def register_project_closeout_tools(
@@ -78,6 +84,27 @@ async def close_project_and_update_memory(
 
     if db_manager is None:
         return {"success": False, "error": "db_manager is required"}
+
+    # Validate field lengths
+    if len(summary) > MAX_SUMMARY_LENGTH:
+        return {
+            "success": False,
+            "error": f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)"
+        }
+
+    if len(key_outcomes) > MAX_KEY_OUTCOMES:
+        logger.warning(
+            f"Truncating key_outcomes from {len(key_outcomes)} to {MAX_KEY_OUTCOMES}",
+            extra={"project_id": project_id}
+        )
+        key_outcomes = key_outcomes[:MAX_KEY_OUTCOMES]
+
+    if len(decisions_made) > MAX_DECISIONS_MADE:
+        logger.warning(
+            f"Truncating decisions_made from {len(decisions_made)} to {MAX_DECISIONS_MADE}",
+            extra={"project_id": project_id}
+        )
+        decisions_made = decisions_made[:MAX_DECISIONS_MADE]
 
     try:
         async with db_manager.get_session_async() as session:
@@ -246,5 +273,23 @@ async def emit_websocket_event(
 
 
 async def fetch_github_commits(*args: Any, **kwargs: Any) -> list:
-    """Placeholder for GitHub integration (removed in refactor)."""
+    """
+    Fetch GitHub commits for project closeout.
+
+    **Status**: PLACEHOLDER - Not yet implemented
+
+    When implemented, this function should:
+    - Fetch commits from GitHub API v3: GET /repos/{owner}/{repo}/commits
+    - Return format: [{"sha": "abc123", "message": "...", "author": {...}}]
+    - Normalize commits to include top-level sha/message/author fields
+
+    The normalization code (lines 145-160) is ready and handles both:
+    - Direct format: {"sha": "...", "message": "...", "author": "..."}
+    - Nested format: {"commit": {"message": "...", "author": "..."}}
+
+    TODO: Implement GitHub OAuth integration (see handover 0249)
+
+    Returns:
+        Empty list until GitHub integration is implemented.
+    """
     return []
