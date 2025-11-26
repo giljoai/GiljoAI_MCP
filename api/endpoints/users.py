@@ -26,14 +26,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 # REMOVED: PlainTextResponse import (no longer needed)
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from api.endpoints.dependencies import get_user_service
 from src.giljo_mcp.auth.dependencies import (
     get_current_active_user,
     require_admin,
 )
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import UserService
-from api.dependencies.websocket import get_websocket_dependency
-from api.endpoints.dependencies import get_user_service
 
 
 logger = logging.getLogger(__name__)
@@ -148,8 +147,7 @@ class FieldPriorityConfig(BaseModel):
     """
 
     priorities: dict[str, int] = Field(
-        ...,
-        description="Category names mapped to priority (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)"
+        ..., description="Category names mapped to priority (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)"
     )
     version: str = Field("2.0", description="Config schema version")
 
@@ -168,18 +166,12 @@ class FieldPriorityConfig(BaseModel):
         """
         valid_priorities = {1, 2, 3, 4}
         valid_categories = {
-            # Legacy/initial schema
             "product_core",
             "vision_documents",
             "agent_templates",
             "project_context",
             "memory_360",
             "git_history",
-            # UI schema (ContextPriorityConfig)
-            "product_description",
-            "tech_stack",
-            "architecture",
-            "testing",
         }
 
         # Validate priority range
@@ -193,10 +185,7 @@ class FieldPriorityConfig(BaseModel):
         # Validate category names
         invalid_categories = set(v.keys()) - valid_categories
         if invalid_categories:
-            raise ValueError(
-                f"Invalid category names: {invalid_categories}. "
-                f"Valid categories: {valid_categories}"
-            )
+            raise ValueError(f"Invalid category names: {invalid_categories}. " f"Valid categories: {valid_categories}")
 
         # Ensure at least one CRITICAL category
         critical_categories = [cat for cat, pri in v.items() if pri == 1]
@@ -228,28 +217,18 @@ class DepthConfig(BaseModel):
     """
 
     vision_chunking: Literal["none", "light", "moderate", "heavy"] = Field(
-        default="moderate",
-        description="Vision document chunking level (affects token usage)"
+        default="moderate", description="Vision document chunking level (affects token usage)"
     )
     memory_last_n_projects: Literal[1, 3, 5, 10] = Field(
-        default=3,
-        description="Number of recent projects to include in 360 memory"
+        default=3, description="Number of recent projects to include in 360 memory"
     )
-    git_commits: Literal[10, 25, 50, 100] = Field(
-        default=25,
-        description="Number of recent git commits to include"
-    )
+    git_commits: Literal[10, 25, 50, 100] = Field(default=25, description="Number of recent git commits to include")
     agent_template_detail: Literal["minimal", "standard", "full"] = Field(
-        default="standard",
-        description="Detail level for agent templates"
+        default="standard", description="Detail level for agent templates"
     )
-    tech_stack_sections: Literal["required", "all"] = Field(
-        default="all",
-        description="Tech stack sections to include"
-    )
+    tech_stack_sections: Literal["required", "all"] = Field(default="all", description="Tech stack sections to include")
     architecture_depth: Literal["overview", "detailed"] = Field(
-        default="overview",
-        description="Architecture documentation depth"
+        default="overview", description="Architecture documentation depth"
     )
 
     model_config = ConfigDict(
@@ -260,7 +239,7 @@ class DepthConfig(BaseModel):
                 "git_commits": 25,
                 "agent_template_detail": "standard",
                 "tech_stack_sections": "all",
-                "architecture_depth": "overview"
+                "architecture_depth": "overview",
             }
         }
     )
@@ -268,6 +247,7 @@ class DepthConfig(BaseModel):
 
 class UpdateDepthConfigRequest(BaseModel):
     """Request to update user depth configuration."""
+
     depth_config: DepthConfig
 
 
@@ -294,8 +274,7 @@ def user_to_response(user: User) -> UserResponse:
 
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
-    current_user: User = Depends(require_admin),
-    user_service: UserService = Depends(get_user_service)
+    current_user: User = Depends(require_admin), user_service: UserService = Depends(get_user_service)
 ) -> list[UserResponse]:
     """
     List all users in current tenant.
@@ -331,7 +310,7 @@ async def list_users(
             tenant_key=user["tenant_key"],
             is_active=user["is_active"],
             created_at=user["created_at"],
-            last_login=user["last_login"]
+            last_login=user["last_login"],
         )
         for user in result["data"]
     ]
@@ -368,14 +347,11 @@ async def create_user(
         full_name=user_data.full_name,
         password=None,  # Use default password 'GiljoMCP'
         role=user_data.role,
-        is_active=user_data.is_active
+        is_active=user_data.is_active,
     )
 
     if not result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     logger.info(f"Created user: {user_data.username} (role: {user_data.role}) in tenant {current_user.tenant_key}")
 
@@ -389,7 +365,7 @@ async def create_user(
         tenant_key=user["tenant_key"],
         is_active=user["is_active"],
         created_at=user["created_at"],
-        last_login=None
+        last_login=None,
     )
 
 
@@ -440,7 +416,7 @@ async def get_user(
         tenant_key=user["tenant_key"],
         is_active=user["is_active"],
         created_at=user["created_at"],
-        last_login=user["last_login"]
+        last_login=user["last_login"],
     )
 
 
@@ -495,10 +471,7 @@ async def update_user(
     result = await user_service.update_user(str(user_id), **updates)
 
     if not result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     logger.info(f"Updated user: {user['username']}")
 
@@ -512,7 +485,7 @@ async def update_user(
         tenant_key=current_user.tenant_key,
         is_active=updated_user["is_active"],
         created_at=user["created_at"],  # Use original created_at
-        last_login=user["last_login"]
+        last_login=user["last_login"],
     )
 
 
@@ -548,11 +521,7 @@ async def delete_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
     logger.info(f"Deactivated user: {result['username']}")
-    return UserDeleteResponse(
-        message=result["message"],
-        user_id=result["user_id"],
-        username=result["username"]
-    )
+    return UserDeleteResponse(message=result["message"], user_id=result["user_id"], username=result["username"])
 
 
 @router.put("/{user_id}/role", response_model=RoleChangeResponse)
@@ -651,7 +620,7 @@ async def change_password(
         str(user_id),
         old_password=password_data.old_password,
         new_password=password_data.new_password,
-        is_admin=is_admin
+        is_admin=is_admin,
     )
 
     if not result["success"]:
@@ -792,15 +761,16 @@ async def update_field_priority_config(
     """
     logger.debug(
         f"User {current_user.username} updating field priority config to v{config.version}",
-        extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key, "config_version": config.version},
+        extra={
+            "user_id": str(current_user.id),
+            "tenant_key": current_user.tenant_key,
+            "config_version": config.version,
+        },
     )
 
     # Pydantic validation already enforced (1-4 range, CRITICAL requirement, valid categories)
     # Update via service (service handles WebSocket emission)
-    result = await user_service.update_field_priority_config(
-        str(current_user.id),
-        config.model_dump()
-    )
+    result = await user_service.update_field_priority_config(str(current_user.id), config.model_dump())
 
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=result["error"])
@@ -905,9 +875,7 @@ async def get_depth_config(
 
     logger.debug(f"Returning depth config for user {current_user.username}")
 
-    return {
-        "depth_config": result["config"]
-    }
+    return {"depth_config": result["config"]}
 
 
 @router.put("/me/context/depth", response_model=Dict[str, Any])
@@ -949,23 +917,17 @@ async def update_depth_config(
     """
     logger.debug(
         f"User {current_user.username} updating depth config",
-        extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key}
+        extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key},
     )
 
-    result = await user_service.update_depth_config(
-        str(current_user.id),
-        depth_request.depth_config.model_dump()
-    )
+    result = await user_service.update_depth_config(str(current_user.id), depth_request.depth_config.model_dump())
 
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=result["error"])
 
     logger.info(
         f"Updated depth config for user: {current_user.username}",
-        extra={
-            "user_id": str(current_user.id),
-            "tenant_key": current_user.tenant_key
-        }
+        extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key},
     )
 
     # Get updated config from service result
@@ -973,9 +935,7 @@ async def update_depth_config(
     if not get_result["success"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=get_result["error"])
 
-    return {
-        "depth_config": get_result["config"]
-    }
+    return {"depth_config": get_result["config"]}
 
 
 # AI Tools Configurator Endpoint (relocated from /setup/ai-tools)
