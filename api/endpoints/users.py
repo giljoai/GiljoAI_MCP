@@ -203,7 +203,9 @@ class FieldPriorityConfig(BaseModel):
 class ExecutionModeUpdate(BaseModel):
     """Request model for updating execution mode."""
 
-    execution_mode: str = Field(..., description="Execution mode: claude_code or multi_terminal")
+    execution_mode: Literal["claude_code", "multi_terminal"] = Field(
+        ..., description="Execution mode: claude_code or multi_terminal"
+    )
 
 
 class DepthConfig(BaseModel):
