@@ -188,6 +188,12 @@ GiljoAI uses a 2-dimensional context management model:
 - ✅ Field priorities applied (context prioritization and orchestration ACTIVE)
 - ⚠️ `OrchestratorPromptGenerator` DEPRECATED (remove in v4.0)
 
+**Definition – Thin-Client Prompts**
+- **Thin-client prompts** are *lean* prompts whose primary job is to tell the agent *how to talk to the MCP server*, not to inline all context.
+- Typical pattern: “Read your instructions on the server using `mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{tenant_key}')`” or, for spawned agents, `get_agent_mission(job_id, tenant_key)`.
+- The full mission and context live on the server (via MCP tools) for **auditability** and **replay**; the user pastes only the thin prompt into Claude Code / other CLIs.
+- Agents can call the same MCP tools again at any time to **re-read their initial instructions** and refresh context instead of relying on a one-shot, giant clipboard prompt.
+
 **Migration**: Replace fat prompt calls with thin prompt generator.
 **Guide**: [docs/guides/thin_client_migration_guide.md](docs/guides/thin_client_migration_guide.md)
 
