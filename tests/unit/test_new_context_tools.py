@@ -12,6 +12,27 @@ Follows TDD workflow: RED → GREEN → REFACTOR
 import pytest
 from unittest.mock import AsyncMock, MagicMock, Mock
 from datetime import datetime
+from contextlib import asynccontextmanager
+
+
+def create_mock_db_manager(mock_session):
+    """
+    Helper function to create a mock db_manager with properly configured
+    async context manager for get_session_async().
+
+    Args:
+        mock_session: AsyncMock session object to yield from context manager
+
+    Returns:
+        Mock db_manager with get_session_async configured
+    """
+    @asynccontextmanager
+    async def mock_get_session_async():
+        yield mock_session
+
+    mock_db_manager = Mock()
+    mock_db_manager.get_session_async = mock_get_session_async
+    return mock_db_manager
 
 
 @pytest.mark.asyncio
@@ -33,11 +54,9 @@ async def test_get_product_context_basic():
     mock_result = MagicMock()  # scalar_one_or_none is synchronous
     mock_result.scalar_one_or_none.return_value = mock_product
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_product_context(
         product_id="test-id",
@@ -71,11 +90,9 @@ async def test_get_product_context_with_metadata():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_product
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_product_context(
         product_id="test-id",
@@ -96,11 +113,9 @@ async def test_get_product_context_multi_tenant_isolation():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None  # Product not found (wrong tenant)
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_product_context(
         product_id="test-id",
@@ -133,11 +148,9 @@ async def test_get_project_context_basic():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_project
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_project(
         project_id="test-id",
@@ -172,11 +185,9 @@ async def test_get_project_context_with_summary():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_project
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_project(
         project_id="test-id",
@@ -208,11 +219,9 @@ async def test_get_testing_config_complete():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_product
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_testing(
         product_id="test-id",
@@ -247,11 +256,9 @@ async def test_get_testing_depth_basic():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_product
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_testing(
         product_id="test-id",
@@ -278,11 +285,9 @@ async def test_get_testing_empty_config_data():
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_product
     mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    mock_db_manager = Mock()
-    mock_db_manager.get_session = Mock(return_value=mock_session)
+    # Mock db_manager with async context manager
+    mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_testing(
         product_id="test-id",
