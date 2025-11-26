@@ -1212,7 +1212,7 @@ class ToolAccessor:
         tenant_key: str,
     ) -> dict[str, Any]:
         """
-        Close project and update product memory with learnings (Handover 0138).
+        Close project and update product memory with sequential history entries (Handover 0138+).
 
         This method wraps the project_closeout MCP tool for use via ToolAccessor.
         See project_closeout.py for implementation details.

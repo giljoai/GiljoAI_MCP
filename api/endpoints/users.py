@@ -168,12 +168,18 @@ class FieldPriorityConfig(BaseModel):
         """
         valid_priorities = {1, 2, 3, 4}
         valid_categories = {
+            # Legacy/initial schema
             "product_core",
             "vision_documents",
             "agent_templates",
             "project_context",
             "memory_360",
             "git_history",
+            # UI schema (ContextPriorityConfig)
+            "product_description",
+            "tech_stack",
+            "architecture",
+            "testing",
         }
 
         # Validate priority range

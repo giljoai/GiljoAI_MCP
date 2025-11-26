@@ -25,7 +25,7 @@ Priority Tiers (v2.0):
         token budget is severely constrained.
 
     Priority 3 (NICE_TO_HAVE - Fetch if budget remaining):
-        - memory_360: Cumulative project history (learnings, decisions, sequential closeouts)
+        - memory_360: Cumulative project history (sequential closeouts, outcomes, decisions)
 
         These categories provide historical context and are fetched only if token
         budget allows after CRITICAL and IMPORTANT categories.
@@ -85,7 +85,7 @@ DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
         "project_context": 2,  # project description, user notes, architecture notes
         # Priority 3 (NICE_TO_HAVE): Fetch if budget remaining
         # Cumulative project history
-        "memory_360": 3,  # Sequential project history, learnings, decisions
+        "memory_360": 3,  # Sequential project history, outcomes, decisions
         # Priority 4 (EXCLUDED): Never fetch by default
         # Recent commit history (optional, can be enabled per user)
         "git_history": 4,  # Recent commits from git integration

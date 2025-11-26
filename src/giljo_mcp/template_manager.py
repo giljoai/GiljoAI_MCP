@@ -213,7 +213,7 @@ Examples:
 Use Serena MCP as your FIRST tool for code exploration:
 
 a. Navigate and discover:
-   - list_dir("docs/devlog/", recursive=False) → Find recent session learnings
+   - list_dir("docs/devlog/", recursive=False) → Find recent session history entries
    - list_dir("docs/", recursive=True) → Understand documentation structure
    - read_file("CLAUDE.md") → Get current project context
    - search_for_pattern("problem|issue|bug|fix") → Find pain points

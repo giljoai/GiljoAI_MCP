@@ -102,8 +102,8 @@ class Product(Base):
     product_memory = Column(
         JSONB,
         nullable=False,
-        server_default=text("'{\"github\": {}, \"learnings\": [], \"context\": {}}'::jsonb"),
-        comment="360 Memory: GitHub integration, learnings, context summaries (Handover 0135)",
+        server_default=text("'{\"github\": {}, \"sequential_history\": [], \"context\": {}}'::jsonb"),
+        comment="360 Memory: GitHub integration, sequential history, context summaries (Handover 0135)",
     )
 
     # Relationships
@@ -171,9 +171,9 @@ class Product(Base):
             return False
         # Consider it populated if any top-level key has data beyond empty defaults
         has_github = bool(self.product_memory.get("github", {}))
-        has_learnings = len(self.product_memory.get("learnings", [])) > 0
+        has_history = len(self.product_memory.get("sequential_history", [])) > 0
         has_context = bool(self.product_memory.get("context", {}))
-        return has_github or has_learnings or has_context
+        return has_github or has_history or has_context
 
     def get_memory_field(self, field_path: str, default: Any = None) -> Any:
         """
@@ -191,7 +191,7 @@ class Product(Base):
             True
             >>> product.get_memory_field('github.repo_url')
             'https://github.com/user/repo'
-            >>> product.get_memory_field('learnings')
+            >>> product.get_memory_field('sequential_history')
             [{"timestamp": "...", "summary": "..."}]
         """
         if not self.product_memory:
