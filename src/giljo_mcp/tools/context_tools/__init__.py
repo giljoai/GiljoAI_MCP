@@ -25,6 +25,14 @@ from .get_architecture import get_architecture
 from .get_product_context import get_product_context  # Handover 0316: NEW
 from .get_project import get_project  # Handover 0316: NEW
 from .get_testing import get_testing  # Handover 0316: NEW
+from .framing_helpers import (
+    apply_rich_entry_framing,
+    build_framed_context_response,
+    build_priority_excluded_response,
+    format_list_safely,
+    get_user_priority,
+    inject_priority_framing,
+)
 
 __all__ = [
     "get_vision_document",
@@ -36,4 +44,10 @@ __all__ = [
     "get_product_context",  # Handover 0316: NEW
     "get_project",          # Handover 0316: NEW
     "get_testing",          # Handover 0316: NEW
+    "apply_rich_entry_framing",
+    "build_framed_context_response",
+    "build_priority_excluded_response",
+    "format_list_safely",
+    "get_user_priority",
+    "inject_priority_framing",
 ]

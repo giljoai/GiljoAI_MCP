@@ -15,6 +15,7 @@ import structlog
 from typing import Any, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
@@ -148,7 +149,7 @@ async def get_vision_document(
 
     async with db_manager.get_session_async() as session:
         # Fetch product to verify existence and get vision documents
-        stmt = select(Product).where(
+        stmt = select(Product).options(selectinload(Product.vision_documents)).where(
             Product.id == product_id,
             Product.tenant_key == tenant_key
         )
