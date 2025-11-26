@@ -111,7 +111,8 @@ class User(Base):
             "git_commits": 25,
             "agent_template_detail": "standard",
             "tech_stack_sections": "all",
-            "architecture_depth": "overview"
+            "architecture_depth": "overview",
+            "execution_mode": "claude_code",
         },
         comment="User depth configuration for context granularity (Handover 0314)"
     )
