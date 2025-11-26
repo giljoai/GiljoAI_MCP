@@ -155,6 +155,34 @@ class ProjectCompleteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProjectCloseoutDataResponse(BaseModel):
+    """
+    Schema for project closeout data response.
+    GET /api/projects/{project_id}/closeout
+
+    Used by CloseoutModal.vue to display checklist and prompt.
+    """
+
+    checklist: list[str] = Field(
+        ...,
+        description="Dynamic checklist items based on project state",
+        min_items=3,
+    )
+    closeout_prompt: str = Field(
+        ...,
+        description="Closeout prompt with MCP command template",
+        min_length=50,
+    )
+    project_name: str = Field(..., description="Project name")
+    project_id: str = Field(..., description="Project UUID")
+    agent_count: int = Field(..., ge=0, description="Number of agents in the project")
+    all_agents_complete: bool = Field(..., description="Whether all agents finished work")
+    has_failed_agents: bool = Field(..., description="Whether any agents failed")
+    has_git_commits: bool = Field(False, description="Whether Git integration is enabled with commits available")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Thin Client Prompt Schemas (Handover 0088)
 
 
