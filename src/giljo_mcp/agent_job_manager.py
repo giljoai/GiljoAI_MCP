@@ -49,16 +49,41 @@ class AgentJobManager:
     - failed, cancelled, decommissioned -> [terminal states, no transitions]
     """
 
-    # Valid status transitions (Handover 0113 - 7 State System)
+    # Valid status transitions (7-state system)
     VALID_TRANSITIONS = {
         "waiting": {"working", "failed", "cancelled"},
         "working": {"complete", "failed", "blocked", "cancelled"},
         "blocked": {"working", "failed", "cancelled"},
-        "complete": {"working", "decommissioned"},  # Continue working OR close out project
+        "complete": set(),  # Terminal state
         "failed": set(),  # Terminal state
         "cancelled": set(),  # Terminal state
-        "decommissioned": set(),  # Terminal state
     }
+
+    # Alias mapping for caller-facing statuses vs DB constraint statuses
+    STATUS_INBOUND_ALIASES = {
+        "pending": "waiting",
+        "active": "working",
+        "completed": "complete",
+    }
+    STATUS_OUTBOUND_ALIASES = {
+        "waiting": "pending",
+        "working": "active",
+        "complete": "completed",
+    }
+
+    @classmethod
+    def _normalize_status(cls, status: str) -> str:
+        """
+        Convert caller-facing status aliases to DB-backed statuses.
+        """
+        return cls.STATUS_INBOUND_ALIASES.get(status, status)
+
+    @classmethod
+    def _expose_status(cls, status: str) -> str:
+        """
+        Convert DB-backed statuses to caller-facing aliases.
+        """
+        return cls.STATUS_OUTBOUND_ALIASES.get(status, status)
 
     def __init__(self, db_manager: DatabaseManager):
         """
@@ -106,7 +131,7 @@ class AgentJobManager:
             tenant_key=tenant_key,
             agent_type=agent_type,
             mission=mission,
-            status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
+            status="waiting",
             spawned_by=spawned_by,
             context_chunks=context_chunks or [],
             messages=[],
@@ -117,6 +142,9 @@ class AgentJobManager:
             session.add(job)
             session.commit()
             session.refresh(job)
+
+        # Expose pending status to callers while DB stores 'waiting'
+        job.status = self._expose_status(job.status)
 
         logger.info(
             f"Created job {job.job_id} for tenant {tenant_key}, agent_type={agent_type}, spawned_by={spawned_by}"
@@ -180,6 +208,11 @@ class AgentJobManager:
             # Refresh all jobs to get IDs
             for job in jobs:
                 session.refresh(job)
+                session.expunge(job)
+
+        # Present caller-facing aliases without persisting them
+        for job in jobs:
+            job.status = self._expose_status(job.status)
 
         logger.info(f"Created batch of {len(jobs)} jobs for tenant {tenant_key}")
 
@@ -210,21 +243,27 @@ class AgentJobManager:
             job = self._get_job_or_raise(session, tenant_key, job_id)
 
             # If already acknowledged, return as-is (idempotent)
-            if job.acknowledged and job.status == "active":
+            if job.acknowledged and job.status in {"working", "active"}:
                 logger.info(f"Job {job_id} already acknowledged, returning current state")
+                session.expunge(job)
+                job.status = self._expose_status(job.status)
                 return job
 
             # Validate status transition
-            if job.status != "waiting":
-                self._validate_status_transition(job.status, "active")
+            if job.status not in {"pending", "blocked", "waiting"}:
+                self._validate_status_transition(job.status, "working")
 
             # Update job
             job.acknowledged = True
-            job.status = "active"
+            job.status = "working"
             job.started_at = datetime.now(timezone.utc)
 
             session.commit()
             session.refresh(job)
+            session.expunge(job)
+
+        # Expose active status to callers without persisting alias in DB
+        job.status = self._expose_status("working")
 
         logger.info(f"Acknowledged job {job_id} for tenant {tenant_key}")
 
@@ -257,13 +296,16 @@ class AgentJobManager:
             # Get job with tenant isolation
             job = self._get_job_or_raise(session, tenant_key, job_id)
 
+            # Normalize inbound status aliases for DB write
+            normalized_status = self._normalize_status(status)
+
             # Validate status transition
-            if job.status != status:
-                self._validate_status_transition(job.status, status)
-                job.status = status
+            if job.status != normalized_status:
+                self._validate_status_transition(job.status, normalized_status)
+                job.status = normalized_status
 
             # Handover 0233: Set mission_acknowledged_at on first transition to 'working'
-            if status == 'working' and job.mission_acknowledged_at is None:
+            if normalized_status == 'working' and job.mission_acknowledged_at is None:
                 job.mission_acknowledged_at = datetime.now(timezone.utc)
                 logger.info(
                     f"[MISSION_TRACKING] Set mission_acknowledged_at for job {job_id}",
@@ -277,6 +319,10 @@ class AgentJobManager:
 
             session.commit()
             session.refresh(job)
+            session.expunge(job)
+
+        # Return caller-facing alias
+        job.status = self._expose_status(job.status)
 
         logger.info(f"Updated job {job_id} status to {status} for tenant {tenant_key}")
 
@@ -321,10 +367,12 @@ class AgentJobManager:
             if not job:
                 raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
 
+            normalized_status = self._normalize_status(new_status)
+
             # Validate status transition
-            if job.status != new_status:
-                self._validate_status_transition(job.status, new_status)
-                job.status = new_status
+            if job.status != normalized_status:
+                self._validate_status_transition(job.status, normalized_status)
+                job.status = normalized_status
 
             # Handover 0233: Set mission_acknowledged_at on first transition to 'working'
             if new_status == 'working' and job.mission_acknowledged_at is None:
@@ -395,10 +443,10 @@ class AgentJobManager:
             job = self._get_job_or_raise(session, tenant_key, job_id)
 
             # Validate status transition
-            self._validate_status_transition(job.status, "completed")
+            self._validate_status_transition(job.status, "complete")
 
             # Update job
-            job.status = "completed"
+            job.status = "complete"
             job.completed_at = datetime.now(timezone.utc)
 
             # Add result as message
@@ -417,6 +465,10 @@ class AgentJobManager:
 
             session.commit()
             session.refresh(job)
+            session.expunge(job)
+
+        # Present a friendly status alias without persisting to DB
+        job.status = self._expose_status("complete")
 
         logger.info(f"Completed job {job_id} for tenant {tenant_key}")
 
@@ -618,6 +670,7 @@ class AgentJobManager:
             if job:
                 # Detach from session before returning
                 session.expunge(job)
+                job.status = self._expose_status(job.status)
 
             return job
 
@@ -658,6 +711,7 @@ class AgentJobManager:
             # Detach from session before returning
             for job in jobs:
                 session.expunge(job)
+                job.status = self._expose_status(job.status)
 
             return list(jobs)
 
@@ -681,7 +735,7 @@ class AgentJobManager:
         with self.db_manager.get_session() as session:
             stmt = select(Job).where(
                 Job.tenant_key == tenant_key,
-                Job.status == "active",
+                Job.status == "working",
             )
 
             if agent_type:
@@ -698,6 +752,7 @@ class AgentJobManager:
             # Detach from session before returning
             for job in jobs:
                 session.expunge(job)
+                job.status = self._expose_status(job.status)
 
             return list(jobs)
 
@@ -741,8 +796,10 @@ class AgentJobManager:
 
             # Detach from session before returning
             session.expunge(parent)
+            parent.status = self._expose_status(parent.status)
             for child in children:
                 session.expunge(child)
+                child.status = self._expose_status(child.status)
 
             return {
                 "parent": parent,
@@ -795,11 +852,14 @@ class AgentJobManager:
         Raises:
             ValueError: If status transition is invalid
         """
-        valid_transitions = self.VALID_TRANSITIONS.get(current_status, set())
+        normalized_current = self._normalize_status(current_status)
+        normalized_new = self._normalize_status(new_status)
 
-        if new_status not in valid_transitions:
+        valid_transitions = self.VALID_TRANSITIONS.get(normalized_current, set())
+
+        if normalized_new not in valid_transitions:
             raise ValueError(
-                f"Invalid status transition from '{current_status}' to '{new_status}'. "
+                f"Invalid status transition from '{normalized_current}' to '{normalized_new}'. "
                 f"Valid transitions: {valid_transitions or 'none (terminal state)'}"
             )
 
