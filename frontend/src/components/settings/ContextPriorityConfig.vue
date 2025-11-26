@@ -84,6 +84,18 @@ const contexts = [
   { key: 'git_history', label: 'Git History', options: [0, 5, 15, 25] },
 ]
 
+// Map UI categories to backend categories for API requests
+const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
+  product_description: 'product_core',
+  tech_stack: 'product_core',
+  architecture: 'project_context',
+  testing: 'project_context',
+  vision_documents: 'vision_documents',
+  agent_templates: 'agent_templates',
+  memory_360: 'memory_360',
+  git_history: 'git_history',
+}
+
 const priorityOptions = [
   { title: 'Critical', value: 1 },
   { title: 'Important', value: 2 },
@@ -207,12 +219,20 @@ async function saveConfig() {
 }
 
 function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Record<string, number> {
-  const priorities: Record<string, number> = {}
-  Object.entries(localConfig).forEach(([key, value]) => {
+  const backendPriorities: Record<string, number> = {}
+
+  // Map UI categories to backend categories and aggregate priorities
+  Object.entries(localConfig).forEach(([uiKey, value]) => {
+    const backendKey = UI_TO_BACKEND_CATEGORY_MAP[uiKey] || uiKey
     const priority = value.enabled ? value.priority : 4
-    priorities[key] = priority
+
+    // If multiple UI fields map to same backend category, take highest priority (lowest number)
+    if (!backendPriorities[backendKey] || priority < backendPriorities[backendKey]) {
+      backendPriorities[backendKey] = priority
+    }
   })
-  return priorities
+
+  return backendPriorities
 }
 
 // Lifecycle
