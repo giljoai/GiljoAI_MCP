@@ -4,9 +4,9 @@
 
 ## Summary Statistics
 - **Total Handovers Reviewed**: 185 (7 active + 178 completed)
-- **Archived During Review**: 2 (0114, 0112)
+- **Archived/Retired During Review**: 3 (0114, 0112, 0095)
 - **New Handovers Created**: 1 (0250)
-- **Currently Active**: 6 handovers
+- **Currently Active**: 5 handovers
 
 ## Handover Cleanup Actions Taken
 
@@ -19,6 +19,10 @@
    - **Decision**: Retired - token reduction visibility not our focus
    - **Location**: `handovers/completed/archive/0112_*`
 
+3. **0095** - Project Streamable HTTP MCP Architecture
+   - **Decision**: Skipped - Codex CLI already works without streaming
+   - **Location**: `handovers/completed/superseded/0095_*`
+
 ### Reviewed and Kept Active
 1. **0310** - Integration Testing & Validation
    - **Status**: 60% complete
@@ -29,7 +33,7 @@
    - **Status**: 80% complete (functionality works, docs outdated)
    - **Decision**: Keep active - documentation updates still needed
 
-## Currently Active Handovers (6)
+## Currently Active Handovers (5)
 
 ### 1. 🔧 **0083 - Harmonize Slash Commands to /gil_ Pattern**
 - **Status**: 80% Complete - Functionality implemented
@@ -37,34 +41,27 @@
 - **Priority**: High (quick documentation fix)
 - **Effort**: 1-2 hours
 
-### 2. 🌐 **0095 - Project Streamable HTTP MCP Architecture**
-- **Status**: 0% Complete - Deferred to 0515
-- **Purpose**: SSE streaming + HTTPS (NOT critical for Codex despite claims)
-- **Priority**: Low (unverified requirement)
-- **Effort**: 8-10 hours
-- **Note**: Research found Codex already works without streaming
-
-### 3. 👥 **0117 - 8-Role Agent System Assessment**
+### 2. 👥 **0117 - 8-Role Agent System Assessment**
 - **Status**: 0% Complete - Well-specified (938 lines)
 - **Purpose**: Add specialized roles (backend/frontend implementers, devops)
 - **Priority**: Medium (good value/effort ratio)
 - **Effort**: 4-6 hours
 
-### 4. 🔒 **0250 - HTTPS Enablement (Optional Configuration)** *(NEW)*
+### 3. 🔒 **0250 - HTTPS Enablement (Optional Configuration)** *(NEW)*
 - **Status**: 0% Complete - Just created
 - **Purpose**: Optional HTTPS support with HTTP/HTTPS toggle
 - **Priority**: Medium (security enhancement)
 - **Effort**: 6-8 hours
 - **Paths**: Self-signed (dev) or Let's Encrypt (production)
 
-### 5. 🧪 **0310 - Integration Testing & Validation**
+### 4. 🧪 **0310 - Integration Testing & Validation**
 - **Status**: 60% Complete - Tests exist, performance pending
 - **Completed**: Context tool tests, >80% code coverage
 - **Remaining**: Performance benchmarks (<500ms target), token accuracy
 - **Priority**: Low (not blocking functionality)
 - **Effort**: 2-3 hours
 
-### 6. 📦 **9999 - One-Liner Installation System**
+### 5. 📦 **9999 - One-Liner Installation System**
 - **Status**: 0% Complete - Deferred to 0512
 - **Purpose**: Website-based installation scripts
 - **Priority**: Low (manual install.py works fine)
@@ -96,18 +93,17 @@
 
 ### Long-term (Nice to Have)
 1. **0310** - Performance benchmarks (2-3 hours, not critical)
-2. **0095** - Streamable HTTP (8-10 hours, unverified need)
-3. **9999** - One-liner install (4-6 hours, convenience only)
+2. **9999** - One-liner install (4-6 hours, convenience only)
 
 ## Decision Rationale
 
-### Why We Archived
+### Why We Archived/Retired
 - **0114**: Superseded by more comprehensive 0243 series implementation
 - **0112**: Token counting/optimization visibility not aligned with product direction
+- **0095**: Codex CLI works without streaming - claim was unverified
 
 ### Why We Kept Active
 - **0083**: Simple documentation update needed
-- **0095**: Keep for potential future need (though Codex claim unverified)
 - **0117**: Low effort, high value agent specialization
 - **0310**: Partially done, performance testing could be valuable later
 - **9999**: Nice convenience feature for future
