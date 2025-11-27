@@ -4,11 +4,13 @@
     :fullscreen="isMobile"
     :max-width="isMobile ? undefined : '800'"
     persistent
+    class="closeout-modal"
     role="dialog"
     :aria-labelledby="'closeout-modal-title'"
+    data-testid="closeout-modal"
     @keydown.esc="handleClose"
   >
-    <v-card>
+    <v-card data-testid="closeout-modal">
       <!-- Modal header -->
       <v-card-title id="closeout-modal-title" class="modal-title bg-primary text-white pa-4">
         <div class="d-flex align-center justify-space-between">
@@ -83,6 +85,7 @@
               variant="outlined"
               prepend-icon="mdi-content-copy"
               :aria-label="'Copy closeout prompt to clipboard'"
+              data-testid="copy-prompt-button"
               @click="handleCopyCloseout"
             >
               Copy Closeout Prompt
@@ -108,6 +111,7 @@
               color="success"
               label="I have executed the closeout commands and verified completion"
               hide-details
+              data-testid="confirm-checkbox"
             />
           </div>
         </div>
@@ -133,6 +137,7 @@
           :disabled="!confirmed"
           :loading="completing"
           :aria-label="'Complete project'"
+          data-testid="submit-closeout-button"
           @click="handleComplete"
         >
           <v-icon icon="mdi-check-circle" start />
@@ -274,11 +279,20 @@ const handleComplete = async () => {
   error.value = null
 
   try {
-    await api.post(`/api/projects/${props.projectId}/complete`, {
-      confirm_closeout: true,
-    })
+    const fallbackSummary =
+      closeoutData.value?.closeout_prompt?.slice(0, 400) ||
+      `Closeout executed for project ${props.projectName}`
 
-    emit('complete', props.projectId)
+    const payload = {
+      summary: fallbackSummary,
+      key_outcomes: closeoutData.value?.checklist || ['Closeout checklist completed'],
+      decisions_made: [],
+      confirm_closeout: true,
+    }
+
+    const response = await api.post(`/api/projects/${props.projectId}/complete`, payload)
+
+    emit('complete', response.data || { project_id: props.projectId, sequence_number: 0 })
   } catch (err) {
     console.error('[CloseoutModal] Failed to complete project:', err)
     error.value = err.response?.data?.message || 'Failed to complete project'
