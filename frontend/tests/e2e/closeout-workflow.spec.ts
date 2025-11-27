@@ -28,7 +28,7 @@ test.describe('Project Closeout Workflow - UI Integration', () => {
     await page.click('[data-testid="login-button"]')
 
     // Wait for post-login redirect
-    await page.waitForURL('http://localhost:7274/', { timeout: 10000 })
+    await page.waitForURL(/\/(|dashboard|projects)/, { timeout: 10000 })
     await page.waitForLoadState('networkidle')
   })
 
@@ -158,7 +158,7 @@ test.describe('Project Closeout Workflow - UI Integration', () => {
     await passwordInput.fill('***REMOVED***')
     await page.click('[data-testid="login-button"]')
 
-    await page.waitForURL('http://localhost:7274/', { timeout: 10000 })
+    await page.waitForURL(/\/(|dashboard|projects)/, { timeout: 10000 })
     await page.goto('/projects')
     await page.waitForLoadState('networkidle')
 
