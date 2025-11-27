@@ -413,7 +413,7 @@ class TestMultiTenantIsolation:
             project_id=None,  # Will be set after project creation
             tenant_key=tenant_a_user.tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="A",
             job_metadata={"user_id": tenant_a_user.id}
         )

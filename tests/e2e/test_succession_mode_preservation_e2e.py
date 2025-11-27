@@ -91,7 +91,8 @@ class TestSuccessionModePreservationE2E:
 
         orchestration_service = OrchestrationService(
             db_manager=db_manager,
-            tenant_manager=tenant_manager
+            tenant_manager=tenant_manager,
+            test_session=db_session,
         )
 
         # Step 2: Spawn Orchestrator A
@@ -290,7 +291,8 @@ class TestSuccessionModePreservationE2E:
         # Trigger succession (A→B)
         orchestration_service = OrchestrationService(
             db_manager=db_manager,
-            tenant_manager=tenant_manager
+            tenant_manager=tenant_manager,
+            test_session=db_session,
         )
 
         result = await orchestration_service.trigger_succession(
@@ -401,7 +403,8 @@ class TestSuccessionModePreservationE2E:
         # Trigger succession (A→B)
         orchestration_service = OrchestrationService(
             db_manager=db_manager,
-            tenant_manager=tenant_manager
+            tenant_manager=tenant_manager,
+            test_session=db_session,
         )
 
         result = await orchestration_service.trigger_succession(

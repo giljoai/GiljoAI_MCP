@@ -19,11 +19,14 @@ Design Principles:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
+import httpx
 from sqlalchemy import and_, func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 
@@ -51,13 +54,19 @@ class ProjectService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_manager: TenantManager,
+        test_session: Optional[AsyncSession] = None,
+    ):
         """
         Initialize ProjectService with database and tenant management.
 
         Args:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support (provides global context access)
+            test_session: Optional AsyncSession for tests to share the same transaction
 
         Note:
             This service uses TenantManager.get_current_tenant() to retrieve tenant context.
@@ -65,7 +74,21 @@ class ProjectService:
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
+        self._test_session = test_session
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    @asynccontextmanager
+    async def _get_session(self):
+        """
+        Yield a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+        """
+        if self._test_session is not None:
+            yield self._test_session
+            return
+
+        async with self.db_manager.get_session_async() as session:
+            yield session
 
     # ============================================================================
     # CRUD Operations
@@ -105,7 +128,7 @@ class ProjectService:
             >>> print(result["project_id"])
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Generate tenant key if not provided
                 if not tenant_key:
                     tenant_key = f"tk_{uuid4().hex}"
@@ -168,7 +191,7 @@ class ProjectService:
             ...     print(f"Agents: {len(result['project']['agents'])}")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Get project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
@@ -255,7 +278,7 @@ class ProjectService:
                 self._logger.error("[get_active_project] No tenant context available!")
                 return {"success": False, "error": "No tenant context available"}
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Query for active project (tenant-isolated)
                 from src.giljo_mcp.models import MCPAgentJob, Message
 
@@ -396,7 +419,7 @@ class ProjectService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 result = await session.execute(
                     update(Project)
                     .where(Project.id == project_id)
@@ -427,75 +450,142 @@ class ProjectService:
     # ============================================================================
 
     async def complete_project(
-        self, project_id: str, summary: Optional[str] = None, db_session: Optional[Any] = None
+        self,
+        project_id: str,
+        summary: str,
+        key_outcomes: list[str],
+        decisions_made: list[str],
+        tenant_key: Optional[str] = None,
+        db_session: Optional[Any] = None,
     ) -> dict[str, Any]:
         """
-        Mark a project as completed with completed_at timestamp.
+        Mark a project as completed and trigger 360 memory update.
 
         Args:
             project_id: Project UUID
-            summary: Optional completion summary to store in metadata
+            summary: Completion summary (required)
+            key_outcomes: List of key outcomes/deliverables
+            decisions_made: List of decisions captured during project
             db_session: Optional database session (for transaction management)
 
         Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.complete_project(
-            ...     "abc-123",
-            ...     summary="Successfully implemented all features"
-            ... )
+            Dict with success status and memory update metadata
         """
         try:
-            # Build update values (common to both session types)
-            update_values = {
-                "status": "completed",
-                "completed_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
-            }
+            resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
+            if not resolved_tenant:
+                return {"success": False, "error": "Tenant not set"}
 
-            # Add summary to meta_data if provided
-            if summary:
-                update_values["meta_data"] = {"summary": summary}
+            if not summary or not summary.strip():
+                return {"success": False, "error": "Summary is required"}
 
-            if db_session:
-                # Use provided session (caller manages transaction)
-                result = await db_session.execute(
-                    update(Project).where(Project.id == project_id).values(**update_values)
-                )
+            owns_session = db_session is None
 
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
-
-                # Note: Do NOT commit when using provided session (caller manages transaction)
-                self._logger.info(f"Completed project {project_id} (using provided session)")
-
-                return {
-                    "success": True,
-                    "message": f"Project {project_id} completed successfully",
-                }
-            else:
-                # Use our own session (we manage transaction)
-                async with self.db_manager.get_session_async() as session:
-                    result = await session.execute(
-                        update(Project).where(Project.id == project_id).values(**update_values)
+            if owns_session:
+                async with self._get_session() as session:
+                    return await self._complete_project_transaction(
+                        session=session,
+                        project_id=project_id,
+                        tenant_key=resolved_tenant,
+                        summary=summary,
+                        key_outcomes=key_outcomes,
+                        decisions_made=decisions_made,
+                        commit=owns_session,
                     )
 
-                    if result.rowcount == 0:
-                        return {"success": False, "error": "Project not found"}
-
-                    await session.commit()
-
-                    self._logger.info(f"Completed project {project_id}")
-
-                    return {
-                        "success": True,
-                        "message": f"Project {project_id} completed successfully",
-                    }
+            return await self._complete_project_transaction(
+                session=db_session,
+                project_id=project_id,
+                tenant_key=resolved_tenant,
+                summary=summary,
+                key_outcomes=key_outcomes,
+                decisions_made=decisions_made,
+                commit=False,
+            )
 
         except Exception as e:
             self._logger.exception(f"Failed to complete project: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _complete_project_transaction(
+        self,
+        session: AsyncSession,
+        project_id: str,
+        tenant_key: str,
+        summary: str,
+        key_outcomes: list[str],
+        decisions_made: list[str],
+        commit: bool,
+    ) -> dict[str, Any]:
+        """Complete project within provided session context."""
+        now = datetime.utcnow()
+
+        result = await session.execute(
+            select(Project).where(
+                and_(
+                    Project.id == project_id,
+                    Project.tenant_key == tenant_key,
+                )
+            )
+        )
+        project = result.scalar_one_or_none()
+
+        if not project:
+            return {"success": False, "error": "Project not found or access denied"}
+
+        project.status = "completed"
+        project.completed_at = now
+        project.updated_at = now
+        project.closeout_executed_at = now
+        project.orchestrator_summary = summary
+
+        # Store closeout metadata for audit trail
+        project.meta_data = project.meta_data or {}
+        project.meta_data["closeout"] = {
+            "summary": summary,
+            "key_outcomes": key_outcomes or [],
+            "decisions_made": decisions_made or [],
+            "completed_at": now.isoformat(),
+        }
+
+        # Invoke MCP tool to write 360 Memory entry
+        from giljo_mcp.tools.project_closeout import close_project_and_update_memory
+
+        mcp_result = await close_project_and_update_memory(
+            project_id=project_id,
+            summary=summary,
+            key_outcomes=key_outcomes or [],
+            decisions_made=decisions_made or [],
+            tenant_key=tenant_key,
+            db_manager=self.db_manager,
+            session=session,
+        )
+
+        if not mcp_result.get("success"):
+            self._logger.error(f"MCP tool call failed: {mcp_result.get('error')}")
+
+        memory_updated = bool(mcp_result.get("success"))
+        sequence_number = mcp_result.get("sequence_number", 0)
+        git_commits_count = mcp_result.get("git_commits_count", 0)
+
+        if commit:
+            await session.commit()
+
+        await self._broadcast_memory_update(
+            project_id=project_id,
+            project_name=project.name,
+            sequence_number=sequence_number,
+            summary=summary,
+            tenant_key=tenant_key,
+        )
+
+        return {
+            "success": True,
+            "message": f"Project {project_id} completed successfully",
+            "memory_updated": memory_updated,
+            "sequence_number": sequence_number,
+            "git_commits_count": git_commits_count,
+        }
 
     async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
         """
@@ -515,7 +605,7 @@ class ProjectService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Build update values
                 update_values = {
                     "status": "cancelled",
@@ -575,7 +665,7 @@ class ProjectService:
             ... }
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project with tenant validation
                 result = await session.execute(
                     select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
@@ -659,7 +749,7 @@ class ProjectService:
             ... }
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project with tenant validation
                 result = await session.execute(
                     select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
@@ -745,7 +835,7 @@ class ProjectService:
             >>> # Returns: {"success": True, "data": {...}}
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project
                 result = await session.execute(
                     select(Project).where(
@@ -863,7 +953,7 @@ class ProjectService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project
                 result = await session.execute(
                     select(Project).where(
@@ -951,7 +1041,7 @@ class ProjectService:
             >>> result = await service.cancel_staging("abc-123")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project
                 result = await session.execute(
                     select(Project).where(
@@ -1040,7 +1130,7 @@ class ProjectService:
             >>> print(result["data"]["completion_percentage"])  # 75.0
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project with product eager loading
                 result = await session.execute(
                     select(Project).where(
@@ -1153,47 +1243,71 @@ class ProjectService:
             if db_session:
                 return await self._build_closeout_data(project_id, tenant_key, db_session)
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._build_closeout_data(project_id, tenant_key, session)
 
         except Exception as e:
             self._logger.exception(f"Failed to get closeout data: {e}")
             return {"success": False, "error": str(e)}
 
+    async def can_close_project(
+        self, project_id: str, tenant_key: Optional[str] = None, db_session: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Determine whether a project can be closed based on agent status.
+        """
+        tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        if not tenant_key:
+            return {"success": False, "error": "Tenant context missing"}
+
+        try:
+            if db_session:
+                return await self._build_can_close_response(project_id, tenant_key, db_session)
+
+            async with self._get_session() as session:
+                return await self._build_can_close_response(project_id, tenant_key, session)
+
+        except Exception as e:
+            self._logger.exception(f"Failed to evaluate can-close for project {project_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def generate_closeout_prompt(
+        self, project_id: str, tenant_key: Optional[str] = None, db_session: Optional[Any] = None
+    ) -> dict[str, Any]:
+        """
+        Generate closeout prompt with checklist and agent summary.
+        """
+        tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        if not tenant_key:
+            return {"success": False, "error": "Tenant context missing"}
+
+        try:
+            if db_session:
+                return await self._build_closeout_prompt(project_id, tenant_key, db_session)
+
+            async with self._get_session() as session:
+                return await self._build_closeout_prompt(project_id, tenant_key, session)
+
+        except Exception as e:
+            self._logger.exception(f"Failed to generate closeout prompt for project {project_id}: {e}")
+            return {"success": False, "error": str(e)}
+
     async def _build_closeout_data(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
         """
         Internal helper to build closeout data using provided session.
         """
-        result = await session.execute(
-            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-        )
-        project = result.scalar_one_or_none()
+        project = await self._get_project_for_tenant(project_id, tenant_key, session)
 
         if not project:
             return {"success": False, "error": "Project not found or access denied"}
 
-        job_counts_result = await session.execute(
-            select(MCPAgentJob.status, func.count(MCPAgentJob.id).label("count"))
-            .where(
-                and_(
-                    MCPAgentJob.project_id == project_id,
-                    MCPAgentJob.tenant_key == tenant_key,
-                )
-            )
-            .group_by(MCPAgentJob.status)
-        )
-        job_counts = {status: count for status, count in job_counts_result.all()}
-
-        total_agents = sum(job_counts.values())
-        completed_agents = job_counts.get("complete", 0) + job_counts.get("completed", 0)
-        failed_agents = job_counts.get("failed", 0)
-        active_agents = (
-            job_counts.get("working", 0)
-            + job_counts.get("active", 0)
-            + job_counts.get("waiting", 0)
-            + job_counts.get("pending", 0)
-            + job_counts.get("blocked", 0)
-        )
+        status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
+        total_agents = status_counts["total"]
+        completed_agents = status_counts["completed"]
+        failed_agents = status_counts["failed"]
+        active_agents = status_counts["active"]
 
         all_agents_complete = total_agents > 0 and completed_agents == total_agents and active_agents == 0
         has_failed_agents = failed_agents > 0
@@ -1286,6 +1400,156 @@ class ProjectService:
             },
         }
 
+    async def _build_can_close_response(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
+        """
+        Build readiness response for can-close endpoint.
+        """
+        project = await self._get_project_for_tenant(project_id, tenant_key, session)
+
+        if not project:
+            return {"success": False, "error": "Project not found or access denied"}
+
+        status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
+        all_agents_finished = status_counts["total"] > 0 and status_counts["active"] == 0
+
+        summary = None
+        if all_agents_finished:
+            summary_parts = [f"{status_counts['completed']} successful agents"]
+            summary_parts.append(f"{status_counts['failed']} failed agents")
+            summary_parts.append(f"{status_counts['blocked']} blocked agents")
+            summary = ", ".join(summary_parts)
+
+        return {
+            "success": True,
+            "data": {
+                "can_close": all_agents_finished,
+                "summary": summary,
+                "all_agents_finished": all_agents_finished,
+                "agent_statuses": {
+                    "complete": status_counts["completed"],
+                    "failed": status_counts["failed"],
+                    "active": status_counts["active"],
+                    "blocked": status_counts["blocked"],
+                },
+            },
+        }
+
+    async def _build_closeout_prompt(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
+        """
+        Build a bash closeout prompt and checklist for the project.
+        """
+        project = await self._get_project_for_tenant(project_id, tenant_key, session)
+
+        if not project:
+            return {"success": False, "error": "Project not found or access denied"}
+
+        status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
+        agent_summary = (
+            f"{status_counts['completed']} completed, "
+            f"{status_counts['failed']} failed, "
+            f"{status_counts['active']} active, "
+            f"{status_counts['blocked']} blocked"
+        )
+
+        repo_path = "."
+        branch = "main"
+        if project.meta_data:
+            repo_path = project.meta_data.get("path", ".") or "."
+            branch = project.meta_data.get("git_branch", branch) or branch
+
+        prompt = (
+            "#!/bin/bash\n"
+            "set -euo pipefail\n\n"
+            f"cd {repo_path}\n"
+            "git status\n"
+            "git add .\n"
+            f"git commit -m \"Project complete: {project.name}\"\n"
+            f"git push origin {branch}\n\n"
+            "cat > PROJECT_SUMMARY.md <<'EOF'\n"
+            f"Project: {project.name}\n"
+            f"Mission: {project.mission or ''}\n"
+            f"Agent Summary: {agent_summary}\n"
+            "Key Outcomes:\n"
+            "- Fill in final deliverables here\n"
+            "Decisions Made:\n"
+            "- Record architecture or workflow decisions here\n"
+            "EOF\n"
+        )
+
+        checklist = [
+            "Review all agent outputs and ensure artifacts are saved.",
+            "Commit final changes to the repository.",
+            f"Push branch {branch} to remote.",
+            "Update PROJECT_SUMMARY.md with outcomes and decisions.",
+            "Run close_project_and_update_memory() to refresh 360 Memory.",
+        ]
+
+        project.closeout_prompt = prompt
+        await session.commit()
+
+        return {
+            "success": True,
+            "data": {
+                "prompt": prompt,
+                "checklist": checklist,
+                "project_name": project.name,
+                "agent_summary": agent_summary,
+            },
+        }
+
+    async def _aggregate_agent_statuses(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
+        """
+        Aggregate agent status counts for closeout operations.
+        """
+        job_counts_result = await session.execute(
+            select(MCPAgentJob.status, func.count(MCPAgentJob.id).label("count"))
+            .where(
+                and_(
+                    MCPAgentJob.project_id == project_id,
+                    MCPAgentJob.tenant_key == tenant_key,
+                )
+            )
+            .group_by(MCPAgentJob.status)
+        )
+        job_counts = {status: count for status, count in job_counts_result.all()}
+
+        total_agents = sum(job_counts.values())
+        completed_agents = job_counts.get("complete", 0) + job_counts.get("completed", 0)
+        failed_agents = job_counts.get("failed", 0)
+        blocked_agents = job_counts.get("blocked", 0)
+        active_statuses = {
+            "working",
+            "active",
+            "waiting",
+            "pending",
+            "preparing",
+            "running",
+            "queued",
+            "paused",
+            "review",
+            "planning",
+            "blocked",
+        }
+        active_agents = sum(job_counts.get(status, 0) for status in active_statuses)
+
+        return {
+            "job_counts": job_counts,
+            "total": total_agents,
+            "completed": completed_agents,
+            "failed": failed_agents,
+            "blocked": blocked_agents,
+            "active": active_agents,
+        }
+
+    async def _get_project_for_tenant(self, project_id: str, tenant_key: str, session: Any) -> Optional[Project]:
+        """
+        Fetch a project scoped to tenant for closeout operations.
+        """
+        result = await session.execute(
+            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+        )
+        return result.scalar_one_or_none()
+
     async def update_project(
         self, project_id: str, updates: dict[str, Any], websocket_manager: Optional[Any] = None
     ) -> dict[str, Any]:
@@ -1314,7 +1578,7 @@ class ProjectService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project
                 result = await session.execute(
                     select(Project).where(
@@ -1401,7 +1665,7 @@ class ProjectService:
             >>> print(result["data"]["orchestrator_job_id"])
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Fetch project
                 result = await session.execute(
                     select(Project).where(
@@ -1485,7 +1749,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             >>> result = await service.restore_project("abc-123")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Update project to inactive and clear completed_at
                 result = await session.execute(
                     update(Project)
@@ -1535,7 +1799,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             >>> print(f"Pending messages: {result['pending_messages']}")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Get project
                 query = select(Project)
                 if project_id:
@@ -1604,7 +1868,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             >>> print(f"Switched to: {result['name']}")
         """
         try:
-            async with self.db_manager.get_session_async() as db_session:
+            async with self._get_session() as db_session:
                 from giljo_mcp.models import Session as SessionModel
                 from giljo_mcp.tenant import current_tenant
 
@@ -1673,7 +1937,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             if not tenant_key:
                 return {"success": False, "error": "No tenant context available"}
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = select(Project).where(
                     and_(
                         Project.id == project_id,
@@ -1746,7 +2010,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             return {"success": False, "error": "Database not available"}
 
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Find projects deleted more than specified days ago
                 cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
 
@@ -1818,6 +2082,50 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # Private Helper Methods
     # ============================================================================
 
+    async def _broadcast_memory_update(
+        self,
+        project_id: str,
+        project_name: str,
+        sequence_number: int,
+        summary: str,
+        tenant_key: str,
+    ) -> None:
+        """Broadcast memory update via WebSocket HTTP bridge."""
+        self._logger.info(
+            f"[WEBSOCKET DEBUG] Broadcasting memory update for project {project_id} (sequence: {sequence_number})"
+        )
+
+        try:
+            async with httpx.AsyncClient() as client:
+                bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                summary_preview = (summary[:200] + "...") if len(summary) > 200 else summary
+
+                response = await client.post(
+                    bridge_url,
+                    json={
+                        "event_type": "project:memory_updated",
+                        "tenant_key": tenant_key,
+                        "data": {
+                            "project_id": project_id,
+                            "project_name": project_name,
+                            "sequence_number": sequence_number,
+                            "summary_preview": summary_preview,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                    },
+                    timeout=5.0,
+                )
+
+                self._logger.info(
+                    f"[WEBSOCKET] Broadcasted memory_updated for project {project_id} (response: {response.status_code})"
+                )
+
+        except Exception as ws_error:
+            self._logger.error(
+                f"[WEBSOCKET ERROR] Failed to broadcast memory_updated via HTTP bridge: {ws_error}",
+                exc_info=True,
+            )
+
     async def _broadcast_mission_update(self, project_id: str, mission: str, tenant_key: str) -> None:
         """
         Broadcast mission update via WebSocket HTTP bridge.
@@ -1833,8 +2141,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         self._logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated " f"for project {project_id}")
 
         try:
-            import httpx
-
             self._logger.info("[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge")
 
             # Use HTTP bridge to emit WebSocket event

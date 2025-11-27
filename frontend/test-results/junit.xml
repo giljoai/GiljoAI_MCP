@@ -1,0 +1,92 @@
+<testsuites id="" name="" tests="15" failures="0" skipped="0" errors="0" time="22.662353">
+<testsuite name="closeout-workflow.spec.ts" timestamp="2025-11-27T01:37:02.908Z" hostname="chromium" tests="5" failures="0" skipped="0" time="42.187" errors="0">
+<testcase name="Project Closeout Workflow - UI Integration › Login flow completes successfully" classname="closeout-workflow.spec.ts" time="6.691">
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Projects page is accessible and renders correctly" classname="closeout-workflow.spec.ts" time="7.115">
+<system-out>
+<![CDATA[Projects page state: { hasNewProject: [33mfalse[39m, hasNoProduct: [33mtrue[39m, hasTable: [33mfalse[39m }
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Project detail view renders with Jobs tab" classname="closeout-workflow.spec.ts" time="10.646">
+<system-out>
+<![CDATA[No projects found for user patrik - test will validate UI structure
+Project detail route structure validated
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › CloseoutModal component is properly integrated in project view" classname="closeout-workflow.spec.ts" time="7.073">
+<system-out>
+<![CDATA[Component integration validation complete - no console errors
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Test data-testid attributes are present in components" classname="closeout-workflow.spec.ts" time="10.662">
+<system-out>
+<![CDATA[All login form data-testid attributes verified
+Projects page data-testid attributes verified
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="closeout-workflow.spec.ts" timestamp="2025-11-27T01:37:02.908Z" hostname="firefox" tests="5" failures="0" skipped="0" time="39.212" errors="0">
+<testcase name="Project Closeout Workflow - UI Integration › Login flow completes successfully" classname="closeout-workflow.spec.ts" time="6.132">
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Projects page is accessible and renders correctly" classname="closeout-workflow.spec.ts" time="6.669">
+<system-out>
+<![CDATA[Projects page state: { hasNewProject: [33mfalse[39m, hasNoProduct: [33mtrue[39m, hasTable: [33mfalse[39m }
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Project detail view renders with Jobs tab" classname="closeout-workflow.spec.ts" time="11.215">
+<system-out>
+<![CDATA[No projects found for user patrik - test will validate UI structure
+Project detail route structure validated
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › CloseoutModal component is properly integrated in project view" classname="closeout-workflow.spec.ts" time="5.795">
+<system-out>
+<![CDATA[Component integration validation complete - no console errors
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Test data-testid attributes are present in components" classname="closeout-workflow.spec.ts" time="9.401">
+<system-out>
+<![CDATA[All login form data-testid attributes verified
+Projects page data-testid attributes verified
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="closeout-workflow.spec.ts" timestamp="2025-11-27T01:37:02.908Z" hostname="webkit" tests="5" failures="0" skipped="0" time="42.331" errors="0">
+<testcase name="Project Closeout Workflow - UI Integration › Login flow completes successfully" classname="closeout-workflow.spec.ts" time="6.106">
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Projects page is accessible and renders correctly" classname="closeout-workflow.spec.ts" time="8.503">
+<system-out>
+<![CDATA[Projects page state: { hasNewProject: [33mfalse[39m, hasNoProduct: [33mtrue[39m, hasTable: [33mfalse[39m }
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Project detail view renders with Jobs tab" classname="closeout-workflow.spec.ts" time="10.268">
+<system-out>
+<![CDATA[No projects found for user patrik - test will validate UI structure
+Project detail route structure validated
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › CloseoutModal component is properly integrated in project view" classname="closeout-workflow.spec.ts" time="7.412">
+<system-out>
+<![CDATA[Component integration validation complete - no console errors
+]]>
+</system-out>
+</testcase>
+<testcase name="Project Closeout Workflow - UI Integration › Test data-testid attributes are present in components" classname="closeout-workflow.spec.ts" time="10.042">
+<system-out>
+<![CDATA[All login form data-testid attributes verified
+Projects page data-testid attributes verified
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

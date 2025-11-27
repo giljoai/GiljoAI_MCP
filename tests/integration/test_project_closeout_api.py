@@ -18,6 +18,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.models import MCPAgentJob, Project, User
 
 
+def _completion_payload(confirm_closeout: bool = True) -> dict:
+    return {
+        "summary": "Completed project closeout with key outcomes recorded for 360 memory.",
+        "key_outcomes": ["All agents completed work", "Closeout checklist executed"],
+        "decisions_made": ["Chose standard closeout workflow"],
+        "confirm_closeout": confirm_closeout,
+    }
+
+
 @pytest.mark.asyncio
 async def test_can_close_all_agents_complete(
     async_client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
@@ -237,7 +246,7 @@ async def test_generate_closeout_prompt(
 
 @pytest.mark.asyncio
 async def test_complete_project_closeout(
-    async_client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
+    async_client: AsyncClient, db_session: AsyncSession, test_user: User, test_product, auth_headers: dict
 ):
     """Test project completion with closeout."""
     # Create project
@@ -248,6 +257,7 @@ async def test_complete_project_closeout(
         mission="Build feature",
         description="Feature dev",
         status="active",
+        product_id=test_product.id,
     )
     db_session.add(project)
 
@@ -268,7 +278,7 @@ async def test_complete_project_closeout(
 
     # Complete project
     response = await async_client.post(
-        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": True}, headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete", json=_completion_payload(), headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -277,7 +287,9 @@ async def test_complete_project_closeout(
     # Validate response
     assert data["success"] is True
     assert "completed_at" in data
-    assert data["retired_agents"] == agent_count
+    assert data["memory_updated"] is True
+    assert data["sequence_number"] == 1
+    assert data["git_commits_count"] == 0
 
     # Verify project status updated
     await db_session.refresh(project)
@@ -304,7 +316,7 @@ async def test_complete_project_without_confirmation(
 
     # Try completing without confirmation
     response = await async_client.post(
-        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": False}, headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete", json=_completion_payload(confirm_closeout=False), headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -313,7 +325,7 @@ async def test_complete_project_without_confirmation(
 
 @pytest.mark.asyncio
 async def test_closeout_workflow_end_to_end(
-    async_client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
+    async_client: AsyncClient, db_session: AsyncSession, test_user: User, test_product, auth_headers: dict
 ):
     """Test complete closeout workflow: can-close → generate → complete."""
     # Setup project with completed agents
@@ -325,6 +337,7 @@ async def test_closeout_workflow_end_to_end(
         description="Complete workflow test",
         status="active",
         meta_data={"path": "/workspace/app"},
+        product_id=test_product.id,
     )
     db_session.add(project)
 
@@ -353,7 +366,7 @@ async def test_closeout_workflow_end_to_end(
 
     # Step 3: Complete project
     response3 = await async_client.post(
-        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": True}, headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete", json=_completion_payload(), headers=auth_headers
     )
     assert response3.status_code == status.HTTP_200_OK
     assert response3.json()["success"] is True
@@ -368,12 +381,10 @@ async def test_closeout_workflow_end_to_end(
 
 @pytest.mark.asyncio
 async def test_closeout_multi_tenant_isolation_can_close(
-    async_client: AsyncClient,
+    authed_client_user_2: AsyncClient,
     db_session: AsyncSession,
     test_user: User,
     test_user_2: User,
-    auth_headers: dict,
-    auth_headers_user_2: dict,
 ):
     """Test multi-tenant isolation in can-close endpoint."""
     project = Project(
@@ -388,19 +399,17 @@ async def test_closeout_multi_tenant_isolation_can_close(
     await db_session.commit()
 
     # User 2 tries to check user 1's project
-    response = await async_client.get(f"/api/v1/projects/{project.id}/can-close", headers=auth_headers_user_2)
+    response = await authed_client_user_2.get(f"/api/v1/projects/{project.id}/can-close")
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_closeout_multi_tenant_isolation_generate(
-    async_client: AsyncClient,
+    authed_client_user_2: AsyncClient,
     db_session: AsyncSession,
     test_user: User,
     test_user_2: User,
-    auth_headers: dict,
-    auth_headers_user_2: dict,
 ):
     """Test multi-tenant isolation in generate-closeout endpoint."""
     project = Project(
@@ -415,19 +424,18 @@ async def test_closeout_multi_tenant_isolation_generate(
     await db_session.commit()
 
     # User 2 tries to generate closeout for user 1's project
-    response = await async_client.post(f"/api/v1/projects/{project.id}/generate-closeout", headers=auth_headers_user_2)
+    response = await authed_client_user_2.post(f"/api/v1/projects/{project.id}/generate-closeout")
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_closeout_multi_tenant_isolation_complete(
-    async_client: AsyncClient,
+    authed_client_user_2: AsyncClient,
     db_session: AsyncSession,
     test_user: User,
     test_user_2: User,
-    auth_headers: dict,
-    auth_headers_user_2: dict,
+    test_product,
 ):
     """Test multi-tenant isolation in complete endpoint."""
     project = Project(
@@ -437,13 +445,15 @@ async def test_closeout_multi_tenant_isolation_complete(
         mission="Build",
         description="Test",
         status="active",
+        product_id=test_product.id,
     )
     db_session.add(project)
     await db_session.commit()
 
     # User 2 tries to complete user 1's project
-    response = await async_client.post(
-        f"/api/v1/projects/{project.id}/complete", json={"confirm_closeout": True}, headers=auth_headers_user_2
+    response = await authed_client_user_2.post(
+        f"/api/v1/projects/{project.id}/complete",
+        json=_completion_payload(),
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -510,11 +520,10 @@ async def test_get_closeout_data_endpoint_not_found(async_client: AsyncClient, a
 
 @pytest.mark.asyncio
 async def test_get_closeout_data_tenant_isolation(
-    async_client: AsyncClient,
+    authed_client_user_2: AsyncClient,
     db_session: AsyncSession,
     test_user: User,
     test_user_2: User,
-    auth_headers_user_2: dict,
 ):
     """Closeout data enforces tenant isolation."""
     project = Project(
@@ -528,6 +537,6 @@ async def test_get_closeout_data_tenant_isolation(
     db_session.add(project)
     await db_session.commit()
 
-    response = await async_client.get(f"/api/v1/projects/{project.id}/closeout", headers=auth_headers_user_2)
+    response = await authed_client_user_2.get(f"/api/v1/projects/{project.id}/closeout")
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
