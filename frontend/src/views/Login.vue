@@ -57,6 +57,7 @@
                 :disabled="loading"
                 autofocus
                 autocomplete="username"
+                data-testid="email-input"
                 @keyup.enter="handleLogin"
                 @input="error = ''"
               />
@@ -72,6 +73,7 @@
                 :disabled="loading"
                 autocomplete="current-password"
                 class="mt-4"
+                data-testid="password-input"
                 @click:append-inner="showPassword = !showPassword"
                 @keyup.enter="handleLogin"
                 @input="error = ''"
@@ -94,6 +96,7 @@
                 :loading="loading"
                 :disabled="!username || !password || loading"
                 class="mt-4"
+                data-testid="login-button"
               >
                 <v-icon start v-if="!loading">mdi-login</v-icon>
                 {{ loading ? 'Logging in...' : 'Sign In' }}
