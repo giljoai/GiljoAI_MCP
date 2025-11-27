@@ -20,12 +20,14 @@ Design Principles:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
 import tiktoken
 from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import MCPAgentJob, Project
@@ -50,17 +52,37 @@ class OrchestrationService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_manager: TenantManager,
+        test_session: Optional[AsyncSession] = None,
+    ):
         """
         Initialize OrchestrationService with database and tenant management.
 
         Args:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
+            test_session: Optional AsyncSession for tests to share the same transaction
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
+        self._test_session = test_session
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    @asynccontextmanager
+    async def _get_session(self):
+        """
+        Yield a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+        """
+        if self._test_session is not None:
+            yield self._test_session
+            return
+
+        async with self._get_session() as session:
+            yield session
 
     # ============================================================================
     # Project Orchestration
@@ -90,7 +112,7 @@ class OrchestrationService:
         from giljo_mcp.orchestrator import ProjectOrchestrator
 
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Get project with tenant isolation
                 result = await session.execute(
                     select(Project).where(
@@ -143,7 +165,7 @@ class OrchestrationService:
             >>> print(f"Progress: {result['progress_percent']}%")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify project exists
                 result = await session.execute(
                     select(Project).where(
@@ -244,7 +266,7 @@ class OrchestrationService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Get project for context
                 result = await session.execute(
                     select(Project).where(
@@ -392,7 +414,7 @@ Begin by fetching your mission.
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 result = await session.execute(
                     select(MCPAgentJob).where(
                         and_(
@@ -455,7 +477,7 @@ Begin by fetching your mission.
                 return {"status": "error", "error": "tenant_key cannot be empty", "jobs": [], "count": 0}
 
             # Get pending jobs with tenant isolation (async)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 result = await session.execute(
                     select(MCPAgentJob)
                     .where(
@@ -521,7 +543,7 @@ Begin by fetching your mission.
             if not agent_id or not agent_id.strip():
                 return {"status": "error", "error": "agent_id cannot be empty"}
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 result = await session.execute(
                     select(MCPAgentJob).where(
                         MCPAgentJob.job_id == job_id,
@@ -608,7 +630,7 @@ Begin by fetching your mission.
                 return {"status": "error", "error": "progress must be a non-empty dict"}
 
             comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Serialize dict to string for message content
                 content = json.dumps(progress)
                 result = await comm_queue.send_message(
@@ -666,7 +688,7 @@ Begin by fetching your mission.
             if not result or not isinstance(result, dict):
                 return {"status": "error", "error": "result must be a non-empty dict"}
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 res = await session.execute(
                     select(MCPAgentJob).where(
                         MCPAgentJob.job_id == job_id,
@@ -720,7 +742,7 @@ Begin by fetching your mission.
             if not error or not error.strip():
                 return {"status": "error", "error": "error message cannot be empty"}
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 res = await session.execute(
                     select(MCPAgentJob).where(
                         MCPAgentJob.job_id == job_id,
@@ -786,7 +808,7 @@ Begin by fetching your mission.
             from sqlalchemy import func, select
             from src.giljo_mcp.models import MCPAgentJob
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Build query with filters
                 query = select(MCPAgentJob).where(
                     MCPAgentJob.tenant_key == tenant_key
@@ -872,7 +894,7 @@ Begin by fetching your mission.
         Raises:
             ValueError: If job not found
         """
-        async with self.db_manager.get_session_async() as session:
+        async with self._get_session() as session:
             # Get job with tenant isolation
             query = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
             if tenant_key:
@@ -995,7 +1017,7 @@ Begin by fetching your mission.
         Raises:
             ValueError: If job not found, not orchestrator, or already has successor
         """
-        async with self.db_manager.get_session_async() as session:
+        async with self._get_session() as session:
             # Get job with tenant isolation
             query = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
             if tenant_key:
@@ -1015,17 +1037,45 @@ Begin by fetching your mission.
             if job.handover_to is not None:
                 raise ValueError("Job already has a successor")
 
-            # Create succession manager
+            # Create successor (async-friendly path)
+            parent_metadata = job.job_metadata or {}
+            execution_mode = parent_metadata.get("execution_mode", "multi-terminal")
+            # Reuse mission generator from succession manager for consistency
             succession_manager = OrchestratorSuccessionManager(
                 db_session=session,
-                tenant_key=job.tenant_key
+                tenant_key=job.tenant_key,
+            )
+            handover_mission = succession_manager._generate_handover_mission(job)  # type: ignore[protected-access]
+
+            successor_metadata = {
+                "execution_mode": execution_mode,
+                "predecessor_id": job.job_id,
+                "succession_reason": reason,
+                "field_priorities": parent_metadata.get("field_priorities", {}),
+                "depth_config": parent_metadata.get("depth_config", {}),
+                "user_id": parent_metadata.get("user_id"),
+                "tool": parent_metadata.get("tool", "universal"),
+                "created_via": "orchestrator_succession",
+            }
+
+            successor = MCPAgentJob(
+                tenant_key=job.tenant_key,
+                job_id=str(uuid4()),
+                agent_type="orchestrator",
+                mission=handover_mission,
+                status="waiting",
+                instance_number=(job.instance_number or 0) + 1,
+                spawned_by=job.job_id,
+                project_id=job.project_id,
+                context_used=0,
+                context_budget=job.context_budget,
+                context_chunks=[],
+                messages=[],
+                acknowledged=False,
+                job_metadata=successor_metadata,
             )
 
-            # Create successor
-            successor = await succession_manager.create_successor(
-                current_job_id=job.job_id,
-                reason=reason
-            )
+            session.add(successor)
 
             # Update current job with succession info
             job.handover_to = successor.job_id
