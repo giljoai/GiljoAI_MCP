@@ -1,0 +1,60 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - button "Collapse navigation" [ref=e9] [cursor=pointer]:
+          - generic [ref=e11]: 󰅁
+        - generic [ref=e14]: Agent Orchestration MCP Server
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic "No active product":
+              - generic:
+                - generic: 󰏖
+              - generic:
+                - generic: No Active Product
+          - generic [ref=e18] [cursor=pointer]:
+            - generic [ref=e20]: 󱛇
+            - generic [ref=e22]: Reconnecting (3/undefined)
+          - button "View notifications" [ref=e23] [cursor=pointer]:
+            - generic [ref=e25]: 󰂚
+          - button "User menu" [ref=e26] [cursor=pointer]:
+            - generic [ref=e28]: 󰀉
+    - navigation [ref=e29]:
+      - generic [ref=e30]:
+        - img "GiljoAI" [ref=e34]:
+          - img "GiljoAI" [ref=e35]
+        - separator [ref=e36]
+        - list [ref=e37]:
+          - listitem [ref=e38] [cursor=pointer]:
+            - generic [ref=e40]: 󰕮
+            - generic [ref=e42]: Dashboard
+          - listitem [ref=e43] [cursor=pointer]:
+            - generic [ref=e45]: 󰏖
+            - generic [ref=e47]: Products
+          - listitem [ref=e48] [cursor=pointer]:
+            - generic [ref=e50]: 󰉓
+            - generic [ref=e52]: Projects
+          - listitem [ref=e53] [cursor=pointer]:
+            - img [ref=e56]
+            - generic [ref=e58]: Jobs
+          - listitem [ref=e59] [cursor=pointer]:
+            - generic [ref=e61]: 󰅎
+            - generic [ref=e63]: Tasks
+      - list [ref=e65]:
+        - listitem [ref=e66] [cursor=pointer]:
+          - generic [ref=e68]: 󰔎
+          - generic [ref=e70]: Toggle Theme
+    - main [ref=e71]:
+      - alert [ref=e76]:
+        - generic [ref=e78]: 󰅙
+        - generic [ref=e80]:
+          - paragraph [ref=e81]: Error Loading Project
+          - paragraph [ref=e82]: Network Error
+        - button "Close" [ref=e84] [cursor=pointer]:
+          - generic [ref=e86]: 󰅖
+  - generic:
+    - tooltip
+```

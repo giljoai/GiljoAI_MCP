@@ -1,0 +1,56 @@
+# Add import after line 16
+16a\
+import { setAuthTokenDirectly, navigateToProjectAuthenticated } from './auth-bypass'
+
+# Replace line 38-62 (beforeEach)
+38,62c\
+  // Cache auth token across all tests for performance\
+  test.beforeAll(async ({ request }) => {\
+    console.log('[beforeAll] Fetching JWT token for all tests...')\
+    const response = await request.post('http://localhost:7272/api/auth/login', {\
+      data: {\
+        username: 'patrik',\
+        password: '***REMOVED***'\
+      }\
+    })\
+\
+    if (!response.ok()) {\
+      throw new Error(`Failed to get cached JWT token: ${response.status()}`)\
+    }\
+\
+    const headers = response.headers()\
+    const setCookieHeader = headers['set-cookie']\
+    const tokenMatch = setCookieHeader?.match(/access_token=([^;]+)/)\
+\
+    if (!tokenMatch) {\
+      throw new Error('No access_token found in login response during beforeAll')\
+    }\
+\
+    cachedAuthToken = tokenMatch[1]\
+    console.log('[beforeAll] JWT token cached successfully for all tests')\
+  })\
+\
+  test.beforeEach(async ({ page }) => {\
+    // CRITICAL: Use auth bypass instead of login flow\
+    // This eliminates redirect issues and speeds up tests\
+    if (!cachedAuthToken) {\
+      throw new Error('No cached auth token - beforeAll failed')\
+    }\
+\
+    // Set auth cookie directly (bypasses login flow)\
+    await setAuthTokenDirectly(page, cachedAuthToken)\
+\
+    // Create test project via API\
+    projectId = await createTestProject(page, {\
+      name: 'Complete Lifecycle Test Project',\
+      description: 'Build a simple REST API with user authentication',\
+    })\
+    resourceIds.projectIds.push(projectId)\
+\
+    // Navigate directly to project (no redirect!)\
+    await navigateToProjectAuthenticated(page, projectId, 'launch')\
+  })
+
+# Add cachedAuthToken variable after line 32
+32a\
+  let cachedAuthToken: string | null = null
