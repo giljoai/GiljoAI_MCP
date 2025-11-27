@@ -138,6 +138,23 @@ class ProjectCompleteRequest(BaseModel):
     POST /api/projects/{project_id}/complete
     """
 
+    summary: str = Field(
+        ...,
+        min_length=50,
+        max_length=5000,
+        description="Comprehensive project summary (2-3 paragraphs)",
+    )
+    key_outcomes: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description="List of tangible deliverables/achievements",
+    )
+    decisions_made: list[str] = Field(
+        default_factory=list,
+        max_length=20,
+        description="List of architectural/technical decisions",
+    )
     confirm_closeout: bool = Field(..., description="Must be True to confirm closeout")
 
     model_config = ConfigDict(from_attributes=True)
@@ -150,7 +167,12 @@ class ProjectCompleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether project was successfully completed")
     completed_at: str = Field(..., description="Completion timestamp (ISO format)")
-    retired_agents: int = Field(..., description="Number of agents retired")
+    memory_updated: bool = Field(..., description="Whether 360 Memory was updated")
+    sequence_number: int = Field(..., description="Sequential history entry number")
+    git_commits_count: int = Field(..., description="Number of commits captured (if GitHub enabled)")
+    retired_agents: int | None = Field(
+        default=None, description="Number of agents retired (deprecated field for legacy callers)"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -166,7 +188,7 @@ class ProjectCloseoutDataResponse(BaseModel):
     checklist: list[str] = Field(
         ...,
         description="Dynamic checklist items based on project state",
-        min_items=3,
+        min_length=3,
     )
     closeout_prompt: str = Field(
         ...,
