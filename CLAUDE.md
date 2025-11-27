@@ -8,7 +8,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.2+)**: Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0234-0235) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.2+)**: Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Orchestrator Workflow Series (Nov 2025)** - Handovers 0246a-0246c:
 - 0246a: 7-Task Staging Workflow (931 tokens, 22% under budget)
@@ -17,11 +17,16 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 - **Total Impact**: 85% reduction in orchestrator prompts (~3,500 → ~450-550 tokens)
 - Complete pipeline: Staging → Discovery → Spawning → Execution
 
-**GUI Redesign (Nov 2025)** - Handovers 0234-0235:
-- StatusBoard components (StatusChip with health indicators, ActionIcons with 5 actions, JobReadAckIndicators)
-- Status board table with real-time WebSocket updates
-- Agent health monitoring with staleness detection
-- Action management (launch, copy prompt, view messages, cancel, hand over)
+**GUI Redesign (Nov 2025)** - Handovers 0243a-f (Nicepage Conversion):
+- 0243a: Design tokens extraction (47 tokens, ~5KB CSS vs 1.65MB original)
+- 0243b: LaunchTab layout polish (three-panel grid, orchestrator card)
+- 0243c: CRITICAL JobsTab dynamic status fix (replaced hardcoded "Waiting.")
+- 0243d: Agent action buttons (5 actions: launch/copy/message/cancel/handover)
+- 0243e: Message center tab fix (real-time counts, tab persistence)
+- 0243f: Integration testing & performance optimization
+- **Total Impact**: Pixel-perfect Nicepage design match, 27+ E2E tests
+- **Timeline**: 8 hours actual vs 44-59 hour estimate (TDD with specialized subagents)
+- **Note**: Superseded 0240-0242 series (wrong template → emergency fix → refinement → final conversion)
 
 Per-User Tenancy Policy (Nov 2025)
 - Each user is isolated in their own tenant (unique tenant_key assigned at registration)
@@ -80,7 +85,7 @@ F:\GiljoAI_MCP/
 ├── api/               # FastAPI server & endpoints
 ├── frontend/          # Vue dashboard
 │   ├── src/components/
-│   │   ├── StatusBoard/               # Status board components (Handovers 0234-0235)
+│   │   ├── StatusBoard/               # Status board components (Handovers 0243)
 │   │   │   ├── StatusChip.vue         # Status badge with health indicators
 │   │   │   ├── ActionIcons.vue        # Agent action buttons (launch/copy/message/cancel/handover)
 │   │   │   └── JobReadAckIndicators.vue  # Read/acknowledged checkmarks
