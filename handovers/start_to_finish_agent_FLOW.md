@@ -13,6 +13,8 @@
 
 **User Journey Context**: This document provides the technical verification layer for the product vision described in [Simple_Vision.md](./Simple_Vision.md). While Simple_Vision focuses on the *what* and *why* from a user's perspective, this document verifies the *how* through code inspection, database schemas, and API endpoint verification. For the dynamic agent discovery design and execution-mode behaviour (Claude Code subagents vs general multi-terminal CLI), see [dynamiccontext_patrik.md](./dynamiccontext_patrik.md).
 
+**Verification Status**: Implementation sessions archived in `handovers/completed/0246_series/` confirmed that execution-mode endpoints (`/api/v1/prompts/execution/{orchestrator_job_id}`) support the `claude_code_mode` boolean, the Implementation-tab Claude toggle is fully wired, and the 7-task staging workflow is complete. This document reflects the fully-implemented system, not a design proposal.
+
 ---
 
 ## Terminology & Naming Conventions
