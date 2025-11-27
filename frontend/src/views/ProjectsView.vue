@@ -181,6 +181,8 @@
           class="elevation-0"
           item-key="id"
           fixed-header
+          :item-props="() => ({ 'data-testid': 'project-card' })"
+          @click:row="handleRowClick"
         >
           <!-- Name Column with ID -->
           <template v-slot:item.name="{ item }">
@@ -767,6 +769,13 @@ async function activateProject(projectId) {
 function launchProject(projectId) {
   // Navigate to Project Launch Panel
   router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs' } })
+}
+
+// Handle row click to navigate to project
+function handleRowClick(event, item) {
+  if (item && item.id) {
+    launchProject(item.id)
+  }
 }
 
 // Show "Working" label when the currently launched project is executing
