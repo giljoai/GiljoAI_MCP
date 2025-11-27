@@ -219,6 +219,27 @@ if status['percentage_used'] >= 0.9:
 
 ---
 
+## Database Field Naming Conventions
+
+**Critical Distinction**: User input fields use `description`, AI-generated content uses `mission`.
+
+| Field | Who Fills It | Purpose | Example |
+|-------|--------------|---------|---------|
+| `Product.description` | Human (web form) | Product overview | "Multi-tenant MCP server for agent orchestration" |
+| `Project.description` | Human (web form) | Project requirements | "Add JWT authentication" |
+| `Project.mission` | Orchestrator (AI) | AI-generated plan | "Implement JWT auth with RS256, protect 8 endpoints, add rate limiting..." |
+| `MCPAgentJob.mission` | Orchestrator (AI) | Agent-specific work | "backend-tester: Test authentication endpoints with invalid tokens..." |
+| `Task.description` | Human (form/MCP) | Task details | "Research Redis caching strategies" |
+
+**DO NOT**:
+- ❌ Call `update_project_mission()` with user input (that's `description`)
+- ❌ Confuse `Task.description` with `Project.mission`
+- ❌ Use "mission" parameter when accepting user requirements
+
+**Validation Rule**: If content comes from a web form or user prompt, it's `description`. If content is AI-generated mission/plan, it's `mission`.
+
+---
+
 ### **SettingsService** (`src/giljo_mcp/services/settings_service.py`)
 
 **Purpose**: System settings persistence and retrieval
@@ -426,6 +447,19 @@ async def get_products(self):
     )
     return result.scalars().all()
 ```
+
+**Raw SQLAlchemy Pattern** (for advanced use cases):
+```python
+# Direct database queries also require tenant_key filtering
+from src.giljo_mcp.models import MCPAgentJob
+
+jobs = session.query(MCPAgentJob).filter(
+    MCPAgentJob.tenant_key == tenant_key,
+    MCPAgentJob.agent_type == "implementer"
+).all()
+```
+**When to use**: Database migrations, complex queries, performance optimization.
+**Preferred**: Use service layer methods when available (automatic tenant_key filtering).
 
 ### **3. Pydantic Schema Validation**
 Request/response validation using Pydantic:
