@@ -46,9 +46,14 @@ def get_project_service(
     current_tenant = TenantManager.get_current_tenant()
     logger.debug(f"[get_project_service] TenantManager.get_current_tenant() = {current_tenant}")
 
+    if tenant_key != current_user.tenant_key:
+        TenantManager.set_current_tenant(current_user.tenant_key)
+        tenant_key = current_user.tenant_key
+
     # Tenant context already set by get_tenant_key() - no need to set again
     # ProjectService uses db_manager (not session) for its own session management
     return ProjectService(
         db_manager=state.db_manager,
-        tenant_manager=state.tenant_manager
+        tenant_manager=state.tenant_manager,
+        test_session=db,
     )

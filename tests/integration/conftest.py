@@ -8,8 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from httpx import ASGITransport, AsyncClient
 from src.giljo_mcp.models import User, Product, Project
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.fixture
@@ -37,7 +39,7 @@ async def test_user(db_session: AsyncSession):
     user = User(
         username=f"testuser_{uuid4().hex[:8]}",
         email=f"test_{uuid4().hex[:8]}@example.com",
-        tenant_key=f"tenant_{uuid4().hex[:8]}",
+        tenant_key=TenantManager.generate_tenant_key(),
         role="developer",
         password_hash="hashed_password",
     )
@@ -47,13 +49,20 @@ async def test_user(db_session: AsyncSession):
     return user
 
 
+@pytest.fixture(autouse=True)
+def set_tenant_context(test_user: User):
+    """Ensure TenantManager is set to the primary test user's tenant."""
+    TenantManager.set_current_tenant(test_user.tenant_key)
+    return test_user.tenant_key
+
+
 @pytest_asyncio.fixture
 async def test_user_2(db_session: AsyncSession):
     """Create second test user (different tenant for isolation tests)"""
     user = User(
         username=f"testuser2_{uuid4().hex[:8]}",
         email=f"test2_{uuid4().hex[:8]}@example.com",
-        tenant_key=f"tenant2_{uuid4().hex[:8]}",
+        tenant_key=TenantManager.generate_tenant_key(),
         role="developer",
         password_hash="hashed_password",
     )
@@ -91,6 +100,92 @@ async def auth_headers_user_2(test_user_2: User) -> dict:
     )
 
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def authed_client(db_manager: DatabaseManager, db_session: AsyncSession, test_user: User):
+    """Create AsyncClient with authenticated user and tenant context."""
+    from api.app import app, state
+    from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+
+    async def mock_get_current_user():
+        return test_user
+
+    async def mock_get_db_session():
+        yield db_session
+
+    class DummyAuth:
+        async def authenticate_request(self, request):
+            TenantManager.set_current_tenant(test_user.tenant_key)
+            return {
+                "authenticated": True,
+                "user_id": str(test_user.id),
+                "user": test_user.username,
+                "user_obj": test_user,
+                "tenant_key": test_user.tenant_key,
+            }
+
+    state.db_manager = db_manager
+    state.tenant_manager = state.tenant_manager or TenantManager()
+    state.auth = DummyAuth()
+    app.state.db_manager = db_manager
+    app.state.tenant_manager = state.tenant_manager
+    app.state.auth = state.auth
+
+    app.dependency_overrides[get_current_active_user] = mock_get_current_user
+    app.dependency_overrides[get_db_session] = mock_get_db_session
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def authed_client_user_2(db_manager: DatabaseManager, db_session: AsyncSession, test_user_2: User):
+    """Authenticated client for secondary test user (tenant isolation checks)."""
+    from api.app import app, state
+    from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+
+    async def mock_get_current_user():
+        return test_user_2
+
+    async def mock_get_db_session():
+        yield db_session
+
+    class DummyAuth:
+        async def authenticate_request(self, request):
+            TenantManager.set_current_tenant(test_user_2.tenant_key)
+            return {
+                "authenticated": True,
+                "user_id": str(test_user_2.id),
+                "user": test_user_2.username,
+                "user_obj": test_user_2,
+                "tenant_key": test_user_2.tenant_key,
+            }
+
+    state.db_manager = db_manager
+    state.tenant_manager = state.tenant_manager or TenantManager()
+    state.auth = DummyAuth()
+    app.state.db_manager = db_manager
+    app.state.tenant_manager = state.tenant_manager
+    app.state.auth = state.auth
+
+    app.dependency_overrides[get_current_active_user] = mock_get_current_user
+    app.dependency_overrides[get_db_session] = mock_get_db_session
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def async_client(authed_client: AsyncClient):
+    """Alias authed_client for backward compatibility in integration tests."""
+    yield authed_client
 
 
 @pytest_asyncio.fixture

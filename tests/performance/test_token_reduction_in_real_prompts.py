@@ -142,7 +142,7 @@ class TestTokenReductionInRealPrompts:
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test staging prompt",
             job_metadata={
                 "user_id": test_user.id,

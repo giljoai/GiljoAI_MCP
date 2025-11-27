@@ -20,6 +20,7 @@ Design Principles:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
@@ -50,7 +51,13 @@ class ProductService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_key: str, websocket_manager=None):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_key: str,
+        websocket_manager=None,
+        test_session: Optional[AsyncSession] = None,
+    ):
         """
         Initialize ProductService with database and tenant isolation.
 
@@ -58,11 +65,26 @@ class ProductService:
             db_manager: Database manager for async database operations
             tenant_key: Tenant key for multi-tenant isolation
             websocket_manager: Optional WebSocket manager for event emission (Handover 0139a)
+            test_session: Optional AsyncSession for tests to share the same transaction
         """
         self.db_manager = db_manager
         self.tenant_key = tenant_key
+        self._test_session = test_session
         self._websocket_manager = websocket_manager  # Handover 0139a: WebSocket events
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    @asynccontextmanager
+    async def _get_session(self):
+        """
+        Yield a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+        """
+        if self._test_session is not None:
+            yield self._test_session
+            return
+
+        async with self._get_session() as session:
+            yield session
 
     # ============================================================================
     # CRUD Operations
@@ -98,7 +120,7 @@ class ProductService:
             >>> print(result["product_id"])
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Check for duplicate name (excluding soft-deleted)
                 stmt = select(Product).where(
                     and_(Product.tenant_key == self.tenant_key, Product.name == name, Product.deleted_at.is_(None))
@@ -164,7 +186,7 @@ class ProductService:
             ...     print(result["product"]["name"])
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Eagerly load vision_documents to prevent lazy-loading issues
                 stmt = (
                     select(Product)
@@ -231,7 +253,7 @@ class ProductService:
             ...     print(product["name"])
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 conditions = [Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None)]
 
                 if not include_inactive:
@@ -303,7 +325,7 @@ class ProductService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
@@ -394,7 +416,7 @@ class ProductService:
             },
         )
 
-        async with self.db_manager.get_session_async() as session:
+        async with self._get_session() as session:
             # Fetch product with multi-tenant isolation
             product = await session.get(Product, product_id)
 
@@ -451,7 +473,7 @@ class ProductService:
             >>> result = await service.activate_product("abc-123")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify product exists
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
@@ -515,7 +537,7 @@ class ProductService:
             >>> result = await service.deactivate_product("abc-123")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
@@ -560,7 +582,7 @@ class ProductService:
             >>> result = await service.delete_product("abc-123")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
                 )
@@ -603,7 +625,7 @@ class ProductService:
             >>> result = await service.restore_product("abc-123")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = select(Product).where(
                     and_(
                         Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.isnot(None)
@@ -653,7 +675,7 @@ class ProductService:
         try:
             PURGE_DAYS = 30  # 30-day purge policy
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = (
                     select(Product)
                     .where(and_(Product.tenant_key == self.tenant_key, Product.deleted_at.isnot(None)))
@@ -713,7 +735,7 @@ class ProductService:
             ...     print(f"Active: {result['product']['name']}")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 stmt = (
                     select(Product)
                     .options(selectinload(Product.vision_documents))
@@ -774,7 +796,7 @@ class ProductService:
             >>> print(f"Projects: {result['statistics']['total_projects']}")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify product exists
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
@@ -820,7 +842,7 @@ class ProductService:
             >>> print(f"Will affect {result['impact']['total_projects']} projects")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify product exists
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
@@ -908,7 +930,7 @@ class ProductService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify product exists
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
@@ -1008,7 +1030,7 @@ class ProductService:
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify product exists
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
@@ -1111,7 +1133,7 @@ class ProductService:
             from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
             from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Verify product exists and belongs to tenant
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
