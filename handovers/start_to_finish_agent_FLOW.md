@@ -11,7 +11,7 @@
 **Purpose**: Document and verify complete agent orchestration flow from installation to execution
 **Status**: ✅ Verified & Harmonized
 
-**User Journey Context**: This document provides the technical verification layer for the product vision described in [Simple_Vision.md](./Simple_Vision.md). While Simple_Vision focuses on the *what* and *why* from a user's perspective, this document verifies the *how* through code inspection, database schemas, and API endpoint verification.
+**User Journey Context**: This document provides the technical verification layer for the product vision described in [Simple_Vision.md](./Simple_Vision.md). While Simple_Vision focuses on the *what* and *why* from a user's perspective, this document verifies the *how* through code inspection, database schemas, and API endpoint verification. For the dynamic agent discovery design and execution-mode behaviour (Claude Code subagents vs general multi-terminal CLI), see [dynamiccontext_patrik.md](./dynamiccontext_patrik.md).
 
 ---
 

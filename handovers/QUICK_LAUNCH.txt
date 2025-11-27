@@ -1286,7 +1286,164 @@ WebSocket Events Not Working:
   })
 
 ══════════════════════════════════════════════════════════════════════════════
-## 10. RELATED DOCUMENTATION
+## 10. SCOPE MANAGEMENT & ANTI-PATTERNS
+══════════════════════════════════════════════════════════════════════════════
+
+GiljoAI has experienced scope creep in handover series. Learn from history.
+
+### Case Study: 0240-0243 Series (2 weeks → 6 weeks)
+
+**Original Plan** (0240 series):
+- 4 handovers (0240a-d)
+- 24-30 hours effort
+- 3-4 days wall-clock time
+- GUI redesign matching PDF vision
+
+**What Went Wrong**:
+- Used wrong PDF template (missing reference screenshots)
+- 0240a-d completed but didn't match actual design
+- Emergency fix 0241 (complete rewrite from scratch)
+- Refinement attempt 0242 (scope gaps, abandoned)
+- Final success 0243 (Nicepage conversion, 6 handovers)
+
+**Timeline Impact**:
+- Original estimate: 2 weeks
+- Actual completion: 6+ weeks (300% overrun)
+- Total handovers: 4 planned → 18 created (superseded + final)
+
+**Lessons Learned**:
+
+1. **VERIFY REQUIREMENTS FIRST**
+   - Before implementing, verify EXACT requirements
+   - Compare screenshots/mockups to PDF vision
+   - Ask user to confirm design references
+   - Don't assume "this looks right"
+
+2. **SMALL HANDOVERS, FAST VALIDATION**
+   - Better: 6 small handovers (0243a-f) with intermediate validation
+   - Worse: 4 large handovers with late discovery of wrong design
+
+3. **FAIL FAST, PIVOT QUICKLY**
+   - 0240 series completed but wrong → immediate 0241 pivot
+   - Don't "fix" a fundamentally wrong approach
+   - Sometimes complete rewrite is faster than incremental fixes
+
+4. **AVOID PARALYSIS BY PLANNING**
+   - 0240_series_execution_plan.md was 580 lines
+   - Detailed plans don't prevent wrong implementation
+   - Execution + validation > elaborate planning
+
+5. **HANDOVER RETIREMENT IS OK**
+   - Archive superseded handovers clearly
+   - Keep for historical reference (learn from mistakes)
+   - Don't delete (git history isn't enough context)
+
+### Anti-Pattern Checklist
+
+Before starting a handover series, ask:
+
+❌ **Anti-Pattern**: "Let's plan everything in detail first"
+✅ **Best Practice**: "Let's implement Phase 1, validate, then plan Phase 2"
+
+❌ **Anti-Pattern**: "This design looks close enough to the vision"
+✅ **Best Practice**: "Show me side-by-side screenshots - exact match required"
+
+❌ **Anti-Pattern**: "We can refine this incrementally"
+✅ **Best Practice**: "Is this the right foundation? Or do we need to pivot?"
+
+❌ **Anti-Pattern**: "Let's fix all the edge cases in one handover"
+✅ **Best Practice**: "Critical path first, edge cases in follow-up handovers"
+
+❌ **Anti-Pattern**: "This handover should cover everything"
+✅ **Best Practice**: "This handover has ONE clear goal with validation"
+
+### Scope Creep Warning Signs
+
+Watch for these patterns:
+
+🚨 "Let's also add X while we're at it" → Scope creep
+🚨 "The design might change later" → Requirements unclear
+🚨 "This is 80% right, we can polish later" → Wrong foundation
+🚨 "Handover is 50+ hours estimated" → Too large, break down
+🚨 "Multiple teams need to coordinate" → Dependency hell
+
+### Healthy Handover Series Patterns
+
+✅ **0246 Series** (Orchestrator Workflow):
+   - Clear goal: 85% token reduction
+   - 4 handovers (0246a-d) + 1 integration (0247)
+   - Each handover tested independently
+   - Success: 3,500 → 450 tokens achieved
+
+✅ **0248 Series** (Context Priority System):
+   - Clear goal: Fix broken priority framing
+   - 4 handovers (0248a-d)
+   - Each handover focused on one subsystem
+   - Success: 92% test coverage, production ready
+
+✅ **0249 Series** (Project Closeout):
+   - Clear goal: Wire existing components together
+   - 3 handovers (0249a-c)
+   - Clean slate approach (no migration complexity)
+   - Success: 3 days actual vs 5-7 days original plan
+
+### Retirement Strategy
+
+When handovers are superseded:
+
+1. **Create clear signpost** (e.g., `0242_REPLACED_BY_0243.md`)
+2. **Archive to subdirectory** (e.g., `completed/superseded-by-0243/`)
+3. **Update documentation** (CLAUDE.md, roadmaps)
+4. **Don't delete** (keep for historical learning)
+5. **Add README** explaining what happened and why
+
+### Estimation Reality Check
+
+**Handover Estimation Accuracy** (from 024* series):
+
+- 0240: Estimated 24-30h → Actual: SUPERSEDED (wrong design)
+- 0241: Estimated 8-12h → Actual: SUPERSEDED (still wrong)
+- 0242: Estimated 16-20h → Actual: ABANDONED (scope gaps)
+- 0243: Estimated 44-59h → Actual: 8h (TDD + subagents)
+- 0244: Estimated 6-8h → Actual: 4h (agent orchestration)
+- 0246: Estimated 12-16h → Actual: ~16h (accurate)
+- 0248: Estimated 8-12h → Actual: ~10h (accurate)
+- 0249: Estimated 15-21h → Actual: ~18h (accurate)
+
+**Pattern**: First implementation often wrong, pivots are normal, later
+implementations get faster as architecture solidifies.
+
+**Strategy**: Estimate conservatively, deliver incrementally, validate early.
+
+### Before Starting New Handover Series
+
+□ Requirements verified with user (exact screenshots/mockups confirmed)
+□ Series scope is <15 handovers (if larger, break into multiple series)
+□ Each handover is <50 hours estimated (if larger, split into phases)
+□ Dependencies mapped (parallel vs sequential execution)
+□ Validation points identified (how to know if we're on track)
+□ Pivot strategy defined (what to do if wrong direction)
+□ Retirement strategy documented (how to handle superseded work)
+
+### During Handover Series Execution
+
+□ Validate each handover before starting next
+□ Update estimates based on actual time spent
+□ Document scope changes as they occur
+□ Create signpost files when pivoting
+□ Archive superseded work immediately
+□ Update CLAUDE.md with current state
+
+### After Handover Series Completion
+
+□ Create series README with lessons learned
+□ Archive intermediate notes to /notes/ subdirectory
+□ Update documentation with final implementation references
+□ Remove references to superseded approaches
+□ Add scope management notes to prevent repeat issues
+
+══════════════════════════════════════════════════════════════════════════════
+## 11. RELATED DOCUMENTATION
 ══════════════════════════════════════════════════════════════════════════════
 
 Essential Reading:
