@@ -1,6 +1,6 @@
-# Context Management System
+# Vision Context Management & Token Reduction
 
-**GiljoAI MCP - Handover 0018: Context Management System for Token Reduction**
+**GiljoAI MCP - Handover 0018: Vision Context Management System for Token Reduction**
 
 **Version**: 1.0.0
 **Date**: 2025-10-18
