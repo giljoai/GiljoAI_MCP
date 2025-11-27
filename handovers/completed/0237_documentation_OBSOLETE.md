@@ -1,10 +1,39 @@
 # Handover 0237: Documentation
 
-**Status**: Ready for Implementation
-**Priority**: Medium
-**Estimated Effort**: 4 hours
-**Dependencies**: Handovers 0225-0236 (all previous refactor handovers)
+**⚠️ STATUS: OBSOLETE - SUPERSEDED by 0243 GUI Redesign**
+
+**Original Status**: ~~Ready for Implementation~~ OBSOLETE
+**Original Priority**: ~~Medium~~ N/A
+**Original Estimated Effort**: ~~4 hours~~ Not needed
+**Dependencies**: Handovers 0225-0236 (all complete)
 **Part of**: Visual Refactor Series (0225-0237)
+
+---
+
+## Why This Is Obsolete
+
+This handover was created to document the StatusBoard table components from the Visual Refactor Series (0225-0236). However:
+
+1. **GUI Completely Redesigned**: The 0243 Nicepage series completely redesigned the GUI
+2. **Components Superseded**: The StatusBoard components this would document have been replaced
+3. **No Value in Documentation**: Writing docs for superseded components would be wasteful
+4. **Series Complete**: The Visual Refactor Series is 100% complete and archived
+
+## Historical Context
+
+This was the final handover (0237) in the Visual Refactor Series, intended to document:
+- StatusBoardTable component from 0234-0235
+- User guide updates with table view screenshots
+- API documentation for table endpoints
+- Migration guide from cards to table
+
+All of this work became irrelevant when the GUI was redesigned in the 0243 Nicepage series.
+
+---
+
+## Archive Note
+
+This handover should be moved to `handovers/completed/` and marked as obsolete. The Visual Refactor Series (0225-0237) is complete, with this documentation task being unnecessary due to subsequent redesigns.
 
 ---
 
