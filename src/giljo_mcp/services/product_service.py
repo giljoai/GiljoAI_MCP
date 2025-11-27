@@ -83,7 +83,7 @@ class ProductService:
             yield self._test_session
             return
 
-        async with self._get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             yield session
 
     # ============================================================================
