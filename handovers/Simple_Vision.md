@@ -1,7 +1,7 @@
 ---
 **Document Type:** Product Vision & User Journey  
 **Last Updated:** 2025-01-05  
-**Related Documents:** [start_to_finish_agent_FLOW.md](./start_to_finish_agent_FLOW.md) (technical verification)  
+**Related Documents:** [start_to_finish_agent_FLOW.md](./start_to_finish_agent_FLOW.md) (technical verification), [dynamiccontext_patrik.md](./dynamiccontext_patrik.md) (dynamic agent discovery & context modes)  
 **Harmonization Status:** ✅ Aligned with codebase (Handovers 0088, 0102, 0073)  
 ---
 
@@ -80,6 +80,8 @@ The orchestrator achieves **strong context prioritization and orchestration** th
 Instead of flooding agents with ALL product context, the orchestrator intelligently extracts, condenses, and prioritizes information. This means agents get exactly what they need to do their work - nothing more, nothing less.
 
 **Technical Reference**: For detailed verification of the token reduction architecture, see `handovers/start_to_finish_agent_FLOW.md`.
+
+For the dynamic agent discovery design and how the same context stack (Product description, Vision documents, Tech Stack, Architecture, Testing notes, Agent templates, 360 Memory, Git history) is applied consistently across Claude Code subagent mode and general multi-terminal CLI mode, see `handovers/dynamiccontext_patrik.md`.
 
 The key restriction we have in this application is the lack of automation The closest we have is the MCP message communications but that only works while the agents are active.  so there will always be in need for the developer to nudge agents along in their various terminal windows to read messagesi  In the future states it would be amazing if that could be automated and perhaps we build the terminal into the application or find ways to inject commands into active terminals.
 
