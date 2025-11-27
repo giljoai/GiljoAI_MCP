@@ -43,6 +43,8 @@ Complete Discovery Overview: Dynamic Agent Discovery System
     ## Question - As state above we have two terminal model behaviours. Does our instructions waiting on the MCP server (regardless of mode) for the orchestrator to tell the orcestrator (based on 'Agent Template Manager toggles'), what agents are available as subagents to help the project/mission?
 
     **CONTEXT and Behaviour** Claude code has two types of agents.  User or project agents. They are located in either ~\.claude\agents (= what claude code CLI calls user agents) or {project_folder_from_where_claude_CLI_was_launched}\.claude\agents (= what claude code CLI calls project agents)? We do not need to know which type of agent the user has configured in Claude code CLI. The instructional prompt should be encompassing for either mode when the user toggles "use Claude code CLI subagents". Ecompassing means that if the user has enabled implementor" in the templte manager, then the orchestrator should assume this agent exists as a user or project agent and thus write a mission for this agent.  Similarly, the orchestrator should write the exactly the same mission for a general CLI mode agent (legacy above).  
+
+    In both modes, the orchestrator builds its own understanding and all agent missions from the same context stack defined in **My Settings → Context**. The only difference is how those missions are launched (single terminal with Claude subagents vs multiple terminals with separate prompts). Product, project and agent behaviour always come from the server-side context configuration, not from whatever happens to be in the local terminal.
     
     The difference is in once the project is staged, mission is created and agens are spawned.  Now the prompt will differ for the next 'prompt copy' for the orchestrator.  This is in the implement tab vue, and the 'play button' which now copies a dynamic prompt.  
     
@@ -62,10 +64,14 @@ Complete Discovery Overview: Dynamic Agent Discovery System
 - Your fourth task is to fetch your mission instructions {MCP command, read context prioritizatoin rules, fetch_context, use Serena MCP of toggled on by user (assumes user has installed Serena MCP), read Serena MCP parameters if user configured advanced options, github is enabled (assuming github is installed on the machine if user toggles this on), create_mission, spawn_agents , write_agent_prompts(including your own, tell each agent where to get more context, tell each agent that Serena MCP is available, tell each agent that Serena MCp advanced options or where to get them, tell each agent Github is enabled if needed, tell each agent what the fellow agents will be working on this, any other rules I may be forgetting)}
 - Your fifth task is to activate the jobs {MCP command for toggling various states} enabling the [Launch Jobs] button
 
+At this stage, the orchestrator is effectively turning the user's **Context** settings into a concrete mission plan. It reads the prioritized context fields (Product description, Vision documents, Tech Stack, Architecture, Testing notes, Agent templates, 360 Memory, Git history) according to their priority and depth, then bakes that into its own instructions and into the per‑agent missions it will later write.
+
 #### My vision for Prompt flow on IMplementation vue Tab when user presses 'play button' IN CLAUDE CLI MODE
 - Orcestrator prompt to paste
 - - You are Orchestrator, Agent_ID, working on Product_ID and project_ID.
 - - Instructions for what to do next on {MCP command} = read the orchestrators {job_ID, Coordination role, spawn agents instructions, how to give each agent instructions to get their individual instructions {MCP Command to read their prompt and other behaviours form the MCP server} Note: many agent instructions are part of their templates (MD FILES) like their MCP commands, to this subagent prompt is mainly the job to be done for the project} 
+
+In Claude CLI mode, the orchestrator prompt should make it explicit that all missions and subagent prompts have already been assembled from the server-side Context stack. Claude's task tool is only responsible for running those missions inside one terminal; it does not change which context sources are used.
 
 #### My vision for Prompt flow in Implementation vue tab when user presses 'play button' IN GENERAL MODE (COdex and Gemini and generic)
  - Orcestrator prompt to paste
@@ -80,6 +86,48 @@ Complete Discovery Overview: Dynamic Agent Discovery System
 - Your first task is to check MCP health {MCP Command}
 - Your second task is to check your project enviornment, read Claude.MD in the project folder. "You are working in an individual terminal window and you can only communicate with the orchestrator and your agent team via MCP {MCP command = understand_agent_team}"
 - Your third task is to fetch your job instructions {MCP command, communications rules, read job, IF question THEN ask orchestrator, use Serena MCP of toggled on by user (assumes user has installed Serena MCP), read Serena MCP parameters if user configured advanced options, github is enabled (assuming github is installed on the machine if user toggles this on), (note are there other rules I may be forgetting??)  Tell MCp serer  you are Begining work, start work.}
+
+In general CLI mode, each agent's starting prompt should clearly say that its job instructions already reflect the same Context configuration as Claude mode: product narrative, tech and architecture, testing focus, templates, 360 memory and recent git history. The user just pastes prompts into separate terminals; the underlying context policy remains identical.
+
+## Context Sources
+
+This section describes the main context sources that the orchestrator and agents use when building missions. These sources are controlled from **My Settings → Context** and are the same regardless of whether the user runs in Claude Code CLI mode or general CLI mode.
+
+### Product Description
+
+High‑level narrative of what the product is, who it serves, and its core constraints. Stored on the server as part of the `Product` record (e.g. `product.description` and related fields). Used to give every orchestrator and agent prompt a shared mental model of the product and its non‑negotiable rules before any technical details.
+
+### Vision Documents
+
+Long‑form product and strategy documents (roadmaps, vision notes, specs). Typically stored as files or rich text linked to the product (e.g. `product_vision_documents` table or similar). The orchestrator pulls selected, chunked excerpts based on priority/depth to give agents broader context without flooding the prompt.
+
+### Tech Stack
+
+Canonical list of languages, frameworks, services, and core dependencies for the product. Stored on the product as structured fields or JSON (e.g. `product.tech_stack`). Injected into prompts so orchestrator and agents select correct tools, libraries, and patterns, and avoid proposing stacks that conflict with the current system.
+
+### Architecture
+
+Key architectural decisions, diagrams, and module boundaries. Persisted as product‑linked architecture records or docs (e.g. `product_architecture` and related tables). Used to ground agents in how components are organized (backend, frontend, MCP tools, databases) so their plans and changes align with the intended architecture.
+
+### Testing
+
+Information about existing tests, frameworks (pytest, frontend tests), and testing expectations (TDD, coverage). Stored as product/project testing metadata or linked documents (e.g. `testing_guides`, `testing_notes`). Included in prompts so agents know how to write, run and respect tests rather than treating them as an afterthought.
+
+### Agent Templates (Type Only)
+
+Server‑side definitions of each agent type: role, capabilities, default behaviours and MCP tools. Backed by the `AgentTemplate` tables in the database and associated markdown templates. The orchestrator reads these templates to decide which agents to spawn and to generate each agent’s starting prompt; Claude subagents should mirror these definitions.
+
+### 360 Memory
+
+Historical memory of past projects and closeouts for the product, including what worked, what failed, and key decisions. Stored as `product.product_memory` or related 360‑memory tables. Mission planning tools can pull the most recent N entries so agents learn from history instead of repeating mistakes.
+
+### Git History
+
+Recent commits, branches and diffs from the product’s linked repositories. Accessed via git integration and stored as lightweight metadata (e.g. `git_revisions`, `git_links`). When enabled in Context, orchestrator and agents can read recent changes to understand current direction, avoid conflicts and anchor work in the latest code state.
+
+### How Context Settings Are Applied in Code
+
+On the server, each tenant has a Context configuration that records which of the above sources are enabled, their relative priority, and depth knobs (e.g. how many vision chunks, how many recent git commits). When an orchestrator job is created, tools like `get_orchestrator_instructions` and the mission planner read this configuration, assemble a context package, and then use it to build the orchestrator prompt and all per‑agent missions. Claude CLI and general CLI modes both consume the same prepared missions; only the launch UX differs.
 
 
 
