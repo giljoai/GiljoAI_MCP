@@ -4,6 +4,16 @@ This directory contains historical planning documents that are now obsolete due 
 
 ## Files
 
+### CLEAN_SLATE_UPDATE_SUMMARY_NOT_IMPLEMENTED.md
+- **Created**: November 25, 2025
+- **Purpose**: Proposed "clean slate" approach for 0248/0249 series
+- **Status**: NOT IMPLEMENTED - Plan not followed
+- **Issues**:
+  - Claims 0248d/0249d deleted, but 0248d actually exists
+  - Proposed 3-part series, implemented as 4-part
+  - Clean slate approach wasn't used in actual implementation
+  - Work completed differently than planned
+
 ### HANDOVER_SERIES_OBSOLETE.md
 - **Created**: November 19, 2025
 - **Purpose**: Track handover series organization and available numbers
