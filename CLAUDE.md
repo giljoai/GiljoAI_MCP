@@ -248,6 +248,8 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 
 **See [docs/SERVICES.md](docs/SERVICES.md)** for complete service layer documentation.
 
+**Critical**: Database field naming conventions distinguish user input (`description`) from AI-generated content (`mission`). See [Field Naming Conventions](docs/SERVICES.md#database-field-naming-conventions) for details.
+
 **Core Services**:
 - `ProductService` - Product & vision document management with chunked uploads
 - `ProjectService` - Project lifecycle operations (activate, deactivate, summary, launch)
