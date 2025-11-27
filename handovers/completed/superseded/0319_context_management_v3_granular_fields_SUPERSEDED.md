@@ -1,9 +1,31 @@
 # Handover 0319 - Context Management v3.0: Granular Field Selection
 
+**⚠️ SUPERSEDED by Handover 0323 (2025-11-19)**
+
+**IMPORTANT**: This handover was fully implemented on 2025-11-18 but then completely REVERSED the next day by Handover 0323, which chose a simplified approach over granular field selection based on user feedback.
+
+**Original Date**: 2025-11-18
+**Status**: ❌ SUPERSEDED - Implemented then deleted in favor of simplification
+**Implementation**: Commit 4dda6171 (added 3,795 lines)
+**Reversal**: Commit f12deeb7 (deleted all 3,795 lines)
+**Reason**: User feedback: "This is confusing. I just want to toggle contexts on/off and set priority."
+
+---
+
+## Architectural Decision
+
+This handover represents a path not taken. While technically sound, the granular field selection approach was deemed over-engineered compared to the simple toggle + priority approach implemented in 0323. The implementation was properly completed with TDD before being reversed, demonstrating good engineering discipline even in pivot decisions.
+
+**Lesson**: Sometimes the best feature is the one you delete. Simplification won in this case.
+
+---
+
+## Original Summary
+
 **Date**: 2025-11-18
-**Status**: READY FOR IMPLEMENTATION
-**Priority**: HIGH
-**Estimated Time**: 3-4 days
+**Status**: ~~READY FOR IMPLEMENTATION~~ SUPERSEDED
+**Priority**: ~~HIGH~~ N/A
+**Estimated Time**: ~~3-4 days~~ Actually took 1 day, then deleted in 1 day
 **Dependencies**: Handovers 0312-0316 complete (v2.0 foundation)
 
 ---
