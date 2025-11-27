@@ -1,6 +1,19 @@
 # Project 0095 — MCP Streamable HTTP + HTTPS Migration Plan
 
 ---
+**⚠️ RETIRED (2025-11-27): SKIPPED - NOT REQUIRED**
+
+This handover has been **retired** after comprehensive investigation revealed:
+- **Codex CLI already works** with standard HTTP JSON-RPC transport (verified in handover 0092)
+- Bearer token support implemented and functional (Nov 3, 2025)
+- No evidence of "handshake failures" or streaming requirement for Codex
+- SSE streaming is a speculative enhancement, not a critical requirement
+- HTTPS functionality covered by new handover 0250 (optional security enhancement)
+
+**Decision**: Skipped as unnecessary. All three CLIs (Claude Code, Codex, Gemini) work with current HTTP implementation.
+**Location**: Moved to `handovers/completed/superseded/`
+
+---
 **⚠️ CRITICAL UPDATE (2025-11-12): DEFERRED TO HANDOVER 0515**
 
 This handover has been **reorganized** into the 0500 series remediation project:
