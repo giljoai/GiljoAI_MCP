@@ -76,7 +76,8 @@ class TestClaudeCodeModeWorkflow:
         # Step 1: Create project
         project_service = ProjectService(
             db_manager=db_manager,
-            tenant_manager=tenant_manager
+            tenant_manager=tenant_manager,
+            test_session=db_session,
         )
 
         project_result = await project_service.create_project(
@@ -104,7 +105,8 @@ class TestClaudeCodeModeWorkflow:
         # Step 3: Stage project (spawn orchestrator)
         orchestrator_service = OrchestrationService(
             db_manager=db_manager,
-            tenant_manager=tenant_manager
+            tenant_manager=tenant_manager,
+            test_session=db_session,
         )
 
         # Create orchestrator job (simulates "Stage Project" button click)

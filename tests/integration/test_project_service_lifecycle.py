@@ -47,7 +47,7 @@ class TestProjectLifecycleMethods:
                 name="Test Project",
                 description="Test Description",
                 mission="Test Mission",
-                status="staging",
+                status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_manager.get_current_tenant()
             )
@@ -98,7 +98,7 @@ class TestProjectLifecycleMethods:
                 name="Project 1",
                 description="Description 1",
                 mission="Mission 1",
-                status="staging",
+                status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_manager.get_current_tenant()
             )
@@ -106,7 +106,7 @@ class TestProjectLifecycleMethods:
                 name="Project 2",
                 description="Description 2",
                 mission="Mission 2",
-                status="staging",
+                status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_manager.get_current_tenant()
             )
@@ -190,7 +190,7 @@ class TestProjectLifecycleMethods:
                 name="Test Project",
                 description="Test Description",
                 mission="Test Mission",
-                status="staging",
+                status="waiting",
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant()
             )
@@ -361,7 +361,7 @@ class TestProjectLifecycleMethods:
                 name="E2E Test Project",
                 description="End-to-end test",
                 mission="Complete lifecycle test",
-                status="staging",
+                status="waiting",
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant()
             )

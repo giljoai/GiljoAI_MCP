@@ -91,7 +91,7 @@ class TestOrchestratorTokenReduction:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test orchestrator for token reduction",
             job_metadata={
                 "user_id": test_user.id,
@@ -148,7 +148,7 @@ class TestOrchestratorTokenReduction:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test",
             job_metadata={
                 "user_id": test_user.id,
@@ -199,7 +199,7 @@ class TestOrchestratorTokenReduction:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test",
             job_metadata={
                 "user_id": test_user.id,
@@ -243,7 +243,7 @@ class TestOrchestratorTokenReduction:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test",
             job_metadata={
                 "user_id": test_user.id,
@@ -305,7 +305,7 @@ class TestOrchestratorTokenReduction:
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
-            status="staging",
+            status="waiting",
             mission="Test",
             job_metadata={
                 "user_id": test_user.id,
