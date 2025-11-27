@@ -4,6 +4,7 @@ Provides test fixtures and database setup
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -14,14 +15,21 @@ import pytest_asyncio
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Ensure config validation passes without real secrets
+os.environ.setdefault("DB_PASSWORD", "test-password")
+
 
 from src.giljo_mcp.config_manager import get_config
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
 # Import PostgreSQL test fixtures from base_fixtures
 from tests.fixtures.base_fixtures import (
     db_manager,
     db_session,
+    e2e_closeout_fixtures,
     test_agent_jobs,
     test_messages,
     test_project,
@@ -40,6 +48,7 @@ pytest_plugins = ["tests.pytest_postgresql_plugin"]
 __all__ = [
     "db_manager",
     "db_session",
+    "e2e_closeout_fixtures",
     "test_agent_jobs",
     "test_messages",
     "test_project",
@@ -73,6 +82,36 @@ async def test_db(db_manager):
 async def tenant_manager() -> TenantManager:
     """Create tenant manager for testing"""
     return TenantManager()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def orchestration_service_with_session(db_session, db_manager, tenant_manager):
+    """OrchestrationService using shared test session for E2E/integration tests."""
+    return OrchestrationService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        test_session=db_session,
+    )
+
+
+@pytest_asyncio.fixture(scope="function")
+async def project_service_with_session(db_session, db_manager, tenant_manager):
+    """ProjectService using shared test session for E2E/integration tests."""
+    return ProjectService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        test_session=db_session,
+    )
+
+
+@pytest_asyncio.fixture(scope="function")
+async def product_service_with_session(db_session, db_manager, test_project):
+    """ProductService using shared test session for E2E/integration tests."""
+    return ProductService(
+        db_manager=db_manager,
+        tenant_key=test_project.tenant_key,
+        test_session=db_session,
+    )
 
 
 @pytest.fixture
