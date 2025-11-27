@@ -372,7 +372,7 @@ class TestProductProjectCascade:
                     name=f"Project {i+1}",
                     description=f"Project {i+1} description",
                     mission=f"Mission {i+1}",
-                    status="staging",
+                    status="waiting",
                     product_id=product_id,
                     tenant_key=tenant_key
                 )
@@ -400,7 +400,7 @@ class TestProductProjectCascade:
                 name="Related Project",
                 description="Project description",
                 mission="Project mission",
-                status="staging",
+                status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_key
             )

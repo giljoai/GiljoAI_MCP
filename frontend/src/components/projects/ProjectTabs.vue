@@ -476,10 +476,13 @@ async function handleLaunchAgent(agent) {
 /**
  * Handle closeout project
  */
-async function handleCloseoutProject() {
+async function handleCloseoutProject(closeoutData) {
   try {
-    await store.closeoutProject()
-    emit('closeout-project')
+    if (store.currentProject) {
+      store.currentProject = { ...store.currentProject, status: 'completed' }
+    }
+    emit('closeout-project', closeoutData)
+    activeTab.value = 'project'
   } catch (error) {
     console.error('Closeout project failed:', error)
   }
