@@ -4,7 +4,7 @@
     <div class="main-container">
       <div class="three-panels">
         <!-- Panel 1: Project Description -->
-        <div class="panel project-description-panel">
+        <div class="panel project-description-panel" data-testid="description-panel">
           <div class="panel-header">Project Description</div>
           <div class="panel-content">
             <p class="description-text">{{ project.description || 'No description available' }}</p>
@@ -19,7 +19,7 @@
         </div>
 
         <!-- Panel 2: Orchestrator Mission -->
-        <div class="panel mission-panel">
+        <div class="panel mission-panel" data-testid="mission-panel">
           <div class="panel-header">Orchestrator Generated Mission</div>
           <div class="panel-content">
             <div v-if="!missionText" class="empty-state">
@@ -32,7 +32,7 @@
         </div>
 
         <!-- Panel 3: Default Agent -->
-        <div class="panel default-agent-panel">
+        <div class="panel default-agent-panel" data-testid="agents-panel">
           <div class="panel-header">Default agent</div>
           <div class="panel-content">
             <!-- Orchestrator Card -->
@@ -64,11 +64,13 @@
                   v-for="agent in nonOrchestratorAgents"
                   :key="agent.agent_id || agent.job_id"
                   class="agent-slim-card"
+                  data-testid="agent-card"
+                  :data-agent-type="agent.agent_type"
                 >
                   <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_type) }">
                     {{ getAgentInitials(agent.agent_type) }}
                   </div>
-                  <span class="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
+                  <span class="agent-name" data-testid="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
                   <v-icon
                     size="small"
                     class="edit-icon"

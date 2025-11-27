@@ -14,7 +14,7 @@
 
     <!-- Agent Table Container -->
     <div class="table-container">
-      <table class="agents-table">
+      <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
             <th>Agent Type</th>
@@ -30,7 +30,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id">
+          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-type="agent.agent_type" :data-agent-status="agent.status">
             <!-- Agent Type: Avatar + Name -->
             <td class="agent-type-cell">
               <v-avatar :color="getAgentColor(agent.agent_type)" size="32" class="agent-avatar">
@@ -45,6 +45,7 @@
             <!-- Agent Status: Dynamic binding from agent.status -->
             <td
               class="status-cell"
+              data-testid="status-chip"
               :style="{
                 color: getStatusColor(agent.status),
                 fontStyle: isStatusItalic(agent.status) ? 'italic' : 'normal'
@@ -213,7 +214,7 @@
         variant="flat"
         size="large"
         prepend-icon="mdi-check-circle"
-        data-testid="closeout-button"
+        data-testid="close-project-btn"
         @click="openCloseoutModal"
       >
         Close Out Project

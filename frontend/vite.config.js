@@ -29,20 +29,19 @@ try {
 // Firewall controls actual network access (defense in depth)
 const HOST = dashboardHost
 
-// Derive API proxy target from config.yaml (prefer external_host if present)
+// Derive API proxy target from config.yaml
+// CRITICAL: For Playwright tests, always use localhost (same machine)
+// For production, external_host is used by clients to reach the server
 let apiHost = '127.0.0.1'
 let apiPort = 7272
 try {
   const configPath = resolve(__dirname, '../config.yaml')
   if (fs.existsSync(configPath)) {
     const configData = yaml.load(fs.readFileSync(configPath, 'utf8'))
-    const externalHost = configData?.services?.external_host
-    const serverApiHost = configData?.server?.api_host
     apiPort = parseInt(configData?.server?.api_port || 7272, 10)
-    // 0.0.0.0 is not a routable host; use externalHost if provided, else localhost
-    apiHost = (externalHost && externalHost !== '0.0.0.0')
-      ? externalHost
-      : ((serverApiHost && serverApiHost !== '0.0.0.0') ? serverApiHost : '127.0.0.1')
+    // ALWAYS use localhost for Vite dev proxy (same machine as backend)
+    // external_host is for client-to-server connections, not dev proxy
+    apiHost = '127.0.0.1'
   }
 } catch (err) {
   console.warn('[Vite] Could not determine API proxy target, defaulting to 127.0.0.1:7272:', err.message)

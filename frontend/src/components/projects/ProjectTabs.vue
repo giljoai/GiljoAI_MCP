@@ -8,12 +8,12 @@
         class="tabs-header global-tabs"
         align-tabs="start"
       >
-        <v-tab value="launch" class="tab-link">
+        <v-tab value="launch" class="tab-link" data-testid="launch-tab">
           <v-icon start size="20">mdi-rocket-launch</v-icon>
           Launch
         </v-tab>
 
-        <v-tab value="jobs" class="tab-link">
+        <v-tab value="jobs" class="tab-link" data-testid="jobs-tab">
           <v-icon start size="20">mdi-code-braces</v-icon>
           Implement
           <v-badge v-if="store.unreadCount > 0" :content="store.unreadCount" color="error" inline />
@@ -30,6 +30,7 @@
           :loading="loadingStageProject"
           :disabled="hasActiveOrchestrator"
           :title="hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt'"
+          data-testid="stage-project-btn"
           @click="handleStageProject"
         >
           {{ hasActiveOrchestrator ? 'Orchestrator Active' : 'Stage project' }}
@@ -42,6 +43,7 @@
           :disabled="!readyToLaunch"
           :color="readyToLaunch ? 'yellow-darken-2' : 'grey'"
           rounded
+          data-testid="launch-jobs-btn"
           @click="handleLaunchJobs"
         >
           Launch jobs
