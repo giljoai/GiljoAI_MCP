@@ -34,7 +34,7 @@ from giljo_mcp.database import DatabaseManager
 # See models/__init__.py for migration guidance
 from giljo_mcp.models.agents import MCPAgentJob
 from giljo_mcp.models.projects import Project
-from giljo_mcp.models.tasks import Message
+from giljo_mcp.models.tasks import Message, Task
 from giljo_mcp.tenant import TenantManager
 
 
@@ -1918,6 +1918,33 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # Maintenance & Cleanup Methods
     # ============================================================================
 
+    async def _purge_project_records(self, session: AsyncSession, project: Project) -> dict[str, Any]:
+        """Cascade delete a soft-deleted project and its child records."""
+        project_info = {
+            "id": project.id,
+            "name": project.name,
+            "tenant_key": project.tenant_key,
+            "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+        }
+
+        agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+        agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
+        for job in agent_jobs:
+            await session.delete(job)
+
+        task_stmt = select(Task).where(Task.project_id == project.id)
+        tasks = (await session.execute(task_stmt)).scalars().all()
+        for task in tasks:
+            await session.delete(task)
+
+        message_stmt = select(Message).where(Message.project_id == project.id)
+        messages = (await session.execute(message_stmt)).scalars().all()
+        for message in messages:
+            await session.delete(message)
+
+        await session.delete(project)
+        return project_info
+
     async def delete_project(self, project_id: str) -> dict[str, Any]:
         """
         Soft delete a project.
@@ -1973,6 +2000,80 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             self._logger.exception(f"Failed to delete project: {e}")
             return {"success": False, "error": str(e)}
 
+    async def purge_deleted_project(self, project_id: str) -> dict[str, Any]:
+        """
+        Permanently delete a soft-deleted project for the current tenant.
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available", "purged_count": 0}
+
+            async with self._get_session() as session:
+                stmt = select(Project).where(
+                    and_(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key,
+                        Project.status == "deleted",
+                        Project.deleted_at.isnot(None),
+                    )
+                )
+                result = await session.execute(stmt)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found or not deleted", "purged_count": 0}
+
+                purged_project = await self._purge_project_records(session, project)
+                await session.commit()
+
+                self._logger.info(
+                    "[Handover 0070] Manually purged project %s for tenant %s", project_id, tenant_key
+                )
+
+                return {"success": True, "purged_count": 1, "projects": [purged_project]}
+
+        except Exception as e:
+            self._logger.exception(f"Failed to purge deleted project: {e}")
+            return {"success": False, "error": str(e), "purged_count": 0}
+
+    async def purge_all_deleted_projects(self) -> dict[str, Any]:
+        """
+        Permanently delete all soft-deleted projects for the current tenant.
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available", "purged_count": 0}
+
+            async with self._get_session() as session:
+                stmt = select(Project).where(
+                    and_(Project.tenant_key == tenant_key, Project.status == "deleted", Project.deleted_at.isnot(None))
+                )
+                result = await session.execute(stmt)
+                deleted_projects = result.scalars().all()
+
+                if not deleted_projects:
+                    return {"success": True, "purged_count": 0, "projects": []}
+
+                purged_projects = []
+                for project in deleted_projects:
+                    purged_projects.append(await self._purge_project_records(session, project))
+
+                await session.commit()
+
+                self._logger.info(
+                    "[Handover 0070] Purged %s deleted project(s) for tenant %s",
+                    len(purged_projects),
+                    tenant_key,
+                )
+
+                return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
+
+        except Exception as e:
+            self._logger.exception(f"Failed to purge all deleted projects: {e}")
+            return {"success": False, "error": str(e), "purged_count": 0}
+
     async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> dict[str, Any]:
         """
         Purge projects deleted more than specified days ago (Handover 0070).
@@ -2001,10 +2102,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         """
         from datetime import timedelta, timezone
 
-        from sqlalchemy import select
-
-        from giljo_mcp.models import MCPAgentJob, Message, Task
-
         if not self.db_manager:
             self._logger.error("[Handover 0070] Cannot purge - database manager not available")
             return {"success": False, "error": "Database not available"}
@@ -2014,7 +2111,11 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 # Find projects deleted more than specified days ago
                 cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
 
-                stmt = select(Project).where(Project.deleted_at.isnot(None), Project.deleted_at < cutoff_date)
+                stmt = select(Project).where(
+                    Project.deleted_at.isnot(None),
+                    Project.status == "deleted",
+                    Project.deleted_at < cutoff_date,
+                )
 
                 result = await session.execute(stmt)
                 expired_projects = result.scalars().all()
@@ -2028,45 +2129,9 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 purged_projects = []
 
                 for project in expired_projects:
-                    project_info = {
-                        "id": project.id,
-                        "name": project.name,
-                        "tenant_key": project.tenant_key,
-                        "deleted_at": project.deleted_at.isoformat(),
-                    }
+                    purged_projects.append(await self._purge_project_records(session, project))
 
-                    # Cascade delete: agent jobs
-                    agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
-                    agent_job_result = await session.execute(agent_job_stmt)
-                    agent_jobs = agent_job_result.scalars().all()
-                    for job in agent_jobs:
-                        await session.delete(job)
-
-                    # Cascade delete: tasks
-                    task_stmt = select(Task).where(Task.project_id == project.id)
-                    task_result = await session.execute(task_stmt)
-                    tasks = task_result.scalars().all()
-                    for task in tasks:
-                        await session.delete(task)
-
-                    # Cascade delete: messages
-                    message_stmt = select(Message).where(Message.project_id == project.id)
-                    message_result = await session.execute(message_stmt)
-                    messages = message_result.scalars().all()
-                    for message in messages:
-                        await session.delete(message)
-
-                    # Delete project
-                    await session.delete(project)
-
-                    self._logger.info(
-                        f"[Handover 0070] Purged project '{project.name}' (id: {project.id}, "
-                        f"tenant: {project.tenant_key}, deleted: {project.deleted_at})"
-                    )
-
-                    purged_projects.append(project_info)
-
-                await session.flush()
+                await session.commit()
 
                 self._logger.info(
                     f"[Handover 0070] Successfully purged {len(purged_projects)} expired deleted projects"

@@ -460,6 +460,17 @@
         </v-card-title>
 
         <v-card-text>
+          <v-alert
+            v-if="deletedProjects.length > 0"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            Permanently deleting items will remove all related data immediately. This action cannot
+            be undone.
+          </v-alert>
+
           <v-list v-if="deletedProjects.length > 0" class="border rounded">
             <v-list-item v-for="(project, index) in deletedProjects" :key="project.id">
               <template v-slot:prepend>
@@ -474,14 +485,29 @@
               </div>
 
               <template v-slot:append>
-                <v-btn
-                  icon="mdi-restore"
-                  size="small"
-                  variant="text"
-                  @click="restoreFromDelete(project)"
-                  title="Restore project"
-                  aria-label="Restore deleted project"
-                ></v-btn>
+                <div class="d-flex align-center ga-1">
+                  <v-btn
+                    icon="mdi-restore"
+                    size="small"
+                    variant="text"
+                    @click="restoreFromDelete(project)"
+                    :disabled="purgingProjectId === project.id || purgingAllDeleted"
+                    title="Restore project"
+                    aria-label="Restore deleted project"
+                  ></v-btn>
+                  <v-btn
+                    icon="mdi-trash-can"
+                    size="small"
+                    variant="text"
+                    color="error"
+                    :loading="purgingProjectId === project.id"
+                    :disabled="purgingAllDeleted"
+                    @click="confirmPurgeDeleted(project)"
+                    title="Permanently delete project"
+                    aria-label="Permanently delete project"
+                    data-testid="purge-project"
+                  ></v-btn>
+                </div>
               </template>
 
               <v-divider v-if="index < deletedProjects.length - 1" class="my-2" />
@@ -496,6 +522,17 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
+          <v-btn
+            color="error"
+            variant="flat"
+            prepend-icon="mdi-delete-forever"
+            :disabled="deletedProjects.length === 0 || purgingAllDeleted"
+            :loading="purgingAllDeleted"
+            @click="confirmPurgeAllDeleted"
+            data-testid="purge-projects-all"
+          >
+            Delete All
+          </v-btn>
           <v-btn variant="text" @click="showDeletedDialog = false">Close</v-btn>
         </v-card-actions>
       </v-card>
@@ -573,6 +610,8 @@ const projectToDelete = ref(null)
 const createdProjectId = ref(null)
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
+const purgingProjectId = ref(null)
+const purgingAllDeleted = ref(false)
 
 // Sort configuration
 const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
@@ -838,6 +877,53 @@ async function restoreFromDelete(project) {
     showDeletedDialog.value = false
   } catch (error) {
     console.error('Failed to restore project:', error)
+  }
+}
+
+function confirmPurgeDeleted(project) {
+  if (!project) return
+  const confirmed = window.confirm(
+    `Permanently delete "${project.name}"? This will remove associated data and cannot be undone.`,
+  )
+  if (!confirmed) return
+  purgeDeletedProject(project)
+}
+
+async function purgeDeletedProject(project) {
+  if (!project || purgingProjectId.value || purgingAllDeleted.value) return
+
+  purgingProjectId.value = project.id
+  try {
+    await projectStore.purgeDeletedProject(project.id)
+    if (projectStore.deletedProjects.length === 0) {
+      showDeletedDialog.value = false
+    }
+  } catch (error) {
+    console.error('Failed to purge deleted project:', error)
+    alert('Failed to permanently delete the project. Please try again.')
+  } finally {
+    purgingProjectId.value = null
+  }
+}
+
+async function confirmPurgeAllDeleted() {
+  if (deletedProjects.value.length === 0 || purgingAllDeleted.value) return
+
+  const confirmed = window.confirm(
+    'Permanently delete all projects in the Deleted Projects list? This cannot be undone.',
+  )
+  if (!confirmed) return
+
+  purgingAllDeleted.value = true
+  try {
+    await projectStore.purgeAllDeletedProjects()
+    showDeletedDialog.value = false
+  } catch (error) {
+    console.error('Failed to purge all deleted projects:', error)
+    alert('Failed to permanently delete deleted projects. Please try again.')
+  } finally {
+    purgingAllDeleted.value = false
+    purgingProjectId.value = null
   }
 }
 

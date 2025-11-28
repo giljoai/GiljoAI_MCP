@@ -23,7 +23,11 @@ vi.mock('@/services/api', () => ({
       update: vi.fn(),
       delete: vi.fn(),
       activate: vi.fn(),
-      deactivate: vi.fn()
+      deactivate: vi.fn(),
+      fetchDeleted: vi.fn(),
+      restore: vi.fn(),
+      purgeDeleted: vi.fn(),
+      purgeAllDeleted: vi.fn()
     }
   }
 }))
@@ -150,5 +154,42 @@ describe('Projects Store - Status Synchronization', () => {
 
     expect(existing.status).toBe('inactive')  // Auto-deactivated by backend
     expect(created.status).toBe('active')  // New project is active
+  })
+
+  it('purgeDeletedProject removes the project from deleted list and refreshes state', async () => {
+    const projectStore = useProjectStore()
+
+    projectStore.deletedProjects = [
+      { id: 'deleted-1', name: 'Old Deleted' },
+      { id: 'deleted-2', name: 'Keep Me' }
+    ]
+
+    api.projects.purgeDeleted.mockResolvedValue({ data: { success: true } })
+    api.projects.fetchDeleted.mockResolvedValue({ data: [{ id: 'deleted-2', name: 'Keep Me' }] })
+
+    await projectStore.purgeDeletedProject('deleted-1')
+
+    expect(api.projects.purgeDeleted).toHaveBeenCalledWith('deleted-1')
+    expect(api.projects.fetchDeleted).toHaveBeenCalled()
+    expect(projectStore.deletedProjects.find(p => p.id === 'deleted-1')).toBeUndefined()
+    expect(projectStore.deletedProjects).toHaveLength(1)
+  })
+
+  it('purgeAllDeletedProjects clears deleted list for current tenant', async () => {
+    const projectStore = useProjectStore()
+
+    projectStore.deletedProjects = [
+      { id: 'deleted-1', name: 'One' },
+      { id: 'deleted-2', name: 'Two' }
+    ]
+
+    api.projects.purgeAllDeleted.mockResolvedValue({ data: { success: true, purged_count: 2 } })
+    api.projects.fetchDeleted.mockResolvedValue({ data: [] })
+
+    await projectStore.purgeAllDeletedProjects()
+
+    expect(api.projects.purgeAllDeleted).toHaveBeenCalled()
+    expect(api.projects.fetchDeleted).toHaveBeenCalled()
+    expect(projectStore.deletedProjects).toHaveLength(0)
   })
 })

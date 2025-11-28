@@ -87,6 +87,24 @@ class ProjectDeleteResponse(BaseModel):
     )
 
 
+class PurgedProject(BaseModel):
+    """Response model for a purged project entry."""
+
+    id: str
+    name: str
+    tenant_key: str
+    deleted_at: Optional[datetime] = None
+
+
+class ProjectPurgeResponse(BaseModel):
+    """Response model for project purge operations."""
+
+    success: bool
+    purged_count: int
+    projects: List[PurgedProject] = []
+    message: Optional[str] = None
+
+
 # ============================================================================
 # Summary/Status Models
 # ============================================================================
