@@ -31,6 +31,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="Test Project",
             mission="Test mission",
+            description="Soft delete test project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="inactive",
@@ -58,6 +59,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="Already Deleted",
             mission="Test",
+            description="Duplicate delete project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -86,6 +88,7 @@ class TestProjectSoftDelete:
         project1 = Project(
             name="Tenant 1 Deleted",
             mission="Test",
+            description="Tenant 1 deleted project",
             tenant_key=tenant1,
             product_id=product1.id,
             status="deleted",
@@ -94,6 +97,7 @@ class TestProjectSoftDelete:
         project2 = Project(
             name="Tenant 2 Deleted",
             mission="Test",
+            description="Tenant 2 deleted project",
             tenant_key=tenant2,
             product_id=product2.id,
             status="deleted",
@@ -118,6 +122,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="To Restore",
             mission="Test",
+            description="Restore test project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -146,6 +151,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="Active Project",
             mission="Test",
+            description="Active project for restore test",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="active",
@@ -166,6 +172,7 @@ class TestProjectSoftDelete:
         old_deleted = Project(
             name="Old Deleted",
             mission="Test",
+            description="Old deleted project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -176,6 +183,7 @@ class TestProjectSoftDelete:
         recent_deleted = Project(
             name="Recent Deleted",
             mission="Test",
+            description="Recent deleted project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -226,6 +234,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="With Children",
             mission="Test",
+            description="Deleted project with children",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -235,7 +244,12 @@ class TestProjectSoftDelete:
         await db_session.commit()
 
         # Create child records
-        agent = Agent(name="Test Agent", role="tester", tenant_key=test_tenant_key, project_id=project.id)
+        agent = MCPAgentJob(
+            tenant_key=test_tenant_key,
+            project_id=project.id,
+            agent_type="tester",
+            mission="Test mission",
+        )
         task = Task(title="Test Task", tenant_key=test_tenant_key, product_id=test_product.id, project_id=project.id)
         message = Message(content="Test message", tenant_key=test_tenant_key, project_id=project.id)
         db_session.add_all([agent, task, message])
@@ -270,7 +284,7 @@ class TestProjectSoftDelete:
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 
-        stmt = select(Agent).where(Agent.id == agent_id)
+        stmt = select(MCPAgentJob).where(MCPAgentJob.id == agent_id)
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 
@@ -282,18 +296,143 @@ class TestProjectSoftDelete:
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 
+    async def test_manual_purge_deleted_project(self, db_session, test_tenant_key, test_product):
+        """Projects in soft delete can be purged immediately with cascade cleanup."""
+        from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
+
+        # Create soft-deleted project with children
+        project = Project(
+            name="Manual Purge",
+            mission="Test",
+            description="Manually purged project",
+            tenant_key=test_tenant_key,
+            product_id=test_product.id,
+            status="deleted",
+            deleted_at=datetime.now(timezone.utc),
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        task = Task(title="Orphan Task", tenant_key=test_tenant_key, product_id=test_product.id, project_id=project.id)
+        message = Message(content="Orphan Message", tenant_key=test_tenant_key, project_id=project.id)
+        db_session.add_all([task, message])
+        await db_session.commit()
+
+        project_id = project.id
+        task_id = task.id
+        message_id = message.id
+
+        # Mock database manager
+        @asynccontextmanager
+        async def mock_get_session():
+            yield db_session
+
+        db_manager = MagicMock()
+        db_manager.get_session_async = mock_get_session
+
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant_key)
+        project_service = ProjectService(db_manager, tenant_manager)
+
+        result = await project_service.purge_deleted_project(project_id)
+
+        assert result["success"] is True
+        assert result["purged_count"] == 1
+
+        # Records are gone
+        stmt = select(Project).where(Project.id == project_id)
+        assert (await db_session.execute(stmt)).scalar_one_or_none() is None
+
+        stmt = select(Task).where(Task.id == task_id)
+        assert (await db_session.execute(stmt)).scalar_one_or_none() is None
+
+        stmt = select(Message).where(Message.id == message_id)
+        assert (await db_session.execute(stmt)).scalar_one_or_none() is None
+
+    async def test_manual_purge_all_deleted_projects_isolates_tenant(self, db_session, test_tenant_key):
+        """Bulk purge should delete only the current tenant's soft-deleted projects."""
+        from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
+
+        other_tenant = "other-tenant"
+
+        # Create products
+        tenant_product = Product(name="Tenant Product", tenant_key=test_tenant_key)
+        other_product = Product(name="Other Product", tenant_key=other_tenant)
+        db_session.add_all([tenant_product, other_product])
+        await db_session.commit()
+
+        # Create deleted projects for each tenant
+        tenant_project = Project(
+            name="Tenant Deleted",
+            mission="Test",
+            description="Tenant scoped deleted project",
+            tenant_key=test_tenant_key,
+            product_id=tenant_product.id,
+            status="deleted",
+            deleted_at=datetime.now(timezone.utc),
+        )
+        other_project = Project(
+            name="Other Deleted",
+            mission="Test",
+            description="Other tenant deleted project",
+            tenant_key=other_tenant,
+            product_id=other_product.id,
+            status="deleted",
+            deleted_at=datetime.now(timezone.utc),
+        )
+        db_session.add_all([tenant_project, other_project])
+        await db_session.commit()
+
+        # Mock database manager
+        @asynccontextmanager
+        async def mock_get_session():
+            yield db_session
+
+        db_manager = MagicMock()
+        db_manager.get_session_async = mock_get_session
+
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(test_tenant_key)
+        project_service = ProjectService(db_manager, tenant_manager)
+
+        result = await project_service.purge_all_deleted_projects()
+
+        assert result["success"] is True
+        assert result["purged_count"] == 1
+
+        # Tenant project is gone
+        stmt = select(Project).where(Project.tenant_key == test_tenant_key)
+        assert len((await db_session.execute(stmt)).scalars().all()) == 0
+
+        # Other tenant project is untouched
+        stmt = select(Project).where(Project.tenant_key == other_tenant)
+        assert len((await db_session.execute(stmt)).scalars().all()) == 1
+
     async def test_list_projects_excludes_deleted(self, db_session, test_tenant_key, test_product):
         """Test that normal project listing excludes deleted projects."""
         # Create active, inactive, and deleted projects
         active = Project(
-            name="Active", mission="Test", tenant_key=test_tenant_key, product_id=test_product.id, status="active"
+            name="Active",
+            mission="Test",
+            description="Active project",
+            tenant_key=test_tenant_key,
+            product_id=test_product.id,
+            status="active",
         )
         inactive = Project(
-            name="Inactive", mission="Test", tenant_key=test_tenant_key, product_id=test_product.id, status="inactive"
+            name="Inactive",
+            mission="Test",
+            description="Inactive project",
+            tenant_key=test_tenant_key,
+            product_id=test_product.id,
+            status="inactive",
         )
         deleted = Project(
             name="Deleted",
             mission="Test",
+            description="Deleted project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -325,6 +464,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="Test",
             mission="Test",
+            description="Deleted project for purge window",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -347,6 +487,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="Expiring Today",
             mission="Test",
+            description="Expires today project",
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             status="deleted",
@@ -376,6 +517,7 @@ class TestProjectSoftDelete:
         project = Project(
             name="Tenant 1 Project",
             mission="Test",
+            description="Tenant 1 deleted project",
             tenant_key=tenant1,
             product_id=product1.id,
             status="deleted",
@@ -388,7 +530,7 @@ class TestProjectSoftDelete:
         # Verify project still belongs to tenant1
         assert project.tenant_key == tenant1
 
-    async def test_purge_respects_tenant_boundaries(self, db_session):
+    async def test_purge_respects_tenant_boundaries(self, db_session, test_tenant_key):
         """Test that purge doesn't affect other tenants."""
         from contextlib import asynccontextmanager
         from unittest.mock import MagicMock
@@ -406,6 +548,7 @@ class TestProjectSoftDelete:
         project1 = Project(
             name="Tenant 1 Old",
             mission="Test",
+            description="Tenant 1 old project",
             tenant_key=tenant1,
             product_id=product1.id,
             status="deleted",
@@ -414,6 +557,7 @@ class TestProjectSoftDelete:
         project2 = Project(
             name="Tenant 2 Old",
             mission="Test",
+            description="Tenant 2 old project",
             tenant_key=tenant2,
             product_id=product2.id,
             status="deleted",
@@ -457,7 +601,7 @@ class TestProjectSoftDelete:
 @pytest.fixture
 def test_tenant_key():
     """Provide a test tenant key."""
-    return "test-tenant-handover-0070"
+    return TenantManager.generate_tenant_key()
 
 
 @pytest.fixture

@@ -23,7 +23,13 @@ from src.giljo_mcp.models.schemas import ProjectLaunchResponse
 from src.giljo_mcp.services.project_service import ProjectService
 
 from .dependencies import get_project_service
-from .models import ProjectResponse, StagingCancellationResponse, ProjectDeleteResponse
+from .models import (
+    ProjectResponse,
+    StagingCancellationResponse,
+    ProjectDeleteResponse,
+    ProjectPurgeResponse,
+    PurgedProject,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -350,6 +356,58 @@ async def cancel_project_staging(
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
         agents=[]
+    )
+
+
+@router.delete("/deleted", response_model=ProjectPurgeResponse)
+async def purge_all_deleted_projects(
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectPurgeResponse:
+    """
+    Permanently delete all soft-deleted projects for the current tenant.
+    """
+    logger.info("User %s purging all deleted projects", current_user.username)
+
+    result = await project_service.purge_all_deleted_projects()
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to purge deleted projects")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+
+    projects = [PurgedProject(**proj) for proj in result.get("projects", [])]
+    return ProjectPurgeResponse(
+        success=True,
+        purged_count=result.get("purged_count", 0),
+        projects=projects,
+        message="Deleted projects purged successfully",
+    )
+
+
+@router.delete("/{project_id}/purge", response_model=ProjectPurgeResponse)
+async def purge_deleted_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectPurgeResponse:
+    """
+    Permanently delete a specific soft-deleted project.
+    """
+    logger.info("User %s purging deleted project %s", current_user.username, project_id)
+
+    result = await project_service.purge_deleted_project(project_id)
+
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to purge project")
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    projects = [PurgedProject(**proj) for proj in result.get("projects", [])]
+    return ProjectPurgeResponse(
+        success=True,
+        purged_count=result.get("purged_count", 0),
+        projects=projects,
+        message="Project purged successfully",
     )
 
 
