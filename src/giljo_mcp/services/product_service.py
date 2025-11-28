@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -499,6 +499,29 @@ class ProductService:
                 # Flush deactivation to satisfy unique constraint before activating
                 if products_to_deactivate:
                     await session.flush()
+
+                    # CRITICAL FIX: Deactivate ALL projects in deactivated products
+                    # Enforces non-negotiable rule: one active product → one active project
+                    deactivated_product_ids = [p.id for p in products_to_deactivate]
+
+                    # Bulk update: Set all active projects in deactivated products to inactive
+                    project_deactivate_stmt = (
+                        update(Project)
+                        .where(Project.product_id.in_(deactivated_product_ids))
+                        .where(Project.status == "active")
+                        .values(status="inactive", updated_at=datetime.now(timezone.utc))
+                    )
+                    await session.execute(project_deactivate_stmt)
+                    await session.flush()
+
+                    # Emit WebSocket event for bulk project deactivation
+                    await self._emit_websocket_event(
+                        event_type="projects:bulk:deactivated",
+                        data={
+                            "product_ids": [str(pid) for pid in deactivated_product_ids],
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
 
                 # NOW activate target product (after others are deactivated)
                 product.is_active = True
