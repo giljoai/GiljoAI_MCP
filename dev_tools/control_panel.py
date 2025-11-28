@@ -2626,6 +2626,9 @@ pg_restore -l {backup_file.name} | head -20
                         activated_at = NULL,
                         paused_at = NULL,
                         completed_at = NULL,
+                        closeout_prompt = NULL,
+                        closeout_executed_at = NULL,
+                        closeout_checklist = '[]'::jsonb,
                         meta_data = '{}',
                         updated_at = NOW()
                     WHERE id = %s
@@ -2649,6 +2652,7 @@ pg_restore -l {backup_file.name} | head -20
                 f"✗ AI-generated mission\n"
                 f"✗ Orchestrator summary\n"
                 f"✗ Context tracking\n"
+                f"✗ Closeout data (prompt, checklist, execution time)\n"
                 f"✗ All staging flags\n\n"
                 f"Kept:\n"
                 f"✓ Project name: {project_name}\n"
