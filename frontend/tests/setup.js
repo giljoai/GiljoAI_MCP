@@ -1,6 +1,7 @@
 import { config } from '@vue/test-utils'
 import { vi } from 'vitest'
 import { createVuetify } from 'vuetify'
+import { createPinia } from 'pinia'
 
 // Define global Vuetify component mocks
 const VuetifyMock = {
@@ -67,8 +68,11 @@ config.global.stubs = {
 // Create a minimal Vuetify mock plugin
 const vuetify = createVuetify()
 
+// Create Pinia instance for testing
+const pinia = createPinia()
+
 // Global mocks and stubs
-config.global.plugins = [vuetify]
+config.global.plugins = [vuetify, pinia]
 
 config.global.stubs = {
   'v-container': { template: '<div><slot /></div>' },
@@ -155,6 +159,37 @@ vi.mock('@/services/websocket', () => ({
     send: vi.fn(),
     isConnected: false
   }
+}))
+
+// Mock useToast composable
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    showToast: vi.fn()
+  })
+}))
+
+// Mock useWebSocketV2 composable
+vi.mock('@/composables/useWebSocket', () => ({
+  useWebSocketV2: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn()
+  })
+}))
+
+// Mock useUserStore
+vi.mock('@/stores/user', () => ({
+  useUserStore: () => ({
+    currentUser: {
+      tenant_key: 'test-tenant',
+      id: 'test-user-id'
+    },
+    user: null,
+    setUser: vi.fn(),
+    logout: vi.fn()
+  })
 }))
 
 // Reset mocks before each test
