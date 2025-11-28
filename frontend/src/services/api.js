@@ -163,18 +163,18 @@ export const api = {
   // Projects
   projects: {
     list: (params) => apiClient.get('/api/v1/projects/', { params }),
-    get: (id) => apiClient.get(`/api/v1/projects/${id}/`),
+    get: (id) => apiClient.get(`/api/v1/projects/${id}`),
     getOrchestrator: (id) => apiClient.get(`/api/v1/projects/${id}/orchestrator`),
     getActive: () => apiClient.get('/api/v1/projects/active'),
     create: (data) => apiClient.post('/api/v1/projects/', data),
     update: (id, data) => apiClient.patch(`/api/v1/projects/${id}`, data),
-    delete: (id) => apiClient.delete(`/api/v1/projects/${id}/`),
-    close: (id, summary) => apiClient.delete(`/api/v1/projects/${id}/`, { params: { summary } }),
-    status: (id) => apiClient.get(`/api/v1/projects/${id}/status/`),
+    delete: (id) => apiClient.delete(`/api/v1/projects/${id}`),
+    close: (id, summary) => apiClient.delete(`/api/v1/projects/${id}`, { params: { summary } }),
+    status: (id) => apiClient.get(`/api/v1/projects/${id}/status`),
     fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
     // Status change endpoints - use PATCH for generic status updates
     changeStatus: (id, newStatus) =>
-      apiClient.patch(`/api/v1/projects/${id}/`, { status: newStatus }),
+      apiClient.patch(`/api/v1/projects/${id}`, { status: newStatus }),
     // Specific action endpoints (Handover 0507: Added force and reason parameters)
     activate: (id, force = false) => apiClient.post(`/api/v1/projects/${id}/activate`, { force }),
     deactivate: (id, reason = null) =>
