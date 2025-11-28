@@ -9,6 +9,30 @@ import { createPinia, setActivePinia } from 'pinia'
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 
+// Mock Vue Router (Composition API)
+const mockRoute = {
+  query: {},
+  hash: ''
+}
+
+const mockRouter = {
+  replace: vi.fn()
+}
+
+vi.mock('vue-router', () => ({
+  useRoute: () => mockRoute,
+  useRouter: () => mockRouter
+}))
+
+// Mock WebSocket composable
+vi.mock('@/composables/useWebSocket', () => ({
+  useWebSocket: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn()
+  })
+}))
+
 // Mock API
 vi.mock('@/services/api', () => ({
   default: {
@@ -43,8 +67,6 @@ vi.mock('@/components/projects/JobsTab.vue', () => ({
 describe('ProjectTabs - Action Buttons in Header', () => {
   let wrapper
   let store
-  let mockRouter
-  let mockRoute
 
   const mockProject = {
     id: 'project-123',
@@ -60,15 +82,10 @@ describe('ProjectTabs - Action Buttons in Header', () => {
     setActivePinia(createPinia())
     store = useProjectTabsStore()
 
-    // Mock router and route
-    mockRoute = {
-      query: {},
-      hash: ''
-    }
-
-    mockRouter = {
-      replace: vi.fn()
-    }
+    // Reset router mocks
+    mockRoute.query = {}
+    mockRoute.hash = ''
+    mockRouter.replace.mockClear()
 
     wrapper = mount(ProjectTabs, {
       props: {
@@ -77,10 +94,6 @@ describe('ProjectTabs - Action Buttons in Header', () => {
         readonly: false
       },
       global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter
-        },
         stubs: {
           VCard: true,
           VTabs: true,
@@ -177,6 +190,74 @@ describe('ProjectTabs - Action Buttons in Header', () => {
       await stageButton.trigger('click')
 
       expect(stageProjectSpy).toHaveBeenCalled()
+    })
+
+    // ==================== NEW: FIX FOR ORCHESTRATOR WAITING STATE ====================
+
+    it('remains enabled when orchestrator exists with status="waiting"', async () => {
+      // Orchestrator just created but hasn't started staging yet
+      store.agents = [
+        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' }
+      ]
+      await wrapper.vm.$nextTick()
+
+      const stageButton = wrapper.find('.stage-button')
+      // Button should be enabled - allow retry if user didn't paste prompt
+      expect(stageButton.attributes('disabled')).toBeUndefined()
+      expect(stageButton.text()).toContain('Stage project')
+    })
+
+    it('disables when orchestrator status is "working"', async () => {
+      // Orchestrator is actively executing staging workflow
+      store.agents = [
+        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'working' }
+      ]
+      await wrapper.vm.$nextTick()
+
+      const stageButton = wrapper.find('.stage-button')
+      // Vuetify returns disabled="" as empty string
+      expect(stageButton.attributes('disabled')).toBeDefined()
+      expect(stageButton.text()).toContain('Orchestrator Active')
+    })
+
+    it('disables when orchestrator has spawned specialist agents', async () => {
+      // Staging complete: orchestrator spawned implementer, tester, reviewer
+      store.agents = [
+        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' },
+        { job_id: 'impl-1', agent_type: 'implementer', status: 'waiting' },
+        { job_id: 'test-1', agent_type: 'tester', status: 'waiting' }
+      ]
+      await wrapper.vm.$nextTick()
+
+      const stageButton = wrapper.find('.stage-button')
+      // Staging is complete - agents spawned
+      expect(stageButton.attributes('disabled')).toBeDefined()
+      expect(stageButton.text()).toContain('Orchestrator Active')
+    })
+
+    it('shows "Orchestrator Active" text when spawned agents exist', async () => {
+      store.agents = [
+        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' },
+        { job_id: 'impl-1', agent_type: 'implementer', status: 'waiting' }
+      ]
+      await wrapper.vm.$nextTick()
+
+      const stageButton = wrapper.find('.stage-button')
+      expect(stageButton.text()).toContain('Orchestrator Active')
+    })
+
+    it('allows retry when orchestrator exists but no agents spawned yet', async () => {
+      // User clicked "Stage Project" but forgot to paste prompt
+      // Only orchestrator exists (status='waiting'), no specialist agents yet
+      store.agents = [
+        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' }
+      ]
+      await wrapper.vm.$nextTick()
+
+      const stageButton = wrapper.find('.stage-button')
+      // Should allow user to click again to retry
+      expect(stageButton.attributes('disabled')).toBeUndefined()
+      expect(stageButton.text()).toContain('Stage project')
     })
   })
 
