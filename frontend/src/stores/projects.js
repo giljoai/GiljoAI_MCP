@@ -292,6 +292,38 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
+  async function purgeDeletedProject(id) {
+    loading.value = true
+    error.value = null
+    try {
+      await api.projects.purgeDeleted(id)
+      deletedProjects.value = deletedProjects.value.filter((p) => p.id !== id)
+      await fetchDeletedProjects()
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to purge deleted project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function purgeAllDeletedProjects() {
+    loading.value = true
+    error.value = null
+    try {
+      await api.projects.purgeAllDeleted()
+      deletedProjects.value = []
+      await fetchDeletedProjects()
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to purge all deleted projects:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function restoreCompletedProject(id) {
     loading.value = true
     error.value = null
@@ -412,6 +444,8 @@ export const useProjectStore = defineStore('projects', () => {
     cancelProject,
     restoreProject,
     restoreCompletedProject,
+    purgeDeletedProject,
+    purgeAllDeletedProjects,
     clearError,
     handleRealtimeUpdate,
   }

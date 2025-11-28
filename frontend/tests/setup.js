@@ -15,7 +15,7 @@ const VuetifyMock = {
   VCardTitle: { template: '<div><slot /></div>' },
   VCardText: { template: '<div><slot /></div>' },
   VCardActions: { template: '<div><slot /></div>' },
-  VBtn: { template: '<button><slot /></button>' }
+  VBtn: { template: '<button v-bind=\"$attrs\"><slot /></button>' }
 }
 
 // Global CSS and component mocking
@@ -83,7 +83,7 @@ config.global.stubs = {
   'v-progress-linear': { template: '<div><slot /></div>' },
   'v-overlay': { template: '<div><slot /></div>' },
   'v-img': { template: '<div><slot /></div>' },
-  'v-btn': { template: '<button class="v-btn"><slot /></button>' },
+  'v-btn': { template: '<button class="v-btn" v-bind="$attrs"><slot /></button>' },
   'v-icon': { template: '<span class="v-icon"><slot /></span>' },
   'v-avatar': { template: '<div class="v-avatar"><slot /></div>' },
   'v-chip': { template: '<span><slot /></span>' },
