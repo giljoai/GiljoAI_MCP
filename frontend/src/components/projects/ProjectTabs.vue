@@ -209,10 +209,13 @@ const toastColor = ref('success')
 const toastDuration = ref(3000)
 
 /**
- * Computed: Ready to launch (based on store state)
+ * Computed: Ready to launch (same condition as hasActiveOrchestrator)
+ *
+ * Launch button should activate when orchestrator becomes "active"
+ * (same moment "Stage Project" changes to "Orchestrator Active")
  */
 const readyToLaunch = computed(() => {
-  return store.readyToLaunch
+  return hasActiveOrchestrator.value
 })
 
 /**
