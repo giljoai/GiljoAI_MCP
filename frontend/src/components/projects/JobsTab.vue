@@ -86,8 +86,8 @@
 
             <!-- Actions -->
             <td class="actions-cell">
-              <!-- Play button: only when waiting (Handover 0243d) -->
-              <v-tooltip v-if="agent.status === 'waiting'" text="Copy prompt">
+              <!-- Play button: visibility controlled by Claude Code CLI toggle (Handover 0243d) -->
+              <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
                 <template #activator="{ props: tooltipProps }">
                   <v-btn
                     v-bind="tooltipProps"
@@ -517,6 +517,31 @@ function toggleExecutionMode() {
     type: 'info',
     duration: 3000
   })
+}
+
+/**
+ * Determine if copy button should be shown for an agent
+ *
+ * Toggle OFF (Manual Mode):
+ *   - Show copy button for any waiting agent (all agents can be launched manually)
+ *
+ * Toggle ON (Claude Code CLI Mode):
+ *   - Show copy button ONLY for waiting orchestrator (it spawns specialists via Task tool)
+ *   - Hide copy buttons for specialist agents (orchestrator spawns them)
+ */
+function shouldShowCopyButton(agent) {
+  // Copy button only shows when agent is waiting
+  if (agent.status !== 'waiting') {
+    return false
+  }
+
+  // If Claude Code CLI mode is OFF, show copy button for all waiting agents
+  if (!usingClaudeCodeSubagents.value) {
+    return true
+  }
+
+  // If Claude Code CLI mode is ON, only show for orchestrator
+  return agent.agent_type === 'orchestrator'
 }
 
 /**
