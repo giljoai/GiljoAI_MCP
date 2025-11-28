@@ -80,6 +80,7 @@ import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSettingsStore } from '@/stores/settings'
+import { useProjectStore } from '@/stores/projects'  // Product/Project State Fix
 
 const props = defineProps({
   modelValue: {
@@ -102,6 +103,7 @@ const theme = useTheme()
 const route = useRoute()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
+const projectStore = useProjectStore()  // Product/Project State Fix
 
 // Track which nav item is selected (ensure single active item)
 const selected = ref([])
@@ -121,12 +123,18 @@ const jobsIcon = computed(() => {
 
 // Navigation items
 const navigationItems = computed(() => {
+  // Product/Project State Fix: Dynamic Jobs link based on active project
+  const activeProj = projectStore.activeProject
+  const jobsPath = activeProj
+    ? `/projects/${activeProj.id}?via=jobs`  // Link to active project
+    : '/launch?via=jobs'  // Fallback to LaunchRedirectView (shows "No Active Project")
+
   const baseItems = [
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    // Carry via=jobs so downstream routes can honor sidebar intent
-    { name: 'Jobs', path: '/launch?via=jobs', title: 'Jobs', customIcon: jobsIcon.value },
+    // Dynamic path: Links to active project or projects list
+    { name: 'Jobs', path: jobsPath, title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 
