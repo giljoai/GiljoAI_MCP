@@ -182,6 +182,8 @@ export const api = {
     complete: (id) => apiClient.post(`/api/v1/projects/${id}/complete`),
     cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
     restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
+    purgeDeleted: (id) => apiClient.delete(`/api/v1/projects/${id}/purge`),
+    purgeAllDeleted: () => apiClient.delete('/api/v1/projects/deleted'),
     // Completed projects are resumed via the continue-working endpoint
     restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/continue-working`),
     // Handover 0507: Project launch and summary with config parameter support
