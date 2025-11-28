@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 # Applied when user has no custom field_priority_config
 # Ensures meaningful context even for new users who haven't customized priorities
 DEFAULT_FIELD_PRIORITIES = {
-    "codebase_summary": 6,  # Moderate detail (50% context prioritization)
     "architecture": 4,  # Abbreviated detail (context prioritization and orchestration) - Legacy
     "tech_stack": 8,  # Moderate-high detail (tech stack is critical context)
     "product_memory.sequential_history": 7,  # Moderate: recent project history with outcomes
@@ -624,74 +623,6 @@ Success Criteria:
         # 100% - no reduction
         return field_text
 
-    def _abbreviate_codebase_summary(self, codebase_text: Optional[str]) -> str:
-        """Reduce codebase summary to 50% tokens."""
-        if not codebase_text:
-            return ""
-
-        lines = codebase_text.split("\n")
-        abbreviated = []
-        in_section = False
-        section_line_count = 0
-
-        for line in lines:
-            stripped = line.strip()
-
-            if stripped.startswith("#"):
-                abbreviated.append(line)
-                in_section = True
-                section_line_count = 0
-                continue
-
-            if in_section and section_line_count < 2:
-                abbreviated.append(line)
-                section_line_count += 1
-                continue
-
-            if stripped.startswith(("-", "*", "•")):
-                abbreviated.append(line)
-                continue
-
-        result = "\n".join(abbreviated)
-        if codebase_text:
-            reduction = ((len(codebase_text) - len(result)) / len(codebase_text)) * 100
-            logger.debug(
-                f"Abbreviated codebase: {self._count_tokens(codebase_text)} → {self._count_tokens(result)} tokens ({reduction:.1f}% reduction)"
-            )
-        return result
-
-    def _minimal_codebase_summary(self, codebase_text: Optional[str]) -> str:
-        """Reduce codebase summary to 20% tokens."""
-        if not codebase_text:
-            return ""
-
-        lines = codebase_text.split("\n")
-        minimal = []
-        last_was_header = False
-
-        for line in lines:
-            stripped = line.strip()
-
-            if stripped.startswith("##") and not stripped.startswith("###"):
-                minimal.append(line)
-                last_was_header = True
-                continue
-
-            if last_was_header and stripped:
-                minimal.append(line)
-                last_was_header = False
-                continue
-
-            last_was_header = False
-
-        result = "\n".join(minimal)
-        if codebase_text:
-            reduction = ((len(codebase_text) - len(result)) / len(codebase_text)) * 100
-            logger.debug(
-                f"Minimal codebase: {self._count_tokens(codebase_text)} → {self._count_tokens(result)} tokens ({reduction:.1f}% reduction)"
-            )
-        return result
-
     async def _get_relevant_vision_chunks(self, session, product, project, max_tokens: int = 10000) -> list[dict]:
         """
         Retrieve relevant vision chunks based on project description.
@@ -1074,10 +1005,10 @@ Success Criteria:
 
         Args:
             product: Product model with vision document and config_data
-            project: Project model with description and codebase_summary
+            project: Project model with description and mission
             field_priorities: Dict mapping field names to priority (1-10)
                              Higher values = more important. 0 = exclude.
-                             Example: {"product_vision": 10, "codebase_summary": 4}
+                             Example: {"product_vision": 10, "tech_stack": 8}
             user_id: User ID for logging and audit trail (optional)
             include_serena: Whether to fetch and include Serena codebase context (MANDATORY if enabled in config.yaml)
 
@@ -1103,8 +1034,8 @@ Success Criteria:
                 field_priorities={
                     "product_vision": 10,      # Full detail
                     "project_description": 8,  # Full detail
-                    "codebase_summary": 4,     # Abbreviated (50% tokens)
-                    "architecture": 2,         # Minimal (20% tokens)
+                    "tech_stack": 8,           # Moderate-high detail
+                    "config_data.architecture": 4,  # Abbreviated (50% tokens)
                 },
                 user_id=str(user.id)
             )
@@ -1269,40 +1200,6 @@ Success Criteria:
                     "tokens": desc_tokens,
                 },
             )
-
-        # === Codebase Summary Section ===
-        # Use specialized abbreviation methods that preserve structure
-        codebase_priority = effective_priorities.get("codebase_summary", 0)
-        if codebase_priority > 0:
-            codebase_detail = self._get_detail_level(codebase_priority)
-            codebase_original = project.codebase_summary or ""
-
-            if codebase_detail == "full" or codebase_detail == "moderate":
-                # Full codebase summary
-                codebase_text = codebase_original
-            elif codebase_detail == "abbreviated":
-                # 50% reduction using smart abbreviation (preserves headers, key bullets)
-                codebase_text = self._abbreviate_codebase_summary(codebase_original)
-            else:  # minimal
-                # 80% reduction - headers + first line only
-                codebase_text = self._minimal_codebase_summary(codebase_original)
-
-            if codebase_text:
-                formatted_codebase = f"## Codebase\n{codebase_text}"
-                context_sections.append(formatted_codebase)
-                codebase_tokens = self._count_tokens(formatted_codebase)
-                total_tokens += codebase_tokens
-                tokens_before_reduction += self._count_tokens(f"## Codebase\n{codebase_original}")
-
-                logger.debug(
-                    f"Codebase summary: {codebase_tokens} tokens (priority={codebase_priority}, detail={codebase_detail})",
-                    extra={
-                        "field": "codebase_summary",
-                        "priority": codebase_priority,
-                        "detail_level": codebase_detail,
-                        "tokens": codebase_tokens,
-                    },
-                )
 
         # === Config Data Fields Section (Handover 0303) ===
         # Generic extraction for all config_data fields that are prioritized
