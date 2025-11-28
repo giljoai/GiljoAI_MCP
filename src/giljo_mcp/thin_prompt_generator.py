@@ -824,7 +824,7 @@ No previous project history available. Starting fresh.
             {
                 'product_vision': 10,  # Full detail
                 'architecture': 7,      # Moderate
-                'codebase_summary': 4,  # Abbreviated
+                'tech_stack': 8,        # Moderate-high
                 'dependencies': 2       # Minimal
             }
         """
