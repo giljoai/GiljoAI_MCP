@@ -216,11 +216,22 @@ const readyToLaunch = computed(() => {
 })
 
 /**
- * Computed: Check if orchestrator is already active
+ * Computed: Check if orchestrator is already active (staging complete)
+ *
+ * Staging is only complete when:
+ * - Orchestrator status is 'working' (actively executing), OR
+ * - Specialist agents have been spawned (implementer, tester, reviewer)
+ *
+ * Orchestrator with status='waiting' means just created but not started yet.
+ * This allows user to retry if they forgot to paste the prompt.
  */
 const hasActiveOrchestrator = computed(() => {
   const orchestrator = store.agents.find(a => a.agent_type === 'orchestrator')
-  return orchestrator && ['waiting', 'working'].includes(orchestrator.status)
+  if (!orchestrator) return false
+
+  // Staging complete = orchestrator is working OR has spawned specialist agents
+  const hasSpawnedAgents = store.agents.some(a => a.agent_type !== 'orchestrator')
+  return orchestrator.status === 'working' || hasSpawnedAgents
 })
 
 /**
