@@ -53,6 +53,11 @@ async def get_db_session(request: Request = None):
 
     Raises:
         HTTPException: 503 if database not initialized (setup mode)
+
+    Note:
+        This dependency properly handles GeneratorExit when HTTPException
+        is raised in endpoints, ensuring database sessions are always
+        cleaned up and returned to the connection pool.
     """
     # Get db_manager from app state (shared instance)
     try:
@@ -72,9 +77,23 @@ async def get_db_session(request: Request = None):
             detail="Database not initialized - complete setup wizard first",
         )
 
-    # Use the shared db_manager instance
-    async with db_manager.get_session_async() as session:
-        yield session
+    # Use the shared db_manager instance with proper cleanup handling
+    try:
+        async with db_manager.get_session_async() as session:
+            try:
+                yield session
+            except GeneratorExit:
+                # Handle cleanup when HTTPException is raised in endpoint
+                # This ensures session is properly closed even when generator exits early
+                logger.debug("Database session cleanup on GeneratorExit (HTTPException in endpoint)")
+                raise
+    except GeneratorExit:
+        # Re-raise GeneratorExit to allow proper async cleanup
+        raise
+    except Exception as e:
+        # Log other exceptions for debugging
+        logger.error(f"Error in database session dependency: {e}", exc_info=True)
+        raise
 
 
 async def get_current_user(
