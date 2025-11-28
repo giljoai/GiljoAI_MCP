@@ -4,6 +4,7 @@ DatabaseManager for GiljoAI MCP with PostgreSQL support.
 Provides connection pooling, tenant isolation, and production-ready database management.
 """
 
+import logging
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Optional
 from urllib.parse import quote_plus
@@ -15,6 +16,8 @@ from sqlalchemy.pool import QueuePool
 
 from .models import Base
 from .tenant import TenantManager
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
