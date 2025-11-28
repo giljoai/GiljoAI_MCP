@@ -17,19 +17,27 @@ from src.giljo_mcp.tenant import TenantManager
 @pytest.fixture
 def mock_db_manager():
     """Mock database manager for integration tests."""
+    from contextlib import asynccontextmanager
+
     db_manager = MagicMock()
     # Add get_product and get_project as AsyncMock methods
     db_manager.get_product = AsyncMock()
     db_manager.get_project = AsyncMock()
-    # Session support
+    # Session support - create proper async context manager
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
     session.get = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session_async():
+        yield session
+
+    db_manager.get_session_async = mock_get_session_async
+    # Legacy sync session support (deprecated but kept for backward compatibility)
     db_manager.get_session = MagicMock(return_value=session)
-    db_manager.session = session
     return db_manager
 
 
