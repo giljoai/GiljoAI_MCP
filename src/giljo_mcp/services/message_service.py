@@ -437,11 +437,21 @@ class MessageService:
 
                 message_list = []
                 for msg in messages:
+                    # Extract from_agent from meta_data (stored as _from_agent)
+                    from_agent = msg.meta_data.get("_from_agent", "unknown") if msg.meta_data else "unknown"
+
+                    # to_agents is already a list in the database
+                    to_agents = msg.to_agents if msg.to_agents else []
+
+                    # For backward compatibility, provide to_agent as first recipient
+                    to_agent = to_agents[0] if to_agents else None
+
                     message_list.append({
                         "id": str(msg.id),
-                        "from_agent": msg.from_agent,
-                        "to_agent": msg.to_agent,
-                        "type": msg.type,
+                        "from_agent": from_agent,
+                        "to_agent": to_agent,  # Single recipient for backward compatibility
+                        "to_agents": to_agents,  # Full list
+                        "type": msg.message_type,  # Database field is message_type, not type
                         "content": msg.content,
                         "status": msg.status,
                         "priority": msg.priority,
