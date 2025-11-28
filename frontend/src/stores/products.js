@@ -2,8 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import { useWebSocketStore } from './websocket'
+import { useProjectStore } from './projects'  // Product/Project State Fix
 
 export const useProductStore = defineStore('products', () => {
+  // Get project store for cross-store integration
+  const projectStore = useProjectStore()  // Product/Project State Fix
   // State
   const products = ref([])
   const currentProductId = ref(null)
@@ -111,6 +114,10 @@ export const useProductStore = defineStore('products', () => {
     localStorage.setItem('currentProductId', productId)
 
     await fetchProductMetrics(productId)
+
+    // Product/Project State Fix: Refresh projects when product changes
+    // This ensures project list reflects the new product and deactivates old projects
+    await projectStore.fetchProjects()
 
     window.dispatchEvent(
       new CustomEvent('product-changed', {

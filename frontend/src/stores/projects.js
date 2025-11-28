@@ -13,6 +13,11 @@ export const useProjectStore = defineStore('projects', () => {
   // Getters
   const activeProjects = computed(() => projects.value.filter((p) => p.status === 'active'))
 
+  // Product/Project State Fix: Track THE active project (singular) for nav links
+  const activeProject = computed(() => {
+    return projects.value.find((p) => p.status === 'active' && !p.deleted_at) || null
+  })
+
   const projectById = computed(() => (id) => projects.value.find((p) => p.id === id))
 
   // Actions
@@ -127,31 +132,6 @@ export const useProjectStore = defineStore('projects', () => {
     } catch (err) {
       error.value = err.message
       console.error('Failed to delete project:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function activateProject(id) {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await api.projects.changeStatus(id, 'active')
-
-      const index = projects.value.findIndex((p) => p.id === id)
-      if (index !== -1) {
-        projects.value[index] = response.data
-      }
-
-      if (currentProject.value?.id === id) {
-        currentProject.value = response.data
-      }
-
-      return response.data
-    } catch (err) {
-      error.value = err.message
-      console.error('Failed to activate project:', err)
       throw err
     } finally {
       loading.value = false
@@ -429,6 +409,7 @@ export const useProjectStore = defineStore('projects', () => {
 
     // Getters
     activeProjects,
+    activeProject,  // Product/Project State Fix: Singular active project for nav
     projectById,
 
     // Actions
