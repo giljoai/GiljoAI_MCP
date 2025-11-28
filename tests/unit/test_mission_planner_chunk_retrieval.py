@@ -114,7 +114,6 @@ async def test_get_relevant_chunks_returns_top_chunks():
 
     # Setup: Mock db_manager
     mock_db_manager = MagicMock()
-    mock_db_manager.session = mock_session
 
     # Execute: Call the method
     planner = MissionPlanner(db_manager=mock_db_manager)

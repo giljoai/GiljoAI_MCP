@@ -1188,12 +1188,13 @@ Success Criteria:
 
             if product_has_chunks:
                 # Use relevant chunks based on project description
-                vision_chunks = await self._get_relevant_vision_chunks(
-                    session=self.db_manager.session,
-                    product=product,
-                    project=project,
-                    max_tokens=10000,  # Vision section token budget
-                )
+                async with self.db_manager.get_session_async() as session:
+                    vision_chunks = await self._get_relevant_vision_chunks(
+                        session=session,
+                        product=product,
+                        project=project,
+                        max_tokens=10000,  # Vision section token budget
+                    )
 
                 if vision_chunks:
                     # Combine chunks into formatted section
