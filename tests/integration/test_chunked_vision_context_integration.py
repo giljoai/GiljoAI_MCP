@@ -169,11 +169,17 @@ Versioning uses URL-based approach (e.g., /api/v1/users) for backward compatibil
     await test_db_session.refresh(product)
 
     # 5. Build context with MissionPlanner
+    from contextlib import asynccontextmanager
     from unittest.mock import MagicMock
 
-    # Mock DatabaseManager with the test session
+    # Mock DatabaseManager with proper async context manager
     db_manager = MagicMock()
-    db_manager.session = test_db_session
+
+    @asynccontextmanager
+    async def mock_get_session_async():
+        yield test_db_session
+
+    db_manager.get_session_async = mock_get_session_async
 
     planner = MissionPlanner(db_manager=db_manager)
 
@@ -271,10 +277,16 @@ It describes a simple authentication system with basic features.
     await test_db_session.refresh(product)
 
     # 4. Build context with MissionPlanner
+    from contextlib import asynccontextmanager
     from unittest.mock import MagicMock
 
     db_manager = MagicMock()
-    db_manager.session = test_db_session
+
+    @asynccontextmanager
+    async def mock_get_session_async():
+        yield test_db_session
+
+    db_manager.get_session_async = mock_get_session_async
 
     planner = MissionPlanner(db_manager=db_manager)
 
@@ -404,10 +416,16 @@ Custom authorization rules for beta tenant use cases.
     await test_db_session.refresh(product_alpha)
 
     # 7. Build context for tenant-alpha project
+    from contextlib import asynccontextmanager
     from unittest.mock import MagicMock
 
     db_manager = MagicMock()
-    db_manager.session = test_db_session
+
+    @asynccontextmanager
+    async def mock_get_session_async():
+        yield test_db_session
+
+    db_manager.get_session_async = mock_get_session_async
 
     planner_alpha = MissionPlanner(db_manager=db_manager)
 

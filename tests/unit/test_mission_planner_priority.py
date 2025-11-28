@@ -31,9 +31,20 @@ class TestMissionPlannerPriority:
     @pytest.fixture
     def mock_db_manager(self):
         """Create a mock database manager."""
+        from contextlib import asynccontextmanager
+        from unittest.mock import AsyncMock
+
         db_manager = Mock()
         db_manager.is_async = True
-        db_manager.session = Mock()
+
+        # Create proper async context manager for get_session_async
+        session = AsyncMock()
+
+        @asynccontextmanager
+        async def mock_get_session_async():
+            yield session
+
+        db_manager.get_session_async = mock_get_session_async
         return db_manager
 
     @pytest.fixture
