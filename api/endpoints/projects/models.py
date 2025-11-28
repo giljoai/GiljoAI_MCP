@@ -57,8 +57,8 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
-    context_budget: int
-    context_used: int
+    context_budget: Optional[int] = 150000  # Nullable after project reset
+    context_used: Optional[int] = 0  # Nullable after project reset
     agent_count: int
     message_count: int
     agents: List[AgentSimple] = []
