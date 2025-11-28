@@ -213,7 +213,7 @@ async def list_tenant_configurations():
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        async with state.db_manager.session() as session:
+        async with state.db_manager.get_session_async() as session:
             from sqlalchemy import distinct, select
 
             from src.giljo_mcp.models import Configuration
@@ -238,7 +238,7 @@ async def get_tenant_configuration(tenant_key: str):
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        async with state.db_manager.session() as session:
+        async with state.db_manager.get_session_async() as session:
             from sqlalchemy import select
 
             from src.giljo_mcp.models import Configuration
@@ -274,7 +274,7 @@ async def set_tenant_configuration(
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        async with state.db_manager.session() as session:
+        async with state.db_manager.get_session_async() as session:
             from sqlalchemy import select
 
             from src.giljo_mcp.models import Configuration
@@ -319,7 +319,7 @@ async def delete_tenant_configuration(tenant_key: str):
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        async with state.db_manager.session() as session:
+        async with state.db_manager.get_session_async() as session:
             from sqlalchemy import delete
 
             from src.giljo_mcp.models import Configuration
