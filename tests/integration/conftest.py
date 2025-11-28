@@ -247,3 +247,9 @@ async def test_project(db_session: AsyncSession, test_user: User, test_product: 
     await db_session.commit()
     await db_session.refresh(project)
     return project
+
+
+@pytest.fixture
+def test_tenant_key(test_user: User) -> str:
+    """Return test tenant key for message schema tests"""
+    return test_user.tenant_key
