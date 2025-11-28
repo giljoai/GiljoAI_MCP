@@ -69,7 +69,12 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.create(projectData)
-      projects.value.push(response.data)
+
+      // CRITICAL: Refresh from backend to get actual status
+      // Backend may auto-activate project (Single Active Project constraint)
+      // or modify other fields. Don't trust local request data.
+      await fetchProjects()
+
       return response.data
     } catch (err) {
       error.value = err.message
