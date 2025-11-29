@@ -144,8 +144,7 @@ def mock_project():
 class TestMemoryInjection:
     """Test 360 memory injection logic (always included in prompts)."""
 
-    @pytest.mark.asyncio
-    async def test_inject_360_memory_with_learnings(self, product_with_git_enabled):
+    def test_inject_360_memory_with_learnings(self, product_with_git_enabled):
         """BEHAVIOR: 360 memory section is ALWAYS included when learnings exist."""
         generator = ThinClientPromptGenerator(db=AsyncMock(), tenant_key="test-tenant")
 
@@ -277,8 +276,7 @@ class TestGitInjection:
 class TestCombinedInjection:
     """Test combining 360 memory + git integration in prompts."""
 
-    @pytest.mark.asyncio
-    async def test_orchestrator_prompt_includes_both_when_git_enabled(
+    def test_orchestrator_prompt_includes_both_when_git_enabled(
         self,
         mock_db_session,
         product_with_git_enabled,
@@ -306,8 +304,7 @@ class TestCombinedInjection:
         # Assert they are SEPARATE sections
         assert prompt.count("##") >= 2  # At least 2 section headers
 
-    @pytest.mark.asyncio
-    async def test_orchestrator_prompt_only_memory_when_git_disabled(
+    def test_orchestrator_prompt_only_memory_when_git_disabled(
         self,
         mock_db_session,
         product_with_git_disabled,
@@ -333,8 +330,7 @@ class TestCombinedInjection:
         assert "git log" not in prompt
         assert "Git Integration" not in prompt
 
-    @pytest.mark.asyncio
-    async def test_prompt_injection_preserves_existing_sections(
+    def test_prompt_injection_preserves_existing_sections(
         self,
         mock_db_session,
         product_with_git_enabled
