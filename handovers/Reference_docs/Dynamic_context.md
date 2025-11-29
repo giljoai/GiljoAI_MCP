@@ -1,4 +1,4 @@
-Complete Discovery Overview: Dynamic Agent Discovery System
+ Complete Discovery Overview: Dynamic Agent Discovery System
 
   I've completed a comprehensive discovery and design analysis for implementing dynamic agent discovery in the GiljoAI MCP Server. Here's the
   complete overview:
