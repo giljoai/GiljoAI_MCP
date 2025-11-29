@@ -510,10 +510,6 @@ export const api = {
       }),
     successionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
 
-    // Execution mode endpoint (Handover 0260)
-    setExecutionMode: (jobId, mode) =>
-      apiClient.put(`/api/agent-jobs/${jobId}/execution-mode`, { mode }),
-
     // Legacy aliases for backward compatibility (deprecated but functional)
     getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
     listJobs: (projectId, params = {}) =>
