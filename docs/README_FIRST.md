@@ -488,10 +488,9 @@ database:
 - Project management (`project.py`)
 - Agent management (`agent.py`)
 - Message passing (`message.py`)
-- Task management (`task.py`, `task_templates.py`)
+- Task management (`task.py`)
 - Context management (`context.py`, `chunking.py`, `context_manager.py`)
 - Template management (`template.py`)
-- Git integration (`git.py`)
 
 **Total**: 22+ tools for agent coordination
 

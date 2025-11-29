@@ -33,7 +33,6 @@ register_project_closeout_tools = _removed
 register_succession_tools = _removed
 register_task_tools = _removed
 register_template_tools = _removed
-register_git_tools = _removed
 
 
 __all__ = [
@@ -45,7 +44,6 @@ __all__ = [
     "register_agent_tools",
     "register_context_tools",
     "register_external_agent_coordination_tools",
-    "register_git_tools",
     "register_message_tools",
     "register_optimization_tools",
     "register_orchestration_tools",
