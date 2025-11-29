@@ -12,9 +12,6 @@ from sqlalchemy import and_, select
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Project, Task
 
-from .task_templates import register_task_template_tools
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -1215,10 +1212,7 @@ Example: /task Fix authentication bug in login flow"""
             logger.exception(f"Failed to assign task to agent: {e}")
             return {"success": False, "error": str(e)}
 
-    # Register template integration tools
-    register_task_template_tools(mcp)
-
-    logger.info("Task management tools with templates registered successfully")
+    logger.info("Task management tools registered successfully")
 
 
 # Helper functions for dependency mapping

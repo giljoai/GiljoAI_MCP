@@ -356,7 +356,20 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     }
 
                 # Mission is stored in job.mission field (thin client pattern)
-                estimated_tokens = len(agent_job.mission or "") // 4
+                base_mission = agent_job.mission or ""
+
+                # Handover 0260: Add team roster and communication instructions
+                execution_mode = agent_job.metadata.get("execution_mode", "multi_terminal") if agent_job.metadata else "multi_terminal"
+                team_roster = await _build_team_roster(session, str(agent_job.project_id), tenant_key)
+
+                # Build communication instructions for this agent
+                communication_section = _build_agent_communication_section(team_roster, execution_mode)
+
+                # Combine mission with team roster
+                enhanced_mission = base_mission + "\n\n" + communication_section
+
+                # Calculate token estimate (including roster)
+                estimated_tokens = len(enhanced_mission) // 4
 
                 logger.info(
                     f"[THIN CLIENT] Agent mission fetched: {agent_job.agent_type}",
@@ -368,12 +381,15 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "agent_job_id": agent_job_id,
                     "agent_name": agent_job.agent_type,  # Use agent_type as name
                     "agent_type": agent_job.agent_type,
-                    "mission": agent_job.mission or "",
+                    "mission": enhanced_mission,
                     "project_id": str(agent_job.project_id),
                     "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
                     "estimated_tokens": estimated_tokens,
                     "status": agent_job.status,
                     "thin_client": True,
+                    # Handover 0260: Team roster for communication
+                    "execution_mode": execution_mode,
+                    "team_roster": team_roster,
                 }
 
         except Exception as e:
@@ -1415,8 +1431,24 @@ The agent templates are now being updated...
                 # Handover 0246c: Agent templates no longer embedded
                 # Use get_available_agents() MCP tool instead
 
-                # Calculate token estimate
-                estimated_tokens = len(condensed_mission) // 4  # 1 token ≈ 4 chars
+                # Handover 0260: Build team roster and mode-specific instructions
+                execution_mode = orchestrator.metadata.get("execution_mode", "multi_terminal") if orchestrator.metadata else "multi_terminal"
+                team_roster = await _build_team_roster(session, str(project.id), tenant_key)
+
+                # Build mode-specific instructions
+                if execution_mode == "claude_code":
+                    mode_instructions = _build_claude_code_instructions(team_roster, tenant_key)
+                    mode_label = "Claude Code CLI"
+                else:
+                    mode_instructions = _build_multi_terminal_instructions(team_roster)
+                    mode_label = "Multi-Terminal"
+
+                # Build team roster section
+                roster_section = _build_roster_section(team_roster)
+
+                # Calculate token estimate (including mode instructions)
+                total_content = condensed_mission + "\n\n" + mode_instructions + "\n\n" + roster_section
+                estimated_tokens = len(total_content) // 4  # 1 token ≈ 4 chars
 
                 # Amendment A: Broadcast WebSocket event for real-time UI update
                 try:
@@ -1457,12 +1489,18 @@ The agent templates are now being updated...
                     "mission": condensed_mission,
                     "context_budget": orchestrator.context_budget or 150000,
                     "context_used": orchestrator.context_used or 0,
-                "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
+                    "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
                     "estimated_tokens": estimated_tokens,
                     "instance_number": orchestrator.instance_number or 1,
                     "thin_client": True,
+                    # Handover 0260: Mode-aware execution and team roster
+                    "execution_mode": execution_mode,
+                    "mode_label": mode_label,
+                    "mode_instructions": mode_instructions,
+                    "team_roster": team_roster,
+                    "roster_section": roster_section,
                 }
 
         except Exception as e:
@@ -1503,6 +1541,196 @@ async def health_check() -> dict[str, Any]:
         "database": "connected",
         "message": "GiljoAI MCP server is operational",
     }
+
+
+async def _build_team_roster(db, project_id: str, tenant_key: str) -> list[dict[str, str]]:
+    """
+    Build team roster for agent communication (Handover 0260).
+
+    Returns list of all agents in project with their IDs for MCP communication:
+    [
+        {"agent_type": "orchestrator", "agent_id": "uuid", "job_id": "uuid", "name": "Orchestrator"},
+        {"agent_type": "implementer", "agent_id": "uuid", "job_id": "uuid", "name": "Implementer"},
+        ...
+    ]
+
+    Args:
+        db: Database session
+        project_id: Project UUID
+        tenant_key: Tenant isolation key
+
+    Returns:
+        List of agent roster dictionaries
+    """
+    from sqlalchemy import case
+
+    stmt = (
+        select(MCPAgentJob)
+        .where(
+            MCPAgentJob.project_id == project_id,
+            MCPAgentJob.tenant_key == tenant_key,
+            MCPAgentJob.status.in_(["waiting", "active", "completed"]),  # Exclude cancelled/failed
+        )
+        .order_by(
+            # Orchestrator first, then alphabetically
+            case(
+                (MCPAgentJob.agent_type == "orchestrator", 0),
+                else_=1
+            ),
+            MCPAgentJob.agent_type
+        )
+    )
+
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
+
+    roster = []
+    for job in jobs:
+        roster.append({
+            "agent_type": job.agent_type,
+            "agent_id": job.agent_id,
+            "job_id": str(job.id),
+            "name": job.agent_type.capitalize()
+        })
+
+    return roster
+
+
+def _build_claude_code_instructions(team_roster: list[dict], tenant_key: str) -> str:
+    """Build spawning instructions for Claude Code CLI mode (Handover 0260)."""
+
+    # Filter out orchestrator from roster
+    agents = [a for a in team_roster if a["agent_type"] != "orchestrator"]
+
+    if not agents:
+        return "No specialist agents assigned. Check agent template manager."
+
+    instructions = [
+        "You are operating in Claude Code CLI mode.",
+        "",
+        "Spawn subagents using the Task tool with @ mentions:",
+        ""
+    ]
+
+    for agent in agents:
+        instructions.append(
+            f"@{agent['agent_type']} - You are agent {agent['agent_id']}, job {agent['job_id']}.\n"
+            f"Fetch your mission: get_agent_mission('{agent['job_id']}', '{tenant_key}')"
+        )
+        instructions.append("")
+
+    instructions.extend([
+        "All agents run in THIS terminal. You can see their output directly.",
+        "Use MCP tools for status tracking and inter-agent coordination if needed."
+    ])
+
+    return "\n".join(instructions)
+
+
+def _build_multi_terminal_instructions(team_roster: list[dict]) -> str:
+    """Build coordination instructions for multi-terminal mode (Handover 0260)."""
+
+    instructions = [
+        "You are coordinating agents in separate terminal windows.",
+        "",
+        "The user will manually launch each agent. You should:",
+        "- Monitor agent progress via WebSocket updates in the dashboard",
+        "- Send instructions via: send_message(to_agent_id='<agent_id>', message='<content>')",
+        "- Broadcast to all agents: send_message(to_agent_id='broadcast', message='<content>')",
+        "- Check for responses via: get_next_instruction(job_id='<your_job_id>', ...)",
+        "",
+        "Each agent will run in their own terminal window with their own prompt.",
+        "The dashboard will show real-time status updates and message notifications."
+    ]
+
+    return "\n".join(instructions)
+
+
+def _build_roster_section(team_roster: list[dict]) -> str:
+    """Build team roster section for communication reference (Handover 0260)."""
+
+    lines = [
+        "## Team Roster",
+        "",
+        "Your team for this project:",
+        ""
+    ]
+
+    for agent in team_roster:
+        lines.append(f"- **{agent['name']}** ({agent['agent_type']})")
+        lines.append(f"  - Agent ID: `{agent['agent_id']}`")
+        lines.append(f"  - Job ID: `{agent['job_id']}`")
+        lines.append("")
+
+    lines.extend([
+        "### MCP Communication Commands",
+        "",
+        "```python",
+        "# Send direct message",
+        "send_message(to_agent_id='<agent_id_from_roster>', message='<content>', priority='medium')",
+        "",
+        "# Broadcast to all agents",
+        "send_message(to_agent_id='broadcast', message='<content>', priority='high')",
+        "",
+        "# Check for incoming messages",
+        "get_next_instruction(job_id='<your_job_id>', agent_type='orchestrator', tenant_key='<tenant_key>')",
+        "```"
+    ])
+
+    return "\n".join(lines)
+
+
+def _build_agent_communication_section(team_roster: list[dict], execution_mode: str) -> str:
+    """Build communication instructions for specialist agents (Handover 0260)."""
+
+    lines = [
+        "## Your Team",
+        "",
+        "You are working with the following agents:",
+        ""
+    ]
+
+    for agent in team_roster:
+        lines.append(f"- **{agent['name']}** ({agent['agent_type']})")
+        lines.append(f"  - Agent ID: `{agent['agent_id']}`")
+        lines.append(f"  - Job ID: `{agent['job_id']}`")
+        lines.append("")
+
+    if execution_mode == "claude_code":
+        lines.extend([
+            "### Execution Mode: Claude Code CLI",
+            "",
+            "You are running in Claude Code CLI mode alongside other agents in one terminal.",
+            "The orchestrator can see your output directly.",
+            "",
+            "For urgent coordination, use MCP communication:",
+            "```python",
+            "send_message(to_agent_id='<agent_id>', message='<content>')",
+            "```"
+        ])
+    else:
+        lines.extend([
+            "### Execution Mode: Multi-Terminal",
+            "",
+            "You are running in your own terminal window. Other agents are in separate terminals.",
+            "You MUST communicate via MCP tools for all coordination:",
+            "",
+            "```python",
+            "# Send message to specific agent",
+            "send_message(to_agent_id='<agent_id_from_roster>', message='<content>')",
+            "",
+            "# Send message to orchestrator",
+            "send_message(to_agent_id='<orchestrator_agent_id>', message='<content>')",
+            "",
+            "# Broadcast to all agents",
+            "send_message(to_agent_id='broadcast', message='<content>')",
+            "",
+            "# Check for incoming messages",
+            "get_next_instruction(job_id='<your_job_id>', agent_type='<your_type>', tenant_key='<tenant_key>')",
+            "```"
+        ])
+
+    return "\n".join(lines)
 
 
 async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, db_manager: "DatabaseManager" = None) -> dict[str, Any]:
