@@ -1164,7 +1164,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "STEP 2: REMIND EACH SUB-AGENT",
             f"- acknowledge_job(job_id=\"{{{{job_id}}}}\", agent_id=\"{{{{agent_id}}}}\", tenant_key=\"{self.tenant_key}\")",
             "- report_progress() after milestones",
-            "- receive_messages() for commands",
+            "- get_next_instruction() for commands from orchestrator",
             "- complete_job() when done\n",
             "STEP 3: COORDINATE WORKFLOW",
             "- Monitor via get_workflow_status()",

@@ -88,8 +88,9 @@ class GenericAgentTemplate:
 ### Phase 1: Initialization
 1. Verify your identity using IDs above
 2. Check MCP health: `health_check()`
-3. Read CLAUDE.md for project context and standards
-4. Confirm you understand this protocol
+3. Claim this job: `acknowledge_job(job_id='{job_id}', agent_id='{agent_id}')`
+4. Read CLAUDE.md for project context and standards
+5. Confirm you understand this protocol
 
 ### Phase 2: Mission Fetch
 1. Call MCP tool: `get_agent_mission(job_id='{job_id}', tenant_key='{tenant_key}')`
@@ -105,16 +106,15 @@ class GenericAgentTemplate:
 
 ### Phase 4: Progress Reporting
 Report progress after each major milestone:
-- Call: `update_job_progress(job_id='{job_id}', percent_complete=25, status_message='Initialization phase complete')`
+- Call: `report_progress(job_id='{job_id}', progress={{'status': 'in_progress', 'percent_complete': 25, 'message': 'Initialization phase complete'}})`
 - Include specific details about what was accomplished
 - Report any blockers or decisions made
 - At 100%: Provide comprehensive summary
 
 ### Phase 5: Communication
-When coordinating with other agents:
+When coordinating with other agents or orchestrator:
 - Send: `send_message(to_agent_id='<uuid>', message='<content>')`
-- Receive: `receive_messages(agent_id='{agent_id}')`
-- Acknowledge: `acknowledge_message(message_id='<uuid>')`
+- Check for instructions: `get_next_instruction(job_id='{job_id}', agent_type='<your_type>', tenant_key='{tenant_key}')`
 
 ### Phase 6: Completion
 When finished:
@@ -245,11 +245,15 @@ send_message(
     message=f"Testing request: {{code_files}}"
 )
 
-# Tester receives and acknowledges:
-messages = receive_messages(agent_id='{agent_id}')
-for msg in messages:
-    acknowledge_message(message_id=msg['id'])
-    # Process the message
+# Tester checks for new instructions:
+instruction = get_next_instruction(
+    job_id='{job_id}',
+    agent_type='tester',
+    tenant_key='{tenant_key}'
+)
+if instruction['new_instruction']:
+    # Process the instruction
+    # Report progress via report_progress()
 ```
 
 ---
