@@ -746,7 +746,7 @@ No previous project history available. Starting fresh.
 
         return project
 
-    async def _build_thin_prompt_with_memory(
+    def _build_thin_prompt_with_memory(
         self,
         orchestrator_id: str,
         project_id: str,
