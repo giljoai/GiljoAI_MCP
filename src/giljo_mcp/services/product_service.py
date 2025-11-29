@@ -1570,6 +1570,10 @@ class ProductService:
         # Update timestamp
         product.updated_at = datetime.now(timezone.utc)
 
+        # Commit changes to database
+        await session.commit()
+        await session.refresh(product)
+
         self._logger.info(f"Added learning entry (sequence {next_sequence}) to product {product_id}")
 
         # Handover 0139a: Emit WebSocket event for history addition
