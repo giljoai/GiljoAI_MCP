@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import JobsTab from '@/components/projects/JobsTab.vue'
 
@@ -11,6 +11,37 @@ import JobsTab from '@/components/projects/JobsTab.vue'
  * - When toggle is OFF (manual mode): all agents show copy buttons
  * - When toggle is ON (Claude Code CLI mode): only orchestrator shows copy button
  */
+
+// Mock composables BEFORE component mount
+const mockShowToast = vi.fn()
+
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    showToast: mockShowToast
+  })
+}))
+
+// Mock API for prompt fetching
+vi.mock('@/services/api', () => ({
+  api: {
+    prompts: {
+      agentPrompt: vi.fn()
+    }
+  }
+}))
+
+// Mock navigator.clipboard for clipboard operations
+Object.assign(navigator, {
+  clipboard: {
+    writeText: vi.fn().mockResolvedValue(undefined)
+  }
+})
+
+// Mock window.isSecureContext
+Object.defineProperty(window, 'isSecureContext', {
+  writable: true,
+  value: true
+})
 
 // Mock setup
 const mockProject = {
@@ -416,6 +447,60 @@ describe('JobsTab - Copy Button Visibility (Claude Code CLI Toggle)', () => {
       // Call again to toggle OFF
       await wrapper.vm.toggleExecutionMode()
       expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
+    })
+  })
+
+  // ==================== HANDOVER 0251 PHASE 2: ORCHESTRATOR PLAY BUTTON TESTS ====================
+
+  describe('Orchestrator Play Button Behavior (Handover 0253)', () => {
+    it('should show info message instead of copying prompt when clicking orchestrator play button', async () => {
+      // Reset mock before test
+      mockShowToast.mockClear()
+
+      const wrapper = createWrapper()
+      const orchestrator = mockAgents.find((a) => a.agent_type === 'orchestrator')
+
+      // BEHAVIOR: Clicking play on orchestrator should show info toast, not copy prompt
+      await wrapper.vm.handlePlay(orchestrator)
+      await nextTick()
+
+      expect(mockShowToast).toHaveBeenCalledWith({
+        message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
+        type: 'info',
+        duration: 3000
+      })
+    })
+
+    it('should still copy prompts for specialist agents (implementer, tester)', async () => {
+      // Import the mocked api to configure it
+      const { api } = await import('@/services/api')
+
+      // Reset mocks
+      mockShowToast.mockClear()
+      navigator.clipboard.writeText.mockClear()
+
+      // Mock API response BEFORE creating wrapper
+      api.prompts.agentPrompt.mockClear()
+      api.prompts.agentPrompt.mockResolvedValue({
+        data: { prompt: 'Test prompt for implementer' }
+      })
+
+      const wrapper = createWrapper()
+      const implementer = mockAgents.find((a) => a.agent_type === 'implementer')
+
+      // BEHAVIOR: Specialist agents should still copy prompts normally
+      await wrapper.vm.handlePlay(implementer)
+
+      // Wait for all async operations to complete
+      await flushPromises()
+
+      expect(api.prompts.agentPrompt).toHaveBeenCalledWith(implementer.job_id)
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Test prompt for implementer')
+      expect(mockShowToast).toHaveBeenCalledWith({
+        message: 'Launch prompt copied to clipboard',
+        type: 'success',
+        duration: 3000
+      })
     })
   })
 })
