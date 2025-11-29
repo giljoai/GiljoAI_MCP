@@ -5,7 +5,7 @@ This test verifies that database templates (Layer 3) focus on role-specific
 expertise and DO NOT contain MCP protocol details, which belong in Layer 2
 (GenericAgentTemplate).
 
-Handover 0252: Three-Layer Instruction Architecture Cleanup
+Handover 0254: Three-Layer Instruction Architecture Cleanup
 Layer 3: Database Template Definitions
 """
 
