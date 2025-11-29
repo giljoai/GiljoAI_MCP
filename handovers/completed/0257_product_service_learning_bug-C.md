@@ -180,3 +180,58 @@ According to `docs/360_MEMORY_MANAGEMENT.md`, product memory structure is:
 - Bug was discovered during test validation phase
 - May be a pre-existing issue or a regression from recent refactoring
 - Critical for 360 memory system functionality
+
+---
+
+## Implementation Summary (2025-11-29)
+
+**Status**: ✅ COMPLETE
+
+### What Was Fixed
+
+Two complementary bugs prevented learning entries from persisting:
+
+1. **Missing Database Commit** (`product_service.py`)
+   - `add_learning_to_product_memory()` was updating memory in-memory but never committing to database
+   - Added `await session.commit()` after memory update (line 1573-1575)
+
+2. **Test Schema Mismatch** (`test_git_integration_refactor.py`)
+   - Test was checking `learnings` field that no longer exists
+   - Corrected 9 field name references from `learnings` to `sequential_history`
+   - Aligned test expectations with actual 360 memory schema
+
+### Key Files Modified
+
+**Production Code**:
+- `src/giljo_mcp/services/product_service.py` (+3 lines, -0)
+  - Line 1573-1575: Added `await session.commit()` to persist memory changes
+
+**Test Code**:
+- `tests/unit/test_git_integration_refactor.py` (+10 lines, -9)
+  - Lines 33, 54, 71, 89, 106, 112, 126, 135, 154: Fixed `learnings` → `sequential_history` references
+
+### Test Results
+
+✅ **7/7 tests passing** (was 6/7)
+- `test_add_learning_does_not_fetch_github_commits` - FIXED
+- `test_add_learning_with_github_integration_enabled` - PASSING
+- `test_add_learning_with_github_integration_disabled` - PASSING
+- All 4 additional git integration tests - PASSING
+
+### Technical Details
+
+**Root Cause**: Combination of two independent issues:
+1. Service layer wasn't persisting changes to database (transaction not committed)
+2. Test suite referenced deprecated `learnings` field instead of `sequential_history` from 360 memory schema redesign
+
+**Fix Pattern**: Standard database session management - update object, commit transaction, return refreshed object to client
+
+**Backward Compatibility**: No breaking changes. The fix aligns code with documented 360 memory schema (sequential_history structure).
+
+### Status
+
+✅ **Production Ready** - TDD Complete
+- All tests passing
+- Code follows service layer patterns
+- No regressions detected
+- Commit: 13e0224d
