@@ -492,23 +492,14 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
         This is a private function used internally by seed_tenant_templates.
         Metadata is kept separate from template content for maintainability.
     """
-    # MCP coordination rules (added to ALL templates)
-    mcp_rules = [
-        "CRITICAL: Call MCP tools at each checkpoint (acknowledgment, progress, completion)",
-        "Report progress after each completed todo via report_progress()",
-        "Check for orchestrator feedback via get_next_instruction() after progress reports",
-        "On ANY error: IMMEDIATELY call report_error() and STOP work",
-        "Include context usage in all progress reports (track token consumption)",
-        "Mark job complete with detailed result summary (files, tests, coverage)",
-    ]
+    # MCP coordination rules - MOVED TO LAYER 2 (GenericAgentTemplate)
+    # Handover 0252: Layer 3 should focus on role expertise, not MCP protocol
+    # All MCP commands now handled by GenericAgentTemplate (Layer 2)
+    mcp_rules = []  # Empty - protocol instructions moved to GenericAgentTemplate
 
-    # MCP success criteria (added to ALL templates)
-    mcp_success = [
-        "All MCP checkpoints executed successfully",
-        "Progress reported incrementally (not just at end)",
-        "No missed orchestrator messages",
-        "Error handling protocol followed if failures occur",
-    ]
+    # MCP success criteria - MOVED TO LAYER 2 (GenericAgentTemplate)
+    # Handover 0252: Layer 3 should focus on role-specific success, not protocol success
+    mcp_success = []  # Empty - protocol success criteria moved to GenericAgentTemplate
 
     return {
         "orchestrator": {
@@ -518,9 +509,8 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Delegate instead of implementing (3-tool rule)",
                 "Challenge scope drift proactively",
                 "Create 3 documentation artifacts at project close",
-                "Coordinate multiple agents via MCP job queue",
-                "Monitor agent progress via get_next_instruction() polling",
-                "Send instructions to agents via send_message() tool",
+                "Coordinate multiple agents effectively",
+                "Monitor agent progress and respond to blockers",
             ]
             + mcp_rules,
             "success_criteria": [
@@ -599,7 +589,7 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Provide actionable feedback",
                 "Check security best practices",
                 "Validate architectural compliance",
-                "Report review findings via report_progress() (issues found, suggestions)",
+                "Document all findings with severity levels",
                 "Mark completion only after all review comments addressed",
             ]
             + mcp_rules,
