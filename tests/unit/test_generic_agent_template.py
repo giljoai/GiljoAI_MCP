@@ -88,7 +88,7 @@ class TestGenericAgentTemplate:
         assert "Phase 6: Completion" in rendered
 
     def test_mcp_tool_references_present(self):
-        """Template references all required MCP tools"""
+        """Template references all required MCP tools with CORRECT command names"""
         template = GenericAgentTemplate()
         rendered = template.render(
             agent_id=str(uuid4()),
@@ -98,11 +98,28 @@ class TestGenericAgentTemplate:
             tenant_key="test_tenant"
         )
 
-        assert "get_agent_mission" in rendered
-        assert "update_job_progress" in rendered
-        assert "complete_job" in rendered
-        assert "send_message" in rendered
-        assert "receive_messages" in rendered
+        # Phase 1: Initialization - should have acknowledge_job()
+        assert "acknowledge_job" in rendered, "Missing acknowledge_job() in Phase 1"
+
+        # Phase 2: Mission Fetch - should have get_agent_mission()
+        assert "get_agent_mission" in rendered, "Missing get_agent_mission() in Phase 2"
+
+        # Phase 3: Work Execution - no MCP commands required
+
+        # Phase 4: Progress Reporting - should use report_progress() NOT update_job_progress()
+        assert "report_progress" in rendered, "Missing report_progress() in Phase 4"
+        assert "update_job_progress" not in rendered, "Found obsolete update_job_progress() - should be report_progress()"
+
+        # Phase 5: Communication - should use get_next_instruction() NOT receive_messages()
+        assert "get_next_instruction" in rendered, "Missing get_next_instruction() in Phase 5"
+        assert "receive_messages" not in rendered, "Found obsolete receive_messages() - should be get_next_instruction()"
+        assert "send_message" in rendered, "Missing send_message() in Phase 5"
+
+        # Phase 6: Completion - should have complete_job()
+        assert "complete_job" in rendered, "Missing complete_job() in Phase 6"
+
+        # Obsolete commands that should NOT exist
+        assert "acknowledge_message" not in rendered, "Found obsolete acknowledge_message() - this function doesn't exist"
 
     def test_token_count_in_budget(self):
         """Template stays within reasonable token budget (rough estimate: 2-3K tokens)"""
