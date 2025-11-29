@@ -63,7 +63,7 @@ class TestSimplifiedGitIntegration:
         product = Mock(spec=Product)
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
-        product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
+        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
         session.execute = AsyncMock(return_value=Mock(
@@ -106,7 +106,7 @@ class TestSimplifiedGitIntegration:
         product = Mock(spec=Product)
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
-        product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
+        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
         session.execute = AsyncMock(return_value=Mock(
@@ -142,7 +142,7 @@ class TestSimplifiedGitIntegration:
         product = Mock(spec=Product)
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
-        product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
+        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
         session.execute = AsyncMock(return_value=Mock(
@@ -184,7 +184,7 @@ class TestSimplifiedGitIntegration:
                 "commit_limit": 20,
                 "default_branch": "main"
             },
-            "learnings": [],
+            "sequential_history": [],
             "context": {}
         }
         product.deleted_at = None
@@ -222,7 +222,7 @@ class TestSimplifiedGitIntegration:
         product = Mock(spec=Product)
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
-        product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
+        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
         session.execute = AsyncMock(return_value=Mock(
@@ -261,7 +261,7 @@ class TestSimplifiedGitIntegration:
         product.tenant_key = "test-tenant"
         product.product_memory = {
             "git_integration": {"enabled": True, "commit_limit": 20},
-            "learnings": [],
+            "sequential_history": [],
             "context": {}
         }
         product.deleted_at = None
@@ -291,8 +291,8 @@ class TestSimplifiedGitIntegration:
             mock_http_client.assert_not_called()
 
             # Learning should be added without GitHub commits
-            assert len(updated_product.product_memory["learnings"]) == 1
-            assert "git_commits" not in updated_product.product_memory["learnings"][0]
+            assert len(updated_product.product_memory["sequential_history"]) == 1
+            assert "git_commits" not in updated_product.product_memory["sequential_history"][0]
 
 
 class TestGitIntegrationWebSocketEvents:
@@ -313,7 +313,7 @@ class TestGitIntegrationWebSocketEvents:
         product = Mock(spec=Product)
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
-        product.product_memory = {"git_integration": {}, "learnings": [], "context": {}}
+        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
         session.execute = AsyncMock(return_value=Mock(
