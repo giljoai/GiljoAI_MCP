@@ -461,4 +461,31 @@ describe('ProjectTabs - Action Buttons in Header', () => {
       expect(wrapper.vm.errorVisible).toBe(true)
     })
   })
+
+  // ==================== HANDOVER 0251 PHASE 2: BUTTON RENAMING TESTS ====================
+
+  describe('Copy Orchestrator Prompt Button (Handover 0253)', () => {
+    it('should display "Stage project" with copy icon', () => {
+      // BEHAVIOR: Button text should remain "Stage project" but have copy icon (Handover 0253)
+      const stageButton = wrapper.find('.stage-button')
+      expect(stageButton.text()).toContain('Stage project')
+    })
+
+    it('should have mdi-content-copy prepend icon', () => {
+      // BEHAVIOR: Button should have prepend-icon="mdi-content-copy"
+      // Expected to FAIL initially (RED phase)
+      const stageButton = wrapper.find('.stage-button')
+      expect(stageButton.attributes('prepend-icon')).toBe('mdi-content-copy')
+    })
+
+    it('should show universal toast message when prompt copied', async () => {
+      // BEHAVIOR: Toast message should say "Orchestrator prompt copied - paste into ANY terminal"
+      // Expected to FAIL initially (RED phase)
+      const stageButton = wrapper.find('.stage-button')
+      await stageButton.trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.toastMessage).toBe('Orchestrator prompt copied - paste into ANY terminal (fresh or existing)')
+    })
+  })
 })
