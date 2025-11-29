@@ -546,22 +546,11 @@ function shouldShowCopyButton(agent) {
 
 /**
  * Handle Play button click
- * Handover 0260: Set execution mode before copying prompt
  */
 async function handlePlay(agent) {
   try {
     // Handover 0253: Orchestrator uses UNIVERSAL prompt from LaunchTab
     if (agent.agent_type === 'orchestrator') {
-      // Handover 0260: Set execution mode for orchestrator before redirecting
-      try {
-        const mode = usingClaudeCodeSubagents.value ? 'claude_code' : 'multi_terminal'
-        await api.agentJobs.setExecutionMode(agent.job_id || agent.agent_id, mode)
-        console.log(`[JobsTab] Set execution mode to ${mode} for orchestrator`)
-      } catch (modeError) {
-        console.error('[JobsTab] Failed to set execution mode:', modeError)
-        // Non-fatal: continue to Launch tab
-      }
-
       showToast({
         message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
         type: 'info',
