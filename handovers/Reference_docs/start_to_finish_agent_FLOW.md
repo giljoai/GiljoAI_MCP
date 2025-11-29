@@ -228,33 +228,29 @@ PHASE 4: PROJECT ORCHESTRATION
                   └──► [12] UI Shows "Launch Jobs" 
                              ├──► Pressing "Launch Jobs" navigates to 2nd Tab on project custom link 'Implementation'
                              ├──► [NEW - Handover 0105] Claude Code Subagent Toggle appears at top of Implementation tab
-                             │    ├─► Toggle switch on Claude code CLI mode
+                             │    ├─► 
+                             │    │        
+                             │    ├─► Default state: OFF (general multi-terminal mode)
+                             │    ├─► Toggle OFF: All agents prompt copy buttons ">" active
+                             │    │    └─► Hint: "General terminal mode - All agents launch in independent terminal windows"
+                             │    │    └─► Each prompt is uniqyue for each agent with thier Agent ID, job ID, the agent template profile
+                             │    │    └─► User copies each prompt in unique terminal window
+                             │    │    └─► Prompt tells each agent to fetch instructions from MCP server
+                             │    │    └─► Instructions include job to be done, MCP rules and behaviors, how to communicate, and awareness of the other agents etc.
+                             │    │    └─► oven orchestrator gets a prompt and mission, to coordinate.
+                             │    │    └─► user has to manually nudge agents along, unless in cases where they run in parallel vs sequential
+                             │    │    └─► user can send messages to orchestrator or broadcast
+                             │    ├─► Toggle ON: Only orchestrator copy prompt button ">" active, others grayed out
+                             │    │    └─► Toggle switch on Claude code CLI mode
                              │    │    └─► Disables all prompt copy icons ">" for every agent EXCEPT orchestrator
                              │    │    └─► Loads unique orchestrator instructions instrucing orchestrator to use claude code subagents
+                             │    │    └─► user can send messages to orchestrator or broadcast
                              │    │        └─► User pressed prompt copy button ">" and pastes into a terminal
                              │    │        └─► instructions orchestrator to fetch loaded instructions
                              │    │        └─► instructions tells orchestrator to spawn subagnets and its coordination role
                              │    │        └─► Each subaents gets their own ID from orchestrator and other needed ID's, job, project etc.
                              │    │        └─► Each subagents gets their uniqye JOB ID to fetch their instructions
-                             │    │        
-                             │    ├─► Default state: OFF (multi-terminal mode)
-                             │    ├─► Toggle OFF: All agents prompt copy buttons ">" active
-                             │    │    └─► Hint: "General terminal mode - All agents launch in independent terminal windows"
-                             │    └─► Toggle ON: Only orchestrator copy prompt button ">" active, others grayed out
-                             │         └─► Hint: "Claude Code subagent mode - Launch only orchestrators"
-                             │
-                             ├──► [TOGGLE OFF] Multi-Terminal Mode (Default):
-                             │    ├─► All agent ">" buttons active
-                             │    ├─► User copies each agent prompt individually
-                             │    └─► User pastes in separate terminal windows (one per agent)
-                             │
-                             └──► [TOGGLE ON] Claude Code Single-Terminal Mode:
-                                  ├─► Only orchestrator "Launch Agent" button active
-                                  ├─► All other agent buttons disabled (grey, "Claude Code Mode" text)
-                                  ├─► Tooltip on disabled: "Claude spawns this agent automatically"
-                                  ├─► User copies orchestrator prompt only
-                                  └─► User pastes in single Claude Code terminal (Claude spawns subagents via MCP)
-
+                             
 
 PHASE 5: AGENT EXECUTION
 ═══════════════════════════════════════════════════════════════════════════════
@@ -265,7 +261,7 @@ PHASE 5: AGENT EXECUTION
     └─────────────┬────────────────────────────────────────────────────────┘
                   │
                   ├──► [13] User Launches Orchestrator Agent
-                  │          └─► 🔄 [Implementation TAB] Shows orchestrator card with launch prompt
+                  │          └─► 🔄 [Implementation TAB] Shows orchestrator card with launch prompt button ">"
                   │          └─► User copies orchestrator prompt to clipboard
                   │          └─► User pastes prompt into terminal with AI coding tool (Claude/Codex/Gemini)
                   │          └─► Agent reads prompt with complete project context from [LAUNCH TAB] staging
@@ -274,29 +270,37 @@ PHASE 5: AGENT EXECUTION
                   │                └─► Retrieve MCPAgentJob records with status="waiting" (initial state)
                   │
                   ├──► [14] Orchestrator Claims Job & Begins Coordination
-                  │          └─► ✅ MCP tool: acknowledge_job()
-                  │                └─► Update job status: waiting → active → working
-                  │                └─► Store agent_id for tracking
-                  │                └─► UI updates: Orchestrator card shows "In Progress"
+                  │          └─► ✅ MCP tool: reads job and uses MCP to flag it
+                  │          └─► ✅ MCP tool: acknowledges job and uses MCP to flag it
+                  │                └─► Update job status: waiting → working → completed → failed → blocked
+                  │                └─► UI updates: Orchestrator card shows "Working" etc
                   │
-                  ├──► [15] Orchestrator Activates Sub-Agent Team
+                  ├──► [15] Sub-Agent Team
                   │          └─► For each agent role in spawned team (up to 8 roles, unlimited agents per role):
                   │                │
                   │                ├─► [CLAUDE CODE FLOW] Native Sub-Agent Spawning
                   │                │      └─► Orchestrator uses native Claude sub-agent capabilities
-                  │                │      └─► Sub-agents spawn automatically in same terminal session
-                  │                │      └─► Each sub-agent gets role-specific mission fragment
-                  │                │      └─► UI shows: Agent cards update to "Spawned by Orchestrator"
+                  │                │      └─► Sub-agents spawned within same terminal session
+                  │                │      ├─► ✅ MCP tool: orchestrator gives instructions to subagents to reads job via MCP
+                  │                │      │   └─► Each sub-agent gets role-specific mission fragment
+                  │                │      └─► Agent instructions on how to use MCP resides in agent templates pre installed in claude code (separate process which is documented within this applications reference documents in ./handovers folder)
+                  │                │          └─► In template: ✅ MCP tool: reads job and uses MCP to flag it
+                  │                │          └─► In template: Such as ✅ MCP tool: acknowledges job and uses MCP to flag it
+                  │                │                 └─► Update job status: waiting → working → completed → failed → blocked
+                  │                │                 └─► UI updates: Agent card shows "Working" etc
+                  │                │ 
                   │                │
                   │                └─► [CODEX/GEMINI FLOW] Manual Multi-Terminal Spawning
-                  │                       ├─► ✅ MCP tool: spawn_agent_job()
-                  │                       │     └─► Create new MCPAgentJob (status="waiting")
-                  │                       │     └─► Set agent_type (implementer, tester, documenter, reviewer, analyzer)
-                  │                       │     └─► Set spawned_by=orchestrator_job_id
-                  │                       │
-                  │                       └─► UI shows: Agent cards with individual launch prompts
-                  │                           └─► User copies each agent prompt to separate terminal windows
+                  │                       └─► UI shows: Agent cards with individual launch prompts buttons ">"
+                  │                           ├─► User copies each agent prompt to separate terminal windows
+                  │                           │  └─► Agent gets its agent ID, its job ID
+                  │                           │  └─► Agent fetches MCP job, and its profile and MCP usage rules
                   │                           └─► Each agent launches in dedicated CLI coding tool instance
+                  │                                └─► ✅ MCP tool: reads job and uses MCP to flag it
+                  │                                └─► ✅ MCP tool: acknowledges job and uses MCP to flag it
+                  │                                   └─► Update job status: waiting → working → completed → failed → blocked
+                  │                                   └─► UI updates: Agent card shows "Working" etc
+                  │
                   │
                   ├──► [16] Agent Team Executes in Coordination
                   │          └─► Each agent (Claude sub-agents or separate terminals):
@@ -306,6 +310,7 @@ PHASE 5: AGENT EXECUTION
                   │                │      └─► Retrieves job by agent_job_id
                   │                │      └─► Gets specialized role, mission context, priorities
                   │                │      └─► Accesses Serena MCP if enabled for enhanced capabilities
+                  │                │      └─► IF in general multi terminal mode, gets its agent template role
                   │                │
                   │                ├──► [B] Agent performs specialized work
                   │                │      └─► Implementer: Execute code changes, file modifications
