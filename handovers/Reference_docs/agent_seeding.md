@@ -11,17 +11,17 @@
 
 
 
-● Perfect! I've created Handover 0252: Three-Layer Instruction Architecture Cleanup as a comprehensive
+● Perfect! I've created Handover 0254: Three-Layer Instruction Architecture Cleanup as a comprehensive
   implementation plan.
 
   📄 Handover Document Created
 
-  Location: F:\GiljoAI_MCP\handovers\0252_three_layer_instruction_cleanup.md
+  Location: F:\GiljoAI_MCP\handovers\0254_three_layer_instruction_cleanup.md
 
   Size: ~47,000 tokens (comprehensive production-grade document)
 
   ---
-  🎯 What's in Handover 0252
+  🎯 What's in Handover 0254
 
   Executive Summary
 
@@ -97,9 +97,9 @@
 
   Would you like me to:
 
-  A) Present a combined plan for both Handover 0251 + 0252 together?
+  A) Present a combined plan for both Handover 0251 + 0254 together?
 
-  B) Proceed with 0252 only (instruction cleanup) and defer 0251?
+  B) Proceed with 0254 only (instruction cleanup) and defer 0251?
 
   C) Review the handover document further before deciding?
 
@@ -112,7 +112,7 @@
 this link "Manual Agent Installation" Dynamic zip file from Agent Template Manager with installation scripts.  in
 http://10.1.0.164:7274/settings "integrations" vue tab.
 
-● Excellent question! Let me investigate whether Handover 0252 addresses all seeded templates and the packaged agent
+● Excellent question! Let me investigate whether Handover 0254 addresses all seeded templates and the packaged agent
    template export system.
 
 ● Plan(Investigate agent template seeding and export system)
@@ -127,7 +127,7 @@ http://10.1.0.164:7274/settings "integrations" vue tab.
 
   1. The 3 .md Files Are ORPHANED Legacy Artifacts ❌
 
-  The three files Handover 0252 targets:
+  The three files Handover 0254 targets:
   - claude_agent_templates/giljo-orchestrator.md
   - claude_agent_templates/giljo-implementer.md
   - claude_agent_templates/giljo-tester.md
@@ -225,9 +225,9 @@ http://10.1.0.164:7274/settings "integrations" vue tab.
   Proof: analyzer, reviewer, documenter have NEVER had static .md files but export perfectly fine (from database).
 
   ---
-  HANDOVER 0252 SCOPE UPDATE REQUIRED ⚠️
+  HANDOVER 0254 SCOPE UPDATE REQUIRED ⚠️
 
-  Current Handover 0252 Scope:
+  Current Handover 0254 Scope:
 
   - Fix 3 static .md files (orchestrator, implementer, tester)
 
@@ -251,7 +251,7 @@ http://10.1.0.164:7274/settings "integrations" vue tab.
   ---
   Option B: Delete Static Files Only (No Production Impact)
 
-  Delete claude_agent_templates/*.md files as planned in Handover 0252.
+  Delete claude_agent_templates/*.md files as planned in Handover 0254.
 
   Impact: ✅ CLEANUP ONLY - Removes legacy artifacts, but doesn't fix production templates
 
@@ -259,7 +259,7 @@ http://10.1.0.164:7274/settings "integrations" vue tab.
   Option C: Both (Recommended)
 
   1. Fix database template definitions (template_seeder.py)
-  2. Update GenericAgentTemplate (as planned in Handover 0252)
+  2. Update GenericAgentTemplate (as planned in Handover 0254)
   3. Delete orphaned .md files
 
   Impact: ✅ COMPLETE FIX - Fixes production + cleans up legacy files
@@ -267,17 +267,17 @@ http://10.1.0.164:7274/settings "integrations" vue tab.
   ---
   CRITICAL QUESTION FOR YOU
 
-  Handover 0252 currently targets the wrong files (orphaned .md files instead of database templates).
+  Handover 0254 currently targets the wrong files (orphaned .md files instead of database templates).
 
   Should I:
 
-  A) Update Handover 0252 to fix database templates in template_seeder.py (production impact)?
+  A) Update Handover 0254 to fix database templates in template_seeder.py (production impact)?
 
-  B) Keep Handover 0252 as-is (just delete orphaned files, no production impact)?
+  B) Keep Handover 0254 as-is (just delete orphaned files, no production impact)?
 
   C) Split into TWO handovers:
-  - 0252a: Fix database templates (production)
-  - 0252b: Delete legacy .md files (cleanup)
+  - 0254a: Fix database templates (production)
+  - 0254b: Delete legacy .md files (cleanup)
 
   I recommend Option A because the real problem is in the database template definitions, not the orphaned files.
 

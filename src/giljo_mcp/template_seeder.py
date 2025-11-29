@@ -493,12 +493,12 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
         Metadata is kept separate from template content for maintainability.
     """
     # MCP coordination rules - MOVED TO LAYER 2 (GenericAgentTemplate)
-    # Handover 0252: Layer 3 should focus on role expertise, not MCP protocol
+    # Handover 0254: Layer 3 should focus on role expertise, not MCP protocol
     # All MCP commands now handled by GenericAgentTemplate (Layer 2)
     mcp_rules = []  # Empty - protocol instructions moved to GenericAgentTemplate
 
     # MCP success criteria - MOVED TO LAYER 2 (GenericAgentTemplate)
-    # Handover 0252: Layer 3 should focus on role-specific success, not protocol success
+    # Handover 0254: Layer 3 should focus on role-specific success, not protocol success
     mcp_success = []  # Empty - protocol success criteria moved to GenericAgentTemplate
 
     return {
