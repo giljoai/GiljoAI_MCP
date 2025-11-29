@@ -1226,7 +1226,6 @@ src/giljo_mcp/
 │   ├── message.py              # Message queue tools
 │   ├── context.py              # Context management tools
 │   ├── template.py             # Template CRUD operations
-│   ├── task_templates.py       # Task template management
 │   ├── optimization.py         # Optimization control tools (6 tools)
 │   └── orchestration.py        # ✨ Orchestration tools (Handover 0020)
 └── setup/                      # Setup wizard backend

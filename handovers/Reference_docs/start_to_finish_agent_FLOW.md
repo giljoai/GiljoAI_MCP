@@ -197,16 +197,18 @@ PHASE 4: PROJECT ORCHESTRATION
                   │                │                │           ├─► Step 1: Verify MCP connection via health_check()
                   │                │                │           ├─► Step 2: Fetch mission via get_orchestrator_instructions()
                   │                │                │           │    ├─► Checks for Serena MCP toggle status and advanced Serena Settings
+                  │                │                │           │    ├─► Uses Serena tools to assisnt in work as needed                  
                   │                │                │           │    ├─► Retrieves vision_documents for context (pre-chunked in database)
                   │                │                │           │    ├─► Retrieves product name, description from database
                   │                │                │           │    ├─► Retrieves 'project description' (human-written project requirements)
                   │                │                │           │    ├─► Retrieves all other context BASED ON user's field priorities in 'My Settings'
-                  │                │                │           │    └─► Returns condensed mission (70% token reduction applied)
+                  │                │                │           │    ├─► Retrieves 360 memory and uses Git hub as resources if needed
+                  │                │                │           │    └─► Returns mission
                   │                │                │           ├─► Step 3: PERSIST mission via update_project_mission()
                   │                │                │           │    └─► Saves mission to Project.mission field in database
-                  │                │                │           ├─► Step 4: WebSocket broadcast fires (project:mission_updated)
-                  │                │                │           │    └─► 'Orchestrator Created Mission' window updates live in UI
-                  │                │                │           └─► Step 5: Execute mission and coordinate agents
+                  │                │                │           └─► Step 4: WebSocket broadcast fires (project:mission_updated)
+                  │                │                │                └─► 'Orchestrator Created Mission' window updates live in UI
+                  │                │                │           
                   │                │                │
                   │                │                ├──► [B] Orchestrator selects agents
                   │                │                │      ├─► Query active templates from Agent Template Manager
@@ -223,18 +225,26 @@ PHASE 4: PROJECT ORCHESTRATION
                   │                │                       └─► Create MCPAgentJob records (status=waiting)
                   │                │                       └─► Each job has: agent_type, mission, tenant_key
                   │
-                  └──► [12] UI Shows "Start Implementation" (or similar, name may have changed)
-                             ├──► Pressing "Start Implementation" navigates to 2nd Tab on project custom link 'Implementation'
+                  └──► [12] UI Shows "Launch Jobs" 
+                             ├──► Pressing "Launch Jobs" navigates to 2nd Tab on project custom link 'Implementation'
                              ├──► [NEW - Handover 0105] Claude Code Subagent Toggle appears at top of Implementation tab
-                             │    ├─► Toggle switch with orange robot icon: "Using Claude Code subagents"
+                             │    ├─► Toggle switch on Claude code CLI mode
+                             │    │    └─► Disables all prompt copy icons ">" for every agent EXCEPT orchestrator
+                             │    │    └─► Loads unique orchestrator instructions instrucing orchestrator to use claude code subagents
+                             │    │        └─► User pressed prompt copy button ">" and pastes into a terminal
+                             │    │        └─► instructions orchestrator to fetch loaded instructions
+                             │    │        └─► instructions tells orchestrator to spawn subagnets and its coordination role
+                             │    │        └─► Each subaents gets their own ID from orchestrator and other needed ID's, job, project etc.
+                             │    │        └─► Each subagents gets their uniqye JOB ID to fetch their instructions
+                             │    │        
                              │    ├─► Default state: OFF (multi-terminal mode)
-                             │    ├─► Toggle OFF: All agent buttons active (yellow with rocket icon)
-                             │    │    └─► Hint: "Normal mode - All agents launch as independent MCP instances"
-                             │    └─► Toggle ON: Only orchestrator button active, others grayed out (pause icon)
+                             │    ├─► Toggle OFF: All agents prompt copy buttons ">" active
+                             │    │    └─► Hint: "General terminal mode - All agents launch in independent terminal windows"
+                             │    └─► Toggle ON: Only orchestrator copy prompt button ">" active, others grayed out
                              │         └─► Hint: "Claude Code subagent mode - Launch only orchestrators"
                              │
                              ├──► [TOGGLE OFF] Multi-Terminal Mode (Default):
-                             │    ├─► All agent "Launch Agent" buttons active
+                             │    ├─► All agent ">" buttons active
                              │    ├─► User copies each agent prompt individually
                              │    └─► User pastes in separate terminal windows (one per agent)
                              │

@@ -238,7 +238,6 @@ class TestGiljoMCPServer:
             patch("src.giljo_mcp.tools.message.register_message_tools") as mock_message,
             patch("src.giljo_mcp.tools.context.register_context_tools") as mock_context,
             patch("src.giljo_mcp.tools.template.register_template_tools") as mock_template,
-            patch("src.giljo_mcp.tools.git.register_git_tools") as mock_git,
         ):
             await server._register_tools()
 
@@ -248,7 +247,6 @@ class TestGiljoMCPServer:
             mock_message.assert_called_once_with(server.mcp, server.db_manager, server.tenant_manager)
             mock_context.assert_called_once_with(server.mcp, server.db_manager, server.tenant_manager)
             mock_template.assert_called_once_with(server.mcp, server.db_manager, server.tenant_manager)
-            mock_git.assert_called_once_with(server.mcp, server.db_manager, server.tenant_manager)
 
     @pytest.mark.asyncio
     async def test_register_tools_import_error(self, server_with_mocks):
