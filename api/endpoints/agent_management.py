@@ -84,6 +84,11 @@ class AgentJobMessage(BaseModel):
     message: Dict[str, Any] = Field(..., description="Message object to add")
 
 
+class ExecutionModeRequest(BaseModel):
+    """Handover 0260: Set execution mode for orchestrator job."""
+    mode: str = Field(..., description="Execution mode: 'claude_code' or 'multi_terminal'")
+
+
 class TokenReductionStats(BaseModel):
     total_summaries: int
     total_tokens_saved: int
@@ -475,4 +480,91 @@ async def get_agent_job_statistics(
             return stats
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/agent-jobs/{job_id}/execution-mode", response_model=dict)
+async def set_execution_mode(
+    job_id: str,
+    request: ExecutionModeRequest,
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Set execution mode for orchestrator job (Claude Code CLI vs Multi-Terminal).
+
+    Handover 0260: Wire UI toggle to backend.
+
+    This endpoint stores the execution mode in the orchestrator job's metadata,
+    which is then used by get_orchestrator_instructions() MCP tool to return
+    mode-specific instructions.
+
+    Args:
+        job_id: Orchestrator job UUID
+        request: Execution mode request with mode ('claude_code' or 'multi_terminal')
+        tenant_key: Tenant isolation key
+
+    Returns:
+        dict: Confirmation with job_id and execution_mode
+
+    Raises:
+        HTTPException: 400 if invalid mode, 403 if access denied, 404 if job not found
+    """
+    from api.app import state
+    from sqlalchemy.orm.attributes import flag_modified
+    from src.giljo_mcp.models import MCPAgentJob
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Validate mode
+    if request.mode not in ["claude_code", "multi_terminal"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid execution mode: {request.mode}. Must be 'claude_code' or 'multi_terminal'",
+        )
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Get job
+            job = await db.get(MCPAgentJob, job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            # Verify tenant
+            if job.tenant_key != tenant_key:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            # Verify orchestrator job (only orchestrators have execution mode)
+            if job.agent_type != "orchestrator":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Can only set execution mode for orchestrator jobs",
+                )
+
+            # Update metadata
+            if not job.metadata:
+                job.metadata = {}
+            job.metadata["execution_mode"] = request.mode
+            flag_modified(job, "metadata")
+
+            await db.commit()
+            await db.refresh(job)
+
+            logger.info(
+                f"[Handover 0260] Set execution mode to {request.mode} for orchestrator job {job_id}"
+            )
+
+            return {
+                "job_id": job_id,
+                "execution_mode": request.mode,
+                "message": f"Execution mode set to {request.mode}",
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to set execution mode for job {job_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
