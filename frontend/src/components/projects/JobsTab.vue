@@ -549,20 +549,20 @@ function shouldShowCopyButton(agent) {
  */
 async function handlePlay(agent) {
   try {
-    let promptText = ''
-
+    // Handover 0253: Orchestrator uses UNIVERSAL prompt from LaunchTab
     if (agent.agent_type === 'orchestrator') {
-      // Orchestrator prompt depends on Claude Code subagent toggle
-      const response = await api.prompts.execution(
-        agent.job_id || agent.agent_id,
-        usingClaudeCodeSubagents.value,
-      )
-      promptText = response.data?.prompt || ''
-    } else {
-      // Specialist agent universal prompt
-      const response = await api.prompts.agentPrompt(agent.job_id || agent.agent_id)
-      promptText = response.data?.prompt || ''
+      showToast({
+        message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
+        type: 'info',
+        duration: 3000
+      })
+      return
     }
+
+    // Specialist agent universal prompt
+    let promptText = ''
+    const response = await api.prompts.agentPrompt(agent.job_id || agent.agent_id)
+    promptText = response.data?.prompt || ''
 
     if (!promptText) {
       throw new Error('No prompt text returned')

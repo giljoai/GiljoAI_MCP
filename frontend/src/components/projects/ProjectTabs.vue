@@ -27,6 +27,7 @@
           variant="outlined"
           color="yellow-darken-2"
           rounded
+          prepend-icon="mdi-content-copy"
           :loading="loadingStageProject"
           :disabled="hasActiveOrchestrator"
           :title="hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt'"
@@ -420,9 +421,9 @@ async function handleStageProject() {
     if (copied) {
       console.log('[ProjectTabs] Orchestrator prompt copied to clipboard')
       // Show success toast
-      toastMessage.value = 'Launch prompt copied to clipboard'
+      toastMessage.value = 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)'
       toastColor.value = 'success'
-      toastDuration.value = 3000
+      toastDuration.value = 4000
       toastVisible.value = true
     } else {
       alert(`Please manually copy this prompt:\n\n${prompt}`)

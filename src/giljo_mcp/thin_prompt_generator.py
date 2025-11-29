@@ -849,73 +849,28 @@ No previous project history available. Starting fresh.
         claude_code_mode: bool = False
     ) -> str:
         """
-        Generate execution phase prompt for orchestrator.
-
-        Handover 0109: Generates thin client prompts for project execution phase.
-        Supports TWO modes:
-        - Multi-terminal: User manually launches agents in separate terminals
-        - Claude Code: Orchestrator spawns sub-agents using Task tool
-
-        Args:
-            orchestrator_job_id: Existing orchestrator job UUID
-            project_id: Project UUID
-            claude_code_mode: True for Claude Code subagent spawning, False for multi-terminal
-
-        Returns:
-            Thin prompt for execution phase (~15-20 lines)
-
-        Raises:
-            ValueError: If orchestrator job or project not found
+        DEPRECATED: Use generate_staging_prompt() instead (universal Scenario B).
+        
+        This method is kept for backward compatibility only.
+        Will be removed in v4.0.
         """
-        # Fetch orchestrator job
-        orch_stmt = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.job_id == orchestrator_job_id,
-                MCPAgentJob.tenant_key == self.tenant_key
-            )
+        logger.warning(
+            "[ThinPromptGenerator] generate_execution_prompt() is deprecated. "
+            "Use generate_staging_prompt() for universal prompt generation.",
+            extra={
+                "method_called": "generate_execution_prompt",
+                "recommended_method": "generate_staging_prompt",
+                "orchestrator_job_id": orchestrator_job_id,
+                "project_id": project_id,
+                "tenant_key": self.tenant_key
+            }
         )
-        orch_result = await self.db.execute(orch_stmt)
-        orchestrator = orch_result.scalar_one_or_none()
-
-        if not orchestrator:
-            raise ValueError(f"Orchestrator job {orchestrator_job_id} not found")
-
-        # Fetch project
-        project_stmt = select(Project).where(
-            and_(
-                Project.id == project_id,
-                Project.tenant_key == self.tenant_key
-            )
-        )
-        project_result = await self.db.execute(project_stmt)
-        project = project_result.scalar_one_or_none()
-
-        if not project:
-            raise ValueError(f"Project {project_id} not found")
-
-        # Fetch specialist agent jobs for this project (exclude orchestrator)
-        agents_stmt = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.project_id == project_id,
-                MCPAgentJob.tenant_key == self.tenant_key,
-                MCPAgentJob.agent_type != "orchestrator"
-            )
-        ).order_by(MCPAgentJob.created_at)
-
-        agents_result = await self.db.execute(agents_stmt)
-        agent_jobs = agents_result.scalars().all()
-
-        # Generate appropriate prompt based on mode
-        if claude_code_mode:
-            return self._build_claude_code_execution_prompt(
-                orchestrator_id=orchestrator_job_id,
-                project=project,
-                agent_jobs=agent_jobs
-            )
-        return self._build_multi_terminal_execution_prompt(
+        
+        # Redirect to universal prompt generator
+        return await self.generate_staging_prompt(
             orchestrator_id=orchestrator_job_id,
-            project=project,
-            agent_jobs=agent_jobs
+            project_id=project_id,
+            claude_code_mode=claude_code_mode
         )
 
     async def generate_staging_prompt(
@@ -925,20 +880,15 @@ No previous project history available. Starting fresh.
         claude_code_mode: bool = False
     ) -> str:
         """
-        Generate staging phase prompt with 7-task workflow.
+        Generate UNIVERSAL orchestrator prompt (Handover 0253).
 
-        Handover 0246a: Implements complete staging workflow with:
-        1. Identity & Context Verification
-        2. MCP Health Check
-        3. Environment Understanding
-        4. Agent Discovery & Version Check (CRITICAL)
-        5. Context Prioritization & Mission Creation
-        6. Agent Job Spawning
-        7. Activation
+        Uses "fetch-first" pattern - ALWAYS calls get_orchestrator_instructions()
+        MCP tool first, then adapts workflow based on current state.
 
-        Handover 0247 Gaps:
-        - Gap 1: Version comparison logic added to Task 4
-        - Gap 2: CLAUDE.md reading instruction added to Task 3
+        Works in ALL scenarios:
+        - Fresh terminal (full staging workflow)
+        - Existing terminal (skip completed tasks)
+        - Crashed session (resume from last checkpoint)
 
         Args:
             orchestrator_id: Orchestrator job UUID
@@ -946,7 +896,7 @@ No previous project history available. Starting fresh.
             claude_code_mode: Use Claude Code CLI mode (default: False)
 
         Returns:
-            Staging prompt (~800-1000 tokens with all tasks)
+            Universal prompt that works in any terminal session
 
         Raises:
             ValueError: If project or product not found
