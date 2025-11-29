@@ -518,6 +518,13 @@ async def get_execution_prompt(
 ):
     """
     Generate execution phase prompt for orchestrator (Handover 0109).
+    
+    DEPRECATED (Handover 0253): Use /api/prompts/staging/{project_id} instead.
+    
+    This endpoint returns scenario-specific prompts (Scenario A).
+    The new universal prompt (/staging) works in ALL scenarios using fetch-first pattern.
+    
+    This endpoint will be removed in v4.0.
 
     This endpoint generates ready-to-paste prompts for the execution phase,
     AFTER the orchestrator has completed staging and created the mission plan.
@@ -548,6 +555,8 @@ async def get_execution_prompt(
             - prompt: Ready-to-paste execution prompt
             - agent_count: Number of specialist agents
             - estimated_tokens: Token estimate for prompt
+            - deprecated: True (Handover 0253)
+            - migration_note: Migration guidance
 
     Raises:
         HTTPException 404: Orchestrator job not found or not accessible
@@ -556,6 +565,12 @@ async def get_execution_prompt(
         HTTPException 500: Prompt generation error
     """
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+    # Log deprecation warning (Handover 0253 Phase 3)
+    logger.warning(
+        f"[DEPRECATED] /api/prompts/execution called for orchestrator {orchestrator_job_id}. "
+        "Use /api/prompts/staging for universal prompt generation."
+    )
 
     try:
         # Initialize thin client generator
@@ -604,14 +619,14 @@ async def get_execution_prompt(
         agent_count_result = await db.execute(agent_count_stmt)
         agent_count = int(agent_count_result.scalar() or 0)
 
-        # Generate execution prompt (returns a string)
-        prompt_text = await generator.generate_execution_prompt(
-            orchestrator_job_id=orchestrator_job_id,
+        # Use universal prompt generator (Handover 0253)
+        prompt_text = await generator.generate_staging_prompt(
+            orchestrator_id=orchestrator_job_id,
             project_id=job.project_id,
-            claude_code_mode=claude_code_mode,
+            claude_code_mode=claude_code_mode
         )
 
-        # Build frontend-compatible response
+        # Build frontend-compatible response with deprecation markers
         response = {
             "success": True,
             "orchestrator_job_id": orchestrator_job_id,
@@ -621,6 +636,8 @@ async def get_execution_prompt(
             "prompt": prompt_text,
             "agent_count": agent_count,
             "estimated_tokens": len(prompt_text) // 4,
+            "deprecated": True,
+            "migration_note": "Use /api/prompts/staging/{project_id} for universal prompts"
         }
 
         logger.info(

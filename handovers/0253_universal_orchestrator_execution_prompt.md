@@ -1,4 +1,4 @@
-# Handover 0251: Universal Orchestrator Execution Prompt (Stateless Fetch-First Pattern)
+# Handover 0253: Universal Orchestrator Execution Prompt (Stateless Fetch-First Pattern)
 
 **Date**: 2025-11-28
 **Status**: READY FOR IMPLEMENTATION
@@ -178,7 +178,7 @@ async def generate_staging_prompt(
     claude_code_mode: bool = False
 ) -> str:
     """
-    Generate UNIVERSAL orchestrator prompt (Handover 0251).
+    Generate UNIVERSAL orchestrator prompt (Handover 0253).
 
     Uses "fetch-first" pattern - ALWAYS calls get_orchestrator_instructions()
     MCP tool first, then adapts workflow based on current state.
@@ -291,7 +291,7 @@ For orchestrator agents, redirect to LaunchTab:
 ```javascript
 async function handlePlay(agent) {
   try {
-    // Handover 0251: Orchestrator uses UNIVERSAL prompt from LaunchTab
+    // Handover 0253: Orchestrator uses UNIVERSAL prompt from LaunchTab
     if (agent.agent_type === 'orchestrator') {
       showToast({
         message: 'Use "Copy Orchestrator Prompt" button in Launch tab for universal prompt',
@@ -341,7 +341,7 @@ async def get_execution_prompt(
     """
     Generate execution phase prompt for orchestrator (Handover 0109).
 
-    DEPRECATED (Handover 0251): Use /api/prompts/staging/{project_id} instead.
+    DEPRECATED (Handover 0253): Use /api/prompts/staging/{project_id} instead.
 
     This endpoint returns scenario-specific prompts (Scenario A).
     The new universal prompt (/staging) works in ALL scenarios using fetch-first pattern.
@@ -409,7 +409,7 @@ async def generate_universal_orchestrator_prompt(
     ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ):
     """
-    Generate UNIVERSAL orchestrator prompt (Handover 0251 - Fetch-First Pattern).
+    Generate UNIVERSAL orchestrator prompt (Handover 0253 - Fetch-First Pattern).
 
     REPLACES: Both /staging and /execution endpoints (unified approach)
 
@@ -595,4 +595,4 @@ git checkout HEAD -- api/endpoints/prompts.py
 
 ---
 
-**END OF HANDOVER 0251**
+**END OF HANDOVER 0253**
