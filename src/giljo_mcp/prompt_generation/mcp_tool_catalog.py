@@ -16,7 +16,8 @@ Handover 0270: Add Comprehensive MCP Tool Catalog
 """
 
 import logging
-from typing import Optional
+from typing import ClassVar, Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class MCPToolCatalogGenerator:
     """Generate comprehensive MCP tool catalogs for orchestrators and agents."""
 
     # Tool definitions organized by category
-    TOOLS = {
+    TOOLS: ClassVar[dict] = {
         "orchestration": {
             "get_orchestrator_instructions": {
                 "params": ["orchestrator_id: str", "tenant_key: str"],
@@ -483,7 +484,7 @@ for agent in members['agents']:
     }
 
     # Agent-type specific tool mappings
-    AGENT_TOOL_MAPPINGS = {
+    AGENT_TOOL_MAPPINGS: ClassVar[dict] = {
         "orchestrator": [
             "orchestration.get_orchestrator_instructions",
             "orchestration.spawn_agent_job",
@@ -861,10 +862,10 @@ await complete_agent_job(
         if agent_type == "orchestrator":
             catalog += self._generate_usage_workflow()
         else:
-            catalog += f"## Quick Start\n\n1. Call `get_agent_mission()` to fetch your assignment\n"
-            catalog += f"2. Call `get_project_context()` to understand the project\n"
-            catalog += f"3. Call `update_job_progress()` to report status every 10-20% completion\n"
-            catalog += f"4. Call `send_message()` if you need help from other agents\n"
-            catalog += f"5. Call `complete_agent_job()` when finished\n\n"
+            catalog += "## Quick Start\n\n1. Call `get_agent_mission()` to fetch your assignment\n"
+            catalog += "2. Call `get_project_context()` to understand the project\n"
+            catalog += "3. Call `update_job_progress()` to report status every 10-20% completion\n"
+            catalog += "4. Call `send_message()` if you need help from other agents\n"
+            catalog += "5. Call `complete_agent_job()` when finished\n\n"
 
         return catalog
