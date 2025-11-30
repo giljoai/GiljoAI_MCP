@@ -13,6 +13,7 @@ All operations use ProjectService.
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -390,11 +391,15 @@ async def purge_deleted_project(
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectPurgeResponse:
     """
-    Permanently delete a specific soft-deleted project.
-    """
-    logger.info("User %s purging deleted project %s", current_user.username, project_id)
+    Immediately perform nuclear delete on a specific soft-deleted project.
 
-    result = await project_service.purge_deleted_project(project_id)
+    This is triggered when user clicks the trash icon next to a deleted project.
+    Performs complete removal of project and ALL associated data immediately.
+    """
+    logger.info("User %s performing NUCLEAR PURGE on deleted project %s", current_user.username, project_id)
+
+    # Use nuclear delete for immediate permanent deletion
+    result = await project_service.nuclear_delete_project(project_id)
 
     if not result.get("success"):
         error_msg = result.get("error", "Failed to purge project")
@@ -402,12 +407,19 @@ async def purge_deleted_project(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
-    projects = [PurgedProject(**proj) for proj in result.get("projects", [])]
+    # Format response to match PurgeResponse model
+    project_info = {
+        "id": project_id,
+        "name": result.get("project_name", "Unknown"),
+        "tenant_key": result.get("tenant_key", ""),
+        "deleted_at": datetime.utcnow().isoformat()
+    }
+
     return ProjectPurgeResponse(
         success=True,
-        purged_count=result.get("purged_count", 0),
-        projects=projects,
-        message="Project purged successfully",
+        purged_count=1,
+        projects=[PurgedProject(**project_info)],
+        message=f"Project permanently deleted. Removed: {result.get('deleted_counts', {})}",
     )
 
 
@@ -443,7 +455,7 @@ async def delete_project(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to delete project: {e}")
+        logger.error(f"Failed to nuclear delete project: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete project: {str(e)}",
