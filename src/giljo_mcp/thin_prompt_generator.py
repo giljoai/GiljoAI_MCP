@@ -174,7 +174,8 @@ class ThinClientPromptGenerator:
             if user:
                 # Use user config if not provided
                 if not field_priorities and user.field_priority_config:
-                    field_priorities = user.field_priority_config
+                    # Extract priorities dict from v2.0 structure
+                    field_priorities = user.field_priority_config.get("priorities", {})
 
                 if not depth_config and user.depth_config:
                     depth_config = user.depth_config

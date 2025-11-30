@@ -126,94 +126,99 @@ Prerequisites:
     )
 
 
-@router.post("/orchestrator", response_model=ThinPromptResponse)
+@router.post("/prompts/orchestrator-thin", response_model=OrchestratorPromptResponse)
 async def generate_orchestrator_prompt_thin(
     request: OrchestratorPromptRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-):
+    db: AsyncSession = Depends(get_db),
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
+) -> OrchestratorPromptResponse:
     """
-    Generate thin client orchestrator prompt (~10 lines).
-
-    CRITICAL CHANGE (Handover 0088):
-    - OLD: Returns 2000-3000 line prompt with embedded mission
-    - NEW: Returns 10-line prompt with MCP tool reference
-    - BENEFIT: context prioritization and orchestration ACTIVE + professional UX
-
-    Process:
-    1. Create orchestrator job in database
-    2. Store condensed mission with user's field priorities
-    3. Return thin prompt with orchestrator_id
-    4. User pastes prompt into CLI
-    5. Orchestrator calls get_orchestrator_instructions() via MCP
-    6. Context prioritization achieved
-
+    Generate a thin orchestrator prompt for GiljoMCP Agent Orchestration.
+    
+    Handover 0088: Thin Client Architecture
+    - Prompt is only ~300 tokens (down from ~3500)
+    - Mission fetched via get_orchestrator_instructions() MCP tool
+    - Field priorities applied at MCP tool call time, not prompt generation
+    - Context size tracking built into thin client flow
+    
+    Handover 0246a (Nov 2025): Further optimizations
+    - Staging prompt reduced from ~1600 to 931 tokens (42% reduction)
+    - 7-task standardized workflow
+    - Clean separation between staging/execution
+    
     Args:
-        request: Contains project_id, tool, and optional instance_number
-        current_user: Authenticated user (for field priorities)
+        request: Request containing project_id, tool, and instance_number
+        current_user: Currently authenticated user
         db: Database session
-
+        
     Returns:
-        ThinPromptResponse with ~10 line prompt and metadata
-
+        OrchestratorPromptResponse with thin prompt
+    
     Raises:
-        404: Project not found
-        400: Invalid tool parameter
-        500: Generation error
+        HTTPException: If project not found or error occurs
     """
-    from api.dependencies.websocket import get_websocket_dependency
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-
     try:
-        # Initialize thin client generator
+        project_id = request.project_id
+        tool = request.tool or "universal"
+        instance_number = request.instance_number or 1
+        
+        # Create thin prompt generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
-
+        
+        # BUG FIX: Fetch user's field priority configuration from database
+        # Extract 'priorities' dict from user's field_priority_config JSONB column
+        # Fixed: Was looking for "fields" but should be "priorities"
+        user_field_config = current_user.field_priority_config or {}
+        field_priorities = user_field_config.get("priorities", {})
+        
         # Generate thin prompt with user field priorities
         result = await generator.generate(
-            project_id=request.project_id,
+            project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
-            tool=request.tool,
-            instance_number=request.instance_number or 1,
+            tool=tool,
+            instance_number=instance_number,
+            field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
-
+        
         # Broadcast WebSocket event for real-time UI update
-        # Get WebSocket dependency
-        ws_manager = await get_websocket_dependency()
-
-        if ws_manager.is_available():
-            await ws_manager.broadcast_to_tenant(
+        if ws_dep.is_available():
+            await ws_dep.broadcast_to_tenant(
                 tenant_key=current_user.tenant_key,
                 event_type="orchestrator:prompt_generated",
                 data={
-                    "orchestrator_id": result.orchestrator_id,
-                    "project_id": result.project_id,
-                    "estimated_prompt_tokens": result.estimated_prompt_tokens,
+                    "project_id": project_id,
+                    "orchestrator_id": result["orchestrator_id"],
+                    "instance_number": result["instance_number"],
+                    "estimated_tokens": result["estimated_prompt_tokens"],
                     "thin_client": True,
-                    "tool": request.tool,
-                    "instance_number": request.instance_number or 1,
-                },
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
             )
-            logger.info(f"[THIN PROMPT] WebSocket broadcast sent for orchestrator {result.orchestrator_id}")
-
-        logger.info(
-            f"[THIN PROMPT] Generated successfully - "
-            f"orchestrator={result.orchestrator_id}, "
-            f"project={request.project_id}, "
-            f"tokens={result.estimated_prompt_tokens}, "
-            f"user={current_user.username}"
+        
+        return OrchestratorPromptResponse(
+            success=True,
+            orchestrator_id=result["orchestrator_id"],
+            prompt=result["thin_prompt"],
+            instance_number=result["instance_number"],
+            context_budget=result["context_budget"],
+            context_used=0,  # New orchestrator starts with 0 context used
+            estimated_prompt_tokens=result["estimated_prompt_tokens"],
+            thin_client=True,
+            status="ready"
         )
-
-        return result
-
+        
     except ValueError as e:
-        # Project not found or invalid tool
-        logger.warning(f"[THIN PROMPT] Validation error for project={request.project_id}: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception as e:
-        # Unexpected error
-        logger.exception(f"[THIN PROMPT] Generation failed for project={request.project_id}: {e}")
+        logger.error(f"Validation error generating thin orchestrator prompt: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin prompt: {e!s}"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error generating thin orchestrator prompt: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate orchestrator prompt: {str(e)}"
         )
 
 
@@ -450,9 +455,9 @@ async def generate_staging_prompt(
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
         # BUG FIX: Fetch user's field priority configuration from database
-        # Extract 'fields' dict from user's field_priority_config JSONB column
+        # Extract 'priorities' dict from user's field_priority_config JSONB column (v2.0 schema)
         user_field_config = current_user.field_priority_config or {}
-        field_priorities = user_field_config.get("fields", {})
+        field_priorities = user_field_config.get("priorities", {})
 
         # Generate thin prompt with user field priorities
         result = await generator.generate(
