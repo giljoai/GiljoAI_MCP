@@ -1446,11 +1446,17 @@ Success Criteria:
         """
         Extract project history from product_memory.sequential_history with priority-based detail levels.
 
+        Includes comprehensive instructions for orchestrators on:
+        - How to read and interpret 360 Memory history
+        - How to update memory at project completion
+        - MCP tool usage examples
+        - Git integration status
+
         Priority-based detail levels:
-        - 10 (full): All history entries (up to max_entries) with summary + outcomes + decisions
-        - 7-9 (moderate): Last 5 entries with summary + outcomes
-        - 4-6 (abbreviated): Last 3 entries with summary only
-        - 1-3 (minimal): Last 1 entry with summary only
+        - 10 (full): All history entries (up to max_entries) with summary + outcomes + decisions + instructions
+        - 7-9 (moderate): Last 5 entries with summary + outcomes + detailed instructions
+        - 4-6 (abbreviated): Last 3 entries with summary only + abbreviated instructions
+        - 1-3 (minimal): Last 1 entry with summary only + minimal instructions
         - 0 (exclude): Return empty string
 
         Args:
@@ -1459,11 +1465,13 @@ Success Criteria:
             max_entries: Maximum entries to include for full detail (default: 10)
 
         Returns:
-            Formatted markdown string with historical context, or empty string if excluded/no data
+            Formatted markdown string with historical context + memory instructions, or empty string if excluded
 
         Multi-Tenant Isolation:
             Product is already tenant-filtered by upstream code. No additional filtering needed.
         """
+        from src.giljo_mcp.prompt_generation.memory_instructions import MemoryInstructionGenerator
+
         # Priority 0: Exclude entirely
         if priority == 0:
             return ""
@@ -1473,11 +1481,25 @@ Success Criteria:
             return ""
 
         history = product.product_memory.get("sequential_history", [])
-        if not history:
-            return ""
+
+        # Filter out None/invalid entries (defensive against malformed data)
+        valid_history = [h for h in history if h is not None and isinstance(h, dict)]
+
+        # Check git integration status
+        git_integration = product.product_memory.get("git_integration", {})
+        git_enabled = git_integration.get("enabled", False)
+
+        # If no valid history, just return instructions for first project
+        if not valid_history:
+            instructions_gen = MemoryInstructionGenerator()
+            return instructions_gen.generate_context(
+                sequential_history=[],
+                priority=priority,
+                git_enabled=git_enabled
+            )
 
         # Sort by sequence descending (most recent first)
-        sorted_history = sorted(history, key=lambda x: x.get("sequence", 0), reverse=True)
+        sorted_history = sorted(valid_history, key=lambda x: x.get("sequence", 0), reverse=True)
 
         # Determine detail level based on priority
         detail_level = self._get_detail_level(priority)
@@ -1492,10 +1514,10 @@ Success Criteria:
         else:  # full
             entries_to_show = sorted_history[:max_entries]
 
-        # Build formatted context
+        # Build formatted context - historical entries first
         sections = ["## Historical Context (360 Memory)\n"]
         sections.append(
-            f"Product has {len(history)} previous project(s) in history. "
+            f"Product has {len(valid_history)} previous project(s) in history. "
             f"Showing {len(entries_to_show)} most recent:\n"
         )
 
@@ -1528,23 +1550,29 @@ Success Criteria:
                         sections.append(f"- {decision}")
                     sections.append("")
 
-        # Add guidance note
-        sections.append(
-            "\n**Note**: Use this project history to inform your decisions, "
-            "avoid repeating past mistakes, and build on successful patterns.\n"
+        # Add memory instructions from MemoryInstructionGenerator
+        instructions_gen = MemoryInstructionGenerator()
+        memory_instructions = instructions_gen.generate_context(
+            sequential_history=valid_history,
+            priority=priority,
+            git_enabled=git_enabled
         )
+
+        # Combine history entries with instructions
+        if memory_instructions:
+            sections.append("\n" + memory_instructions)
 
         result = "\n".join(sections)
 
         logger.debug(
-            f"Extracted 360 Memory history: {len(entries_to_show)} entries, "
+            f"Extracted 360 Memory history: {len(entries_to_show)} entries + instructions, "
             f"{self._count_tokens(result)} tokens (detail={detail_level})",
             extra={
                 "product_id": str(product.id),
                 "priority": priority,
                 "detail_level": detail_level,
                 "entries_shown": len(entries_to_show),
-                "total_entries": len(history),
+                "total_entries": len(valid_history),
                 "tokens": self._count_tokens(result),
             },
         )
