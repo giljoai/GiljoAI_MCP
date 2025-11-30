@@ -26,6 +26,7 @@ from .database import DatabaseManager
 from .models import Product, Project, User
 from .orchestration_types import AgentConfig, Mission, RequirementAnalysis
 from .repositories.context_repository import ContextRepository
+from .prompt_generation.testing_config_generator import TestingConfigGenerator
 
 
 logger = logging.getLogger(__name__)
@@ -1345,6 +1346,32 @@ Success Criteria:
                         },
                     )
 
+        # === Testing Configuration Section (Handover 0271) ===
+        # Provides testing standards, quality expectations, and TDD guidance
+        # Controlled by user's testing_config field priority
+        testing_priority = effective_priorities.get("testing_config", 0)
+        if testing_priority > 0:
+            testing_context = await self._extract_testing_config(product, testing_priority)
+
+            if testing_context:
+                context_sections.append(testing_context)
+                testing_tokens = self._count_tokens(testing_context)
+                total_tokens += testing_tokens
+
+                # Calculate original tokens for reduction metrics
+                full_testing_context = await self._extract_testing_config(product, priority=1)
+                tokens_before_reduction += self._count_tokens(full_testing_context)
+
+                logger.debug(
+                    f"Testing configuration: {testing_tokens} tokens (priority={testing_priority})",
+                    extra={
+                        "field": "testing_config",
+                        "priority": testing_priority,
+                        "tokens": testing_tokens,
+                        "product_id": str(product.id),
+                    },
+                )
+
         # === MANDATORY: Serena Codebase Context (if enabled) ===
         # Serena integration is controlled by user toggle in My Settings → Integrations
         # When enabled, provides intelligent codebase symbols/structure overview
@@ -1641,6 +1668,46 @@ Success Criteria:
         )
 
         return result
+
+    async def _extract_testing_config(
+        self,
+        product: Product,
+        priority: int
+    ) -> str:
+        """
+        Extract and format testing configuration for orchestrator context.
+
+        Uses TestingConfigGenerator to provide priority-based testing guidance.
+
+        Args:
+            product: Product model containing testing configuration
+            priority: Field priority (1-4) controlling detail level
+
+        Returns:
+            Formatted testing context (empty if priority=4 or no config)
+        """
+        # Get testing config from product.config_data
+        config_data = product.config_data or {}
+        testing_config = config_data.get("testing_config", {})
+
+        # Generate context using TestingConfigGenerator
+        testing_context = TestingConfigGenerator.generate_context(
+            testing_config=testing_config,
+            priority=priority
+        )
+
+        # Log the operation
+        logger.debug(
+            "Extracted testing configuration",
+            extra={
+                "product_id": str(product.id),
+                "priority": priority,
+                "has_config": bool(testing_config),
+                "tokens": self._count_tokens(testing_context) if testing_context else 0,
+            },
+        )
+
+        return testing_context
 
     async def analyze_requirements(self, product: Product, project_description: str) -> RequirementAnalysis:
         """
