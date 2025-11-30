@@ -98,7 +98,7 @@ async def spawn_agent_job(
                 "project_id": request.project_id,
                 "agent_job_id": result["agent_job_id"],
                 "agent_type": request.agent_type,
-                "status": "pending"
+                "status": "waiting"
             }
         )
         logger.info(f"Agent spawn broadcasted: {result['agent_job_id']}")
