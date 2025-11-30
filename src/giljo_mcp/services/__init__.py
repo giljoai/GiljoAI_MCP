@@ -13,6 +13,7 @@ from .auth_service import AuthService
 from .claude_config_manager import ClaudeConfigManager
 from .config_service import ConfigService
 from .context_service import ContextService
+from .git_service import GitService
 from .message_service import MessageService
 from .orchestration_service import OrchestrationService
 from .product_service import ProductService
@@ -28,6 +29,7 @@ __all__ = [
     "ClaudeConfigManager",
     "ConfigService",
     "ContextService",
+    "GitService",
     "MessageService",
     "OrchestrationService",
     "ProductService",
