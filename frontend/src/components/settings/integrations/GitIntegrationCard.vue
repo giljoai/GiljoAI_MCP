@@ -56,7 +56,7 @@
       <!-- Git Integration Controls -->
       <v-card variant="tonal" class="mb-0">
         <v-card-text class="pa-3">
-          <div class="d-flex align-center justify-between mb-3">
+          <div class="d-flex align-center justify-between">
             <div class="flex-grow-1 d-flex align-center">
               <div class="text-subtitle-2 font-weight-medium mr-4">Enable Git Integration</div>
               <v-switch
@@ -73,53 +73,12 @@
               variant="flat"
               size="small"
               width="120"
-              @click="handleSave"
+              @click="$emit('openAdvanced')"
               :disabled="loading"
-              :loading="loading"
             >
-              Save
+              Advanced
             </v-btn>
           </div>
-
-          <!-- Info Alert (shown when enabled) -->
-          <v-alert v-if="enabled" type="info" variant="tonal" density="compact" class="mb-3">
-            <div class="text-body-2">
-              <strong>Requirement:</strong> Git must be configured with access to your repositories
-              on your system (Windows/Linux/macOS). GiljoAI uses your local git credentials - no
-              server-side authentication needed.
-            </div>
-          </v-alert>
-
-          <!-- Advanced Settings (collapsible) -->
-          <v-expansion-panels v-if="enabled" variant="accordion" class="mt-0">
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                <v-icon start size="small">mdi-cog</v-icon>
-                Advanced Settings
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <v-text-field
-                  v-model.number="localConfig.commit_limit"
-                  label="Commit Limit"
-                  type="number"
-                  min="1"
-                  max="100"
-                  hint="Number of commits to include in orchestrator prompts"
-                  persistent-hint
-                  density="compact"
-                  class="mb-3"
-                />
-                <v-text-field
-                  v-model="localConfig.default_branch"
-                  label="Default Branch"
-                  placeholder="e.g., main, master, develop"
-                  hint="Leave empty for repository default"
-                  persistent-hint
-                  density="compact"
-                />
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
         </v-card-text>
       </v-card>
     </v-card-text>
@@ -127,9 +86,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-
-const props = defineProps({
+defineProps({
   enabled: {
     type: Boolean,
     default: false,
@@ -137,8 +94,10 @@ const props = defineProps({
   config: {
     type: Object,
     default: () => ({
-      commit_limit: 20,
-      default_branch: 'main',
+      use_in_prompts: false,
+      include_commit_history: true,
+      max_commits: 50,
+      branch_strategy: 'main',
     }),
   },
   loading: {
@@ -147,35 +106,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:enabled', 'save'])
-
-const localConfig = ref({
-  commit_limit: props.config?.commit_limit ?? 20,
-  default_branch: props.config?.default_branch ?? 'main',
-})
-
-watch(
-  () => props.config,
-  (newVal) => {
-    if (newVal) {
-      localConfig.value = {
-        commit_limit: newVal.commit_limit ?? 20,
-        default_branch: newVal.default_branch ?? 'main',
-      }
-    }
-  },
-  { deep: true },
-)
-
-function handleSave() {
-  if (props.loading) return
-
-  emit('save', {
-    enabled: props.enabled,
-    commit_limit: localConfig.value.commit_limit,
-    default_branch: localConfig.value.default_branch,
-  })
-}
+defineEmits(['update:enabled', 'openAdvanced'])
 </script>
 
 <style scoped>
