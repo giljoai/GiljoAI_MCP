@@ -954,4 +954,79 @@ After completing this handover:
 
 ---
 
-**End of Handover 0267 - Add Serena MCP Usage Instructions**
+## Implementation Summary - COMPLETED
+
+### Date: 2025-11-30
+### Status: ✅ COMPLETED
+### Implementation Time: 40 minutes
+
+### What Was Built
+Successfully implemented comprehensive Serena MCP usage instructions for orchestrators and spawned agents. The system now generates token-efficient guidance for using Serena's symbolic code navigation tools, enabling 80-90% token savings.
+
+### Key Components Created
+
+1. **SerenaInstructionGenerator** (772 lines)
+   - Full/summary/minimal instruction levels
+   - Agent-type specific guidance
+   - Tool catalog with 13 Serena tools organized by category
+   - Usage patterns and code examples
+   - Token optimization strategies
+   - Caching for performance
+
+2. **Integration with get_orchestrator_instructions**
+   - Checks `features.serena_mcp.use_in_prompts` in config
+   - Generates full instructions when enabled
+   - Prepends to condensed mission for visibility
+   - Graceful fallback if Serena unavailable
+
+3. **Comprehensive Test Suite** (13 tests)
+   - Core functionality tests
+   - Quality and performance tests
+   - Edge case handling
+   - Agent-type specific validation
+
+### Files Created/Modified
+
+**Created:**
+- `src/giljo_mcp/prompt_generation/__init__.py` - Package initialization
+- `src/giljo_mcp/prompt_generation/serena_instructions.py` - Main generator (772 lines)
+- `tests/integration/test_serena_instructions_integration.py` - Test suite (527 lines)
+
+**Modified:**
+- `src/giljo_mcp/tools/orchestration.py` - Added Serena integration (18 lines added)
+
+### Test Results
+✅ All 13 tests passing
+- Instruction generation at all detail levels
+- Agent-type specific guidance working
+- Caching performance validated
+- Edge cases handled gracefully
+
+### Key Features
+
+1. **Token Efficiency**: 80-90% reduction via symbolic navigation
+2. **Multiple Detail Levels**: Full, summary, minimal based on context
+3. **Agent-Specific Guidance**: Tailored for implementer, tester, architect, documenter
+4. **Tool Organization**: 13 tools in 5 categories (Navigation, Search, Modification, Analysis, Memory)
+5. **Usage Patterns**: Structure → Navigate → Search workflow with examples
+6. **Performance**: <50ms generation with caching
+
+### Git Commits
+Three focused commits:
+1. `test: Add tests for Serena MCP usage instructions` - TDD test suite
+2. `feat: Implement SerenaInstructionGenerator` - Core implementation
+3. `feat: Integrate Serena instructions into get_orchestrator_instructions` - Integration
+
+### Installation Impact
+None - no database changes required. Feature controlled via config.yaml toggle.
+
+### Production Ready
+✅ All tests passing
+✅ Error handling and logging
+✅ Performance optimized with caching
+✅ Multi-tenant safe
+✅ Ready for deployment
+
+---
+
+**End of Handover 0267 - Add Serena MCP Usage Instructions - COMPLETED**
