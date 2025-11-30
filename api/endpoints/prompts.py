@@ -130,7 +130,7 @@ Prerequisites:
 async def generate_orchestrator_prompt_thin(
     request: OrchestratorPromptRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_session),
     ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
 ) -> OrchestratorPromptResponse:
     """
