@@ -460,6 +460,13 @@ export const api = {
     updateConfig: (data) => apiClient.post('/api/serena/config', data),
   },
 
+  // Git Integration (system-level)
+  git: {
+    getSettings: () => apiClient.get('/api/git/settings'),
+    toggle: (enabled) => apiClient.post('/api/git/toggle', { enabled }),
+    updateSettings: (settings) => apiClient.post('/api/git/settings', settings),
+  },
+
   // Agent Jobs API (Handover 0119 Phase 1 - Migration from /api/v1/agents)
   // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
   // Field mappings: agent_id → job_id, created_at → spawned_at, status → job status

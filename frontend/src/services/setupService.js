@@ -379,6 +379,59 @@ class SetupService {
   }
 
   // Admin user creation removed for v3.0 unified architecture
+
+  /**
+   * Toggle Git integration on/off (system-level)
+   * @param {boolean} enabled - Whether to enable Git integration
+   * @returns {Promise<{success: boolean, enabled: boolean, message?: string, settings?: object}>}
+   */
+  async toggleGit(enabled) {
+    // Import API here to avoid circular dependency
+    const { default: api } = await import('@/services/api')
+
+    try {
+      const response = await api.git.toggle(enabled)
+      return response.data
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Git toggle failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get current Git integration settings
+   * @returns {Promise<{enabled: boolean, use_in_prompts: boolean, include_commit_history: boolean, max_commits: number, branch_strategy: string}>}
+   */
+  async getGitSettings() {
+    // Import API here to avoid circular dependency
+    const { default: api } = await import('@/services/api')
+
+    try {
+      const response = await api.git.getSettings()
+      return response.data
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Git settings fetch failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update Git integration advanced settings
+   * @param {object} settings - Git advanced settings
+   * @returns {Promise<{success: boolean, enabled: boolean, message?: string, settings?: object}>}
+   */
+  async updateGitSettings(settings) {
+    // Import API here to avoid circular dependency
+    const { default: api } = await import('@/services/api')
+
+    try {
+      const response = await api.git.updateSettings(settings)
+      return response.data
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Git settings update failed:', error)
+      throw error
+    }
+  }
 }
 
 export default new SetupService()

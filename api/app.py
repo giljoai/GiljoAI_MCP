@@ -82,6 +82,7 @@ try:
         context,
         database_setup,
         downloads,
+        git,
         mcp_http,
         mcp_installer,
         mcp_tools,
@@ -883,6 +884,7 @@ def create_app() -> FastAPI:
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(setup_security.router, prefix="/api/setup", tags=["setup-security"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
+    app.include_router(git.router, prefix="/api/git", tags=["git"])
     app.include_router(network.router, prefix="/api/network", tags=["network"])
 
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)
