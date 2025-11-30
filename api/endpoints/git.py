@@ -8,12 +8,42 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import logging
 from pathlib import Path
+import yaml
 
-from api.auth import get_current_user
-from src.giljo_mcp.config_manager import read_config, write_config
+from src.giljo_mcp.auth.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def get_config_path() -> Path:
+    """Get path to config.yaml."""
+    return Path.cwd() / "config.yaml"
+
+
+def read_config() -> Dict[str, Any]:
+    """Read config.yaml."""
+    config_path = get_config_path()
+    if not config_path.exists():
+        return {}
+
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.error(f"Failed to read config: {e}")
+        return {}
+
+
+def write_config(config: Dict[str, Any]) -> None:
+    """Write config.yaml."""
+    config_path = get_config_path()
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+    except Exception as e:
+        logger.error(f"Failed to write config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class GitToggleRequest(BaseModel):
