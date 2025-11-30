@@ -1918,6 +1918,213 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # Maintenance & Cleanup Methods
     # ============================================================================
 
+    async def nuclear_delete_project(self, project_id: str, websocket_manager: Optional[Any] = None) -> dict[str, Any]:
+        """
+        Immediately and permanently delete a project and ALL related data (nuclear delete).
+
+        This method performs complete cascade deletion of:
+        - Agent jobs (MCPAgentJob)
+        - Tasks
+        - Messages
+        - Context indexes (ContextIndex)
+        - Large document indexes (LargeDocumentIndex)
+        - Sessions
+        - Vision documents
+        - The project itself
+
+        Special handling:
+        - Deactivates project if it's currently active
+        - Broadcasts WebSocket events for real-time UI cleanup
+        - Ensures multi-tenant isolation (only deletes for current tenant)
+        - Fully transactional (rollback on error)
+
+        Args:
+            project_id: Project UUID
+            websocket_manager: Optional WebSocket manager for real-time updates
+
+        Returns:
+            Dict with success status and deletion details:
+            - success: bool
+            - message: str
+            - deleted_counts: dict with counts of each deleted entity type
+            - project_name: str (name of deleted project)
+
+        Example:
+            >>> result = await service.nuclear_delete_project("abc-123")
+            >>> print(result["deleted_counts"])
+            {"agents": 5, "tasks": 12, "messages": 48, ...}
+        """
+        try:
+            # Get current tenant from context
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            async with self._get_session() as session:
+                # Fetch project with tenant validation
+                stmt = select(Project).where(
+                    and_(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key,
+                    )
+                )
+                result = await session.execute(stmt)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found or access denied"}
+
+                project_name = project.name
+
+                # Deactivate project if it's active (to avoid constraint issues)
+                if project.status == "active":
+                    project.status = "inactive"
+                    project.updated_at = datetime.utcnow()
+                    await session.flush()  # Flush deactivation before deleting
+                    self._logger.info(f"Deactivated project {project_id} before nuclear delete")
+
+                # Initialize deletion counters
+                deleted_counts = {
+                    "agent_jobs": 0,
+                    "tasks": 0,
+                    "messages": 0,
+                    "context_indexes": 0,
+                    "document_indexes": 0,
+                    "sessions": 0,
+                    "visions": 0,
+                }
+
+                # Import additional models needed for deletion
+                from giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
+                from giljo_mcp.models.products import Vision
+                from giljo_mcp.models.projects import Session as ProjectSession
+
+                # Delete agent jobs
+                agent_job_stmt = select(MCPAgentJob).where(
+                    and_(
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.tenant_key == tenant_key,
+                    )
+                )
+                agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
+                for job in agent_jobs:
+                    await session.delete(job)
+                deleted_counts["agent_jobs"] = len(agent_jobs)
+
+                # Delete tasks
+                task_stmt = select(Task).where(
+                    and_(
+                        Task.project_id == project_id,
+                        Task.tenant_key == tenant_key,
+                    )
+                )
+                tasks = (await session.execute(task_stmt)).scalars().all()
+                for task in tasks:
+                    await session.delete(task)
+                deleted_counts["tasks"] = len(tasks)
+
+                # Delete messages
+                message_stmt = select(Message).where(
+                    and_(
+                        Message.project_id == project_id,
+                        Message.tenant_key == tenant_key,
+                    )
+                )
+                messages = (await session.execute(message_stmt)).scalars().all()
+                for message in messages:
+                    await session.delete(message)
+                deleted_counts["messages"] = len(messages)
+
+                # Delete context indexes
+                context_index_stmt = select(ContextIndex).where(
+                    and_(
+                        ContextIndex.project_id == project_id,
+                        ContextIndex.tenant_key == tenant_key,
+                    )
+                )
+                context_indexes = (await session.execute(context_index_stmt)).scalars().all()
+                for ctx_index in context_indexes:
+                    await session.delete(ctx_index)
+                deleted_counts["context_indexes"] = len(context_indexes)
+
+                # Delete large document indexes
+                doc_index_stmt = select(LargeDocumentIndex).where(
+                    and_(
+                        LargeDocumentIndex.project_id == project_id,
+                        LargeDocumentIndex.tenant_key == tenant_key,
+                    )
+                )
+                doc_indexes = (await session.execute(doc_index_stmt)).scalars().all()
+                for doc_index in doc_indexes:
+                    await session.delete(doc_index)
+                deleted_counts["document_indexes"] = len(doc_indexes)
+
+                # Delete sessions
+                session_stmt = select(ProjectSession).where(
+                    and_(
+                        ProjectSession.project_id == project_id,
+                        ProjectSession.tenant_key == tenant_key,
+                    )
+                )
+                sessions = (await session.execute(session_stmt)).scalars().all()
+                for proj_session in sessions:
+                    await session.delete(proj_session)
+                deleted_counts["sessions"] = len(sessions)
+
+                # Delete vision documents
+                vision_stmt = select(Vision).where(
+                    and_(
+                        Vision.project_id == project_id,
+                        Vision.tenant_key == tenant_key,
+                    )
+                )
+                visions = (await session.execute(vision_stmt)).scalars().all()
+                for vision in visions:
+                    await session.delete(vision)
+                deleted_counts["visions"] = len(visions)
+
+                # Finally, delete the project itself
+                await session.delete(project)
+
+                # Commit transaction
+                await session.commit()
+
+                self._logger.info(
+                    f"Nuclear delete completed for project {project_id} ({project_name}): "
+                    f"{deleted_counts['agent_jobs']} agents, "
+                    f"{deleted_counts['tasks']} tasks, "
+                    f"{deleted_counts['messages']} messages, "
+                    f"{deleted_counts['context_indexes']} context indexes, "
+                    f"{deleted_counts['document_indexes']} document indexes, "
+                    f"{deleted_counts['sessions']} sessions, "
+                    f"{deleted_counts['visions']} visions"
+                )
+
+                # Broadcast WebSocket event for real-time UI cleanup
+                if websocket_manager:
+                    try:
+                        await websocket_manager.broadcast_project_update(
+                            project_id=project_id,
+                            update_type="deleted",
+                            project_data={
+                                "name": project_name,
+                                "deleted_counts": deleted_counts,
+                            },
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                return {
+                    "success": True,
+                    "message": f"Project '{project_name}' permanently deleted",
+                    "deleted_counts": deleted_counts,
+                    "project_name": project_name,
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to nuclear delete project: {e}")
+            return {"success": False, "error": str(e)}
+
     async def _purge_project_records(self, session: AsyncSession, project: Project) -> dict[str, Any]:
         """Cascade delete a soft-deleted project and its child records."""
         project_info = {
@@ -2002,44 +2209,37 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
     async def purge_deleted_project(self, project_id: str) -> dict[str, Any]:
         """
-        Permanently delete a soft-deleted project for the current tenant.
+        Nuclear delete a specific soft-deleted project for the current tenant.
+
+        Called when user clicks trash icon next to a deleted project.
+        Uses nuclear_delete_project for complete immediate removal.
         """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No tenant context available", "purged_count": 0}
+        # Simply delegate to nuclear_delete_project which handles everything
+        result = await self.nuclear_delete_project(project_id)
 
-            async with self._get_session() as session:
-                stmt = select(Project).where(
-                    and_(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key,
-                        Project.status == "deleted",
-                        Project.deleted_at.isnot(None),
-                    )
-                )
-                result = await session.execute(stmt)
-                project = result.scalar_one_or_none()
+        if result.get("success"):
+            # Format response to match expected purge response structure
+            project_info = {
+                "id": project_id,
+                "name": result.get("project_name", "Unknown"),
+                "tenant_key": result.get("tenant_key", ""),
+                "deleted_at": datetime.now(timezone.utc).isoformat()
+            }
 
-                if not project:
-                    return {"success": False, "error": "Project not found or not deleted", "purged_count": 0}
+            self._logger.info(
+                "[Nuclear Purge] Manually purged project %s via trash icon", project_id
+            )
 
-                purged_project = await self._purge_project_records(session, project)
-                await session.commit()
-
-                self._logger.info(
-                    "[Handover 0070] Manually purged project %s for tenant %s", project_id, tenant_key
-                )
-
-                return {"success": True, "purged_count": 1, "projects": [purged_project]}
-
-        except Exception as e:
-            self._logger.exception(f"Failed to purge deleted project: {e}")
-            return {"success": False, "error": str(e), "purged_count": 0}
+            return {"success": True, "purged_count": 1, "projects": [project_info]}
+        else:
+            return {"success": False, "error": result.get("error", "Failed to purge project"), "purged_count": 0}
 
     async def purge_all_deleted_projects(self) -> dict[str, Any]:
         """
-        Permanently delete all soft-deleted projects for the current tenant.
+        Nuclear delete all soft-deleted projects for the current tenant.
+
+        Uses nuclear_delete_project for each project to ensure complete removal.
+        Called when user clicks "Delete All" button in deleted projects modal.
         """
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
@@ -2056,33 +2256,47 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 if not deleted_projects:
                     return {"success": True, "purged_count": 0, "projects": []}
 
-                purged_projects = []
-                for project in deleted_projects:
-                    purged_projects.append(await self._purge_project_records(session, project))
+            # Use nuclear delete for each project
+            purged_projects = []
+            for project in deleted_projects:
+                result = await self.nuclear_delete_project(project.id)
+                if result.get("success"):
+                    purged_projects.append({
+                        "id": project.id,
+                        "name": project.name,
+                        "tenant_key": project.tenant_key,
+                        "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                    })
+                else:
+                    self._logger.error(f"Failed to nuclear delete project {project.id}: {result.get('error')}")
 
-                await session.commit()
+            self._logger.info(
+                "[Nuclear Purge] Permanently deleted %s project(s) for tenant %s",
+                len(purged_projects),
+                tenant_key,
+            )
 
-                self._logger.info(
-                    "[Handover 0070] Purged %s deleted project(s) for tenant %s",
-                    len(purged_projects),
-                    tenant_key,
-                )
-
-                return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
+            return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
 
         except Exception as e:
-            self._logger.exception(f"Failed to purge all deleted projects: {e}")
+            self._logger.exception(f"Failed to nuclear purge all deleted projects: {e}")
             return {"success": False, "error": str(e), "purged_count": 0}
 
     async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> dict[str, Any]:
         """
-        Purge projects deleted more than specified days ago (Handover 0070).
+        Nuclear delete projects deleted more than specified days ago.
 
-        This function performs cascade deletion:
-        1. Deletes child agents (MCPAgentJob)
-        2. Deletes child tasks
-        3. Deletes child messages
-        4. Deletes the project record
+        Uses nuclear_delete_project to ensure complete removal of expired projects.
+        This function performs COMPLETE cascade deletion:
+        1. Deactivates if active
+        2. Deletes ALL child agents (MCPAgentJob)
+        3. Deletes ALL tasks
+        4. Deletes ALL messages
+        5. Deletes ALL context indexes
+        6. Deletes ALL large document indexes
+        7. Deletes ALL sessions
+        8. Deletes ALL vision documents
+        9. Deletes the project record
 
         Called from startup.py on server start for automatic cleanup.
 
@@ -2098,12 +2312,12 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
         Example:
             >>> result = await service.purge_expired_deleted_projects()
-            >>> print(f"Purged {result['purged_count']} projects")
+            >>> print(f"Nuclear purged {result['purged_count']} expired projects")
         """
         from datetime import timedelta, timezone
 
         if not self.db_manager:
-            self._logger.error("[Handover 0070] Cannot purge - database manager not available")
+            self._logger.error("[Nuclear Purge] Cannot purge - database manager not available")
             return {"success": False, "error": "Database not available"}
 
         try:
@@ -2122,25 +2336,36 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
                 if not expired_projects:
                     self._logger.info(
-                        f"[Handover 0070] No expired deleted projects to purge " f"(cutoff: {days_before_purge} days)"
+                        f"[Nuclear Purge] No expired deleted projects to purge (cutoff: {days_before_purge} days)"
                     )
                     return {"success": True, "purged_count": 0, "projects": []}
 
-                purged_projects = []
+            # Use nuclear delete for each expired project
+            purged_projects = []
+            for project in expired_projects:
+                result = await self.nuclear_delete_project(project.id)
+                if result.get("success"):
+                    purged_projects.append({
+                        "id": project.id,
+                        "name": project.name,
+                        "tenant_key": project.tenant_key,
+                        "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                    })
+                    self._logger.info(
+                        f"[Nuclear Purge] Auto-purged expired project {project.id} "
+                        f"(deleted {(datetime.now(timezone.utc) - project.deleted_at).days} days ago)"
+                    )
+                else:
+                    self._logger.error(f"Failed to nuclear delete expired project {project.id}: {result.get('error')}")
 
-                for project in expired_projects:
-                    purged_projects.append(await self._purge_project_records(session, project))
+            self._logger.info(
+                f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects"
+            )
 
-                await session.commit()
-
-                self._logger.info(
-                    f"[Handover 0070] Successfully purged {len(purged_projects)} expired deleted projects"
-                )
-
-                return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
+            return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
 
         except Exception as e:
-            self._logger.exception(f"[Handover 0070] Failed to purge expired deleted projects: {e}")
+            self._logger.exception(f"[Nuclear Purge] Failed to purge expired deleted projects: {e}")
             return {"success": False, "error": str(e), "purged_count": 0}
 
     # ============================================================================
