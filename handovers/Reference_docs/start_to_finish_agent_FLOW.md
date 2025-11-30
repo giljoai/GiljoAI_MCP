@@ -1,8 +1,8 @@
 ---
 **Document Type:** Unified Workflow Documentation
-**Last Updated:** 2025-11-29
+**Last Updated:** 2025-11-29 - Added spawning type clarifications
 **Purpose:** Single source of truth for GiljoAI Agent Orchestration workflows
-**Status:** ✅ Harmonized from PDF, Markdown sources, and technical verification
+**Status:** ✅ Updated with Type 1 (MCP) vs Type 2 (CLI) spawning distinctions
 ---
 
 # GiljoAI MCP Server - Complete Agent Flow Documentation
@@ -30,24 +30,165 @@
 
 **Key Rule**: User writes = "description", AI generates = "mission"
 
-### Status Value Translation (Backend vs Frontend)
+### Status Value Translation (Dual-Status Architecture)
 
-| Backend (Python/DB) | Frontend (UI/Vue) | Display Label | Description |
-|-------------------|------------------|--------------|-------------|
-| `"pending"` | `"waiting"` | "Waiting" | Job created but not yet started |
-| `"active"` | `"active"` | "Active" | Agent has claimed the job |
-| `"working"` | `"working"` | "Working" | Agent is executing tasks |
-| `"complete"` | `"complete"` | "Complete" | Job finished successfully |
-| `"failed"` | `"failed"` | "Failed" | Job encountered fatal error |
-| `"blocked"` | `"blocked"` | "Blocked" | Job needs intervention |
+**CRITICAL**: GiljoAI uses a dual-status system introduced in Handover 0113 for backward compatibility.
 
-**Translation Layer**: The API automatically translates `"pending"` → `"waiting"` when sending data to frontend. This translation occurs in the API response serialization layer before WebSocket events and HTTP responses are sent to clients. This is an intentional design to maintain user-friendly terminology without refactoring legacy backend code.
+#### Database Layer (Canonical - 7 States)
 
-**Where Translation Happens**:
-- HTTP Responses: FastAPI endpoint response models handle translation
-- WebSocket Events: Event serialization in `api/websocket.py` translates before emission
-- Frontend receives: Always sees `"waiting"` for initial job state
-- Backend stores: Always uses `"pending"` in database and internal logic
+| Database Value | Description | Constraint |
+|---------------|-------------|------------|
+| `"waiting"` | Job created but not yet started | ✅ Allowed |
+| `"working"` | Agent is executing tasks | ✅ Allowed |
+| `"blocked"` | Job needs intervention | ✅ Allowed |
+| `"complete"` | Job finished successfully | ✅ Allowed |
+| `"failed"` | Job encountered fatal error | ✅ Allowed |
+| `"cancelled"` | Job was cancelled by user | ✅ Allowed |
+| `"decommissioned"` | Job was archived/retired | ✅ Allowed |
+
+**Database Constraint** (enforced in `models/agents.py`):
+```sql
+CHECK (status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'))
+```
+
+**Note**: There is NO "staged" or "pending" status in the database constraint. Any reference to "staged" status is incorrect.
+
+#### API Layer (Aliases for Compatibility)
+
+The `AgentJobManager` provides translation between API-friendly terms and database values:
+
+| API Alias | Database Value | Direction |
+|-----------|---------------|-----------|
+| `"pending"` | `"waiting"` | API → Database (inbound) |
+| `"active"` | `"working"` | API → Database (inbound) |
+| `"completed"` | `"complete"` | API → Database (inbound) |
+| `"waiting"` | `"pending"` | Database → API (outbound) |
+| `"working"` | `"active"` | Database → API (outbound) |
+| `"complete"` | `"completed"` | Database → API (outbound) |
+
+**Translation Layer**: Implemented in `src/giljo_mcp/agent_job_manager.py` (lines 62-71)
+- `STATUS_INBOUND_ALIASES`: Translates API terms to database values
+- `STATUS_OUTBOUND_ALIASES`: Translates database values to API terms
+- Allows API evolution without breaking existing integrations
+
+**Why This Exists**: Provides backward compatibility for external API clients while maintaining consistent database schema. The system can accept "pending" via API but always stores "waiting" in the database.
+
+---
+
+## Understanding the Two Types of Agent Spawning
+
+**CRITICAL DISTINCTION**: There are TWO completely different "spawning" mechanisms in GiljoAI. Confusing these leads to misunderstanding the workflow.
+
+### Type 1: MCP Server Agent Spawning (Database Record Creation)
+
+**What It Is**: Creating database records and UI agent cards during the staging phase.
+
+**When It Happens**: During orchestrator's staging workflow (Step 4, Task 5)
+
+**What Gets Created**:
+- Database record in `mcp_agent_jobs` table
+- Assigns unique `agent_id` and `job_id`
+- Stores agent mission in `MCPAgentJob.mission` field
+- Creates visual agent card in the UI
+- Sets initial status to "waiting"
+
+**Think of It As**: Creating "digital twin" job tickets that wait to be picked up.
+
+**Code Location**: `src/giljo_mcp/tools/orchestration.py::spawn_agent_job()`
+
+**MCP Tool**: `spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key)`
+
+**Example**:
+```python
+# Orchestrator calls during staging (Task 5)
+job_info = spawn_agent_job(
+    agent_type="implementer",
+    agent_name="Code Implementer",
+    mission="Implement the user authentication feature...",
+    project_id="abc-123",
+    tenant_key="tenant-xyz"
+)
+# Result: Creates database record, agent card appears in UI
+```
+
+### Type 2: Claude Code CLI Native Subagent Spawning (Agent Execution)
+
+**What It Is**: Claude Code's built-in capability to invoke subagents from `.md` template files.
+
+**When It Happens**: During implementation phase, ONLY when "Claude Code Mode" toggle is ON.
+
+**How It Works**:
+1. Orchestrator reads `.md` templates from `~/.claude/agents/` or `.claude/agents/`
+2. Template names match agent types (`implementer.md`, `tester.md`, etc.)
+3. Orchestrator uses Claude Code's native subagent feature to spawn them
+4. Passes `agent_id`, `job_id`, and other identifiers to the subagent
+5. Subagent's `.md` template contains MCP behavior instructions
+6. Subagent calls `get_agent_mission(job_id, tenant_key)` to fetch its mission from the database
+
+**Think of It As**: Hiring workers to pick up the job tickets created in Type 1.
+
+**Code Location**: `.claude/agents/implementer.md` (and other agent `.md` files)
+
+**MCP Tool**: `get_agent_mission(agent_job_id, tenant_key)` (called BY the spawned agent)
+
+**Example**:
+```markdown
+# File: ~/.claude/agents/implementer.md
+You are the Implementer Agent for GiljoAI.
+
+Your first action: Fetch your mission from the MCP server.
+
+Call: get_agent_mission('{agent_job_id}', '{tenant_key}')
+
+This returns your mission, project context, and work assignments.
+Then begin implementation following the 6-phase protocol...
+```
+
+### The Relationship: Digital Twins
+
+**MCP Spawning** (Type 1) creates the "digital twin" - a database representation of the work to be done.
+
+**CLI Spawning** (Type 2) creates the "real agent" - the actual Claude Code instance that executes the work.
+
+The bridge between them is:
+- Type 1 creates `job_id` and stores mission in database
+- Type 2 receives `job_id` as a parameter
+- Agent calls `get_agent_mission(job_id)` to fetch its mission
+- Agent updates the same database record as it works
+
+### Why Two Systems?
+
+**Flexibility**: Supports both Claude Code native subagents AND multi-terminal execution.
+
+**Auditability**: All missions stored in database regardless of how agents are spawned.
+
+**Replay**: Agent can re-fetch its mission at any time by calling `get_agent_mission()` again.
+
+**Separation of Concerns**:
+- MCP Server = Job ticket system (database, missions, status tracking)
+- Claude Code CLI = Worker dispatch system (native subagent spawning)
+
+### Quick Comparison Table
+
+| Aspect | Type 1: MCP Server Spawning | Type 2: Claude Code CLI Spawning |
+|--------|----------------------------|----------------------------------|
+| **Purpose** | Create job tickets in database | Execute work via subagents |
+| **When** | Staging phase (Task 5) | Implementation phase (Step 7A) |
+| **Where** | MCP Server (Python backend) | Claude Code CLI (user terminal) |
+| **Creates** | Database record + UI card | Running Claude Code instance |
+| **Tool/Code** | `spawn_agent_job()` MCP tool | `.md` template invocation |
+| **Output** | `job_id`, `agent_id`, metadata | Active agent executing mission |
+| **Requires** | Active project, tenant_key | `.md` templates in ~/.claude/agents/ |
+| **Used In** | BOTH execution modes | ONLY Claude Code CLI mode |
+| **Visible As** | Agent card in UI | Terminal process/subagent |
+
+### Key Takeaway
+
+When you see "spawn_agent_job()" → **Database record creation** (Type 1)
+
+When you see "Claude spawns subagent from .md" → **Agent execution** (Type 2)
+
+They are complementary, not the same thing!
 
 ---
 
@@ -92,7 +233,7 @@ Backend Process:
   1. POST /api/v1/projects/{id}/activate
   2. Create MCPAgentJob record:
      - agent_type: "orchestrator"
-     - status: "pending" (backend) → "waiting" (UI display)
+     - status: "waiting" (database value)
      - mission: "I am ready to create the project mission..."
   3. Generate thin client prompt (450-550 tokens)
   4. Enable orchestrator [Copy Prompt >] button
@@ -100,26 +241,64 @@ Backend Process:
 UI Updates:
   - Orchestrator card shows copyable prompt
   - User copies prompt to terminal
+
+Note: Job is created directly in "waiting" status. There is NO "staged"
+      status or separate activation step. The job goes: waiting → working.
 ```
 
-#### Step 4: Orchestrator Execution - Mission Creation
+#### Step 4: Orchestrator Execution - 5-Task Staging Workflow
 ```
 Terminal Process:
   1. User pastes thin prompt into CLI tool
-  2. Orchestrator MCP sequence:
-     a. health_check() - Verify MCP connection
-     b. get_orchestrator_instructions() - Fetch mission context
-        - Reads Product.description (user input)
-        - Reads Project.description (user input)
-        - Reads vision documents (chunked)
-        - Reads all context based on priority settings
-     c. Create mission based on context
-     d. update_project_mission() - PERSIST to database
-        - Saves to Project.mission field
-        - WebSocket: project:mission_updated event
-     e. spawn_agent_job() - Create agent jobs
-        - Creates MCPAgentJob records for each agent
-        - Each gets portion of mission
+  2. Thin prompt provides identity (orchestrator_id, tenant_key)
+  3. Orchestrator executes 5-task staging workflow:
+
+     TASK 1: Verify MCP Connection
+     └─► health_check() - REQUIRED first step
+         ├─► Verifies MCP server connectivity
+         ├─► Response must be < 2 seconds
+         └─► Lists available MCP tools
+
+     TASK 2: Fetch Instructions
+     └─► get_orchestrator_instructions(orchestrator_id, tenant_key)
+         ├─► Mission NOT embedded in thin prompt
+         ├─► Server builds condensed mission (~6K tokens)
+         ├─► Reads Product.description (user input)
+         ├─► Reads Project.description (user input)
+         ├─► Reads vision documents (chunked)
+         ├─► Reads context based on user's priority settings
+         └─► Returns full context and instructions
+
+     TASK 3: Create Mission Plan
+     └─► Analyze requirements and create comprehensive mission
+         └─► Orchestrator synthesizes mission from context
+
+     TASK 4: Persist Mission
+     └─► update_project_mission(project_id, mission)
+         ├─► Saves to Project.mission field in database
+         ├─► WebSocket event: project:mission_updated
+         └─► UI: "Orchestrator Generated Mission" updates live
+
+     TASK 5: Spawn Agent Database Records (Type 1 Spawning)
+     └─► Dynamic agent discovery and MCP server spawning:
+         ├─► get_available_agents(tenant_key, active_only=True)
+         │   └─► NO hardcoded agent list (Handover 0246c)
+         │   └─► Dynamic discovery saves 420 tokens (71% reduction)
+         ├─► For each agent needed:
+         │   └─► spawn_agent_job(agent_type, mission, ...)
+         │       ├─► **TYPE 1 SPAWNING**: Creates database record + UI card
+         │       ├─► Stores mission in MCPAgentJob.mission (database)
+         │       ├─► Creates job with status="waiting"
+         │       ├─► Assigns unique agent_id and job_id
+         │       ├─► Creates "digital twin" agent card in UI
+         │       └─► Returns agent metadata (NOT a prompt)
+         └─► WebSocket: Agent cards appear live in UI
+
+Note: This is MCP SERVER spawning (Type 1) - creating database records and agent
+      cards. This is NOT Claude Code CLI spawning (Type 2). The actual agent
+      execution happens later in the Implementation phase (see Step 7A/7B below).
+      Mission is stored in database, NOT embedded in agent prompts. Agents fetch
+      mission on-demand via get_agent_mission() when they start executing.
          ↓
 UI Live Updates:
   - "Orchestrator Generated Mission" window populates
@@ -147,7 +326,7 @@ Navigation: Switch to "Implementation" Tab (same URL)
 │  Hint: (dynamic based on toggle state)          │
 │                                                  │
 │  Orchestrator Card                              │
-│    - Status: waiting → active → working         │
+│    - Status: waiting → working → complete       │
 │    - [Copy Prompt >] (always enabled)           │
 │                                                  │
 │  Agent Cards (spawned by orchestrator)          │
@@ -161,24 +340,43 @@ Navigation: Switch to "Implementation" Tab (same URL)
 ```
 
 #### Step 7A: Claude Code CLI Mode (Toggle ON)
+
+**Prerequisites** (Setup must be completed first):
+- User exported agent templates during initial setup
+- Templates installed to `~/.claude/agents/` (global) or `.claude/agents/` (project)
+- Template files: `orchestrator.md`, `implementer.md`, `tester.md`, `analyzer.md`, etc.
+- Each `.md` file contains MCP behavior instructions
+
 ```
 Toggle State: ON
          ↓
 UI Behavior:
   - Only orchestrator [Copy Prompt >] button active
-  - All agent prompt buttons grayed out
+  - All agent prompt buttons grayed out (disabled)
   - Hint: "Claude Code subagent mode - Orchestrator spawns agents"
+  - Why? Because Claude Code spawns subagents natively from .md templates
          ↓
 Execution Flow:
-  1. User copies orchestrator prompt
-  2. Paste in single terminal window
-  3. Orchestrator reads special Claude mode instructions
-  4. Uses native Claude subagent feature
-  5. Spawns agents using {agent_role}.md templates
-  6. Passes agent_id, job_id to each subagent
-  7. Subagents fetch missions via get_agent_mission()
+  1. User copies orchestrator prompt and pastes in single terminal
+  2. Orchestrator reads MCP instructions (includes Claude Code mode flag)
+  3. Orchestrator sees which agent jobs exist via get_workflow_status()
+  4. **TYPE 2 SPAWNING**: Uses Claude Code's native subagent feature:
+     ├─► Looks in ~/.claude/agents/ for matching .md templates
+     ├─► Template names match agent types (implementer.md, tester.md, etc.)
+     ├─► Invokes each subagent using Claude's native capability
+     └─► Passes parameters: agent_id, job_id, project_id, tenant_key
+  5. Each spawned subagent:
+     ├─► Reads its .md template file (contains MCP instructions)
+     ├─► Calls get_agent_mission(job_id, tenant_key) to fetch mission from database
+     ├─► Receives mission + context from MCP server
+     └─► Begins 6-phase execution protocol
+  6. All agents coordinate via MCP messaging tools
          ↓
-Single Terminal Execution with native subagents
+Single Terminal Execution with native subagents (Type 2 spawning)
+
+Note: The agent cards in the UI are "digital twins" created via Type 1 spawning
+      during staging. The .md templates + job_id creates the bridge between the
+      database records and the actual Claude Code subagent instances.
 ```
 
 #### Step 7B: Multi-Terminal Mode (Toggle OFF - Default)
@@ -186,21 +384,30 @@ Single Terminal Execution with native subagents
 Toggle State: OFF (default)
          ↓
 UI Behavior:
-  - ALL [Copy Prompt >] buttons active
+  - ALL [Copy Prompt >] buttons active (orchestrator + all agents)
   - Each agent gets unique prompt
   - Hint: "Multi-terminal mode - Launch agents in separate windows"
+  - Why? Each agent runs independently in its own terminal
          ↓
 Execution Flow:
-  1. User copies each agent prompt
-  2. Paste in separate terminal windows
-  3. Each agent reads its unique instructions:
-     - Includes agent_id, job_id, project_id
-     - Fetches role from MCP server
-     - Gets mission via get_agent_mission()
-  4. Orchestrator sends coordination broadcast
-  5. Agents acknowledge and begin work
+  1. User copies orchestrator prompt → pastes in Terminal 1
+  2. User copies implementer prompt → pastes in Terminal 2
+  3. User copies tester prompt → pastes in Terminal 3
+  4. (Repeat for all agent types)
+  5. Each agent independently:
+     ├─► Receives thin prompt with agent_id, job_id, tenant_key
+     ├─► Calls get_agent_mission(job_id, tenant_key) to fetch mission
+     ├─► Receives mission + context from MCP server
+     └─► Begins 6-phase execution protocol
+  6. Orchestrator coordinates via MCP messaging tools
+  7. Agents communicate via send_mcp_message() and broadcast()
          ↓
 Multiple Terminal Windows (one per agent)
+
+Note: This mode does NOT use Claude Code's native subagent spawning (Type 2).
+      Each agent is a separate, independent Claude Code instance launched manually.
+      The agent cards in the UI are still "digital twins" from Type 1 spawning.
+      Each terminal connects to the same database record via job_id.
 ```
 
 ---
@@ -209,12 +416,23 @@ Multiple Terminal Windows (one per agent)
 
 ### Agent Status Progression
 ```
-Status Flow: pending/waiting → active → working → complete/failed/blocked
-             (backend/UI)        ↓         ↓              ↓
-UI Updates:     Badge         Badge    Progress %    Final state
-WebSocket:   agent:acknowledged  agent:progress  agent:complete
+Database Status Flow: waiting → working → complete/failed/blocked/cancelled
+                        ↓          ↓               ↓
+UI Display:          Waiting    Working        Final state
+WebSocket Events:  job:status_changed (all transitions)
 
-Note: Backend stores "pending", UI displays "waiting" via API translation
+Valid Database States (7 total):
+  - waiting: Job created, not yet claimed
+  - working: Agent actively executing
+  - blocked: Waiting for external dependency
+  - complete: Successfully finished
+  - failed: Encountered fatal error
+  - cancelled: User cancelled job
+  - decommissioned: Job archived/retired
+
+Note: Database stores canonical values (waiting, working, complete).
+      API accepts aliases (pending, active, completed) for compatibility.
+      Frontend receives database values via WebSocket events.
 ```
 
 ### MCP Communication During Execution
@@ -223,10 +441,10 @@ Note: Backend stores "pending", UI displays "waiting" via API translation
 ```
 Coordination Tools:
 ├── get_pending_jobs()      - Find work assigned to agent
-├── acknowledge_job()       - Claim job (waiting → active)
+├── acknowledge_job()       - Claim job (waiting → working)
 ├── report_progress()       - Update progress percentage
-├── complete_job()          - Mark as done with results
-└── report_error()          - Report blocking issues
+├── complete_job()          - Mark as done with results (working → complete)
+└── report_error()          - Report blocking issues (working → blocked/failed)
 
 Messaging Tools (See "Messaging Architecture" section below for details):
 ├── send_message()          - Messages Table: Send to specific agents
@@ -567,21 +785,79 @@ When orchestrator approaches context limit (90%):
 4. Mission and agent states preserved
 5. Execution continues with new orchestrator
 
+### 5. Dual-Status Architecture (Handover 0113)
+
+**CRITICAL ARCHITECTURAL DECISION**: GiljoAI maintains two parallel status representations for backward compatibility and API evolution.
+
+#### Database Layer (Authoritative)
+**7 Canonical States** (enforced by PostgreSQL CHECK constraint):
+- `waiting` - Job created, not yet claimed by agent
+- `working` - Agent actively executing tasks
+- `blocked` - Waiting for external dependency or intervention
+- `complete` - Successfully finished
+- `failed` - Encountered fatal error
+- `cancelled` - User cancelled job
+- `decommissioned` - Job archived/retired
+
+**Database Constraint** (`models/agents.py`, line 217):
+```sql
+CHECK (status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'))
+```
+
+**IMPORTANT**: There is NO "staged" or "pending" status in the database. Jobs are created directly with `status="waiting"`.
+
+#### API Layer (Compatibility Aliases)
+**3 Main Aliases** (for external API clients):
+- `pending` → translates to `waiting` (inbound)
+- `active` → translates to `working` (inbound)
+- `completed` → translates to `complete` (inbound)
+
+**Translation Logic** (`agent_job_manager.py`, lines 62-71):
+```python
+STATUS_INBOUND_ALIASES = {
+    "pending": "waiting",     # API accepts "pending"
+    "active": "working",      # but stores "waiting"
+    "completed": "complete"
+}
+
+STATUS_OUTBOUND_ALIASES = {
+    "waiting": "pending",     # Database has "waiting"
+    "working": "active",      # but API can return "pending"
+    "complete": "completed"
+}
+```
+
+**Why This Exists**:
+1. **Backward Compatibility**: External integrations can continue using old status names
+2. **API Evolution**: Database schema can change without breaking API contracts
+3. **User-Friendly Terms**: API can use more intuitive terminology
+4. **Database Integrity**: CHECK constraint enforces canonical values
+
+**Frontend Behavior**:
+- WebSocket events send database values (`waiting`, `working`, `complete`)
+- Frontend expects and displays database values
+- NO translation occurs for WebSocket events (direct database values)
+
 ---
 
 ## Workflow State Diagram
 
 ```
 ┌──────────┐      ┌──────────┐      ┌────────────┐      ┌──────────────┐
-│ Project  │ ───► │ Activate │ ───► │   Stage    │ ───► │ Implementation│
-│ Created  │      │ Project  │      │  (Launch)  │      │   (Execute)   │
+│ Project  │ ───► │ Activate │ ───► │   Launch   │ ───► │ Implementation│
+│ Created  │      │ Project  │      │   (Stage)  │      │   (Execute)   │
 └──────────┘      └──────────┘      └────────────┘      └──────────────┘
      │                  │                   │                    │
      │                  │                   │                    │
      ▼                  ▼                   ▼                    ▼
 [Inactive]    [Creates Job Record]  [Mission Created]    [Agents Working]
-                [Status: waiting]    [Agents Spawned]     [Status Updates]
-                                     [Jobs Assigned]      [Message Flow]
+                [Status: waiting]    [Agents Spawned]     [Status: working]
+                [Direct to DB]       [Jobs: waiting]      [Progress Updates]
+                                                          [Message Flow]
+
+Job Status Flow: waiting → working → complete/failed/blocked/cancelled
+                   ↑                         ↓
+                   └─────── No "staged" or "pending" status in database
 ```
 
 ---
@@ -704,7 +980,7 @@ PHASE 4: PROJECT STAGING & ORCHESTRATION
                   │                ├──► [A] Create Orchestrator Job (Backend)
                   │                │      └─► MCPAgentJob record created
                   │                │      └─► agent_type: "orchestrator"
-                  │                │      └─► status: "pending" (backend) → "waiting" (UI display)
+                  │                │      └─► status: "waiting" (database canonical value)
                   │                │      └─► mission: "I am ready to create the project mission..."
                   │                │      └─► Generate thin client prompt (450-550 tokens)
                   │                │      └─► Enable orchestrator [Copy Prompt >] button
@@ -712,27 +988,30 @@ PHASE 4: PROJECT STAGING & ORCHESTRATION
                   │                ├──► [B] User Copies & Pastes Orchestrator Prompt
                   │                │      └─► User copies thin prompt from orchestrator card
                   │                │      └─► User pastes into AI coding tool terminal
-                  │                │      └─► Orchestrator startup sequence (Handover 0246a):
-                  │                │           ├─► Task 1: Verify MCP connection via health_check()
-                  │                │           ├─► Task 2: Fetch mission via get_orchestrator_instructions()
+                  │                │      └─► Orchestrator 5-task staging workflow:
+                  │                │           ├─► Task 1: Verify MCP via health_check()
+                  │                │           │    └─► REQUIRED first step, verifies server connectivity
+                  │                │           ├─► Task 2: Fetch instructions via get_orchestrator_instructions()
+                  │                │           │    ├─► Mission NOT embedded in thin prompt
                   │                │           │    ├─► Retrieves vision_documents (pre-chunked)
                   │                │           │    ├─► Retrieves product name, description
                   │                │           │    ├─► Retrieves Project.description (human requirements)
                   │                │           │    ├─► Retrieves context based on user's field priorities
                   │                │           │    ├─► Retrieves 360 memory, Git history if enabled
-                  │                │           │    └─► Returns condensed mission
+                  │                │           │    └─► Returns condensed mission (~6K tokens)
                   │                │           ├─► Task 3: Create comprehensive mission plan
                   │                │           ├─► Task 4: PERSIST mission via update_project_mission()
                   │                │           │    └─► Saves to Project.mission field in database
                   │                │           │    └─► WebSocket event: project:mission_updated
                   │                │           │    └─► UI: "Orchestrator Generated Mission" updates live
-                  │                │           ├─► Task 5: Discover agents via get_available_agents()
-                  │                │           │    └─► Dynamic agent discovery (Handover 0246c)
-                  │                │           ├─► Task 6: Spawn agent jobs via spawn_agent_job()
-                  │                │           │    └─► Creates MCPAgentJob records for each agent
-                  │                │           │    └─► Each job gets portion of mission
-                  │                │           │    └─► Agent cards appear live in "Agent Team"
-                  │                │           └─► Task 7: Orchestrator stands by for activation
+                  │                │           └─► Task 5: Spawn agents dynamically
+                  │                │                ├─► get_available_agents() - Dynamic discovery (NOT hardcoded)
+                  │                │                └─► spawn_agent_job() - For each agent needed
+                  │                │                    ├─► Stores mission in MCPAgentJob.mission (database)
+                  │                │                    ├─► Creates job with status="waiting"
+                  │                │                    ├─► Returns thin prompt (~10 lines, NO mission)
+                  │                │                    ├─► Agent will fetch mission via get_agent_mission()
+                  │                │                    └─► Agent cards appear live in "Agent Team"
                   │                │
                   │                └──► [C] UI Updates After Staging Complete
                   │                       ├─► "Orchestrator Generated Mission" window populated
@@ -775,8 +1054,8 @@ PHASE 5: AGENT EXECUTION & COORDINATION
                   │
                   ├──► [14] Orchestrator Claims Job & Begins Coordination
                   │          └─► MCP tool: get_pending_jobs() (finds orchestrator job)
-                  │          └─► MCP tool: acknowledge_job() (status: waiting → active)
-                  │          └─► UI updates: Orchestrator card shows "Active"
+                  │          └─► MCP tool: acknowledge_job() (status: waiting → working)
+                  │          └─► UI updates: Orchestrator card shows "Working"
                   │          └─► Orchestrator coordinates agent team
                   │
                   ├──► [15] Sub-Agent Team Execution
@@ -814,8 +1093,8 @@ PHASE 5: AGENT EXECUTION & COORDINATION
                   │                │
                   │                └──► [D] Complete job
                   │                       └─► MCP tool: complete_job(job_id, result)
-                  │                       └─► Update status: active → complete
-                  │                       └─► UI updates: Agent card shows "Completed"
+                  │                       └─► Update status: working → complete
+                  │                       └─► UI updates: Agent card shows "Complete"
                   │
                   └──► [17] Orchestrator Monitors & Orchestrates
                              ├─► Polls for agent status updates via MCP
@@ -963,7 +1242,7 @@ LAYER 3: DATABASE LAYER (PostgreSQL 18)
     │  │    ├─► model                - LLM model preference                   │
     │  │    └─► tools                - MCP tool access list                   │
     │  ├─► mcp_agent_jobs            - Agent work assignments                 │
-    │  │    ├─► status               - pending/active/working/complete/failed │
+    │  │    ├─► status               - waiting/working/blocked/complete/failed/cancelled/decommissioned │
     │  │    ├─► mission (TEXT)       - AI-generated agent assignment          │
     │  │    ├─► agent_type           - Role from template                     │
     │  │    └─► progress             - Percentage complete                    │
@@ -1017,7 +1296,7 @@ LAYER 5: FRONTEND LAYER (Vue 3 Dashboard)
     │  ├─► JobsTab.vue                - Implementation interface              │
     │  │    ├─► Claude Code Toggle (execution mode selector)                  │
     │  │    ├─► Agent Cards with [Copy Prompt >] buttons                      │
-    │  │    ├─► Status badges (waiting/active/working/complete)               │
+    │  │    ├─► Status badges (waiting/working/blocked/complete/failed/cancelled) │
     │  │    └─► Progress bars                                                 │
     │  │                                                                        │
     │  ├─► StatusChip.vue             - Status badge component                │
@@ -1392,6 +1671,12 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c \
 ---
 
 ### PHASE 2: AGENT TEMPLATE EXPORT & CLI INSTALLATION
+
+**Purpose**: This phase enables Claude Code CLI Mode (Type 2 spawning) by installing `.md` template files that Claude Code can invoke as native subagents.
+
+**When Required**: Only necessary if user wants to use Claude Code CLI Mode (toggle ON). Multi-terminal mode does NOT require template installation.
+
+**What Gets Created**: Agent template files (`.md`) with YAML frontmatter and MCP behavior instructions, installed to `~/.claude/agents/` or `.claude/agents/`.
 
 #### Code Implementation
 - **Export Generator**: `api/endpoints/export/claude_code.py::export_agents()`
@@ -2560,10 +2845,11 @@ Your simplified flow description is **ACCURATE**. Here's the verified sequence:
 2. **Tab Navigation**: Two distinct tabs - "Launch" (staging) and "Implementation" (execution)
 3. **Claude Toggle Location**: Located at top of Implementation tab, not Launch tab
 4. **Mission Persistence**: Mission saved to database via `update_project_mission()` MCP tool
-5. **Job Status Translation**: Backend stores "pending", Frontend displays "waiting" (intentional design)
-   - API layer handles automatic translation
-   - Maintains backward compatibility with existing backend code
-   - Provides user-friendly terminology in UI
+5. **Dual-Status Architecture**: Database stores canonical values (waiting, working, complete), API accepts aliases (pending, active, completed)
+   - Introduced in Handover 0113 for backward compatibility
+   - `AgentJobManager` translates between representations
+   - 7 valid database states enforced by database constraint
+   - Frontend receives database values via WebSocket events
 6. **Agent Prompt Behavior**: Toggle controls which prompt buttons are active
 
 ---
@@ -2576,7 +2862,10 @@ Your simplified flow description is **ACCURATE**. Here's the verified sequence:
 4. **Mission Persistence**: Orchestrator creates AND persists mission to database
 5. **Real-time Updates**: WebSocket events drive all UI updates
 6. **Token Efficient**: Thin client architecture reduces prompt size by 85%
-7. **Status Translation**: API layer transparently converts backend "pending" to UI "waiting"
+7. **Dual-Status System**: Database uses 7 canonical states (waiting, working, etc.), API accepts aliases (pending, active, etc.) for compatibility
+8. **No "Staged" Status**: Jobs go directly from creation to "waiting" status - there is NO intermediate "staged" state
+9. **Dynamic Agent Discovery**: Orchestrator calls `get_available_agents()` - no hardcoded agent lists
+10. **Two-Step Agent Spawning**: `spawn_agent_job()` stores mission in database, agent fetches via `get_agent_mission()`
 
 ---
 
