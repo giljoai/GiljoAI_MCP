@@ -34,17 +34,29 @@ logger = logging.getLogger(__name__)
 # Default field priorities for context building (Handover 0302, 0303)
 # Applied when user has no custom field_priority_config
 # Ensures meaningful context even for new users who haven't customized priorities
+# Default field priorities for context building (Handover 0302, 0303, 0266)
+# Applied when user has no custom field_priority_config
+# Ensures meaningful context even for new users who haven't customized priorities
+# Updated to v2.0 format: Priority values 1-4, new category names (Handover 0266)
 DEFAULT_FIELD_PRIORITIES = {
-    "architecture": 4,  # Abbreviated detail (context prioritization and orchestration) - Legacy
-    "tech_stack": 8,  # Moderate-high detail (tech stack is critical context)
-    "product_memory.sequential_history": 7,  # Moderate: recent project history with outcomes
-    # Config data fields (Handover 0303)
-    "config_data.architecture": 4,  # Abbreviated detail (context prioritization and orchestration)
-    "config_data.test_methodology": 6,  # Moderate - important for agents
-    "config_data.coding_standards": 5,  # Moderate - quality guidelines
-    "config_data.deployment_strategy": 3,  # Lower - not always needed
+    # v2.0 categories with priority levels (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
+    "product_core": 1,        # CRITICAL - Always include product name, description, features
+    "vision_documents": 2,    # IMPORTANT - Include vision docs if budget allows  
+    "agent_templates": 2,     # IMPORTANT - Agent templates for spawning
+    "project_context": 1,     # CRITICAL - Current project metadata
+    "memory_360": 3,          # NICE_TO_HAVE - Historical project outcomes
+    "git_history": 3,         # NICE_TO_HAVE - Recent commits
+    
+    # Legacy v1.0 fields (kept for backward compatibility during transition)
+    # These will be removed in v4.0
+    "architecture": 4,  # Maps to EXCLUDED
+    "tech_stack": 2,    # Maps to IMPORTANT
+    "product_memory.sequential_history": 3,  # Maps to NICE_TO_HAVE
+    "config_data.architecture": 4,  # Maps to EXCLUDED
+    "config_data.test_methodology": 2,  # Maps to IMPORTANT
+    "config_data.coding_standards": 3,  # Maps to NICE_TO_HAVE
+    "config_data.deployment_strategy": 4,  # Maps to EXCLUDED
 }
-
 
 class MissionPlanner:
     """
@@ -524,18 +536,25 @@ Success Criteria:
 
     def _get_detail_level(self, priority: int) -> str:
         """
-        Map priority (0-10 scale) to detail level.
-
-        IMPORTANT: UI layer must map visual priorities to this scale (Handover 0301):
-        - UI "Priority 1 (Always Included)" -> 10 -> "full" (0% context prioritization)
-        - UI "Priority 2 (High Priority)"    -> 7  -> "moderate" (25% context prioritization)
-        - UI "Priority 3 (Medium Priority)"  -> 4  -> "abbreviated" (50% context prioritization)
-        - UI "Unassigned"                    -> 0  -> "exclude" (100% context prioritization)
-
-        See: frontend/src/views/UserSettings.vue (PRIORITY_* constants, line ~714)
+        Map priority to detail level.
+        
+        Handover 0266: Updated for v2.0 priority system (1-4 scale).
+        
+        v2.0 Priority Mapping:
+        - Priority 1 (CRITICAL)     -> "full" (100% of content, always included)
+        - Priority 2 (IMPORTANT)    -> "moderate" (75% of content)
+        - Priority 3 (NICE_TO_HAVE) -> "abbreviated" (50% of content)
+        - Priority 4 (EXCLUDED)     -> "exclude" (0% - omitted entirely)
+        
+        v1.0 Legacy Support (for backward compatibility):
+        - Priority 10   -> "full"
+        - Priority 7-9  -> "moderate"
+        - Priority 4-6  -> "abbreviated"
+        - Priority 1-3  -> "minimal"
+        - Priority 0    -> "exclude"
 
         Args:
-            priority: Field importance weight (0-10)
+            priority: Field importance weight (v2.0: 1-4, v1.0: 0-10)
 
         Returns:
             Detail level string: "full", "moderate", "abbreviated", "minimal", "exclude"
@@ -547,15 +566,56 @@ Success Criteria:
             - "minimal": Key points only (~20% of original tokens)
             - "exclude": Omitted entirely (0 tokens)
         """
-        if priority >= 10:
+        # v2.0 priority system (1-4 scale)
+        if priority <= 4:
+            if priority == 1:
+                return "full"  # CRITICAL - always include
+            elif priority == 2:
+                return "moderate"  # IMPORTANT - include if budget allows
+            elif priority == 3:
+                return "abbreviated"  # NICE_TO_HAVE - include if space remains
+            elif priority == 4:
+                return "exclude"  # EXCLUDED - never include
+            else:
+                return "exclude"  # Priority 0 or negative = exclude
+        
+        # v1.0 legacy support (0-10 scale) 
+        # Keep for backward compatibility during transition period
+        elif priority >= 10:
             return "full"  # 0% context prioritization
-        if priority >= 7:
+        elif priority >= 7:
             return "moderate"  # 25% context prioritization
-        if priority >= 4:
+        elif priority >= 4:
             return "abbreviated"  # 50% context prioritization
-        if priority >= 1:
+        elif priority >= 1:
             return "minimal"  # 80% context prioritization
-        return "exclude"  # 100% context prioritization (omitted)
+        else:
+            return "exclude"  # 100% context prioritization (omitted)  # 100% context prioritization (omitted)
+
+    def _should_include_field(self, priority: int) -> bool:
+        """
+        Check if a field should be included based on its priority.
+        
+        Handover 0266: Support for both v2.0 and v1.0 priority systems.
+        
+        v2.0: Priority 1-3 are included, Priority 4 is excluded.
+        v1.0: Priority > 0 is included, Priority 0 is excluded.
+        
+        Args:
+            priority: Field priority value
+            
+        Returns:
+            True if field should be included, False if excluded
+        """
+        if priority <= 0:
+            return False  # No priority or negative = exclude
+        
+        # v2.0 system: 1-3 included, 4 excluded
+        if priority <= 4:
+            return priority < 4
+            
+        # v1.0 system: any positive value is included
+        return True
 
     def _extract_config_field(self, product: Product, field_name: str, detail_level: str) -> Optional[str]:
         """
@@ -1222,7 +1282,7 @@ Success Criteria:
             if field_priority == 0 and legacy_key:
                 field_priority = effective_priorities.get(legacy_key, 0)
 
-            if field_priority > 0:
+            if self._should_include_field(field_priority):
                 field_detail = self._get_detail_level(field_priority)
                 field_text = self._extract_config_field(product, field_name, field_detail)
 
