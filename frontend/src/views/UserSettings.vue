@@ -284,13 +284,13 @@
               @openAdvanced="openSerenaAdvanced"
             />
 
-            <!-- Git + 360 Memory Integration (Handover 013B) -->
+            <!-- Git + 360 Memory Integration (system-level) -->
             <GitIntegrationCard
-              :enabled="gitIntegration.enabled"
-              :config="gitIntegration"
-              :loading="savingGitIntegration"
-              @update:enabled="onGitToggle"
-              @save="handleGitSave"
+              :enabled="gitEnabled"
+              :config="gitConfig"
+              :loading="togglingGit"
+              @update:enabled="toggleGit"
+              @openAdvanced="openGitAdvanced"
             />
           </v-card-text>
         </v-card>
@@ -302,6 +302,13 @@
       v-model="showSerenaAdvanced"
       :value="serenaConfig"
       @save="saveSerenaConfig"
+    />
+
+    <!-- Git Advanced Settings Dialog -->
+    <GitAdvancedSettingsDialog
+      v-model="showGitAdvanced"
+      :value="gitConfig"
+      @save="saveGitConfig"
     />
   </v-container>
 </template>
@@ -316,6 +323,7 @@ import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
+import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
 import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
@@ -343,13 +351,16 @@ const serenaConfig = ref({
   context_halo: 12,
 })
 
-// Git Integration state (Handover 013B)
-const gitIntegration = ref({
-  enabled: false,
-  commit_limit: 20,
-  default_branch: 'main',
+// Git Integration state (system-level like Serena)
+const gitEnabled = ref(false)
+const showGitAdvanced = ref(false)
+const gitConfig = ref({
+  use_in_prompts: false,
+  include_commit_history: true,
+  max_commits: 50,
+  branch_strategy: 'main',
 })
-const savingGitIntegration = ref(false)
+const togglingGit = ref(false)
 
 // Settings object
 const settings = ref({
@@ -497,8 +508,8 @@ onMounted(async () => {
   // This ensures UI reflects actual current theme (restored in main.js from localStorage)
   settings.value.appearance.theme = theme.global.name.value
 
-  // Load git integration settings (Handover 013B)
-  await loadGitIntegration()
+  // Load git integration settings (system-level)
+  await loadGitSettings()
 })
 
 // Serena Advanced dialog handlers
@@ -527,71 +538,71 @@ async function saveSerenaConfig(payload, done) {
   }
 }
 
-// Git Integration handlers (Handover 013B)
-async function loadGitIntegration() {
+// Git Integration Functions (system-level like Serena)
+async function loadGitSettings() {
+  console.log('[USER SETTINGS] Loading git settings...')
+
   try {
-    // Load product info to get the active product ID
-    await settingsStore.loadProductInfo()
-
-    if (!settingsStore.productInfo?.id) {
-      console.warn('[USER SETTINGS] No active product found - git integration disabled')
-      return
-    }
-
-    const response = await api.products.getGitIntegration(settingsStore.productInfo.id)
-    gitIntegration.value = {
-      enabled: response.data.enabled || false,
-      commit_limit: response.data.commit_limit || 20,
-      default_branch: response.data.default_branch || 'main',
-    }
-    console.log('[USER SETTINGS] Git integration loaded:', gitIntegration.value)
+    const settings = await setupService.getGitSettings()
+    gitConfig.value = settings
+    gitEnabled.value = settings.enabled || false
+    console.log('[USER SETTINGS] Git settings loaded:', settings)
   } catch (error) {
-    console.error('[USER SETTINGS] Failed to load git integration:', error)
+    console.error('[USER SETTINGS] Failed to load git settings:', error)
     // Set defaults on error
-    gitIntegration.value = {
-      enabled: false,
-      commit_limit: 20,
-      default_branch: 'main',
+    gitEnabled.value = false
+    gitConfig.value = {
+      use_in_prompts: false,
+      include_commit_history: true,
+      max_commits: 50,
+      branch_strategy: 'main',
     }
   }
 }
 
-function onGitToggle(enabled) {
+async function toggleGit(enabled) {
   console.log('[USER SETTINGS] Git integration toggled:', enabled)
-  gitIntegration.value.enabled = enabled
-  // If disabled, reset to defaults
-  if (!enabled) {
-    gitIntegration.value.commit_limit = 20
-    gitIntegration.value.default_branch = 'main'
+  togglingGit.value = true
+
+  try {
+    const result = await setupService.toggleGit(enabled)
+    gitEnabled.value = result.enabled
+    // Update config from server response
+    if (result.settings) {
+      gitConfig.value = result.settings
+    }
+    console.log('[USER SETTINGS] Git toggle result:', result)
+  } catch (error) {
+    console.error('[USER SETTINGS] Git toggle failed:', error)
+    // Revert on error
+    gitEnabled.value = !enabled
+  } finally {
+    togglingGit.value = false
   }
 }
 
-async function handleGitSave(payload) {
-  if (!settingsStore.productInfo?.id) {
-    console.error('[USER SETTINGS] No active product - cannot save git integration')
-    return
-  }
-
-  savingGitIntegration.value = true
+async function openGitAdvanced() {
+  // Load fresh config before opening
   try {
-    const response = await api.products.updateGitIntegration(settingsStore.productInfo.id, {
-      enabled: payload.enabled,
-      commit_limit: payload.commit_limit || 20,
-      default_branch: payload.default_branch || 'main',
-    })
-
-    // Update local state with response
-    gitIntegration.value = {
-      enabled: response.data.enabled,
-      commit_limit: response.data.commit_limit,
-      default_branch: response.data.default_branch,
-    }
-
-    console.log('[USER SETTINGS] Git integration saved successfully')
+    const settings = await setupService.getGitSettings()
+    gitConfig.value = settings
+    gitEnabled.value = settings.enabled || false
+    showGitAdvanced.value = true
   } catch (error) {
-    console.error('[USER SETTINGS] Failed to save git integration:', error)
+    console.error('[USER SETTINGS] Failed to load Git config:', error)
+  }
+}
+
+async function saveGitConfig(payload, done) {
+  try {
+    const updated = await setupService.updateGitSettings(payload)
+    gitConfig.value = updated.settings || payload
+    gitEnabled.value = updated.enabled || payload.use_in_prompts
+    showGitAdvanced.value = false
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to save Git config:', error)
   } finally {
-    savingGitIntegration.value = false
+    if (typeof done === 'function') done()
   }
 }
 </script>
