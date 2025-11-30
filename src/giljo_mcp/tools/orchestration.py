@@ -1412,6 +1412,24 @@ The agent templates are now being updated...
                     product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
                 )
 
+                # Handover 0267: Inject Serena MCP usage instructions if enabled
+                if include_serena:
+                    try:
+                        from giljo_mcp.prompt_generation.serena_instructions import SerenaInstructionGenerator
+
+                        serena_gen = SerenaInstructionGenerator()
+                        serena_instructions = await serena_gen.generate_instructions(enabled=True, detail_level="full")
+
+                        # Prepend Serena instructions to mission
+                        condensed_mission = serena_instructions + "\n\n---\n\n" + condensed_mission
+                        logger.info(
+                            f"[SERENA] Injected Serena instructions into orchestrator mission",
+                            extra={"orchestrator_id": orchestrator_id, "serena_instructions_length": len(serena_instructions)}
+                        )
+                    except Exception as e:
+                        logger.warning(f"[SERENA] Failed to inject Serena instructions: {e}")
+                        # Continue without Serena instructions if injection fails
+
                 # Handover 0246c: Agent templates no longer embedded
                 # Use get_available_agents() MCP tool instead
 
