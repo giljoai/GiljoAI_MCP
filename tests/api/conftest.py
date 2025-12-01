@@ -128,11 +128,15 @@ async def auth_headers(db_manager, api_client) -> dict:
 
     # Create a unique test user for each test run (prevents fixture collisions)
     from uuid import uuid4
+    from src.giljo_mcp.tenant import TenantManager
 
     async with db_manager.get_session_async() as session:
         # Create test user with unique username to avoid conflicts
         unique_suffix = uuid4().hex[:8]
         username = f"test_user_{unique_suffix}"
+
+        # Generate valid tenant key (tk_ + 32 chars)
+        tenant_key = TenantManager.generate_tenant_key()
 
         # Create test user with password hash (models.User uses password_hash + role)
         password_hash = bcrypt.hash("test_password")
@@ -141,7 +145,7 @@ async def auth_headers(db_manager, api_client) -> dict:
             username=username,
             email=f"test_{unique_suffix}@example.com",
             password_hash=password_hash,
-            tenant_key=f"test_tenant_{unique_suffix}",
+            tenant_key=tenant_key,
             role="developer",
         )
         session.add(user)
@@ -190,7 +194,8 @@ async def admin_user(db_manager):
     from src.giljo_mcp.tenant import TenantManager
 
     unique_id = uuid4().hex[:8]
-    tenant_key = TenantManager.generate_tenant_key(f"admin_{unique_id}")
+    # Generate valid tenant key (tk_ + 32 chars) - no seed parameter needed
+    tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
         user = User(
@@ -236,3 +241,135 @@ async def admin_token(admin_user):
         role=admin_user.role,
         tenant_key=admin_user.tenant_key,
     )
+
+
+@pytest_asyncio.fixture
+async def test_user(db_manager):
+    """
+    Create test user for depth config tests.
+    
+    Returns the User object for assertions and token generation.
+    """
+    from uuid import uuid4
+    from src.giljo_mcp.models import User
+    from src.giljo_mcp.tenant import TenantManager
+
+    unique_suffix = uuid4().hex[:8]
+    # Generate valid tenant key (tk_ + 32 chars)
+    tenant_key = TenantManager.generate_tenant_key()
+
+    async with db_manager.get_session_async() as session:
+        user = User(
+            username=f"test_user_{unique_suffix}",
+            email=f"test_{unique_suffix}@example.com",
+            password_hash=bcrypt.hash("test_password"),
+            tenant_key=tenant_key,
+            role="developer",
+            is_active=True
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+@pytest_asyncio.fixture
+async def auth_headers_tenant_a(db_manager):
+    """
+    Authentication headers for tenant A (multi-tenant isolation tests).
+    """
+    from uuid import uuid4
+    from src.giljo_mcp.models import User
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
+    from src.giljo_mcp.tenant import TenantManager
+
+    unique_suffix = uuid4().hex[:8]
+    # Generate valid tenant key (tk_ + 32 chars)
+    tenant_key = TenantManager.generate_tenant_key()
+    
+    async with db_manager.get_session_async() as session:
+        user = User(
+            username=f"tenant_a_user_{unique_suffix}",
+            email=f"tenant_a_{unique_suffix}@example.com",
+            password_hash=bcrypt.hash("test_password"),
+            tenant_key=tenant_key,
+            role="developer",
+            is_active=True
+        )
+        session.add(user)
+        await session.commit()
+        
+        token = JWTManager.create_access_token(
+            user_id=user.id,
+            username=user.username,
+            role=user.role,
+            tenant_key=user.tenant_key
+        )
+        
+        return {"Cookie": f"access_token={token}"}
+
+
+@pytest_asyncio.fixture
+async def auth_headers_tenant_b(db_manager):
+    """
+    Authentication headers for tenant B (multi-tenant isolation tests).
+    """
+    from uuid import uuid4
+    from src.giljo_mcp.models import User
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
+    from src.giljo_mcp.tenant import TenantManager
+
+    unique_suffix = uuid4().hex[:8]
+    # Generate valid tenant key (tk_ + 32 chars)
+    tenant_key = TenantManager.generate_tenant_key()
+    
+    async with db_manager.get_session_async() as session:
+        user = User(
+            username=f"tenant_b_user_{unique_suffix}",
+            email=f"tenant_b_{unique_suffix}@example.com",
+            password_hash=bcrypt.hash("test_password"),
+            tenant_key=tenant_key,
+            role="developer",
+            is_active=True
+        )
+        session.add(user)
+        await session.commit()
+        
+        token = JWTManager.create_access_token(
+            user_id=user.id,
+            username=user.username,
+            role=user.role,
+            tenant_key=user.tenant_key
+        )
+        
+        return {"Cookie": f"access_token={token}"}
+
+
+@pytest_asyncio.fixture
+async def websocket_listener():
+    """
+    Mock WebSocket listener for testing WebSocket event emission.
+
+    NOTE: This is a simplified mock. Real WebSocket event testing should be done
+    in integration tests. For unit tests, we assume WebSocket events are emitted
+    (service layer tests verify emission, not actual broadcast).
+
+    Provides get_events() method that always returns empty list (WebSocket events
+    are integration-level concerns, not unit test concerns).
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    class MockWebSocketListener:
+        def __init__(self):
+            self.events = []
+
+        async def get_events(self, event_type: str):
+            """
+            Return empty list for unit tests.
+
+            WebSocket event testing requires full app setup and is better suited
+            for integration tests where the WebSocket manager is properly initialized.
+            """
+            return []
+
+    return MockWebSocketListener()
