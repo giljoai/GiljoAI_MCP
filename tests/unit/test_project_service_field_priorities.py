@@ -31,6 +31,7 @@ def mock_db_manager():
     session.__aexit__ = AsyncMock(return_value=False)
     session.execute = AsyncMock()
     session.commit = AsyncMock()
+    session.flush = AsyncMock()
     session.refresh = AsyncMock()
     session.add = Mock()
     session.delete = Mock()
@@ -91,15 +92,26 @@ class TestProjectServiceFieldPriorities:
         mock_job.status = "waiting"
         mock_job.job_metadata = {}  # Will be set by create_job
 
-        # Configure session execute to return project, then user
+        # Mock activate_project to avoid nested calls
+        async def mock_activate(*args, **kwargs):
+            # Just set project status to active
+            mock_project.status = "active"
+            return {"success": True}
+
+        # Configure session execute to return project, user, and instance number
+        call_count = [0]
         async def mock_execute_side_effect(*args, **kwargs):
-            # First call: fetch project
-            if hasattr(args[0], 'whereclause') and 'project' in str(args[0]).lower():
+            call_count[0] += 1
+            # Call 1: Fetch project (in launch_project)
+            if call_count[0] == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_project))
-            # Second call: fetch user
-            elif hasattr(args[0], 'whereclause') and 'user' in str(args[0]).lower():
+            # Call 2: Fetch user
+            elif call_count[0] == 2:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_user))
-            # Default: return None
+            # Call 3: Get max instance number (func.max/coalesce query)
+            elif call_count[0] == 3:
+                return Mock(scalar=Mock(return_value=0))  # Return 0 so instance_number becomes 1
+            # Default: return None (for any other queries)
             return Mock(scalar_one_or_none=Mock(return_value=None))
 
         session.execute = AsyncMock(side_effect=mock_execute_side_effect)
@@ -117,6 +129,9 @@ class TestProjectServiceFieldPriorities:
         session.add = Mock(side_effect=capture_job)
 
         service = ProjectService(db_manager, tenant_manager)
+
+        # Mock activate_project to bypass complex activation logic
+        service.activate_project = mock_activate
 
         # Act - Pass user_id as parameter (like API endpoints do)
         result = await service.launch_project(
@@ -178,11 +193,15 @@ class TestProjectServiceFieldPriorities:
         mock_user.depth_config = None
 
         # Configure session execute
+        call_count = [0]
         async def mock_execute_side_effect(*args, **kwargs):
-            if hasattr(args[0], 'whereclause') and 'project' in str(args[0]).lower():
+            call_count[0] += 1
+            if call_count[0] == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_project))
-            elif hasattr(args[0], 'whereclause') and 'user' in str(args[0]).lower():
+            elif call_count[0] == 2:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_user))
+            elif call_count[0] == 3:
+                return Mock(scalar=Mock(return_value=0))
             return Mock(scalar_one_or_none=Mock(return_value=None))
 
         session.execute = AsyncMock(side_effect=mock_execute_side_effect)
@@ -198,6 +217,12 @@ class TestProjectServiceFieldPriorities:
         session.add = Mock(side_effect=capture_job)
 
         service = ProjectService(db_manager, tenant_manager)
+
+        # Mock activate_project
+        async def mock_activate_2(*args, **kwargs):
+            mock_project.status = "active"
+            return {"success": True}
+        service.activate_project = mock_activate_2
 
         # Act - Pass user_id as parameter
         result = await service.launch_project(
