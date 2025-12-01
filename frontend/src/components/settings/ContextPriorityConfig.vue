@@ -2,6 +2,29 @@
   <v-card>
     <v-card-title>Context Priority Configuration</v-card-title>
     <v-card-text>
+      <!-- Git Integration Alert -->
+      <v-alert
+        v-if="!gitIntegrationEnabled"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        <div>
+          <strong>Git History is disabled</strong>
+          <br />
+          GitHub integration is currently disabled. Enable it in the
+          <a
+            @click="navigateToIntegrations"
+            class="text-decoration-underline cursor-pointer"
+            style="cursor: pointer"
+          >
+            Integrations tab
+          </a>
+          to use Git History context.
+        </div>
+      </v-alert>
+
       <!-- Locked Project Context -->
       <div class="context-row locked-row d-flex justify-space-between align-center py-3 mb-2">
         <div class="d-flex align-center">
@@ -18,6 +41,7 @@
         v-for="context in contexts"
         :key="context.key"
         class="context-row d-flex justify-space-between align-center py-2"
+        :class="{ 'disabled-row': isContextDisabled(context.key) }"
       >
         <!-- Context Name and Toggle -->
         <div class="d-flex align-center flex-grow-1">
@@ -28,8 +52,13 @@
             density="compact"
             hide-details
             color="primary"
-            :aria-label="`Toggle ${context.label}`"
+            :aria-label="
+              isContextDisabled(context.key)
+                ? `${context.label} disabled - GitHub integration required`
+                : `Toggle ${context.label}`
+            "
             class="ml-2 compact-switch"
+            :disabled="isContextDisabled(context.key)"
           />
         </div>
 
@@ -44,7 +73,7 @@
           hide-details
           :aria-label="`${context.label} depth setting`"
           class="depth-select mx-2"
-          :disabled="!config[context.key]?.enabled"
+          :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
         />
 
         <!-- Priority Select -->
@@ -57,7 +86,7 @@
           hide-details
           :aria-label="`${context.label} priority setting`"
           class="priority-select"
-          :disabled="!config[context.key]?.enabled"
+          :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
         />
       </div>
     </v-card-text>
@@ -65,8 +94,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
+import setupService from '@/services/setupService'
+import { useWebSocketV2 } from '@/composables/useWebSocket'
+
+// Router for navigation
+const router = useRouter()
+
+// WebSocket for real-time updates
+const { on, off } = useWebSocketV2()
+
+// Git integration state
+const gitIntegrationEnabled = ref(false)
 
 // Context definitions
 const contexts = [
@@ -187,6 +228,58 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
   })
 }
 
+function isContextDisabled(contextKey: string): boolean {
+  // Only git_history is disabled when Git integration is OFF
+  return contextKey === 'git_history' && !gitIntegrationEnabled.value
+}
+
+function navigateToIntegrations() {
+  // Navigate to UserSettings with integrations tab query parameter
+  router.push({ name: 'UserSettings', query: { tab: 'integrations' } })
+}
+
+async function checkGitIntegration() {
+  try {
+    const settings = await setupService.getGitSettings()
+    gitIntegrationEnabled.value = settings.enabled || false
+    console.log('[CONTEXT PRIORITY CONFIG] Git integration status:', gitIntegrationEnabled.value)
+  } catch (error) {
+    console.error('[CONTEXT PRIORITY CONFIG] Failed to check Git integration status:', error)
+    gitIntegrationEnabled.value = false
+  }
+}
+
+/**
+ * Handle real-time Git integration updates from WebSocket
+ * Called when Git integration is toggled in Integrations tab
+ * @param {Object} data - WebSocket event data
+ * @param {string} data.product_id - Product ID
+ * @param {Object} data.settings - Git integration settings
+ * @param {boolean} data.settings.enabled - Whether git integration is enabled
+ */
+function handleGitIntegrationUpdate(data) {
+  if (!data || !data.settings) {
+    console.warn('[CONTEXT PRIORITY CONFIG] Received invalid git integration update:', data)
+    return
+  }
+
+  const newState = data.settings.enabled || false
+  gitIntegrationEnabled.value = newState
+
+  console.log('[CONTEXT PRIORITY CONFIG] Git integration updated via WebSocket:', {
+    enabled: newState,
+    timestamp: new Date().toISOString(),
+  })
+
+  // If Git integration was just enabled, Git History should become available immediately
+  // If it was disabled, Git History controls should become disabled immediately
+  if (newState) {
+    console.log('[CONTEXT PRIORITY CONFIG] Git History context is now available')
+  } else {
+    console.log('[CONTEXT PRIORITY CONFIG] Git History context is now disabled')
+  }
+}
+
 async function fetchConfig() {
   loading.value = true
   try {
@@ -301,8 +394,21 @@ function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Rec
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // Check Git integration status first
+  await checkGitIntegration()
+  // Then fetch context config
   fetchConfig()
+
+  // Listen for real-time Git integration changes via WebSocket
+  on('product:git:settings:changed', handleGitIntegrationUpdate)
+  console.log('[CONTEXT PRIORITY CONFIG] WebSocket listener registered for git integration updates')
+})
+
+onUnmounted(() => {
+  // Clean up WebSocket listener to prevent memory leaks
+  off('product:git:settings:changed', handleGitIntegrationUpdate)
+  console.log('[CONTEXT PRIORITY CONFIG] WebSocket listener cleaned up')
 })
 
 // Expose for testing
@@ -312,10 +418,15 @@ defineExpose({
   config,
   loading,
   saving,
+  gitIntegrationEnabled,
   toggleContext,
   updatePriority,
   updateDepth,
   saveConfig,
+  isContextDisabled,
+  navigateToIntegrations,
+  checkGitIntegration,
+  handleGitIntegrationUpdate,
 })
 </script>
 
@@ -333,6 +444,11 @@ defineExpose({
   border-radius: 4px;
   padding-left: 12px;
   padding-right: 12px;
+}
+
+.disabled-row {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .context-label {
