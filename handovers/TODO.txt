@@ -1,6 +1,6 @@
 TODO 
 
-Fix git hub sunchronization
+Fix git hub sunchronization - fixed 
 
 Fix all toggles in context priorioties
 

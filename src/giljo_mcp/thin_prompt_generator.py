@@ -301,7 +301,8 @@ class ThinClientPromptGenerator:
             instance_number=instance_number,
             tool=tool,
             field_priorities=field_priorities or {},
-            depth_config=depth_config
+            depth_config=depth_config,
+            user_id=user_id
         )
 
         # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
@@ -524,7 +525,8 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         instance_number: int,
         tool: str,
         field_priorities: Dict[str, int],
-        depth_config: Dict[str, Any]
+        depth_config: Dict[str, Any],
+        user_id: Optional[str] = None
     ) -> str:
         """
         Generate thin prompt listing available MCP tools by priority (Handover 0315).
@@ -554,27 +556,28 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         }
 
         # Map categories to MCP tools with depth parameters (from Handover 0315 Phase 1)
-        # CRITICAL: tenant_key must be passed to all tools for multi-tenant isolation
+        # CRITICAL: tenant_key AND user_id must be passed to all tools for multi-tenant isolation
+        # and priority filtering (Handover 0279)
         category_to_tool = {
             "product_core": [
-                f"fetch_tech_stack(product_id='{product.id}', tenant_key='{self.tenant_key}', sections='{depth_config.get('tech_stack_sections', 'all')}')",
-                f"fetch_architecture(product_id='{product.id}', tenant_key='{self.tenant_key}', depth='{depth_config.get('architecture_depth', 'overview')}')"
+                f"fetch_tech_stack(product_id='{product.id}', tenant_key='{self.tenant_key}', sections='{depth_config.get('tech_stack_sections', 'all')}', user_id='{user_id}')",
+                f"fetch_architecture(product_id='{product.id}', tenant_key='{self.tenant_key}', depth='{depth_config.get('architecture_depth', 'overview')}', user_id='{user_id}')"
             ],
             "vision_documents": [
-                f"fetch_vision_document(product_id='{product.id}', tenant_key='{self.tenant_key}', chunking='{depth_config.get('vision_chunking', 'moderate')}')"
+                f"fetch_vision_document(product_id='{product.id}', tenant_key='{self.tenant_key}', chunking='{depth_config.get('vision_chunking', 'moderate')}', user_id='{user_id}')"
             ],
             "agent_templates": [
-                f"get_available_agents(tenant_key='{self.tenant_key}', active_only=True)"
+                f"get_available_agents(tenant_key='{self.tenant_key}', active_only=True, user_id='{user_id}')"
             ],
             "project_context": [
                 # Inline project data (small, ~200 tokens) - NOT an MCP tool
                 None  # Special case: embedded inline below
             ],
             "memory_360": [
-                f"fetch_360_memory(product_id='{product.id}', tenant_key='{self.tenant_key}', last_n_projects={depth_config.get('memory_last_n_projects', 3)})"
+                f"fetch_360_memory(product_id='{product.id}', tenant_key='{self.tenant_key}', last_n_projects={depth_config.get('memory_last_n_projects', 3)}, user_id='{user_id}')"
             ],
             "git_history": [
-                f"fetch_git_history(product_id='{product.id}', tenant_key='{self.tenant_key}', commits={depth_config.get('git_commits', 25)})"
+                f"fetch_git_history(product_id='{product.id}', tenant_key='{self.tenant_key}', commits={depth_config.get('git_commits', 25)}, user_id='{user_id}')"
             ]
         }
 
