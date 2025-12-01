@@ -190,8 +190,9 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
 async function fetchConfig() {
   loading.value = true
   try {
-    const response = await axios.get('/api/v1/users/me/field-priority')
-    const priorities = response.data?.priorities || {}
+    // Fetch priorities from field-priority endpoint
+    const prioritiesResponse = await axios.get('/api/v1/users/me/field-priority')
+    const priorities = prioritiesResponse.data?.priorities || {}
 
     // Apply backend priorities to frontend keys using reverse mapping
     Object.entries(priorities).forEach(([backendKey, value]) => {
@@ -212,7 +213,36 @@ async function fetchConfig() {
       })
     })
 
-    console.log('[CONTEXT PRIORITY CONFIG] Field priorities loaded from server')
+    // Fetch depth config from context/depth endpoint
+    try {
+      const depthResponse = await axios.get('/api/v1/users/me/context/depth')
+      const depthData = depthResponse.data || {}
+
+      // Map backend field names back to frontend structure
+      if (depthData.vision_chunking && config.value.vision_documents) {
+        config.value.vision_documents.depth = depthData.vision_chunking
+      }
+      if (depthData.memory_last_n_projects && config.value.memory_360) {
+        config.value.memory_360.count = depthData.memory_last_n_projects
+      }
+      if (depthData.git_commits && config.value.git_history) {
+        config.value.git_history.count = depthData.git_commits
+      }
+      if (depthData.agent_template_detail && config.value.agent_templates) {
+        config.value.agent_templates.depth = depthData.agent_template_detail
+      }
+      if (depthData.tech_stack_sections && config.value.tech_stack) {
+        config.value.tech_stack.sections = depthData.tech_stack_sections
+      }
+      if (depthData.architecture_depth && config.value.architecture) {
+        config.value.architecture.depth = depthData.architecture_depth
+      }
+
+      console.log('[CONTEXT PRIORITY CONFIG] Field priorities and depth config loaded from server')
+    } catch (depthError) {
+      // Depth endpoint is optional - continue with defaults if it fails
+      console.warn('[CONTEXT PRIORITY CONFIG] Depth config not available, using defaults:', depthError)
+    }
   } catch (error) {
     console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error)
     // Keep default values on error
@@ -224,11 +254,28 @@ async function fetchConfig() {
 async function saveConfig() {
   saving.value = true
   try {
+    // Save priorities to field-priority endpoint
     await axios.put('/api/v1/users/me/field-priority', {
       version: '2.0',
       priorities: convertToBackendFormat(config.value),
     })
     console.log('[CONTEXT PRIORITY CONFIG] Field priorities saved successfully')
+
+    // Save depth config to context/depth endpoint
+    try {
+      await axios.put('/api/v1/users/me/context/depth', {
+        vision_chunking: config.value.vision_documents?.depth || 'moderate',
+        memory_last_n_projects: config.value.memory_360?.count || 3,
+        git_commits: config.value.git_history?.count || 25,
+        agent_template_detail: config.value.agent_templates?.depth || 'standard',
+        tech_stack_sections: config.value.tech_stack?.sections || 'all',
+        architecture_depth: config.value.architecture?.depth || 'overview',
+      })
+      console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
+    } catch (depthError) {
+      // Log depth save error but don't fail the overall save
+      console.warn('[CONTEXT PRIORITY CONFIG] Warning: Depth config save failed:', depthError)
+    }
   } catch (error) {
     console.error('[CONTEXT PRIORITY CONFIG] Failed to save config:', error)
   } finally {
