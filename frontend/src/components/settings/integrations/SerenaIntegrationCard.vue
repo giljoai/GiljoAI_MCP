@@ -53,31 +53,19 @@
         <span class="text-caption text-medium-emphasis ml-3"> Credit: Oraios </span>
       </div>
 
-      <!-- Serena Controls -->
+      <!-- Serena Controls (Handover 0277: Simplified to toggle only) -->
       <v-card variant="tonal" class="mb-0">
         <v-card-text class="pa-3">
-          <div class="d-flex align-center justify-between">
-            <div class="flex-grow-1 d-flex align-center">
-              <div class="text-subtitle-2 font-weight-medium mr-4">Enable Serena MCP</div>
-              <v-switch
-                :model-value="enabled"
-                @update:model-value="$emit('update:enabled', $event)"
-                :loading="loading"
-                hide-details
-                density="compact"
-                class="serena-toggle-inline"
-              />
-            </div>
-            <v-btn
-              color="primary"
-              variant="flat"
-              size="small"
-              width="120"
-              @click="$emit('openAdvanced')"
-              :disabled="loading"
-            >
-              Advanced
-            </v-btn>
+          <div class="d-flex align-center">
+            <div class="text-subtitle-2 font-weight-medium mr-4">Enable Serena MCP</div>
+            <v-switch
+              :model-value="enabled"
+              @update:model-value="$emit('update:enabled', $event)"
+              :loading="loading"
+              hide-details
+              density="compact"
+              class="serena-toggle-inline"
+            />
           </div>
         </v-card-text>
       </v-card>
@@ -86,21 +74,11 @@
 </template>
 
 <script setup>
+// Handover 0277: Simplified to single toggle only (advanced settings removed)
 defineProps({
   enabled: {
     type: Boolean,
     default: false,
-  },
-  config: {
-    type: Object,
-    default: () => ({
-      use_in_prompts: true,
-      tailor_by_mission: true,
-      dynamic_catalog: true,
-      prefer_ranges: true,
-      max_range_lines: 180,
-      context_halo: 12,
-    }),
   },
   loading: {
     type: Boolean,
@@ -108,7 +86,7 @@ defineProps({
   },
 })
 
-defineEmits(['update:enabled', 'openAdvanced'])
+defineEmits(['update:enabled'])
 </script>
 
 <style scoped>
