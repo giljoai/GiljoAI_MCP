@@ -279,7 +279,7 @@ async function fetchConfig() {
     // Fetch depth config from context/depth endpoint
     try {
       const depthResponse = await axios.get('/api/v1/users/me/context/depth')
-      const depthData = depthResponse.data || {}
+      const depthData = depthResponse.data?.depth_config || {}
 
       // Map backend field names back to frontend structure
       if (depthData.vision_chunking && config.value.vision_documents) {
@@ -327,12 +327,14 @@ async function saveConfig() {
     // Save depth config to context/depth endpoint
     try {
       await axios.put('/api/v1/users/me/context/depth', {
-        vision_chunking: config.value.vision_documents?.depth || 'moderate',
-        memory_last_n_projects: config.value.memory_360?.count || 3,
-        git_commits: config.value.git_history?.count || 25,
-        agent_template_detail: config.value.agent_templates?.depth || 'standard',
-        tech_stack_sections: config.value.tech_stack?.sections || 'all',
-        architecture_depth: config.value.architecture?.depth || 'overview',
+        depth_config: {
+          vision_chunking: config.value.vision_documents?.depth || 'moderate',
+          memory_last_n_projects: config.value.memory_360?.count || 3,
+          git_commits: config.value.git_history?.count || 25,
+          agent_template_detail: config.value.agent_templates?.depth || 'standard',
+          tech_stack_sections: config.value.tech_stack?.sections || 'all',
+          architecture_depth: config.value.architecture?.depth || 'overview',
+        }
       })
       console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
     } catch (depthError) {
