@@ -120,10 +120,10 @@ class TestSerenaAPIEndpoint:
             return {"tenant_key": tenant_key, "product": product}
 
     async def test_get_serena_settings_returns_only_use_in_prompts(
-        self, client, tenant_context, auth_headers
+        self, async_client, tenant_context, auth_headers
     ):
         """Verify GET /api/serena/settings returns only use_in_prompts field"""
-        response = await client.get("/api/serena/settings", headers=auth_headers)
+        response = await async_client.get("/api/serena/settings", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -143,11 +143,11 @@ class TestSerenaAPIEndpoint:
         assert len(data.keys()) == 1
 
     async def test_post_serena_toggle_accepts_only_boolean(
-        self, client, tenant_context, auth_headers
+        self, async_client, tenant_context, auth_headers
     ):
         """Verify POST /api/serena/toggle only accepts boolean"""
         # Valid boolean toggle
-        response = await client.post(
+        response = await async_client.post(
             "/api/serena/toggle",
             headers=auth_headers,
             json={"use_in_prompts": True}
@@ -158,7 +158,7 @@ class TestSerenaAPIEndpoint:
         assert data["use_in_prompts"] is True
 
         # Toggle off
-        response = await client.post(
+        response = await async_client.post(
             "/api/serena/toggle",
             headers=auth_headers,
             json={"use_in_prompts": False}
@@ -169,11 +169,11 @@ class TestSerenaAPIEndpoint:
         assert data["use_in_prompts"] is False
 
     async def test_post_serena_rejects_advanced_settings(
-        self, client, tenant_context, auth_headers
+        self, async_client, tenant_context, auth_headers
     ):
         """Verify POST /api/serena/toggle rejects advanced settings"""
         # Attempt to send advanced settings
-        response = await client.post(
+        response = await async_client.post(
             "/api/serena/toggle",
             headers=auth_headers,
             json={
@@ -262,9 +262,9 @@ class TestOrchestratorSerenaIntegration:
 
             # Get orchestrator instructions
             result = await get_orchestrator_instructions(
-                db_manager,
                 orchestrator_id=orchestrator_context["orchestrator"].job_id,
                 tenant_key=orchestrator_context["tenant_key"],
+                db_manager=db_manager,
             )
 
             prompt = result.get("prompt", "")
@@ -296,9 +296,9 @@ class TestOrchestratorSerenaIntegration:
 
             # Get orchestrator instructions
             result = await get_orchestrator_instructions(
-                db_manager,
                 orchestrator_id=orchestrator_context["orchestrator"].job_id,
                 tenant_key=orchestrator_context["tenant_key"],
+                db_manager=db_manager,
             )
 
             prompt = result.get("prompt", "")

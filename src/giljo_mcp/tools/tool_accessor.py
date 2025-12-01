@@ -472,23 +472,22 @@ class ToolAccessor:
                     product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
                 )
 
-                # Handover 0267: Inject Serena MCP usage instructions if enabled
+                # Handover 0277: Inject simplified Serena MCP notice if enabled
                 if include_serena:
                     try:
-                        from giljo_mcp.prompt_generation.serena_instructions import SerenaInstructionGenerator
+                        from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
 
-                        serena_gen = SerenaInstructionGenerator()
-                        serena_instructions = await serena_gen.generate_instructions(enabled=True, detail_level="full")
+                        serena_instructions = generate_serena_instructions(enabled=True)
 
                         # Prepend Serena instructions to mission
                         condensed_mission = serena_instructions + "\n\n---\n\n" + condensed_mission
                         logger.info(
-                            f"[SERENA] Injected Serena instructions into orchestrator mission",
+                            f"[SERENA] Injected simplified Serena notice into orchestrator mission",
                             extra={"orchestrator_id": orchestrator_id, "serena_instructions_length": len(serena_instructions)}
                         )
                     except Exception as e:
-                        logger.warning(f"[SERENA] Failed to inject Serena instructions: {e}")
-                        # Continue without Serena instructions if injection fails
+                        logger.warning(f"[SERENA] Failed to inject Serena notice: {e}")
+                        # Continue without Serena notice if injection fails
 
                 # FIX: Add fallback mission generation if mission is empty
                 if not condensed_mission or condensed_mission.strip() == "":
