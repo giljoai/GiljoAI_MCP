@@ -653,138 +653,20 @@ get_next_instruction(
 All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant isolation.
 """
 
-        # Optionally append Serena MCP usage guidance when enabled
+        # Handover 0277: Optionally append simplified Serena MCP notice when enabled
         try:
             config = self._read_config()
             serena_section = config.get("features", {}).get("serena_mcp", {})
             serena_enabled = bool(serena_section.get("use_in_prompts", False))
         except Exception:
-            serena_section = {}
             serena_enabled = False
 
         if serena_enabled:
-            base = (
-                base
-                + "\n\n"
-                + self._generate_serena_instructions(
-                    agent_role=agent_role,
-                    mission_text=mission_text or "",
-                    serena_cfg=serena_section,
-                )
-            )
+            from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+            serena_notice = generate_serena_instructions(enabled=True)
+            base = base + "\n\n" + serena_notice
 
         return base
-
-    def _generate_serena_instructions(self, agent_role: str, mission_text: str, serena_cfg: dict) -> str:
-        """Generate Serena MCP usage guidance tailored by role and mission.
-
-        serena_cfg keys handled (with defaults):
-          - tailor_by_mission: True
-          - dynamic_catalog: True
-          - prefer_ranges: True
-          - max_range_lines: 180
-          - context_halo: 12
-          - available_tools: Optional[List[str]] (if provided, used when dynamic_catalog)
-        """
-        role = (agent_role or "").lower()
-
-        # Base recommendations by role
-        role_reco = {
-            "orchestrator": ["find_files", "get_symbols_overview", "search_for_pattern", "read_file"],
-            "analyzer": ["find_files", "get_symbols_overview", "search_for_pattern", "read_file"],
-            "implementer": ["find_files", "search_for_pattern", "read_file"],
-            "tester": ["find_files", "search_for_pattern", "read_file"],
-            "reviewer": ["get_symbols_overview", "search_for_pattern", "read_file"],
-        }
-
-        tools = role_reco.get(role, ["find_files", "search_for_pattern", "read_file"])
-
-        # Mission-aware tailoring
-        if serena_cfg.get("tailor_by_mission", True) and mission_text:
-            mt = mission_text.lower()
-            if any(k in mt for k in ["bug", "fix", "regression", "error", "stack trace"]):
-                tools = ["search_for_pattern", "get_symbols_overview", "read_file", "find_files"]
-            elif any(k in mt for k in ["test", "unit", "coverage", "spec"]):
-                tools = ["find_files", "search_for_pattern", "read_file"]
-            elif any(k in mt for k in ["refactor", "cleanup", "rename"]):
-                tools = ["get_symbols_overview", "search_for_pattern", "read_file"]
-            elif any(k in mt for k in ["feature", "add ", "implement", "new "]):
-                tools = ["find_files", "get_symbols_overview", "search_for_pattern", "read_file"]
-
-        # Dynamic catalog filtering
-        available = None
-        if serena_cfg.get("dynamic_catalog", True):
-            # Read optional configured catalog list; fallback = None (no filtering)
-            available = serena_cfg.get("available_tools") or serena_cfg.get("tools")
-            if isinstance(available, list) and available:
-                tools = [t for t in tools if t in available]
-
-        prefer_ranges = serena_cfg.get("prefer_ranges", True)
-        max_lines = int(serena_cfg.get("max_range_lines", 180) or 180)
-        halo = int(serena_cfg.get("context_halo", 12) or 12)
-
-        # Check if a dedicated range tool exists
-        has_read_range = False
-        if available and isinstance(available, list):
-            has_read_range = "read_file_range" in available
-
-        # Compose guidance block
-        tool_list = ", ".join(tools) if tools else "find_files, search_for_pattern, read_file"
-
-        examples_lines = [
-            "## Serena MCP (Code Discovery)",
-            "",
-            "Serena MCP is available for codebase discovery and navigation. Use it to:",
-            "- quickly locate relevant files and symbols",
-            "- inspect code safely before proposing changes",
-            "- keep context small by reading only what you need",
-            "",
-            f"Recommended tools for your role ({agent_role}): {tool_list}",
-            "",
-            "Example calls:",
-            "```",
-            "# discover candidate files",
-            'find_files(query="router|orchestrator|auth")',
-            "",
-            "# inspect symbols in a file",
-            'get_symbols_overview(path="src/app.py")',
-            "",
-            "# search for patterns",
-            'search_for_pattern(pattern="def create_router", path="src/")',
-        ]
-
-        if prefer_ranges and has_read_range:
-            examples_lines += [
-                "",
-                "# read a specific line range (preferred)",
-                'read_file_range(path="src/app.py", start_line=120, end_line=120+24)',
-            ]
-        else:
-            examples_lines += [
-                "",
-                "# read file (if range reads not available)",
-                'read_file(path="src/app.py")',
-            ]
-
-        examples_lines += [
-            "```",
-            "",
-            "Guidelines:",
-            "- Prefer Serena MCP to discover BEFORE editing.",
-            "- Read minimally; cite exact paths/lines in your updates.",
-        ]
-
-        if prefer_ranges:
-            examples_lines += [
-                f"- Prefer range reads (halo ±{halo} lines) up to ~{max_lines} lines; escalate to full-file beyond that.",
-                "- If symbol map is ambiguous, read a wider range or full file and re-evaluate.",
-            ]
-
-        examples_lines += [
-            "- You may choose other Serena tools if helpful; the list is guidance, not a constraint.",
-        ]
-
-        return "\n".join(examples_lines)
 
     def _generate_cli_prompt(
         self,
