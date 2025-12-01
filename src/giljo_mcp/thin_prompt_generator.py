@@ -46,6 +46,7 @@ Priority: CRITICAL - Enables Commercial Product
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
@@ -207,13 +208,29 @@ class ThinClientPromptGenerator:
         existing_orchestrator = existing_orch_result.scalars().first()  # Use first() to handle edge case of multiple active orchestrators
 
         if existing_orchestrator:
-            # Reuse existing active orchestrator (no database write)
+            # Reuse existing active orchestrator
             orchestrator_id = existing_orchestrator.job_id
             instance_number = existing_orchestrator.instance_number
 
+            # BUG FIX (Handover 0275): Update job_metadata when reusing orchestrator
+            # Before fix: job_metadata was left as {} from old orchestrator creation
+            # After fix: job_metadata is updated with current user settings
+            existing_orchestrator.job_metadata = {
+                "field_priorities": field_priorities or {},
+                "depth_config": depth_config,
+                "user_id": user_id,
+                "tool": tool,
+                "created_via": "thin_client_generator",
+                "reused_at": str(datetime.now())  # Track when metadata was updated
+            }
+
+            # Commit metadata update to database
+            await self.db.commit()
+            await self.db.refresh(existing_orchestrator)
+
             logger.info(
                 f"[ThinPromptGenerator] Reusing existing orchestrator {orchestrator_id} "
-                f"(instance #{instance_number}) for project {project_id}"
+                f"(instance #{instance_number}) for project {project_id} - metadata updated"
             )
         else:
             # No active orchestrator exists - create new one

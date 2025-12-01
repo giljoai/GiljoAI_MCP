@@ -70,6 +70,83 @@ class TestAgentJobManagerCreation:
         assert job.completed_at is None
         assert job.created_at is not None
 
+    def test_create_job_with_job_metadata(self, db_session, db_manager):
+        """Test creating a job with job_metadata parameter."""
+        tenant_key = str(uuid4())
+        job_metadata = {
+            "field_priorities": {
+                "product_core": 1,
+                "vision_documents": 2,
+                "tech_stack": 1,
+                "architecture": 2
+            },
+            "user_id": "user-123",
+            "tool": "claude-code"
+        }
+
+        manager = AgentJobManager(db_manager)
+
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            mission="Orchestrate project implementation",
+            job_metadata=job_metadata,
+        )
+
+        assert job is not None
+        assert job.job_id is not None
+        assert job.job_metadata is not None
+        assert job.job_metadata == job_metadata
+        assert job.job_metadata["field_priorities"]["product_core"] == 1
+        assert job.job_metadata["user_id"] == "user-123"
+        assert job.job_metadata["tool"] == "claude-code"
+
+    def test_create_job_without_job_metadata_defaults_to_empty_dict(self, db_session, db_manager):
+        """Test creating a job without job_metadata defaults to empty dict."""
+        tenant_key = str(uuid4())
+
+        manager = AgentJobManager(db_manager)
+
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission without metadata",
+        )
+
+        assert job is not None
+        assert job.job_metadata is not None
+        assert job.job_metadata == {}
+
+    def test_create_job_metadata_persists_to_database(self, db_session, db_manager):
+        """Test that job_metadata persists correctly to the database."""
+        tenant_key = str(uuid4())
+        job_metadata = {
+            "field_priorities": {
+                "vision_documents": 3,
+                "git_history": 2
+            },
+            "custom_field": "custom_value"
+        }
+
+        manager = AgentJobManager(db_manager)
+
+        # Create job with metadata
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="tester",
+            mission="Write integration tests",
+            job_metadata=job_metadata,
+        )
+
+        # Retrieve the job from database
+        retrieved_job = manager.get_job(tenant_key=tenant_key, job_id=job.job_id)
+
+        # Verify metadata persisted correctly
+        assert retrieved_job is not None
+        assert retrieved_job.job_metadata == job_metadata
+        assert retrieved_job.job_metadata["field_priorities"]["vision_documents"] == 3
+        assert retrieved_job.job_metadata["custom_field"] == "custom_value"
+
     def test_create_job_with_minimal_parameters(self, db_session, db_manager):
         """Test creating a job with only required parameters."""
         tenant_key = str(uuid4())
@@ -1064,3 +1141,126 @@ class TestAgentJobDecommissioning:
         for job in decommissioned_jobs:
             assert job.status == "decommissioned"
             assert job.decommissioned_at is not None
+
+
+class TestAgentJobMetadataIntegration:
+    """Test job_metadata integration with orchestrator workflow."""
+
+    def test_orchestrator_job_with_field_priorities(self, db_session, db_manager):
+        """Test creating orchestrator job with field priorities metadata."""
+        tenant_key = str(uuid4())
+        field_priorities = {
+            "product_core": 1,
+            "vision_documents": 2,
+            "tech_stack": 1,
+            "architecture": 2,
+            "testing": 3,
+            "360_memory": 2,
+            "git_history": 2,
+            "agent_templates": 3,
+            "project_context": 1
+        }
+
+        manager = AgentJobManager(db_manager)
+
+        # Create orchestrator job with field priorities
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            mission="Orchestrate project implementation with context prioritization",
+            job_metadata={
+                "field_priorities": field_priorities,
+                "user_id": "user-123",
+                "tool": "claude-code"
+            }
+        )
+
+        # Verify metadata stored correctly
+        assert job.job_metadata is not None
+        assert "field_priorities" in job.job_metadata
+        assert job.job_metadata["field_priorities"]["product_core"] == 1
+        assert job.job_metadata["field_priorities"]["vision_documents"] == 2
+        assert job.job_metadata["user_id"] == "user-123"
+        assert job.job_metadata["tool"] == "claude-code"
+
+    def test_job_metadata_survives_status_transitions(self, db_session, db_manager):
+        """Test that job_metadata persists through status transitions."""
+        tenant_key = str(uuid4())
+        job_metadata = {
+            "field_priorities": {"product_core": 1, "tech_stack": 2},
+            "custom_field": "test_value"
+        }
+
+        manager = AgentJobManager(db_manager)
+
+        # Create job with metadata
+        job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Test mission",
+            job_metadata=job_metadata
+        )
+
+        # Acknowledge job
+        job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
+        assert job.job_metadata == job_metadata
+
+        # Update status
+        job = manager.update_job_status(
+            tenant_key=tenant_key,
+            job_id=job.job_id,
+            status="active",
+            metadata={"message": "Working on it"}
+        )
+        assert job.job_metadata == job_metadata
+
+        # Complete job
+        job = manager.complete_job(
+            tenant_key=tenant_key,
+            job_id=job.job_id,
+            result={"status": "success"}
+        )
+        assert job.job_metadata == job_metadata
+
+    def test_multiple_jobs_with_different_metadata(self, db_session, db_manager):
+        """Test multiple jobs can have different metadata."""
+        tenant_key = str(uuid4())
+        manager = AgentJobManager(db_manager)
+
+        # Create orchestrator job with field priorities
+        orchestrator_job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            mission="Orchestrate",
+            job_metadata={
+                "field_priorities": {"product_core": 1, "vision_documents": 2},
+                "tool": "claude-code"
+            }
+        )
+
+        # Create implementer job with different metadata
+        implementer_job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="implementer",
+            mission="Implement",
+            job_metadata={
+                "assigned_component": "backend",
+                "priority": "high"
+            }
+        )
+
+        # Create tester job with no metadata
+        tester_job = manager.create_job(
+            tenant_key=tenant_key,
+            agent_type="tester",
+            mission="Test"
+        )
+
+        # Verify each job has correct metadata
+        assert orchestrator_job.job_metadata["field_priorities"]["product_core"] == 1
+        assert orchestrator_job.job_metadata["tool"] == "claude-code"
+
+        assert implementer_job.job_metadata["assigned_component"] == "backend"
+        assert implementer_job.job_metadata["priority"] == "high"
+
+        assert tester_job.job_metadata == {}
