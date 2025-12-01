@@ -275,13 +275,11 @@
             <!-- Claude Code Agent Export -->
             <ClaudeCodeExport />
 
-            <!-- Serena MCP Integration -->
+            <!-- Serena MCP Integration (Handover 0277: Simplified to toggle only) -->
             <SerenaIntegrationCard
               :enabled="serenaEnabled"
-              :config="serenaConfig"
               :loading="toggling"
               @update:enabled="toggleSerena"
-              @openAdvanced="openSerenaAdvanced"
             />
 
             <!-- Git + 360 Memory Integration (system-level) -->
@@ -296,13 +294,6 @@
         </v-card>
       </v-window-item>
     </v-window>
-
-    <!-- Serena Advanced Settings Dialog -->
-    <SerenaAdvancedSettingsDialog
-      v-model="showSerenaAdvanced"
-      :value="serenaConfig"
-      @save="saveSerenaConfig"
-    />
 
     <!-- Git Advanced Settings Dialog -->
     <GitAdvancedSettingsDialog
@@ -322,7 +313,6 @@ import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
-import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
 import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
@@ -340,16 +330,6 @@ const router = useRouter()
 const activeTab = ref('general')
 const serenaEnabled = ref(false)
 const toggling = ref(false)
-
-const showSerenaAdvanced = ref(false)
-const serenaConfig = ref({
-  use_in_prompts: true,
-  tailor_by_mission: true,
-  dynamic_catalog: true,
-  prefer_ranges: true,
-  max_range_lines: 180,
-  context_halo: 12,
-})
 
 // Git Integration state (system-level like Serena)
 const gitEnabled = ref(false)
@@ -511,32 +491,6 @@ onMounted(async () => {
   // Load git integration settings (system-level)
   await loadGitSettings()
 })
-
-// Serena Advanced dialog handlers
-async function openSerenaAdvanced() {
-  try {
-    const cfg = await setupService.getSerenaConfig()
-    serenaConfig.value = cfg
-    // keep main toggle in sync
-    serenaEnabled.value = !!cfg.use_in_prompts
-    showSerenaAdvanced.value = true
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to load Serena config:', error)
-  }
-}
-
-async function saveSerenaConfig(payload, done) {
-  try {
-    const updated = await setupService.updateSerenaConfig(payload)
-    serenaConfig.value = updated
-    serenaEnabled.value = !!updated.use_in_prompts
-    showSerenaAdvanced.value = false
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to save Serena config:', error)
-  } finally {
-    if (typeof done === 'function') done()
-  }
-}
 
 // Git Integration Functions (system-level like Serena)
 async function loadGitSettings() {
