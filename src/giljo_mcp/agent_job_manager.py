@@ -101,6 +101,7 @@ class AgentJobManager:
         mission: str,
         spawned_by: Optional[str] = None,
         context_chunks: Optional[list[str]] = None,
+        job_metadata: Optional[dict[str, Any]] = None,
     ) -> Job:
         """
         Create a new agent job.
@@ -111,6 +112,7 @@ class AgentJobManager:
             mission: Mission/instructions for the agent
             spawned_by: Optional job_id of parent job that spawned this job
             context_chunks: Optional list of chunk_ids for context loading
+            job_metadata: Optional metadata dict (field_priorities, user_id, tool, etc.)
 
         Returns:
             Created Job instance
@@ -136,6 +138,7 @@ class AgentJobManager:
             context_chunks=context_chunks or [],
             messages=[],
             acknowledged=False,
+            job_metadata=job_metadata or {},
         )
 
         with self.db_manager.get_session() as session:

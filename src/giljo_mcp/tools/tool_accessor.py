@@ -441,6 +441,27 @@ class ToolAccessor:
                     )
                     product = result.scalar_one_or_none()
 
+                # Check if Serena is enabled (from config.yaml)
+                # Serena toggle is in My Settings → Integrations
+                include_serena = False
+                try:
+                    from pathlib import Path
+                    import yaml
+
+                    config_path = Path.cwd() / "config.yaml"
+                    if config_path.exists():
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f) or {}
+                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        if include_serena:
+                            logger.info(
+                                f"[SERENA] Enabled for orchestrator {orchestrator_id}",
+                                extra={"orchestrator_id": orchestrator_id, "project_id": str(project.id)}
+                            )
+                except Exception as e:
+                    logger.warning(f"[SERENA] Failed to read config for Serena toggle: {e}")
+                    include_serena = False
+
                 # Generate condensed mission
                 planner = MissionPlanner(self.db_manager)
                 metadata = orchestrator.job_metadata or {}
@@ -448,8 +469,26 @@ class ToolAccessor:
                 user_id = metadata.get("user_id")
 
                 condensed_mission = await planner._build_context_with_priorities(
-                    product=product, project=project, field_priorities=field_priorities, user_id=user_id
+                    product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
                 )
+
+                # Handover 0267: Inject Serena MCP usage instructions if enabled
+                if include_serena:
+                    try:
+                        from giljo_mcp.prompt_generation.serena_instructions import SerenaInstructionGenerator
+
+                        serena_gen = SerenaInstructionGenerator()
+                        serena_instructions = await serena_gen.generate_instructions(enabled=True, detail_level="full")
+
+                        # Prepend Serena instructions to mission
+                        condensed_mission = serena_instructions + "\n\n---\n\n" + condensed_mission
+                        logger.info(
+                            f"[SERENA] Injected Serena instructions into orchestrator mission",
+                            extra={"orchestrator_id": orchestrator_id, "serena_instructions_length": len(serena_instructions)}
+                        )
+                    except Exception as e:
+                        logger.warning(f"[SERENA] Failed to inject Serena instructions: {e}")
+                        # Continue without Serena instructions if injection fails
 
                 # FIX: Add fallback mission generation if mission is empty
                 if not condensed_mission or condensed_mission.strip() == "":
