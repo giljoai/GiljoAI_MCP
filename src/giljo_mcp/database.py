@@ -155,16 +155,15 @@ class DatabaseManager:
     @asynccontextmanager
     async def get_session_async(self) -> AsyncSession:
         """
-        Get a database session (async) with safe cleanup.
+        Get a database session (async) with automatic cleanup.
 
         Usage:
             async with db_manager.get_session_async() as session:
                 # Use session
 
         Note:
-            This method implements defensive session cleanup to prevent
-            IllegalStateChangeError when close() is called while another
-            operation is in progress. State is checked before closing.
+            The async context manager handles all session cleanup automatically.
+            No manual close() needed - prevents IllegalStateChangeError.
         """
         if not self.is_async:
             raise RuntimeError("Use get_session() for sync operations")
@@ -181,25 +180,7 @@ class DatabaseManager:
                     # Log rollback failures but don't suppress original exception
                     logger.error(f"Session rollback failed: {rollback_error}", exc_info=True)
                 raise
-            finally:
-                # Safe session cleanup with state checking
-                try:
-                    # Check if session is still in an active transaction state
-                    # before attempting to close (prevents IllegalStateChangeError)
-                    if hasattr(session, 'is_active') and session.is_active:
-                        # Session still has active transaction, rollback first
-                        logger.debug("Rolling back active transaction before session close")
-                        try:
-                            await session.rollback()
-                        except Exception as e:
-                            logger.warning(f"Rollback before close failed: {e}")
-
-                    # Now safe to close the session
-                    await session.close()
-                except Exception as close_error:
-                    # Log but don't raise - cleanup is best-effort
-                    # Prevents masking original exceptions from the try block
-                    logger.error(f"Session cleanup failed: {close_error}", exc_info=True)
+            # No finally block needed - context manager handles cleanup
 
     def close(self):
         """Close database connections (sync)."""
