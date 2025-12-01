@@ -11,6 +11,7 @@ from pathlib import Path
 import yaml
 
 from src.giljo_mcp.auth.dependencies import get_current_user
+from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -70,7 +71,8 @@ class GitToggleResponse(BaseModel):
 @router.post("/toggle", response_model=GitToggleResponse)
 async def toggle_git_integration(
     request: GitToggleRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
 ) -> GitToggleResponse:
     """
     Toggle Git integration at the system level.
@@ -100,7 +102,22 @@ async def toggle_git_integration(
         # Save config
         write_config(config)
 
-        logger.info(f"Git integration toggled to {request.enabled} by user {current_user['username']}")
+        logger.info(f"Git integration toggled to {request.enabled} by user {current_user.username}")
+
+        # Emit WebSocket event for real-time UI updates
+        try:
+            tenant_key = current_user.get('tenant_key') if isinstance(current_user, dict) else current_user.tenant_key
+            await ws_dep.broadcast_to_tenant(
+                tenant_key=tenant_key,
+                event_type="product:git:settings:changed",
+                data={
+                    "enabled": request.enabled,
+                    "settings": config["features"]["git_integration"]
+                }
+            )
+            logger.info(f"[WEBSOCKET] Broadcasted git integration change to tenant {tenant_key}")
+        except Exception as ws_error:
+            logger.warning(f"[WEBSOCKET] Failed to broadcast git integration update: {ws_error}")
 
         return GitToggleResponse(
             success=True,

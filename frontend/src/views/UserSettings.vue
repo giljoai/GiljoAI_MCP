@@ -51,7 +51,7 @@
     <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
       <!-- Context Settings -->
       <v-window-item value="context">
-        <ContextPriorityConfig />
+        <ContextPriorityConfig :git-integration-enabled="gitEnabled" />
       </v-window-item>
 
       <!-- Agents -->
@@ -305,10 +305,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
+import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
@@ -326,12 +327,16 @@ const settingsStore = useSettingsStore()
 const theme = useTheme()
 const router = useRouter()
 
+// WebSocket for real-time Git integration updates
+const { on, off } = useWebSocketV2()
+
 // State
 const activeTab = ref('general')
 const serenaEnabled = ref(false)
 const toggling = ref(false)
 
 // Git Integration state (system-level like Serena)
+// This state is shared with ContextPriorityConfig via props
 const gitEnabled = ref(false)
 const showGitAdvanced = ref(false)
 const gitConfig = ref({
@@ -490,6 +495,18 @@ onMounted(async () => {
 
   // Load git integration settings (system-level)
   await loadGitSettings()
+
+  // Listen for real-time Git integration changes via WebSocket
+  // This listener is at parent level to ensure it captures events even when
+  // ContextPriorityConfig tab is not actively mounted
+  on('product:git:settings:changed', handleGitIntegrationUpdate)
+  console.log('[USER SETTINGS] WebSocket listener registered for git integration updates')
+})
+
+onUnmounted(() => {
+  // Clean up WebSocket listener to prevent memory leaks
+  off('product:git:settings:changed', handleGitIntegrationUpdate)
+  console.log('[USER SETTINGS] WebSocket listener cleaned up')
 })
 
 // Git Integration Functions (system-level like Serena)
@@ -558,6 +575,30 @@ async function saveGitConfig(payload, done) {
   } finally {
     if (typeof done === 'function') done()
   }
+}
+
+/**
+ * Handle real-time Git integration updates from WebSocket
+ * This handler is at parent level to ensure it fires regardless of
+ * which tab is currently active
+ * @param {Object} data - WebSocket event data
+ * @param {string} data.product_id - Product ID
+ * @param {Object} data.settings - Git integration settings
+ * @param {boolean} data.settings.enabled - Whether git integration is enabled
+ */
+function handleGitIntegrationUpdate(data) {
+  if (!data || !data.settings) {
+    console.warn('[USER SETTINGS] Received invalid git integration update:', data)
+    return
+  }
+
+  const newState = data.settings.enabled || false
+  gitEnabled.value = newState
+
+  console.log('[USER SETTINGS] Git integration updated via WebSocket:', {
+    enabled: newState,
+    timestamp: new Date().toISOString(),
+  })
 }
 </script>
 
