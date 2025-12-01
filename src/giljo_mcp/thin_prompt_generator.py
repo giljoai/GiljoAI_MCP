@@ -54,7 +54,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import MCPAgentJob, Project, User
+from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
 
 
 logger = logging.getLogger(__name__)
@@ -312,13 +312,119 @@ class ThinClientPromptGenerator:
             f"~{estimated_tokens} tokens (target: 600, reduction from fat: ~{3500 - estimated_tokens})"
         )
 
+        # Handover 0276: Regenerate orchestrator instructions with current settings
+        # This enables "Stage Project refresh" - when user changes field priorities
+        # and clicks "Stage Project" again, they get updated instructions immediately
+        regenerated_mission = await self._regenerate_mission(
+            product=product,
+            project=project,
+            field_priorities=field_priorities or {},
+            user_id=user_id
+        )
+
+        # Estimate tokens
+        estimated_mission_tokens = len(regenerated_mission) // 4 if regenerated_mission else 0
+
+        if regenerated_mission:
+            logger.info(
+                f"[ThinPromptGenerator] Regenerated orchestrator instructions for {orchestrator_id}: "
+                f"~{estimated_mission_tokens} tokens (reflects current field priorities)"
+            )
+        else:
+            logger.warning(
+                f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}"
+            )
+
         return {
             "orchestrator_id": orchestrator_id,
             "thin_prompt": thin_prompt,
             "instance_number": instance_number,
             "context_budget": project.context_budget,
-            "estimated_prompt_tokens": estimated_tokens
+            "estimated_prompt_tokens": estimated_tokens,
+            # Handover 0276: Include regenerated mission in response
+            "mission": regenerated_mission,
+            "estimated_mission_tokens": estimated_mission_tokens,
         }
+
+    async def _regenerate_mission(
+        self,
+        product: Product,
+        project: Project,
+        field_priorities: Dict[str, int],
+        user_id: Optional[str]
+    ) -> str:
+        """
+        Regenerate orchestrator mission with current field priorities.
+
+        Handover 0276: Enables "Stage Project refresh" - user changes settings,
+        clicks "Stage Project", gets updated instructions immediately.
+
+        This is a simplified version of MissionPlanner._build_context_with_priorities
+        that works within the existing transaction (doesn't create new session).
+
+        Args:
+            product: Product model with vision and config
+            project: Project model with description
+            field_priorities: Field importance weights (1-4 scale)
+            user_id: User ID for audit trail
+
+        Returns:
+            Regenerated mission string with current context
+        """
+        try:
+            mission_parts = []
+
+            # Product description (always include if available)
+            if product and product.description:
+                mission_parts.append(f"## Product\n{product.description}")
+
+            # Project description
+            if project.description:
+                mission_parts.append(f"## Project Goal\n{project.description}")
+
+            # Project mission (if exists)
+            if project.mission:
+                mission_parts.append(f"## Mission\n{project.mission}")
+
+            # Tech stack (from product config_data)
+            tech_priority = field_priorities.get("tech_stack", 2)
+            if product and product.config_data and tech_priority > 0:
+                tech_stack = product.config_data.get("tech_stack", {})
+                if tech_stack:
+                    tech_parts = []
+                    if tech_stack.get("languages"):
+                        tech_parts.append(f"Languages: {', '.join(tech_stack['languages'])}")
+                    if tech_stack.get("frameworks"):
+                        tech_parts.append(f"Frameworks: {', '.join(tech_stack['frameworks'])}")
+                    if tech_parts:
+                        mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
+
+            # Architecture (from product config_data)
+            arch_priority = field_priorities.get("architecture", 2)
+            if product and product.config_data and arch_priority > 0:
+                architecture = product.config_data.get("architecture", {})
+                if architecture and architecture.get("patterns"):
+                    mission_parts.append(
+                        f"## Architecture\n{', '.join(architecture['patterns'])}"
+                    )
+
+            # Join all parts
+            if mission_parts:
+                regenerated = "\n\n".join(mission_parts)
+                logger.debug(
+                    f"[ThinPromptGenerator] Mission regenerated: {len(mission_parts)} sections, "
+                    f"{len(regenerated)} chars"
+                )
+                return regenerated
+            else:
+                # Fallback if no parts available
+                logger.warning("[ThinPromptGenerator] No mission parts available for regeneration")
+                return project.mission or f"Mission for project: {project.name}"
+
+        except Exception as e:
+            logger.exception(f"[ThinPromptGenerator] Failed to regenerate mission: {e}")
+            # Return project mission as fallback
+            return project.mission or f"Mission for project: {project.name}"
 
     def _build_thin_prompt(
         self,
