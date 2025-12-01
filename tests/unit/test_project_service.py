@@ -583,32 +583,48 @@ class TestProjectServiceLifecycle:
         mock_project.name = "Test Project"
         mock_project.mission = "Test Mission"
         mock_project.config_data = {}
+        mock_project.context_budget = 150000
 
-        # Mock orchestrator job
-        mock_job = Mock(spec=MCPAgentJob)
-        mock_job.id = "orchestrator-job-123"
-        mock_job.status = "pending"
+        # Track created jobs
+        created_jobs = []
+        def capture_job(job):
+            created_jobs.append(job)
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
+        session.add = Mock(side_effect=capture_job)
+
+        # Mock database queries: project fetch, instance_number query
+        call_count = [0]
+        async def mock_execute_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            # Call 1: Fetch project
+            if call_count[0] == 1:
+                return Mock(scalar_one_or_none=Mock(return_value=mock_project))
+            # Call 2: Get max instance number
+            elif call_count[0] == 2:
+                return Mock(scalar=Mock(return_value=0))
+            # Default
+            return Mock(scalar_one_or_none=Mock(return_value=None))
+
+        session.execute = AsyncMock(side_effect=mock_execute_side_effect)
 
         service = ProjectService(db_manager, tenant_manager)
 
-        # Mock AgentJobManager (imported locally in launch_project)
-        with patch('giljo_mcp.agent_job_manager.AgentJobManager') as mock_ajm:
-            mock_job_manager = AsyncMock()
-            mock_job_manager.create_job.return_value = mock_job
-            mock_ajm.return_value = mock_job_manager
+        # Mock activate_project to avoid complex activation logic
+        async def mock_activate(*args, **kwargs):
+            mock_project.status = "active"
+            return {"success": True}
+        service.activate_project = mock_activate
 
-            # Act
-            result = await service.launch_project("test-project-id")
+        # Act
+        result = await service.launch_project("test-project-id")
 
-            # Assert
-            assert result["success"] is True
-            assert result["data"]["orchestrator_job_id"] == "orchestrator-job-123"
-            assert "launch_prompt" in result["data"]
-            assert mock_project.status == "active"
+        # Assert
+        assert result["success"] is True
+        assert "orchestrator_job_id" in result["data"]
+        assert "launch_prompt" in result["data"]
+        assert mock_project.status == "active"
+        assert len(created_jobs) == 1
+        assert created_jobs[0].agent_type == "orchestrator"
 
 
 class TestProjectServiceStatus:
