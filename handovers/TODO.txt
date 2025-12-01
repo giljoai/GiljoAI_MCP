@@ -1,0 +1,12 @@
+TODO 
+
+Fix git hub sunchronization
+
+Fix all toggles in context priorioties
+
+test orchestrator load with various contellations
+
+create 3 quick hit projects to see if 306 memory works. 
+
+Understand interaction between git history and 360 memory
+
