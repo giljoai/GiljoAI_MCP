@@ -4,7 +4,7 @@
     <v-card-text>
       <!-- Git Integration Alert -->
       <v-alert
-        v-if="!gitIntegrationEnabled"
+        v-if="!props.gitIntegrationEnabled"
         type="info"
         variant="tonal"
         density="compact"
@@ -60,6 +60,15 @@
             class="ml-2 compact-switch"
             :disabled="isContextDisabled(context.key)"
           />
+          <v-tooltip
+            v-if="context.key === 'vision_documents'"
+            text="Controls how many vision document chunks to include: light (2 chunks, ~10K tokens), moderate (4 chunks, ~17.5K), heavy (near full)."
+            location="bottom"
+          >
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-information-outline</v-icon>
+            </template>
+          </v-tooltip>
         </div>
 
         <!-- Depth/Count Select (if applicable) -->
@@ -94,20 +103,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import setupService from '@/services/setupService'
-import { useWebSocketV2 } from '@/composables/useWebSocket'
 
 // Router for navigation
 const router = useRouter()
 
-// WebSocket for real-time updates
-const { on, off } = useWebSocketV2()
-
-// Git integration state
-const gitIntegrationEnabled = ref(false)
+// Accept git integration status as prop from parent (UserSettings.vue)
+// Parent handles WebSocket listener to ensure it's always active
+const props = defineProps({
+  gitIntegrationEnabled: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 // Context definitions
 const contexts = [
@@ -230,7 +241,7 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
 
 function isContextDisabled(contextKey: string): boolean {
   // Only git_history is disabled when Git integration is OFF
-  return contextKey === 'git_history' && !gitIntegrationEnabled.value
+  return contextKey === 'git_history' && !props.gitIntegrationEnabled
 }
 
 function navigateToIntegrations() {
@@ -238,47 +249,6 @@ function navigateToIntegrations() {
   router.push({ name: 'UserSettings', query: { tab: 'integrations' } })
 }
 
-async function checkGitIntegration() {
-  try {
-    const settings = await setupService.getGitSettings()
-    gitIntegrationEnabled.value = settings.enabled || false
-    console.log('[CONTEXT PRIORITY CONFIG] Git integration status:', gitIntegrationEnabled.value)
-  } catch (error) {
-    console.error('[CONTEXT PRIORITY CONFIG] Failed to check Git integration status:', error)
-    gitIntegrationEnabled.value = false
-  }
-}
-
-/**
- * Handle real-time Git integration updates from WebSocket
- * Called when Git integration is toggled in Integrations tab
- * @param {Object} data - WebSocket event data
- * @param {string} data.product_id - Product ID
- * @param {Object} data.settings - Git integration settings
- * @param {boolean} data.settings.enabled - Whether git integration is enabled
- */
-function handleGitIntegrationUpdate(data) {
-  if (!data || !data.settings) {
-    console.warn('[CONTEXT PRIORITY CONFIG] Received invalid git integration update:', data)
-    return
-  }
-
-  const newState = data.settings.enabled || false
-  gitIntegrationEnabled.value = newState
-
-  console.log('[CONTEXT PRIORITY CONFIG] Git integration updated via WebSocket:', {
-    enabled: newState,
-    timestamp: new Date().toISOString(),
-  })
-
-  // If Git integration was just enabled, Git History should become available immediately
-  // If it was disabled, Git History controls should become disabled immediately
-  if (newState) {
-    console.log('[CONTEXT PRIORITY CONFIG] Git History context is now available')
-  } else {
-    console.log('[CONTEXT PRIORITY CONFIG] Git History context is now disabled')
-  }
-}
 
 async function fetchConfig() {
   loading.value = true
@@ -395,20 +365,9 @@ function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Rec
 
 // Lifecycle
 onMounted(async () => {
-  // Check Git integration status first
-  await checkGitIntegration()
-  // Then fetch context config
+  // Fetch context config on mount
+  // Git integration status is passed from parent via props (UserSettings.vue)
   fetchConfig()
-
-  // Listen for real-time Git integration changes via WebSocket
-  on('product:git:settings:changed', handleGitIntegrationUpdate)
-  console.log('[CONTEXT PRIORITY CONFIG] WebSocket listener registered for git integration updates')
-})
-
-onUnmounted(() => {
-  // Clean up WebSocket listener to prevent memory leaks
-  off('product:git:settings:changed', handleGitIntegrationUpdate)
-  console.log('[CONTEXT PRIORITY CONFIG] WebSocket listener cleaned up')
 })
 
 // Expose for testing
@@ -418,15 +377,12 @@ defineExpose({
   config,
   loading,
   saving,
-  gitIntegrationEnabled,
   toggleContext,
   updatePriority,
   updateDepth,
   saveConfig,
   isContextDisabled,
   navigateToIntegrations,
-  checkGitIntegration,
-  handleGitIntegrationUpdate,
 })
 </script>
 
