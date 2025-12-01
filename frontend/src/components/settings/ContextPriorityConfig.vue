@@ -96,6 +96,16 @@ const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
   git_history: 'git_history',
 }
 
+// Reverse mapping: backend keys to frontend keys
+const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
+  product_core: ['product_description', 'tech_stack'],
+  project_context: ['architecture', 'testing'],
+  vision_documents: ['vision_documents'],
+  agent_templates: ['agent_templates'],
+  memory_360: ['memory_360'],
+  git_history: ['git_history'],
+}
+
 const priorityOptions = [
   { title: 'Critical', value: 1 },
   { title: 'Important', value: 2 },
@@ -183,15 +193,23 @@ async function fetchConfig() {
     const response = await axios.get('/api/v1/users/me/field-priority')
     const priorities = response.data?.priorities || {}
 
-    Object.entries(priorities).forEach(([key, value]) => {
+    // Apply backend priorities to frontend keys using reverse mapping
+    Object.entries(priorities).forEach(([backendKey, value]) => {
       const numericPriority = typeof value === 'number' ? value : Number(value)
-      if (config.value[key]) {
-        config.value[key] = {
-          ...config.value[key],
-          enabled: numericPriority !== 4,
-          priority: numericPriority || 3,
+
+      // Get frontend keys for this backend key
+      const frontendKeys = BACKEND_TO_UI_CATEGORY_MAP[backendKey] || [backendKey]
+
+      // Apply to all matching frontend keys
+      frontendKeys.forEach((frontendKey) => {
+        if (config.value[frontendKey]) {
+          config.value[frontendKey] = {
+            ...config.value[frontendKey],
+            enabled: numericPriority !== 4,
+            priority: numericPriority || 3,
+          }
         }
-      }
+      })
     })
 
     console.log('[CONTEXT PRIORITY CONFIG] Field priorities loaded from server')
