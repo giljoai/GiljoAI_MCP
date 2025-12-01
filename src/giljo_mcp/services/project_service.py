@@ -1640,16 +1640,22 @@ class ProjectService:
             return {"success": False, "error": str(e)}
 
     async def launch_project(
-        self, project_id: str, launch_config: Optional[dict[str, Any]] = None, websocket_manager: Optional[Any] = None
+        self,
+        project_id: str,
+        user_id: Optional[str] = None,
+        launch_config: Optional[dict[str, Any]] = None,
+        websocket_manager: Optional[Any] = None
     ) -> dict[str, Any]:
         """
         Launch project orchestrator.
 
         Creates orchestrator agent job and generates thin-client launch prompt.
         Activates the project if not already active.
+        Fetches user field_priority_config and depth_config to pass to orchestrator.
 
         Args:
             project_id: Project UUID
+            user_id: Optional user ID for fetching field priorities and depth config
             launch_config: Optional launch configuration
             websocket_manager: Optional WebSocket manager for real-time updates
 
@@ -1661,7 +1667,7 @@ class ProjectService:
             - status: Project status after launch
 
         Example:
-            >>> result = await service.launch_project("abc-123")
+            >>> result = await service.launch_project("abc-123", user_id="user-456")
             >>> print(result["data"]["orchestrator_job_id"])
         """
         try:
@@ -1683,28 +1689,93 @@ class ProjectService:
                     if not activate_result.get("success"):
                         return activate_result
 
-                # Create orchestrator agent job
-                from giljo_mcp.agent_job_manager import AgentJobManager
+                # Fetch user field_priority_config and depth_config if user_id provided
+                field_priorities = {}
+                depth_config = None
 
-                job_manager = AgentJobManager(session, self.tenant_manager.get_current_tenant())
+                if user_id:
+                    from giljo_mcp.models import User
 
-                orchestrator_job = await job_manager.create_job(
-                    agent_type="orchestrator", project_id=project_id, config_data=launch_config or {}
+                    user_stmt = select(User).where(
+                        and_(
+                            User.id == user_id,
+                            User.tenant_key == self.tenant_manager.get_current_tenant()
+                        )
+                    )
+                    user_result = await session.execute(user_stmt)
+                    user = user_result.scalar_one_or_none()
+
+                    if user:
+                        # Extract field_priorities from v2.0 structure
+                        if user.field_priority_config:
+                            field_priorities = user.field_priority_config.get("priorities", {})
+
+                        # Get depth_config
+                        if user.depth_config:
+                            depth_config = user.depth_config
+
+                # Apply defaults for depth_config if not set
+                if not depth_config:
+                    depth_config = {
+                        "vision_chunking": "moderate",
+                        "memory_last_n_projects": 3,
+                        "git_commits": 25,
+                        "agent_template_detail": "standard",
+                        "tech_stack_sections": "all",
+                        "architecture_depth": "overview"
+                    }
+
+                # Calculate next instance number for orchestrator
+                instance_stmt = select(func.coalesce(func.max(MCPAgentJob.instance_number), 0)).where(
+                    and_(
+                        MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.agent_type == "orchestrator"
+                    )
                 )
+                instance_result = await session.execute(instance_stmt)
+                instance_number = instance_result.scalar() + 1
+
+                # Create orchestrator agent job directly (not via AgentJobManager which is broken)
+                from uuid import uuid4
+
+                orchestrator_job_id = str(uuid4())
+                orchestrator_job = MCPAgentJob(
+                    tenant_key=self.tenant_manager.get_current_tenant(),
+                    project_id=project_id,
+                    job_id=orchestrator_job_id,
+                    agent_name=f"Orchestrator #{instance_number}",
+                    agent_type="orchestrator",
+                    status="waiting",
+                    mission=project.mission or f"Orchestrator mission for project: {project.name}",
+                    instance_number=instance_number,
+                    context_budget=project.context_budget or 150000,
+                    context_used=0,
+                    # CRITICAL: Pass field_priorities and depth_config to job_metadata
+                    job_metadata={
+                        "field_priorities": field_priorities,
+                        "depth_config": depth_config,
+                        "user_id": user_id,
+                        "created_via": "project_service_launch"
+                    }
+                )
+
+                session.add(orchestrator_job)
+                await session.flush()  # Get the ID without committing
 
                 # Generate thin-client launch prompt
                 launch_prompt = f"""Launch orchestrator for project: {project.name}
 
 Project ID: {project.id}
 Mission: {project.mission}
-Orchestrator Job ID: {orchestrator_job.id}
+Orchestrator Job ID: {orchestrator_job_id}
 
 This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool to fetch full mission details.
 """
 
                 await session.commit()
 
-                self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job.id}")
+                self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job_id}")
 
                 # Broadcast WebSocket event
                 if websocket_manager:
@@ -1715,7 +1786,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                             project_data={
                                 "name": project.name,
                                 "status": project.status,
-                                "orchestrator_job_id": orchestrator_job.id,
+                                "orchestrator_job_id": orchestrator_job_id,
                             },
                         )
                     except Exception as ws_error:
@@ -1725,7 +1796,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     "success": True,
                     "data": {
                         "project_id": project.id,
-                        "orchestrator_job_id": orchestrator_job.id,
+                        "orchestrator_job_id": orchestrator_job_id,
                         "launch_prompt": launch_prompt,
                         "status": project.status,
                     },
