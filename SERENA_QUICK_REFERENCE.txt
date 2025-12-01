@@ -1,0 +1,176 @@
+================================================================================
+SERENA MCP CONFIGURATION - QUICK REFERENCE
+================================================================================
+
+CURRENT STATUS: ✓ ENABLED AND WORKING
+
+Location: F:\GiljoAI_MCP\config.yaml (lines 49-50)
+
+Configuration:
+  features:
+    serena_mcp:
+      use_in_prompts: true
+
+================================================================================
+WHAT IT DOES
+================================================================================
+
+Serena MCP provides:
+  • Code navigation via symbolic tools (not full file reads)
+  • 80-90% token reduction for code analysis
+  • Tool catalog: get_symbols_overview, find_symbol, find_referencing_symbols
+  • Usage instructions for orchestrators and agents
+  • Caching for performance
+
+================================================================================
+TO ENABLE/DISABLE
+================================================================================
+
+Enable (default):
+  features:
+    serena_mcp:
+      use_in_prompts: true
+
+Disable:
+  features:
+    serena_mcp:
+      use_in_prompts: false
+
+After changing config.yaml, restart:
+  python startup.py
+
+================================================================================
+VERIFICATION
+================================================================================
+
+Check if enabled:
+  grep -A 2 "serena_mcp:" config.yaml
+
+Monitor in logs:
+  grep "[SERENA]" logs/giljo_mcp.log
+
+Look for:
+  [SERENA] Enabled for orchestrator <id>
+  [SERENA] Injected Serena instructions into orchestrator mission
+
+Run tests:
+  pytest tests/integration/test_serena_instructions_integration.py -v
+
+Expected: 13/13 tests passing
+
+================================================================================
+KEY FILES
+================================================================================
+
+Configuration:          config.yaml:49-50
+Orchestration tool:     src/giljo_mcp/tools/orchestration.py:1389-1431
+Mission planner:        src/giljo_mcp/mission_planner.py:1058-1464
+Instruction generator:  src/giljo_mcp/prompt_generation/serena_instructions.py
+Integration tests:      tests/integration/test_serena_instructions_integration.py
+Documentation:          docs/SERENA_MCP_CONFIGURATION_GUIDE.md
+
+================================================================================
+SERENA TOOLS AVAILABLE
+================================================================================
+
+Navigation:
+  • get_symbols_overview    - File structure overview
+  • find_symbol             - Find specific code symbol
+  • find_referencing_symbols - Find all usages of symbol
+
+Search:
+  • search_for_pattern      - Pattern-based search
+  • find_file               - File finder
+
+Utilities:
+  • list_dir                - Directory listing
+  • read_memory             - Access project memory
+
+================================================================================
+TOKEN SAVINGS EXAMPLE
+================================================================================
+
+Without Serena:
+  Read entire AuthService:    500 tokens
+  Read entire UserModel:      400 tokens
+  Read database module:       800 tokens
+  Total:                    1,700 tokens
+
+With Serena:
+  get_symbols_overview:       50 tokens
+  find_symbol (auth methods): 40 tokens
+  find_referencing_symbols:   30 tokens
+  Total:                      120 tokens
+
+Savings: 93% reduction (1,700 → 120 tokens)
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+✓ Keep Serena enabled (use_in_prompts: true)
+
+Rationale:
+  • Consistent team experience (system-wide setting)
+  • Significant token savings (80-90%)
+  • No computational overhead (caching prevents regeneration)
+  • Well-tested (13/13 integration tests passing)
+  • Developer tool, not user-specific
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: Serena instructions missing from orchestrator mission
+Solution:
+  1. Check config.yaml: grep "serena_mcp:" config.yaml
+  2. Restart: python startup.py
+  3. Check logs: grep "[SERENA]" logs/giljo_mcp.log
+
+Problem: Configuration changes not taking effect
+Solution:
+  1. Verify you edited correct config.yaml (project root)
+  2. Restart application: python startup.py
+  3. Config is loaded at startup, not dynamically
+
+Problem: Serena tools not working
+Solution:
+  1. Verify Serena MCP server running
+  2. Check MCP tool registration
+  3. Tool names: mcp__serena__<tool_name>
+
+================================================================================
+RELATED DOCUMENTATION
+================================================================================
+
+Detailed Guide:     docs/SERENA_MCP_CONFIGURATION_GUIDE.md
+Status Report:      handovers/0273_serena_mcp_configuration_status_report.md
+Implementation:     handovers/0267_add_serena_mcp_instructions-C.md
+Investigation:      handovers/0265_orchestrator_context_investigation.md
+
+================================================================================
+QUICK TEST
+================================================================================
+
+Verify Serena works:
+  1. Start server: python startup.py
+  2. Create orchestrator
+  3. Check returned mission has "Serena MCP" section
+  4. Look for tool names (find_symbol, get_symbols_overview, etc.)
+
+Quick test with pytest:
+  cd /f/GiljoAI_MCP
+  pytest tests/integration/test_serena_instructions_integration.py::TestSerenaInstructionGenerator::test_serena_instructions_included_when_enabled -v
+
+Expected: PASSED
+
+================================================================================
+STATUS: COMPLETE & PRODUCTION-READY
+================================================================================
+
+Last Updated: 2025-11-30
+Implementation: Handover 0267
+Testing: 13/13 passing
+Configuration: System-wide (config.yaml)
+Restart Required: Yes (when changing config.yaml)
+
