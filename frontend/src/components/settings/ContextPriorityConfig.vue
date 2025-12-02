@@ -189,7 +189,18 @@ const saving = ref(false)
 
 // Methods
 function toggleContext(key: string) {
-  config.value[key].enabled = !config.value[key].enabled
+  const newEnabled = !config.value[key].enabled
+  config.value[key].enabled = newEnabled
+
+  // If enabling from EXCLUDED, set to Reference (priority 3)
+  if (newEnabled && config.value[key].priority === 4) {
+    config.value[key].priority = 3  // Reference (NICE_TO_HAVE)
+  }
+  // If disabling, set to EXCLUDED (priority 4)
+  else if (!newEnabled) {
+    config.value[key].priority = 4
+  }
+
   saveConfig() // Auto-save
 }
 
