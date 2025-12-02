@@ -771,22 +771,21 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Recalibration confirmation
         """
         try:
-            async with db_manager.get_session_async():
-                # Broadcast mission change to all agents
-                from .message import broadcast
+            # Broadcast mission change to all agents
+            from .message import broadcast
 
-                broadcast_result = await broadcast(
-                    content=f"MISSION RECALIBRATION: {changes_summary}",
-                    project_id=project_id,
-                    priority="high",
-                )
+            broadcast_result = await broadcast(
+                content=f"MISSION RECALIBRATION: {changes_summary}",
+                project_id=project_id,
+                priority="high",
+            )
 
-                if broadcast_result["success"]:
-                    logger.info("Mission recalibration broadcast to all agents")
+            if broadcast_result["success"]:
+                logger.info("Mission recalibration broadcast to all agents")
 
-                    return {
-                        "success": True,
-                        "project_id": project_id,
+                return {
+                    "success": True,
+                    "project_id": project_id,
                         "agents_notified": broadcast_result["broadcast_to"],
                         "summary": changes_summary,
                     }

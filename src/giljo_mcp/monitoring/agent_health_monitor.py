@@ -14,10 +14,10 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models import MCPAgentJob, Project
 from src.giljo_mcp.database import DatabaseManager
 from api.websocket import WebSocketManager
 from src.giljo_mcp.monitoring.health_config import HealthCheckConfig, AgentHealthStatus
@@ -159,11 +159,20 @@ class AgentHealthMonitor:
             minutes=self.config.waiting_timeout_minutes
         )
 
-        query = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.status == "waiting",
-                MCPAgentJob.created_at < timeout_threshold
+        # Filter out jobs from deleted projects using LEFT JOIN
+        query = (
+            select(MCPAgentJob)
+            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            .where(
+                and_(
+                    MCPAgentJob.tenant_key == tenant_key,
+                    MCPAgentJob.status == "waiting",
+                    MCPAgentJob.created_at < timeout_threshold,
+                    or_(
+                        MCPAgentJob.project_id.is_(None),
+                        Project.deleted_at.is_(None)
+                    )
+                )
             )
         )
 
@@ -203,11 +212,19 @@ class AgentHealthMonitor:
             minutes=self.config.active_no_progress_minutes
         )
 
-        # Query active jobs
-        query = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.status == "active"
+        # Query active jobs, filtering out jobs from deleted projects
+        query = (
+            select(MCPAgentJob)
+            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            .where(
+                and_(
+                    MCPAgentJob.tenant_key == tenant_key,
+                    MCPAgentJob.status == "active",
+                    or_(
+                        MCPAgentJob.project_id.is_(None),
+                        Project.deleted_at.is_(None)
+                    )
+                )
             )
         )
 
@@ -256,11 +273,19 @@ class AgentHealthMonitor:
         Returns:
             List of jobs with heartbeat failures
         """
-        # Query waiting and active jobs
-        query = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.status.in_(["waiting", "active"])
+        # Query waiting and active jobs, filtering out jobs from deleted projects
+        query = (
+            select(MCPAgentJob)
+            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            .where(
+                and_(
+                    MCPAgentJob.tenant_key == tenant_key,
+                    MCPAgentJob.status.in_(["waiting", "active"]),
+                    or_(
+                        MCPAgentJob.project_id.is_(None),
+                        Project.deleted_at.is_(None)
+                    )
+                )
             )
         )
 
@@ -404,8 +429,19 @@ class AgentHealthMonitor:
             session: Database session
 
         Returns:
-            List of unique tenant keys
+            List of unique tenant keys from non-deleted projects
         """
-        query = select(MCPAgentJob.tenant_key).distinct()
+        # Only get tenant keys from jobs that don't belong to deleted projects
+        query = (
+            select(MCPAgentJob.tenant_key)
+            .distinct()
+            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            .where(
+                or_(
+                    MCPAgentJob.project_id.is_(None),
+                    Project.deleted_at.is_(None)
+                )
+            )
+        )
         result = await session.execute(query)
         return [row[0] for row in result.fetchall()]
