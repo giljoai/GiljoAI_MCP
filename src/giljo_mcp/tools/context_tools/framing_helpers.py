@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 ALLOWED_PRIORITY_CATEGORIES = {
     "product_core",
     "vision_documents",
+    "tech_stack",
+    "architecture",
+    "testing",
     "agent_templates",
     "project_context",
     "memory_360",
