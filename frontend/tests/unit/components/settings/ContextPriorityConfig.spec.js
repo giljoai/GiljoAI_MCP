@@ -101,7 +101,7 @@ describe('ContextPriorityConfig.vue', () => {
       expect(text).toContain('Always High')
     })
 
-    it('renders all 8 context rows', () => {
+    it('renders all 9 context rows (8 configurable + 1 locked)', () => {
       wrapper = mount(ContextPriorityConfig, {
         global: {
           plugins: [vuetify, pinia],
@@ -109,6 +109,7 @@ describe('ContextPriorityConfig.vue', () => {
       })
 
       const text = wrapper.text()
+      // 8 configurable contexts
       expect(text).toContain('Product Description')
       expect(text).toContain('Vision Documents')
       expect(text).toContain('Tech Stack')
@@ -117,6 +118,8 @@ describe('ContextPriorityConfig.vue', () => {
       expect(text).toContain('Agent Templates')
       expect(text).toContain('360 Memory')
       expect(text).toContain('Git History')
+      // 1 locked context
+      expect(text).toContain('Project Context')
     })
 
     it('renders priority selects for each context', () => {
@@ -240,6 +243,58 @@ describe('ContextPriorityConfig.vue', () => {
       expect(gitContext.options).toContain(5)
       expect(gitContext.options).toContain(15)
       expect(gitContext.options).toContain(25)
+    })
+
+    it('tech_stack has depth options', async () => {
+      wrapper = mount(ContextPriorityConfig, {
+        global: {
+          plugins: [vuetify, pinia],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const contexts = wrapper.vm.contexts
+      const techStackContext = contexts.find((c) => c.key === 'tech_stack')
+
+      expect(techStackContext.options).toBeDefined()
+      expect(techStackContext.options).toContain('required')
+      expect(techStackContext.options).toContain('all')
+    })
+
+    it('architecture has depth options', async () => {
+      wrapper = mount(ContextPriorityConfig, {
+        global: {
+          plugins: [vuetify, pinia],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const contexts = wrapper.vm.contexts
+      const architectureContext = contexts.find((c) => c.key === 'architecture')
+
+      expect(architectureContext.options).toBeDefined()
+      expect(architectureContext.options).toContain('overview')
+      expect(architectureContext.options).toContain('detailed')
+    })
+
+    it('testing has depth options', async () => {
+      wrapper = mount(ContextPriorityConfig, {
+        global: {
+          plugins: [vuetify, pinia],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const contexts = wrapper.vm.contexts
+      const testingContext = contexts.find((c) => c.key === 'testing')
+
+      expect(testingContext.options).toBeDefined()
+      expect(testingContext.options).toContain('none')
+      expect(testingContext.options).toContain('basic')
+      expect(testingContext.options).toContain('full')
     })
   })
 
