@@ -1,280 +1,97 @@
-# Context Tools API Reference
+# Context Tools API - DEPRECATED
 
-## Overview
-GiljoAI provides 9 MCP tools for fetching context on-demand. All tools enforce multi-tenant isolation and return structured JSON.
+**Status:** ❌ DEPRECATED as of v3.2 (Handover 0280-0281)
 
-## Authentication
-All tools require:
-- `product_id` or `project_id` (UUID)
-- `tenant_key` (string) - Automatically injected by MCP server
+The individual `fetch_*` context tools have been replaced with monolithic context architecture.
 
-## Tools
+## Migration Guide
 
-### 1. fetch_product_context
-
-Fetch general product information.
-
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "include_metadata": false  // Optional
-}
+**Old Approach (v3.1 and earlier):**
+```python
+vision = await fetch_vision_document(product_id, tenant_key, chunking='moderate')
+memory = await fetch_360_memory(product_id, tenant_key, last_n_projects=3)
+git = await fetch_git_history(product_id, tenant_key, commits=25)
 ```
 
-**Response**:
-```json
-{
-  "product_name": "TinyContacts",
-  "product_description": "Minimalist contact manager",
-  "project_path": "/path/to/project",
-  "core_features": ["Contact CRUD", "Search", "Export"],
-  "is_active": true,
-  "created_at": "2025-11-17T10:00:00Z"
-}
+**New Approach (v3.2+):**
+```python
+mission = await get_orchestrator_instructions(orchestrator_id, tenant_key)
+# Returns complete prioritized context in one call
 ```
 
-### 2. fetch_vision_document
+## Why This Change?
 
-Fetch vision document chunks (paginated).
+The individual `fetch_*` tools had several limitations:
 
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "chunking": "moderate",  // none|light|moderate|heavy
-  "offset": 0,             // Optional
-  "limit": null            // Optional
-}
-```
+1. **Token Inefficiency**: Orchestrators had to call 9+ separate tools (3,500+ tokens)
+2. **Context Fragmentation**: Each tool returned data in isolation
+3. **Priority Configuration Complexity**: User had to configure 9 separate priorities
+4. **Maintenance Burden**: 9 separate tools with overlapping functionality
 
-**Response**:
-```json
-{
-  "chunks": [...],
-  "metadata": {
-    "has_more": false,
-    "next_offset": 0,
-    "returned_chunks": 4,
-    "total_chunks": 4,
-    "total_tokens": 12500
-  }
-}
-```
+## What Replaced Them?
 
-### 3. fetch_tech_stack
+**Monolithic Context Architecture (Handover 0280)**:
 
-Fetch technology stack configuration.
+- Single MCP tool: `get_orchestrator_instructions(orchestrator_id, tenant_key)`
+- Returns complete context in one call (~450-550 tokens vs 3,500)
+- User priorities automatically applied server-side
+- Depth configuration integrated
+- 85% token reduction
 
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "sections": "all"  // required|all
-}
-```
+## Timeline
 
-**Response**:
-```json
-{
-  "programming_languages": ["Python", "TypeScript"],
-  "frontend_frameworks": ["Vue 3"],
-  "backend_frameworks": ["FastAPI"],
-  "databases": ["PostgreSQL"],
-  "infrastructure": ["Docker"],
-  "dev_tools": ["Git", "VS Code"]
-}
-```
+- **v3.1 and earlier**: Individual `fetch_*` tools active
+- **v3.2 (Nov 2025)**: Monolithic context architecture introduced (Handover 0280)
+- **v3.2.1 (Dec 2025)**: Individual `fetch_*` tools removed (Handover 0281)
+- **v4.0 (Future)**: Cleanup complete, documentation archived
 
-### 4. fetch_architecture
+## Deprecated Tools
 
-Fetch architecture configuration.
+All of these tools have been removed:
 
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "depth": "overview"  // overview|detailed
-}
-```
+1. ❌ `fetch_product_context` - Product vision, architecture, tech stack
+2. ❌ `fetch_vision_document` - Vision document chunks
+3. ❌ `fetch_tech_stack` - Technology stack configuration
+4. ❌ `fetch_architecture` - Architecture configuration
+5. ❌ `fetch_testing_config` - Testing strategy and quality standards
+6. ❌ `fetch_360_memory` - Sequential project history
+7. ❌ `fetch_git_history` - Aggregated git commits
+8. ❌ `fetch_agent_templates` - Agent template library
+9. ❌ `fetch_project_context` - Current project metadata
 
-**Response**:
-```json
-{
-  "primary_pattern": "Microservices",
-  "design_patterns": "Repository, Factory",
-  "api_style": "REST",
-  "architecture_notes": "Detailed notes..."
-}
-```
+## Current MCP Tools (v3.2+)
 
-### 5. fetch_testing_config
+### Orchestration Tools
+- `get_orchestrator_instructions()` - Fetch complete context for orchestrator
+- `spawn_agent_job()` - Create agent job and return thin prompt
+- `get_workflow_status()` - Monitor spawned agents
 
-Fetch testing strategy and quality standards.
+### Context Tools
+- `get_agent_mission()` - Fetch agent-specific mission
+- `get_available_agents()` - Discover available specialist agents
 
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string"
-}
-```
+### Communication Tools
+- `send_message()` - Send message to specific agent
+- `broadcast_message()` - Send message to all agents
+- `get_messages()` - Fetch messages sent to agent
+- `acknowledge_message()` - Mark message as read
 
-**Response**:
-```json
-{
-  "quality_standards": "Code review required, 80% coverage",
-  "testing_strategy": "TDD",
-  "coverage_target": 80,
-  "testing_frameworks": ["pytest", "jest"],
-  "test_commands": ["pytest tests/", "npm test"]
-}
-```
+### Task Tools
+- `update_job_progress()` - Update agent job progress
+- `complete_agent_job()` - Mark agent job as complete
+- `report_job_error()` - Report error or blocker
+- `get_job_status()` - Fetch detailed agent job status
 
-### 6. fetch_360_memory
+### Project Tools
+- `update_project_mission()` - Update project mission
+- `get_project_context()` - Fetch project metadata
+- `activate_project()` - Activate project for orchestration
+- `close_project()` - Close project and update 360-memory
+- `get_project_members()` - Get list of all agents assigned to project
 
-Fetch sequential project history (paginated).
+## See Also
 
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "last_n_projects": 3,  // 1|3|5|10
-  "offset": 0,           // Optional
-  "limit": null          // Optional
-}
-```
-
-**Response**:
-```json
-{
-  "history": [
-    {
-      "sequence": 1,
-      "project_name": "Project Alpha",
-      "summary": "Implemented user authentication",
-      "key_outcomes": [...],
-      "git_commits": [...],
-      "timestamp": "2025-11-16T10:00:00Z"
-    }
-  ],
-  "metadata": {
-    "has_more": false,
-    "next_offset": 0,
-    "returned_entries": 3,
-    "total_entries": 3
-  }
-}
-```
-
-### 7. fetch_git_history
-
-Fetch aggregated git commits.
-
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "commits": 25  // 10|25|50|100
-}
-```
-
-**Response**:
-```json
-{
-  "commits": [
-    {
-      "hash": "abc123",
-      "message": "Add user authentication",
-      "author": "dev@example.com",
-      "timestamp": "2025-11-16T10:00:00Z"
-    }
-  ],
-  "metadata": {
-    "total_commits": 25,
-    "github_integration_enabled": true
-  }
-}
-```
-
-### 8. fetch_agent_templates
-
-Fetch agent template library.
-
-**Parameters**:
-```json
-{
-  "product_id": "uuid",
-  "tenant_key": "string",
-  "detail": "standard"  // minimal|standard|full
-}
-```
-
-**Response**:
-```json
-{
-  "templates": [
-    {
-      "name": "Backend Developer",
-      "role": "implementer",
-      "description": "Backend implementation specialist",
-      "capabilities": [...],  // Only if detail=standard|full
-      "tools": [...]          // Only if detail=full
-    }
-  ]
-}
-```
-
-### 9. fetch_project_context
-
-Fetch current project metadata.
-
-**Parameters**:
-```json
-{
-  "project_id": "uuid",
-  "tenant_key": "string",
-  "include_summary": false  // Optional
-}
-```
-
-**Response**:
-```json
-{
-  "project_name": "v1.0 Release",
-  "project_alias": "v1.0",
-  "project_description": "First production release",
-  "orchestrator_mission": "Implement core features...",
-  "status": "active",
-  "staging_status": "complete",
-  "context_used": 45000
-}
-```
-
-## Error Handling
-
-All tools return standard error format:
-```json
-{
-  "error": "Product not found",
-  "product_id": "uuid",
-  "tenant_key": "string"
-}
-```
-
-## Rate Limiting
-MCP tools are not rate-limited but should be called responsibly. Excessive calls may impact performance.
-
-## Pagination
-
-Tools supporting pagination (vision_document, 360_memory):
-1. Initial call with offset=0, limit=null
-2. Check metadata.has_more
-3. If true, call again with offset=metadata.next_offset
-4. Repeat until has_more=false
+- [Handover 0280: Monolithic Context Architecture Roadmap](../../handovers/0280_monolithic_context_architecture_roadmap.md)
+- [Handover 0281: Complete fetch_* Tool Cleanup](../../handovers/0281_complete_fetch_tools_cleanup.md)
+- [Orchestrator Documentation](../ORCHESTRATOR.md)
+- [MCP Tools Catalog](../components/MCP_TOOLS_CATALOG.md)
