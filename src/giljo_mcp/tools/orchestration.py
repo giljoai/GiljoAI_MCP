@@ -40,10 +40,9 @@ DEFAULT_FIELD_PRIORITIES = {
 }
 
 DEFAULT_DEPTH_CONFIG = {
-    "vision_chunking": "moderate",  # 4 chunks
-    "memory_last_n_projects": 5,
-    "git_commits": 15,
-    "agent_template_detail": "standard"
+    "memory_360": 5,              # Number of projects in 360 Memory (1/3/5/10)
+    "git_history": 20,            # Number of commits in git log examples (5/10/25/50/100)
+    "agent_templates": "full"     # Agent template detail level ("type_only" or "full")
 }
 
 
@@ -1247,9 +1246,9 @@ The agent templates are now being updated...
         }
 
     @mcp.tool()
-    async def get_available_agents(tenant_key: str, active_only: bool = True) -> dict[str, Any]:
+    async def get_available_agents(tenant_key: str, active_only: bool = True, depth: str = "full") -> dict[str, Any]:
         """
-        Get available agent templates with version metadata (Handover 0246c).
+        Get available agent templates with version metadata (Handover 0246c + 0283).
 
         PURPOSE: Dynamic agent discovery without embedding templates in prompts.
         Orchestrators call this to discover which agents are available for spawning.
@@ -1257,8 +1256,10 @@ The agent templates are now being updated...
         Args:
             tenant_key: Tenant isolation key
             active_only: Filter to active templates only (default: True)
+            depth: Detail level - "type_only" (name/role/version, ~50 tokens) or
+                   "full" (includes description, ~1.2k tokens). Default: "full"
 
-        Returns:
+        Returns (depth="full"):
             {
                 "success": True,
                 "data": {
@@ -1274,29 +1275,53 @@ The agent templates are now being updated...
                     ],
                     "count": 5,
                     "fetched_at": "2025-11-24T12:30:00",
-                    "note": "Templates fetched dynamically (not embedded in prompt)"
+                    "note": "Templates fetched dynamically (full depth)"
+                }
+            }
+
+        Returns (depth="type_only"):
+            {
+                "success": True,
+                "data": {
+                    "agents": [
+                        {
+                            "name": "implementer",
+                            "role": "Code Implementation Specialist",
+                            "version_tag": "1.2.0"
+                        }
+                    ],
+                    "count": 5,
+                    "fetched_at": "2025-11-24T12:30:00",
+                    "note": "Templates fetched dynamically (type_only depth)"
                 }
             }
 
         Example:
+            # Full detail (default)
             agents = await get_available_agents(tenant_key="tk_abc123")
+
+            # Type only (minimal tokens)
+            agents = await get_available_agents(tenant_key="tk_abc123", depth="type_only")
+
             for agent in agents["data"]["agents"]:
                 print(f"Available: {agent['name']} v{agent['version_tag']}")
+
+        Handover 0283: Added depth parameter for context depth configuration.
         """
         from src.giljo_mcp.tools.agent_discovery import get_available_agents as get_agents
 
         logger.info(
             "Orchestrator requesting available agents",
-            extra={"tenant_key": tenant_key, "active_only": active_only}
+            extra={"tenant_key": tenant_key, "active_only": active_only, "depth": depth}
         )
 
         async with db_manager.get_session_async() as session:
-            result = await get_agents(session, tenant_key)
+            result = await get_agents(session, tenant_key, depth=depth)
 
         if result["success"]:
             logger.info(
-                f"Returned {result['data']['count']} available agents",
-                extra={"tenant_key": tenant_key}
+                f"Returned {result['data']['count']} available agents (depth={depth})",
+                extra={"tenant_key": tenant_key, "depth": depth}
             )
 
         return result
@@ -1478,10 +1503,11 @@ The agent templates are now being updated...
                 # MissionPlanner requires DatabaseManager (not AsyncSession)
                 planner = MissionPlanner(db_manager)
 
-                # Get field priorities from orchestrator job_metadata (Handover 0088)
+                # Get field priorities and depth config from orchestrator job_metadata (Handover 0088 + 0283)
                 # Uses dedicated job_metadata JSONB column for thin client data
                 metadata = orchestrator.job_metadata or {}
                 field_priorities = metadata.get("field_priorities", {})
+                depth_config = metadata.get("depth_config", {})
                 user_id = metadata.get("user_id")
 
                 # Check if Serena is enabled (from config.yaml)
@@ -1489,6 +1515,7 @@ The agent templates are now being updated...
                 include_serena = False
                 try:
                     from pathlib import Path
+
                     import yaml
 
                     config_path = Path.cwd() / "config.yaml"
@@ -1505,9 +1532,9 @@ The agent templates are now being updated...
                     logger.warning(f"[SERENA] Failed to read config for Serena toggle: {e}")
                     include_serena = False
 
-                # Generate condensed mission with field priorities applied
+                # Handover 0283: Generate condensed mission with field priorities and depth config applied
                 condensed_mission = await planner._build_context_with_priorities(
-                    product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
+                    product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id, include_serena=include_serena
                 )
 
                 # Handover 0277: Inject simplified Serena MCP notice if enabled
@@ -1653,8 +1680,8 @@ async def get_orchestrator_instructions(
     Returns:
         Orchestrator instructions dict
     """
-    from giljo_mcp.database import DatabaseManager
     from giljo_mcp.config_manager import get_config
+    from giljo_mcp.database import DatabaseManager
 
     if db_manager is None:
         # Get database URL from config for test environments
@@ -1770,7 +1797,7 @@ async def get_orchestrator_instructions(
             planner = MissionPlanner(db_manager)
             metadata = orchestrator.job_metadata or {}
 
-            # Handover 0281 Phase 1: Fetch user-specific config if user_id provided
+            # Handover 0281 Phase 1 + 0283: Fetch user-specific config if user_id provided
             if user_id:
                 user_config = await _get_user_config(user_id, tenant_key, session)
                 field_priorities = user_config["field_priorities"]
@@ -1782,14 +1809,15 @@ async def get_orchestrator_instructions(
             else:
                 # Fall back to job_metadata or empty dict (existing behavior)
                 field_priorities = metadata.get("field_priorities", {})
-                depth_config = {}
+                depth_config = metadata.get("depth_config", {})
                 logger.debug(
-                    "[USER_CONFIG] No user_id provided, using job_metadata field_priorities",
+                    "[USER_CONFIG] No user_id provided, using job_metadata config",
                     extra={"orchestrator_id": orchestrator_id}
                 )
 
+            # Handover 0283: Pass depth_config to mission planner
             condensed_mission = await planner._build_context_with_priorities(
-                product=product, project=project, field_priorities=field_priorities, user_id=user_id
+                product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id
             )
 
             # Handover 0246c: Agent templates no longer embedded
@@ -1982,8 +2010,8 @@ async def spawn_agent_job(
     """
     from uuid import uuid4
 
-    from giljo_mcp.database import DatabaseManager
     from giljo_mcp.config_manager import get_config
+    from giljo_mcp.database import DatabaseManager
 
     # If session is provided, use it directly (for testing with transaction isolation)
     if session is not None:
@@ -2014,7 +2042,9 @@ async def _spawn_agent_job_impl(
 ) -> dict[str, Any]:
     """Internal implementation of spawn_agent_job."""
     from uuid import uuid4
+
     from sqlalchemy import and_, select
+
     from giljo_mcp.models import MCPAgentJob
 
     try:
