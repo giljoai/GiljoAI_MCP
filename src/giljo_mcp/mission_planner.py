@@ -1006,15 +1006,17 @@ Success Criteria:
             return ""
 
         # Category display order (Handover 0302)
-        category_order = ["languages", "backend", "frontend", "database", "deployment", "testing"]
+        # "technologies" added to support normalized list->dict conversion
+        category_order = ["technologies", "languages", "backend", "frontend", "database", "deployment", "testing"]
 
         # Filter categories based on detail level
         if detail_level == "minimal":
             # Languages + primary backend/frontend only (80% reduction)
-            allowed_categories = ["languages", "backend", "frontend"]
+            # Include "technologies" for fallback list format
+            allowed_categories = ["technologies", "languages", "backend", "frontend"]
         elif detail_level == "abbreviated":
             # Primary categories only (50% reduction)
-            allowed_categories = ["languages", "backend", "frontend", "database"]
+            allowed_categories = ["technologies", "languages", "backend", "frontend", "database"]
         else:
             # Full or moderate - show all categories
             allowed_categories = category_order
@@ -1463,8 +1465,20 @@ Success Criteria:
         if tech_stack_priority > 0 and product.config_data:
             tech_stack_detail = self._get_detail_level(tech_stack_priority)
 
-            # Extract tech_stack dict from config_data
-            tech_stack_data = product.config_data.get("tech_stack", {})
+            # Extract tech_stack from config_data (may be dict, list, or string)
+            tech_stack_raw = product.config_data.get("tech_stack", {})
+
+            # Normalize to dict format for _format_tech_stack
+            if isinstance(tech_stack_raw, list):
+                # Convert list format ["Python 3.11+", "PostgreSQL"] to dict
+                tech_stack_data = {"technologies": tech_stack_raw}
+            elif isinstance(tech_stack_raw, str):
+                # Convert string format to dict
+                tech_stack_data = {"technologies": [tech_stack_raw]}
+            elif isinstance(tech_stack_raw, dict):
+                tech_stack_data = tech_stack_raw
+            else:
+                tech_stack_data = {}
 
             if tech_stack_data and isinstance(tech_stack_data, dict):
                 # Format using specialized formatter
