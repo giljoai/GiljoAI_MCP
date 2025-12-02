@@ -1145,9 +1145,9 @@ Success Criteria:
         Args:
             product: Product model with vision document and config_data
             project: Project model with description and mission
-            field_priorities: Dict mapping field names to priority (1-10)
-                             Higher values = more important. 0 = exclude.
-                             Example: {"product_vision": 10, "tech_stack": 8}
+            field_priorities: Dict mapping field names to priority (1-4)
+                             1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED
+                             Example: {"vision_documents": 2, "tech_stack": 2}
             user_id: User ID for logging and audit trail (optional)
             include_serena: Whether to fetch and include Serena codebase context (MANDATORY if enabled in config.yaml)
 
@@ -1155,12 +1155,11 @@ Success Criteria:
             Formatted context string with priority-based detail levels.
             Sections are intelligently abbreviated or excluded based on priorities.
 
-        Detail Level Mapping (via _get_detail_level):
-            Priority 10: "full" - Complete content
-            Priority 7-9: "moderate" - Slightly condensed
-            Priority 4-6: "abbreviated" - 50% context prioritization
-            Priority 1-3: "minimal" - 80% context prioritization (key points only)
-            Priority 0: "exclude" - Omitted entirely
+        Priority Level Mapping (v2.0):
+            Priority 1: CRITICAL - Always included with full detail
+            Priority 2: IMPORTANT - Included with high priority
+            Priority 3: NICE_TO_HAVE - Included if space allows
+            Priority 4: EXCLUDED - Omitted entirely (returns empty string)
 
         Multi-Tenant Isolation:
             All data access uses product/project models which are already tenant-filtered
@@ -1171,7 +1170,7 @@ Success Criteria:
                 product=product,
                 project=project,
                 field_priorities={
-                    "product_vision": 10,      # Full detail
+                    "vision_documents": 2,     # IMPORTANT - include vision docs
                     "project_description": 8,  # Full detail
                     "tech_stack": 8,           # Moderate-high detail
                     "config_data.architecture": 4,  # Abbreviated (50% tokens)
@@ -1257,11 +1256,12 @@ Success Criteria:
                 },
             )
 
-        # === MANDATORY: Product Vision (ALWAYS included - non-negotiable) ===
-        # Vision document is foundational context that orchestrator needs
+        # === Product Vision (vision_documents priority) ===
+        # Vision document provides foundational context
         # NEW: Use chunked vision if available, fallback to full text
+        # Handover 0282: Fixed key from "product_vision" to "vision_documents" (v2.0 field name)
 
-        vision_priority = effective_priorities.get("product_vision", 10)  # Default: MANDATORY
+        vision_priority = effective_priorities.get("vision_documents", 4)  # Default: EXCLUDED (user opt-in)
         if vision_priority > 0:
             # Check if vision is chunked
             product_has_chunks = (
@@ -1302,7 +1302,7 @@ Success Criteria:
                     logger.info(
                         f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
                         extra={
-                            "field": "product_vision",
+                            "field": "vision_documents",  # Handover 0282: v2.0 field name
                             "priority": vision_priority,
                             "detail_level": "chunked",
                             "tokens": vision_tokens,
@@ -1352,7 +1352,7 @@ Success Criteria:
                     logger.debug(
                         f"Product vision (full text): {vision_tokens} tokens (not chunked)",
                         extra={
-                            "field": "product_vision",
+                            "field": "vision_documents",  # Handover 0282: v2.0 field name
                             "priority": vision_priority,
                             "detail_level": "full",
                             "tokens": vision_tokens,
@@ -1478,18 +1478,18 @@ Success Criteria:
 
         # === Testing Configuration Section (Handover 0271) ===
         # Provides testing standards, quality expectations, and TDD guidance
-        # Controlled by user's testing_config field priority
-        testing_priority = effective_priorities.get("testing_config", 0)
+        # Handover 0282: Fixed key from "testing_config" to "testing" (v2.0 field name)
+        testing_priority = effective_priorities.get("testing", 4)  # Default: EXCLUDED (user opt-in)
         if testing_priority > 0:
             testing_context = await self._extract_testing_config(product, testing_priority)
 
             if testing_context:
                 # Apply priority framing
                 framed_testing = self._apply_priority_framing(
-                    section_name=self.SECTION_NAMES.get("testing_config", "Testing Configuration"),
+                    section_name=self.SECTION_NAMES.get("testing", "Testing Configuration"),
                     content=testing_context,
                     priority=testing_priority,
-                    category_key="testing_config",
+                    category_key="testing",  # Handover 0282: v2.0 field name
                 )
 
                 if framed_testing:  # Only add if not excluded
@@ -1504,7 +1504,7 @@ Success Criteria:
                 logger.debug(
                     f"Testing configuration: {testing_tokens} tokens (priority={testing_priority})",
                     extra={
-                        "field": "testing_config",
+                        "field": "testing",  # Handover 0282: v2.0 field name
                         "priority": testing_priority,
                         "tokens": testing_tokens,
                         "product_id": str(product.id),
@@ -1547,7 +1547,8 @@ Success Criteria:
         # Both are controlled by field priorities and user toggles
 
         # 360 Memory extraction (priority-based)
-        history_priority = effective_priorities.get("product_memory.sequential_history", 0)
+        # Handover 0282: Fixed key from "product_memory.sequential_history" to "memory_360" (v2.0 field name)
+        history_priority = effective_priorities.get("memory_360", 4)  # Default: EXCLUDED (user opt-in)
         if history_priority > 0:
             history_context = await self._extract_product_history(product, history_priority, max_entries=10)
             if history_context:
@@ -1567,7 +1568,7 @@ Success Criteria:
                 logger.debug(
                     f"Added 360 Memory context: {history_tokens} tokens (priority={history_priority})",
                     extra={
-                        "field": "product_memory.sequential_history",
+                        "field": "memory_360",  # Handover 0282: v2.0 field name
                         "priority": history_priority,
                         "tokens": history_tokens,
                         "product_id": str(product.id),
