@@ -243,6 +243,7 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Agent Jobs**: Use AgentJobManager for lifecycle, AgentCommunicationQueue for messaging
 - **Context Management v2.0**: 2-dimensional model (Priority × Depth) - orchestrator fetches context via MCP tools based on user configuration
 - **Serena MCP**: Use Serena's symbolic tools for code navigation (find_symbol, get_symbols_overview, find_referencing_symbols) - REQUIRED for exploring codebase efficiently and avoiding full file reads
+- **Subagents**: ALWAYS use custom subagents from `.claude/agents/` first before generic built-in agents. Available specialists: `database-expert`, `tdd-implementor`, `backend-integration-tester`, `system-architect`, `deep-researcher`, `documentation-manager`, `frontend-tester`, `network-security-engineer`, `orchestrator-coordinator`, `ux-designer`, `version-manager`, `installation-flow-agent`
 
 ## Service Layer Architecture & Patterns
 

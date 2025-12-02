@@ -266,10 +266,10 @@ class TestConfigIntegration:
             # ConfigManager should work with defaults (v3.0: always binds 0.0.0.0)
             manager = ConfigManager()
             assert manager.server.host == "0.0.0.0"
-            assert manager.database.type == "sqlite"
+            assert manager.database.type == "postgresql"  # Project standardized on PostgreSQL
 
             # Should be able to get database URL
-            assert "sqlite" in manager.database.get_connection_string()
+            assert "postgresql" in manager.database.get_connection_string()
 
     def test_config_file_watcher_lifecycle(self, temp_dir):
         """Test file watcher lifecycle for hot-reload."""
