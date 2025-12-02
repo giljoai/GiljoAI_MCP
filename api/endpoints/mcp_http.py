@@ -167,7 +167,7 @@ async def handle_tools_list(
         
         {
             "name": "update_project_mission",
-            "description": "PERSIST orchestrator-created mission plan to Project.mission field",
+            "description": "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY after creating execution strategy (Step 3 of staging workflow). Persists the OUTPUT of mission planning. Critical: Project.description = user requirements (INPUT), Project.mission = orchestrator's plan (OUTPUT you create). Triggers WebSocket 'project:mission_updated' event for UI updates.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -180,7 +180,7 @@ async def handle_tools_list(
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
-            "description": "Fetch orchestrator mission with context prioritization and orchestration (thin client architecture)",
+            "description": "Fetch context for orchestrator to CREATE mission plan. Called by: ORCHESTRATOR ONLY at project start (Step 1 of staging workflow) or during implementation phase to refresh context (single source of truth). Returns project description (user requirements), prioritized context fields, and reference to get_available_agents() for discovering specialists. Orchestrator analyzes this INPUT and creates execution plan (does NOT execute work). Token estimate: ~4,500 with context exclusions applied.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -409,7 +409,7 @@ async def handle_tools_list(
         },
         {
             "name": "get_agent_mission",
-            "description": "Get thin-client mission for spawned agent",
+            "description": "Fetch agent-specific mission and context. Called by: ANY AGENT (implementer, tester, analyzer, etc.) immediately after receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted mission for this specific agent (not entire project vision). Part of thin-client architecture - mission stored in database, not embedded in prompt. Idempotent (safe to call multiple times).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -421,7 +421,7 @@ async def handle_tools_list(
         },
         {
             "name": "spawn_agent_job",
-            "description": "Spawn agent job with thin client prompt",
+            "description": "Create specialist agent job for execution. Called by: ORCHESTRATOR ONLY during staging to delegate work (Step 4 of workflow). Orchestrator breaks down mission into agent-specific tasks and spawns agents who EXECUTE the work. Returns agent_job_id and thin prompt (~10 lines). Agent later calls get_agent_mission() to fetch full mission. Creates database record linking agent to project.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -436,7 +436,7 @@ async def handle_tools_list(
         },
         {
             "name": "get_workflow_status",
-            "description": "Get status of all agents in project workflow",
+            "description": "Monitor workflow progress across all project agents. Called by: ANY AGENT between todo item completion or work phases, at same time as sending status updates via MCP message tools. Returns active/completed/failed agent counts and progress_percent (0-100). Use to decide whether to proceed or wait for dependencies. Check if all agents completed (progress_percent == 100), detect failures (failed_agents > 0 requires investigation).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
