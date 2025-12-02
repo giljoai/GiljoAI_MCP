@@ -12,7 +12,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from fastmcp import FastMCP
@@ -25,6 +25,104 @@ from giljo_mcp.orchestrator import ProjectOrchestrator
 
 logger = logging.getLogger(__name__)
 
+
+# Handover 0281 Phase 1: Default configurations for monolithic context
+DEFAULT_FIELD_PRIORITIES = {
+    "product_core": {"toggle": True, "priority": 1},
+    "project_context": {"toggle": True, "priority": 1},
+    "vision_documents": {"toggle": True, "priority": 2},
+    "tech_stack": {"toggle": True, "priority": 2},
+    "architecture": {"toggle": True, "priority": 3},
+    "testing_config": {"toggle": True, "priority": 3},
+    "memory_360": {"toggle": True, "priority": 2},
+    "git_history": {"toggle": False, "priority": 4},
+    "agent_templates": {"toggle": True, "priority": 2}
+}
+
+DEFAULT_DEPTH_CONFIG = {
+    "vision_chunking": "moderate",  # 4 chunks
+    "memory_last_n_projects": 5,
+    "git_commits": 15,
+    "agent_template_detail": "standard"
+}
+
+
+async def _get_user_config(
+    user_id: str,
+    tenant_key: str,
+    session: Any  # AsyncSession type hint would create circular import
+) -> Dict[str, Any]:
+    """
+    Fetch user's field_priority_config and depth_config from database.
+
+    Args:
+        user_id: User UUID
+        tenant_key: Tenant isolation key
+        session: SQLAlchemy AsyncSession
+
+    Returns:
+        dict with 'field_priorities' and 'depth_config' keys
+
+    Behavior:
+        - Returns user's custom config if exists
+        - Falls back to DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG if None
+        - Ensures multi-tenant isolation (user must belong to tenant_key)
+    """
+    from giljo_mcp.models.auth import User
+
+    try:
+        # Query user with tenant isolation
+        result = await session.execute(
+            select(User).where(
+                and_(
+                    User.id == user_id,
+                    User.tenant_key == tenant_key,
+                    User.is_active == True
+                )
+            )
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            logger.warning(
+                f"[USER_CONFIG] User {user_id} not found or inactive for tenant {tenant_key}, using defaults",
+                extra={"user_id": user_id, "tenant_key": tenant_key}
+            )
+            return {
+                "field_priorities": DEFAULT_FIELD_PRIORITIES.copy(),
+                "depth_config": DEFAULT_DEPTH_CONFIG.copy()
+            }
+
+        # Get user's custom configs or fall back to defaults
+        field_priorities = user.field_priority_config if user.field_priority_config is not None else DEFAULT_FIELD_PRIORITIES.copy()
+        depth_config = user.depth_config if user.depth_config is not None else DEFAULT_DEPTH_CONFIG.copy()
+
+        logger.info(
+            "[USER_CONFIG] Fetched user configuration",
+            extra={
+                "user_id": user_id,
+                "tenant_key": tenant_key,
+                "has_custom_field_priorities": user.field_priority_config is not None,
+                "has_custom_depth_config": user.depth_config is not None
+            }
+        )
+
+        return {
+            "field_priorities": field_priorities,
+            "depth_config": depth_config
+        }
+
+    except Exception as e:
+        logger.error(
+            f"[USER_CONFIG] Failed to fetch user config: {e}",
+            extra={"user_id": user_id, "tenant_key": tenant_key},
+            exc_info=True
+        )
+        # Fall back to defaults on error
+        return {
+            "field_priorities": DEFAULT_FIELD_PRIORITIES.copy(),
+            "depth_config": DEFAULT_DEPTH_CONFIG.copy()
+        }
 
 
 
@@ -1517,6 +1615,280 @@ The agent templates are now being updated...
 
 
 # ========================================================================
+# Depth Config Helper Functions (Handover 0281 Phase 3)
+# These functions control token volume via chunk counts and pagination
+# ========================================================================
+
+
+async def _fetch_vision_documents(
+    product_id: str,
+    depth: str,
+    tenant_key: str,
+    db: "AsyncSession"
+) -> List[Dict[str, Any]]:
+    """
+    Fetch vision document chunks based on depth setting.
+
+    Depth mapping:
+    - none: 0 chunks (0 tokens)
+    - light: 2 chunks (~10K tokens)
+    - moderate: 4 chunks (~17.5K tokens)
+    - heavy: 6 chunks (~25K tokens)
+
+    Args:
+        product_id: Product UUID
+        depth: Depth level (none/light/moderate/heavy)
+        tenant_key: Tenant isolation key
+        db: AsyncSession for database queries
+
+    Returns:
+        List of chunk dictionaries with chunk_content field
+
+    Examples:
+        >>> chunks = await _fetch_vision_documents(product_id, "light", tenant_key, db)
+        >>> len(chunks)
+        2
+    """
+    from sqlalchemy import select
+    from giljo_mcp.models.products import VisionDocument
+    from giljo_mcp.models.context import MCPContextIndex
+
+    chunk_limits = {"none": 0, "light": 2, "moderate": 4, "heavy": 6}
+    limit = chunk_limits.get(depth, 4)  # Default to moderate
+
+    if limit == 0:
+        return []
+
+    # Query vision documents for this product
+    result = await db.execute(
+        select(VisionDocument)
+        .where(VisionDocument.product_id == product_id)
+        .where(VisionDocument.tenant_key == tenant_key)
+        .where(VisionDocument.is_active == True)
+        .where(VisionDocument.chunked == True)
+    )
+    vision_docs = result.scalars().all()
+
+    if not vision_docs:
+        return []
+
+    # Fetch chunks from first vision document (for simplicity)
+    vision_doc = vision_docs[0]
+    result = await db.execute(
+        select(MCPContextIndex)
+        .where(MCPContextIndex.vision_document_id == vision_doc.id)
+        .where(MCPContextIndex.tenant_key == tenant_key)
+        .order_by(MCPContextIndex.chunk_number)
+        .limit(limit)
+    )
+    chunks = result.scalars().all()
+
+    return [
+        {
+            "chunk_number": chunk.chunk_number,
+            "total_chunks": chunk.total_chunks,
+            "chunk_content": chunk.chunk_content,
+            "context_type": chunk.context_type
+        }
+        for chunk in chunks
+    ]
+
+
+async def _fetch_360_memory(
+    product_id: str,
+    depth: int,
+    tenant_key: str,
+    db: "AsyncSession"
+) -> List[Dict[str, Any]]:
+    """
+    Fetch 360 Memory project history based on depth setting.
+
+    Depth = number of recent projects to include.
+    Returns list in reverse chronological order (most recent first).
+
+    Args:
+        product_id: Product UUID
+        depth: Number of projects to include (1/3/5/10)
+        tenant_key: Tenant isolation key
+        db: AsyncSession for database queries
+
+    Returns:
+        List of project summary dictionaries
+
+    Examples:
+        >>> history = await _fetch_360_memory(product_id, 3, tenant_key, db)
+        >>> len(history)
+        3
+        >>> history[0]["sequence"] > history[1]["sequence"]
+        True
+    """
+    from sqlalchemy import select
+
+    # Fetch product
+    result = await db.execute(
+        select(Product)
+        .where(Product.id == product_id)
+        .where(Product.tenant_key == tenant_key)
+    )
+    product = result.scalar_one_or_none()
+
+    if not product or not product.product_memory:
+        return []
+
+    # Extract sequential history
+    sequential_history = product.product_memory.get("sequential_history", [])
+
+    if not sequential_history:
+        return []
+
+    # Sort by sequence DESC (most recent first)
+    sorted_history = sorted(sequential_history, key=lambda x: x.get("sequence", 0), reverse=True)
+
+    # Return first N projects
+    return sorted_history[:depth]
+
+
+async def _fetch_git_history(
+    product_id: str,
+    depth: int,
+    tenant_key: str,
+    db: "AsyncSession"
+) -> List[Dict[str, Any]]:
+    """
+    Fetch Git commit history from product_memory based on depth setting.
+
+    Depth = number of recent commits to include.
+    Returns list in reverse chronological order.
+
+    Args:
+        product_id: Product UUID
+        depth: Number of commits to include (5/15/25)
+        tenant_key: Tenant isolation key
+        db: AsyncSession for database queries
+
+    Returns:
+        List of commit dictionaries
+
+    Examples:
+        >>> commits = await _fetch_git_history(product_id, 5, tenant_key, db)
+        >>> len(commits)
+        5
+    """
+    from sqlalchemy import select
+
+    # Fetch product
+    result = await db.execute(
+        select(Product)
+        .where(Product.id == product_id)
+        .where(Product.tenant_key == tenant_key)
+    )
+    product = result.scalar_one_or_none()
+
+    if not product or not product.product_memory:
+        return []
+
+    # Check if git integration is enabled
+    git_integration = product.product_memory.get("git_integration", {})
+    if not git_integration.get("enabled", False):
+        return []
+
+    # Aggregate commits from sequential_history
+    all_commits = []
+    sequential_history = product.product_memory.get("sequential_history", [])
+
+    for project_entry in sequential_history:
+        git_commits = project_entry.get("git_commits", [])
+        all_commits.extend(git_commits)
+
+    if not all_commits:
+        return []
+
+    # Sort by timestamp DESC (most recent first)
+    sorted_commits = sorted(
+        all_commits,
+        key=lambda x: x.get("timestamp", ""),
+        reverse=True
+    )
+
+    # Return first N commits
+    return sorted_commits[:depth]
+
+
+async def _fetch_agent_templates(
+    tenant_key: str,
+    depth: str,
+    db: "AsyncSession"
+) -> List[Dict[str, Any]]:
+    """
+    Fetch agent templates based on depth setting.
+
+    Depth levels:
+    - minimal: name + role only (~400 tokens)
+    - standard: name + role + description (~1,200 tokens)
+    - full: complete template with expertise + constraints (~2,400 tokens)
+
+    Args:
+        tenant_key: Tenant isolation key
+        depth: Detail level (minimal/standard/full)
+        db: AsyncSession for database queries
+
+    Returns:
+        List of agent template dictionaries
+
+    Examples:
+        >>> templates = await _fetch_agent_templates(tenant_key, "minimal", db)
+        >>> all("name" in t and "description" not in t for t in templates)
+        True
+    """
+    from sqlalchemy import select
+    from giljo_mcp.models.templates import AgentTemplate
+
+    # Query active agent templates
+    result = await db.execute(
+        select(AgentTemplate)
+        .where(AgentTemplate.tenant_key == tenant_key)
+        .where(AgentTemplate.is_active == True)
+    )
+    templates = result.scalars().all()
+
+    # Build response based on depth
+    formatted_templates = []
+
+    for template in templates:
+        if depth == "minimal":
+            # Minimal: name + role only
+            formatted_templates.append({
+                "name": template.name,
+                "role": template.role
+            })
+        elif depth == "standard":
+            # Standard: name + role + description
+            formatted_templates.append({
+                "name": template.name,
+                "role": template.role,
+                "description": template.description
+            })
+        elif depth == "full":
+            # Full: complete template
+            formatted_templates.append({
+                "name": template.name,
+                "role": template.role,
+                "description": template.description,
+                "expertise": template.expertise,
+                "constraints": template.constraints
+            })
+        else:
+            # Default to standard
+            formatted_templates.append({
+                "name": template.name,
+                "role": template.role,
+                "description": template.description
+            })
+
+    return formatted_templates
+
+
+# ========================================================================
 # Standalone Functions for Testing
 # These are test-friendly wrappers that can be imported directly
 # ========================================================================
@@ -1541,7 +1913,12 @@ async def health_check() -> dict[str, Any]:
     }
 
 
-async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, db_manager: "DatabaseManager" = None) -> dict[str, Any]:
+async def get_orchestrator_instructions(
+    orchestrator_id: str,
+    tenant_key: str,
+    user_id: Optional[str] = None,  # Handover 0281 Phase 1: User-specific config
+    db_manager: "DatabaseManager" = None
+) -> dict[str, Any]:
     """
     Fetch orchestrator instructions (standalone for testing).
 
@@ -1551,6 +1928,7 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, d
     Args:
         orchestrator_id: Orchestrator job UUID
         tenant_key: Tenant isolation key
+        user_id: Optional user UUID for fetching user-specific field_priority_config and depth_config (Handover 0281)
         db_manager: Optional DatabaseManager instance (for testing)
 
     Returns:
@@ -1652,12 +2030,17 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, d
             if not project:
                 return {"error": "NOT_FOUND", "message": "Project not found for orchestrator"}
 
-            # Get product
+            # Get product with eager loading of relationships (Handover 0281: Fix lazy loading issue)
             if not project.product_id:
                 return {"error": "NOT_FOUND", "message": "No product linked to project"}
 
             result = await session.execute(
-                select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
+                select(Product)
+                .options(
+                    joinedload(Product.vision_documents),  # Eager load vision documents
+                    joinedload(Product.projects)  # Eager load projects
+                )
+                .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
             )
             product = result.scalar_one_or_none()
 
@@ -1667,8 +2050,24 @@ async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str, d
             # Generate condensed mission
             planner = MissionPlanner(db_manager)
             metadata = orchestrator.job_metadata or {}
-            field_priorities = metadata.get("field_priorities", {})
-            user_id = metadata.get("user_id")
+
+            # Handover 0281 Phase 1: Fetch user-specific config if user_id provided
+            if user_id:
+                user_config = await _get_user_config(user_id, tenant_key, session)
+                field_priorities = user_config["field_priorities"]
+                depth_config = user_config["depth_config"]
+                logger.info(
+                    "[USER_CONFIG] Applied user-specific configuration to orchestrator instructions",
+                    extra={"orchestrator_id": orchestrator_id, "user_id": user_id, "tenant_key": tenant_key}
+                )
+            else:
+                # Fall back to job_metadata or empty dict (existing behavior)
+                field_priorities = metadata.get("field_priorities", {})
+                depth_config = {}
+                logger.debug(
+                    "[USER_CONFIG] No user_id provided, using job_metadata field_priorities",
+                    extra={"orchestrator_id": orchestrator_id}
+                )
 
             condensed_mission = await planner._build_context_with_priorities(
                 product=product, project=project, field_priorities=field_priorities, user_id=user_id
