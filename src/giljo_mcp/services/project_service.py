@@ -916,7 +916,6 @@ class ProjectService:
                         "status": project.status,
                         "mission": project.mission,
                         "description": project.description,
-                        "config_data": project.config_data or {},
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,
@@ -975,9 +974,9 @@ class ProjectService:
 
                 # Store reason if provided
                 if reason:
-                    if not project.config_data:
-                        project.config_data = {}
-                    project.config_data["deactivation_reason"] = reason
+                    if not project.meta_data:
+                        project.meta_data = {}
+                    project.meta_data["deactivation_reason"] = reason
 
                 await session.commit()
                 await session.refresh(project)
@@ -1007,7 +1006,6 @@ class ProjectService:
                         "status": project.status,
                         "mission": project.mission,
                         "description": project.description,
-                        "config_data": project.config_data or {},
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,
@@ -1093,7 +1091,6 @@ class ProjectService:
                         "status": project.status,
                         "mission": project.mission,
                         "description": project.description,
-                        "config_data": project.config_data or {},
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,
