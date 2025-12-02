@@ -485,3 +485,23 @@ class TestBackwardCompatibility:
         # Result should be valid
         assert isinstance(result, str)
         assert len(result) > 0
+
+    def test_tech_stack_architecture_testing_in_v2_priorities(self, mission_planner):
+        """
+        Test that tech_stack, architecture, testing are included in v2.0 field priorities.
+
+        These fields should be moved from legacy section to v2.0 section in DEFAULT_FIELD_PRIORITIES.
+        """
+        from src.giljo_mcp.mission_planner import DEFAULT_FIELD_PRIORITIES
+
+        # tech_stack should exist and be priority 2 (IMPORTANT)
+        assert "tech_stack" in DEFAULT_FIELD_PRIORITIES, "tech_stack missing from DEFAULT_FIELD_PRIORITIES"
+        assert DEFAULT_FIELD_PRIORITIES["tech_stack"] == 2, f"tech_stack priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('tech_stack')}"
+
+        # architecture should exist and be priority 2 (IMPORTANT)
+        assert "architecture" in DEFAULT_FIELD_PRIORITIES, "architecture missing from DEFAULT_FIELD_PRIORITIES"
+        assert DEFAULT_FIELD_PRIORITIES["architecture"] == 2, f"architecture priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('architecture')}"
+
+        # testing should exist and be priority 2 (IMPORTANT)
+        assert "testing" in DEFAULT_FIELD_PRIORITIES, "testing missing from DEFAULT_FIELD_PRIORITIES"
+        assert DEFAULT_FIELD_PRIORITIES["testing"] == 2, f"testing priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('testing')}"
