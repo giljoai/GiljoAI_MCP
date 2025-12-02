@@ -32,42 +32,53 @@ DEFAULT_VERSION = "unknown"
 DEFAULT_ROLE = "Specialized Agent"
 
 
-def _format_agent_info(template: AgentTemplate) -> dict[str, Any]:
+def _format_agent_info(template: AgentTemplate, depth: str = "full") -> dict[str, Any]:
     """
     Format agent template into discovery response format.
 
     Args:
         template: AgentTemplate database model instance
+        depth: Detail level - "type_only" (name/role/version) or "full" (includes description)
 
     Returns:
         dict with formatted agent information
 
     Note:
         Handles missing fields gracefully with sensible defaults.
+
+    Handover 0283: Added depth parameter for context depth configuration.
     """
     # Handle missing version gracefully
     version = template.version or DEFAULT_VERSION
 
-    # Truncate description if too long
-    description = ""
-    if template.description:
-        description = (
-            template.description[:MAX_DESCRIPTION_LENGTH]
-            if len(template.description) > MAX_DESCRIPTION_LENGTH
-            else template.description
-        )
-
-    return {
+    # Base information (always included)
+    agent_info = {
         "name": template.name,
         "role": template.role or DEFAULT_ROLE,
-        "description": description,
         "version_tag": version,
-        "expected_filename": f"{template.name}_{version}.md",
-        "created_at": template.created_at.isoformat() if template.created_at else None,
     }
 
+    # Add additional fields based on depth level
+    if depth == "full":
+        # Truncate description if too long
+        description = ""
+        if template.description:
+            description = (
+                template.description[:MAX_DESCRIPTION_LENGTH]
+                if len(template.description) > MAX_DESCRIPTION_LENGTH
+                else template.description
+            )
 
-async def get_available_agents(session: AsyncSession, tenant_key: str) -> dict[str, Any]:
+        agent_info.update({
+            "description": description,
+            "expected_filename": f"{template.name}_{version}.md",
+            "created_at": template.created_at.isoformat() if template.created_at else None,
+        })
+
+    return agent_info
+
+
+async def get_available_agents(session: AsyncSession, tenant_key: str, depth: str = "full") -> dict[str, Any]:
     """
     Get available agent templates with version metadata.
 
@@ -77,11 +88,13 @@ async def get_available_agents(session: AsyncSession, tenant_key: str) -> dict[s
     Args:
         session: Database session
         tenant_key: Tenant isolation key
+        depth: Detail level - "type_only" (name/role/version only, ~50 tokens) or
+               "full" (includes description, ~1.2k tokens). Default: "full"
 
     Returns:
         dict with agents list and version metadata
 
-    Example Response:
+    Example Response (depth="full"):
         {
             "success": True,
             "data": {
@@ -100,6 +113,25 @@ async def get_available_agents(session: AsyncSession, tenant_key: str) -> dict[s
                 "note": "Templates fetched dynamically (not embedded in prompt)"
             }
         }
+
+    Example Response (depth="type_only"):
+        {
+            "success": True,
+            "data": {
+                "agents": [
+                    {
+                        "name": "implementer",
+                        "role": "Code Implementation Specialist",
+                        "version_tag": "1.2.0"
+                    }
+                ],
+                "count": 5,
+                "fetched_at": "2025-11-24T12:30:00",
+                "note": "Templates fetched dynamically (type_only depth)"
+            }
+        }
+
+    Handover 0283: Added depth parameter for context depth configuration.
     """
     try:
         # Input validation
@@ -115,7 +147,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str) -> dict[s
                 },
             }
 
-        logger.info("Fetching available agents", extra={"tenant_key": tenant_key})
+        logger.info("Fetching available agents", extra={"tenant_key": tenant_key, "depth": depth})
 
         # Fetch active templates for this tenant
         stmt = (
@@ -127,10 +159,11 @@ async def get_available_agents(session: AsyncSession, tenant_key: str) -> dict[s
         result = await session.execute(stmt)
         templates = result.scalars().all()
 
-        # Format response with version metadata
-        agents = [_format_agent_info(template) for template in templates]
+        # Format response with version metadata (apply depth filtering)
+        agents = [_format_agent_info(template, depth=depth) for template in templates]
 
-        logger.info(f"Found {len(agents)} available agents", extra={"tenant_key": tenant_key, "count": len(agents)})
+        logger.info(f"Found {len(agents)} available agents (depth={depth})",
+                   extra={"tenant_key": tenant_key, "count": len(agents), "depth": depth})
 
         return {
             "success": True,
@@ -138,7 +171,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str) -> dict[s
                 "agents": agents,
                 "count": len(agents),
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
-                "note": "Templates fetched dynamically (not embedded in prompt)",
+                "note": f"Templates fetched dynamically ({depth} depth)",
             },
         }
 
