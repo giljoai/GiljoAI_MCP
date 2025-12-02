@@ -31,12 +31,15 @@ class TestHandover0035SetupStateModel:
 
     @pytest.fixture
     def sync_engine(self):
-        """Create temporary in-memory database for schema testing"""
-        # NOTE: SQLite used for fast schema testing only
+        """Create temporary database for schema testing"""
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        # Use PostgreSQL for schema testing
         # Production uses PostgreSQL with pg_trgm extension
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
         yield engine
+        Base.metadata.drop_all(engine)
         engine.dispose()
 
     @pytest.fixture
@@ -273,10 +276,11 @@ class TestHandover0035DatabaseCreationFlow:
 
     @pytest.fixture
     async def async_engine(self):
-        """Create temporary async PostgreSQL-like database"""
-        # NOTE: Using SQLite async for testing
-        # Production uses PostgreSQL with pg_trgm extension
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        """Create temporary async PostgreSQL database"""
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        # Use PostgreSQL with pg_trgm extension
+        engine = create_async_engine(PostgreSQLTestHelper.get_test_db_url())
 
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -412,7 +416,9 @@ class TestHandover0035AuthenticationFlow:
     @pytest.fixture
     async def async_engine(self):
         """Create temporary async database"""
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        engine = create_async_engine(PostgreSQLTestHelper.get_test_db_url())
 
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

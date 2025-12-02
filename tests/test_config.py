@@ -34,7 +34,7 @@ class TestConfigManager:
         assert config.app_name == "GiljoAI MCP Coding Orchestrator"
         assert config.app_version == "0.1.0"
         assert config.server.debug is False
-        assert config.database.database_type == "sqlite"
+        assert config.database.database_type == "postgresql"  # Project standardized on PostgreSQL
         assert config.server.api_host == "127.0.0.1"
         assert config.server.api_port == 8000
         assert config.tenant.enable_multi_tenant is True
@@ -85,17 +85,10 @@ class TestConfigManager:
         assert config_manager.server.debug is True
 
     def test_database_url_construction(self):
-        """Test database URL construction for different types."""
+        """Test database URL construction for PostgreSQL."""
         config = get_config()
 
-        # Test SQLite URL construction
-        config.database.database_type = "sqlite"
-        config.database.database_name = "test.db"
-        sqlite_url = config.get_database_url()
-        assert PostgreSQLTestHelper.get_test_db_url(async_driver=False) in sqlite_url
-        assert "test.db" in sqlite_url
-
-        # Test PostgreSQL URL construction
+        # Test PostgreSQL URL construction (project standardized on PostgreSQL)
         config.database.database_type = "postgresql"
         config.database.host = "localhost"
         config.database.port = 5432

@@ -25,9 +25,11 @@ from src.giljo_mcp.models import Base, User
 @pytest.fixture
 async def test_db():
     """Create test database with async support"""
-    # Use in-memory SQLite for tests (with async driver)
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+    # Use PostgreSQL for tests (with async driver)
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
+        PostgreSQLTestHelper.get_test_db_url(),
         echo=False,
     )
 
