@@ -1,19 +1,19 @@
 """
 Tests for category validation in FieldPriorityConfig (Handover 0248a Task 1).
 
-Tests ensure backend only accepts backend categories:
+Tests ensure backend only accepts valid backend categories:
 - product_core
 - vision_documents
 - agent_templates
 - project_context
 - memory_360
 - git_history
+- tech_stack (added for frontend integration)
+- architecture (added for frontend integration)
+- testing (added for frontend integration)
 
-UI categories should be REJECTED:
-- product_description
-- tech_stack
-- architecture
-- testing
+UI-only categories should still be REJECTED:
+- product_description (UI-only field)
 """
 
 import pytest
@@ -54,56 +54,44 @@ class TestFieldPriorityConfigCategoryValidation:
         assert "product_description" in error_msg
         assert "Invalid category names" in error_msg
 
-    def test_rejects_ui_category_tech_stack(self):
-        """Should reject UI category 'tech_stack'."""
-        invalid_config = {
+    def test_accepts_tech_stack_category(self):
+        """Should accept 'tech_stack' category (frontend integration)."""
+        valid_config = {
             "product_core": 1,
-            "tech_stack": 2,  # UI category - should fail
-        }
-
-        with pytest.raises(ValidationError) as exc_info:
-            FieldPriorityConfig(priorities=invalid_config)
-
-        error_msg = str(exc_info.value)
-        assert "tech_stack" in error_msg
-        assert "Invalid category names" in error_msg
-
-    def test_rejects_ui_category_architecture(self):
-        """Should reject UI category 'architecture'."""
-        invalid_config = {
-            "product_core": 1,
-            "architecture": 2,  # UI category - should fail
-        }
-
-        with pytest.raises(ValidationError) as exc_info:
-            FieldPriorityConfig(priorities=invalid_config)
-
-        error_msg = str(exc_info.value)
-        assert "architecture" in error_msg
-        assert "Invalid category names" in error_msg
-
-    def test_rejects_ui_category_testing(self):
-        """Should reject UI category 'testing'."""
-        invalid_config = {
-            "product_core": 1,
-            "testing": 2,  # UI category - should fail
-        }
-
-        with pytest.raises(ValidationError) as exc_info:
-            FieldPriorityConfig(priorities=invalid_config)
-
-        error_msg = str(exc_info.value)
-        assert "testing" in error_msg
-        assert "Invalid category names" in error_msg
-
-    def test_rejects_multiple_ui_categories(self):
-        """Should reject configuration with multiple UI categories."""
-        invalid_config = {
-            "product_core": 1,
-            "product_description": 2,
             "tech_stack": 2,
-            "architecture": 3,
-            "testing": 3,
+        }
+
+        config = FieldPriorityConfig(priorities=valid_config)
+        assert config.priorities == valid_config
+        assert config.version == "2.0"
+
+    def test_accepts_architecture_category(self):
+        """Should accept 'architecture' category (frontend integration)."""
+        valid_config = {
+            "product_core": 1,
+            "architecture": 2,
+        }
+
+        config = FieldPriorityConfig(priorities=valid_config)
+        assert config.priorities == valid_config
+        assert config.version == "2.0"
+
+    def test_accepts_testing_category(self):
+        """Should accept 'testing' category (frontend integration)."""
+        valid_config = {
+            "product_core": 1,
+            "testing": 2,
+        }
+
+        config = FieldPriorityConfig(priorities=valid_config)
+        assert config.priorities == valid_config
+        assert config.version == "2.0"
+
+    def test_rejects_ui_only_category_product_description(self):
+        """Should reject configuration with UI-only category 'product_description'."""
+        invalid_config = {
+            "product_core": 1,
+            "product_description": 2,  # UI-only category - should fail
         }
 
         with pytest.raises(ValidationError) as exc_info:
@@ -111,11 +99,7 @@ class TestFieldPriorityConfigCategoryValidation:
 
         error_msg = str(exc_info.value)
         assert "Invalid category names" in error_msg
-        # Should mention at least one UI category
-        assert any(
-            cat in error_msg
-            for cat in ["product_description", "tech_stack", "architecture", "testing"]
-        )
+        assert "product_description" in error_msg
 
     def test_rejects_unknown_category(self):
         """Should reject completely unknown category names."""

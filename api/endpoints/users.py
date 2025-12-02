@@ -162,7 +162,8 @@ class FieldPriorityConfig(BaseModel):
         2. At least one category must have Priority 1 (CRITICAL)
         3. Cannot have all categories as EXCLUDED (Priority 4)
         4. Valid categories only: product_core, vision_documents, agent_templates,
-                                  project_context, memory_360, git_history
+                                  project_context, memory_360, git_history,
+                                  tech_stack, architecture, testing
         """
         valid_priorities = {1, 2, 3, 4}
         valid_categories = {
@@ -172,6 +173,9 @@ class FieldPriorityConfig(BaseModel):
             "project_context",
             "memory_360",
             "git_history",
+            "tech_stack",
+            "architecture",
+            "testing",
         }
 
         # Validate priority range
