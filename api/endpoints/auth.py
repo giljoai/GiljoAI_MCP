@@ -21,7 +21,9 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, require_admin
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
@@ -436,7 +438,10 @@ async def logout(response: Response):
 
 
 @router.get("/me", tags=["auth"])
-async def get_me(request: Request):
+async def get_me(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
     """
     Get current user profile or return 401 if not authenticated.
 
@@ -445,20 +450,19 @@ async def get_me(request: Request):
 
     Args:
         request: FastAPI request
+        db: Database session (managed by FastAPI dependency injection)
 
     Returns:
         User profile data if authenticated, 401 JSON response otherwise
     """
     # Try to get current user (optional - doesn't raise exceptions)
-    from src.giljo_mcp.auth.dependencies import get_current_user_optional, get_db_session
-
-    # Get db session for auth check
-    db = await anext(get_db_session(request))
+    from src.giljo_mcp.auth.dependencies import get_current_user_optional
 
     current_user = await get_current_user_optional(
         request=request,
         access_token=request.cookies.get("access_token"),
         x_api_key=request.headers.get("x-api-key"),
+        authorization=request.headers.get("authorization"),
         db=db,
     )
 
