@@ -6,10 +6,9 @@ Provides FastAPI dependencies for service layer access.
 
 import logging
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
@@ -21,7 +20,6 @@ logger = logging.getLogger(__name__)
 def get_project_service(
     tenant_key: str = Depends(get_tenant_key),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
 ) -> ProjectService:
     """
     Get ProjectService instance for project operations.
@@ -29,7 +27,6 @@ def get_project_service(
     Args:
         tenant_key: Tenant key from request context (sets global tenant context)
         current_user: Authenticated user (for tenant isolation)
-        db: Database session (required by dependency)
 
     Returns:
         ProjectService instance
@@ -37,6 +34,7 @@ def get_project_service(
     Note:
         Service is request-scoped and uses global db_manager/tenant_manager from app state.
         Calling get_tenant_key() as dependency ensures TenantManager.set_current_tenant() is called.
+        Service creates its own sessions via db_manager.get_session_async().
     """
     # Import state lazily to avoid circular import
     from api.app import state
@@ -55,5 +53,4 @@ def get_project_service(
     return ProjectService(
         db_manager=state.db_manager,
         tenant_manager=state.tenant_manager,
-        test_session=db,
     )
