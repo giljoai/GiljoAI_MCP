@@ -381,6 +381,9 @@ function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Rec
     }
   })
 
+  // CRITICAL: Always include project_context with priority 1 (locked field, always CRITICAL)
+  backendPriorities.project_context = 1
+
   return backendPriorities
 }
 
