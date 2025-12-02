@@ -501,11 +501,15 @@ class ToolAccessor:
                     if project.description:
                         mission_parts.append(f"Project Goal: {project.description}")
 
-                    # Include tech stack from product context if available
-                    if product and product.product_context:
-                        context = product.product_context or {}
-                        if context.get("tech_stack"):
-                            mission_parts.append(f"Tech Stack: {context['tech_stack']}")
+                    # Include tech stack from product config_data if available
+                    if product and product.config_data:
+                        context = product.config_data or {}
+                        tech_stack = context.get("tech_stack")
+                        if tech_stack:
+                            if isinstance(tech_stack, list):
+                                mission_parts.append(f"Tech Stack: {', '.join(tech_stack)}")
+                            elif isinstance(tech_stack, str):
+                                mission_parts.append(f"Tech Stack: {tech_stack}")
 
                     # Build fallback mission from collected parts
                     if mission_parts:

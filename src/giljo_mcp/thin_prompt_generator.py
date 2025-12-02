@@ -388,10 +388,18 @@ class ThinClientPromptGenerator:
                 tech_stack = product.config_data.get("tech_stack", {})
                 if tech_stack:
                     tech_parts = []
-                    if tech_stack.get("languages"):
-                        tech_parts.append(f"Languages: {', '.join(tech_stack['languages'])}")
-                    if tech_stack.get("frameworks"):
-                        tech_parts.append(f"Frameworks: {', '.join(tech_stack['frameworks'])}")
+                    # Handle dict format: {"languages": [...], "frameworks": [...]}
+                    if isinstance(tech_stack, dict):
+                        if tech_stack.get("languages"):
+                            tech_parts.append(f"Languages: {', '.join(tech_stack['languages'])}")
+                        if tech_stack.get("frameworks"):
+                            tech_parts.append(f"Frameworks: {', '.join(tech_stack['frameworks'])}")
+                    # Handle list format: ["Python 3.11+", "PostgreSQL"]
+                    elif isinstance(tech_stack, list):
+                        tech_parts.append(f"Stack: {', '.join(tech_stack)}")
+                    # Handle string format: "Python 3.11+"
+                    elif isinstance(tech_stack, str):
+                        tech_parts.append(f"Stack: {tech_stack}")
                     if tech_parts:
                         mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
 
