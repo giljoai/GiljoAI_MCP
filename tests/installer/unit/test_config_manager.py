@@ -217,7 +217,7 @@ class TestConfigurationManager:
         assert config.profile_type == "developer"
         assert config.get_value("APP_ENV") == "development"
         assert config.get_value("DEBUG")
-        assert config.get_value("DATABASE_TYPE") == "sqlite"
+        assert config.get_value("DATABASE_TYPE") == "postgresql"  # Project standardized on PostgreSQL
         assert not config.get_value("AUTH_ENABLED")
         assert config.get_value("LOG_LEVEL") == "DEBUG"
 
@@ -496,10 +496,10 @@ CORS_ORIGINS=["http://localhost:3000"]
         """Test profile default values"""
         manager = ConfigurationManager()
 
-        # Developer defaults
+        # Developer defaults (project standardized on PostgreSQL)
         dev_defaults = manager._get_profile_defaults("developer")
         assert dev_defaults["debug"]
-        assert dev_defaults["database"] == "sqlite"
+        assert dev_defaults["database"] == "postgresql"  # Project standardized on PostgreSQL
         assert not dev_defaults["auth_enabled"]
 
         # Enterprise defaults
@@ -582,10 +582,10 @@ def test_profile_debug_settings(config_manager, profile, expected_debug):
 
 @pytest.mark.parametrize(
     ("profile", "expected_db"),
-    [("developer", "sqlite"), ("team", "postgresql"), ("enterprise", "postgresql"), ("research", "postgresql")],
+    [("developer", "postgresql"), ("team", "postgresql"), ("enterprise", "postgresql"), ("research", "postgresql")],
 )
 def test_profile_database_settings(config_manager, profile, expected_db):
-    """Test database settings for different profiles"""
+    """Test database settings for different profiles (project standardized on PostgreSQL)"""
     config = config_manager.generate_configuration(profile)
     assert config.get_value("DATABASE_TYPE") == expected_db
 
