@@ -140,45 +140,6 @@ project_id = mission['project_id']
 parent_orch_id = mission['parent_job_id']
 """,
             },
-            "fetch_product_context": {
-                "params": ["product_id: str", "tenant_key: str"],
-                "description": "Fetch product vision, architecture, and tech stack context",
-                "returns": "Dict with product name, vision, architecture, and tech stack",
-                "when": [
-                    "When agent needs product vision and architecture understanding",
-                    "To get system context before implementing features",
-                    "For architects and senior developers to understand big picture",
-                ],
-                "example": """# Agent fetches product context
-context = await fetch_product_context(
-    product_id='prod-123',
-    tenant_key='tenant-abc'
-)
-
-vision = context['vision']
-arch = context['architecture']
-tech = context['tech_stack']
-""",
-            },
-            "fetch_architecture": {
-                "params": ["product_id: str", "tenant_key: str"],
-                "description": "Get detailed system architecture, patterns, and design decisions",
-                "returns": "Dict with architecture diagram, patterns, API style, and data flow",
-                "when": [
-                    "To understand system architecture before design work",
-                    "When implementing cross-layer features",
-                    "For API and service layer design decisions",
-                ],
-                "example": """# Get architecture details
-arch = await fetch_architecture(
-    product_id='prod-123',
-    tenant_key='tenant-abc'
-)
-
-patterns = arch['design_patterns']
-api_style = arch['api_style']  # REST, GraphQL, etc.
-""",
-            },
             "get_available_agents": {
                 "params": ["tenant_key: str", "active_only: bool"],
                 "description": "Discover available specialist agents (orchestrator uses for planning)",
@@ -492,7 +453,6 @@ for agent in members['agents']:
             "orchestration.get_workflow_status",
             "context.get_agent_mission",
             "context.get_available_agents",
-            "context.fetch_product_context",
             "communication.broadcast_message",
             "tasks.get_job_status",
             "project.update_project_mission",
@@ -502,8 +462,6 @@ for agent in members['agents']:
         ],
         "implementer": [
             "context.get_agent_mission",
-            "context.fetch_product_context",
-            "context.fetch_architecture",
             "communication.send_message",
             "communication.get_messages",
             "communication.acknowledge_message",
@@ -515,7 +473,6 @@ for agent in members['agents']:
         ],
         "tester": [
             "context.get_agent_mission",
-            "context.fetch_product_context",
             "communication.send_message",
             "communication.get_messages",
             "communication.acknowledge_message",
@@ -527,8 +484,6 @@ for agent in members['agents']:
         ],
         "architect": [
             "context.get_agent_mission",
-            "context.fetch_product_context",
-            "context.fetch_architecture",
             "context.get_available_agents",
             "communication.send_message",
             "communication.broadcast_message",
@@ -540,8 +495,6 @@ for agent in members['agents']:
         ],
         "documenter": [
             "context.get_agent_mission",
-            "context.fetch_product_context",
-            "context.fetch_architecture",
             "communication.send_message",
             "communication.get_messages",
             "tasks.update_job_progress",

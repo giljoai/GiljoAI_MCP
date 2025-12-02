@@ -17,13 +17,8 @@ Token Reduction:
 - Thin Prompt (v2.0): ~600 tokens (MCP tool references only)
 - Reduction: ~82% token savings on initial prompt
 
-MCP Tools (Handover 0315 Phase 1):
-- fetch_vision_document(chunking): Vision document chunks
-- fetch_360_memory(last_n_projects): Sequential project history
-- fetch_git_history(commits): Recent git commits
-- fetch_agent_templates(detail): Active agent configurations
-- fetch_tech_stack(sections): Tech stack information
-- fetch_architecture(depth): Architecture documentation
+MCP Tools (Handover 0280-0281 Monolithic Context):
+- get_orchestrator_instructions(orchestrator_id, tenant_key): Complete mission with prioritized context
 
 Priority System (Handover 0313):
 - Priority 1 (CRITICAL): Fetch first, essential for mission planning
@@ -547,46 +542,9 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         Returns:
             Thin prompt with MCP tool references grouped by priority
         """
-        # Group MCP tools by priority
-        priority_groups = {
-            1: [],  # CRITICAL
-            2: [],  # IMPORTANT
-            3: [],  # NICE_TO_HAVE
-            4: []   # EXCLUDED (don't list)
-        }
-
-        # Map categories to MCP tools with depth parameters (from Handover 0315 Phase 1)
-        # CRITICAL: tenant_key AND user_id must be passed to all tools for multi-tenant isolation
-        # and priority filtering (Handover 0279)
-        category_to_tool = {
-            "product_core": [
-                f"fetch_tech_stack(product_id='{product.id}', tenant_key='{self.tenant_key}', sections='{depth_config.get('tech_stack_sections', 'all')}', user_id='{user_id}')",
-                f"fetch_architecture(product_id='{product.id}', tenant_key='{self.tenant_key}', depth='{depth_config.get('architecture_depth', 'overview')}', user_id='{user_id}')"
-            ],
-            "vision_documents": [
-                f"fetch_vision_document(product_id='{product.id}', tenant_key='{self.tenant_key}', chunking='{depth_config.get('vision_chunking', 'moderate')}', user_id='{user_id}')"
-            ],
-            "agent_templates": [
-                f"get_available_agents(tenant_key='{self.tenant_key}', active_only=True, user_id='{user_id}')"
-            ],
-            "project_context": [
-                # Inline project data (small, ~200 tokens) - NOT an MCP tool
-                None  # Special case: embedded inline below
-            ],
-            "memory_360": [
-                f"fetch_360_memory(product_id='{product.id}', tenant_key='{self.tenant_key}', last_n_projects={depth_config.get('memory_last_n_projects', 3)}, user_id='{user_id}')"
-            ],
-            "git_history": [
-                f"fetch_git_history(product_id='{product.id}', tenant_key='{self.tenant_key}', commits={depth_config.get('git_commits', 25)}, user_id='{user_id}')"
-            ]
-        }
-
-        # Group tools by priority
-        for category, priority in field_priorities.items():
-            if category in category_to_tool:
-                tools = category_to_tool[category]
-                if tools and tools[0] is not None:  # Skip None entries (inline data)
-                    priority_groups[priority].extend(tools)
+        # Monolithic Context Architecture (Handover 0280-0281)
+        # All context fetched via single MCP tool: get_orchestrator_instructions()
+        # Priority filtering and depth configuration applied server-side
 
         # Get MCP server configuration
         config = get_config()
@@ -615,7 +573,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
-        # Build thin prompt with MCP tool references
+        # Build thin prompt with MCP tool reference (Monolithic Context Architecture)
         prompt = f"""I am Orchestrator #{instance_number} for GiljoAI Project "{project.name}".
 
 IDENTITY:
@@ -637,51 +595,15 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Description: {project.description or '(No description provided)'}
 - Mission: {project.mission or '(Mission will be created by you)'}
 
-MCP CONTEXT TOOLS AVAILABLE (Fetch on-demand by priority):
-
-Priority 1 (CRITICAL - Fetch First):
-"""
-
-        # Add Priority 1 tools
-        if priority_groups[1]:
-            for tool_ref in priority_groups[1]:
-                prompt += f"  - `{tool_ref}`\n"
-        else:
-            prompt += "  (No CRITICAL context tools configured)\n"
-
-        prompt += "\nPriority 2 (IMPORTANT - Fetch if Budget Allows):\n"
-
-        # Add Priority 2 tools
-        if priority_groups[2]:
-            for tool_ref in priority_groups[2]:
-                prompt += f"  - `{tool_ref}`\n"
-        else:
-            prompt += "  (No IMPORTANT context tools configured)\n"
-
-        prompt += "\nPriority 3 (NICE_TO_HAVE - Fetch if Extra Budget):\n"
-
-        # Add Priority 3 tools
-        if priority_groups[3]:
-            for tool_ref in priority_groups[3]:
-                prompt += f"  - `{tool_ref}`\n"
-        else:
-            prompt += "  (No NICE_TO_HAVE context tools configured)\n"
-
-        # Add workflow instructions
-        prompt += """
-
-MCP TOOL LIMITS:
-Each tool call returns <24K tokens. For large content:
-- Vision/Memory tools support pagination (offset/limit)
-- Check metadata.has_more for additional calls
-- Make unlimited calls as needed
-
 WORKFLOW:
-1. Fetch context by priority (1→2→3) within token budget
+1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+   → Returns prioritized context (vision, tech stack, architecture, memory, git history, templates)
+   → User priority configuration automatically applied server-side
+   → Depth configuration (chunking, commit count, etc.) pre-configured
 2. Create condensed mission plan from fetched context
-3. Persist mission: update_project_mission(project_id, mission)
-4. Spawn specialist agents: spawn_agent_job()
-5. Monitor: get_workflow_status(project_id, tenant_key)
+3. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}')
+4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}')
+5. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}')
 
 Trigger succession if context usage >90%.
 Claude Code: Use TodoWrite tool to track workflow progress.
@@ -693,16 +615,16 @@ CRITICAL DISTINCTIONS:
 
 MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo-mcp__health_check() - Verify MCP connection
-✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch full context
-✓ mcp__giljo-mcp__update_project_mission(project_id, mission) - Save mission plan
-✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key) - Create agents
-✓ mcp__giljo-mcp__get_workflow_status(project_id, tenant_key) - Check spawned agents
+✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch complete prioritized context
+✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}') - Save mission plan
+✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
+✓ mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}') - Check spawned agents
 
 CONNECTION TROUBLESHOOTING:
 If MCP fails: Check server running at {mcp_url}/health
 Logs: ~/.giljo_mcp/logs/mcp_adapter.log
 
-Begin by verifying MCP connection, then fetch context by priority, and CREATE the mission plan.
+Begin by verifying MCP connection, then fetch complete context, and CREATE the mission plan.
 """
 
         return prompt
@@ -1084,7 +1006,7 @@ Verify MCP server health and tool availability.
 1. Call health_check() MCP tool
 2. Verify response < 2s
 3. List MCP tools
-4. Validate: get_available_agents(), fetch_product_context(), fetch_vision_document(), fetch_git_history(), fetch_360_memory()
+4. Validate: get_available_agents(), get_orchestrator_instructions()
 
 Result: MCP confirmed | Timeout: 10s
 
@@ -1130,13 +1052,10 @@ TASK 5: CONTEXT PRIORITIZATION & MISSION
 {'='*70}
 Build unified mission with user priorities.
 
-1. Fetch context via MCP tools:
-   - fetch_product_context()
-   - fetch_vision_document()
-   - fetch_git_history()
-   - fetch_360_memory()
-2. Synthesize mission (<10K tokens)
-3. Store via update_project_mission()
+1. Fetch complete mission via MCP tool:
+   - get_orchestrator_instructions(orchestrator_id='{orchestrator_id}', tenant_key='{tenant_key}')
+2. Review prioritized context
+3. Store final mission via update_project_mission()
 
 Result: Mission created | Timeout: 60s
 
