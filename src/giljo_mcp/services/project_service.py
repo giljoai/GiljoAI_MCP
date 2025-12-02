@@ -2263,17 +2263,40 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 project.deleted_at = now
                 project.updated_at = now
 
+                # Cascade soft delete to agent jobs - cancel all jobs for this project
+                agent_jobs_stmt = (
+                    select(MCPAgentJob)
+                    .where(
+                        and_(
+                            MCPAgentJob.project_id == project_id,
+                            MCPAgentJob.tenant_key == tenant_key,
+                            MCPAgentJob.status.notin_(["completed", "failed", "cancelled"])
+                        )
+                    )
+                )
+                agent_jobs_result = await session.execute(agent_jobs_stmt)
+                agent_jobs = agent_jobs_result.scalars().all()
+
+                cancelled_jobs_count = 0
+                for job in agent_jobs:
+                    job.status = "cancelled"
+                    job.decommissioned_at = now
+                    job.completed_at = now
+                    cancelled_jobs_count += 1
+
                 await session.commit()
 
                 self._logger.info(
                     f"Soft deleted project {project_id} for tenant {tenant_key} "
-                    f"at {project.deleted_at.isoformat() if project.deleted_at else 'unknown time'}"
+                    f"at {project.deleted_at.isoformat() if project.deleted_at else 'unknown time'}. "
+                    f"Cancelled {cancelled_jobs_count} agent jobs."
                 )
 
                 return {
                     "success": True,
                     "message": "Project deleted successfully",
                     "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                    "cancelled_jobs": cancelled_jobs_count,
                 }
 
         except Exception as e:
