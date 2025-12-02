@@ -232,7 +232,11 @@ def get_config_summary(product: Product) -> str:
         summary_parts.append(f"Architecture: {config['architecture']}")
 
     if config.get("tech_stack"):
-        summary_parts.append(f"Tech Stack: {', '.join(config['tech_stack'][:3])}")
+        tech_stack = config["tech_stack"]
+        if isinstance(tech_stack, list):
+            summary_parts.append(f"Tech Stack: {', '.join(tech_stack[:3])}")
+        elif isinstance(tech_stack, str):
+            summary_parts.append(f"Tech Stack: {tech_stack}")
 
     if config.get("critical_features"):
         summary_parts.append(f"Critical Features: {len(config['critical_features'])} defined")
