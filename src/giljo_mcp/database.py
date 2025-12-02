@@ -162,25 +162,44 @@ class DatabaseManager:
                 # Use session
 
         Note:
-            The async context manager handles all session cleanup automatically.
-            No manual close() needed - prevents IllegalStateChangeError.
+            Handles GeneratorExit (BaseException) from FastAPI HTTPException.
+            Ensures rollback before close when session is active to prevent
+            IllegalStateChangeError.
         """
         if not self.is_async:
             raise RuntimeError("Use get_session() for sync operations")
 
-        async with self.AsyncSessionLocal() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception as e:
-                # Rollback on any exception
+        session = self.AsyncSessionLocal()
+        try:
+            yield session
+            await session.commit()
+        except GeneratorExit:
+            # GeneratorExit is BaseException (not Exception) - raised by FastAPI
+            # when HTTPException occurs or client disconnects
+            if hasattr(session, 'is_active') and session.is_active:
                 try:
                     await session.rollback()
-                except Exception as rollback_error:
-                    # Log rollback failures but don't suppress original exception
-                    logger.error(f"Session rollback failed: {rollback_error}", exc_info=True)
-                raise
-            # No finally block needed - context manager handles cleanup
+                except Exception:
+                    pass  # Suppress rollback errors during cleanup
+            raise
+        except Exception:
+            # Regular exceptions - rollback and re-raise
+            try:
+                await session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"Session rollback failed: {rollback_error}", exc_info=True)
+            raise
+        finally:
+            # Always close session - but check state first to prevent IllegalStateChangeError
+            if hasattr(session, 'is_active') and session.is_active:
+                try:
+                    await session.rollback()
+                except Exception:
+                    pass  # Suppress rollback errors during cleanup
+            try:
+                await session.close()
+            except Exception as close_error:
+                logger.debug(f"Session close during cleanup: {close_error}")
 
     def close(self):
         """Close database connections (sync)."""
