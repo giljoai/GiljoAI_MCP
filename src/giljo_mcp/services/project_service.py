@@ -1810,7 +1810,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
     async def restore_project(self, project_id: str) -> dict[str, Any]:
         """
-        Restore a completed or cancelled project to inactive status.
+        Restore a completed, cancelled, or soft-deleted project to inactive status.
 
         Args:
             project_id: Project UUID
@@ -1823,13 +1823,14 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         """
         try:
             async with self._get_session() as session:
-                # Update project to inactive and clear completed_at
+                # Update project to inactive and clear completed_at and deleted_at
                 result = await session.execute(
                     update(Project)
                     .where(Project.id == project_id)
                     .values(
                         status="inactive",
                         completed_at=None,
+                        deleted_at=None,
                         updated_at=datetime.utcnow(),
                     )
                 )
@@ -1845,10 +1846,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     "success": True,
                     "message": f"Project {project_id} restored successfully",
                 }
-
-        except Exception as e:
-            self._logger.exception(f"Failed to restore project: {e}")
-            return {"success": False, "error": str(e)}
 
     # ============================================================================
     # State & Metrics
