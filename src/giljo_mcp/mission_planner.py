@@ -47,10 +47,11 @@ DEFAULT_FIELD_PRIORITIES = {
     "project_context": 1,  # CRITICAL - Current project metadata
     "memory_360": 3,  # NICE_TO_HAVE - Historical project outcomes
     "git_history": 3,  # NICE_TO_HAVE - Recent commits
+    "tech_stack": 2,  # IMPORTANT - Programming languages, frameworks, databases
+    "architecture": 2,  # IMPORTANT - Architecture patterns, API style, design patterns
+    "testing": 2,  # IMPORTANT - Quality standards, testing strategy, frameworks
     # Legacy v1.0 fields (kept for backward compatibility during transition)
     # These will be removed in v4.0
-    "architecture": 4,  # Maps to EXCLUDED
-    "tech_stack": 2,  # Maps to IMPORTANT
     "product_memory.sequential_history": 3,  # Maps to NICE_TO_HAVE
     "config_data.architecture": 4,  # Maps to EXCLUDED
     "config_data.test_methodology": 2,  # Maps to IMPORTANT
@@ -1059,7 +1060,8 @@ Success Criteria:
         "git_history": "Git History",
         "tech_stack": "Tech Stack",
         "architecture": "Architecture",
-        "testing_config": "Testing Configuration",
+        "testing": "Testing Configuration",
+        "testing_config": "Testing Configuration",  # Backward compatibility alias
     }
 
     def _apply_priority_framing(self, section_name: str, content: str, priority: int, category_key: str) -> str:
