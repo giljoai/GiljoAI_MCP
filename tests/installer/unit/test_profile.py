@@ -69,7 +69,7 @@ class TestProfileConfiguration:
         """Test default values"""
         config = ProfileConfiguration()
 
-        assert config.database_type == "sqlite"
+        assert config.database_type == "postgresql"  # Project standardized on PostgreSQL
         assert not config.redis_enabled
         assert not config.auth_enabled
         assert config.debug_mode
@@ -199,12 +199,12 @@ class TestProfileManager:
         """Test getting profile by type"""
         manager = ProfileManager()
 
-        # Get developer profile
+        # Get developer profile (project standardized on PostgreSQL)
         dev_profile = manager.get_profile(ProfileType.DEVELOPER)
         assert dev_profile is not None
         assert dev_profile.type == ProfileType.DEVELOPER
         assert dev_profile.configuration.debug_mode
-        assert dev_profile.configuration.database_type == "sqlite"
+        assert dev_profile.configuration.database_type == "postgresql"  # Project standardized on PostgreSQL
 
         # Get team profile
         team_profile = manager.get_profile(ProfileType.TEAM)
@@ -245,11 +245,11 @@ class TestProfileManager:
         """Test that profiles have correct configurations"""
         manager = ProfileManager()
 
-        # Developer profile
+        # Developer profile (project standardized on PostgreSQL)
         dev = manager.get_profile(ProfileType.DEVELOPER)
         assert dev.configuration.debug_mode
         assert not dev.configuration.auth_enabled
-        assert dev.configuration.database_type == "sqlite"
+        assert dev.configuration.database_type == "postgresql"  # Project standardized on PostgreSQL
 
         # Enterprise profile
         ent = manager.get_profile(ProfileType.ENTERPRISE)
@@ -263,10 +263,10 @@ class TestProfileManager:
         """Test checking profile dependencies"""
         manager = ProfileManager()
 
-        # Developer profile - minimal dependencies
+        # Developer profile - now requires PostgreSQL (project standardized)
         dev = manager.get_profile(ProfileType.DEVELOPER)
         dev_deps = dev.get_required_dependencies()
-        assert len(dev_deps) == 0  # Only Python, which is implicit
+        assert "postgresql" in dev_deps  # Project standardized on PostgreSQL
 
         # Enterprise profile - many dependencies
         ent = manager.get_profile(ProfileType.ENTERPRISE)
@@ -381,14 +381,14 @@ def temp_profiles_dir():
 @pytest.mark.parametrize(
     ("profile_type", "expected_db"),
     [
-        (ProfileType.DEVELOPER, "sqlite"),
+        (ProfileType.DEVELOPER, "postgresql"),  # Project standardized on PostgreSQL
         (ProfileType.TEAM, "postgresql"),
         (ProfileType.ENTERPRISE, "postgresql"),
         (ProfileType.RESEARCH, "postgresql"),
     ],
 )
 def test_profile_database_types(profile_manager, profile_type, expected_db):
-    """Test that profiles have correct database types"""
+    """Test that profiles have correct database types (project standardized on PostgreSQL)"""
     profile = profile_manager.get_profile(profile_type)
     assert profile.configuration.database_type == expected_db
 
