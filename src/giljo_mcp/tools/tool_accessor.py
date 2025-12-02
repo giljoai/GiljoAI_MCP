@@ -514,24 +514,10 @@ class ToolAccessor:
                         # Final fallback: use project description or a minimal message
                         condensed_mission = project.description or "No mission defined"
 
-                # Handover 0270: Inject MCP Tool Catalog if enabled via field priorities
-                if field_priorities.get("mcp_tool_catalog", 1) > 0:
-                    try:
-                        from giljo_mcp.prompt_generation.mcp_tool_catalog import MCPToolCatalogGenerator
-
-                        catalog_gen = MCPToolCatalogGenerator()
-                        mcp_catalog = catalog_gen.generate_full_catalog(field_priorities=field_priorities)
-
-                        # Append catalog to mission for orchestrator
-                        if mcp_catalog:
-                            condensed_mission = condensed_mission + "\n\n---\n\n" + mcp_catalog
-                            logger.info(
-                                f"[MCP_CATALOG] Injected MCP Tool Catalog into orchestrator mission",
-                                extra={"orchestrator_id": orchestrator_id, "catalog_length": len(mcp_catalog)}
-                            )
-                    except Exception as e:
-                        logger.warning(f"[MCP_CATALOG] Failed to inject MCP Tool Catalog: {e}")
-                        # Continue without catalog if injection fails
+                # Handover 0285: MCP Tool Catalog REMOVED (redundant with enhanced tool descriptions)
+                # Claude Code receives tool definitions via MCP tools/list with enhanced descriptions.
+                # No need to embed catalog in prompts (~3,500 token savings).
+                # ROLLBACK: To restore catalog, git revert this commit and set field_priorities["mcp_tool_catalog"] = 1
 
                 # Get agent templates
                 result = await session.execute(
