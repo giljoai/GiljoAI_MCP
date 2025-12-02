@@ -158,13 +158,16 @@ async def get_project_orchestrator(
             detail=f"Project not found: {project_id}"
         )
 
-    # Find orchestrator - support succession (get latest instance)
+    # Find orchestrator - support succession (get latest ACTIVE instance)
+    # FIX: Filter by active statuses to avoid returning cancelled/failed orchestrators
+    # Bug: Previously returned cancelled orchestrators causing "Project not ready to launch" error
     orch_stmt = (
         select(MCPAgentJob)
         .where(
             MCPAgentJob.project_id == project_id,
             MCPAgentJob.agent_type == "orchestrator",
             MCPAgentJob.tenant_key == current_user.tenant_key,
+            MCPAgentJob.status.in_(["waiting", "working", "blocked"]),  # Only active statuses
         )
         .order_by(MCPAgentJob.instance_number.desc())
     )
