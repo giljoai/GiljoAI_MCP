@@ -34,69 +34,120 @@
         <v-chip size="small" color="primary" variant="flat"> Always Critical </v-chip>
       </div>
 
-      <v-divider class="mb-3" />
+      <v-divider class="mb-4" />
 
-      <!-- Context Rows -->
-      <div
-        v-for="context in contexts"
-        :key="context.key"
-        class="context-row d-flex justify-space-between align-center py-2"
-        :class="{ 'disabled-row': isContextDisabled(context.key) }"
-      >
-        <!-- Context Name and Toggle -->
-        <div class="d-flex align-center flex-grow-1">
-          <span class="text-body-2 context-label">{{ context.label }}</span>
-          <v-switch
-            :model-value="config[context.key]?.enabled"
-            @update:model-value="toggleContext(context.key)"
+      <!-- Section: Priority Configuration -->
+      <div class="mb-4">
+        <div class="text-subtitle-2 font-weight-medium mb-2">Priority Configuration (What to Fetch)</div>
+        <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+          Set field priorities to control which context is included in agent prompts.
+        </v-alert>
+
+        <!-- Priority-only Context Rows -->
+        <div
+          v-for="context in priorityOnlyContexts"
+          :key="context.key"
+          class="context-row d-flex justify-space-between align-center py-2"
+        >
+          <!-- Context Name and Toggle -->
+          <div class="d-flex align-center flex-grow-1">
+            <span class="text-body-2 context-label">{{ context.label }}</span>
+            <v-switch
+              :model-value="config[context.key]?.enabled"
+              @update:model-value="toggleContext(context.key)"
+              density="compact"
+              hide-details
+              color="primary"
+              :aria-label="`Toggle ${context.label}`"
+              class="ml-2 compact-switch"
+            />
+          </div>
+
+          <!-- Priority Select -->
+          <v-select
+            :model-value="config[context.key]?.priority"
+            @update:model-value="updatePriority(context.key, $event)"
+            :items="priorityOptions"
             density="compact"
+            variant="outlined"
             hide-details
-            color="primary"
-            :aria-label="
-              isContextDisabled(context.key)
-                ? `${context.label} disabled - GitHub integration required`
-                : `Toggle ${context.label}`
-            "
-            class="ml-2 compact-switch"
-            :disabled="isContextDisabled(context.key)"
+            :aria-label="`${context.label} priority setting`"
+            class="priority-select"
+            :disabled="!config[context.key]?.enabled"
           />
-          <v-tooltip
-            v-if="context.key === 'vision_documents'"
-            text="Controls how many vision document chunks to include: light (2 chunks, ~10K tokens), moderate (4 chunks, ~17.5K), heavy (near full)."
-            location="bottom"
-          >
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-information-outline</v-icon>
-            </template>
-          </v-tooltip>
         </div>
+      </div>
 
-        <!-- Depth/Count Select (if applicable) -->
-        <v-select
-          v-if="context.options"
-          :model-value="getDepthValue(context.key)"
-          @update:model-value="updateDepth(context.key, $event)"
-          :items="formatOptions(context)"
-          density="compact"
-          variant="outlined"
-          hide-details
-          :aria-label="`${context.label} depth setting`"
-          class="depth-select mx-2"
-          :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
-        />
+      <v-divider class="my-4" />
 
-        <!-- Priority Select -->
-        <v-select
-          :model-value="config[context.key]?.priority"
-          @update:model-value="updatePriority(context.key, $event)"
-          :items="priorityOptions"
-          density="compact"
-          variant="outlined"
-          hide-details
-          :aria-label="`${context.label} priority setting`"
-          class="priority-select"
-          :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
-        />
+      <!-- Section: Depth Configuration -->
+      <div>
+        <div class="text-subtitle-2 font-weight-medium mb-2">Depth Configuration (How Much Detail)</div>
+        <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+          Control the level of detail for context fields with adjustable depth.
+        </v-alert>
+
+        <!-- Depth-controlled Context Rows -->
+        <div
+          v-for="context in depthControlledContexts"
+          :key="context.key"
+          class="context-row d-flex justify-space-between align-center py-2"
+          :class="{ 'disabled-row': isContextDisabled(context.key) }"
+        >
+          <!-- Context Name and Toggle -->
+          <div class="d-flex align-center flex-grow-1">
+            <span class="text-body-2 context-label">{{ context.label }}</span>
+            <v-switch
+              :model-value="config[context.key]?.enabled"
+              @update:model-value="toggleContext(context.key)"
+              density="compact"
+              hide-details
+              color="primary"
+              :aria-label="
+                isContextDisabled(context.key)
+                  ? `${context.label} disabled - GitHub integration required`
+                  : `Toggle ${context.label}`
+              "
+              class="ml-2 compact-switch"
+              :disabled="isContextDisabled(context.key)"
+            />
+            <v-tooltip
+              v-if="context.helpText"
+              :text="context.helpText"
+              location="bottom"
+            >
+              <template #activator="{ props }">
+                <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-information-outline</v-icon>
+              </template>
+            </v-tooltip>
+          </div>
+
+          <!-- Depth/Count Select -->
+          <v-select
+            :model-value="getDepthValue(context.key)"
+            @update:model-value="updateDepth(context.key, $event)"
+            :items="formatOptions(context)"
+            density="compact"
+            variant="outlined"
+            hide-details
+            :aria-label="`${context.label} depth setting`"
+            class="depth-select mx-2"
+            :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
+          />
+
+          <!-- Priority Select -->
+          <v-select
+            :model-value="config[context.key]?.priority"
+            @update:model-value="updatePriority(context.key, $event)"
+            :items="priorityOptions"
+            density="compact"
+            variant="outlined"
+            hide-details
+            :aria-label="`${context.label} priority setting`"
+            class="priority-select"
+            :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
+          />
+        </div>
       </div>
     </v-card-text>
   </v-card>
@@ -121,19 +172,32 @@ const props = defineProps({
 })
 
 // Context definitions
+// Priority-only fields (no depth controls)
 const contexts = [
   { key: 'product_description', label: 'Product Description' },
+  { key: 'vision_documents', label: 'Vision Documents' },
+  { key: 'tech_stack', label: 'Tech Stack' },
+  { key: 'architecture', label: 'Architecture' },
+  { key: 'testing', label: 'Testing' },
+  // Depth-controlled fields
   {
-    key: 'vision_documents',
-    label: 'Vision Documents',
-    options: ['none', 'light', 'moderate', 'heavy'],
+    key: 'memory_360',
+    label: '360 Memory',
+    options: [1, 3, 5, 10],
+    helpText: 'Number of previous project summaries to include'
   },
-  { key: 'tech_stack', label: 'Tech Stack', options: ['required', 'all'] },
-  { key: 'architecture', label: 'Architecture', options: ['overview', 'detailed'] },
-  { key: 'testing', label: 'Testing', options: ['none', 'basic', 'full'] },
-  { key: 'agent_templates', label: 'Agent Templates', options: ['type_only', 'full'] },
-  { key: 'memory_360', label: '360 Memory', options: [1, 3, 5, 10] },
-  { key: 'git_history', label: 'Git History', options: [0, 5, 15, 25] },
+  {
+    key: 'git_history',
+    label: 'Git History',
+    options: [5, 10, 25, 50, 100],
+    helpText: 'Number of git commits in CLI examples'
+  },
+  {
+    key: 'agent_templates',
+    label: 'Agent Templates',
+    options: ['type_only', 'full'],
+    helpText: 'Type Only = Name/Version | Full = With descriptions'
+  },
 ]
 
 // Map UI categories to backend categories for API requests
@@ -179,17 +243,26 @@ interface ContextConfig {
 
 const config = ref<Record<string, ContextConfig>>({
   product_description: { enabled: true, priority: 1 },
-  vision_documents: { enabled: true, priority: 2, depth: 'moderate' },
-  tech_stack: { enabled: true, priority: 2, depth: 'all' },
-  architecture: { enabled: true, priority: 2, depth: 'overview' },
-  testing: { enabled: true, priority: 2, depth: 'basic' },
+  vision_documents: { enabled: true, priority: 2 },
+  tech_stack: { enabled: true, priority: 2 },
+  architecture: { enabled: true, priority: 2 },
+  testing: { enabled: true, priority: 2 },
+  memory_360: { enabled: true, priority: 2, count: 3 },
+  git_history: { enabled: false, priority: 4, count: 25 },
   agent_templates: { enabled: true, priority: 2, depth: 'type_only' },
-  memory_360: { enabled: true, priority: 3, count: 3 },
-  git_history: { enabled: true, priority: 3, count: 15 },
 })
 
 const loading = ref(false)
 const saving = ref(false)
+
+// Computed properties to split contexts into two groups
+const priorityOnlyContexts = computed(() => {
+  return contexts.filter(c => !c.options)
+})
+
+const depthControlledContexts = computed(() => {
+  return contexts.filter(c => c.options)
+})
 
 // Methods
 function toggleContext(key: string) {
@@ -244,7 +317,6 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
       if (context.key === 'memory_360') {
         return { title: `${opt} project${opt === 1 ? '' : 's'}`, value: opt }
       } else if (context.key === 'git_history') {
-        if (opt === 0) return { title: 'None', value: opt }
         return { title: `${opt} commits`, value: opt }
       }
       return { title: String(opt), value: opt }
@@ -291,15 +363,12 @@ async function fetchConfig() {
       })
     })
 
-    // Fetch depth config from context/depth endpoint
+    // Fetch depth config from context/depth endpoint (only 3 fields with depth controls)
     try {
       const depthResponse = await axios.get('/api/v1/users/me/context/depth')
       const depthData = depthResponse.data?.depth_config || {}
 
       // Map backend field names back to frontend structure
-      if (depthData.vision_chunking && config.value.vision_documents) {
-        config.value.vision_documents.depth = depthData.vision_chunking
-      }
       if (depthData.memory_last_n_projects && config.value.memory_360) {
         config.value.memory_360.count = depthData.memory_last_n_projects
       }
@@ -308,15 +377,6 @@ async function fetchConfig() {
       }
       if (depthData.agent_template_detail && config.value.agent_templates) {
         config.value.agent_templates.depth = depthData.agent_template_detail
-      }
-      if (depthData.tech_stack_sections && config.value.tech_stack) {
-        config.value.tech_stack.depth = depthData.tech_stack_sections
-      }
-      if (depthData.architecture_depth && config.value.architecture) {
-        config.value.architecture.depth = depthData.architecture_depth
-      }
-      if (depthData.testing_depth && config.value.testing) {
-        config.value.testing.depth = depthData.testing_depth
       }
 
       console.log('[CONTEXT PRIORITY CONFIG] Field priorities and depth config loaded from server')
@@ -342,17 +402,13 @@ async function saveConfig() {
     })
     console.log('[CONTEXT PRIORITY CONFIG] Field priorities saved successfully')
 
-    // Save depth config to context/depth endpoint
+    // Save depth config to context/depth endpoint (only 3 fields with depth controls)
     try {
       await axios.put('/api/v1/users/me/context/depth', {
         depth_config: {
-          vision_chunking: config.value.vision_documents?.depth || 'moderate',
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
-          agent_template_detail: config.value.agent_templates?.depth || 'standard',
-          tech_stack_sections: config.value.tech_stack?.depth || 'all',
-          architecture_depth: config.value.architecture?.depth || 'overview',
-          testing_depth: config.value.testing?.depth || 'basic',
+          agent_template_detail: config.value.agent_templates?.depth || 'type_only',
         }
       })
       console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
@@ -397,6 +453,8 @@ onMounted(async () => {
 // Expose for testing
 defineExpose({
   contexts,
+  priorityOnlyContexts,
+  depthControlledContexts,
   priorityOptions,
   config,
   loading,
