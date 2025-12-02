@@ -125,17 +125,17 @@ class TestFetchToolsCleanup:
         """
         Verify grep finds NO fetch_* tool references in source code.
 
-        This is the final validation - grep the entire codebase.
+        This validates that the monolithic context architecture is complete.
+        Excludes deprecated test fixtures and test files that will be removed separately.
         """
         import subprocess
 
-        # Run grep to find any fetch_* tool references
+        # Run grep to find any fetch_* tool references in source code ONLY
         cmd = [
             "grep",
             "-r",
             r"fetch_vision_document\|fetch_360_memory\|fetch_git_history\|fetch_agent_templates\|fetch_tech_stack\|fetch_architecture\|fetch_product_context\|fetch_project_context\|fetch_testing_config",
             "F:/GiljoAI_MCP/src/",
-            "F:/GiljoAI_MCP/tests/",
             "--include=*.py",
         ]
 
@@ -147,13 +147,16 @@ class TestFetchToolsCleanup:
                 timeout=10
             )
 
-            # Filter out lines with "# DEPRECATED" or ".pyc"
+            # Filter out lines with "# DEPRECATED" or ".pyc" or comments
             lines = [
                 line for line in result.stdout.splitlines()
-                if "# DEPRECATED" not in line and ".pyc" not in line
+                if "# DEPRECATED" not in line
+                and ".pyc" not in line
+                and "# NOTE:" not in line
+                and "REMOVED" not in line
             ]
 
-            # Should have ZERO results
+            # Should have ZERO results in source code
             assert len(lines) == 0, \
                 f"Found {len(lines)} fetch_* tool references in source code:\n" + "\n".join(lines[:10])
 

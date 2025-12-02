@@ -73,18 +73,23 @@ class ProductService:
         self._websocket_manager = websocket_manager  # Handover 0139a: WebSocket events
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    @asynccontextmanager
-    async def _get_session(self):
+    def _get_session(self):
         """
-        Yield a session, preferring an injected test session when provided.
+        Get a session, preferring an injected test session when provided.
         This keeps service methods compatible with test transaction fixtures.
+        
+        Returns:
+            Context manager for database session
         """
         if self._test_session is not None:
-            yield self._test_session
-            return
-
-        async with self.db_manager.get_session_async() as session:
-            yield session
+            # For test sessions, wrap in a context manager that doesn't close
+            @asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._test_session
+            return _test_session_wrapper()
+        
+        # Return the context manager directly (no double-wrapping)
+        return self.db_manager.get_session_async()
 
     # ============================================================================
     # CRUD Operations
