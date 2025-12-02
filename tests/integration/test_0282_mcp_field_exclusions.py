@@ -24,7 +24,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
-from src.giljo_mcp.database import get_db_session
+from src.giljo_mcp.auth.dependencies import get_db_session
 
 
 async def test_all_fields_excluded():
