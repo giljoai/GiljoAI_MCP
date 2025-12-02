@@ -21,23 +21,8 @@ def test_database_sync():
     # Get the database connection string
     connection_string = config.database.get_connection_string()
 
-    # Test SQLite (local mode)
-    if "sqlite" in connection_string:
-        db = DatabaseManager(connection_string, is_async=False)
-
-        try:
-            with db.get_session() as session:
-                result = session.execute(text("SELECT 1"))
-
-                # Check if tables exist
-                result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
-                [row[0] for row in result]
-
-        except Exception:
-            return False
-
-    # Test PostgreSQL if configured
-    elif "postgresql" in connection_string:
+    # Test PostgreSQL (project standardized on PostgreSQL only)
+    if "postgresql" in connection_string:
         db = DatabaseManager(connection_string, is_async=False)
 
         try:

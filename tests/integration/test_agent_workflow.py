@@ -20,8 +20,9 @@ class TestVisionUploadToChunks:
     @pytest.fixture
     async def async_db_manager(self):
         """Create async database manager for testing."""
-        # Use SQLite for testing (in-memory)
-        db_url = "sqlite+aiosqlite:///:memory:"
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        db_url = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(db_url, is_async=True)
 
         # Create tables
@@ -199,7 +200,9 @@ class TestAgentJobLifecycle:
     @pytest.fixture
     async def async_db_manager(self):
         """Create async database manager for testing."""
-        db_url = "sqlite+aiosqlite:///:memory:"
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        db_url = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(db_url, is_async=True)
         await db_manager.create_tables_async()
         yield db_manager
@@ -363,7 +366,9 @@ class TestMultiTenantIsolation:
     @pytest.fixture
     async def async_db_manager(self):
         """Create async database manager for testing."""
-        db_url = "sqlite+aiosqlite:///:memory:"
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        db_url = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(db_url, is_async=True)
         await db_manager.create_tables_async()
         yield db_manager
