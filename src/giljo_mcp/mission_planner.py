@@ -41,23 +41,23 @@ logger = logging.getLogger(__name__)
 # Updated to v2.0 format: Priority values 1-4, new category names (Handover 0266)
 DEFAULT_FIELD_PRIORITIES = {
     # v2.0 categories with priority levels (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
-    "product_core": 1,        # CRITICAL - Always include product name, description, features
-    "vision_documents": 2,    # IMPORTANT - Include vision docs if budget allows  
-    "agent_templates": 2,     # IMPORTANT - Agent templates for spawning
-    "project_context": 1,     # CRITICAL - Current project metadata
-    "memory_360": 3,          # NICE_TO_HAVE - Historical project outcomes
-    "git_history": 3,         # NICE_TO_HAVE - Recent commits
-    
+    "product_core": 1,  # CRITICAL - Always include product name, description, features
+    "vision_documents": 2,  # IMPORTANT - Include vision docs if budget allows
+    "agent_templates": 2,  # IMPORTANT - Agent templates for spawning
+    "project_context": 1,  # CRITICAL - Current project metadata
+    "memory_360": 3,  # NICE_TO_HAVE - Historical project outcomes
+    "git_history": 3,  # NICE_TO_HAVE - Recent commits
     # Legacy v1.0 fields (kept for backward compatibility during transition)
     # These will be removed in v4.0
     "architecture": 4,  # Maps to EXCLUDED
-    "tech_stack": 2,    # Maps to IMPORTANT
+    "tech_stack": 2,  # Maps to IMPORTANT
     "product_memory.sequential_history": 3,  # Maps to NICE_TO_HAVE
     "config_data.architecture": 4,  # Maps to EXCLUDED
     "config_data.test_methodology": 2,  # Maps to IMPORTANT
     "config_data.coding_standards": 3,  # Maps to NICE_TO_HAVE
     "config_data.deployment_strategy": 4,  # Maps to EXCLUDED
 }
+
 
 class MissionPlanner:
     """
@@ -538,15 +538,15 @@ Success Criteria:
     def _get_detail_level(self, priority: int) -> str:
         """
         Map priority to detail level.
-        
+
         Handover 0266: Updated for v2.0 priority system (1-4 scale).
-        
+
         v2.0 Priority Mapping:
         - Priority 1 (CRITICAL)     -> "full" (100% of content, always included)
         - Priority 2 (IMPORTANT)    -> "moderate" (75% of content)
         - Priority 3 (NICE_TO_HAVE) -> "abbreviated" (50% of content)
         - Priority 4 (EXCLUDED)     -> "exclude" (0% - omitted entirely)
-        
+
         v1.0 Legacy Support (for backward compatibility):
         - Priority 10   -> "full"
         - Priority 7-9  -> "moderate"
@@ -579,8 +579,8 @@ Success Criteria:
                 return "exclude"  # EXCLUDED - never include
             else:
                 return "exclude"  # Priority 0 or negative = exclude
-        
-        # v1.0 legacy support (0-10 scale) 
+
+        # v1.0 legacy support (0-10 scale)
         # Keep for backward compatibility during transition period
         elif priority >= 10:
             return "full"  # 0% context prioritization
@@ -596,25 +596,25 @@ Success Criteria:
     def _should_include_field(self, priority: int) -> bool:
         """
         Check if a field should be included based on its priority.
-        
+
         Handover 0266: Support for both v2.0 and v1.0 priority systems.
-        
+
         v2.0: Priority 1-3 are included, Priority 4 is excluded.
         v1.0: Priority > 0 is included, Priority 0 is excluded.
-        
+
         Args:
             priority: Field priority value
-            
+
         Returns:
             True if field should be included, False if excluded
         """
         if priority <= 0:
             return False  # No priority or negative = exclude
-        
+
         # v2.0 system: 1-3 included, 4 excluded
         if priority <= 4:
             return priority < 4
-            
+
         # v1.0 system: any positive value is included
         return True
 
@@ -1049,6 +1049,82 @@ Success Criteria:
 
         return "\n".join(formatted_lines)
 
+    # Section name mapping for human-readable priority framing
+    SECTION_NAMES = {
+        "product_core": "Product Context",
+        "vision_documents": "Product Vision",
+        "project_context": "Project Context",
+        "agent_templates": "Agent Templates",
+        "memory_360": "360 Memory",
+        "git_history": "Git History",
+        "tech_stack": "Tech Stack",
+        "architecture": "Architecture",
+        "testing_config": "Testing Configuration",
+    }
+
+    def _apply_priority_framing(self, section_name: str, content: str, priority: int, category_key: str) -> str:
+        """
+        Apply priority-based framing to a context section.
+
+        Wraps context content with priority-specific headers and guidance language
+        to help orchestrators understand the importance of each section.
+
+        Args:
+            section_name: Human-readable section name (e.g., "Vision Documents")
+            content: The actual content to wrap
+            priority: Priority level (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE, 4=EXCLUDED)
+            category_key: Backend category key (for mapping to SECTION_NAMES)
+
+        Returns:
+            Framed content with priority headers, or empty string if excluded (priority 4)
+
+        Priority Framing Levels:
+            - Priority 1 (CRITICAL): Strong header with "REQUIRED FOR ALL OPERATIONS"
+            - Priority 2 (IMPORTANT): Medium header with "High priority context"
+            - Priority 3 (REFERENCE): Light header with "Supplemental information"
+            - Priority 4 (EXCLUDED): Returns empty string (0 bytes)
+
+        Example Output (Priority 1):
+            ## **CRITICAL: Product Context** (Priority 1)
+            **REQUIRED FOR ALL OPERATIONS**
+
+            **Why This Matters**: This is CRITICAL context - all agents must align with this information.
+
+            [original content here]
+        """
+        # Priority 4 = EXCLUDED - return nothing
+        if priority == 4:
+            return ""
+
+        # Priority 1 = CRITICAL
+        if priority == 1:
+            return f"""## **CRITICAL: {section_name}** (Priority 1)
+**REQUIRED FOR ALL OPERATIONS**
+
+**Why This Matters**: This is CRITICAL context - all agents must align with this information.
+
+{content}
+"""
+
+        # Priority 2 = IMPORTANT
+        elif priority == 2:
+            return f"""## **IMPORTANT: {section_name}** (Priority 2)
+**High priority context**
+
+{content}
+"""
+
+        # Priority 3 = REFERENCE
+        elif priority == 3:
+            return f"""## {section_name} (Priority 3 - REFERENCE)
+**Supplemental information**
+
+{content}
+"""
+
+        # Fallback: no framing (shouldn't happen with valid priorities)
+        return content
+
     async def _build_context_with_priorities(
         self,
         product: Product,
@@ -1147,23 +1223,37 @@ Success Criteria:
         total_tokens = 0
         tokens_before_reduction = 0  # Track original size for metrics
 
-        # === MANDATORY: Product Name (ALWAYS included - non-negotiable) ===
-        product_name_section = f"## Product\n**Name**: {product.name}"
-        if product.description:
-            product_name_section += f"\n**Description**: {product.description}"
-        context_sections.append(product_name_section)
-        name_tokens = self._count_tokens(product_name_section)
-        total_tokens += name_tokens
-        tokens_before_reduction += name_tokens
+        # === Product Name/Description (product_core priority) ===
+        # Get priority for product_core (defaults to 1 if not specified)
+        product_core_priority = effective_priorities.get("product_core", 1)
 
-        logger.debug(
-            f"Product name/description: {name_tokens} tokens (MANDATORY)",
-            extra={
-                "field": "product_name",
-                "priority": "MANDATORY",
-                "tokens": name_tokens,
-            },
-        )
+        if product_core_priority != 4:  # Not excluded
+            product_content = f"**Name**: {product.name}"
+            if product.description:
+                product_content += f"\n**Description**: {product.description}"
+
+            # Apply priority framing
+            framed_product = self._apply_priority_framing(
+                section_name=self.SECTION_NAMES.get("product_core", "Product Context"),
+                content=product_content,
+                priority=product_core_priority,
+                category_key="product_core",
+            )
+
+            if framed_product:
+                context_sections.append(framed_product)
+            name_tokens = self._count_tokens(framed_product if framed_product else product_content)
+            total_tokens += name_tokens
+            tokens_before_reduction += name_tokens
+
+            logger.debug(
+                f"Product name/description: {name_tokens} tokens (priority={product_core_priority})",
+                extra={
+                    "field": "product_core",
+                    "priority": product_core_priority,
+                    "tokens": name_tokens,
+                },
+            )
 
         # === MANDATORY: Product Vision (ALWAYS included - non-negotiable) ===
         # Vision document is foundational context that orchestrator needs
@@ -1192,9 +1282,17 @@ Success Criteria:
                     # Combine chunks into formatted section
                     chunk_texts = [chunk["content"] for chunk in vision_chunks]
                     vision_text = "\n\n".join(chunk_texts)
-                    formatted_vision = f"## Product Vision (Relevant Sections)\n{vision_text}"
 
-                    context_sections.append(formatted_vision)
+                    # Apply priority framing
+                    formatted_vision = self._apply_priority_framing(
+                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                        content=vision_text,
+                        priority=vision_priority,
+                        category_key="vision_documents",
+                    )
+
+                    if formatted_vision:  # Only add if not excluded (priority != 4)
+                        context_sections.append(formatted_vision)
                     vision_tokens = self._count_tokens(formatted_vision)
                     total_tokens += vision_tokens
                     tokens_before_reduction += self._count_tokens(f"## Product Vision\n{product.primary_vision_text}")
@@ -1218,8 +1316,16 @@ Success Criteria:
                     )
                     vision_text = product.primary_vision_text
                     if vision_text:
-                        formatted_vision = f"## Product Vision\n{vision_text}"
-                        context_sections.append(formatted_vision)
+                        # Apply priority framing
+                        formatted_vision = self._apply_priority_framing(
+                            section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                            content=vision_text,
+                            priority=vision_priority,
+                            category_key="vision_documents",
+                        )
+
+                        if formatted_vision:  # Only add if not excluded (priority != 4)
+                            context_sections.append(formatted_vision)
                         vision_tokens = self._count_tokens(formatted_vision)
                         total_tokens += vision_tokens
                         tokens_before_reduction += vision_tokens
@@ -1227,8 +1333,16 @@ Success Criteria:
                 # Not chunked - use full text (original behavior)
                 vision_text = product.primary_vision_text
                 if vision_text:
-                    formatted_vision = f"## Product Vision\n{vision_text}"
-                    context_sections.append(formatted_vision)
+                    # Apply priority framing
+                    formatted_vision = self._apply_priority_framing(
+                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                        content=vision_text,
+                        priority=vision_priority,
+                        category_key="vision_documents",
+                    )
+
+                    if formatted_vision:  # Only add if not excluded (priority != 4)
+                        context_sections.append(formatted_vision)
                     vision_tokens = self._count_tokens(formatted_vision)
                     total_tokens += vision_tokens
                     tokens_before_reduction += vision_tokens
@@ -1237,7 +1351,7 @@ Success Criteria:
                         f"Product vision (full text): {vision_tokens} tokens (not chunked)",
                         extra={
                             "field": "product_vision",
-                            "priority": "MANDATORY",
+                            "priority": vision_priority,
                             "detail_level": "full",
                             "tokens": vision_tokens,
                         },
@@ -1291,9 +1405,14 @@ Success Criteria:
                     # Get human-readable label
                     field_label = self.FIELD_LABELS.get(field_key, field_name.replace("_", " ").title())
 
-                    # Add to context sections
-                    formatted_section = f"## {field_label}\n{field_text}"
-                    context_sections.append(formatted_section)
+                    # Apply priority framing
+                    formatted_section = self._apply_priority_framing(
+                        section_name=field_label, content=field_text, priority=field_priority, category_key=field_key
+                    )
+
+                    # Add to context sections (if not excluded)
+                    if formatted_section:
+                        context_sections.append(formatted_section)
 
                     field_tokens = self._count_tokens(formatted_section)
                     total_tokens += field_tokens
@@ -1327,8 +1446,17 @@ Success Criteria:
                 formatted_tech_stack = self._format_tech_stack(tech_stack_data, tech_stack_detail)
 
                 if formatted_tech_stack:
-                    formatted_section = f"## Tech Stack\n{formatted_tech_stack}"
-                    context_sections.append(formatted_section)
+                    # Apply priority framing
+                    formatted_section = self._apply_priority_framing(
+                        section_name=self.SECTION_NAMES.get("tech_stack", "Tech Stack"),
+                        content=formatted_tech_stack,
+                        priority=tech_stack_priority,
+                        category_key="tech_stack",
+                    )
+
+                    # Add to context sections (if not excluded)
+                    if formatted_section:
+                        context_sections.append(formatted_section)
                     tech_stack_tokens = self._count_tokens(formatted_section)
                     total_tokens += tech_stack_tokens
 
@@ -1354,8 +1482,17 @@ Success Criteria:
             testing_context = await self._extract_testing_config(product, testing_priority)
 
             if testing_context:
-                context_sections.append(testing_context)
-                testing_tokens = self._count_tokens(testing_context)
+                # Apply priority framing
+                framed_testing = self._apply_priority_framing(
+                    section_name=self.SECTION_NAMES.get("testing_config", "Testing Configuration"),
+                    content=testing_context,
+                    priority=testing_priority,
+                    category_key="testing_config",
+                )
+
+                if framed_testing:  # Only add if not excluded
+                    context_sections.append(framed_testing)
+                testing_tokens = self._count_tokens(framed_testing if framed_testing else testing_context)
                 total_tokens += testing_tokens
 
                 # Calculate original tokens for reduction metrics
@@ -1412,8 +1549,17 @@ Success Criteria:
         if history_priority > 0:
             history_context = await self._extract_product_history(product, history_priority, max_entries=10)
             if history_context:
-                context_sections.append(history_context)
-                history_tokens = self._count_tokens(history_context)
+                # Apply priority framing
+                framed_history = self._apply_priority_framing(
+                    section_name=self.SECTION_NAMES.get("memory_360", "360 Memory"),
+                    content=history_context,
+                    priority=history_priority,
+                    category_key="memory_360",
+                )
+
+                if framed_history:  # Only add if not excluded
+                    context_sections.append(framed_history)
+                history_tokens = self._count_tokens(framed_history if framed_history else history_context)
                 total_tokens += history_tokens
 
                 logger.debug(
@@ -1519,11 +1665,7 @@ Success Criteria:
         # If no valid history, just return instructions for first project
         if not valid_history:
             instructions_gen = MemoryInstructionGenerator()
-            return instructions_gen.generate_context(
-                sequential_history=[],
-                priority=priority,
-                git_enabled=git_enabled
-            )
+            return instructions_gen.generate_context(sequential_history=[], priority=priority, git_enabled=git_enabled)
 
         # Sort by sequence descending (most recent first)
         sorted_history = sorted(valid_history, key=lambda x: x.get("sequence", 0), reverse=True)
@@ -1580,9 +1722,7 @@ Success Criteria:
         # Add memory instructions from MemoryInstructionGenerator
         instructions_gen = MemoryInstructionGenerator()
         memory_instructions = instructions_gen.generate_context(
-            sequential_history=valid_history,
-            priority=priority,
-            git_enabled=git_enabled
+            sequential_history=valid_history, priority=priority, git_enabled=git_enabled
         )
 
         # Combine history entries with instructions
@@ -1669,11 +1809,7 @@ Success Criteria:
 
         return result
 
-    async def _extract_testing_config(
-        self,
-        product: Product,
-        priority: int
-    ) -> str:
+    async def _extract_testing_config(self, product: Product, priority: int) -> str:
         """
         Extract and format testing configuration for orchestrator context.
 
@@ -1691,10 +1827,7 @@ Success Criteria:
         testing_config = config_data.get("testing_config", {})
 
         # Generate context using TestingConfigGenerator
-        testing_context = TestingConfigGenerator.generate_context(
-            testing_config=testing_config,
-            priority=priority
-        )
+        testing_context = TestingConfigGenerator.generate_context(testing_config=testing_config, priority=priority)
 
         # Log the operation
         logger.debug(
