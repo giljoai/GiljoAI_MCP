@@ -1775,7 +1775,7 @@ async def get_orchestrator_instructions(
                 )
                 .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
             )
-            product = result.scalar_one_or_none()
+            product = result.unique().scalar_one_or_none()
 
             if not product:
                 return {"error": "NOT_FOUND", "message": "Product not found"}
