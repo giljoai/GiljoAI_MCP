@@ -210,13 +210,16 @@ const toastColor = ref('success')
 const toastDuration = ref(3000)
 
 /**
- * Computed: Ready to launch (same condition as hasActiveOrchestrator)
+ * Computed: Ready to launch - ALIGNED with store's readyToLaunch getter
  *
- * Launch button should activate when orchestrator becomes "active"
- * (same moment "Stage Project" changes to "Orchestrator Active")
+ * FIX (Handover 0243): Use store.readyToLaunch directly instead of local hasActiveOrchestrator
+ * to ensure button visibility matches launchJobs() precondition check.
+ *
+ * Store's readyToLaunch checks: orchestratorMission && agents.length > 0 && !isStaging
+ * This prevents "Project not ready to launch (!)" error when button appears enabled.
  */
 const readyToLaunch = computed(() => {
-  return hasActiveOrchestrator.value
+  return store.readyToLaunch
 })
 
 /**
