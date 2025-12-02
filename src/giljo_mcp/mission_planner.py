@@ -25,8 +25,8 @@ from .config.defaults import DEFAULT_FIELD_PRIORITY
 from .database import DatabaseManager
 from .models import Product, Project, User
 from .orchestration_types import AgentConfig, Mission, RequirementAnalysis
-from .repositories.context_repository import ContextRepository
 from .prompt_generation.testing_config_generator import TestingConfigGenerator
+from .repositories.context_repository import ContextRepository
 
 
 logger = logging.getLogger(__name__)
@@ -1132,15 +1132,16 @@ Success Criteria:
         product: Product,
         project: Project,
         field_priorities: dict = None,
+        depth_config: dict = None,
         user_id: Optional[str] = None,
         include_serena: bool = False,
     ) -> str:
         """
-        Build context respecting user's field priorities for context prioritization and orchestration.
+        Build context respecting user's field priorities and depth configuration.
 
-        This method orchestrates the field priority system to generate condensed context
-        that includes only the most relevant information based on user preferences.
-        Achieves significant context prioritization while maintaining quality.
+        This method orchestrates the field priority system and depth controls to generate
+        condensed context that includes only the most relevant information at appropriate
+        detail levels based on user preferences.
 
         Args:
             product: Product model with vision document and config_data
@@ -1148,18 +1149,26 @@ Success Criteria:
             field_priorities: Dict mapping field names to priority (1-4)
                              1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED
                              Example: {"vision_documents": 2, "tech_stack": 2}
+            depth_config: Dict mapping field names to depth levels
+                         Controls HOW MUCH detail to include for each field
+                         Example: {"memory_360": 3, "git_history": 10, "agent_templates": "full"}
             user_id: User ID for logging and audit trail (optional)
             include_serena: Whether to fetch and include Serena codebase context (MANDATORY if enabled in config.yaml)
 
         Returns:
-            Formatted context string with priority-based detail levels.
-            Sections are intelligently abbreviated or excluded based on priorities.
+            Formatted context string with priority-based and depth-based filtering.
+            Sections are intelligently abbreviated or excluded based on priorities and depth.
 
         Priority Level Mapping (v2.0):
             Priority 1: CRITICAL - Always included with full detail
             Priority 2: IMPORTANT - Included with high priority
             Priority 3: NICE_TO_HAVE - Included if space allows
             Priority 4: EXCLUDED - Omitted entirely (returns empty string)
+
+        Depth Level Mapping (Handover 0283):
+            360 Memory: 1/3/5/10 projects (number of sequential history entries)
+            Git History: 5/10/25/50/100 commits (number in git log examples)
+            Agent Templates: "type_only" or "full" (name/type/version vs full description)
 
         Multi-Tenant Isolation:
             All data access uses product/project models which are already tenant-filtered
@@ -1175,12 +1184,25 @@ Success Criteria:
                     "tech_stack": 8,           # Moderate-high detail
                     "config_data.architecture": 4,  # Abbreviated (50% tokens)
                 },
+                depth_config={
+                    "memory_360": 3,            # Show 3 most recent projects
+                    "git_history": 10,          # Show 10 commits in examples
+                    "agent_templates": "full"   # Full agent descriptions
+                },
                 user_id=str(user.id)
             )
         """
         # Default to empty dict if not provided
         if field_priorities is None:
             field_priorities = {}
+
+        # Handover 0283: Default depth configuration for backward compatibility
+        if depth_config is None:
+            depth_config = {
+                "memory_360": 5,              # Default: 5 projects (moderate)
+                "git_history": 20,            # Default: 20 commits (moderate)
+                "agent_templates": "full"     # Default: full descriptions
+            }
 
         # Fix #1: Apply default field priorities when user has no config
         # This ensures meaningful context even for new users who haven't customized priorities
@@ -1209,12 +1231,13 @@ Success Criteria:
 
         # Structured logging for debugging and analytics
         logger.info(
-            "Building context with field priorities",
+            "Building context with field priorities and depth configuration",
             extra={
                 "product_id": str(product.id),
                 "project_id": str(project.id),
                 "tenant_key": product.tenant_key,
                 "priorities": field_priorities,
+                "depth_config": depth_config,
                 "user_id": user_id,
                 "operation": "build_context_with_priorities",
             },
@@ -1545,12 +1568,16 @@ Success Criteria:
         # 360 Memory provides historical context from previous projects (Handovers 0135-0139)
         # Git integration adds CLI command instructions for commit history (Handover 013B)
         # Both are controlled by field priorities and user toggles
+        # Handover 0283: Apply depth configuration to control detail level
 
-        # 360 Memory extraction (priority-based)
+        # 360 Memory extraction (priority-based with depth control)
         # Handover 0282: Fixed key from "product_memory.sequential_history" to "memory_360" (v2.0 field name)
         history_priority = effective_priorities.get("memory_360", 4)  # Default: EXCLUDED (user opt-in)
         if history_priority > 0:
-            history_context = await self._extract_product_history(product, history_priority, max_entries=10)
+            # Handover 0283: Apply depth configuration (number of projects to show)
+            memory_depth = depth_config.get("memory_360", 5)  # Default: 5 projects
+
+            history_context = await self._extract_product_history(product, history_priority, max_entries=memory_depth)
             if history_context:
                 # Apply priority framing
                 framed_history = self._apply_priority_framing(
@@ -1566,28 +1593,36 @@ Success Criteria:
                 total_tokens += history_tokens
 
                 logger.debug(
-                    f"Added 360 Memory context: {history_tokens} tokens (priority={history_priority})",
+                    f"Added 360 Memory context: {history_tokens} tokens (priority={history_priority}, depth={memory_depth} projects)",
                     extra={
                         "field": "memory_360",  # Handover 0282: v2.0 field name
                         "priority": history_priority,
+                        "depth": memory_depth,
                         "tokens": history_tokens,
                         "product_id": str(product.id),
                     },
                 )
 
         # Git integration (toggle-based, not priority-driven)
+        # Handover 0283: Apply depth configuration to git commit limit
         git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
         if git_config.get("enabled"):
-            git_instructions = self._inject_git_instructions(git_config)
+            # Handover 0283: Override commit_limit with depth configuration
+            git_depth = depth_config.get("git_history", 20)  # Default: 20 commits
+            git_config_with_depth = git_config.copy()
+            git_config_with_depth["commit_limit"] = git_depth
+
+            git_instructions = self._inject_git_instructions(git_config_with_depth)
             context_sections.append(git_instructions)
             git_tokens = self._count_tokens(git_instructions)
             total_tokens += git_tokens
 
             logger.debug(
-                f"Added Git instructions: {git_tokens} tokens",
+                f"Added Git instructions: {git_tokens} tokens (depth={git_depth} commits)",
                 extra={
                     "field": "git_integration",
                     "priority": "TOGGLE",
+                    "depth": git_depth,
                     "tokens": git_tokens,
                     "product_id": str(product.id),
                 },
@@ -1608,6 +1643,7 @@ Success Criteria:
                 "tokens_before_reduction": tokens_before_reduction,
                 "reduction_percentage": reduction_pct,
                 "priorities": field_priorities,
+                "depth_config": depth_config,
                 "user_id": user_id,
                 "sections_included": len(context_sections),
                 "serena_enabled": include_serena,
@@ -1628,17 +1664,17 @@ Success Criteria:
         - MCP tool usage examples
         - Git integration status
 
-        Priority-based detail levels:
-        - 10 (full): All history entries (up to max_entries) with summary + outcomes + decisions + instructions
-        - 7-9 (moderate): Last 5 entries with summary + outcomes + detailed instructions
-        - 4-6 (abbreviated): Last 3 entries with summary only + abbreviated instructions
-        - 1-3 (minimal): Last 1 entry with summary only + minimal instructions
+        Priority-based detail levels (controls content detail per entry):
+        - 10 (full): Summary + outcomes + decisions + instructions
+        - 7-9 (moderate): Summary + outcomes + detailed instructions
+        - 4-6 (abbreviated): Summary only + abbreviated instructions
+        - 1-3 (minimal): Summary only + minimal instructions
         - 0 (exclude): Return empty string
 
         Args:
             product: Product model with product_memory JSONB field containing sequential_history array
-            priority: Field priority (0-10 scale) controlling detail level
-            max_entries: Maximum entries to include for full detail (default: 10)
+            priority: Field priority (0-10 scale) controlling detail level of EACH entry
+            max_entries: Number of history entries to include (controlled by depth config, Handover 0283)
 
         Returns:
             Formatted markdown string with historical context + memory instructions, or empty string if excluded
@@ -1673,18 +1709,12 @@ Success Criteria:
         # Sort by sequence descending (most recent first)
         sorted_history = sorted(valid_history, key=lambda x: x.get("sequence", 0), reverse=True)
 
-        # Determine detail level based on priority
+        # Determine detail level based on priority (controls content detail, not count)
         detail_level = self._get_detail_level(priority)
 
-        # Determine how many entries to include based on detail level
-        if detail_level == "minimal":
-            entries_to_show = sorted_history[:1]
-        elif detail_level == "abbreviated":
-            entries_to_show = sorted_history[:3]
-        elif detail_level == "moderate":
-            entries_to_show = sorted_history[:5]
-        else:  # full
-            entries_to_show = sorted_history[:max_entries]
+        # Handover 0283: Use max_entries to determine count (controlled by depth config)
+        # Priority controls the detail level of EACH entry, not the number of entries
+        entries_to_show = sorted_history[:max_entries]
 
         # Build formatted context - historical entries first
         sections = ["## Historical Context (360 Memory)\n"]
