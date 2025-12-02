@@ -31,9 +31,11 @@ from src.giljo_mcp.repositories.vision_document_repository import VisionDocument
 
 @pytest.fixture
 async def test_db_session():
-    """Create temporary in-memory SQLite database for integration testing."""
-    # Use in-memory SQLite with async support
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    """Create temporary PostgreSQL database for integration testing."""
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+    # Use PostgreSQL for integration testing
+    engine = create_async_engine(PostgreSQLTestHelper.get_test_db_url(), echo=False)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

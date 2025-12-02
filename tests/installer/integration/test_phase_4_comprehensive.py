@@ -217,8 +217,10 @@ class TestHandover0034FreshInstall:
 
         Security: No default admin account with known credentials
         """
-        # Create in-memory database for testing
-        engine = create_engine("sqlite:///:memory:")
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+        # Create test database
+        engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
 
         # Import models after engine creation
         from src.giljo_mcp.models import Base, User
@@ -245,10 +247,12 @@ class TestHandover0034FreshInstall:
 
         This enables /api/auth/create-first-admin endpoint
         """
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
         # Simulate what install.py does in setup_database()
         from src.giljo_mcp.models import Base, SetupState
 
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
 
         Session = sessionmaker(bind=engine)
@@ -472,9 +476,11 @@ class TestDatabaseCreation:
         20-22: SetupState, User, APIKey
         23-28: MCPSession, OptimizationRule, OptimizationMetric, MCPContextIndex, MCPContextSummary, MCPAgentJob
         """
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
         from src.giljo_mcp.models import Base
 
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
 
         inspector = sa_inspect(engine)
@@ -513,9 +519,11 @@ class TestDatabaseCreation:
         """
         Verify SetupState is created with Handover 0035 security fields
         """
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
         from src.giljo_mcp.models import Base, SetupState
 
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
 
         Session = sessionmaker(bind=engine)

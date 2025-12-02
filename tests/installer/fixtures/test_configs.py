@@ -86,15 +86,14 @@ MOCK_RESPONSES = {
 
 # Test database configurations
 TEST_DB_CONFIGS = {
-    "sqlite": {"url": PostgreSQLTestHelper.get_test_db_url(async_driver=False), "type": "sqlite"},
     "postgresql": {
-        "url": "postgresql://giljo_test:test_password@localhost:5432/giljo_test",
+        "url": PostgreSQLTestHelper.get_test_db_url(async_driver=False),
         "type": "postgresql",
         "host": "localhost",
         "port": 5432,
-        "database": "giljo_test",
-        "user": "giljo_test",
-        "password": "test_password",
+        "database": "giljo_mcp_test",
+        "user": "postgres",
+        "password": "4010",
     },
 }
 
