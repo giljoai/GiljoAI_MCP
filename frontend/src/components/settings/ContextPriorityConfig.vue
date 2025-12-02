@@ -137,11 +137,12 @@ const contexts = [
 ]
 
 // Map UI categories to backend categories for API requests
+// FIX: 1:1 mapping for all fields (was incorrectly grouping fields)
 const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
   product_description: 'product_core',
-  tech_stack: 'product_core',
-  architecture: 'project_context',
-  testing: 'project_context',
+  tech_stack: 'tech_stack',
+  architecture: 'architecture',
+  testing: 'testing',
   vision_documents: 'vision_documents',
   agent_templates: 'agent_templates',
   memory_360: 'memory_360',
@@ -149,9 +150,12 @@ const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
 }
 
 // Reverse mapping: backend keys to frontend keys
+// FIX: 1:1 mapping for all fields (was incorrectly grouping fields)
 const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
-  product_core: ['product_description', 'tech_stack'],
-  project_context: ['architecture', 'testing'],
+  product_core: ['product_description'],
+  tech_stack: ['tech_stack'],
+  architecture: ['architecture'],
+  testing: ['testing'],
   vision_documents: ['vision_documents'],
   agent_templates: ['agent_templates'],
   memory_360: ['memory_360'],
