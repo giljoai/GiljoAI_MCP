@@ -31,7 +31,7 @@
           <v-icon size="small" color="primary" class="mr-2">mdi-lock</v-icon>
           <span class="text-subtitle-2 font-weight-medium">Project Context</span>
         </div>
-        <v-chip size="small" color="primary" variant="flat"> Always High </v-chip>
+        <v-chip size="small" color="primary" variant="flat"> Always Critical </v-chip>
       </div>
 
       <v-divider class="mb-3" />
@@ -128,9 +128,9 @@ const contexts = [
     label: 'Vision Documents',
     options: ['none', 'light', 'moderate', 'heavy'],
   },
-  { key: 'tech_stack', label: 'Tech Stack' },
-  { key: 'architecture', label: 'Architecture' },
-  { key: 'testing', label: 'Testing' },
+  { key: 'tech_stack', label: 'Tech Stack', options: ['required', 'all'] },
+  { key: 'architecture', label: 'Architecture', options: ['overview', 'detailed'] },
+  { key: 'testing', label: 'Testing', options: ['none', 'basic', 'full'] },
   { key: 'agent_templates', label: 'Agent Templates', options: ['type_only', 'full'] },
   { key: 'memory_360', label: '360 Memory', options: [1, 3, 5, 10] },
   { key: 'git_history', label: 'Git History', options: [0, 5, 15, 25] },
@@ -176,9 +176,9 @@ interface ContextConfig {
 const config = ref<Record<string, ContextConfig>>({
   product_description: { enabled: true, priority: 1 },
   vision_documents: { enabled: true, priority: 2, depth: 'moderate' },
-  tech_stack: { enabled: true, priority: 2 },
-  architecture: { enabled: true, priority: 2 },
-  testing: { enabled: true, priority: 3 },
+  tech_stack: { enabled: true, priority: 2, depth: 'all' },
+  architecture: { enabled: true, priority: 2, depth: 'overview' },
+  testing: { enabled: true, priority: 2, depth: 'basic' },
   agent_templates: { enabled: true, priority: 2, depth: 'type_only' },
   memory_360: { enabled: true, priority: 3, count: 3 },
   git_history: { enabled: true, priority: 3, count: 15 },
@@ -306,10 +306,13 @@ async function fetchConfig() {
         config.value.agent_templates.depth = depthData.agent_template_detail
       }
       if (depthData.tech_stack_sections && config.value.tech_stack) {
-        config.value.tech_stack.sections = depthData.tech_stack_sections
+        config.value.tech_stack.depth = depthData.tech_stack_sections
       }
       if (depthData.architecture_depth && config.value.architecture) {
         config.value.architecture.depth = depthData.architecture_depth
+      }
+      if (depthData.testing_depth && config.value.testing) {
+        config.value.testing.depth = depthData.testing_depth
       }
 
       console.log('[CONTEXT PRIORITY CONFIG] Field priorities and depth config loaded from server')
@@ -343,8 +346,9 @@ async function saveConfig() {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
           agent_template_detail: config.value.agent_templates?.depth || 'standard',
-          tech_stack_sections: config.value.tech_stack?.sections || 'all',
+          tech_stack_sections: config.value.tech_stack?.depth || 'all',
           architecture_depth: config.value.architecture?.depth || 'overview',
+          testing_depth: config.value.testing?.depth || 'basic',
         }
       })
       console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
