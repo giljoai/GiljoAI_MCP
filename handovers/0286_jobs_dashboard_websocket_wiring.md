@@ -1,8 +1,9 @@
 # Handover 0286: Jobs Dashboard WebSocket Wiring
 
-## Status: PENDING
+## Status: COMPLETE (Partial - See 0288)
 ## Priority: HIGH
 ## Type: Bug Fix / Feature Completion
+## Completed: 2025-12-03
 
 ---
 
@@ -92,11 +93,45 @@ Ensure event payloads match what frontend handlers expect:
 
 ## Acceptance Criteria
 
-- [ ] Message counts update in real-time when messages are sent
-- [ ] Message counts update when messages are acknowledged
-- [ ] Agent status badges update when status changes
-- [ ] No page refresh required for any dashboard column updates
-- [ ] Multi-tenant isolation preserved (events only go to correct tenant)
+- [x] ~~Message counts update in real-time when messages are sent~~ (Event names fixed - see 0288 for emission)
+- [x] ~~Message counts update when messages are acknowledged~~ (Event names fixed - see 0288 for emission)
+- [x] ~~Agent status badges update when status changes~~ (Event names fixed - see 0288 for emission)
+- [ ] No page refresh required for any dashboard column updates (**BLOCKED by 0288**)
+- [x] Multi-tenant isolation preserved (events only go to correct tenant)
+
+---
+
+## Completion Notes (2025-12-03)
+
+### What Was Completed
+
+**Phase 1-3 DONE:**
+- Audited and documented all WebSocket event mismatches
+- Fixed all 4 broadcast methods in `api/websocket.py`
+- Fixed payload field naming (`status` instead of `new_status`, etc.)
+- Added `tenant_key` to all payloads
+- Updated frontend handlers in `MessagePanel.vue`
+- Updated event listeners in `websocketIntegrations.js`
+- Created 10 TDD tests in `test_websocket_event_naming_0286.py` (all pass)
+
+### What Was Discovered
+
+**Phase 4 revealed a scope gap:**
+- The broadcast methods exist and have correct event names
+- BUT `OrchestrationService` methods (`acknowledge_job`, `complete_job`, `report_progress`) never CALL these broadcast methods
+- Result: Database updates work, but WebSocket events never emitted
+
+### Created Handover 0288
+
+See `handovers/0288_orchestration_service_websocket_emissions.md` for the fix to actually emit WebSocket events from OrchestrationService.
+
+### Files Modified
+
+- `api/websocket.py` - 4 broadcast methods (event names + payloads)
+- `frontend/src/components/messages/MessagePanel.vue` - payload compatibility
+- `frontend/src/stores/websocketIntegrations.js` - event listeners
+- `tests/integration/test_agent_job_websocket_events.py` - updated tests
+- `tests/integration/test_websocket_event_naming_0286.py` - NEW (10 tests)
 
 ---
 
