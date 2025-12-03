@@ -312,8 +312,9 @@ onMounted(async () => {
     }
   }
 
-  // Subscribe to WebSocket updates if project is launched
-  if (store.isLaunched && props.project) {
+  // Subscribe to WebSocket updates for staging and launch events
+  // Must subscribe BEFORE launch to receive mission_updated and agent:created events
+  if (props.project) {
     const pid = props.project.project_id || props.project.id
     if (pid) wsStore.subscribeToProject(pid)
   }
