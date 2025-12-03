@@ -207,8 +207,8 @@ export function setupWebSocketIntegrations() {
     )
   })
 
-  // Message sent
-  wsStore.on('agent_communication:message_sent', (data) => {
+  // Message sent (updated event name in Handover 0286)
+  wsStore.on('message:sent', (data) => {
     window.dispatchEvent(
       new CustomEvent('agent:message_sent', {
         detail: data,
@@ -216,8 +216,8 @@ export function setupWebSocketIntegrations() {
     )
   })
 
-  // Message acknowledged
-  wsStore.on('agent_communication:message_acknowledged', (data) => {
+  // Message acknowledged (updated event name in Handover 0286)
+  wsStore.on('message:acknowledged', (data) => {
     window.dispatchEvent(
       new CustomEvent('agent:message_acknowledged', {
         detail: data,
