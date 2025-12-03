@@ -1,7 +1,14 @@
 # Handover 0278: Mode-Aware MCP Catalog & Agent Profile Architecture
 
+> **⚠️ SUPERSEDED** - This handover was never implemented. The problem it aimed to solve
+> (mode-aware MCP responses, token reduction) was addressed differently via **Handover 0285**
+> (Enhanced MCP Tool Descriptions). That approach embeds WHO/WHEN/WHAT guidance directly in
+> tool descriptions, eliminating the need for `execution_mode` parameter differentiation.
+>
+> Archived: 2025-12-03
+
 **Date**: 2025-12-01
-**Status**: 📋 READY FOR REVIEW
+**Status**: ❌ SUPERSEDED (by Handover 0285)
 **Type**: Architecture Enhancement
 **Impact**: Critical - Fixes multi-terminal agent prompts, enables mode-aware MCP catalogs
 **Prerequisite**: Handover 0277 (Serena simplification) complete
