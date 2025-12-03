@@ -1,10 +1,11 @@
 # Handover 0285: Remove MCP Tool Catalog Embedding from Orchestrator Prompts
 
 **Date**: 2025-12-02
-**Status**: Completed
+**Status**: ✅ **COMPLETE**
 **Priority**: High (Token Optimization)
 **Token Savings**: ~3,500 tokens per orchestrator prompt
 **Related**: Handover 0270 (MCP Tool Catalog injection), Handover 0246c (Dynamic discovery)
+**Completed**: 2025-12-02 (Commit 62dd6355)
 
 ---
 
@@ -271,6 +272,24 @@ field_priorities = {
 
 **Result**: ~3,500 token savings per orchestrator with no functionality loss.
 
-**Rollback**: `git revert <commit-hash>` + restart server
+**Rollback**: `git revert 62dd6355` + restart server
 
-**Status**: ✅ Complete
+---
+
+## Implementation Summary
+
+### Completed: 2025-12-02
+**Commit**: `62dd6355` - "refactor: Remove MCP Tool Catalog embedding from orchestrator prompts"
+
+### What Was Done
+- Removed catalog injection from `orchestration.py` (lines 1533-1550)
+- Removed catalog injection from `tool_accessor.py` (lines 517-534)
+- Preserved `mcp_tool_catalog.py` class for DevPanel use
+
+### Token Savings Achieved
+- **Before**: ~7,000 tokens (4,500 context + 3,500 catalog)
+- **After**: ~4,500 tokens (context only)
+- **Savings**: 3,500 tokens (50% reduction)
+
+### Status
+✅ **COMPLETE** - MCP Tool Catalog no longer embedded in orchestrator prompts
