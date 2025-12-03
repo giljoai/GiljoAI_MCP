@@ -86,6 +86,8 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       return state.messages.filter((m) => m.status === 'pending')
     },
 
+    // DEPRECATED (Handover 0289): Tab badge removed - messages now tracked per-agent in JobsTab
+    // Kept for backwards compatibility with any code that may reference this getter
     unreadCount: (state) => {
       return state.messages.filter((m) => m.status === 'pending').length
     },
