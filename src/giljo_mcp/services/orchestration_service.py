@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
+import httpx
 import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -573,6 +574,9 @@ Begin by fetching your mission.
                         "next_instructions": "Begin executing your mission",
                     }
 
+                # Capture old status before updating
+                old_status = job.status
+
                 job.acknowledged = True
                 # Normalize to 'working' for MCPAgentJob
                 job.status = "working"
@@ -580,17 +584,42 @@ Begin by fetching your mission.
                 await session.commit()
                 await session.refresh(job)
 
-                return {
-                    "status": "success",
-                    "job": {
-                        "job_id": job.job_id,
-                        "agent_type": job.agent_type,
-                        "mission": job.mission,
-                        "status": job.status,
-                        "started_at": job.started_at.isoformat() if job.started_at else None,
-                    },
-                    "next_instructions": "Begin executing your mission",
-                }
+            # WebSocket emission for real-time UI updates (after session closed)
+            try:
+                async with httpx.AsyncClient() as client:
+                    bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                    await client.post(
+                        bridge_url,
+                        json={
+                            "event_type": "agent:status_changed",
+                            "tenant_key": tenant_key,
+                            "data": {
+                                "job_id": job_id,
+                                "agent_type": job.agent_type,
+                                "agent_name": job.agent_name,
+                                "old_status": old_status,
+                                "status": "working",
+                                "started_at": job.started_at.isoformat() if job.started_at else None,
+                            }
+                        },
+                        timeout=5.0,
+                    )
+                    self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
+            except Exception as ws_error:
+                self._logger.warning(f"[WEBSOCKET] Failed to broadcast acknowledge_job: {ws_error}")
+                # Don't fail the operation if WebSocket broadcast fails
+
+            return {
+                "status": "success",
+                "job": {
+                    "job_id": job.job_id,
+                    "agent_type": job.agent_type,
+                    "mission": job.mission,
+                    "status": job.status,
+                    "started_at": job.started_at.isoformat() if job.started_at else None,
+                },
+                "next_instructions": "Begin executing your mission",
+            }
         except Exception as e:
             self._logger.exception(f"Failed to acknowledge job: {e}")
             return {"status": "error", "error": str(e)}
@@ -635,7 +664,18 @@ Begin by fetching your mission.
                 return {"status": "error", "error": "progress must be a non-empty dict"}
 
             comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
+            # Fetch job info for WebSocket emission
+            job = None
             async with self._get_session() as session:
+                # Get job details
+                res = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == job_id,
+                        MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+                job = res.scalar_one_or_none()
+
                 # Serialize dict to string for message content
                 content = json.dumps(progress)
                 result = await comm_queue.send_message(
@@ -651,6 +691,29 @@ Begin by fetching your mission.
                 )
                 if result.get("status") != "success":
                     return {"status": "error", "error": result.get("error")}
+
+            # WebSocket emission for real-time UI updates
+            if job:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                        await client.post(
+                            bridge_url,
+                            json={
+                                "event_type": "message:new",
+                                "tenant_key": tenant_key,
+                                "data": {
+                                    "job_id": job_id,
+                                    "message_type": "progress",
+                                    "from_agent": job.agent_name or job.agent_type,
+                                    "progress": progress,
+                                }
+                            },
+                            timeout=5.0,
+                        )
+                        self._logger.info(f"[WEBSOCKET] Broadcasted progress for {job_id}")
+                except Exception as ws_error:
+                    self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
             return {"status": "success", "message": "Progress reported successfully"}
         except Exception as e:
@@ -693,6 +756,10 @@ Begin by fetching your mission.
             if not result or not isinstance(result, dict):
                 return {"status": "error", "error": "result must be a non-empty dict"}
 
+            # Database update
+            job = None
+            old_status = None
+            duration_seconds = None
             async with self._get_session() as session:
                 res = await session.execute(
                     select(MCPAgentJob).where(
@@ -703,10 +770,46 @@ Begin by fetching your mission.
                 job = res.scalar_one_or_none()
                 if not job:
                     return {"status": "error", "error": f"Job {job_id} not found"}
+
+                # Capture old status before updating
+                old_status = job.status
+
                 job.status = "complete"
                 job.completed_at = datetime.now(timezone.utc)
+
+                # Calculate duration if started_at exists
+                if job.started_at and job.completed_at:
+                    duration_seconds = (job.completed_at - job.started_at).total_seconds()
+
                 await session.commit()
-                return {"status": "success", "job_id": job.job_id, "message": "Job completed successfully"}
+
+            # WebSocket emission for real-time UI updates (after session closed)
+            if job:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                        await client.post(
+                            bridge_url,
+                            json={
+                                "event_type": "agent:status_changed",
+                                "tenant_key": tenant_key,
+                                "data": {
+                                    "job_id": job_id,
+                                    "agent_type": job.agent_type,
+                                    "agent_name": job.agent_name,
+                                    "old_status": old_status,
+                                    "status": "complete",
+                                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                                    "duration_seconds": duration_seconds,
+                                }
+                            },
+                            timeout=5.0,
+                        )
+                        self._logger.info(f"[WEBSOCKET] Broadcasted complete_job status change for {job_id}")
+                except Exception as ws_error:
+                    self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
+
+            return {"status": "success", "job_id": job.job_id if job else job_id, "message": "Job completed successfully"}
         except Exception as e:
             self._logger.exception(f"Failed to complete job: {e}")
             return {"status": "error", "error": str(e)}
