@@ -1847,6 +1847,10 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     "message": f"Project {project_id} restored successfully",
                 }
 
+        except Exception as e:
+            self._logger.exception(f"Failed to restore project: {e}")
+            return {"success": False, "error": str(e)}
+
     # ============================================================================
     # State & Metrics
     # ============================================================================
