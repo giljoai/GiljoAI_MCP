@@ -246,13 +246,13 @@ class TestAgentJobWebSocketEvents:
             assert response.status_code == 200
 
             # Wait for WebSocket event
-            event = await collector.wait_for_event("agent_job:acknowledged", timeout=2.0)
+            event = await collector.wait_for_event("agent:status_changed", timeout=2.0)
 
-            assert event is not None, "Did not receive agent_job:acknowledged event"
-            assert event["type"] == "agent_job:acknowledged"
+            assert event is not None, "Did not receive agent:status_changed event"
+            assert event["type"] == "agent:status_changed"
             assert event["data"]["job_id"] == job_id
             assert event["data"]["old_status"] == "pending"
-            assert event["data"]["new_status"] == "active"
+            assert event["data"]["status"] == "active"
             assert "timestamp" in event
 
         finally:
@@ -301,13 +301,13 @@ class TestAgentJobWebSocketEvents:
             assert response.status_code == 200
 
             # Wait for WebSocket event
-            event = await collector.wait_for_event("agent_job:completed", timeout=2.0)
+            event = await collector.wait_for_event("agent:status_changed", timeout=2.0)
 
-            assert event is not None, "Did not receive agent_job:completed event"
-            assert event["type"] == "agent_job:completed"
+            assert event is not None, "Did not receive agent:status_changed event"
+            assert event["type"] == "agent:status_changed"
             assert event["data"]["job_id"] == job_id
             assert event["data"]["old_status"] == "active"
-            assert event["data"]["new_status"] == "completed"
+            assert event["data"]["status"] == "completed"
             assert "duration_seconds" in event["data"]
             assert event["data"]["duration_seconds"] >= 0
             assert "timestamp" in event
@@ -358,12 +358,12 @@ class TestAgentJobWebSocketEvents:
             assert response.status_code == 200
 
             # Wait for WebSocket event
-            event = await collector.wait_for_event("agent_job:failed", timeout=2.0)
+            event = await collector.wait_for_event("agent:status_changed", timeout=2.0)
 
-            assert event is not None, "Did not receive agent_job:failed event"
-            assert event["type"] == "agent_job:failed"
+            assert event is not None, "Did not receive agent:status_changed event"
+            assert event["type"] == "agent:status_changed"
             assert event["data"]["job_id"] == job_id
-            assert event["data"]["new_status"] == "failed"
+            assert event["data"]["status"] == "failed"
             assert "duration_seconds" in event["data"]
 
         finally:
@@ -414,14 +414,14 @@ class TestAgentJobWebSocketEvents:
             assert response.status_code == 200
 
             # Wait for WebSocket event
-            event = await collector.wait_for_event("agent_job:message", timeout=2.0)
+            event = await collector.wait_for_event("message:new", timeout=2.0)
 
-            assert event is not None, "Did not receive agent_job:message event"
-            assert event["type"] == "agent_job:message"
+            assert event is not None, "Did not receive message:new event"
+            assert event["type"] == "message:new"
             assert event["data"]["job_id"] == job_id
             assert event["data"]["from_agent"] == "orchestrator"
             assert event["data"]["message_type"] == "status"
-            assert event["data"]["content_preview"] == message_content[:100]
+            assert event["data"]["message"] == message_content
             assert "message_id" in event["data"]
             assert "timestamp" in event
 
@@ -548,10 +548,10 @@ class TestMultiTenantIsolation:
             await asyncio.sleep(0.5)
 
             # Verify isolation
-            events_a = await collector_a.get_events_by_type("agent_job:acknowledged")
+            events_a = await collector_a.get_events_by_type("agent:status_changed")
             assert len(events_a) == 1, "Tenant A should receive the event"
 
-            events_b = await collector_b.get_events_by_type("agent_job:acknowledged")
+            events_b = await collector_b.get_events_by_type("agent:status_changed")
             assert len(events_b) == 0, "Tenant B should NOT receive the event"
 
         finally:
