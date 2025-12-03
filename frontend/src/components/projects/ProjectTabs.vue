@@ -16,7 +16,7 @@
         <v-tab value="jobs" class="tab-link" data-testid="jobs-tab">
           <v-icon start size="20">mdi-code-braces</v-icon>
           Implement
-          <v-badge v-if="store.unreadCount > 0" :content="store.unreadCount" color="error" inline />
+          <!-- Badge removed (Handover 0289): Messages now tracked per-agent in JobsTab table -->
         </v-tab>
       </v-tabs>
 
