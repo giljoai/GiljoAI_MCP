@@ -1,8 +1,9 @@
 # Handover 0288: OrchestrationService WebSocket Event Emissions
 
-## Status: PENDING
+## Status: COMPLETE ✅
 ## Priority: HIGH (Blocks Real-Time Updates)
 ## Type: Bug Fix
+## Completed: 2025-12-03
 
 ---
 
@@ -101,11 +102,11 @@ These methods exist in `api/websocket.py` with correct event names:
 
 ## Acceptance Criteria
 
-- [ ] `acknowledge_job()` emits `agent:status_changed` WebSocket event after DB update
-- [ ] `complete_job()` emits `agent:status_changed` WebSocket event after DB update
-- [ ] `report_progress()` emits progress WebSocket event
-- [ ] Jobs dashboard updates in real-time WITHOUT page refresh
-- [ ] Multi-tenant isolation preserved (events only go to correct tenant)
+- [x] `acknowledge_job()` emits `agent:status_changed` WebSocket event after DB update
+- [x] `complete_job()` emits `agent:status_changed` WebSocket event after DB update
+- [x] `report_progress()` emits progress WebSocket event
+- [x] Jobs dashboard updates in real-time WITHOUT page refresh
+- [x] Multi-tenant isolation preserved (events only go to correct tenant)
 
 ---
 
@@ -168,3 +169,47 @@ This handover fixes the **emission gap** - the OrchestrationService updating the
 ### Architectural Note
 
 Consider creating a decorator or event system to automatically emit WebSocket events after database commits. This would prevent similar issues in the future.
+
+---
+
+## Implementation Summary (Completed 2025-12-03)
+
+### Architecture Decision: HTTP Bridge Pattern
+
+The OrchestrationService runs in the MCP server process (separate from FastAPI). Direct access to `websocket_manager` is not possible. The implementation uses the **HTTP bridge pattern** already established in `spawn_agent_job()`.
+
+### Changes Made
+
+**File**: `src/giljo_mcp/services/orchestration_service.py`
+
+1. **Added httpx import** (line 28)
+2. **acknowledge_job()** (lines 577-610): Captures old_status, emits `agent:status_changed` via HTTP bridge
+3. **report_progress()** (lines 666-716): Fetches job details, emits `message:new` via HTTP bridge
+4. **complete_job()** (lines 759-812): Captures old_status, calculates duration_seconds, emits `agent:status_changed` via HTTP bridge
+
+### Test Coverage
+
+**File**: `tests/services/test_orchestration_service_websocket_emissions.py` (420 lines, 7 tests)
+
+| Test | Status |
+|------|--------|
+| `test_acknowledge_job_emits_websocket_event` | ✅ PASS |
+| `test_complete_job_emits_websocket_event` | ✅ PASS |
+| `test_report_progress_emits_websocket_event` | ✅ PASS |
+| `test_websocket_emission_respects_tenant_isolation` | ✅ PASS |
+| `test_acknowledge_job_websocket_event_includes_agent_name` | ✅ PASS |
+| `test_complete_job_calculates_duration_for_websocket` | ✅ PASS |
+| `test_websocket_emission_failure_does_not_break_database_update` | ✅ PASS |
+
+### Key Features
+
+- **Error Resilience**: WebSocket failures logged but don't break core DB operations
+- **Duration Tracking**: Job completion events include calculated duration
+- **Comprehensive Metadata**: Events include agent_name, agent_type, old_status, status, timestamps
+- **Multi-Tenant Isolation**: All events include tenant_key for proper isolation
+
+### TDD Approach Used
+
+1. **RED**: Wrote 7 failing tests first
+2. **GREEN**: Implemented minimal code to pass all tests
+3. **REFACTOR**: Verified multi-tenant isolation and error handling
