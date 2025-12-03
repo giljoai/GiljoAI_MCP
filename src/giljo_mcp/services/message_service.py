@@ -49,16 +49,23 @@ class MessageService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_manager: TenantManager,
+        websocket_manager: Optional[Any] = None
+    ):
         """
         Initialize MessageService with database and tenant management.
 
         Args:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
+            websocket_manager: Optional WebSocket manager for real-time event emissions
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
+        self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     # ============================================================================
@@ -133,6 +140,25 @@ class MessageService:
                     f"from {from_agent or 'orchestrator'} to {to_agents}"
                 )
 
+                # Emit WebSocket event if manager is available
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_message_sent(
+                            message_id=message_id,
+                            job_id=message.meta_data.get("job_id", ""),
+                            tenant_key=project.tenant_key,
+                            from_agent=from_agent or "orchestrator",
+                            to_agent=to_agents[0] if len(to_agents) == 1 else None,
+                            message_type=message_type,
+                            content_preview=content[:200] if content else "",
+                            priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                        )
+                    except Exception as ws_error:
+                        # Log WebSocket errors but don't fail the message send
+                        self._logger.warning(
+                            f"Failed to emit WebSocket event for message {message_id}: {ws_error}"
+                        )
+
                 return {
                     "success": True,
                     "message_id": message_id,
@@ -186,8 +212,11 @@ class MessageService:
 
                 agent_types = [job.agent_type for job in agent_jobs]
 
+                # Get tenant_key from first agent job for WebSocket broadcast
+                tenant_key = agent_jobs[0].tenant_key if agent_jobs else None
+
                 # Send message to all agents
-                return await self.send_message(
+                result = await self.send_message(
                     to_agents=agent_types,
                     content=content,
                     project_id=project_id,
@@ -195,6 +224,26 @@ class MessageService:
                     priority=priority,
                     from_agent=from_agent,
                 )
+
+                # Emit additional broadcast-specific WebSocket event if manager is available
+                if self._websocket_manager and result.get("success") and tenant_key:
+                    try:
+                        await self._websocket_manager.broadcast_job_message(
+                            job_id=project_id,
+                            message_id=result.get("message_id", ""),
+                            from_agent=from_agent,
+                            tenant_key=tenant_key,
+                            to_agent=None,  # Broadcast has no single target
+                            message_type="broadcast",
+                            content_preview=content[:100] if content else "",
+                        )
+                    except Exception as ws_error:
+                        # Log WebSocket errors but don't fail the broadcast
+                        self._logger.warning(
+                            f"Failed to emit WebSocket broadcast event: {ws_error}"
+                        )
+
+                return result
 
         except Exception as e:
             self._logger.exception(f"Failed to broadcast message: {e}")
@@ -518,6 +567,21 @@ class MessageService:
                     f"Message {message_id} acknowledged by {agent_name}"
                 )
 
+                # Emit WebSocket event if manager is available
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_message_acknowledged(
+                            message_id=message_id,
+                            job_id=message.meta_data.get("job_id", "") if message.meta_data else "",
+                            tenant_key=message.tenant_key,
+                            agent_id=agent_name,
+                        )
+                    except Exception as ws_error:
+                        # Log WebSocket errors but don't fail the acknowledgment
+                        self._logger.warning(
+                            f"Failed to emit WebSocket event for message acknowledgment {message_id}: {ws_error}"
+                        )
+
                 return {
                     "success": True,
                     "message_id": message_id,
@@ -576,6 +640,22 @@ class MessageService:
                 self._logger.info(
                     f"Message {message_id} completed by {agent_name}"
                 )
+
+                # Emit WebSocket event if manager is available
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_message_acknowledged(
+                            message_id=message_id,
+                            job_id=message.meta_data.get("job_id", "") if message.meta_data else "",
+                            tenant_key=message.tenant_key,
+                            agent_id=agent_name,
+                            response_data={"status": "completed", "result": result[:100] if result else ""},
+                        )
+                    except Exception as ws_error:
+                        # Log WebSocket errors but don't fail the completion
+                        self._logger.warning(
+                            f"Failed to emit WebSocket event for message completion {message_id}: {ws_error}"
+                        )
 
                 return {
                     "success": True,
