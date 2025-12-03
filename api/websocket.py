@@ -793,7 +793,7 @@ class WebSocketManager:
     ):
         """
         Broadcast agent job status change event.
-        Event types: 'agent_job:acknowledged', 'agent_job:completed', 'agent_job:failed'
+        Event type: 'agent:status_changed' (frontend-compatible naming)
 
         Args:
             job_id: Unique job identifier
@@ -804,21 +804,15 @@ class WebSocketManager:
             updated_at: Status update timestamp
             duration_seconds: Job duration (for completed/failed status)
         """
-        # Determine event type based on status transition
-        if new_status == "active" and old_status == "pending":
-            event_type = "agent_job:acknowledged"
-        elif new_status == "completed":
-            event_type = "agent_job:completed"
-        elif new_status == "failed":
-            event_type = "agent_job:failed"
-        else:
-            event_type = "agent_job:status_update"
+        # Use unified event type for all status changes (frontend expects this)
+        event_type = "agent:status_changed"
 
         message_data = {
             "job_id": job_id,
             "agent_type": agent_type,
             "old_status": old_status,
-            "new_status": new_status,
+            "status": new_status,  # Frontend expects 'status', not 'new_status'
+            "tenant_key": tenant_key,  # Add tenant_key to payload for frontend validation
             "updated_at": (updated_at or datetime.now(timezone.utc)).isoformat(),
         }
 
@@ -862,7 +856,7 @@ class WebSocketManager:
     ):
         """
         Broadcast agent job message event.
-        Event type: 'agent_job:message'
+        Event type: 'message:new' (frontend-compatible naming)
 
         Args:
             job_id: Unique job identifier
@@ -875,14 +869,15 @@ class WebSocketManager:
             timestamp: Message timestamp
         """
         message = {
-            "type": "agent_job:message",
+            "type": "message:new",  # Frontend expects 'message:new', not 'agent_job:message'
             "data": {
                 "job_id": job_id,
                 "message_id": message_id,
                 "from_agent": from_agent,
                 "to_agent": to_agent,
                 "message_type": message_type,
-                "content_preview": content_preview,
+                "message": content_preview,  # Frontend expects 'message', not 'content_preview'
+                "tenant_key": tenant_key,  # Add tenant_key to payload for frontend validation
                 "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -903,7 +898,7 @@ class WebSocketManager:
         for client_id in disconnected:
             self.disconnect(client_id)
 
-        logger.debug(f"Broadcast agent_job:message - {job_id} (from: {from_agent}, to: {to_agent})")
+        logger.debug(f"Broadcast message:new - {job_id} (from: {from_agent}, to: {to_agent})")
 
     async def broadcast_children_spawned(
         self,
@@ -968,7 +963,7 @@ class WebSocketManager:
     ):
         """
         Broadcast message sent event for agent-orchestrator communication.
-        Event type: 'agent_communication:message_sent'
+        Event type: 'message:sent' (frontend-compatible naming)
 
         Args:
             message_id: Unique message identifier
@@ -982,14 +977,15 @@ class WebSocketManager:
             timestamp: Message timestamp
         """
         message = {
-            "type": "agent_communication:message_sent",
+            "type": "message:sent",  # Frontend expects 'message:sent', not 'agent_communication:message_sent'
             "data": {
                 "message_id": message_id,
                 "job_id": job_id,
                 "from_agent": from_agent,
                 "to_agent": to_agent,
                 "message_type": message_type,
-                "content_preview": content_preview[:200] if content_preview else "",
+                "message": content_preview[:200] if content_preview else "",  # Frontend expects 'message', not 'content_preview'
+                "tenant_key": tenant_key,  # Add tenant_key to payload for frontend validation
                 "priority": priority,
                 "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
             },
@@ -1024,7 +1020,7 @@ class WebSocketManager:
     ):
         """
         Broadcast message acknowledgment event.
-        Event type: 'agent_communication:message_acknowledged'
+        Event type: 'message:acknowledged' (frontend-compatible naming)
 
         Args:
             message_id: Unique message identifier
@@ -1038,6 +1034,7 @@ class WebSocketManager:
             "message_id": message_id,
             "job_id": job_id,
             "agent_id": agent_id,
+            "tenant_key": tenant_key,  # Add tenant_key to payload for frontend validation
             "acknowledged_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
         }
 
@@ -1045,7 +1042,7 @@ class WebSocketManager:
             message_data["response_data"] = response_data
 
         message = {
-            "type": "agent_communication:message_acknowledged",
+            "type": "message:acknowledged",  # Frontend expects 'message:acknowledged', not 'agent_communication:message_acknowledged'
             "data": message_data,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }

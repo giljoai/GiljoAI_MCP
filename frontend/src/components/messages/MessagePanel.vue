@@ -257,7 +257,7 @@ const handleNewMessage = (data: any) => {
     from_agent: data.from_agent || data.from,
     to_agents: data.to_agents || [],
     to_agent: data.to_agent,
-    content: data.content || '',
+    content: data.message || data.content || '',
     type: data.type || data.message_type || 'direct',
     message_type: data.type || data.message_type,
     priority: data.priority || 'normal',
@@ -280,11 +280,12 @@ const handleMessageUpdate = (data: any) => {
   const index = messages.value.findIndex((msg) => msg.id === messageId)
 
   if (index !== -1) {
-    // Update existing message
+    // Update existing message - handle both flat payload and nested message_data
+    const updateData = data.message_data || data
     messages.value[index] = {
       ...messages.value[index],
-      ...data.message_data,
-      status: data.message_data?.status || messages.value[index].status,
+      ...updateData,
+      status: updateData.status || messages.value[index].status,
     }
   } else {
     // New message not in list yet
