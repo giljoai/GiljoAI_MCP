@@ -1,9 +1,10 @@
 # Handover 0289: Message Routing Architecture Fix
 
-## Status: PENDING
+## Status: COMPLETE
 ## Priority: HIGH (User-Reported Bug)
 ## Type: Bug Fix / Architecture
 ## Estimated Effort: 4-6 hours
+## Actual Effort: ~3 hours (TDD with subagents)
 
 ---
 
@@ -560,4 +561,53 @@ If deployment causes issues:
 
 ---
 
-**Next Steps**: Assign to TDD Implementor agent for execution following TDD workflow (RED → GREEN → REFACTOR).
+## Completion Summary (2025-12-03)
+
+### What Was Done
+
+**Phase 1: Tab Badge Removal** ✅
+- Removed `<v-badge>` from `ProjectTabs.vue` line 19
+- Deprecated `unreadCount` getter in `projectTabs.js` (kept for backward compatibility)
+
+**Phase 2: WebSocket Message Routing** ✅
+- Added optional `websocket_manager` parameter to `MessageService.__init__()`
+- Added WebSocket emissions to 4 methods:
+  - `send_message()` → `broadcast_message_sent()`
+  - `broadcast()` → `broadcast_job_message()`
+  - `acknowledge_message()` → `broadcast_message_acknowledged()`
+  - `complete_message()` → `broadcast_message_acknowledged()`
+- All emissions include `tenant_key` for multi-tenant isolation
+
+**Phase 3: Progress Message Cleanup** ✅
+- Created `scripts/cleanup_stale_progress_messages.py`
+- Deleted 1 orphaned progress message (ID: 39d391cc-9210-4dd7-a27c-a25677ad4f44)
+- No stale progress messages remain in database
+
+**Phase 4: Multi-Tenant Isolation Verified** ✅
+- All database queries filter by `tenant_key`
+- All WebSocket emissions include `tenant_key`
+- Test coverage validates isolation
+
+**Phase 5: Testing** ✅
+- 5 integration tests created and passing:
+  - `test_direct_message_emits_websocket_event`
+  - `test_broadcast_message_emits_websocket_event`
+  - `test_message_acknowledgment_emits_websocket_event`
+  - `test_multi_tenant_message_isolation`
+  - `test_message_completion_emits_websocket_event`
+
+### Files Modified
+- `frontend/src/components/projects/ProjectTabs.vue` - Badge removed
+- `frontend/src/stores/projectTabs.js` - Getter deprecated
+- `src/giljo_mcp/services/message_service.py` - WebSocket emissions added
+- `tests/integration/test_message_routing_0289.py` - New tests
+- `scripts/cleanup_stale_progress_messages.py` - New cleanup script
+
+### Commits
+- `9e4b6b03` - feat: Add WebSocket emissions to MessageService (Handover 0289)
+- `19843c58` - docs: Add GREEN phase test report for Handover 0289
+
+### TDD Workflow Used
+- RED: Wrote 5 failing tests first
+- GREEN: Implemented minimal code to pass tests
+- REFACTOR: Verified multi-tenant isolation, cleaned up progress messages
