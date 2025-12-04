@@ -38,7 +38,7 @@ env.bak/
 venv.bak/
 dev_tools/venv_devtools/  # Isolated venv for dev tools only
 
-# Testing
+# Testing - Python
 .pytest_cache/
 .coverage
 .coverage.*
@@ -48,6 +48,14 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+
+# Testing - Playwright (E2E)
+frontend/playwright-report/
+frontend/test-results/
+playwright-report/
+test-results/
+playwright/.cache/
+.playwright/
 
 # Type Checking
 .mypy_cache/
