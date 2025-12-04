@@ -491,7 +491,7 @@ function getMessagesSent(agent) {
 function getMessagesWaiting(agent) {
   if (!agent.messages || !Array.isArray(agent.messages)) return 0
   return agent.messages.filter(
-    (m) => m.status === 'pending' || m.status === 'sent'
+    (m) => m.status === 'pending' || m.status === 'waiting'
   ).length
 }
 
@@ -852,7 +852,8 @@ const handleMessageReceived = (data) => {
       (a) =>
         a.job_id === recipientJobId ||
         a.id === recipientJobId ||
-        a.agent_id === recipientJobId
+        a.agent_id === recipientJobId ||
+        a.agent_type === recipientJobId
     )
 
     if (recipientAgent) {
@@ -928,9 +929,32 @@ const handleStatusUpdate = (data) => {
 }
 
 /**
+ * Initialize messages array from backend data on mount
+ * This ensures counters persist across page refreshes
+ */
+const initializeMessagesFromBackend = () => {
+  if (!props.agents || props.agents.length === 0) return
+
+  console.log('[JobsTab] Initializing messages from backend for', props.agents.length, 'agents')
+
+  // Each agent in props.agents should already have messages array from backend
+  // We just need to ensure the array is initialized
+  props.agents.forEach(agent => {
+    if (!agent.messages) {
+      agent.messages = []
+    }
+    console.log(`[JobsTab] Agent ${agent.agent_type} has ${agent.messages.length} messages from backend`)
+  })
+}
+
+/**
  * Lifecycle hooks - WebSocket event management
  */
 onMounted(() => {
+  // Initialize messages from backend data (for persistence)
+  initializeMessagesFromBackend()
+
+  // Register WebSocket event handlers
   on('agent:status_changed', handleStatusUpdate)
   on('message:sent', handleMessageSent)
   on('message:received', handleMessageReceived) // New: for recipient agents
