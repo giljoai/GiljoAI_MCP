@@ -185,9 +185,11 @@ async function fetchProjectDetails() {
     const agentJobsResponse = await api.agentJobs.list(projectId.value)
 
     // Add the agent jobs to the project object so LaunchTab can display them
-    if (agentJobsResponse.data && Array.isArray(agentJobsResponse.data)) {
-      project.value.agents = agentJobsResponse.data
-      console.log('[ProjectLaunchView] Loaded agent jobs:', agentJobsResponse.data.length)
+    // API returns {jobs: [...], total: N, limit: N, offset: N}
+    if (agentJobsResponse.data && agentJobsResponse.data.jobs && Array.isArray(agentJobsResponse.data.jobs)) {
+      project.value.agents = agentJobsResponse.data.jobs
+      console.log('[ProjectLaunchView] Loaded agent jobs:', agentJobsResponse.data.jobs.length)
+      console.log('[ProjectLaunchView] Sample agent messages:', project.value.agents[0]?.messages || 'NO MESSAGES')
     }
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || 'Failed to load project'

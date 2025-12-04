@@ -942,8 +942,16 @@ Begin by fetching your mission.
                 jobs = result.scalars().all()
 
                 # Convert to dicts
-                job_dicts = [
-                    {
+                job_dicts = []
+                for job in jobs:
+                    # DIAGNOSTIC: Log messages field for debugging persistence
+                    messages_data = job.messages or []
+                    self._logger.info(
+                        f"[LIST_JOBS DEBUG] Agent {job.agent_type} ({job.job_id}): "
+                        f"messages field = {messages_data!r} (type: {type(job.messages)})"
+                    )
+
+                    job_dicts.append({
                         "id": job.id,
                         "job_id": job.job_id,
                         "tenant_key": job.tenant_key,
@@ -956,15 +964,13 @@ Begin by fetching your mission.
                         "spawned_by": job.spawned_by,
                         "tool_type": job.tool_type,
                         "context_chunks": job.context_chunks or [],
-                        "messages": job.messages or [],
+                        "messages": messages_data,
                         "acknowledged": job.acknowledged,
                         "started_at": job.started_at,
                         "completed_at": job.completed_at,
                         "created_at": job.created_at,
                         # Note: updated_at field removed - not present in MCPAgentJob model
-                    }
-                    for job in jobs
-                ]
+                    })
 
                 self._logger.info(
                     f"Listed {len(job_dicts)} jobs (total={total}, "
