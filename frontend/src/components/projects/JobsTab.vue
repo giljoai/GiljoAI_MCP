@@ -771,24 +771,34 @@ const handleMessageSent = (data) => {
 
   console.log('[JobsTab] Message sent event:', data)
 
-  // Add message to agent's messages array
+  // "Messages Sent" counter should ALWAYS increment for the SENDER (from_agent)
+  // NOT the recipient - this tracks messages the agent has sent OUT
+  const senderAgentId = data.from_agent
+
   const agent = props.agents.find(
     (a) =>
-      a.id === data.to_agent ||
-      a.agent_id === data.to_agent ||
-      a.agent_type === data.to_agent // Fallback when backend sends agent_type instead of UUID
+      a.job_id === senderAgentId ||
+      a.id === senderAgentId ||
+      a.agent_id === senderAgentId ||
+      a.agent_type === senderAgentId
   )
+
   if (agent) {
     if (!agent.messages) agent.messages = []
     agent.messages.push({
       id: data.message_id,
-      from: 'developer',
-      direction: 'outbound',
+      from: 'agent', // The agent sent this message
+      direction: 'outbound', // Outbound from the agent
       status: 'sent',
-      text: data.message,
+      text: data.content || data.content_preview || data.message || '',
       priority: data.priority || 'medium',
-      timestamp: data.timestamp || new Date().toISOString()
+      timestamp: data.timestamp || new Date().toISOString(),
+      to_agent: data.to_agent // Track recipient for audit trail
     })
+
+    console.log(`[JobsTab] Added SENT message to ${agent.agent_type || agent.agent_name} (sender), total messages: ${agent.messages.length}`)
+  } else {
+    console.warn(`[JobsTab] Could not find agent for message. from_agent: ${data.from_agent}, to_agent: ${data.to_agent}`)
   }
 }
 
@@ -820,6 +830,53 @@ const handleMessageAcknowledged = (data) => {
  * Handle new message event (agent -> developer)
  * Adds incoming messages from agents to the message list
  */
+/**
+ * Handle message received event for RECIPIENT agents
+ * Increments "Messages Waiting" counter on recipient agent cards
+ * Emitted via broadcast_message_received() in backend
+ */
+const handleMessageReceived = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    return
+  }
+
+  console.log('[JobsTab] Message received event:', data)
+
+  // data.to_agent_ids contains array of recipient job IDs
+  const recipientJobIds = data.to_agent_ids || []
+
+  recipientJobIds.forEach((recipientJobId) => {
+    // Find the recipient agent by job_id
+    const recipientAgent = props.agents.find(
+      (a) =>
+        a.job_id === recipientJobId ||
+        a.id === recipientJobId ||
+        a.agent_id === recipientJobId
+    )
+
+    if (recipientAgent) {
+      // Add message to recipient's messages array (for "Messages Waiting" counter)
+      if (!recipientAgent.messages) recipientAgent.messages = []
+      recipientAgent.messages.push({
+        id: data.message_id,
+        from: data.from_agent, // Who sent the message
+        direction: 'inbound', // Inbound to this recipient
+        status: 'waiting', // Waiting to be read
+        text: data.content || data.content_preview || data.message || '',
+        priority: data.priority || 'medium',
+        timestamp: data.timestamp || new Date().toISOString(),
+      })
+
+      console.log(
+        `[JobsTab] Added WAITING message to ${recipientAgent.agent_type || recipientAgent.agent_name} (recipient), total messages: ${recipientAgent.messages.length}`
+      )
+    } else {
+      console.warn(`[JobsTab] Could not find recipient agent. job_id: ${recipientJobId}`)
+    }
+  })
+}
+
 const handleNewMessage = (data) => {
   // Multi-tenant isolation check
   if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
@@ -876,6 +933,7 @@ const handleStatusUpdate = (data) => {
 onMounted(() => {
   on('agent:status_changed', handleStatusUpdate)
   on('message:sent', handleMessageSent)
+  on('message:received', handleMessageReceived) // New: for recipient agents
   on('message:acknowledged', handleMessageAcknowledged)
   on('message:new', handleNewMessage)
 })
@@ -883,6 +941,7 @@ onMounted(() => {
 onUnmounted(() => {
   off('agent:status_changed', handleStatusUpdate)
   off('message:sent', handleMessageSent)
+  off('message:received', handleMessageReceived) // New: for recipient agents
   off('message:acknowledged', handleMessageAcknowledged)
   off('message:new', handleNewMessage)
 })
