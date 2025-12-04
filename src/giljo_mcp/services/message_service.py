@@ -141,25 +141,75 @@ class MessageService:
                     f"from {from_agent or 'orchestrator'} to {to_agents}"
                 )
 
-                # Emit WebSocket event if manager is available
+                # DIAGNOSTIC: Check WebSocket manager availability
+                self._logger.info(
+                    f"[WEBSOCKET DEBUG] websocket_manager is {'AVAILABLE' if self._websocket_manager else 'NONE'} "
+                    f"for message {message_id}"
+                )
+
+                # Emit WebSocket events if manager is available
                 if self._websocket_manager:
+                    self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
                     try:
+                        # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
+                        to_agent_value = None
+                        if len(to_agents) == 1 and to_agents[0] != 'all':
+                            to_agent_value = to_agents[0]
+
+                        # Event 1: Broadcast to SENDER (increments "Messages Sent")
                         await self._websocket_manager.broadcast_message_sent(
                             message_id=message_id,
                             job_id=message.meta_data.get("job_id", ""),
                             project_id=project.id,
                             tenant_key=project.tenant_key,
                             from_agent=from_agent or "orchestrator",
-                            to_agent=to_agents[0] if len(to_agents) == 1 else None,
+                            to_agent=to_agent_value,
                             message_type=message_type,
                             content_preview=content[:200] if content else "",
                             priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
                         )
+                        self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
+
+                        # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
+                        # Determine recipient job IDs
+                        recipient_job_ids = []
+                        if to_agents[0] == 'all':
+                            # Broadcast: Get ALL agent job IDs in the project
+                            result = await session.execute(
+                                select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                            )
+                            all_agents = result.scalars().all()
+                            recipient_job_ids = [agent.job_id for agent in all_agents]
+                            self._logger.info(f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_job_ids)} recipients")
+                        else:
+                            # Direct message: Use provided agent IDs
+                            recipient_job_ids = to_agents
+                            self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_job_ids}")
+
+                        # Emit message:received event to recipients
+                        if recipient_job_ids:
+                            await self._websocket_manager.broadcast_message_received(
+                                message_id=message_id,
+                                job_id=message.meta_data.get("job_id", ""),
+                                project_id=project.id,
+                                tenant_key=project.tenant_key,
+                                from_agent=from_agent or "orchestrator",
+                                to_agent_ids=recipient_job_ids,
+                                message_type=message_type,
+                                content_preview=content[:200] if content else "",
+                                priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                            )
+                            self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_job_ids)} recipient(s)")
+
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the message send
                         self._logger.warning(
                             f"Failed to emit WebSocket event for message {message_id}: {ws_error}"
                         )
+                else:
+                    self._logger.warning(
+                        f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
+                    )
 
                 return {
                     "success": True,

@@ -219,7 +219,16 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
         raise
 
-    # Initialize tool accessor
+    # Initialize WebSocket manager BEFORE tool accessor (needed for MessageService)
+    try:
+        logger.info("Initializing WebSocket manager...")
+        state.websocket_manager = WebSocketManager()
+        logger.info("WebSocket manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)
+        raise
+
+    # Initialize tool accessor (now websocket_manager is available)
     try:
         logger.info("Initializing tool accessor...")
         state.tool_accessor = ToolAccessor(
@@ -259,16 +268,7 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("No API key configured - all clients require JWT authentication (unified auth)")
 
-    # Initialize WebSocket manager
-    try:
-        logger.info("Initializing WebSocket manager...")
-        state.websocket_manager = WebSocketManager()
-        logger.info("WebSocket manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)
-        raise
-
-    # Start heartbeat task
+    # Start heartbeat task (WebSocket manager already initialized earlier)
     try:
         logger.info("Starting WebSocket heartbeat task...")
         heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
