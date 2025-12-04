@@ -1014,6 +1014,76 @@ class WebSocketManager:
 
         logger.debug(f"Broadcast message_sent - {message_id} (from: {from_agent}, to: {to_agent})")
 
+    async def broadcast_message_received(
+        self,
+        message_id: str,
+        job_id: str,
+        tenant_key: str,
+        from_agent: str,
+        to_agent_ids: list[str],  # List of recipient agent IDs (job_ids)
+        message_type: str,
+        content_preview: str,
+        priority: int,
+        timestamp: Optional[datetime] = None,
+        project_id: Optional[str] = None,
+    ):
+        """
+        Broadcast message received event to RECIPIENT agent(s).
+        Event type: 'message:received' (frontend-compatible naming)
+        
+        This event increments "Messages Waiting" counter on recipient agent cards.
+        For broadcasts, to_agent_ids contains ALL agent job_ids.
+        For direct messages, to_agent_ids contains a single job_id.
+        
+        Args:
+            message_id: Unique message identifier
+            job_id: Job ID of the SENDER (orchestrator typically)
+            tenant_key: Tenant key for multi-tenant isolation
+            from_agent: Agent that sent the message
+            to_agent_ids: List of recipient agent job IDs
+            message_type: Type of message (task, info, error, etc.)
+            content_preview: First 200 characters of message content
+            priority: Message priority (0=low, 1=normal, 2=high)
+            timestamp: Message timestamp
+            project_id: Project ID
+        """
+        message = {
+            "type": "message:received",  # New event type for recipient agents
+            "data": {
+                "message_id": message_id,
+                "job_id": job_id,  # Sender's job_id
+                "project_id": project_id or job_id,
+                "from_agent": from_agent,
+                "to_agent_ids": to_agent_ids,  # List of recipients
+                "message_type": message_type,
+                # Provide multiple aliases for compatibility
+                "message": content_preview[:200] if content_preview else "",
+                "content": content_preview[:200] if content_preview else "",
+                "content_preview": content_preview[:200] if content_preview else "",
+                "tenant_key": tenant_key,
+                "priority": priority,
+                "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting message_received to {client_id}")
+                    disconnected.append(client_id)
+        
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+        
+        logger.debug(f"Broadcast message_received - {message_id} to {len(to_agent_ids)} recipient(s)")
+
     async def broadcast_message_acknowledged(
         self,
         message_id: str,
