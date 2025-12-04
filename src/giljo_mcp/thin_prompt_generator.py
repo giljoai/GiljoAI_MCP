@@ -496,6 +496,7 @@ MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
 ✓ update_project_mission(project_id, mission) - Save mission plan
 ✓ spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key) - Create agents
 ✓ get_workflow_status(project_id, tenant_key) - Check spawned agents
+✓ send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
 
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
@@ -506,6 +507,9 @@ STARTUP SEQUENCE:
    └─► Saves to Project.mission field for UI display
 5. SPAWN AGENTS: mcp__giljo-mcp__spawn_agent_job() to create specialist agent jobs
    └─► Agents will EXECUTE the work (not you)
+6. SIGNAL COMPLETE: mcp__giljo-mcp__send_message() to broadcast staging done
+   └─► Message: "STAGING_COMPLETE: Mission created, N agents spawned: [list agent names]"
+   └─► This enables the Launch Jobs button in UI (required for workflow)
 
 CRITICAL DISTINCTIONS:
 - Project.description = User-written requirements (READ THIS for context)
@@ -612,6 +616,8 @@ WORKFLOW:
 3. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}')
 4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}')
 5. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}')
+6. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
+   → This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
 Trigger succession if context usage >90%.
 Claude Code: Use TodoWrite tool to track workflow progress.
@@ -627,6 +633,7 @@ MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}') - Save mission plan
 ✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
 ✓ mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}') - Check spawned agents
+✓ mcp__giljo-mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
 
 CONNECTION TROUBLESHOOTING:
 If MCP fails: Check server running at {mcp_url}/health

@@ -299,6 +299,29 @@ const handleAgentCreated = (data) => {
 }
 
 /**
+ * Handover 0291: Staging Complete Broadcast Signal Handler
+ * Listen for orchestrator's "STAGING_COMPLETE" broadcast message.
+ * This is the explicit signal that staging is done and Launch Jobs should enable.
+ */
+const handleStagingCompleteMessage = (data) => {
+  // Project isolation check (messages have job_id which is project_id for broadcasts)
+  const projectId = props.project?.id || props.project?.project_id
+  if (data.job_id !== projectId && data.project_id !== projectId) {
+    return
+  }
+
+  // Only process orchestrator broadcasts with STAGING_COMPLETE marker
+  const isFromOrchestrator = data.from_agent === 'orchestrator'
+  const isBroadcast = data.message_type === 'broadcast'
+  const hasStagingMarker = (data.content_preview || data.content || '').includes('STAGING_COMPLETE')
+
+  if ((isFromOrchestrator || isBroadcast) && hasStagingMarker) {
+    console.log('[ProjectTabs] STAGING_COMPLETE broadcast received - enabling Launch Jobs')
+    store.setStagingComplete(true)
+  }
+}
+
+/**
  * Set project on mount
  */
 onMounted(async () => {
@@ -323,6 +346,7 @@ onMounted(async () => {
   on('project:mission_updated', handleMissionUpdate)
   on('orchestrator:instructions_fetched', handleMissionUpdate)
   on('agent:created', handleAgentCreated)
+  on('message:sent', handleStagingCompleteMessage)  // Handover 0291
 })
 
 /**
@@ -339,6 +363,7 @@ onBeforeUnmount(() => {
   off('project:mission_updated', handleMissionUpdate)
   off('orchestrator:instructions_fetched', handleMissionUpdate)
   off('agent:created', handleAgentCreated)
+  off('message:sent', handleStagingCompleteMessage)  // Handover 0291
 })
 
 /**
