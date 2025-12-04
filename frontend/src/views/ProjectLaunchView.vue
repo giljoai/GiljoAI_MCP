@@ -171,15 +171,18 @@ async function fetchProjectDetails() {
   loading.value = true
   error.value = null
   try {
-    // Fetch project, orchestrator, and agent jobs in parallel
-    const [projectResponse, orchestratorResponse, agentJobsResponse] = await Promise.all([
-      api.projects.get(projectId.value),
-      api.projects.getOrchestrator(projectId.value),
-      api.agentJobs.list(projectId.value),
-    ])
-
+    // Step 1: Fetch project first
+    const projectResponse = await api.projects.get(projectId.value)
     project.value = projectResponse.data
+
+    // Step 2: Get/create orchestrator BEFORE listing agent jobs
+    // CRITICAL: This must complete (including DB commit) before step 3
+    // to avoid race condition where orchestrator is missing from agents list
+    const orchestratorResponse = await api.projects.getOrchestrator(projectId.value)
     orchestrator.value = orchestratorResponse.data.orchestrator
+
+    // Step 3: NOW fetch agent jobs (orchestrator will be included if auto-created)
+    const agentJobsResponse = await api.agentJobs.list(projectId.value)
 
     // Add the agent jobs to the project object so LaunchTab can display them
     if (agentJobsResponse.data && Array.isArray(agentJobsResponse.data)) {

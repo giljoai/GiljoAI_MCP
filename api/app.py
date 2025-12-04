@@ -222,7 +222,11 @@ async def lifespan(app: FastAPI):
     # Initialize tool accessor
     try:
         logger.info("Initializing tool accessor...")
-        state.tool_accessor = ToolAccessor(state.db_manager, state.tenant_manager)
+        state.tool_accessor = ToolAccessor(
+            state.db_manager,
+            state.tenant_manager,
+            websocket_manager=state.websocket_manager
+        )
         logger.info("Tool accessor initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize tool accessor: {e}", exc_info=True)

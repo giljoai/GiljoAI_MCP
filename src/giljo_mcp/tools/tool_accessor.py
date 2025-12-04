@@ -29,15 +29,25 @@ logger = logging.getLogger(__name__)
 class ToolAccessor:
     """Provides direct access to MCP tool functionality for API"""
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_manager: TenantManager,
+        websocket_manager: Optional[Any] = None
+    ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
+        self._websocket_manager = websocket_manager
 
         # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2 ✅ COMPLETE)
         self._project_service = ProjectService(db_manager, tenant_manager)
         self._template_service = TemplateService(db_manager, tenant_manager)
         self._task_service = TaskService(db_manager, tenant_manager)
-        self._message_service = MessageService(db_manager, tenant_manager)
+        self._message_service = MessageService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager  # Pass WebSocket manager
+        )
         self._context_service = ContextService(db_manager, tenant_manager)
         self._orchestration_service = OrchestrationService(db_manager, tenant_manager)
 
