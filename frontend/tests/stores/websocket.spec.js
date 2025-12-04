@@ -473,7 +473,12 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const wsInstance = MockWebSocket.instances[0]
     wsInstance.simulateMessage({ type: 'agent_update', data: { id: '123' } })
 
-    expect(handler).toHaveBeenCalledWith({ data: { id: '123' } })
+    // After Handover 0290: Payload normalization merges nested data to top level
+    // Handler receives: { data: { id: '123' }, id: '123' } - both nested and flat access
+    expect(handler).toHaveBeenCalled()
+    const receivedPayload = handler.mock.calls[0][0]
+    expect(receivedPayload.id).toBe('123') // Flat access works
+    expect(receivedPayload.data.id).toBe('123') // Nested access preserved
   })
 
   it('test_on_returns_unsubscribe_function', async () => {
