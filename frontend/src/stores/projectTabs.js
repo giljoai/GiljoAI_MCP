@@ -31,6 +31,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     // Staging state
     isStaging: false,
     isLaunched: false,
+    stagingComplete: false, // Handover 0287: Tracks when staging workflow is complete
 
     // Loading states
     loading: false,
@@ -102,9 +103,9 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       return state.agents.every((a) => a.status === 'complete')
     },
 
-    // Ready state
+    // Ready state (Handover 0287: Use stagingComplete instead of manual checks)
     readyToLaunch(state) {
-      return state.orchestratorMission && state.agents.length > 0 && !state.isStaging
+      return state.stagingComplete && state.orchestratorMission && state.agents.length > 0 && !state.isStaging
     },
   },
 
@@ -171,6 +172,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       this.messages = []
       this.isStaging = false
       this.isLaunched = false
+      this.stagingComplete = false // Handover 0287: Reset staging complete flag
       this.activeTab = 'launch'
       this.error = null
     },
@@ -274,7 +276,17 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       this.orchestratorMission = ''
       this.agents = []
       this.isStaging = false
+      this.stagingComplete = false // Handover 0287: Reset staging complete flag
       this.loading = false
+    },
+
+    /**
+     * Set staging complete flag (Handover 0287)
+     * Called by ProjectTabs watcher when mission + orchestrator + specialists detected
+     * @param {boolean} complete - Staging complete status
+     */
+    setStagingComplete(complete) {
+      this.stagingComplete = complete
     },
 
     // ==================== Mission Management ====================
