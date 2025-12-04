@@ -954,13 +954,13 @@ class WebSocketManager:
         message_id: str,
         job_id: str,
         tenant_key: str,
-        project_id: Optional[str] = None,
         from_agent: str,
         to_agent: Optional[str],
         message_type: str,
         content_preview: str,
         priority: int,
         timestamp: Optional[datetime] = None,
+        project_id: Optional[str] = None,
     ):
         """
         Broadcast message sent event for agent-orchestrator communication.
