@@ -761,6 +761,7 @@ class MessageService:
             message_type: Type of message (direct, broadcast)
             priority: Message priority (low, normal, high)
         """
+        from sqlalchemy.orm.attributes import flag_modified
         from src.giljo_mcp.models.agents import MCPAgentJob
 
         try:
@@ -790,7 +791,11 @@ class MessageService:
                     "to_agents": recipient_job_ids,
                 })
 
-                self._logger.info(f"[PERSISTENCE] Added outbound message to {from_agent} JSONB column")
+                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
+                # Without this, SQLAlchemy won't detect the append() and won't save changes!
+                flag_modified(sender_agent, "messages")
+
+                self._logger.info(f"[PERSISTENCE] Added outbound message to {from_agent} JSONB column (flagged modified)")
 
             # Add message to each RECIPIENT's inbound messages (for "Messages Waiting" counter)
             for recipient_job_id in recipient_job_ids:
@@ -815,9 +820,12 @@ class MessageService:
                         "timestamp": timestamp,
                     })
 
+                    # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
+                    flag_modified(recipient_agent, "messages")
+
                     self._logger.info(
                         f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_type} "
-                        f"({recipient_job_id}) JSONB column"
+                        f"({recipient_job_id}) JSONB column (flagged modified)"
                     )
 
             # Commit changes to persist JSONB updates
