@@ -201,6 +201,19 @@ class MessageService:
                             )
                             self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_job_ids)} recipient(s)")
 
+                        # CRITICAL: Persist messages to mcp_agent_jobs.messages JSONB column for counter persistence
+                        # This ensures counters survive page refresh
+                        await self._persist_message_to_agent_jsonb(
+                            session=session,
+                            message_id=message_id,
+                            from_agent=from_agent or "orchestrator",
+                            recipient_job_ids=recipient_job_ids,
+                            content=content,
+                            message_type=message_type,
+                            priority=priority,
+                        )
+                        self._logger.info(f"[PERSISTENCE] Saved message {message_id} to agent JSONB columns")
+
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the message send
                         self._logger.warning(
@@ -718,3 +731,99 @@ class MessageService:
         except Exception as e:
             self._logger.exception(f"Failed to complete message: {e}")
             return {"success": False, "error": str(e)}
+
+    # ============================================================================
+    # Message Persistence to Agent JSONB Column
+    # ============================================================================
+
+    async def _persist_message_to_agent_jsonb(
+        self,
+        session: AsyncSession,
+        message_id: str,
+        from_agent: str,
+        recipient_job_ids: list[str],
+        content: str,
+        message_type: str,
+        priority: str,
+    ) -> None:
+        """
+        Persist message to mcp_agent_jobs.messages JSONB column for counter persistence.
+
+        This ensures message counters survive page refreshes by storing messages
+        in the PostgreSQL JSONB column that the frontend reads on load.
+
+        Args:
+            session: Active database session
+            message_id: Unique message ID
+            from_agent: Sender agent name
+            recipient_job_ids: List of recipient agent job IDs
+            content: Message content
+            message_type: Type of message (direct, broadcast)
+            priority: Message priority (low, normal, high)
+        """
+        from src.giljo_mcp.models.agents import MCPAgentJob
+
+        try:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+            # Add message to SENDER's outbound messages (for "Messages Sent" counter)
+            # Find sender agent (usually orchestrator)
+            sender_result = await session.execute(
+                select(MCPAgentJob).where(
+                    MCPAgentJob.agent_type == from_agent
+                ).limit(1)
+            )
+            sender_agent = sender_result.scalar_one_or_none()
+
+            if sender_agent:
+                if not sender_agent.messages:
+                    sender_agent.messages = []
+
+                sender_agent.messages.append({
+                    "id": message_id,
+                    "from": from_agent,
+                    "direction": "outbound",
+                    "status": "sent",
+                    "text": content[:200],  # Truncate for storage
+                    "priority": priority,
+                    "timestamp": timestamp,
+                    "to_agents": recipient_job_ids,
+                })
+
+                self._logger.info(f"[PERSISTENCE] Added outbound message to {from_agent} JSONB column")
+
+            # Add message to each RECIPIENT's inbound messages (for "Messages Waiting" counter)
+            for recipient_job_id in recipient_job_ids:
+                recipient_result = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == recipient_job_id
+                    )
+                )
+                recipient_agent = recipient_result.scalar_one_or_none()
+
+                if recipient_agent:
+                    if not recipient_agent.messages:
+                        recipient_agent.messages = []
+
+                    recipient_agent.messages.append({
+                        "id": message_id,
+                        "from": from_agent,
+                        "direction": "inbound",
+                        "status": "waiting",  # Waiting to be read
+                        "text": content[:200],  # Truncate for storage
+                        "priority": priority,
+                        "timestamp": timestamp,
+                    })
+
+                    self._logger.info(
+                        f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_type} "
+                        f"({recipient_job_id}) JSONB column"
+                    )
+
+            # Commit changes to persist JSONB updates
+            await session.commit()
+            self._logger.info(f"[PERSISTENCE] Committed message {message_id} to database")
+
+        except Exception as e:
+            self._logger.error(f"[PERSISTENCE] Failed to persist message to JSONB: {e}")
+            # Don't re-raise - message was already saved to messages table
