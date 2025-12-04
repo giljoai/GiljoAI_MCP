@@ -360,6 +360,30 @@ watch(
 )
 
 /**
+ * Watch for staging complete detection (Handover 0287)
+ * Alternative Approach: Simpler Detection - Watch for mission + agents
+ * When mission exists AND orchestrator exists AND specialist agents exist,
+ * infer that staging is complete.
+ */
+watch(
+  () => [store.orchestratorMission, store.agents],
+  ([mission, agents]) => {
+    const hasOrchestrator = agents.some(a => a.agent_type === 'orchestrator')
+    const hasSpecialists = agents.some(a => a.agent_type !== 'orchestrator')
+
+    if (mission && hasOrchestrator && hasSpecialists) {
+      // Staging is implicitly complete
+      console.log('[ProjectTabs] Staging complete detected - enabling Launch button')
+      store.setStagingComplete(true)
+    } else if (!mission || !hasOrchestrator || !hasSpecialists) {
+      // Reset if conditions not met (handles cancellation/reset scenarios)
+      store.setStagingComplete(false)
+    }
+  },
+  { deep: true }
+)
+
+/**
  * Production-grade clipboard copy function
  */
 async function copyPromptToClipboard(text) {
