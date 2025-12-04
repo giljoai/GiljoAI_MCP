@@ -193,19 +193,35 @@ async def handle_tools_list(
         # Message Communication Tools
         {
             "name": "send_message",
-            "description": "Send a message to another agent",
+            "description": "Send a message to one or more agents. Use to_agents=['all'] for broadcast.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "to_agent": {"type": "string", "description": "Target agent ID"},
-                    "message": {"type": "string", "description": "Message content"},
+                    "to_agents": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of target agent IDs/types. Use ['all'] for broadcast to all agents.",
+                    },
+                    "content": {"type": "string", "description": "Message content"},
+                    "project_id": {"type": "string", "description": "Project ID for the message"},
+                    "message_type": {
+                        "type": "string",
+                        "enum": ["direct", "broadcast", "system"],
+                        "description": "Message type (default: direct)",
+                        "default": "direct",
+                    },
                     "priority": {
                         "type": "string",
-                        "enum": ["low", "medium", "high", "critical"],
-                        "description": "Message priority",
+                        "enum": ["low", "normal", "high"],
+                        "description": "Message priority (default: normal)",
+                        "default": "normal",
+                    },
+                    "from_agent": {
+                        "type": "string",
+                        "description": "Sender agent ID (default: orchestrator)",
                     },
                 },
-                "required": ["to_agent", "message"],
+                "required": ["to_agents", "content", "project_id"],
             },
         },
         {
