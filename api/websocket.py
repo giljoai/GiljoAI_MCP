@@ -954,6 +954,7 @@ class WebSocketManager:
         message_id: str,
         job_id: str,
         tenant_key: str,
+        project_id: Optional[str] = None,
         from_agent: str,
         to_agent: Optional[str],
         message_type: str,
@@ -981,10 +982,14 @@ class WebSocketManager:
             "data": {
                 "message_id": message_id,
                 "job_id": job_id,
+                "project_id": project_id or job_id,
                 "from_agent": from_agent,
                 "to_agent": to_agent,
                 "message_type": message_type,
-                "message": content_preview[:200] if content_preview else "",  # Frontend expects 'message', not 'content_preview'
+                # Provide multiple aliases for compatibility (content, content_preview, message)
+                "message": content_preview[:200] if content_preview else "",
+                "content": content_preview[:200] if content_preview else "",
+                "content_preview": content_preview[:200] if content_preview else "",
                 "tenant_key": tenant_key,  # Add tenant_key to payload for frontend validation
                 "priority": priority,
                 "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
