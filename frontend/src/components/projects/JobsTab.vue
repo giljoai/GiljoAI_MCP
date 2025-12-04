@@ -674,12 +674,23 @@ async function sendMessage() {
   sending.value = true
 
   try {
+    // Backend expects MessageSend model:
+    // - to_agents: list[str] (plural, array)
+    // - content: str
+    // - project_id: str (required)
+    // - message_type: str (default "direct")
+    // - priority: str (default "normal")
+    // - from_agent: Optional[str]
     const payload = {
-      to_agent: selectedRecipient.value === 'broadcast' ? 'all' : 'orchestrator',
-      message: messageText.value.trim(),
-      priority: 'medium'
+      to_agents: selectedRecipient.value === 'broadcast' ? ['all'] : ['orchestrator'],
+      content: messageText.value.trim(),
+      project_id: props.project.project_id || props.project.id,
+      message_type: selectedRecipient.value === 'broadcast' ? 'broadcast' : 'direct',
+      priority: 'normal',
+      from_agent: 'user'  // UI user sending message
     }
 
+    console.log('[JobsTab] Sending message payload:', payload)
     await api.messages.send(payload)
 
     showToast({
@@ -933,17 +944,41 @@ const handleStatusUpdate = (data) => {
  * This ensures counters persist across page refreshes
  */
 const initializeMessagesFromBackend = () => {
-  if (!props.agents || props.agents.length === 0) return
+  if (!props.agents || props.agents.length === 0) {
+    console.warn('[JobsTab] No agents to initialize!')
+    return
+  }
 
   console.log('[JobsTab] Initializing messages from backend for', props.agents.length, 'agents')
 
   // Each agent in props.agents should already have messages array from backend
-  // We just need to ensure the array is initialized
+  // The messages come from the JSONB column in PostgreSQL
   props.agents.forEach(agent => {
+    const messageCount = agent.messages ? agent.messages.length : 0
+    console.log(
+      `[JobsTab] Agent ${agent.agent_type} (${agent.job_id})`,
+      `- Has ${messageCount} messages from backend`,
+      `- Messages array exists: ${!!agent.messages}`,
+      messageCount > 0 ? `- Sample message:` : '',
+      messageCount > 0 ? agent.messages[0] : ''
+    )
+
+    // Ensure messages array is initialized (even if empty)
     if (!agent.messages) {
       agent.messages = []
+      console.warn(`[JobsTab] Agent ${agent.agent_type} had NO messages array - initialized empty array`)
     }
-    console.log(`[JobsTab] Agent ${agent.agent_type} has ${agent.messages.length} messages from backend`)
+  })
+
+  // Log counter values that should be displayed
+  console.log('[JobsTab] Counter values after initialization:')
+  props.agents.forEach(agent => {
+    console.log(
+      `  ${agent.agent_type}:`,
+      `Sent=${getMessagesSent(agent)},`,
+      `Waiting=${getMessagesWaiting(agent)},`,
+      `Read=${getMessagesRead(agent)}`
+    )
   })
 }
 
