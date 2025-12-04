@@ -253,3 +253,134 @@ async def test_project(db_session: AsyncSession, test_user: User, test_product: 
 def test_tenant_key(test_user: User) -> str:
     """Return test tenant key for message schema tests"""
     return test_user.tenant_key
+
+
+@pytest.fixture
+def mock_websocket_manager():
+    """Create mock WebSocket manager to verify event emissions"""
+    mock_manager = MagicMock()
+
+    # Mock the broadcast methods with AsyncMock
+    mock_manager.broadcast_message_sent = AsyncMock(return_value=None)
+    mock_manager.broadcast_job_message = AsyncMock(return_value=None)
+    mock_manager.broadcast_message_acknowledged = AsyncMock(return_value=None)
+
+    return mock_manager
+
+
+@pytest_asyncio.fixture
+async def test_api_key(db_session: AsyncSession, test_user: User) -> tuple[str, str]:
+    """Create test API key and return (api_key_record, plaintext_key)"""
+    from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
+    from src.giljo_mcp.models import APIKey
+
+    plaintext_key = generate_api_key()
+    key_hash = hash_api_key(plaintext_key)
+    key_prefix = get_key_prefix(plaintext_key)
+
+    api_key = APIKey(
+        id=str(uuid4()),
+        user_id=test_user.id,
+        tenant_key=test_user.tenant_key,
+        name="Test API Key",
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        permissions=["*"],
+        is_active=True,
+    )
+
+    db_session.add(api_key)
+    await db_session.commit()
+    await db_session.refresh(api_key)
+
+    return api_key, plaintext_key
+
+
+@pytest_asyncio.fixture
+async def test_client(db_manager: DatabaseManager, db_session: AsyncSession, test_user: User, test_api_key, mock_websocket_manager):
+    """Create AsyncClient with authenticated user, tenant context, and WebSocket manager injected."""
+    from api.app import app, state
+    from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+
+    api_key_record, plaintext_key = test_api_key
+
+    async def mock_get_current_user():
+        return test_user
+
+    async def mock_get_db_session():
+        yield db_session
+
+    class DummyAuth:
+        async def authenticate_request(self, request):
+            TenantManager.set_current_tenant(test_user.tenant_key)
+            return {
+                "authenticated": True,
+                "user_id": str(test_user.id),
+                "user": test_user.username,
+                "user_obj": test_user,
+                "tenant_key": test_user.tenant_key,
+            }
+
+    # Inject WebSocket manager into app state
+    state.db_manager = db_manager
+    state.tenant_manager = state.tenant_manager or TenantManager()
+    state.auth = DummyAuth()
+    state.websocket_manager = mock_websocket_manager  # Inject mock WebSocket manager
+    app.state.db_manager = db_manager
+    app.state.tenant_manager = state.tenant_manager
+    app.state.auth = state.auth
+    app.state.websocket_manager = mock_websocket_manager
+
+    # Recreate ToolAccessor with WebSocket manager injected
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+    state.tool_accessor = ToolAccessor(
+        state.db_manager,
+        state.tenant_manager,
+        websocket_manager=mock_websocket_manager
+    )
+
+    app.dependency_overrides[get_current_active_user] = mock_get_current_user
+    app.dependency_overrides[get_db_session] = mock_get_db_session
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        # Store the API key for tests to use
+        client.api_key = plaintext_key
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def test_project_with_orchestrator(db_session: AsyncSession, test_user: User, test_product: Product):
+    """Create test project with orchestrator job"""
+    from src.giljo_mcp.models import MCPAgentJob
+
+    project = Project(
+        name=f"Test Project with Orchestrator {uuid4().hex[:8]}",
+        description="Test project for orchestrator integration testing",
+        mission="Test mission for orchestrator workflow testing",
+        product_id=test_product.id,
+        tenant_key=test_user.tenant_key,
+        status="active",
+    )
+    db_session.add(project)
+    await db_session.commit()
+    await db_session.refresh(project)
+
+    # Create orchestrator job for the project
+    orchestrator_job = MCPAgentJob(
+        job_id=str(uuid4()),
+        project_id=project.id,
+        tenant_key=test_user.tenant_key,
+        agent_type="orchestrator",
+        agent_name="Orchestrator",
+        mission="Orchestrate project execution",
+        status="working",  # Valid status: waiting, working, blocked, complete, failed, cancelled, decommissioned
+        spawned_by=None,  # Top-level orchestrator
+    )
+    db_session.add(orchestrator_job)
+    await db_session.commit()
+    await db_session.refresh(project)
+
+    return project

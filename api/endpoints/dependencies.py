@@ -68,6 +68,12 @@ async def get_tenant_manager() -> TenantManager:
     return state.tenant_manager
 
 
+async def get_websocket_manager():
+    """Get WebSocketManager instance from app state."""
+    from api.app import state
+    return state.websocket_manager
+
+
 async def get_task_service(
     tenant_key: str = Depends(get_tenant_key),
     db_manager: DatabaseManager = Depends(get_db_manager),
@@ -95,6 +101,7 @@ async def get_message_service(
     tenant_key: str = Depends(get_tenant_key),
     db_manager: DatabaseManager = Depends(get_db_manager),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
+    websocket_manager = Depends(get_websocket_manager),
 ) -> MessageService:
     """
     Get MessageService instance for message management.
@@ -105,10 +112,15 @@ async def get_message_service(
         tenant_key: Tenant key from request context
         db_manager: Database manager instance
         tenant_manager: Tenant manager instance
+        websocket_manager: WebSocket manager for real-time events
 
     Returns:
         MessageService instance for message operations
     """
     # Set tenant context for this request
     tenant_manager.set_current_tenant(tenant_key)
-    return MessageService(db_manager=db_manager, tenant_manager=tenant_manager)
+    return MessageService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        websocket_manager=websocket_manager
+    )
