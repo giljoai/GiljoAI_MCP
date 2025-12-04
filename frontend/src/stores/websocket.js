@@ -370,9 +370,28 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   /**
    * Handle incoming message
+   *
+   * Normalizes payload structure for backward compatibility:
+   * - HTTP bridge sends flat: { type, project_id, tenant_key, ... }
+   * - Direct broadcast sends nested: { type, data: { project_id, tenant_key, ... } }
+   *
+   * After normalization, handlers always receive flat payloads with data accessible
+   * at the top level (e.g., payload.tenant_key works for both formats).
+   *
+   * @see Handover 0290 - WebSocket Payload Normalization
    */
   function handleMessage(data) {
-    const { type, ...payload } = data
+    const { type, ...rest } = data
+
+    // Normalize nested payloads (Handover 0290)
+    // If payload has 'data' key with object value, merge nested fields to top level
+    // This provides backward compatibility for both:
+    // - HTTP bridge (flat): { type, project_id, tenant_key, ... }
+    // - Direct broadcast (nested): { type, data: { project_id, tenant_key, ... } }
+    let payload = rest
+    if (rest.data && typeof rest.data === 'object' && !Array.isArray(rest.data)) {
+      payload = { ...rest, ...rest.data } // Merge nested to top level, preserve original
+    }
 
     // Handle system messages
     switch (type) {
