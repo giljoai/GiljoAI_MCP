@@ -773,7 +773,10 @@ const handleMessageSent = (data) => {
 
   // Add message to agent's messages array
   const agent = props.agents.find(
-    (a) => a.id === data.to_agent || a.agent_id === data.to_agent
+    (a) =>
+      a.id === data.to_agent ||
+      a.agent_id === data.to_agent ||
+      a.agent_type === data.to_agent // Fallback when backend sends agent_type instead of UUID
   )
   if (agent) {
     if (!agent.messages) agent.messages = []

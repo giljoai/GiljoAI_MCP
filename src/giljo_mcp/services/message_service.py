@@ -127,7 +127,8 @@ class MessageService:
                     message_type=message_type,
                     priority=priority,
                     status="pending",
-                    meta_data={"_from_agent": from_agent or "orchestrator"},
+                    # Store project_id as job_id for WebSocket consumers that key off job_id/project_id.
+                    meta_data={"_from_agent": from_agent or "orchestrator", "job_id": project.id},
                 )
 
                 session.add(message)
@@ -146,6 +147,7 @@ class MessageService:
                         await self._websocket_manager.broadcast_message_sent(
                             message_id=message_id,
                             job_id=message.meta_data.get("job_id", ""),
+                            project_id=project.id,
                             tenant_key=project.tenant_key,
                             from_agent=from_agent or "orchestrator",
                             to_agent=to_agents[0] if len(to_agents) == 1 else None,
