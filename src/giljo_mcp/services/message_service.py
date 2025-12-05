@@ -542,6 +542,25 @@ class MessageService:
                     await session.commit()
                     self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
 
+                    # Emit WebSocket events for UI update (Handover 0326)
+                    if self._websocket_manager:
+                        for msg in messages:
+                            try:
+                                await self._websocket_manager.broadcast_message_update(
+                                    message_id=str(msg.id),
+                                    project_id=str(msg.project_id),
+                                    update_type="acknowledged",
+                                    message_data={
+                                        "from_agent": msg.meta_data.get("_from_agent", "") if msg.meta_data else "",
+                                        "to_agents": msg.to_agents,
+                                        "status": "acknowledged",
+                                        "acknowledged_by": msg.acknowledged_by,
+                                        "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
+                                    }
+                                )
+                            except Exception as e:
+                                self._logger.warning(f"Failed to emit WebSocket for message {msg.id}: {e}")
+
                 # Convert to AgentMessageQueue-compatible format
                 messages_list = []
                 for msg in messages:
