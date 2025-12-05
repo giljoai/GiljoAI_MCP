@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, func, or_, select, update
 
 from .database import DatabaseManager
 
@@ -549,8 +549,14 @@ class AgentMessageQueue:
 
             # Apply filters
             if to_agent:
-                # Check if to_agent is in the to_agents array
-                query = query.where(Message.to_agents.contains([to_agent]))
+                # Include messages directly to this agent OR broadcast messages
+                # Broadcasts use to_agents=['all']
+                query = query.where(
+                    or_(
+                        Message.to_agents.contains([to_agent]),  # Direct messages
+                        Message.to_agents.contains(['all'])       # Broadcast messages
+                    )
+                )
 
             if message_type:
                 query = query.where(Message.message_type == message_type)
