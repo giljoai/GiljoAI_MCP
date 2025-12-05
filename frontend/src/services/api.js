@@ -504,18 +504,12 @@ export const api = {
         to: data.to,
       }),
     broadcast: (data) =>
-      apiClient.post(`/api/agent-jobs/broadcast`, {
+      apiClient.post(`/api/v1/messages/broadcast`, {
         project_id: data.project_id,
         content: data.content,
+        priority: data.priority || 'normal',
+        from_agent: data.from_agent || 'user',
       }),
-
-    // Succession endpoints (Handover 0505, 0509)
-    triggerSuccession: (jobId, reason = 'manual', notes = '') =>
-      apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, {
-        reason,
-        notes,
-      }),
-    successionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
 
     // Legacy aliases for backward compatibility (deprecated but functional)
     getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
