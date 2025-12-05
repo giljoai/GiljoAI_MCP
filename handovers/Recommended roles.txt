@@ -1,0 +1,40 @@
+ Recommended roles
+
+  1. orchestrator
+
+  - Purpose: mission planning, agent coordination.
+
+  2. analyzer
+
+  - Purpose: requirements, architecture, research.
+  - Aliases: analyser, research, researcher, analysis, investigative, discovery
+
+  3. backend-implementer
+
+  - Purpose: APIs, services, DB, auth.
+  - Aliases: backend, back-end, server, api, services, db, database, be
+
+  4. frontend-implementer
+
+  - Purpose: UI/UX, components, styling.
+  - Aliases: frontend, front-end, ui, client, webapp, fe
+
+  5. tester
+
+  - Purpose: unit/e2e tests, validation.
+  - Aliases: qa, quality, verification, validation, tests, testing
+
+  6. reviewer
+
+  - Purpose: code review, static analysis, refactors.
+  - Aliases: code-reviewer, audit, linter, code quality
+
+  7. documenter
+
+  - Purpose: docs, changelogs, READMEs.
+  - Aliases: docs, documentation, writer, documentor, scribe
+
+  8. devops
+
+  - Purpose: CI/CD, packaging, release, environments.
+  - Aliases: ops, ci, cd, platform, infra, infrastructure, sysops, release, build, deployment
