@@ -418,7 +418,7 @@ class MessageService:
         """
         Receive pending messages for an agent by job_id.
 
-        This method integrates with AgentMessageQueue for compatibility.
+        Uses native Message queries (NOT AgentMessageQueue which has broken SQL).
 
         Args:
             agent_id: Agent job ID
@@ -445,33 +445,80 @@ class MessageService:
                     "error": "No tenant context available"
                 }
 
-            from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-            comm_queue = AgentMessageQueue(self.db_manager)
             async with self.db_manager.get_session_async() as session:
-                result = await comm_queue.get_messages(
-                    session=session,
-                    job_id=agent_id,
-                    tenant_key=tenant_key,
-                    to_agent=agent_id,  # Filter for messages to this agent (includes broadcasts)
-                    message_type=None,
-                    unread_only=True,
+                # Retrieve agent job to get project context
+                result = await session.execute(
+                    select(MCPAgentJob).where(
+                        and_(
+                            MCPAgentJob.job_id == agent_id,
+                            MCPAgentJob.tenant_key == tenant_key
+                        )
+                    )
                 )
+                job = result.scalar_one_or_none()
 
-                if result.get("status") != "success":
+                if not job:
                     return {
                         "success": False,
-                        "error": result.get("error", "Unknown error")
+                        "error": f"Job {agent_id} not found"
                     }
 
-                messages = result.get("messages", [])
+                # Query messages using native SQLAlchemy queries
+                # Include messages where:
+                # 1. Direct message to this agent (to_agents contains agent_id as JSON array element)
+                # 2. Broadcast message (to_agents contains 'all')
+                # 3. Only pending messages (unread_only=True by default)
+                from sqlalchemy import or_, func
+
+                query = select(Message).where(
+                    and_(
+                        Message.tenant_key == tenant_key,
+                        Message.project_id == job.project_id,
+                        Message.status == "pending",  # Only unread messages
+                        or_(
+                            # Direct message: JSON array contains agent_id
+                            # Use PostgreSQL JSON containment operator @>
+                            Message.to_agents.op('@>')(func.cast([agent_id], type_=type(Message.to_agents.type))),
+                            # Broadcast: JSON array contains 'all'
+                            Message.to_agents.op('@>')(func.cast(['all'], type_=type(Message.to_agents.type)))
+                        )
+                    )
+                ).order_by(Message.created_at)
+
+                # Apply limit
                 if isinstance(limit, int) and limit > 0:
-                    messages = messages[:limit]
+                    query = query.limit(limit)
+
+                result = await session.execute(query)
+                messages = result.scalars().all()
+
+                # Convert to AgentMessageQueue-compatible format
+                messages_list = []
+                for msg in messages:
+                    # Map priority to integer for backward compatibility
+                    priority_reverse_map = {"low": 0, "normal": 1, "high": 2, "critical": 2}
+                    priority_int = priority_reverse_map.get(msg.priority, 1)
+
+                    messages_list.append({
+                        "id": str(msg.id),
+                        "from_agent": msg.meta_data.get("_from_agent", "") if msg.meta_data else "",
+                        "to_agent": msg.to_agents[0] if msg.to_agents else None,
+                        "type": msg.message_type,
+                        "content": msg.content,
+                        "priority": priority_int,
+                        "acknowledged": msg.status in ["acknowledged", "completed"],
+                        "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
+                        "acknowledged_by": msg.acknowledged_by[0] if msg.acknowledged_by else None,
+                        "timestamp": msg.created_at.isoformat(),
+                        "metadata": msg.meta_data or {},
+                    })
+
+                self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
                 return {
                     "success": True,
-                    "messages": messages,
-                    "count": len(messages)
+                    "messages": messages_list,
+                    "count": len(messages_list)
                 }
 
         except Exception as e:
@@ -487,6 +534,8 @@ class MessageService:
     ) -> dict[str, Any]:
         """
         List messages in a project or for a specific agent.
+
+        Uses native Message queries (NOT AgentMessageQueue which has broken SQL).
 
         Args:
             project_id: Optional project ID filter
@@ -515,31 +564,67 @@ class MessageService:
                 }
 
             async with self.db_manager.get_session_async() as session:
-                # If agent_id provided, use communication queue
+                # If agent_id provided, filter messages for that agent
                 if agent_id:
-                    from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-                    comm_queue = AgentMessageQueue(self.db_manager)
-                    result = await comm_queue.get_messages(
-                        session=session,
-                        job_id=agent_id,
-                        tenant_key=tenant_key or "",
-                        to_agent=None,
-                        message_type=None,
-                        unread_only=False,
+                    # Get agent job to verify it exists and get project context
+                    result = await session.execute(
+                        select(MCPAgentJob).where(
+                            and_(
+                                MCPAgentJob.job_id == agent_id,
+                                MCPAgentJob.tenant_key == tenant_key or ""
+                            )
+                        )
                     )
+                    job = result.scalar_one_or_none()
 
-                    if result.get("status") != "success":
+                    if not job:
                         return {
                             "success": False,
-                            "error": result.get("error", "Unknown error")
+                            "error": f"Job {agent_id} not found"
                         }
 
-                    messages = result.get("messages", [])
+                    # Query messages for this agent using native queries
+                    from sqlalchemy import or_, func
+
+                    query = select(Message).where(
+                        and_(
+                            Message.tenant_key == job.tenant_key,
+                            Message.project_id == job.project_id,
+                            or_(
+                                # Direct message: JSON array contains agent_id
+                                Message.to_agents.op('@>')(func.cast([agent_id], type_=type(Message.to_agents.type))),
+                                # Broadcast: JSON array contains 'all'
+                                Message.to_agents.op('@>')(func.cast(['all'], type_=type(Message.to_agents.type)))
+                            )
+                        )
+                    ).order_by(Message.created_at)
+
+                    result = await session.execute(query)
+                    messages = result.scalars().all()
+
+                    # Convert to standard format (not AgentMessageQueue format)
+                    message_list = []
+                    for msg in messages:
+                        from_agent = msg.meta_data.get("_from_agent", "unknown") if msg.meta_data else "unknown"
+                        to_agents = msg.to_agents if msg.to_agents else []
+                        to_agent = to_agents[0] if to_agents else None
+
+                        message_list.append({
+                            "id": str(msg.id),
+                            "from_agent": from_agent,
+                            "to_agent": to_agent,
+                            "to_agents": to_agents,
+                            "type": msg.message_type,
+                            "content": msg.content,
+                            "status": msg.status,
+                            "priority": msg.priority,
+                            "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                        })
+
                     return {
                         "success": True,
-                        "messages": messages,
-                        "count": len(messages)
+                        "messages": message_list,
+                        "count": len(message_list)
                     }
 
                 # Otherwise, list by project

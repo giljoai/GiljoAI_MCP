@@ -272,14 +272,23 @@ async def download_agent_templates(
         curl http://localhost:7272/api/download/agent-templates.zip -o templates.zip
     """
     # Try to authenticate (JWT cookie or API key)
+    # NOTE: Use get_current_user_optional to avoid raising on unauthenticated access.
     current_user = None
     try:
-        from src.giljo_mcp.auth.dependencies import get_current_user
+        from src.giljo_mcp.auth.dependencies import get_current_user_optional
 
-        current_user = await get_current_user(request, access_token, x_api_key, db)
+        authorization = request.headers.get("authorization")
+        current_user = await get_current_user_optional(
+            request,
+            access_token,
+            x_api_key,
+            authorization,
+            db,
+        )
     except HTTPException:
-        # No auth provided or invalid - will use system defaults
-        pass
+        # Safety: get_current_user_optional should already swallow HTTPException,
+        # but keep this block to avoid leaking auth errors.
+        current_user = None
 
     # Determine template source
     if current_user:
