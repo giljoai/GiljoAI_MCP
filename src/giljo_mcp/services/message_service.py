@@ -542,24 +542,29 @@ class MessageService:
                     await session.commit()
                     self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
 
-                    # Emit WebSocket events for UI update (Handover 0326)
+                    # Update JSONB messages array status for UI counter (Handover 0326)
+                    # The dashboard reads from MCPAgentJob.messages JSONB, not Message table
+                    await self._update_jsonb_message_status(
+                        session=session,
+                        agent_job_id=agent_id,
+                        message_ids=[str(msg.id) for msg in messages],
+                        new_status="acknowledged"
+                    )
+
+                    # Emit WebSocket event for UI update (Handover 0326)
+                    # Use broadcast_message_acknowledged for real-time counter updates
                     if self._websocket_manager:
-                        for msg in messages:
-                            try:
-                                await self._websocket_manager.broadcast_message_update(
-                                    message_id=str(msg.id),
-                                    project_id=str(msg.project_id),
-                                    update_type="acknowledged",
-                                    message_data={
-                                        "from_agent": msg.meta_data.get("_from_agent", "") if msg.meta_data else "",
-                                        "to_agents": msg.to_agents,
-                                        "status": "acknowledged",
-                                        "acknowledged_by": msg.acknowledged_by,
-                                        "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
-                                    }
-                                )
-                            except Exception as e:
-                                self._logger.warning(f"Failed to emit WebSocket for message {msg.id}: {e}")
+                        try:
+                            await self._websocket_manager.broadcast_message_acknowledged(
+                                message_id=str(messages[0].id) if messages else "",
+                                agent_id=agent_id,
+                                tenant_key=tenant_key,
+                                project_id=str(job.project_id),
+                                message_ids=[str(msg.id) for msg in messages],
+                            )
+                            self._logger.info(f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages")
+                        except Exception as e:
+                            self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
 
                 # Convert to AgentMessageQueue-compatible format
                 messages_list = []
@@ -882,10 +887,15 @@ class MessageService:
             timestamp = datetime.now(timezone.utc).isoformat()
 
             # Add message to SENDER's outbound messages (for "Messages Sent" counter)
-            # Find sender agent (usually orchestrator)
+            # Find sender agent - check both job_id (UUID) and agent_type
+            # from_agent can be a UUID like "abf6c4fd-68b9-4556-a268-467fa90db480" or agent_type like "orchestrator"
+            from sqlalchemy import or_
             sender_result = await session.execute(
                 select(MCPAgentJob).where(
-                    MCPAgentJob.agent_type == from_agent
+                    or_(
+                        MCPAgentJob.job_id == from_agent,
+                        MCPAgentJob.agent_type == from_agent
+                    )
                 ).limit(1)
             )
             sender_agent = sender_result.scalar_one_or_none()
@@ -949,3 +959,60 @@ class MessageService:
         except Exception as e:
             self._logger.error(f"[PERSISTENCE] Failed to persist message to JSONB: {e}")
             # Don't re-raise - message was already saved to messages table
+
+    async def _update_jsonb_message_status(
+        self,
+        session: AsyncSession,
+        agent_job_id: str,
+        message_ids: list[str],
+        new_status: str,
+    ) -> None:
+        """
+        Update status of messages in MCPAgentJob.messages JSONB column.
+
+        This syncs the JSONB message status with the Message table status,
+        ensuring the dashboard counters (Messages Waiting, Messages Read) are accurate.
+
+        Args:
+            session: Active database session
+            agent_job_id: Agent job ID whose JSONB messages to update
+            message_ids: List of message IDs to update
+            new_status: New status value (e.g., 'acknowledged', 'read')
+        """
+        from sqlalchemy.orm.attributes import flag_modified
+        from src.giljo_mcp.models.agents import MCPAgentJob
+
+        try:
+            # Get the agent job
+            result = await session.execute(
+                select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job_id)
+            )
+            agent_job = result.scalar_one_or_none()
+
+            if not agent_job or not agent_job.messages:
+                self._logger.debug(f"[JSONB UPDATE] No messages to update for agent {agent_job_id}")
+                return
+
+            # Update status for matching messages
+            updated_count = 0
+            message_ids_set = set(message_ids)
+
+            for msg in agent_job.messages:
+                if msg.get("id") in message_ids_set and msg.get("status") != new_status:
+                    msg["status"] = new_status
+                    updated_count += 1
+
+            if updated_count > 0:
+                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
+                flag_modified(agent_job, "messages")
+                await session.commit()
+                self._logger.info(
+                    f"[JSONB UPDATE] Updated {updated_count} messages to '{new_status}' "
+                    f"for agent {agent_job_id}"
+                )
+            else:
+                self._logger.debug(f"[JSONB UPDATE] No messages needed status update for agent {agent_job_id}")
+
+        except Exception as e:
+            self._logger.error(f"[JSONB UPDATE] Failed to update message status: {e}")
+            # Don't re-raise - this is a secondary update
