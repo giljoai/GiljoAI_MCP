@@ -5,7 +5,7 @@
 **To Agent:** TDD-Implementor, Analyzer, Tester subagents
 **Priority:** High
 **Estimated Complexity:** 2-3 hours
-**Status:** In Progress
+**Status:** ✅ Completed
 
 ---
 
@@ -116,12 +116,12 @@ Simplify the messaging system by merging "read" and "acknowledge" into a single 
 
 ## Success Criteria
 
-- [ ] `receive_messages` auto-acknowledges retrieved messages
-- [ ] `acknowledge_message` completely removed from codebase
-- [ ] No orphan code or dead references
-- [ ] All tests pass
-- [ ] Dashboard correctly shows read/unread status
-- [ ] MCP tool list does not include `acknowledge_message`
+- [x] `receive_messages` auto-acknowledges retrieved messages
+- [x] `acknowledge_message` completely removed from codebase
+- [x] No orphan code or dead references
+- [x] All tests pass
+- [x] Dashboard correctly shows read/unread status
+- [x] MCP tool list does not include `acknowledge_message`
 
 ---
 
@@ -139,3 +139,38 @@ If issues arise:
 - Architecture slides: `handovers/Reference_docs/Workflow PPT to JPG/`
 - Message service: `src/giljo_mcp/services/message_service.py`
 - MCP tools: `src/giljo_mcp/tools/agent_communication.py`
+
+---
+
+## Implementation Summary
+
+**Completed:** 2025-12-05
+
+### What Was Built
+- Auto-acknowledge in `receive_messages`: Messages marked as acknowledged immediately on retrieval
+- JSONB sync: Agent's messages array updated with status change for persistent counters
+- WebSocket `broadcast_message_acknowledged`: Real-time UI counter updates
+- Sender lookup fix: Handles both job_id UUID and agent_type for Messages Sent persistence
+- Removed `acknowledge_message` from 39 files (590+ lines deleted)
+
+### Key Files Modified
+| File | Changes |
+|------|---------|
+| `src/giljo_mcp/services/message_service.py` | Auto-ack logic, JSONB sync, sender lookup fix |
+| `api/websocket.py` | Added `broadcast_message_acknowledged()` method |
+| `frontend/src/components/projects/JobsTab.vue` | Handler for multiple message IDs |
+
+### Dashboard Counters (All Working)
+| Counter | Real-time | Persistent |
+|---------|-----------|------------|
+| Messages Sent | ✅ | ✅ |
+| Messages Waiting | ✅ | ✅ |
+| Messages Read | ✅ | ✅ |
+
+### Commits
+1. `8fec5ee1` - feat: Auto-acknowledge messages on receive, remove acknowledge_message MCP tool
+2. `44ca8540` - fix: Add WebSocket emit for auto-acknowledge UI updates
+3. `6667849f` - fix: Complete message counter persistence and real-time updates
+
+### Verification
+Tested end-to-end: Reviewer → Implementer message flow with real-time counter updates confirmed.
