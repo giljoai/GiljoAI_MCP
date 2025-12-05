@@ -69,7 +69,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
             # Message tools
             "send_message": state.tool_accessor.send_message,
             "receive_messages": state.tool_accessor.receive_messages,
-            "acknowledge_message": state.tool_accessor.acknowledge_message,
             "list_messages": state.tool_accessor.list_messages,
             # Task tools
             "create_task": state.tool_accessor.create_task,
@@ -267,19 +266,6 @@ async def list_mcp_tools():
                             "agent_name": "backend-implementer",
                             "project_id": "proj-abc123-def456",
                         },
-                    },
-                ],
-            },
-            {
-                "name": "acknowledge_message",
-                "description": "Mark message as read/acknowledged by agent",
-                "arguments": {
-                    "message_id": "string (UUID) REQUIRED - Message ID to acknowledge",
-                },
-                "examples": [
-                    {
-                        "description": "Acknowledge received message",
-                        "payload": {"message_id": "msg-abc123-def456"},
                     },
                 ],
             },

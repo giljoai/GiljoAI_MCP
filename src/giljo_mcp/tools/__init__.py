@@ -9,7 +9,7 @@ error if called. No stdio registration is performed here.
 =============================================================================
 PUBLIC MCP TOOLS (exposed via /mcp HTTP endpoint)
 =============================================================================
-Messaging: send_message, receive_messages, acknowledge_message, list_messages
+Messaging: send_message, receive_messages, list_messages
   - Implemented in: api/endpoints/mcp_http.py via MessageService
   - Database: Message table with multi-tenant isolation
   - Contract: Handover 0295

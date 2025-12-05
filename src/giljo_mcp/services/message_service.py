@@ -525,6 +525,23 @@ class MessageService:
                 result = await session.execute(query)
                 messages = result.scalars().all()
 
+                # AUTO-ACKNOWLEDGE: Bulk update all retrieved messages to acknowledged status (Handover 0326)
+                # This happens immediately when agent retrieves messages
+                if messages:
+                    from datetime import datetime, timezone
+
+                    for msg in messages:
+                        msg.status = "acknowledged"
+                        msg.acknowledged_at = datetime.now(timezone.utc)
+                        # Maintain acknowledged_by as a list (JSONB array in database)
+                        if not msg.acknowledged_by:
+                            msg.acknowledged_by = []
+                        if agent_id not in msg.acknowledged_by:
+                            msg.acknowledged_by.append(agent_id)
+
+                    await session.commit()
+                    self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
+
                 # Convert to AgentMessageQueue-compatible format
                 messages_list = []
                 for msg in messages:
@@ -736,120 +753,6 @@ class MessageService:
     # Message Status Updates
     # ============================================================================
 
-    async def acknowledge_message(
-        self,
-        message_id: str,
-        agent_name: str
-    ) -> dict[str, Any]:
-        """
-        Mark a message as acknowledged/received by an agent.
-
-        Args:
-            message_id: Message UUID
-            agent_name: Name of agent acknowledging
-
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.acknowledge_message(
-            ...     message_id="msg-123",
-            ...     agent_name="impl-1"
-            ... )
-        """
-        try:
-            async with self.db_manager.get_session_async() as session:
-                result = await session.execute(
-                    select(Message).where(Message.id == message_id)
-                )
-                message = result.scalar_one_or_none()
-
-                if not message:
-                    return {
-                        "success": False,
-                        "error": "Message not found"
-                    }
-
-                # Add to acknowledged_by array
-                if not message.acknowledged_by:
-                    message.acknowledged_by = []
-
-                if agent_name not in message.acknowledged_by:
-                    message.acknowledged_by.append(agent_name)
-                    await session.commit()
-
-                    # Update JSONB status in recipient's agent job
-                    try:
-                        from sqlalchemy.orm.attributes import flag_modified
-
-                        # Find agent job by job_id (agent_name could be job_id or agent_type)
-                        agent_result = await session.execute(
-                            select(MCPAgentJob).where(
-                                MCPAgentJob.job_id == agent_name
-                            )
-                        )
-                        agent_job = agent_result.scalar_one_or_none()
-
-                        if not agent_job and message.project_id:
-                            # Fallback: try to find by agent_type
-                            agent_result = await session.execute(
-                                select(MCPAgentJob).where(
-                                    MCPAgentJob.agent_type == agent_name,
-                                    MCPAgentJob.project_id == message.project_id
-                                ).limit(1)
-                            )
-                            agent_job = agent_result.scalar_one_or_none()
-
-                        if agent_job and agent_job.messages:
-                            # Find and update the message status in JSONB
-                            updated = False
-                            for msg in agent_job.messages:
-                                if msg.get("id") == message_id:
-                                    msg["status"] = "read"
-                                    msg["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
-                                    updated = True
-                                    break
-
-                            if updated:
-                                flag_modified(agent_job, "messages")
-                                await session.commit()
-                                self._logger.info(
-                                    f"[PERSISTENCE] Updated JSONB status to 'read' for message {message_id}"
-                                )
-                    except Exception as jsonb_error:
-                        self._logger.warning(
-                            f"Failed to update JSONB status for message {message_id}: {jsonb_error}"
-                        )
-
-                self._logger.info(
-                    f"Message {message_id} acknowledged by {agent_name}"
-                )
-
-                # Emit WebSocket event if manager is available
-                if self._websocket_manager:
-                    try:
-                        await self._websocket_manager.broadcast_message_acknowledged(
-                            message_id=message_id,
-                            job_id=message.meta_data.get("job_id", "") if message.meta_data else "",
-                            tenant_key=message.tenant_key,
-                            agent_id=agent_name,
-                        )
-                    except Exception as ws_error:
-                        # Log WebSocket errors but don't fail the acknowledgment
-                        self._logger.warning(
-                            f"Failed to emit WebSocket event for message acknowledgment {message_id}: {ws_error}"
-                        )
-
-                return {
-                    "success": True,
-                    "message_id": message_id,
-                    "acknowledged_by": agent_name,
-                }
-
-        except Exception as e:
-            self._logger.exception(f"Failed to acknowledge message: {e}")
-            return {"success": False, "error": str(e)}
-
     async def complete_message(
         self,
         message_id: str,
@@ -902,12 +805,11 @@ class MessageService:
                 # Emit WebSocket event if manager is available
                 if self._websocket_manager:
                     try:
-                        await self._websocket_manager.broadcast_message_acknowledged(
+                        await self._websocket_manager.broadcast_message_update(
                             message_id=message_id,
-                            job_id=message.meta_data.get("job_id", "") if message.meta_data else "",
-                            tenant_key=message.tenant_key,
-                            agent_id=agent_name,
-                            response_data={"status": "completed", "result": result[:100] if result else ""},
+                            project_id=message.project_id or "",
+                            update_type="completed",
+                            message_data={"completed_by": agent_name, "status": "completed", "result": result[:100] if result else ""},
                         )
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the completion

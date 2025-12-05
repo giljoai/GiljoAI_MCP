@@ -269,7 +269,7 @@ The receiving agent should:
 
     def generate_acknowledgment_instruction(self) -> str:
         """Generate acknowledgment instruction"""
-        return "Please acknowledge receipt of this message by using the acknowledge_message() tool."
+        return "Messages are automatically acknowledged when retrieved."
 
     def get_behavioral_rules(self, role: str) -> list[str]:
         """Get behavioral rules for a role"""

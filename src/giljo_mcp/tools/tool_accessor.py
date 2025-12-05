@@ -167,10 +167,6 @@ class ToolAccessor:
         """Retrieve pending messages for an agent (delegates to MessageService)"""
         return await self._message_service.get_messages(agent_name=agent_name, project_id=project_id)
 
-    async def acknowledge_message(self, message_id: str, agent_name: str) -> dict[str, Any]:
-        """Mark message as received by agent (delegates to MessageService)"""
-        return await self._message_service.acknowledge_message(message_id=message_id, agent_name=agent_name)
-
     async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
         """Mark message as completed with result (delegates to MessageService)"""
         return await self._message_service.complete_message(message_id=message_id, agent_name=agent_name, result=result)

@@ -166,18 +166,6 @@ class UIAnalyzerMCPMonitor:
         # Add normal message handling logic here
         # This could add messages to a standard processing queue
 
-    async def acknowledge_message(self, message_id: str):
-        """Acknowledge message receipt using MCP tools."""
-        try:
-            # This would call the real MCP acknowledge_message tool
-            # For simulation:
-            self.log(f"Acknowledged message {message_id}")
-            # Real implementation would be:
-            # await mcp_acknowledge_message(message_id=message_id, agent_name=self.agent_name)
-
-        except Exception as e:
-            self.log(f"Failed to acknowledge message {message_id}: {e}", "ERROR")
-
     def log_system_status(self):
         """Log periodic system status."""
         uptime = datetime.now() - self.start_time
@@ -218,13 +206,6 @@ class MCPIntegration:
         # This would integrate with the actual MCP client
         # For now, return empty list
         return []
-
-    @staticmethod
-    async def acknowledge_message(message_id: str, agent_name: str) -> bool:
-        """Acknowledge message using real MCP tools."""
-        # This would integrate with the actual MCP client
-        # For now, return success
-        return True
 
 
 async def main():

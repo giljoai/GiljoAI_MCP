@@ -285,86 +285,6 @@ class TestMessageServiceStatusUpdates:
     """Test message status update operations"""
 
     @pytest.mark.asyncio
-    async def test_acknowledge_message_success(self, mock_db_manager, mock_tenant_manager):
-        """Test successful message acknowledgment"""
-        # Arrange
-        db_manager, session = mock_db_manager
-
-        # Mock message
-        mock_message = Mock(spec=Message)
-        mock_message.id = "msg-id"
-        mock_message.acknowledged_by = []
-
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_message)
-        session.execute = AsyncMock(return_value=mock_result)
-
-        service = MessageService(db_manager, mock_tenant_manager)
-
-        # Act
-        result = await service.acknowledge_message(
-            message_id="msg-id",
-            agent_name="impl-1"
-        )
-
-        # Assert
-        assert result["success"] is True
-        assert result["message_id"] == "msg-id"
-        assert result["acknowledged_by"] == "impl-1"
-        assert "impl-1" in mock_message.acknowledged_by
-        session.commit.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_already_acknowledged(self, mock_db_manager, mock_tenant_manager):
-        """Test acknowledging a message that's already acknowledged by this agent"""
-        # Arrange
-        db_manager, session = mock_db_manager
-
-        # Mock message already acknowledged by impl-1
-        mock_message = Mock(spec=Message)
-        mock_message.id = "msg-id"
-        mock_message.acknowledged_by = ["impl-1"]
-
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_message)
-        session.execute = AsyncMock(return_value=mock_result)
-
-        service = MessageService(db_manager, mock_tenant_manager)
-
-        # Act
-        result = await service.acknowledge_message(
-            message_id="msg-id",
-            agent_name="impl-1"
-        )
-
-        # Assert
-        assert result["success"] is True
-        # Should not commit again since already acknowledged
-        session.commit.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_not_found(self, mock_db_manager, mock_tenant_manager):
-        """Test acknowledging a non-existent message"""
-        # Arrange
-        db_manager, session = mock_db_manager
-
-        mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=None)
-        session.execute = AsyncMock(return_value=mock_result)
-
-        service = MessageService(db_manager, mock_tenant_manager)
-
-        # Act
-        result = await service.acknowledge_message(
-            message_id="nonexistent",
-            agent_name="impl-1"
-        )
-
-        # Assert
-        assert result["success"] is False
-        assert "not found" in result["error"]
-
-    @pytest.mark.asyncio
     async def test_complete_message_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful message completion"""
         # Arrange
@@ -453,22 +373,6 @@ class TestMessageServiceErrorHandling:
 
         # Act
         result = await service.get_messages(agent_name="impl-1")
-
-        # Assert
-        assert result["success"] is False
-        assert "Connection lost" in result["error"]
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_database_exception(self, failing_db_manager, mock_tenant_manager):
-        """Test database exception handling in acknowledge_message"""
-        # Arrange - use failing_db_manager fixture
-        service = MessageService(failing_db_manager, mock_tenant_manager)
-
-        # Act
-        result = await service.acknowledge_message(
-            message_id="msg-id",
-            agent_name="impl-1"
-        )
 
         # Assert
         assert result["success"] is False

@@ -6,7 +6,6 @@ Tests all message tool functions:
 - register_message_tools
 - send_message
 - get_messages
-- acknowledge_message
 - complete_message
 - broadcast
 - log_task
@@ -63,7 +62,6 @@ class TestMessageTools:
         expected_tools = [
             "send_message",
             "get_messages",
-            "acknowledge_message",
             "complete_message",
             "broadcast",
             "log_task",
@@ -271,62 +269,6 @@ class TestMessageTools:
 
         AssertionHelpers.assert_error_response(result, "Agent not found")
 
-    # acknowledge_message tests
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_success(self):
-        """Test successful message acknowledgment"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Create test message
-        async with self.db_manager.get_session_async() as session:
-            message = await ToolsTestHelper.create_test_message(
-                session, self.project.id, "orchestrator", "agent1", "Test message"
-            )
-
-        register_message_tools(mock_server, self.db_manager, self.tenant_manager)
-        acknowledge_message = registrar.get_registered_tool("acknowledge_message")
-
-        result = await acknowledge_message(message_id=message.id, agent_name="agent1")
-
-        AssertionHelpers.assert_success_response(result, ["message_id", "status", "acknowledged_by"])
-        assert result["message_id"] == message.id
-        assert result["status"] == "acknowledged"
-        assert result["acknowledged_by"] == "agent1"
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_not_found(self):
-        """Test acknowledging non-existent message"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        register_message_tools(mock_server, self.db_manager, self.tenant_manager)
-        acknowledge_message = registrar.get_registered_tool("acknowledge_message")
-
-        result = await acknowledge_message(message_id=str(uuid.uuid4()), agent_name="agent1")
-
-        AssertionHelpers.assert_error_response(result, "Message not found")
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_wrong_recipient(self):
-        """Test acknowledging message by wrong agent"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Create message for agent1
-        async with self.db_manager.get_session_async() as session:
-            message = await ToolsTestHelper.create_test_message(
-                session, self.project.id, "orchestrator", "agent1", "Test message"
-            )
-
-        register_message_tools(mock_server, self.db_manager, self.tenant_manager)
-        acknowledge_message = registrar.get_registered_tool("acknowledge_message")
-
-        # Try to acknowledge with agent2
-        result = await acknowledge_message(message_id=message.id, agent_name="agent2")
-
-        AssertionHelpers.assert_error_response(result, "not authorized")
-
     # complete_message tests
     @pytest.mark.asyncio
     async def test_complete_message_success(self):
@@ -498,49 +440,6 @@ class TestMessageTools:
         AssertionHelpers.assert_error_response(result, "Database connection failed")
 
     @pytest.mark.asyncio
-    async def test_message_acknowledgment_arrays(self):
-        """Test message acknowledgment arrays functionality"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Create message sent to multiple agents
-        async with self.db_manager.get_session_async() as session:
-            message = Message(
-                id=str(uuid.uuid4()),
-                from_agent="orchestrator",
-                to_agent="agent1,agent2",  # Multiple recipients
-                content="Multi-recipient message",
-                type="broadcast",
-                priority="normal",
-                status="pending",
-                project_id=self.project.id,
-                tenant_key=self.project.tenant_key,
-                acknowledgment_array=[],  # Empty initially
-                created_at=datetime.now(timezone.utc),
-            )
-            session.add(message)
-            await session.commit()
-            await session.refresh(message)
-
-        register_message_tools(mock_server, self.db_manager, self.tenant_manager)
-        acknowledge_message = registrar.get_registered_tool("acknowledge_message")
-
-        # First acknowledgment
-        result1 = await acknowledge_message(message_id=message.id, agent_name="agent1")
-        AssertionHelpers.assert_success_response(result1)
-
-        # Second acknowledgment
-        result2 = await acknowledge_message(message_id=message.id, agent_name="agent2")
-        AssertionHelpers.assert_success_response(result2)
-
-        # Verify acknowledgment array tracking
-        async with self.db_manager.get_session_async() as session:
-            updated_message = await session.get(Message, message.id)
-            assert len(updated_message.acknowledgment_array) == 2
-            assert "agent1" in updated_message.acknowledgment_array
-            assert "agent2" in updated_message.acknowledgment_array
-
-    @pytest.mark.asyncio
     async def test_message_priority_handling(self):
         """Test message priority handling and ordering"""
         registrar = MockMCPToolRegistrar()
@@ -618,7 +517,6 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         send_message = registrar.get_registered_tool("send_message")
         get_messages = registrar.get_registered_tool("get_messages")
-        acknowledge_message = registrar.get_registered_tool("acknowledge_message")
         complete_message = registrar.get_registered_tool("complete_message")
 
         # 1. Send message
@@ -628,16 +526,18 @@ class TestMessageTools:
         AssertionHelpers.assert_success_response(send_result)
         message_id = send_result["message_id"]
 
-        # 2. Get messages
+        # 2. Get messages (auto-acknowledges)
         get_result = await get_messages(agent_name="agent1")
         AssertionHelpers.assert_success_response(get_result)
         assert get_result["count"] >= 1
 
-        # 3. Acknowledge message
-        ack_result = await acknowledge_message(message_id=message_id, agent_name="agent1")
-        AssertionHelpers.assert_success_response(ack_result)
+        # 3. Complete message (after auto-acknowledgment)
+        # First need to mark message as acknowledged manually for test setup
+        async with self.db_manager.get_session_async() as session:
+            message = await session.get(Message, message_id)
+            message.status = "acknowledged"
+            await session.commit()
 
-        # 4. Complete message
         complete_result = await complete_message(
             message_id=message_id, agent_name="agent1", result="Lifecycle test completed"
         )
@@ -661,3 +561,76 @@ class TestMessageTools:
         AssertionHelpers.assert_success_response(result)
         # Message should be processed through the queue
         assert result["delivery"]["successful"] == 1
+
+    @pytest.mark.asyncio
+    async def test_receive_messages_auto_acknowledges(self):
+        """Test that receive_messages automatically acknowledges messages when retrieved"""
+        from src.giljo_mcp.services.message_service import MessageService
+        from sqlalchemy import select
+
+        # Create test messages
+        async with self.db_manager.get_session_async() as session:
+            msg1 = Message(
+                id=str(uuid.uuid4()),
+                tenant_key=self.project.tenant_key,
+                project_id=self.project.id,
+                to_agents=[self.agent1.agent_name],
+                message_type="direct",
+                content="Test message 1",
+                priority="normal",
+                status="pending",
+                created_at=datetime.now(timezone.utc),
+                meta_data={"_from_agent": "orchestrator"},
+            )
+            msg2 = Message(
+                id=str(uuid.uuid4()),
+                tenant_key=self.project.tenant_key,
+                project_id=self.project.id,
+                to_agents=[self.agent1.agent_name],
+                message_type="direct",
+                content="Test message 2",
+                priority="high",
+                status="pending",
+                created_at=datetime.now(timezone.utc),
+                meta_data={"_from_agent": "orchestrator"},
+            )
+            session.add_all([msg1, msg2])
+            await session.commit()
+            await session.refresh(msg1)
+            await session.refresh(msg2)
+            msg1_id = msg1.id
+            msg2_id = msg2.id
+
+        # Create service instance
+        message_service = MessageService(self.db_manager, self.tenant_manager)
+
+        # Call receive_messages
+        result = await message_service.receive_messages(
+            agent_id=self.agent1.job_id,
+            limit=10,
+            tenant_key=self.project.tenant_key
+        )
+
+        # Verify response
+        assert result["success"] is True
+        assert result["count"] == 2
+        assert len(result["messages"]) == 2
+
+        # Verify messages returned are marked as acknowledged in response
+        for msg in result["messages"]:
+            assert msg["acknowledged"] is True
+            assert msg["acknowledged_at"] is not None
+            assert msg["acknowledged_by"] == self.agent1.job_id
+
+        # Verify database records are updated to acknowledged status
+        async with self.db_manager.get_session_async() as session:
+            db_msg1 = await session.get(Message, msg1_id)
+            db_msg2 = await session.get(Message, msg2_id)
+
+            assert db_msg1.status == "acknowledged"
+            assert db_msg1.acknowledged_at is not None
+            assert db_msg1.acknowledged_by == [self.agent1.job_id]
+
+            assert db_msg2.status == "acknowledged"
+            assert db_msg2.acknowledged_at is not None
+            assert db_msg2.acknowledged_by == [self.agent1.job_id]

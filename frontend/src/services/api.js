@@ -279,8 +279,6 @@ export const api = {
     get: (id) => apiClient.get(`/api/v1/messages/${id}/`),
     // Legacy send method - use sendUnified for UI messaging (Handover 0299)
     send: (data) => apiClient.post('/api/v1/messages/', data),
-    acknowledge: (id, agentName) =>
-      apiClient.post(`/api/v1/messages/${id}/acknowledge/`, { agent_name: agentName }),
     complete: (id, result) => apiClient.post(`/api/v1/messages/${id}/complete/`, { result }),
     broadcast: (projectId, content, priority = 'normal') =>
       apiClient.post('/api/v1/messages/broadcast', {
