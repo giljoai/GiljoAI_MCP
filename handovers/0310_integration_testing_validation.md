@@ -13,7 +13,7 @@
 **Priority**: P1 - HIGH
 **Estimated Duration**: 4-5 hours (reduced - some tests already exist)
 **Agent Budget**: 90K tokens
-**Depends On**: Handovers 0312-0316 (Context Management v2.0)
+**Depends On**: Handovers 0327-0328 (Bug Fixes), 0312-0316 (Context Management v2.0)
 **Blocks**: None (Final handover in series)
 **Created**: 2025-11-16
 **Updated**: 2025-11-18

@@ -31,12 +31,13 @@
 | 0299 | Unified UI Messaging Endpoint | **COMPLETE** | High |
 
 ### Current Development (0300+)
-| ID | Title | Status | Priority | Note |
-|----|-------|--------|----------|------|
-| 0310 | Integration Testing Validation | In Progress | Medium | Unique |
-| 0311 | Playwright Localhost Auth Fix | Not Started | Low | ⚠️ Conflicts w/ ref |
-| 0312 | Product Service Recursion Fix | Not Started | Low | ⚠️ Conflicts w/ ref |
-| 0325 | **Tenant Isolation Surgical Fix** | **READY** | **HIGH** | Unique |
+| ID | Title | Status | Priority |
+|----|-------|--------|----------|
+| 0310 | Integration Testing Validation | In Progress | Medium |
+| 0325 | **Tenant Isolation Surgical Fix** | **READY** | **HIGH** |
+| 0326 | Message Auto-Acknowledge Simplification | Not Started | Medium |
+| 0327 | Playwright Localhost Auth Fix | Not Started | Low |
+| 0328 | Product Service Recursion Fix | Not Started | Low |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -129,10 +130,8 @@ completed/reference/
 **0601-0700** (Migration): 0601
 
 ### Current Gaps Available
-- **0304, 0307, 0308, 0310, 0317, 0319**: Gaps in 0301-0400 range
-- **0326+**: Next sequential after current development
-
-⚠️ **Conflict Warning**: Active handovers 0311, 0312 duplicate reference numbers (different content). New handovers should use 0326+ or verified gaps only.
+- **0304, 0307, 0308, 0317, 0319**: Gaps in 0301-0400 range
+- **0329+**: Next sequential after current development
 
 ### Naming Format
 ```
