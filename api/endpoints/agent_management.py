@@ -19,7 +19,7 @@ from src.giljo_mcp.repositories.context_repository import ContextRepository
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 
-router = APIRouter(prefix="/api/agent", tags=["Agent Management"])
+router = APIRouter(prefix="/api", tags=["Agent Management"])
 
 
 # Pydantic models for request/response
