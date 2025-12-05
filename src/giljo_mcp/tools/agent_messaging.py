@@ -1,6 +1,24 @@
 """
-MCP Tools for Agent Messaging (Handover 0073).
+INTERNAL/LEGACY: Agent messaging tools for FastMCP/stdio mode.
 
+WARNING: These tools are INTERNAL and should NOT be used by HTTP MCP agents.
+HTTP MCP agents should use the canonical tools via MessageService:
+- send_message
+- receive_messages
+- acknowledge_message
+- list_messages
+
+This module is retained for:
+- Backward compatibility with stdio-based agent tools
+- Internal testing and debugging
+- Potential future deprecation
+
+See Handover 0295 for the messaging contract.
+See Handover 0298 for cleanup decisions.
+
+DO NOT expose these functions via the /mcp HTTP endpoint.
+
+Original Purpose (Handover 0073):
 Provides send_mcp_message and read_mcp_messages tools for inter-agent
 communication through the message center.
 
