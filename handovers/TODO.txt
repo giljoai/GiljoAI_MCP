@@ -1,12 +1,10 @@
-TODO 
+TODO
 
-Fix git hub sunchronization - fixed 
+FIxing message reading that failed, Green agent is working
 
-Fix all toggles in context priorioties
+Codex has reviewed and say it is the right direction
 
-test orchestrator load with various contellations
-
-create 3 quick hit projects to see if 306 memory works. 
-
-Understand interaction between git history and 360 memory
+we need to fix send and read and keep tuning that it is lean message system
+signaling system
+etc. 
 
