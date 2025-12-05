@@ -27,7 +27,8 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from src.giljo_mcp.models import User, Product, Project, WebSocketManager
+from src.giljo_mcp.models import User, Product, Project
+from api.websocket import WebSocketManager
 from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.context_service import ContextService
 

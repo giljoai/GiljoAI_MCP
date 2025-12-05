@@ -21,7 +21,7 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 from src.giljo_mcp.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tools.agent_coordination import register_agent_coordination_tools
@@ -45,8 +45,8 @@ def job_manager(db_manager):
 
 @pytest.fixture
 def comm_queue(db_manager):
-    """Create AgentCommunicationQueue instance."""
-    return AgentCommunicationQueue(db_manager)
+    """Create AgentMessageQueue instance."""
+    return AgentMessageQueue(db_manager)
 
 
 @pytest.fixture

@@ -10,10 +10,7 @@ import pytest
 from sqlalchemy import select
 from uuid import uuid4
 
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agent_jobs import MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
