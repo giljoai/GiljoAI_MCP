@@ -457,17 +457,21 @@ export const useProjectTabsStore = defineStore('projectTabs', {
           const response = await api.agentJobs.broadcast({
             project_id: this.currentProject.id,
             content,
+            priority: 'normal',
+            from_agent: 'user',
           })
 
           // Add broadcast message to local messages
           this.addMessage({
-            id: response.broadcast_id,
-            from: 'developer',
+            id: response.message_id,
+            from: 'user',
             to_agent: null,
             content,
             type: 'broadcast',
-            timestamp: new Date().toISOString(),
+            timestamp: response.timestamp,
             status: 'sent',
+            recipient_count: response.recipient_count,
+            recipients: response.recipients,
           })
         } else {
           // Find the orchestrator job for this project to send targeted message
