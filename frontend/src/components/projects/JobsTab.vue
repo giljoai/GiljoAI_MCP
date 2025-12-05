@@ -691,7 +691,15 @@ async function sendMessage() {
     }
 
     console.log('[JobsTab] Sending message payload:', payload)
-    await api.messages.send(payload)
+
+    // Use unified endpoint (Handover 0299) - single API call, no emit needed
+    await api.messages.sendUnified(
+      payload.project_id,
+      payload.to_agents,
+      payload.content,
+      payload.message_type,
+      payload.priority
+    )
 
     showToast({
       message: 'Message sent successfully',
@@ -700,9 +708,7 @@ async function sendMessage() {
     })
 
     messageText.value = ''
-
     // Message counts will update via WebSocket event
-    emit('send-message', messageText.value, selectedRecipient.value)
   } catch (error) {
     console.error('[JobsTab] Send message failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to send message'
