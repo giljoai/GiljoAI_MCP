@@ -499,9 +499,13 @@ export const api = {
     messages: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
     getMessageThread: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
     sendMessage: (jobId, data) =>
-      apiClient.post(`/api/agent-jobs/${jobId}/send-message`, {
-        content: data.content,
-        to: data.to,
+      apiClient.post(`/api/agent-jobs/${jobId}/messages`, {
+        message: {
+          content: data.content,
+          to_agent: data.to,
+          type: data.type || "direct",
+          from_agent: "developer",
+        },
       }),
     broadcast: (data) =>
       apiClient.post(`/api/v1/messages/broadcast`, {
