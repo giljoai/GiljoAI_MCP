@@ -1,8 +1,22 @@
 """
-Agent-Orchestrator Communication Tools for GiljoAI MCP
+INTERNAL/LEGACY: Agent-Orchestrator Communication Tools
 
-Handover 0040: Professional Agent Flow Visualization
-Enables agents to poll for messages, acknowledge receipt, and report status updates.
+WARNING: These tools are INTERNAL and for backward compatibility only.
+HTTP MCP agents should use MessageService for all messaging operations.
+
+This module is retained for:
+- Legacy orchestrator code compatibility
+- Internal testing and debugging
+- Potential future deprecation
+
+See Handovers 0295, 0298 for the messaging contract and cleanup decisions.
+
+DO NOT use these tools for new development.
+Use MessageService and the canonical MCP messaging tools instead.
+
+Original Purpose (Handover 0040):
+Professional Agent Flow Visualization - enables agents to poll for messages,
+acknowledge receipt, and report status updates.
 
 These tools support the 30-60 second polling pattern for real-time visualization.
 """
