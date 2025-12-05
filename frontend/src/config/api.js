@@ -100,7 +100,6 @@ export const API_CONFIG = {
     // Messages
     messages: '/api/v1/messages/',
     message: '/api/v1/messages/:id',
-    acknowledge: '/api/v1/messages/:id/acknowledge',
 
     // Tasks
     tasks: '/api/v1/tasks/',

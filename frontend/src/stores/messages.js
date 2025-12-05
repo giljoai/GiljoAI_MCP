@@ -83,30 +83,6 @@ export const useMessageStore = defineStore('messages', () => {
     }
   }
 
-  async function acknowledgeMessage(id, agentName) {
-    try {
-      const response = await api.messages.acknowledge(id, agentName)
-
-      // Update message in list
-      const message = messages.value.find((m) => m.id === id)
-      if (message) {
-        if (!message.acknowledged_by) {
-          message.acknowledged_by = []
-        }
-        if (!message.acknowledged_by.includes(agentName)) {
-          message.acknowledged_by.push(agentName)
-        }
-        message.status = 'acknowledged'
-      }
-
-      updateUnreadCount()
-      return response.data
-    } catch (err) {
-      console.error('Failed to acknowledge message:', err)
-      throw err
-    }
-  }
-
   async function completeMessage(id, result) {
     try {
       const response = await api.messages.complete(id, result)
@@ -288,7 +264,6 @@ export const useMessageStore = defineStore('messages', () => {
     fetchMessages,
     fetchMessage,
     sendMessage,
-    acknowledgeMessage,
     completeMessage,
     broadcastMessage,
     addMessage,

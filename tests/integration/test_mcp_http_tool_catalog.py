@@ -111,7 +111,6 @@ class TestMCPToolDiscovery:
         # Message Communication Tools
         assert "send_message" in tool_names
         assert "receive_messages" in tool_names
-        assert "acknowledge_message" in tool_names
         assert "list_messages" in tool_names
 
         # Task Management Tools

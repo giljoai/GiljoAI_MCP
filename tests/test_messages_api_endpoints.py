@@ -244,42 +244,6 @@ async def test_get_message_endpoint_not_found(async_client: AsyncClient, test_pr
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_message_endpoint(async_client: AsyncClient, test_project, db_session):
-    """Test POST /api/messages/{id}/acknowledge"""
-    # Create a test message
-    message = Message(
-        id=str(uuid4()),
-        tenant_key=test_project.tenant_key,
-        project_id=test_project.id,
-        to_agents=["test-implementer"],
-        content="Message to acknowledge",
-        status="pending"
-    )
-    db_session.add(message)
-    await db_session.commit()
-    await db_session.refresh(message)
-
-    response = await async_client.post(
-        f"/api/messages/{message.id}/acknowledge",
-        json={"agent_name": "test-implementer"},
-        headers={"X-Tenant-Key": test_project.tenant_key}
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-
-    # Verify the message was acknowledged
-    get_response = await async_client.get(
-        f"/api/messages/{message.id}",
-        headers={"X-Tenant-Key": test_project.tenant_key}
-    )
-    message_data = get_response.json()
-    assert message_data["status"] == "acknowledged"
-    assert "test-implementer" in message_data.get("acknowledged_by", [])
-
-
-@pytest.mark.asyncio
 async def test_complete_message_endpoint(async_client: AsyncClient, test_project, db_session):
     """Test POST /api/messages/{id}/complete"""
     # Create an acknowledged message

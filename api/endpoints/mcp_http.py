@@ -236,15 +236,6 @@ async def handle_tools_list(
             },
         },
         {
-            "name": "acknowledge_message",
-            "description": "Acknowledge receipt of a message",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"message_id": {"type": "string", "description": "Message ID to acknowledge"}},
-                "required": ["message_id"],
-            },
-        },
-        {
             "name": "list_messages",
             "description": "List messages with optional filters",
             "inputSchema": {
@@ -581,7 +572,6 @@ async def handle_tools_call(
         # Message Communication
         "send_message": state.tool_accessor.send_message,
         "receive_messages": state.tool_accessor.receive_messages,
-        "acknowledge_message": state.tool_accessor.acknowledge_message,
         "list_messages": state.tool_accessor.list_messages,
         # Task Management
         "create_task": state.tool_accessor.create_task,

@@ -119,77 +119,6 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
             return {"success": False, "error": str(e), "job_id": job_id}
 
     @mcp.tool()
-    async def acknowledge_message(
-        job_id: str,
-        tenant_key: str,
-        message_id: str,
-        agent_id: str,
-        response_data: Optional[dict] = None,
-    ) -> dict[str, Any]:
-        """
-        Acknowledge receipt of a message and optionally provide a response.
-
-        This signals to the orchestrator/sender that the message was received
-        and understood. The acknowledgment triggers WebSocket events for real-time
-        visualization updates.
-
-        Args:
-            job_id: Agent job ID containing the message
-            tenant_key: Tenant key for multi-tenant isolation
-            message_id: ID of the message to acknowledge
-            agent_id: ID of the agent acknowledging the message
-            response_data: Optional dict with response information
-
-        Returns:
-            Dict with success status and acknowledgment details
-        """
-        try:
-            async with db_manager.get_session_async() as session:
-                # Acknowledge message using MessageQueue
-                result = comm_queue.acknowledge_message(
-                    session=session,
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    message_id=message_id,
-                    agent_id=agent_id,
-                )
-
-                if result["status"] == "error":
-                    logger.error(f"Failed to acknowledge message {message_id}: {result['error']}")
-                    return {
-                        "success": False,
-                        "error": result["error"],
-                        "message_id": message_id,
-                    }
-
-                logger.info(f"Message {message_id} acknowledged by agent {agent_id}")
-
-                # Prepare response
-                response = {
-                    "success": True,
-                    "message_id": message_id,
-                    "agent_id": agent_id,
-                    "acknowledged_at": datetime.now(timezone.utc).isoformat(),
-                }
-
-                if response_data:
-                    response["response_data"] = response_data
-
-                # TODO: Trigger WebSocket event for acknowledgment
-                # This will be implemented in the next phase
-                # await websocket_manager.broadcast_message_acknowledged(...)
-
-                return response
-
-        except Exception as e:
-            logger.exception(f"Failed to acknowledge message {message_id}")
-            return {
-                "success": False,
-                "error": str(e),
-                "message_id": message_id,
-            }
-
-    @mcp.tool()
     async def report_status(
         job_id: str,
         tenant_key: str,
@@ -336,5 +265,5 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
             }
 
     logger.info(
-        "Agent communication tools registered (check_orchestrator_messages, acknowledge_message, report_status)"
+        "Agent communication tools registered (check_orchestrator_messages, report_status)"
     )

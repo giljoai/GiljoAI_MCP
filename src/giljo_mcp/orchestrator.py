@@ -445,19 +445,7 @@ class ProjectOrchestrator:
                             except Exception:
                                 pass
 
-                        # Acknowledge message so agents don't see it as unread next poll
-                        try:
-                            ack = await self.comm_queue.acknowledge_message(
-                                session=session,
-                                job_id=job.job_id,
-                                tenant_key=tenant_key,
-                                message_id=msg.get("id", ""),
-                                agent_id="orchestrator",
-                            )
-                            if isinstance(ack, dict) and ack.get("status") == "success":
-                                acknowledged += 1
-                        except Exception:
-                            pass
+                        # Message will be auto-acknowledged when retrieved via receive_messages
 
             await _asyncio.sleep(interval_seconds)
 

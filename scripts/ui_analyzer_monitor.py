@@ -118,15 +118,6 @@ class UIAnalyzerMonitor:
         logger.info(f"NORMAL: {message.get('content')}")
         # Implement normal priority message handling logic
 
-    async def acknowledge_message(self, message_id: str):
-        """Acknowledge receipt of a message."""
-        try:
-            # This would use the actual MCP acknowledge_message tool
-            # mcp_acknowledge_message(message_id=message_id, agent_name=self.agent_name)
-            logger.info(f"Acknowledged message {message_id}")
-        except Exception as e:
-            logger.exception(f"Failed to acknowledge message {message_id}: {e}")
-
     def stop_monitoring(self):
         """Stop the monitoring loop."""
         self.running = False
