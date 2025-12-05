@@ -31,12 +31,12 @@
 | 0299 | Unified UI Messaging Endpoint | **COMPLETE** | High |
 
 ### Current Development (0300+)
-| ID | Title | Status | Priority |
-|----|-------|--------|----------|
-| 0310 | Integration Testing Validation | In Progress | Medium |
-| 0311 | Playwright Localhost Auth Fix | Not Started | Low |
-| 0312 | Product Service Recursion Fix | Not Started | Low |
-| 0325 | **Tenant Isolation Surgical Fix** | **READY** | **HIGH** |
+| ID | Title | Status | Priority | Note |
+|----|-------|--------|----------|------|
+| 0310 | Integration Testing Validation | In Progress | Medium | Unique |
+| 0311 | Playwright Localhost Auth Fix | Not Started | Low | ⚠️ Conflicts w/ ref |
+| 0312 | Product Service Recursion Fix | Not Started | Low | ⚠️ Conflicts w/ ref |
+| 0325 | **Tenant Isolation Surgical Fix** | **READY** | **HIGH** | Unique |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -117,12 +117,22 @@ completed/reference/
 ### Choosing a Number
 1. Check this catalogue for next available in appropriate range
 2. Check `completed/reference/` for conflicts
-3. Use gaps if appropriate (e.g., 0304, 0307, 0308, 0317, 0319)
+3. Use gaps if appropriate
+
+### Used Numbers by Range (Reference Archives)
+
+**0001-0100** (Foundation): 0016, 0043, 0047, 0062, 0064-0067, 0075, 0077
+**0101-0200** (Architecture): 0102-0107
+**0201-0300** (GUI & Context): 0225-0239, 0242-0258, 0262-0273, 0281-0285
+**0301-0400** (Services): 0300-0303, 0305-0306, 0309, 0311-0316, 0318, 0320-0324
+**0501-0600** (Remediation): 0500-0509, 0511-0515
+**0601-0700** (Migration): 0601
 
 ### Current Gaps Available
-- **0304, 0307, 0308**: Context series gaps
-- **0317, 0319**: Context series gaps
-- **0326+**: Next available after current development
+- **0304, 0307, 0308, 0310, 0317, 0319**: Gaps in 0301-0400 range
+- **0326+**: Next sequential after current development
+
+⚠️ **Conflict Warning**: Active handovers 0311, 0312 duplicate reference numbers (different content). New handovers should use 0326+ or verified gaps only.
 
 ### Naming Format
 ```
