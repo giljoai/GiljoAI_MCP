@@ -278,7 +278,7 @@ Use ensure_agent() to create specialized workers:
 **Message Queue Usage:**
 - Use send_message() for agent-to-agent communication
 - Priority levels: low, normal, high, critical
-- Agents must acknowledge with acknowledge_message()
+- Messages are auto-acknowledged when retrieved
 - Track completion with mark_message_completed()
 
 === VISION GUARDIAN RESPONSIBILITIES ===

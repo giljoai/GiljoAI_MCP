@@ -210,20 +210,6 @@ class ProductionUIMonitor:
         # - Schedule for next available analysis slot
         # - Update processing metrics
 
-    async def acknowledge_message_processing(self, message_id):
-        """Acknowledge message processing using AKE-MCP tools."""
-        try:
-            # Real MCP acknowledgment would be:
-            # result = await mcp__ake_mcp_v2__acknowledge_message(
-            #     message_id=message_id,
-            #     agent_name=self.agent_name
-            # )
-
-            self.log(f"ACKNOWLEDGED: Message {message_id} processed and acknowledged")
-
-        except Exception as e:
-            self.log(f"ACKNOWLEDGMENT ERROR: Failed to acknowledge {message_id}: {e}", "ERROR")
-
     async def log_status_update(self):
         """Log periodic status update."""
         uptime = datetime.now() - self.start_time

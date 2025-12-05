@@ -262,39 +262,6 @@ async def get_messages(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{message_id}/acknowledge")
-async def acknowledge_message(
-    message_id: str,
-    agent_name: str = Query(..., description="Agent acknowledging the message"),
-    current_user: User = Depends(get_current_active_user),
-    message_service: MessageService = Depends(get_message_service),
-):
-    """Acknowledge message receipt"""
-    from api.app import state
-
-    try:
-        result = await message_service.acknowledge_message(message_id=message_id, agent_name=agent_name)
-
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to acknowledge message"))
-
-        # Broadcast message acknowledgment
-        if state.websocket_manager:
-            # Get message details to include project_id
-            # For now, we'll broadcast without project_id (could be enhanced)
-            await state.websocket_manager.broadcast_message_update(
-                message_id=message_id,
-                project_id="",  # Could be enhanced to fetch from message
-                update_type="acknowledged",
-                message_data={"acknowledged_by": agent_name, "status": "acknowledged"},
-            )
-
-        return {"success": True, "message": "Message acknowledged"}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.post("/{message_id}/complete")
 async def complete_message(
     message_id: str,
