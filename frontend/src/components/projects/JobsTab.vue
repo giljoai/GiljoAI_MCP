@@ -831,14 +831,26 @@ const handleMessageAcknowledged = (data) => {
 
   console.log('[JobsTab] Message acknowledged event:', data)
 
-  // Update message status
+  // Find the agent who acknowledged the messages
   const agent = props.agents.find(
-    (a) => a.id === data.agent_id || a.agent_id === data.agent_id
+    (a) => a.id === data.agent_id || a.agent_id === data.agent_id || a.job_id === data.agent_id
   )
+
   if (agent && agent.messages) {
-    const message = agent.messages.find((m) => m.id === data.message_id)
-    if (message) {
-      message.status = 'acknowledged'
+    // Handle both single message_id and array of message_ids
+    const messageIds = data.message_ids || [data.message_id]
+    const messageIdSet = new Set(messageIds)
+
+    let updatedCount = 0
+    agent.messages.forEach((msg) => {
+      if (messageIdSet.has(msg.id) && msg.status !== 'acknowledged') {
+        msg.status = 'acknowledged'
+        updatedCount++
+      }
+    })
+
+    if (updatedCount > 0) {
+      console.log(`[JobsTab] Updated ${updatedCount} messages to 'acknowledged' for agent ${agent.agent_type || agent.job_id}`)
     }
   }
 }
