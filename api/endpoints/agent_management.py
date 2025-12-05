@@ -303,11 +303,11 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
 
         async with state.db_manager.get_session_async() as db:
             # Get job for broadcasting
-            job = job_repo.get_job_by_job_id(db, tenant_key, job_id)
+            job = await job_repo.get_job_by_job_id(db, tenant_key, job_id)
             if not job:
                 raise HTTPException(status_code=404, detail="Agent job not found")
 
-            success = job_repo.add_message(db, tenant_key, job_id, message_data.message)
+            success = await job_repo.add_message(db, tenant_key, job_id, message_data.message)
 
             if not success:
                 raise HTTPException(status_code=404, detail="Agent job not found")
