@@ -121,6 +121,7 @@ class Message(Base):
     status = Column(String(50), default="pending")  # pending, acknowledged, completed, failed
     acknowledged_by = Column(JSON, default=list)  # Array of agent names that acknowledged
     completed_by = Column(JSON, default=list)  # Array of agent names that completed
+    result = Column(Text, nullable=True)  # Completion result for completed messages
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
