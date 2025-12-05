@@ -163,91 +163,97 @@ agent_types = [a['agent_type'] for a in agents['agents']]
         "communication": {
             "send_message": {
                 "params": [
-                    "to_agent_id: str",
-                    "message_content: str",
-                    "message_type: str",
+                    "to_agents: list[str]",
+                    "content: str",
                     "project_id: str",
-                    "tenant_key: str",
+                    "message_type: str",  # 'direct', 'broadcast', 'system'
+                    "priority: str",  # 'low', 'normal', 'high'
+                    "from_agent: Optional[str]",
                 ],
-                "description": "Send message to specific agent for coordination",
+                "description": "Send message to specific agents or broadcast to all (use to_agents=['all'])",
                 "returns": "Dict with success status and message ID",
                 "when": [
                     "When agents need to coordinate with each other",
-                    "To send feedback or blockers from one agent to another",
-                    "For asking questions or requesting information",
+                    "To send feedback, blockers, or questions",
+                    "To broadcast status to all agents (to_agents=['all'])",
                 ],
-                "example": """# Agent sends message to another agent
+                "example": """# Send direct message to orchestrator
 result = await send_message(
-    to_agent_id='agent-456',
-    message_content='Blocked on database schema. Need your input.',
-    message_type='blocker',
+    to_agents=['orchestrator'],
+    content='Blocked on database schema. Need guidance.',
     project_id='proj-123',
-    tenant_key='tenant-abc'
+    message_type='direct',
+    priority='high',
+    from_agent='implementer-1'
 )
 
-message_id = result['message_id']
-""",
+# Broadcast to all agents
+result = await send_message(
+    to_agents=['all'],
+    content='Implementation complete. Ready for testing.',
+    project_id='proj-123',
+    message_type='broadcast',
+    priority='normal',
+    from_agent='implementer-1'
+)""",
             },
-            "broadcast_message": {
+            "receive_messages": {
                 "params": [
-                    "project_id: str",
-                    "message_content: str",
-                    "message_type: str",
-                    "tenant_key: str",
+                    "agent_id: str",
+                    "limit: int",
                 ],
-                "description": "Send message to all agents in a project",
-                "returns": "Dict with success status and count of recipients",
-                "when": [
-                    "To notify all team members of important status or changes",
-                    "When orchestrator needs to broadcast new requirements",
-                    "For critical alerts affecting all agents",
-                ],
-                "example": """# Orchestrator broadcasts to all agents
-result = await broadcast_message(
-    project_id='proj-123',
-    message_content='Architecture revision required - see attachment',
-    message_type='directive',
-    tenant_key='tenant-abc'
-)
-
-sent_count = result['sent_count']  # Number of agents notified
-""",
-            },
-            "get_messages": {
-                "params": ["agent_job_id: str", "tenant_key: str", "limit: int"],
-                "description": "Fetch messages sent to this agent",
-                "returns": "Dict with list of messages, sender info, timestamps",
+                "description": "Receive pending messages for an agent",
+                "returns": "Dict with list of pending messages",
                 "when": [
                     "When agent needs to check for messages from orchestrator or peers",
-                    "To process incoming requests and blockers",
-                    "Before deciding on next action based on team feedback",
+                    "At startup after fetching mission",
+                    "Between major work phases",
                 ],
-                "example": """# Agent checks for messages
-messages = await get_messages(
-    agent_job_id='agent-123',
-    tenant_key='tenant-abc',
+                "example": """# Check for incoming messages
+messages = await receive_messages(
+    agent_id='implementer-1',
     limit=10
 )
 
 for msg in messages['messages']:
-    from_agent = msg['from_agent_id']
-    content = msg['content']
+    print(f"From {msg['from_agent']}: {msg['content']}")
+    # Process and acknowledge each message
 """,
             },
             "acknowledge_message": {
-                "params": ["message_id: str", "tenant_key: str"],
+                "params": [
+                    "message_id: str",
+                ],
                 "description": "Mark message as read/acknowledged",
                 "returns": "Dict with success status",
                 "when": [
-                    "When agent has processed a message",
-                    "To keep team informed that message was received",
+                    "After processing a received message",
+                    "To confirm receipt to sender",
                 ],
-                "example": """# Agent acknowledges message
-result = await acknowledge_message(
-    message_id='msg-789',
-    tenant_key='tenant-abc'
-)
-""",
+                "example": """# Acknowledge a message after processing
+await acknowledge_message(
+    message_id='msg-789'
+)""",
+            },
+            "list_messages": {
+                "params": [
+                    "agent_id: Optional[str]",
+                    "status: Optional[str]",
+                    "limit: int",
+                ],
+                "description": "List messages with optional filters for history/inspection",
+                "returns": "Dict with list of messages matching filters",
+                "when": [
+                    "To view message history",
+                    "To check message status",
+                    "For audit and debugging",
+                ],
+                "example": """# List recent messages for agent
+messages = await list_messages(
+    agent_id='implementer-1',
+    status='pending',
+    limit=20
+)""",
             },
         },
         "tasks": {
@@ -453,7 +459,10 @@ for agent in members['agents']:
             "orchestration.get_workflow_status",
             "context.get_agent_mission",
             "context.get_available_agents",
-            "communication.broadcast_message",
+            "communication.send_message",
+            "communication.receive_messages",
+            "communication.acknowledge_message",
+            "communication.list_messages",
             "tasks.get_job_status",
             "project.update_project_mission",
             "project.get_project_context",
@@ -463,7 +472,7 @@ for agent in members['agents']:
         "implementer": [
             "context.get_agent_mission",
             "communication.send_message",
-            "communication.get_messages",
+            "communication.receive_messages",
             "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
@@ -474,7 +483,7 @@ for agent in members['agents']:
         "tester": [
             "context.get_agent_mission",
             "communication.send_message",
-            "communication.get_messages",
+            "communication.receive_messages",
             "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
@@ -486,8 +495,8 @@ for agent in members['agents']:
             "context.get_agent_mission",
             "context.get_available_agents",
             "communication.send_message",
-            "communication.broadcast_message",
-            "communication.get_messages",
+            "communication.receive_messages",
+            "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
             "project.get_project_context",
@@ -496,7 +505,8 @@ for agent in members['agents']:
         "documenter": [
             "context.get_agent_mission",
             "communication.send_message",
-            "communication.get_messages",
+            "communication.receive_messages",
+            "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
             "project.get_project_context",
@@ -699,14 +709,14 @@ project_context = await get_project_context(
 )
 
 # Step 2: Agent checks for incoming messages
-messages = await get_messages(
-    agent_job_id='agent-id',
-    tenant_key='tenant-key'
+messages = await receive_messages(
+    agent_id='agent-id',
+    limit=10
 )
 
 for msg in messages['messages']:
-    print(f"Message from {msg['from_agent_id']}: {msg['content']}")
-    await acknowledge_message(msg['message_id'], tenant_key='tenant-key')
+    print(f"Message from {msg['from_agent']}: {msg['content']}")
+    await acknowledge_message(msg['message_id'])
 
 # Step 3: Agent works and reports progress
 await update_job_progress(
@@ -721,11 +731,12 @@ implement_features()
 
 # Step 4: Agent can coordinate with peers
 await send_message(
-    to_agent_id='other-agent-id',
-    message_content='Need clarification on database schema for users table',
-    message_type='question',
+    to_agents=['other-agent-id'],
+    content='Need clarification on database schema for users table',
     project_id='proj-id',
-    tenant_key='tenant-key'
+    message_type='direct',
+    priority='normal',
+    from_agent='agent-id'
 )
 
 # Step 5: Agent completes work
