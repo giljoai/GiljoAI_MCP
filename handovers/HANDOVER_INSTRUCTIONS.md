@@ -8,7 +8,18 @@ This document provides standardized instructions for creating effective handover
 ## 🎯 Quick Reference: The Golden Rules
 
 **Before you start ANY handover implementation:**
+READ FIRST "F:\GiljoAI_MCP\handovers\Reference_docs\QUICK_LAUNCH.txt" and "F:\GiljoAI_MCP\handovers\Reference_docs\AGENT_FLOW_SUMMARY.md"
 
+Follow these principles " "Use Test-Driven Development (TDD):
+  1. Write the test FIRST (it should fail initially)
+  2. Implement minimal code to make test pass
+  3. Refactor if needed
+  4. Test should focus on BEHAVIOR (what the code does),
+     not IMPLEMENTATION (how it does it)
+  5. Use descriptive test names like 'test_reconnection_uses_exponential_backoff'
+  6. Avoid testing internal implementation details""
+
+## THEN ##
 1. **Quality**: Chef's kiss production-grade code ONLY - no shortcuts, no bandaids
 2. **Freedom**: Dev mode - modify code freely, no production concerns
 3. **Installation**: Changes affecting setup? Update `install.py` + related scripts
@@ -313,26 +324,44 @@ Every handover document MUST contain:
 
 **Format:**
 ```
-[SEQUENCE]_HANDOVER_YYYYMMDD_[TASK_NAME].md
+[NNNN]_[SHORT_DESCRIPTION].md
 ```
 
-**Sequential Prefix Rules:**
-- Use 4-digit zero-padded sequence number: `0001`, `0002`, `0003`, etc.
-- Sequence numbers are project-wide and increment for each new handover
-- Check `/handovers/` directory for the highest existing number before creating new handover
-- Sequence ensures chronological ordering and easy reference
+**Numbering Rules:**
+1. **ALWAYS check [HANDOVER_CATALOGUE.md](./HANDOVER_CATALOGUE.md) first**
+2. Check `completed/reference/[range]/` for conflicts
+3. Use available gaps when appropriate
+4. Use 4-digit zero-padded sequence number: `0001`, `0325`, `0400`, etc.
+
+**Current Number Ranges:**
+| Range | Domain | Next Available |
+|-------|--------|----------------|
+| 0001-0100 | Foundation | Check catalogue |
+| 0101-0200 | Architecture | Check catalogue |
+| 0201-0300 | GUI & Context | Check catalogue |
+| 0301-0400 | Services & Security | **0326+** |
+| 0401-0500 | Reserved | 0401 |
+| 0501-0600 | Remediation | Check catalogue |
+| 0601-0700 | Migration | Check catalogue |
+
+**Available Gaps (Dec 2025):**
+- 0304, 0307, 0308, 0317, 0319 (Context series)
+- 0326+ (Next sequential)
 
 **Examples:**
-- `0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION.md`
-- `0002_HANDOVER_20251012_ADD_NETWORK_SETTINGS_UI.md`
-- `0003_HANDOVER_20251013_INSTALLER_CORS_FIX.md`
+- `0325_TENANT_ISOLATION_SURGICAL_FIX.md`
+- `0326_NEW_FEATURE.md`
+- `0400_MAJOR_REFACTOR.md`
 
 **How to Determine Next Sequence Number:**
 ```bash
-# List existing handovers to find highest number
-ls handovers/ | grep "^[0-9]" | sort -n | tail -1
+# 1. Check the catalogue first!
+cat handovers/HANDOVER_CATALOGUE.md | grep "Available\|Next"
 
-# Next handover should use: [highest + 1]
+# 2. Check reference archives for conflicts
+ls handovers/completed/reference/0301-0400/
+
+# 3. Use the next available number from catalogue
 ```
 
 ---
