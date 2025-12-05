@@ -1079,8 +1079,7 @@ Use these MCP tools for all communication:
 
 **Core Tools:**
 - `mcp__giljo-mcp__send_message` - Send messages to agents
-- `mcp__giljo-mcp__receive_messages` - Check for incoming messages
-- `mcp__giljo-mcp__acknowledge_message` - Mark messages as read
+- `mcp__giljo-mcp__receive_messages` - Check for incoming messages (auto-acknowledges)
 - `mcp__giljo-mcp__list_messages` - View message history
 
 **Tool Parameters:**
@@ -1099,11 +1098,6 @@ mcp__giljo-mcp__send_message(
 mcp__giljo-mcp__receive_messages(
     agent_id="<AGENT_ID>",
     limit=10  # Optional, defaults to 50
-)
-
-# Acknowledge message
-mcp__giljo-mcp__acknowledge_message(
-    message_id="<MESSAGE_ID>"
 )
 
 # List messages
@@ -1154,7 +1148,7 @@ for msg in messages.get("messages", []):
         print(f"Orchestrator: {msg['content']}")
         
         # Acknowledge message
-        mcp__giljo-mcp__acknowledge_message(
+        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
 ```
@@ -1185,7 +1179,7 @@ for attempt in range(10):
     for msg in messages.get("messages", []):
         if "DEPENDENCY_MET" in msg.get("content", ""):
             print(f"Dependencies satisfied: {msg['content']}")
-            mcp__giljo-mcp__acknowledge_message(message_id=msg["id"])
+            # Messages auto-acknowledged when retrieved
             # Can proceed with work
             break
     
@@ -1219,13 +1213,13 @@ for msg in messages.get("messages", []):
     if msg["from_agent"] == "orchestrator":
         # Orchestrator giving instructions
         print(f"Orchestrator directive: {content}")
-        mcp__giljo-mcp__acknowledge_message(message_id=msg["id"])
+        # Messages auto-acknowledged when retrieved
         # Follow instructions immediately
         
     elif msg.get("from_agent") == "developer":
         # User/developer sending corrections
         print(f"Developer message: {content}")
-        mcp__giljo-mcp__acknowledge_message(message_id=msg["id"])
+        # Messages auto-acknowledged when retrieved
         # Acknowledge and adjust work
         mcp__giljo-mcp__send_message(
             to_agents=["orchestrator"],
@@ -1288,7 +1282,7 @@ for attempt in range(10):
     for msg in messages.get("messages", []):
         if msg["from_agent"] == "orchestrator" and msg.get("priority") == "high":
             print(f"Orchestrator guidance: {msg['content']}")
-            mcp__giljo-mcp__acknowledge_message(message_id=msg["id"])
+            # Messages auto-acknowledged when retrieved
             # Follow guidance and proceed
             break
     
@@ -1417,8 +1411,7 @@ You MUST implement this communication protocol. Without it:
 
 **Core Tools:**
 - `mcp__giljo-mcp__send_message` - Send messages to agents
-- `mcp__giljo-mcp__receive_messages` - Check for incoming messages
-- `mcp__giljo-mcp__acknowledge_message` - Mark messages as read
+- `mcp__giljo-mcp__receive_messages` - Check for incoming messages (auto-acknowledges)
 - `mcp__giljo-mcp__list_messages` - View message history
 
 **Tool Parameters:**
@@ -1449,10 +1442,6 @@ mcp__giljo-mcp__receive_messages(
     limit=20
 )
 
-# Acknowledge message
-mcp__giljo-mcp__acknowledge_message(
-    message_id="<MESSAGE_ID>"
-)
 ```
 
 ### Message Priority Handling Matrix
@@ -1524,7 +1513,7 @@ for msg in all_messages:
         )
         
         # Acknowledge message
-        mcp__giljo-mcp__acknowledge_message(
+        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
 ```
@@ -1546,7 +1535,7 @@ for msg in all_messages:
             from_agent="orchestrator"
         )
         
-        mcp__giljo-mcp__acknowledge_message(
+        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
 ```
@@ -1568,7 +1557,7 @@ for msg in all_messages:
             from_agent="orchestrator"
         )
         
-        mcp__giljo-mcp__acknowledge_message(
+        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
 ```
@@ -1591,7 +1580,7 @@ for msg in all_messages:
             from_agent="orchestrator"
         )
         
-        mcp__giljo-mcp__acknowledge_message(
+        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
         
@@ -1625,7 +1614,7 @@ for msg in all_messages:
             from_agent="orchestrator"
         )
         
-        mcp__giljo-mcp__acknowledge_message(
+        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
         

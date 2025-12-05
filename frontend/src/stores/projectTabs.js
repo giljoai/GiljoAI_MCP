@@ -496,26 +496,6 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       }
     },
 
-    /**
-     * Acknowledge message
-     * @param {string} messageId - Message ID
-     */
-    async acknowledgeMessage(messageId) {
-      try {
-        await api.agent_jobs.acknowledgeMessage(messageId)
-
-        // Update local message
-        const index = this.messages.findIndex((m) => m.id === messageId)
-        if (index !== -1) {
-          this.messages[index].status = 'acknowledged'
-          this.messages[index].acknowledged_at = new Date().toISOString()
-        }
-      } catch (error) {
-        console.error('Failed to acknowledge message:', error)
-        throw error
-      }
-    },
-
     // ==================== Closeout ====================
 
     /**

@@ -166,15 +166,6 @@ class ContinuousUIMonitor:
         self.logger.info("📝 Processing normally")
         # Add normal message handling logic here
 
-    async def acknowledge_message(self, message_id):
-        """Acknowledge message receipt."""
-        try:
-            # In real implementation:
-            # await mcp_acknowledge_message(message_id=message_id, agent_name=self.agent_name)
-            self.logger.info(f"✅ Acknowledged message {message_id}")
-        except Exception as e:
-            self.logger.exception(f"❌ Failed to acknowledge {message_id}: {e}")
-
     async def log_system_status(self):
         """Log periodic system status."""
         uptime = datetime.now() - self.start_time

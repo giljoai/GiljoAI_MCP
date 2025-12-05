@@ -242,83 +242,6 @@ class TestMessageCreationAndJSONBMirroring:
         mock_websocket_manager.broadcast_message_received.assert_awaited_once()
 
 
-class TestMessageAcknowledgment:
-    """Test that acknowledgments update both table and JSONB."""
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_marks_acknowledged_and_updates_jsonb(
-        self,
-        db_session: AsyncSession,
-        message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[MCPAgentJob]],
-    ):
-        """
-        CRITICAL CONTRACT TEST: Verify that acknowledge_message():
-        1. Updates Message.acknowledged_by to include agent name
-        2. Transitions JSONB status from "waiting" → "acknowledged" or "read"
-        3. Preserves other message data
-        """
-        project, agents = test_project_with_agents
-        orchestrator = agents[0]
-        recipient = agents[1]  # analyzer
-
-        # Arrange: Send a message first
-        send_result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
-            content="Review test coverage",
-            project_id=project.id,
-            from_agent=orchestrator.agent_type,
-        )
-        assert send_result["success"] is True
-        message_id = send_result["message_id"]
-
-        # Verify initial state: message is waiting
-        await db_session.refresh(recipient)
-        initial_msg = None
-        for msg in recipient.messages:
-            if msg.get("id") == message_id:
-                initial_msg = msg
-                break
-        assert initial_msg is not None
-        assert initial_msg["status"] == "waiting"
-
-        # Act: Acknowledge the message
-        ack_result = await message_service.acknowledge_message(
-            message_id=message_id,
-            agent_name=recipient.agent_type,
-        )
-
-        # Assert: Acknowledgment succeeded
-        assert ack_result["success"] is True
-        assert ack_result["message_id"] == message_id
-        assert ack_result["acknowledged_by"] == recipient.agent_type
-
-        # Assert: Message.acknowledged_by includes agent name
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
-        db_message = msg_result.scalar_one_or_none()
-        assert db_message is not None
-        assert recipient.agent_type in db_message.acknowledged_by, \
-            f"acknowledged_by should include {recipient.agent_type}"
-
-        # Assert: JSONB status transitioned from "waiting" to "acknowledged" or "read"
-        # NOTE: Current implementation might not update JSONB on acknowledge
-        # This test validates the CONTRACT - implementation may need to be updated
-        await db_session.refresh(recipient)
-        acked_msg = None
-        for msg in recipient.messages:
-            if msg.get("id") == message_id:
-                acked_msg = msg
-                break
-
-        assert acked_msg is not None
-        # This is the CONTRACT we're testing - GREEN phase after implementation
-        # Status should transition from "waiting" to "acknowledged" or "read"
-        assert acked_msg["status"] in ["acknowledged", "read"], \
-            f"Status should be 'acknowledged' or 'read', got: {acked_msg['status']}"
-
-
 class TestMessageCompletion:
     """Test that completions preserve acknowledgment state."""
 
@@ -351,12 +274,14 @@ class TestMessageCompletion:
         assert send_result["success"] is True
         message_id = send_result["message_id"]
 
-        # Acknowledge the message first
-        ack_result = await message_service.acknowledge_message(
-            message_id=message_id,
-            agent_name=recipient.agent_type,
+        # Auto-acknowledge via receive_messages (Handover 0326)
+        receive_result = await message_service.receive_messages(
+            agent_id=recipient.job_id,
+            limit=10,
+            tenant_key=project.tenant_key,
         )
-        assert ack_result["success"] is True
+        assert receive_result["success"] is True, f"receive_messages failed: {receive_result.get('error', 'unknown')}"
+        assert len(receive_result["messages"]) >= 1, f"Expected messages but got {receive_result['count']}"
 
         # Act: Complete the message
         complete_result = await message_service.complete_message(
@@ -382,8 +307,9 @@ class TestMessageCompletion:
         assert db_message.completed_at is not None
 
         # Assert: acknowledged_by is PRESERVED (not overwritten)
-        assert recipient.agent_type in db_message.acknowledged_by, \
-            "Acknowledgment should be preserved after completion"
+        # Note: With auto-acknowledge (Handover 0326), acknowledged_by contains job_id, not agent_type
+        assert recipient.job_id in db_message.acknowledged_by, \
+            f"Acknowledgment should be preserved after completion. Expected {recipient.job_id} in {db_message.acknowledged_by}"
 
 
 class TestBroadcastMessaging:
@@ -683,20 +609,6 @@ class TestMessageServiceErrorHandling:
         assert "not found" in result["error"].lower()
 
     @pytest.mark.asyncio
-    async def test_acknowledge_nonexistent_message_fails(
-        self,
-        message_service: MessageService,
-    ):
-        """Test that acknowledging nonexistent message fails gracefully."""
-        result = await message_service.acknowledge_message(
-            message_id="nonexistent-message-id",
-            agent_name="analyzer",
-        )
-
-        assert result["success"] is False
-        assert "not found" in result["error"].lower()
-
-    @pytest.mark.asyncio
     async def test_complete_nonexistent_message_fails(
         self,
         message_service: MessageService,
@@ -711,36 +623,3 @@ class TestMessageServiceErrorHandling:
         assert result["success"] is False
         assert "not found" in result["error"].lower()
 
-    @pytest.mark.asyncio
-    async def test_multiple_acknowledgments_idempotent(
-        self,
-        db_session: AsyncSession,
-        message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[MCPAgentJob]],
-    ):
-        """Test that multiple acknowledgments by same agent are idempotent."""
-        project, agents = test_project_with_agents
-        orchestrator = agents[0]
-        recipient = agents[1]
-
-        # Send message
-        result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
-            content="Test idempotency",
-            project_id=project.id,
-            from_agent=orchestrator.agent_type,
-        )
-        message_id = result["message_id"]
-
-        # Acknowledge twice
-        await message_service.acknowledge_message(message_id, recipient.agent_type)
-        await message_service.acknowledge_message(message_id, recipient.agent_type)
-
-        # Assert: Agent appears only once in acknowledged_by
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
-        db_message = msg_result.scalar_one_or_none()
-        assert db_message is not None
-        assert db_message.acknowledged_by.count(recipient.agent_type) == 1, \
-            "Agent should appear only once in acknowledged_by array"

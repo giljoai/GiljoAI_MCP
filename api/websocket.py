@@ -1084,61 +1084,6 @@ class WebSocketManager:
         
         logger.debug(f"Broadcast message_received - {message_id} to {len(to_agent_ids)} recipient(s)")
 
-    async def broadcast_message_acknowledged(
-        self,
-        message_id: str,
-        job_id: str,
-        tenant_key: str,
-        agent_id: str,
-        response_data: Optional[dict] = None,
-        timestamp: Optional[datetime] = None,
-    ):
-        """
-        Broadcast message acknowledgment event.
-        Event type: 'message:acknowledged' (frontend-compatible naming)
-
-        Args:
-            message_id: Unique message identifier
-            job_id: Job ID associated with the message
-            tenant_key: Tenant key for multi-tenant isolation
-            agent_id: Agent that acknowledged the message
-            response_data: Optional response data from agent
-            timestamp: Acknowledgment timestamp
-        """
-        message_data = {
-            "message_id": message_id,
-            "job_id": job_id,
-            "agent_id": agent_id,
-            "tenant_key": tenant_key,  # Add tenant_key to payload for frontend validation
-            "acknowledged_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
-        }
-
-        if response_data:
-            message_data["response_data"] = response_data
-
-        message = {
-            "type": "message:acknowledged",  # Frontend expects 'message:acknowledged', not 'agent_communication:message_acknowledged'
-            "data": message_data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Multi-tenant isolation
-        disconnected = []
-        for client_id, websocket in self.active_connections.items():
-            auth_context = self.auth_contexts.get(client_id, {})
-            if auth_context.get("tenant_key") == tenant_key:
-                try:
-                    await websocket.send_json(message)
-                except Exception:
-                    logger.exception(f"Error broadcasting message_acknowledged to {client_id}")
-                    disconnected.append(client_id)
-
-        # Clean up disconnected clients
-        for client_id in disconnected:
-            self.disconnect(client_id)
-
-        logger.debug(f"Broadcast message_acknowledged - {message_id} by {agent_id}")
-
     async def broadcast_agent_status_update(
         self,
         job_id: str,

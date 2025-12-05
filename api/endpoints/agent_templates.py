@@ -47,9 +47,8 @@ MCP_INTEGRATION_SECTION = """
 This agent has access to the following MCP tools for coordinating with the orchestrator and other agents:
 
 ### Communication Tools
-- `get_agent_messages()` - Check for messages from other agents in your queue
+- `get_agent_messages()` - Check for messages from other agents in your queue (auto-acknowledges)
 - `send_agent_message(to, content)` - Send a message to another agent or orchestrator
-- `acknowledge_message(message_id)` - Acknowledge receipt of a message
 
 ### Context & Project Information
 - `get_project_context(project_id)` - Fetch product vision, tech stack, and project details

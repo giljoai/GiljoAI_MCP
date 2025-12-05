@@ -7,7 +7,6 @@ and legacy queue-style tools are NOT exposed.
 CANONICAL MESSAGING TOOLS (should be exposed):
 - send_message
 - receive_messages
-- acknowledge_message
 - list_messages
 
 LEGACY TOOLS (should NOT be exposed):
@@ -86,9 +85,6 @@ class TestMCPEndpointToolExposure:
         assert (
             "receive_messages" in tool_names
         ), "receive_messages should be exposed"
-        assert (
-            "acknowledge_message" in tool_names
-        ), "acknowledge_message should be exposed"
         assert "list_messages" in tool_names, "list_messages should be exposed"
 
     async def test_mcp_endpoint_excludes_legacy_queue_tools(
@@ -199,12 +195,6 @@ class TestMCPEndpointToolExposure:
         # receive_messages accepts agent_id (not job_id)
         # This is the canonical contract, not queue-style
 
-        # Verify acknowledge_message schema
-        ack_msg = tools_by_name.get("acknowledge_message")
-        assert ack_msg is not None, "acknowledge_message tool should exist"
-        assert "inputSchema" in ack_msg
-        assert "message_id" in ack_msg["inputSchema"]["properties"]
-
     async def test_mcp_tool_map_excludes_legacy_tools(self):
         """Verify tool_map in mcp_http.py does not include legacy tools."""
         # This is a code inspection test - verifies the tool_map dictionary
@@ -228,9 +218,6 @@ class TestMCPEndpointToolExposure:
         assert (
             '"receive_messages"' in source
         ), "tool_map should contain receive_messages"
-        assert (
-            '"acknowledge_message"' in source
-        ), "tool_map should contain acknowledge_message"
         assert '"list_messages"' in source, "tool_map should contain list_messages"
 
     async def test_legacy_tools_not_callable_via_mcp(

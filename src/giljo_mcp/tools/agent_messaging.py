@@ -4,8 +4,7 @@ INTERNAL/LEGACY: Agent messaging tools for FastMCP/stdio mode.
 WARNING: These tools are INTERNAL and should NOT be used by HTTP MCP agents.
 HTTP MCP agents should use the canonical tools via MessageService:
 - send_message
-- receive_messages
-- acknowledge_message
+- receive_messages (auto-acknowledges messages)
 - list_messages
 
 This module is retained for:
