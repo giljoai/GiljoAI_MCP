@@ -225,21 +225,11 @@ const readyToLaunch = computed(() => {
 /**
  * Computed: Check if orchestrator is already active (staging complete)
  *
- * Staging is only complete when:
- * - Orchestrator status is 'working' (actively executing), OR
- * - Specialist agents have been spawned (implementer, tester, reviewer)
- *
- * Orchestrator with status='waiting' means just created but not started yet.
- * This allows user to retry if they forgot to paste the prompt.
+ * Handover 0291: Unified toggle - first message in project triggers both:
+ * - "Stage Project" → "Orchestrator Active"
+ * - "Launch Jobs" button enables
  */
-const hasActiveOrchestrator = computed(() => {
-  const orchestrator = store.agents.find(a => a.agent_type === 'orchestrator')
-  if (!orchestrator) return false
-
-  // Staging complete = orchestrator is working OR has spawned specialist agents
-  const hasSpawnedAgents = store.agents.some(a => a.agent_type !== 'orchestrator')
-  return orchestrator.status === 'working' || hasSpawnedAgents
-})
+const hasActiveOrchestrator = computed(() => store.stagingComplete)
 
 /**
  * Watch for errors
@@ -299,26 +289,20 @@ const handleAgentCreated = (data) => {
 }
 
 /**
- * Handover 0291: Staging Complete Broadcast Signal Handler
- * Listen for orchestrator's "STAGING_COMPLETE" broadcast message.
- * This is the explicit signal that staging is done and Launch Jobs should enable.
+ * Handover 0291: Staging Complete Signal Handler
+ * First message in project = staging is complete.
+ * No string parsing needed - the orchestrator only sends messages after spawning agents.
  */
 const handleStagingCompleteMessage = (data) => {
-  // Project isolation check (messages have job_id which is project_id for broadcasts)
+  // Project isolation check
   const projectId = props.project?.id || props.project?.project_id
   if (data.job_id !== projectId && data.project_id !== projectId) {
     return
   }
 
-  // Only process orchestrator broadcasts with STAGING_COMPLETE marker
-  const isFromOrchestrator = data.from_agent === 'orchestrator'
-  const isBroadcast = data.message_type === 'broadcast'
-  const hasStagingMarker = (data.content_preview || data.content || '').includes('STAGING_COMPLETE')
-
-  if ((isFromOrchestrator || isBroadcast) && hasStagingMarker) {
-    console.log('[ProjectTabs] STAGING_COMPLETE broadcast received - enabling Launch Jobs')
-    store.setStagingComplete(true)
-  }
+  // First message in project = staging complete
+  console.log('[ProjectTabs] First message received - staging complete, enabling Launch Jobs')
+  store.setStagingComplete(true)
 }
 
 /**
@@ -385,27 +369,18 @@ watch(
 )
 
 /**
- * Watch for staging complete detection (Handover 0287)
- * Alternative Approach: Simpler Detection - Watch for mission + agents
- * When mission exists AND orchestrator exists AND specialist agents exist,
- * infer that staging is complete.
+ * Watch for staging reset (cancellation scenarios)
+ * Only reset stagingComplete when project is explicitly cleared/reset.
+ * The positive trigger comes from message:sent WebSocket event (handleStagingCompleteMessage).
  */
 watch(
-  () => [store.orchestratorMission, store.agents],
-  ([mission, agents]) => {
-    const hasOrchestrator = agents.some(a => a.agent_type === 'orchestrator')
-    const hasSpecialists = agents.some(a => a.agent_type !== 'orchestrator')
-
-    if (mission && hasOrchestrator && hasSpecialists) {
-      // Staging is implicitly complete
-      console.log('[ProjectTabs] Staging complete detected - enabling Launch button')
-      store.setStagingComplete(true)
-    } else if (!mission || !hasOrchestrator || !hasSpecialists) {
-      // Reset if conditions not met (handles cancellation/reset scenarios)
+  () => store.orchestratorMission,
+  (mission) => {
+    // Reset only when mission is cleared (cancellation/reset)
+    if (!mission) {
       store.setStagingComplete(false)
     }
-  },
-  { deep: true }
+  }
 )
 
 /**
