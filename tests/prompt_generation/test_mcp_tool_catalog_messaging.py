@@ -21,7 +21,6 @@ class TestMCPToolCatalogMessaging:
         # Must have these canonical tools
         assert "send_message" in tools, "Must have send_message tool"
         assert "receive_messages" in tools, "Must have receive_messages tool"
-        assert "acknowledge_message" in tools, "Must have acknowledge_message tool"
         assert "list_messages" in tools, "Must have list_messages tool"
 
     def test_communication_category_excludes_legacy_tools(self, catalog_generator):
@@ -78,7 +77,6 @@ class TestMCPToolCatalogMessaging:
 
         assert "send_message" in catalog
         assert "receive_messages" in catalog
-        assert "acknowledge_message" in catalog
         assert "list_messages" in catalog
 
     def test_full_catalog_excludes_legacy_tools(self, catalog_generator):

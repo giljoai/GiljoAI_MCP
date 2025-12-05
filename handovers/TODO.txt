@@ -1,11 +1,17 @@
 TODO
 
-FIxing message reading that failed, Green agent is working - works but does not see user messages, can now see broadcasts but not direct messages
+FIxing message reading that failed,Fixed blue agent working - simplified that 'read message" also check acknowledged tick on UI
 
 
 Codex has reviewed and say it is the right direction
 
-we need to fix send and read and keep tuning that it is lean message system
-signaling system
-etc. 
+need a codex review when done to ensure we are now running as lean as we can 
+that we have a properly labeled and identified message system in codebase, which is about message send (direct/broadcast), message reading/listing.
+Signaling message sent, message waiting, message read, Job read, Job acknowledged
+Agent status, working, waiting etc. 6 or so statuses
+
+Ensure these systems are working in harmony but their own system
+
+Tennant based, tied to product->Project->Jobs via ID
+ 
 

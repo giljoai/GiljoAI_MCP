@@ -217,23 +217,8 @@ messages = await receive_messages(
 
 for msg in messages['messages']:
     print(f"From {msg['from_agent']}: {msg['content']}")
-    # Process and acknowledge each message
+    # Messages are auto-acknowledged when retrieved
 """,
-            },
-            "acknowledge_message": {
-                "params": [
-                    "message_id: str",
-                ],
-                "description": "Mark message as read/acknowledged",
-                "returns": "Dict with success status",
-                "when": [
-                    "After processing a received message",
-                    "To confirm receipt to sender",
-                ],
-                "example": """# Acknowledge a message after processing
-await acknowledge_message(
-    message_id='msg-789'
-)""",
             },
             "list_messages": {
                 "params": [
@@ -461,7 +446,6 @@ for agent in members['agents']:
             "context.get_available_agents",
             "communication.send_message",
             "communication.receive_messages",
-            "communication.acknowledge_message",
             "communication.list_messages",
             "tasks.get_job_status",
             "project.update_project_mission",
@@ -473,7 +457,6 @@ for agent in members['agents']:
             "context.get_agent_mission",
             "communication.send_message",
             "communication.receive_messages",
-            "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
             "tasks.report_job_error",
@@ -484,7 +467,6 @@ for agent in members['agents']:
             "context.get_agent_mission",
             "communication.send_message",
             "communication.receive_messages",
-            "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
             "tasks.report_job_error",
@@ -496,7 +478,6 @@ for agent in members['agents']:
             "context.get_available_agents",
             "communication.send_message",
             "communication.receive_messages",
-            "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
             "project.get_project_context",
@@ -506,7 +487,6 @@ for agent in members['agents']:
             "context.get_agent_mission",
             "communication.send_message",
             "communication.receive_messages",
-            "communication.acknowledge_message",
             "tasks.update_job_progress",
             "tasks.complete_agent_job",
             "project.get_project_context",
@@ -716,7 +696,7 @@ messages = await receive_messages(
 
 for msg in messages['messages']:
     print(f"Message from {msg['from_agent']}: {msg['content']}")
-    await acknowledge_message(msg['message_id'])
+    # Messages are auto-acknowledged when retrieved
 
 # Step 3: Agent works and reports progress
 await update_job_progress(
