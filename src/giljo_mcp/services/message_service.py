@@ -182,8 +182,38 @@ class MessageService:
                             recipient_job_ids = [agent.job_id for agent in all_agents]
                             self._logger.info(f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_job_ids)} recipients")
                         else:
-                            # Direct message: Use provided agent IDs
-                            recipient_job_ids = to_agents
+                            # Direct message: Resolve agent_type to job_id if needed
+                            # to_agents can contain job_ids (UUIDs) or agent_types (like "analyzer")
+                            resolved_job_ids = []
+                            for agent_ref in to_agents:
+                                # Check if this looks like a UUID (job_id) or an agent_type
+                                # UUIDs contain hyphens and are 36 chars, agent_types are short names
+                                if len(agent_ref) == 36 and '-' in agent_ref:
+                                    # Looks like a job_id UUID - use directly
+                                    resolved_job_ids.append(agent_ref)
+                                else:
+                                    # Looks like an agent_type - resolve to job_id
+                                    agent_result = await session.execute(
+                                        select(MCPAgentJob).where(
+                                            MCPAgentJob.project_id == project.id,
+                                            MCPAgentJob.agent_type == agent_ref
+                                        ).limit(1)
+                                    )
+                                    agent_job = agent_result.scalar_one_or_none()
+                                    if agent_job:
+                                        resolved_job_ids.append(agent_job.job_id)
+                                        self._logger.info(
+                                            f"[WEBSOCKET DEBUG] Resolved agent_type '{agent_ref}' "
+                                            f"to job_id '{agent_job.job_id}'"
+                                        )
+                                    else:
+                                        # Couldn't resolve - keep original for logging
+                                        resolved_job_ids.append(agent_ref)
+                                        self._logger.warning(
+                                            f"[WEBSOCKET DEBUG] Could not resolve agent_type '{agent_ref}' "
+                                            f"to job_id in project {project.id}"
+                                        )
+                            recipient_job_ids = resolved_job_ids
                             self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_job_ids}")
 
                         # Emit message:received event to recipients
@@ -627,6 +657,49 @@ class MessageService:
                 if agent_name not in message.acknowledged_by:
                     message.acknowledged_by.append(agent_name)
                     await session.commit()
+
+                    # Update JSONB status in recipient's agent job
+                    try:
+                        from sqlalchemy.orm.attributes import flag_modified
+
+                        # Find agent job by job_id (agent_name could be job_id or agent_type)
+                        agent_result = await session.execute(
+                            select(MCPAgentJob).where(
+                                MCPAgentJob.job_id == agent_name
+                            )
+                        )
+                        agent_job = agent_result.scalar_one_or_none()
+
+                        if not agent_job and message.project_id:
+                            # Fallback: try to find by agent_type
+                            agent_result = await session.execute(
+                                select(MCPAgentJob).where(
+                                    MCPAgentJob.agent_type == agent_name,
+                                    MCPAgentJob.project_id == message.project_id
+                                ).limit(1)
+                            )
+                            agent_job = agent_result.scalar_one_or_none()
+
+                        if agent_job and agent_job.messages:
+                            # Find and update the message status in JSONB
+                            updated = False
+                            for msg in agent_job.messages:
+                                if msg.get("id") == message_id:
+                                    msg["status"] = "read"
+                                    msg["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
+                                    updated = True
+                                    break
+
+                            if updated:
+                                flag_modified(agent_job, "messages")
+                                await session.commit()
+                                self._logger.info(
+                                    f"[PERSISTENCE] Updated JSONB status to 'read' for message {message_id}"
+                                )
+                    except Exception as jsonb_error:
+                        self._logger.warning(
+                            f"Failed to update JSONB status for message {message_id}: {jsonb_error}"
+                        )
 
                 self._logger.info(
                     f"Message {message_id} acknowledged by {agent_name}"
