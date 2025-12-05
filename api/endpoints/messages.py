@@ -41,6 +41,16 @@ class MessageResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class MessageSendRequest(BaseModel):
+    """Request schema for unified UI messaging endpoint (Handover 0299)."""
+
+    project_id: str = Field(..., description="Project ID")
+    to_agents: list[str] = Field(..., description="Recipient agent IDs. Use ['all'] for broadcast.")
+    content: str = Field(..., description="Message content")
+    message_type: str = Field("direct", description="Message type: 'direct' or 'broadcast'")
+    priority: str = Field("normal", description="Message priority: 'low', 'normal', 'high'")
+
+
 @router.post("/", response_model=MessageResponse)
 async def send_message(
     message: MessageSend,
@@ -95,6 +105,46 @@ async def send_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/send", response_model=dict)
+async def send_message_from_ui(
+    payload: MessageSendRequest,
+    current_user: User = Depends(get_current_active_user),
+    message_service: MessageService = Depends(get_message_service),
+):
+    """
+    Unified endpoint for UI messaging (broadcast and direct) - Handover 0299.
+
+    Uses the same MessageService that MCP tools use, providing a single
+    entry point for both broadcast (to_agents=['all']) and direct messages.
+
+    Returns:
+        dict with success, message_id, and to_agents fields
+    """
+    try:
+        result = await message_service.send_message(
+            to_agents=payload.to_agents,
+            content=payload.content,
+            project_id=payload.project_id,
+            message_type=payload.message_type,
+            priority=payload.priority,
+            from_agent="user",  # UI messages always come from "user"
+        )
+
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))
+
+        return {
+            "success": True,
+            "message_id": result["message_id"],
+            "to_agents": result.get("to_agents", payload.to_agents),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/", response_model=list[MessageResponse])
 async def list_messages(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
@@ -138,7 +188,7 @@ async def list_messages(
             created_at_str = msg.get("created_at")
             if created_at_str:
                 try:
-                    created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                    created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
                 except (ValueError, AttributeError):
                     created_at = datetime.now(timezone.utc)
             else:
@@ -176,11 +226,7 @@ async def get_messages(
 ):
     """Get pending messages for an agent"""
     try:
-        result = await message_service.get_messages(
-            agent_name=agent_name,
-            project_id=project_id,
-            status="pending"
-        )
+        result = await message_service.get_messages(agent_name=agent_name, project_id=project_id, status="pending")
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to get messages"))
@@ -191,7 +237,7 @@ async def get_messages(
             created_str = msg.get("created")
             if created_str:
                 try:
-                    created_at = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                    created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
                 except (ValueError, AttributeError):
                     created_at = datetime.now(timezone.utc)
             else:
@@ -227,10 +273,7 @@ async def acknowledge_message(
     from api.app import state
 
     try:
-        result = await message_service.acknowledge_message(
-            message_id=message_id,
-            agent_name=agent_name
-        )
+        result = await message_service.acknowledge_message(message_id=message_id, agent_name=agent_name)
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to acknowledge message"))
@@ -265,9 +308,7 @@ async def complete_message(
 
     try:
         complete_result = await message_service.complete_message(
-            message_id=message_id,
-            agent_name=agent_name,
-            result=result
+            message_id=message_id, agent_name=agent_name, result=result
         )
 
         if not complete_result.get("success"):
@@ -321,8 +362,7 @@ async def broadcast_message(
             error_msg = message_result.get("error", "Failed to send broadcast")
             if "not found" in error_msg.lower():
                 raise HTTPException(status_code=404, detail=error_msg)
-            else:
-                raise HTTPException(status_code=400, detail=error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
 
         # Get agent names from the result
         agent_names = message_result.get("to_agents", [])
