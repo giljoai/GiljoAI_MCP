@@ -277,6 +277,7 @@ export const api = {
   messages: {
     list: (params) => apiClient.get('/api/v1/messages/', { params }),
     get: (id) => apiClient.get(`/api/v1/messages/${id}/`),
+    // Legacy send method - use sendUnified for UI messaging (Handover 0299)
     send: (data) => apiClient.post('/api/v1/messages/', data),
     acknowledge: (id, agentName) =>
       apiClient.post(`/api/v1/messages/${id}/acknowledge/`, { agent_name: agentName }),
@@ -285,6 +286,25 @@ export const api = {
       apiClient.post('/api/v1/messages/broadcast', {
         project_id: projectId,
         content: content,
+        priority: priority,
+      }),
+    /**
+     * Unified send endpoint for UI messaging (Handover 0299)
+     * Handles both broadcast (toAgents=['all']) and direct messages.
+     * Uses MessageService for consistent message handling.
+     *
+     * @param {string} projectId - Project ID
+     * @param {string[]} toAgents - Recipients. Use ['all'] for broadcast.
+     * @param {string} content - Message content
+     * @param {string} messageType - 'direct' or 'broadcast'
+     * @param {string} priority - 'low', 'normal', or 'high'
+     */
+    sendUnified: (projectId, toAgents, content, messageType = 'direct', priority = 'normal') =>
+      apiClient.post('/api/v1/messages/send', {
+        project_id: projectId,
+        to_agents: toAgents,
+        content: content,
+        message_type: messageType,
         priority: priority,
       }),
   },

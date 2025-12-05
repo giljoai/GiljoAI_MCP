@@ -444,7 +444,9 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     },
 
     /**
-     * Send message to agent(s)
+     * Send message to agent(s) - Handover 0299: Unified UI Messaging Endpoint
+     * Uses the unified /api/v1/messages/send endpoint for both broadcast and direct messages.
+     *
      * @param {string} content - Message content
      * @param {string} recipient - 'orchestrator' | 'broadcast' | agent_id
      */
@@ -452,51 +454,42 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       if (!this.currentProject) return
 
       try {
-        if (recipient === 'broadcast') {
-          // Use broadcast endpoint for broadcast messages
-          const response = await api.agentJobs.broadcast({
-            project_id: this.currentProject.id,
-            content,
-            priority: 'normal',
-            from_agent: 'user',
-          })
+        // Determine to_agents and message_type based on recipient
+        let toAgents
+        let messageType
 
-          // Add broadcast message to local messages
-          this.addMessage({
-            id: response.message_id,
-            from: 'user',
-            to_agent: null,
-            content,
-            type: 'broadcast',
-            timestamp: response.timestamp,
-            status: 'sent',
-            recipient_count: response.recipient_count,
-            recipients: response.recipients,
-          })
+        if (recipient === 'broadcast') {
+          toAgents = ['all']
+          messageType = 'broadcast'
         } else {
-          // Find the orchestrator job for this project to send targeted message
+          // Find orchestrator job for this project
           const orchestratorJob = this.agents.find((a) => a.agent_type === 'orchestrator')
 
           if (!orchestratorJob) {
-            throw new Error('Orchestrator not found - cannot send message')
+            throw new Error('Orchestrator not found')
           }
-
-          const response = await api.agentJobs.sendMessage(orchestratorJob.job_id, {
-            content,
-            to: recipient,
-          })
-
-          // Add message to local messages
-          this.addMessage({
-            id: response.message_id,
-            from: 'developer',
-            to_agent: recipient,
-            content,
-            type: 'message',
-            timestamp: response.timestamp,
-            status: response.status,
-          })
+          toAgents = [orchestratorJob.job_id]
+          messageType = 'direct'
         }
+
+        // Use unified endpoint (Handover 0299)
+        const response = await api.messages.sendUnified(
+          this.currentProject.id,
+          toAgents,
+          content,
+          messageType,
+        )
+
+        // Add to local messages
+        this.addMessage({
+          id: response.data.message_id,
+          from: 'user',
+          to_agent: recipient === 'broadcast' ? null : 'orchestrator',
+          content,
+          type: messageType,
+          timestamp: new Date().toISOString(),
+          status: 'sent',
+        })
       } catch (error) {
         console.error('Failed to send message:', error)
         throw error
