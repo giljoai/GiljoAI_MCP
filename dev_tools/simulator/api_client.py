@@ -129,10 +129,6 @@ class APIClient:
         r = await self._client.get("/api/v1/messages/", params=filters)
         return self._result(r)
 
-    async def acknowledge_message(self, message_id: str, agent_name: str = "simulator") -> dict:
-        r = await self._client.post(f"/api/v1/messages/{message_id}/acknowledge", params={"agent_name": agent_name})
-        return self._result(r)
-
     async def complete_message(self, message_id: str, agent_name: str = "simulator", result: str = "ok") -> dict:
         r = await self._client.post(
             f"/api/v1/messages/{message_id}/complete", params={"agent_name": agent_name, "result": result}

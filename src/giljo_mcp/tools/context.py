@@ -1158,15 +1158,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                     "agent_name": "Agent name (required)",
                                     "project_id": "Optional project ID",
                                 },
-                                "returns": "List of pending messages",
-                            },
-                            "acknowledge_message": {
-                                "description": "Mark message as received by agent",
-                                "parameters": {
-                                    "message_id": "UUID of the message (required)",
-                                    "agent_name": "Agent name (required)",
-                                },
-                                "returns": "Acknowledgment confirmation",
+                                "returns": "List of pending messages (auto-acknowledged)",
                             },
                             "complete_message": {
                                 "description": "Mark message as completed with result",
@@ -1257,7 +1249,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 "usage_tips": [
                     "Use ensure_agent() for worker agents - it's idempotent and safe",
                     "Use activate_agent() only for orchestrator - it starts discovery immediately",
-                    "Always acknowledge messages when received using acknowledge_message()",
+                    "Messages are automatically acknowledged when retrieved",
                     "Complete messages with results using complete_message()",
                     "Vision documents auto-chunk for large content (50K+ tokens)",
                     "Project isolation via tenant keys enables concurrent products",
