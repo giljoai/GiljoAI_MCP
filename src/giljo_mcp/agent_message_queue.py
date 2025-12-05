@@ -1,7 +1,21 @@
 """
-Agent Message Queue System for GiljoAI MCP (Handover 0120)
-Provides ACID-compliant, priority-based message queue with intelligent routing
-Consolidates AgentCommunicationQueue functionality with advanced features
+INTERNAL/LEGACY: Agent Message Queue System
+
+WARNING: This module is INTERNAL. The primary messaging implementation is MessageService.
+This queue abstraction is retained for:
+- Legacy orchestrator code compatibility
+- JSONB counter persistence (Job.messages field)
+- Internal debugging and testing
+- Backward compatibility with stdio-based tools
+
+New code should use MessageService directly, not this queue.
+
+See Handover 0295 for the canonical messaging contract.
+See Handover 0298 for cleanup decisions.
+
+Original Purpose (Handover 0120):
+Provides ACID-compliant, priority-based message queue with intelligent routing.
+Consolidates AgentCommunicationQueue functionality with advanced features.
 """
 
 import asyncio
