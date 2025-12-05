@@ -118,11 +118,42 @@ class MessageService:
                         "error": "Project not found"
                     }
 
-                # Create message
+                # Resolve agent_type strings to job_id UUIDs before storing
+                # This ensures receive_messages (MCP over HTTP) can find messages by job_id
+                resolved_to_agents = []
+                for agent_ref in to_agents:
+                    if agent_ref == 'all':
+                        # Broadcast - keep as-is, receive_messages handles 'all' specially
+                        resolved_to_agents.append('all')
+                    elif len(agent_ref) == 36 and '-' in agent_ref:
+                        # Already a UUID (job_id) - use directly
+                        resolved_to_agents.append(agent_ref)
+                    else:
+                        # Agent type string (e.g., "orchestrator") - resolve to job_id
+                        agent_result = await session.execute(
+                            select(MCPAgentJob).where(
+                                MCPAgentJob.project_id == project_id,
+                                MCPAgentJob.agent_type == agent_ref
+                            ).limit(1)
+                        )
+                        agent_job = agent_result.scalar_one_or_none()
+                        if agent_job:
+                            resolved_to_agents.append(agent_job.job_id)
+                            self._logger.info(
+                                f"[RESOLVER] Resolved '{agent_ref}' to job_id '{agent_job.job_id}'"
+                            )
+                        else:
+                            # Could not resolve - keep original (will fail to deliver)
+                            resolved_to_agents.append(agent_ref)
+                            self._logger.warning(
+                                f"[RESOLVER] Could not resolve agent_type '{agent_ref}' in project {project_id}"
+                            )
+
+                # Create message with resolved job_ids
                 message = Message(
                     project_id=project.id,
                     tenant_key=project.tenant_key,
-                    to_agents=to_agents,
+                    to_agents=resolved_to_agents,
                     content=content,
                     message_type=message_type,
                     priority=priority,
@@ -257,7 +288,7 @@ class MessageService:
                 return {
                     "success": True,
                     "message_id": message_id,
-                    "to_agents": to_agents,
+                    "to_agents": resolved_to_agents,
                     "type": message_type,
                 }
 
