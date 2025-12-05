@@ -1,6 +1,7 @@
 TODO
 
-FIxing message reading that failed, Green agent is working
+FIxing message reading that failed, Green agent is working - works but does not see user messages, can now see broadcasts but not direct messages
+
 
 Codex has reviewed and say it is the right direction
 
