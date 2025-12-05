@@ -423,7 +423,7 @@ class MessageService:
                     session=session,
                     job_id=agent_id,
                     tenant_key=tenant_key,
-                    to_agent=None,
+                    to_agent=agent_id,  # Filter for messages to this agent (includes broadcasts)
                     message_type=None,
                     unread_only=True,
                 )
