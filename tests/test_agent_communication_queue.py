@@ -1,7 +1,7 @@
 """
-Unit tests for AgentCommunicationQueue class.
+Unit tests for AgentMessageQueue class.
 
-Handover 0019: Tests for JSONB-based agent communication queue
+Handover 0019: Tests for JSONB-based agent message queue
 operating on MCPAgentJob.messages field.
 """
 
@@ -20,7 +20,7 @@ from tests.fixtures.base_test import BaseAsyncTest
 
 
 class TestAgentCommunicationQueue(BaseAsyncTest):
-    """Test suite for AgentCommunicationQueue"""
+    """Test suite for AgentMessageQueue"""
 
     def setup_method(self, method):
         """Setup test method"""
@@ -32,7 +32,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_with_all_parameters(self):
         """Test sending message with all parameters specified"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -48,7 +48,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session.query.return_value = mock_query
         mock_session.commit = Mock()
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.send_message(
             session=mock_session,
@@ -81,7 +81,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_broadcast(self):
         """Test sending broadcast message (to_agent=None)"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -96,7 +96,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session.query.return_value = mock_query
         mock_session.commit = Mock()
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.send_message(
             session=mock_session,
@@ -116,7 +116,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_batch(self):
         """Test batch message sending"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -131,7 +131,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session.query.return_value = mock_query
         mock_session.commit = Mock()
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         messages = [
             {
@@ -174,7 +174,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_priority_handling(self):
         """Test message priority values (0=low, 1=normal, 2=high)"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -188,7 +188,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session.query.return_value = mock_query
         mock_session.commit = Mock()
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Test low priority
         queue.send_message(
@@ -232,7 +232,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_invalid_priority(self):
         """Test sending message with invalid priority value"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -245,7 +245,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.send_message(
             session=mock_session,
@@ -263,7 +263,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_job_not_found(self):
         """Test sending message when job doesn't exist"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -272,7 +272,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = None
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.send_message(
             session=mock_session,
@@ -289,7 +289,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_send_message_tenant_isolation(self):
         """Test that messages are tenant-isolated"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -303,7 +303,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.send_message(
             session=mock_session,
@@ -322,7 +322,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_get_messages_no_filters(self):
         """Test retrieving all messages without filters"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -356,7 +356,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.get_messages(session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key)
 
@@ -365,7 +365,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_get_messages_filtered_by_to_agent(self):
         """Test retrieving messages filtered by to_agent"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -409,7 +409,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.get_messages(
             session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key, to_agent="analyzer"
@@ -421,7 +421,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_get_messages_filtered_by_message_type(self):
         """Test retrieving messages filtered by message_type"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -465,7 +465,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.get_messages(
             session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key, message_type="task"
@@ -477,7 +477,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_get_messages_unread_only(self):
         """Test retrieving only unread messages"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -522,7 +522,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.get_messages(
             session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key, unread_only=True
@@ -534,7 +534,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_get_unread_count(self):
         """Test getting count of unread messages"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -552,7 +552,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.get_unread_count(session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key)
 
@@ -561,7 +561,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_get_unread_count_by_agent(self):
         """Test getting unread count for specific agent"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -579,7 +579,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.get_unread_count(
             session=mock_session, job_id=self.job_id, tenant_key=self.tenant_key, to_agent="analyzer"
@@ -592,7 +592,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_acknowledge_message(self):
         """Test acknowledging a message"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -621,7 +621,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         # Use flag_modified mock
         type(mock_job).messages = PropertyMock(return_value=mock_job.messages)
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.acknowledge_message(
             session=mock_session,
@@ -639,7 +639,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_acknowledge_already_acknowledged_message(self):
         """Test acknowledging an already acknowledged message"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -660,7 +660,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.acknowledge_message(
             session=mock_session,
@@ -675,7 +675,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_acknowledge_message_not_found(self):
         """Test acknowledging a non-existent message"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -688,7 +688,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.acknowledge_message(
             session=mock_session,
@@ -703,7 +703,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_acknowledge_all_messages(self):
         """Test acknowledging all unread messages"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -736,7 +736,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
         type(mock_job).messages = PropertyMock(return_value=mock_job.messages)
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.acknowledge_all_messages(
             session=mock_session,
@@ -759,7 +759,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_jsonb_array_append(self):
         """Test JSONB array append operation"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -773,7 +773,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session.query.return_value = mock_query
         mock_session.commit = Mock()
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Send new message (should append to array)
         queue.send_message(
@@ -792,7 +792,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_jsonb_message_update_acknowledgment(self):
         """Test JSONB message update for acknowledgment"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -815,7 +815,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
         type(mock_job).messages = PropertyMock(return_value=mock_job.messages)
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Acknowledge message
         queue.acknowledge_message(
@@ -834,7 +834,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_jsonb_query_filtering(self):
         """Test JSONB query filtering by message properties"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -852,7 +852,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Filter by to_agent, type, and unread
         result = queue.get_messages(
@@ -874,7 +874,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_multi_tenant_message_isolation(self):
         """Test that messages are isolated by tenant_key"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -888,7 +888,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Try to send message with wrong tenant_key
         result = queue.send_message(
@@ -906,7 +906,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_cross_tenant_message_prevention(self):
         """Test prevention of cross-tenant message access"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -923,7 +923,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_job
         mock_session.query.return_value = mock_query
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Try to access with tenant2 credentials
         result = queue.get_messages(session=mock_session, job_id=self.job_id, tenant_key=tenant2_key)
@@ -935,7 +935,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_database_error_handling(self):
         """Test handling of database errors"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
@@ -943,7 +943,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         # Simulate database error
         mock_session.query.side_effect = Exception("Database connection error")
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         result = queue.send_message(
             session=mock_session,
@@ -960,12 +960,12 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
     def test_missing_required_fields(self):
         """Test validation of required message fields"""
-        from src.giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        queue = AgentCommunicationQueue(mock_db)
+        queue = AgentMessageQueue(mock_db)
 
         # Missing content
         result = queue.send_message(
