@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -71,7 +72,7 @@ class Task(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    meta_data = Column(JSON, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Relationships
     product = relationship("Product", back_populates="tasks", foreign_keys=[product_id])
@@ -113,19 +114,19 @@ class Message(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    to_agents = Column(JSON, default=list)  # List of agent names
+    to_agents = Column(JSONB, default=list)  # List of agent names
     message_type = Column(String(50), default="direct")  # direct, broadcast, system
     subject = Column(String(255), nullable=True)
     content = Column(Text, nullable=False)
     priority = Column(String(20), default="normal")  # low, normal, high, critical
     status = Column(String(50), default="pending")  # pending, acknowledged, completed, failed
-    acknowledged_by = Column(JSON, default=list)  # Array of agent names that acknowledged
-    completed_by = Column(JSON, default=list)  # Array of agent names that completed
+    acknowledged_by = Column(JSONB, default=list)  # Array of agent names that acknowledged
+    completed_by = Column(JSONB, default=list)  # Array of agent names that completed
     result = Column(Text, nullable=True)  # Completion result for completed messages
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    meta_data = Column(JSON, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # New fields for MessageQueue system
     processing_started_at = Column(DateTime(timezone=True), nullable=True)

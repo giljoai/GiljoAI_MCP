@@ -469,6 +469,7 @@ class MessageService:
                 # 2. Broadcast message (to_agents contains 'all')
                 # 3. Only pending messages (unread_only=True by default)
                 from sqlalchemy import or_, func
+                from sqlalchemy.dialects.postgresql import JSONB
 
                 query = select(Message).where(
                     and_(
@@ -476,11 +477,12 @@ class MessageService:
                         Message.project_id == job.project_id,
                         Message.status == "pending",  # Only unread messages
                         or_(
-                            # Direct message: JSON array contains agent_id
-                            # Use PostgreSQL JSON containment operator @>
-                            Message.to_agents.op('@>')(func.cast([agent_id], type_=type(Message.to_agents.type))),
-                            # Broadcast: JSON array contains 'all'
-                            Message.to_agents.op('@>')(func.cast(['all'], type_=type(Message.to_agents.type)))
+                            # Direct message: JSONB array contains agent_id
+                            # Use PostgreSQL JSONB containment operator @>
+                            # Cast both sides to JSONB to avoid type mismatch
+                            func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
+                            # Broadcast: JSONB array contains 'all'
+                            func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB))
                         )
                     )
                 ).order_by(Message.created_at)
@@ -567,13 +569,13 @@ class MessageService:
                 # If agent_id provided, filter messages for that agent
                 if agent_id:
                     # Get agent job to verify it exists and get project context
+                    # Build WHERE conditions
+                    conditions = [MCPAgentJob.job_id == agent_id]
+                    if tenant_key:
+                        conditions.append(MCPAgentJob.tenant_key == tenant_key)
+
                     result = await session.execute(
-                        select(MCPAgentJob).where(
-                            and_(
-                                MCPAgentJob.job_id == agent_id,
-                                MCPAgentJob.tenant_key == tenant_key or ""
-                            )
-                        )
+                        select(MCPAgentJob).where(and_(*conditions))
                     )
                     job = result.scalar_one_or_none()
 
@@ -585,16 +587,18 @@ class MessageService:
 
                     # Query messages for this agent using native queries
                     from sqlalchemy import or_, func
+                    from sqlalchemy.dialects.postgresql import JSONB
 
                     query = select(Message).where(
                         and_(
                             Message.tenant_key == job.tenant_key,
                             Message.project_id == job.project_id,
                             or_(
-                                # Direct message: JSON array contains agent_id
-                                Message.to_agents.op('@>')(func.cast([agent_id], type_=type(Message.to_agents.type))),
-                                # Broadcast: JSON array contains 'all'
-                                Message.to_agents.op('@>')(func.cast(['all'], type_=type(Message.to_agents.type)))
+                                # Direct message: JSONB array contains agent_id
+                                # Cast both sides to JSONB to avoid type mismatch
+                                func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
+                                # Broadcast: JSONB array contains 'all'
+                                func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB))
                             )
                         )
                     ).order_by(Message.created_at)
