@@ -1,4 +1,4 @@
-# Handover 0330: De-Linting Risk Assessment & Roadmap
+# Handover 0330 Series: De-Linting Risk Assessment & Roadmap
 
 **Date**: 2025-12-05
 **Scope**: Comprehensive codebase quality audit
@@ -239,10 +239,10 @@ After remediation:
 
 ## Related Documents
 
-- `0330_feature_catalogue_backend.md` - 27 backend feature categories
-- `0330_feature_catalogue_frontend.md` - 21 frontend feature categories
-- `0330_python_linting_report.md` - Detailed Python analysis
-- `0330_frontend_linting_report.md` - Detailed Vue analysis
+- `0330c_feature_catalogue_backend.md` - 27 backend feature categories
+- `0330d_feature_catalogue_frontend.md` - 21 frontend feature categories
+- `0330a_python_linting_report.md` - Detailed Python analysis
+- `0330b_frontend_linting_report.md` - Detailed Vue analysis
 
 ---
 
