@@ -88,7 +88,7 @@ class TestMessageSchemaFix:
                 content="Test message content",
                 message_type="direct",
                 priority="high",
-                status="pending",
+                status="waiting",
                 meta_data={"_from_agent": "orchestrator"},
             )
             session.add(message)
@@ -178,7 +178,7 @@ class TestMessageSchemaFix:
                     content="Message 1",
                     message_type="direct",
                     priority="normal",
-                    status="pending",
+                    status="waiting",
                     meta_data={"_from_agent": "orchestrator"},
                 ),
                 Message(
@@ -188,7 +188,7 @@ class TestMessageSchemaFix:
                     content="Message 2",
                     message_type="broadcast",
                     priority="high",
-                    status="pending",
+                    status="waiting",
                     meta_data={"_from_agent": "implementer"},
                 ),
                 Message(

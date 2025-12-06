@@ -83,7 +83,7 @@ def test_multi_tenant_isolation_demo():
                     to_agents=[f"agent_{tenant_id}_0"],
                     content=f"Concurrent message {i} for tenant {tenant_id}",
                     message_type="direct",
-                    status="pending",
+                    status="waiting",
                 )
                 session.add(message)
             session.commit()

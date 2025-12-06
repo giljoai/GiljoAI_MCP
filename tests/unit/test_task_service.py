@@ -243,7 +243,7 @@ class TestTaskServiceRetrieval:
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
-        result = await service.list_tasks(status="pending")
+        result = await service.list_tasks(status="waiting")
 
         # Assert
         assert result["success"] is True

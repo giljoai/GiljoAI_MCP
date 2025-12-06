@@ -485,7 +485,7 @@ class TestListMyTasks:
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
             assigned_to_user_id=test_user.id,
-            status="pending",
+            status="waiting",
         )
         task2 = Task(
             title="In progress task",
@@ -498,7 +498,7 @@ class TestListMyTasks:
         await db_session.commit()
 
         result = await list_my_tasks(
-            filter_type="assigned", status="pending", tenant_key=test_user.tenant_key, current_user_id=test_user.id
+            filter_type="assigned", status="waiting", tenant_key=test_user.tenant_key, current_user_id=test_user.id
         )
 
         assert result["success"] is True

@@ -78,7 +78,7 @@ class TestMessageAutoAcknowledge:
                 message_type="direct",
                 content="Test message 1",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 created_at=datetime.now(timezone.utc),
                 meta_data={"_from_agent": "orchestrator"},
             )
@@ -91,7 +91,7 @@ class TestMessageAutoAcknowledge:
                 message_type="direct",
                 content="Test message 2",
                 priority="high",
-                status="pending",
+                status="waiting",
                 created_at=datetime.now(timezone.utc),
                 meta_data={"_from_agent": "orchestrator"},
             )
@@ -196,7 +196,7 @@ class TestMessageAutoAcknowledge:
                     message_type="direct",
                     content=f"Test message {i+1}",
                     priority="normal",
-                    status="pending",
+                    status="waiting",
                     created_at=datetime.now(timezone.utc),
                     meta_data={"_from_agent": "orchestrator"},
                 )
@@ -302,7 +302,7 @@ class TestMessageAutoAcknowledge:
                 message_type="broadcast",
                 content="Broadcast message",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 created_at=datetime.now(timezone.utc),
                 meta_data={"_from_agent": "orchestrator"},
             )
