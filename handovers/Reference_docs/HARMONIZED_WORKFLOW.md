@@ -228,10 +228,13 @@ Coordination Tools:
 ├── complete_job()          - Mark as done with results
 └── report_error()          - Report blocking issues
 
-Messaging Tools:
+Messaging Tools (MESSAGES category):
 ├── send_message()          - Direct or broadcast messages
 ├── receive_messages()      - Check incoming messages
 └── acknowledge_message()   - Mark message as read
+
+See: docs/architecture/messaging_contract.md for full taxonomy
+     (Messages vs Signals vs Instructions)
 
 Status Tools:
 ├── get_workflow_status()   - View all agents in project
