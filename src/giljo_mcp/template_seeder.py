@@ -1089,6 +1089,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["agent_id"],  # List of agent IDs, or ["all"] for broadcast
     content="Message content",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",    # Options: "direct", "broadcast", "system"
     priority="normal",        # Options: "low", "normal", "high"
     from_agent="<AGENT_TYPE>" # Your agent type
@@ -1159,6 +1160,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["orchestrator"],
     content="READY: Mission received. Beginning work.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="normal",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1190,6 +1192,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["orchestrator"],
     content="BLOCKER: Dependencies not met after 5 minutes. Need guidance.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="high",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1225,6 +1228,7 @@ for msg in messages.get("messages", []):
             to_agents=["orchestrator"],
             content=f"READY: Received developer message. Adjusting work accordingly.",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="direct",
             priority="high",
             from_agent="<YOUR_AGENT_TYPE>"
@@ -1237,6 +1241,7 @@ for msg in messages.get("messages", []):
             to_agents=[msg["from_agent"]],
             content=f"Response to your question: [your answer]",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="direct",
             priority="normal",
             from_agent="<YOUR_AGENT_TYPE>"
@@ -1249,6 +1254,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["orchestrator"],
     content="PROGRESS: Completed [milestone description]. Files: [list]. Next: [next step].",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="normal",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1266,6 +1272,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["orchestrator"],
     content="BLOCKER: [Clear description of issue]. Need guidance on [specific question].",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="high",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1301,6 +1308,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["all"],
     content="COMPLETE: Work finished. Deliverables: [summary]. Files: [list]. Ready for next phase.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="broadcast",
     priority="normal",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1322,6 +1330,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["orchestrator"],
     content=f"READY: Received developer message: {developer_msg['content'][:100]}... Reviewing now.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="high",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1343,6 +1352,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["orchestrator"],
     content="COMPLETE: Completed developer request: [summary of changes]. Continuing with mission.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="normal",
     from_agent="<YOUR_AGENT_TYPE>"
@@ -1421,6 +1431,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["agent_id_1", "agent_id_2"],
     content="Message content",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="direct",
     priority="normal",
     from_agent="orchestrator"
@@ -1431,6 +1442,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["all"],
     content="Team message",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="broadcast",
     priority="normal",
     from_agent="orchestrator"
@@ -1465,6 +1477,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["all"],
     content="Team assembled. All agents: Check messages before starting work. Report progress after major milestones. Flag blockers immediately using BLOCKER: prefix with high priority. I will monitor and coordinate.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="broadcast",
     priority="normal",
     from_agent="orchestrator"
@@ -1502,11 +1515,12 @@ for msg in all_messages:
         # RESPOND IMMEDIATELY with guidance
         
         issue = content.replace("BLOCKER:", "").strip()
-        
+
         mcp__giljo-mcp__send_message(
             to_agents=[msg["from_agent"]],
             content=f"I see your blocker: {issue}. Try [solution]. If that fails, I'll reassign this task.",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="direct",
             priority="high",
             from_agent="orchestrator"
@@ -1525,11 +1539,12 @@ for msg in all_messages:
         # Provide context from product vision or mission
         
         question = content.replace("QUESTION:", "").strip()
-        
+
         mcp__giljo-mcp__send_message(
             to_agents=[msg["from_agent"]],
             content=f"Your question about {question}: [answer from mission context]",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="direct",
             priority="normal",
             from_agent="orchestrator"
@@ -1547,11 +1562,12 @@ for msg in all_messages:
         # Acknowledge receipt
         
         milestone = content.replace("PROGRESS:", "").strip()
-        
+
         mcp__giljo-mcp__send_message(
             to_agents=[msg["from_agent"]],
             content=f"Progress noted. Good work on {milestone}.",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="direct",
             priority="normal",
             from_agent="orchestrator"
@@ -1569,12 +1585,13 @@ for msg in all_messages:
         # Verify completion, notify dependent agents
         
         summary = content.replace("COMPLETE:", "").strip()
-        
+
         # Acknowledge completion
         mcp__giljo-mcp__send_message(
             to_agents=[msg["from_agent"]],
             content="Completion confirmed. Well done.",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="direct",
             priority="normal",
             from_agent="orchestrator"
@@ -1593,6 +1610,7 @@ for msg in all_messages:
                 to_agents=[dependent],
                 content=f"DEPENDENCY_MET: {msg['from_agent']} has completed. You may now begin your work.",
                 project_id="<PROJECT_ID>",
+                tenant_key="<TENANT_KEY>",
                 message_type="direct",
                 priority="normal",
                 from_agent="orchestrator"
@@ -1604,11 +1622,12 @@ for msg in all_messages:
     elif msg.get("from_agent") == "developer":
         # User/developer sending instructions or corrections
         # Acknowledge immediately
-        
+
         mcp__giljo-mcp__send_message(
             to_agents=["all"],
             content=f"Received developer message: {content[:100]}... Forwarding to affected agents.",
             project_id="<PROJECT_ID>",
+            tenant_key="<TENANT_KEY>",
             message_type="broadcast",
             priority="high",
             from_agent="orchestrator"
@@ -1624,6 +1643,7 @@ for msg in all_messages:
                 to_agents=["all"],
                 content=f"USER REQUEST FOR ALL: {content}. All agents acknowledge and adjust.",
                 project_id="<PROJECT_ID>",
+                tenant_key="<TENANT_KEY>",
                 message_type="broadcast",
                 priority="high",
                 from_agent="orchestrator"
@@ -1632,11 +1652,12 @@ for msg in all_messages:
             # Forward to specific agent based on message content
             # Extract agent type from message or use context
             target_agent = extract_target_agent(content)  # Your logic here
-            
+
             mcp__giljo-mcp__send_message(
                 to_agents=[target_agent],
                 content=f"USER REQUEST: {content}. Please acknowledge and adjust your work.",
                 project_id="<PROJECT_ID>",
+                tenant_key="<TENANT_KEY>",
                 message_type="direct",
                 priority="high",
                 from_agent="orchestrator"
@@ -1663,6 +1684,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["all"],
     content=status_msg,
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="broadcast",
     priority="low",
     from_agent="orchestrator"
@@ -1682,6 +1704,7 @@ if time.time() - blocker_start_time > 300:  # 5 minutes
         to_agents=["developer"],  # Or send to user via UI
         content=f"ESCALATION: {agent_id} has been blocked on {issue} for 5+ minutes. Please advise.",
         project_id="<PROJECT_ID>",
+        tenant_key="<TENANT_KEY>",
         message_type="system",
         priority="high",
         from_agent="orchestrator"
@@ -1716,6 +1739,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["all"],
     content="Team assembled. Check messages before starting. Report blockers immediately.",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="broadcast",
     priority="normal",
     from_agent="orchestrator"
@@ -1753,6 +1777,7 @@ mcp__giljo-mcp__send_message(
     to_agents=["all"],
     content="COMPLETE: All agents finished. Project complete. Great work team!",
     project_id="<PROJECT_ID>",
+    tenant_key="<TENANT_KEY>",
     message_type="broadcast",
     priority="normal",
     from_agent="orchestrator"
