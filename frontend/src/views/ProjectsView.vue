@@ -200,6 +200,7 @@
               :color="getStatusColor(normalizeStatus(item.status))"
               size="small"
               variant="tonal"
+              data-testid="project-status"
             >
               {{ normalizeStatus(item.status) }}
             </v-chip>
