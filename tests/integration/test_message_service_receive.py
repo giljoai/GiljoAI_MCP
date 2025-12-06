@@ -219,9 +219,9 @@ async def test_receive_messages_unread_only_default(db_manager, tenant_manager, 
 
     # Should include only pending messages
     for msg in result["messages"]:
-        # Note: AgentMessageQueue format uses "acknowledged" boolean field
-        # Pending messages should have acknowledged=False
-        assert msg.get("acknowledged") is False
+        # Note: AgentMessageQueue format uses acknowledged_at timestamp field
+        # Pending messages should have acknowledged_at=None
+        assert msg.get("acknowledged_at") is None
 
 
 @pytest.mark.asyncio

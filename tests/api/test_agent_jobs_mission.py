@@ -330,9 +330,8 @@ async def test_update_mission_preserves_other_fields(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="active",
+            status="working",
             progress=50,
-            acknowledged=True,
         )
         session.add(agent_job)
         await session.commit()
@@ -341,7 +340,7 @@ async def test_update_mission_preserves_other_fields(
         # Store original values
         original_status = agent_job.status
         original_progress = agent_job.progress
-        original_acknowledged = agent_job.acknowledged
+        original_mission_acknowledged_at = agent_job.mission_acknowledged_at
         original_created_at = agent_job.created_at
 
     with patch("api.websocket_manager.manager.emit_to_tenant", new_callable=AsyncMock):
@@ -363,7 +362,7 @@ async def test_update_mission_preserves_other_fields(
 
         assert updated_job.status == original_status
         assert updated_job.progress == original_progress
-        assert updated_job.acknowledged == original_acknowledged
+        assert updated_job.mission_acknowledged_at == original_mission_acknowledged_at
         assert updated_job.created_at == original_created_at
         assert updated_job.mission == "Updated mission"
 
