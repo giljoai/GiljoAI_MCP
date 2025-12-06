@@ -20,6 +20,119 @@ from giljo_mcp.websocket_client import broadcast_sub_agent_event
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
+# ============================================================================
+
+
+async def launch_agent(
+    agent_id: str,
+    tenant_key: str,
+    session
+) -> dict[str, Any]:
+    """
+    Launch an agent by ID with tenant isolation (testable helper).
+
+    This is a standalone helper function for testing activate_agent logic.
+
+    Args:
+        agent_id: Agent job ID to launch
+        tenant_key: Tenant isolation key
+        session: Database session
+
+    Returns:
+        Success/error dictionary
+    """
+    try:
+        # Get the agent with TENANT ISOLATION
+        agent_query = select(MCPAgentJob).where(
+            and_(
+                MCPAgentJob.job_id == agent_id,
+                MCPAgentJob.tenant_key == tenant_key
+            )
+        )
+        agent_result = await session.execute(agent_query)
+        agent = agent_result.scalar_one_or_none()
+
+        if not agent:
+            return {"success": False, "error": "Agent not found or tenant mismatch"}
+
+        # Update agent status to active
+        agent.status = "active"
+        agent.last_active = datetime.now(timezone.utc)
+        await session.commit()
+
+        return {
+            "success": True,
+            "agent_id": str(agent.job_id),
+            "status": "active",
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to launch agent: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def log_interaction_legacy(
+    interaction: dict[str, Any],
+    tenant_key: str,
+    session
+) -> dict[str, Any]:
+    """
+    Log agent interaction with tenant isolation (testable helper).
+
+    This is a simplified version of log_sub_agent_completion logic for testing.
+
+    Args:
+        interaction: Interaction data dictionary
+        tenant_key: Tenant isolation key
+        session: Database session
+
+    Returns:
+        Success/error dictionary
+    """
+    try:
+        # Validate tenant matches
+        agent_id = interaction.get("agent_id")
+        parent_agent_id = interaction.get("parent_agent_id")
+        project_id = interaction.get("project_id")
+
+        # Verify project belongs to tenant
+        if project_id:
+            project_query = select(Project).where(
+                and_(
+                    Project.id == project_id,
+                    Project.tenant_key == tenant_key
+                )
+            )
+            project_result = await session.execute(project_query)
+            project = project_result.scalar_one_or_none()
+
+            if not project:
+                return {"success": False, "error": "Project not found or tenant mismatch"}
+
+        # Verify parent agent belongs to tenant (if specified)
+        if parent_agent_id:
+            parent_query = select(MCPAgentJob).where(
+                and_(
+                    MCPAgentJob.job_id == parent_agent_id,
+                    MCPAgentJob.tenant_key == tenant_key
+                )
+            )
+            parent_result = await session.execute(parent_query)
+            parent_agent = parent_result.scalar_one_or_none()
+
+            if not parent_agent:
+                return {"success": False, "error": "Parent agent not found or tenant mismatch"}
+
+        # If all checks pass, interaction is valid
+        return {"success": True, "message": "Interaction validated"}
+
+    except Exception as e:
+        logger.exception(f"Failed to log interaction: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # Helper functions for testing and internal use
 async def _ensure_agent(
     project_id: str, agent_name: str, mission: Optional[str] = None, session=None
@@ -276,8 +389,15 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                         "error": f"Project {project_id} not found",
                     }
 
-                # Check if agent already exists
-                agent_query = select(MCPAgentJob).where(and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name))
+                # Check if agent already exists with TENANT ISOLATION
+                # Use tenant_key from the project we just fetched
+                agent_query = select(MCPAgentJob).where(
+                    and_(
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.agent_name == agent_name,
+                        MCPAgentJob.tenant_key == project.tenant_key  # TENANT ISOLATION
+                    )
+                )
                 agent_result = await session.execute(agent_query)
                 existing_agent = agent_result.scalar_one_or_none()
 
@@ -339,6 +459,16 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         """
         try:
             async with db_manager.get_session_async() as session:
+                # Get project first to obtain tenant_key for isolation
+                project_query = select(Project).where(Project.id == project_id)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": f"Project {project_id} not found"}
+
+                tenant_key = project.tenant_key
+
                 # First ensure agent exists
                 ensure_result = await ensure_agent(project_id, agent_name, mission)
 
@@ -347,13 +477,18 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
 
                 agent_id = ensure_result["agent_id"]
 
-                # Get the agent
-                agent_query = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_id)
+                # Get the agent with TENANT ISOLATION
+                agent_query = select(MCPAgentJob).where(
+                    and_(
+                        MCPAgentJob.job_id == agent_id,
+                        MCPAgentJob.tenant_key == tenant_key  # TENANT ISOLATION
+                    )
+                )
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
                 if not agent:
-                    return {"success": False, "error": "Agent not found after creation"}
+                    return {"success": False, "error": "Agent not found after creation or tenant mismatch"}
 
                 # Update agent status to active
                 agent.status = "active"
@@ -892,15 +1027,26 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
 
                 # Update parent agent context usage if tokens provided
                 if tokens_used and interaction.parent_agent_id:
-                    parent_query = select(MCPAgentJob).where(MCPAgentJob.job_id == interaction.parent_agent_id)
+                    # TENANT ISOLATION: Filter by tenant_key from interaction
+                    parent_query = select(MCPAgentJob).where(
+                        and_(
+                            MCPAgentJob.job_id == interaction.parent_agent_id,
+                            MCPAgentJob.tenant_key == interaction.tenant_key
+                        )
+                    )
                     parent_result = await session.execute(parent_query)
                     parent_agent = parent_result.scalar_one_or_none()
 
                     if parent_agent:
                         parent_agent.context_used += tokens_used
 
-                        # Also update project context usage
-                        project_query = select(Project).where(Project.id == interaction.project_id)
+                        # Also update project context usage with TENANT ISOLATION
+                        project_query = select(Project).where(
+                            and_(
+                                Project.id == interaction.project_id,
+                                Project.tenant_key == interaction.tenant_key
+                            )
+                        )
                         project_result = await session.execute(project_query)
                         project = project_result.scalar_one_or_none()
 
@@ -912,10 +1058,15 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 status = "error" if error_message else "completed"
                 logger.info(f"Logged sub-agent completion: {interaction.sub_agent_name} ({status})")
 
-                # Get parent agent name for WebSocket event
+                # Get parent agent name for WebSocket event with TENANT ISOLATION
                 parent_agent_name = "unknown"
                 if interaction.parent_agent_id:
-                    parent_query = select(MCPAgentJob).where(MCPAgentJob.job_id == interaction.parent_agent_id)
+                    parent_query = select(MCPAgentJob).where(
+                        and_(
+                            MCPAgentJob.job_id == interaction.parent_agent_id,
+                            MCPAgentJob.tenant_key == interaction.tenant_key
+                        )
+                    )
                     parent_result = await session.execute(parent_query)
                     parent_agent = parent_result.scalar_one_or_none()
                     if parent_agent:
