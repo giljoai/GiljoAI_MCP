@@ -179,31 +179,42 @@ class ProjectService:
             self._logger.exception(f"Failed to create project: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_project(self, project_id: str) -> dict[str, Any]:
+    async def get_project(self, project_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Get a specific project by ID with associated agent jobs.
 
         Args:
             project_id: Project UUID
+            tenant_key: Tenant key for multi-tenant isolation (required for security)
 
         Returns:
             Dict with success status and project details (including agents) or error
 
         Example:
-            >>> result = await service.get_project("abc-123")
+            >>> result = await service.get_project("abc-123", tenant_key="tenant-abc")
             >>> if result["success"]:
             ...     print(result["project"]["name"])
             ...     print(f"Agents: {len(result['project']['agents'])}")
         """
         try:
             async with self._get_session() as session:
-                # Get project
-                query = select(Project).where(Project.id == project_id)
-                result = await session.execute(query)
+                # Get project with tenant isolation filter (Handover 0325)
+                if tenant_key:
+                    result = await session.execute(
+                        select(Project).where(
+                            Project.tenant_key == tenant_key,
+                            Project.id == project_id
+                        )
+                    )
+                else:
+                    # Fallback for backward compatibility - will be deprecated
+                    result = await session.execute(
+                        select(Project).where(Project.id == project_id)
+                    )
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {"success": False, "error": f"Project {project_id} not found"}
+                    return {"success": False, "error": "Project not found or access denied"}
 
                 # Get agent jobs for this project (following get_active_project pattern)
                 from src.giljo_mcp.models import MCPAgentJob
@@ -403,7 +414,7 @@ class ProjectService:
             self._logger.exception(f"Failed to list projects: {e}")
             return {"success": False, "error": str(e)}
 
-    async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
+    async def update_project_mission(self, project_id: str, mission: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Update the mission field after orchestrator analysis.
 
@@ -413,6 +424,7 @@ class ProjectService:
         Args:
             project_id: Project UUID
             mission: Updated mission statement
+            tenant_key: Tenant key for multi-tenant isolation (required for security)
 
         Returns:
             Dict with success status or error
@@ -420,22 +432,43 @@ class ProjectService:
         Example:
             >>> result = await service.update_project_mission(
             ...     "abc-123",
-            ...     "Build comprehensive REST API with authentication"
+            ...     "Build comprehensive REST API with authentication",
+            ...     tenant_key="tenant-abc"
             ... )
         """
         try:
             async with self._get_session() as session:
-                result = await session.execute(
-                    update(Project)
-                    .where(Project.id == project_id)
-                    .values(mission=mission, updated_at=datetime.utcnow())
-                )
+                # Update project with tenant isolation filter (Handover 0325)
+                if tenant_key:
+                    result = await session.execute(
+                        update(Project)
+                        .where(
+                            Project.tenant_key == tenant_key,
+                            Project.id == project_id
+                        )
+                        .values(mission=mission, updated_at=datetime.utcnow())
+                    )
+                else:
+                    # Fallback for backward compatibility - will be deprecated
+                    result = await session.execute(
+                        update(Project)
+                        .where(Project.id == project_id)
+                        .values(mission=mission, updated_at=datetime.utcnow())
+                    )
 
                 if result.rowcount == 0:
-                    return {"success": False, "error": "Project not found"}
+                    return {"success": False, "error": "Project not found or access denied"}
 
-                # Get project for tenant_key
-                project_result = await session.execute(select(Project).where(Project.id == project_id))
+                # Get project for tenant_key (with tenant filter if provided)
+                if tenant_key:
+                    project_result = await session.execute(
+                        select(Project).where(
+                            Project.tenant_key == tenant_key,
+                            Project.id == project_id
+                        )
+                    )
+                else:
+                    project_result = await session.execute(select(Project).where(Project.id == project_id))
                 project = project_result.scalar_one_or_none()
 
                 await session.commit()
@@ -1924,7 +1957,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             self._logger.exception(f"Failed to get project status: {e}")
             return {"success": False, "error": str(e)}
 
-    async def switch_project(self, project_id: str) -> dict[str, Any]:
+    async def switch_project(self, project_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Switch to a different project context.
 
@@ -1933,12 +1966,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
         Args:
             project_id: Project UUID to switch to
+            tenant_key: Tenant key for multi-tenant isolation (required for security)
 
         Returns:
             Dict with success status and project details or error
 
         Example:
-            >>> result = await service.switch_project("abc-123")
+            >>> result = await service.switch_project("abc-123", tenant_key="tenant-abc")
             >>> print(f"Switched to: {result['name']}")
         """
         try:
@@ -1946,13 +1980,23 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 from giljo_mcp.models import Session as SessionModel
                 from giljo_mcp.tenant import current_tenant
 
-                # Find project
-                query = select(Project).where(Project.id == project_id)
-                result = await db_session.execute(query)
+                # Find project with tenant isolation filter (Handover 0325)
+                if tenant_key:
+                    result = await db_session.execute(
+                        select(Project).where(
+                            Project.tenant_key == tenant_key,
+                            Project.id == project_id
+                        )
+                    )
+                else:
+                    # Fallback for backward compatibility - will be deprecated
+                    result = await db_session.execute(
+                        select(Project).where(Project.id == project_id)
+                    )
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {"success": False, "error": f"Project {project_id} not found"}
+                    return {"success": False, "error": "Project not found or access denied"}
 
                 # Set tenant context
                 self.tenant_manager.set_current_tenant(project.tenant_key)
