@@ -600,9 +600,16 @@ def pytest_configure(config):
     """
     Pytest hook to configure test session.
 
-    Disables coverage threshold enforcement for smoke tests, since they are
-    integration workflow validators (not unit coverage targets).
+    Registers custom markers and disables coverage threshold enforcement
+    for smoke tests, since they are integration workflow validators
+    (not unit coverage targets).
     """
+    # Register custom markers
+    config.addinivalue_line(
+        "markers",
+        "tenant_isolation: marks tests for tenant isolation verification (Handover 0325)"
+    )
+
     # Check if we're only running smoke tests
     selected_tests = config.getoption("file_or_dir", default=[])
     markers = config.getoption("-m", default="")
