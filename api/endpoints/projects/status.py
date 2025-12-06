@@ -189,7 +189,6 @@ async def get_project_orchestrator(
             status="waiting",
             tool_type="universal",
             progress=0,
-            acknowledged=False,
             context_chunks=[],
             messages=[],
         )
@@ -220,7 +219,6 @@ async def get_project_orchestrator(
             status=orchestrator.status,
             progress=orchestrator.progress,
             tool_type=orchestrator.tool_type,
-            acknowledged=orchestrator.acknowledged,
             created_at=orchestrator.created_at,
             started_at=orchestrator.started_at,
             completed_at=orchestrator.completed_at,
