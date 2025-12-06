@@ -72,6 +72,7 @@
             variant="outlined"
             hide-details
             :aria-label="`${context.label} priority setting`"
+            :data-testid="`priority-${context.key.replace('_', '-')}`"
             class="priority-select"
             :disabled="!config[context.key]?.enabled"
           />
@@ -131,6 +132,7 @@
             variant="outlined"
             hide-details
             :aria-label="`${context.label} depth setting`"
+            :data-testid="`depth-${context.key.replace('_', '-')}`"
             class="depth-select mx-2"
             :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
           />
@@ -144,6 +146,7 @@
             variant="outlined"
             hide-details
             :aria-label="`${context.label} priority setting`"
+            :data-testid="`priority-${context.key.replace('_', '-')}`"
             class="priority-select"
             :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
           />
