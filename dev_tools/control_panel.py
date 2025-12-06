@@ -2500,6 +2500,10 @@ pg_restore -l {backup_file.name} | head -20
         - ALL agent jobs (any status)
         - Tasks
         - Messages
+        - Context indexes
+        - Large document indexes
+        - Sessions
+        - Visions
         - Orchestrator summary
         - Context tracking
         - Staging status
@@ -2508,6 +2512,8 @@ pg_restore -l {backup_file.name} | head -20
         - Project name
         - Project description
         - Metadata (human-entered data)
+
+        Updated in Handover 0329 to include all cascade-deleted tables.
         """
         if psycopg2 is None:
             messagebox.showerror(
@@ -2540,6 +2546,10 @@ pg_restore -l {backup_file.name} | head -20
             "✗ ALL agent jobs (any status)\n"
             "✗ Tasks\n"
             "✗ Messages\n"
+            "✗ Context indexes\n"
+            "✗ Large document indexes\n"
+            "✗ Sessions\n"
+            "✗ Visions\n"
             "✗ Orchestrator summary\n"
             "✗ Context tracking\n"
             "✗ Staging status\n\n"
@@ -2599,22 +2609,54 @@ pg_restore -l {backup_file.name} | head -20
                 cur.execute("SELECT COUNT(*) FROM messages WHERE project_id = %s", (project_uuid,))
                 message_count = cur.fetchone()[0]
 
-                # Step 5: Delete messages
+                # Step 5: Count context indexes to delete
+                cur.execute("SELECT COUNT(*) FROM context_index WHERE project_id = %s", (project_uuid,))
+                context_index_count = cur.fetchone()[0]
+
+                # Step 6: Count large document indexes to delete
+                cur.execute("SELECT COUNT(*) FROM large_document_index WHERE project_id = %s", (project_uuid,))
+                large_doc_count = cur.fetchone()[0]
+
+                # Step 7: Count sessions to delete
+                cur.execute("SELECT COUNT(*) FROM sessions WHERE project_id = %s", (project_uuid,))
+                session_count = cur.fetchone()[0]
+
+                # Step 8: Count visions to delete
+                cur.execute("SELECT COUNT(*) FROM visions WHERE project_id = %s", (project_uuid,))
+                vision_count = cur.fetchone()[0]
+
+                # Step 9: Delete messages
                 self.update_status_message(f"Deleting {message_count} messages...")
                 cur.execute("DELETE FROM messages WHERE project_id = %s", (project_uuid,))
 
-                # Step 6: Delete tasks
+                # Step 10: Delete tasks
                 self.update_status_message(f"Deleting {task_count} tasks...")
                 cur.execute("DELETE FROM tasks WHERE project_id = %s", (project_uuid,))
 
-                # Step 7: Delete ALL agent jobs (any status)
+                # Step 11: Delete ALL agent jobs (any status)
                 self.update_status_message(f"Deleting {agent_count} agent jobs...")
                 cur.execute("""
                     DELETE FROM mcp_agent_jobs
                     WHERE project_id = %s
                 """, (project_uuid,))
 
-                # Step 8: Clear project to pristine pre-staged state
+                # Step 12: Delete context indexes
+                self.update_status_message(f"Deleting {context_index_count} context indexes...")
+                cur.execute("DELETE FROM context_index WHERE project_id = %s", (project_uuid,))
+
+                # Step 13: Delete large document indexes
+                self.update_status_message(f"Deleting {large_doc_count} large document indexes...")
+                cur.execute("DELETE FROM large_document_index WHERE project_id = %s", (project_uuid,))
+
+                # Step 14: Delete sessions
+                self.update_status_message(f"Deleting {session_count} sessions...")
+                cur.execute("DELETE FROM sessions WHERE project_id = %s", (project_uuid,))
+
+                # Step 15: Delete visions
+                self.update_status_message(f"Deleting {vision_count} visions...")
+                cur.execute("DELETE FROM visions WHERE project_id = %s", (project_uuid,))
+
+                # Step 16: Clear project to pristine pre-staged state
                 self.update_status_message("Resetting project to pre-staged state...")
                 cur.execute("""
                     UPDATE projects
@@ -2649,6 +2691,10 @@ pg_restore -l {backup_file.name} | head -20
                 f"✗ {agent_count} agent job(s)\n"
                 f"✗ {task_count} task(s)\n"
                 f"✗ {message_count} message(s)\n"
+                f"✗ {context_index_count} context index(es)\n"
+                f"✗ {large_doc_count} large document index(es)\n"
+                f"✗ {session_count} session(s)\n"
+                f"✗ {vision_count} vision(s)\n"
                 f"✗ AI-generated mission\n"
                 f"✗ Orchestrator summary\n"
                 f"✗ Context tracking\n"
