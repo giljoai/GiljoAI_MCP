@@ -35,6 +35,12 @@ from giljo_mcp.models import MCPAgentJob, Project
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
+# Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
+# Using TYPE_CHECKING to document the type without circular import risk
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from giljo_mcp.services.message_service import MessageService
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +64,7 @@ class OrchestrationService:
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
         test_session: Optional[AsyncSession] = None,
+        message_service: Optional["MessageService"] = None,
     ):
         """
         Initialize OrchestrationService with database and tenant management.
@@ -66,10 +73,12 @@ class OrchestrationService:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
             test_session: Optional AsyncSession for tests to share the same transaction
+            message_service: Optional MessageService for WebSocket-enabled messaging
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._test_session = test_session
+        self._message_service = message_service
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -647,7 +656,6 @@ Begin by fetching your mission.
             ...     progress={"percent": 50, "message": "Half done"}
             ... )
         """
-        from giljo_mcp.agent_message_queue import AgentMessageQueue
         import json
 
         try:
@@ -663,11 +671,9 @@ Begin by fetching your mission.
             if not progress or not isinstance(progress, dict):
                 return {"status": "error", "error": "progress must be a non-empty dict"}
 
-            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
-            # Fetch job info for WebSocket emission
+            # Fetch job info to get project_id for MessageService
             job = None
             async with self._get_session() as session:
-                # Get job details
                 res = await session.execute(
                     select(MCPAgentJob).where(
                         MCPAgentJob.job_id == job_id,
@@ -676,24 +682,48 @@ Begin by fetching your mission.
                 )
                 job = res.scalar_one_or_none()
 
-                # Serialize dict to string for message content
-                content = json.dumps(progress)
-                result = await comm_queue.send_message(
-                    session=session,
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    from_agent=job_id,
-                    to_agent=None,
-                    message_type="progress",
-                    content=content,
-                    priority=1,
-                    metadata=None,
-                )
-                if result.get("status") != "success":
-                    return {"status": "error", "error": result.get("error")}
+            if not job:
+                return {"status": "error", "error": f"Job {job_id} not found"}
 
-            # WebSocket emission for real-time UI updates
-            if job:
+            # Serialize progress dict to string for message content
+            content = json.dumps(progress)
+
+            # Use MessageService if available (includes WebSocket emission)
+            # Otherwise fall back to AgentMessageQueue (legacy, no WebSocket)
+            if self._message_service:
+                self._logger.info(f"[PROGRESS] Using MessageService with WebSocket for job {job_id}")
+                result = await self._message_service.send_message(
+                    to_agents=[job_id],  # Progress sent to self (stored in job's messages)
+                    content=content,
+                    project_id=job.project_id,
+                    message_type="progress",
+                    priority="normal",
+                    from_agent=job_id,
+                    tenant_key=tenant_key,
+                )
+                if not result.get("success"):
+                    return {"status": "error", "error": result.get("error")}
+            else:
+                # Fallback to AgentMessageQueue (no WebSocket)
+                self._logger.warning(f"[PROGRESS] Using AgentMessageQueue fallback (no WebSocket) for job {job_id}")
+                from giljo_mcp.agent_message_queue import AgentMessageQueue
+                comm_queue = AgentMessageQueue(self.db_manager)
+                async with self._get_session() as session:
+                    result = await comm_queue.send_message(
+                        session=session,
+                        job_id=job_id,
+                        tenant_key=tenant_key,
+                        from_agent=job_id,
+                        to_agent=None,
+                        message_type="progress",
+                        content=content,
+                        priority=1,
+                        metadata=None,
+                    )
+                    if result.get("status") != "success":
+                        return {"status": "error", "error": result.get("error")}
+
+                # Legacy HTTP bridge for WebSocket (only when MessageService unavailable)
                 try:
                     async with httpx.AsyncClient() as client:
                         bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
@@ -711,7 +741,7 @@ Begin by fetching your mission.
                             },
                             timeout=5.0,
                         )
-                        self._logger.info(f"[WEBSOCKET] Broadcasted progress for {job_id}")
+                        self._logger.info(f"[WEBSOCKET] Broadcasted progress for {job_id} (via HTTP bridge)")
                 except Exception as ws_error:
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
