@@ -86,7 +86,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="direct",
                 content="Direct message to agent 1",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 meta_data={"_from_agent": "orchestrator"}
             ),
             # Broadcast message to all
@@ -98,7 +98,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="broadcast",
                 content="Broadcast to all agents",
                 priority="high",
-                status="pending",
+                status="waiting",
                 meta_data={"_from_agent": "orchestrator"}
             ),
             # Direct message to agent-2
@@ -110,7 +110,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="direct",
                 content="Direct message to agent 2",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 meta_data={"_from_agent": agent1_id}
             ),
             # Acknowledged message to agent-1
@@ -136,7 +136,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="direct",
                 content="Message to multiple agents",
                 priority="high",
-                status="pending",
+                status="waiting",
                 meta_data={"_from_agent": "orchestrator"}
             ),
         ]
@@ -318,7 +318,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             project_id=project1.id,
             to_agents=[agent1_id],
             content="Message for tenant 1",
-            status="pending"
+            status="waiting"
         )
         msg2 = Message(
             id=msg2_id,
@@ -326,7 +326,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             project_id=project2.id,
             to_agents=[agent2_id],
             content="Message for tenant 2",
-            status="pending"
+            status="waiting"
         )
         session.add_all([msg1, msg2])
 
@@ -408,7 +408,7 @@ async def test_list_messages_by_status(db_manager, tenant_manager, setup_test_da
     # Filter for pending messages only
     result = await service.list_messages(
         project_id=data["project"].id,
-        status="pending"
+        status="waiting"
     )
 
     assert result["success"] is True

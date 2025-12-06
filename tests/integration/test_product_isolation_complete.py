@@ -97,7 +97,7 @@ class ProductIsolationTestSuite:
                     title=f"Legacy Task {i}",
                     description=f"Task {i} without product",
                     priority="medium",
-                    status="pending",
+                    status="waiting",
                     category="maintenance",
                 )
                 for i in range(2)

@@ -75,7 +75,7 @@ def sample_message():
         message_type="direct",
         content="Test message content",
         priority="high",
-        status="pending",
+        status="waiting",
         created_at=datetime.now(timezone.utc),
         acknowledged_by=[],
         completed_by=[],
@@ -112,11 +112,11 @@ class TestMessageQueue:
 
         # Create messages with different priorities and proper meta_data
         critical_msg = Mock(
-            priority="critical", created_at=datetime.now(timezone.utc), id="1", status="pending", meta_data={}
+            priority="critical", created_at=datetime.now(timezone.utc), id="1", status="waiting", meta_data={}
         )
-        high_msg = Mock(priority="high", created_at=datetime.now(timezone.utc), id="2", status="pending", meta_data={})
+        high_msg = Mock(priority="high", created_at=datetime.now(timezone.utc), id="2", status="waiting", meta_data={})
         normal_msg = Mock(
-            priority="normal", created_at=datetime.now(timezone.utc), id="3", status="pending", meta_data={}
+            priority="normal", created_at=datetime.now(timezone.utc), id="3", status="waiting", meta_data={}
         )
 
         # Mock execute to return messages in priority order
@@ -497,7 +497,7 @@ class TestIntegration:
             message_type="task",
             content="Test task",
             priority="high",
-            status="pending",
+            status="waiting",
             created_at=datetime.now(timezone.utc),
             meta_data={},
         )
@@ -668,7 +668,7 @@ class TestMessageQueueErrorHandling:
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
 
         # Mock message with wrong status
-        normal_msg = Mock(id="normal-123", status="pending")
+        normal_msg = Mock(id="normal-123", status="waiting")
         result_mock = Mock()
         result_mock.scalar_one_or_none.return_value = normal_msg
         session_mock.execute = AsyncMock(return_value=result_mock)
@@ -776,7 +776,7 @@ class TestMessageQueueAdvancedScenarios:
         messages = []
         for i in range(5):
             msg = Mock(
-                priority="normal", created_at=datetime.now(timezone.utc), id=f"msg-{i}", status="pending", meta_data={}
+                priority="normal", created_at=datetime.now(timezone.utc), id=f"msg-{i}", status="waiting", meta_data={}
             )
             messages.append(msg)
 

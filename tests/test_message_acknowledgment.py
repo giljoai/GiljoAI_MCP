@@ -76,7 +76,7 @@ async def test_message_acknowledgment():
             message_type="direct",
             content="Test message for multiple agents",
             priority="high",
-            status="pending",
+            status="waiting",
             acknowledged_by=[],
             completed_by=[],
         )

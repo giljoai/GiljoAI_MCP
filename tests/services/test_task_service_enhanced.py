@@ -156,7 +156,7 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
         title="Test Task",
         description="Test task description",
         category="feature",
-        status="pending",
+        status="waiting",
         priority="medium",
         created_by_user_id=test_user.id,
         created_at=datetime.now(timezone.utc)
@@ -175,7 +175,7 @@ async def other_tenant_task(db_session, other_tenant_key, other_tenant_user):
         tenant_key=other_tenant_key,
         title="Other Tenant Task",
         description="Task in different tenant",
-        status="pending",
+        status="waiting",
         priority="medium",
         created_by_user_id=other_tenant_user.id,
         created_at=datetime.now(timezone.utc)
@@ -344,7 +344,7 @@ async def test_convert_to_project_with_subtasks(task_service, test_task, test_us
         parent_task_id=test_task.id,
         title="Subtask 1",
         description="First subtask",
-        status="pending",
+        status="waiting",
         priority="low",
         created_by_user_id=test_user.id
     )
@@ -356,7 +356,7 @@ async def test_convert_to_project_with_subtasks(task_service, test_task, test_us
         parent_task_id=test_task.id,
         title="Subtask 2",
         description="Second subtask",
-        status="pending",
+        status="waiting",
         priority="low",
         created_by_user_id=test_user.id
     )
@@ -528,7 +528,7 @@ async def test_get_summary_filtered_by_product(task_service, db_session, test_te
         project_id=test_project.id,
         title="Product Task",
         description="Task for specific product",
-        status="pending",
+        status="waiting",
         priority="high",
         created_by_user_id=test_user.id
     )
