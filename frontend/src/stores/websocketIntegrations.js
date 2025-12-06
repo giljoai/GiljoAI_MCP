@@ -12,6 +12,7 @@ import { useAgentStore } from './agents'
 import { useMessageStore } from './messages'
 import { useTaskStore } from './tasks'
 import { useProductStore } from './products'
+import { useProjectTabsStore } from './projectTabs'
 import { useToast } from '@/composables/useToast'
 
 let isInitialized = false
@@ -208,9 +209,37 @@ export function setupWebSocketIntegrations() {
   })
 
   // Message sent (updated event name in Handover 0286)
+  // Updates sender's "Messages Sent" counter in real-time
   wsStore.on('message:sent', (data) => {
+    const payload = data.data || data
+
+    // Update projectTabsStore for real-time counter updates
+    const projectTabsStore = useProjectTabsStore()
+    if (projectTabsStore.handleMessageSent) {
+      projectTabsStore.handleMessageSent(payload)
+    }
+
+    // Also dispatch custom event for component listeners
     window.dispatchEvent(
       new CustomEvent('agent:message_sent', {
+        detail: data,
+      }),
+    )
+  })
+
+  // Message received - Updates recipients' "Messages Waiting" counters in real-time
+  wsStore.on('message:received', (data) => {
+    const payload = data.data || data
+
+    // Update projectTabsStore for real-time counter updates
+    const projectTabsStore = useProjectTabsStore()
+    if (projectTabsStore.handleMessageReceived) {
+      projectTabsStore.handleMessageReceived(payload)
+    }
+
+    // Also dispatch custom event for component listeners
+    window.dispatchEvent(
+      new CustomEvent('agent:message_received', {
         detail: data,
       }),
     )
