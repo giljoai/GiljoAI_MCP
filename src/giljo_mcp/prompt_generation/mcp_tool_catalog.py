@@ -166,6 +166,7 @@ agent_types = [a['agent_type'] for a in agents['agents']]
                     "to_agents: list[str]",
                     "content: str",
                     "project_id: str",
+                    "tenant_key: str",
                     "message_type: str",  # 'direct', 'broadcast', 'system'
                     "priority: str",  # 'low', 'normal', 'high'
                     "from_agent: Optional[str]",
@@ -182,6 +183,7 @@ result = await send_message(
     to_agents=['orchestrator'],
     content='Blocked on database schema. Need guidance.',
     project_id='proj-123',
+    tenant_key='tenant-abc',
     message_type='direct',
     priority='high',
     from_agent='implementer-1'
@@ -192,6 +194,7 @@ result = await send_message(
     to_agents=['all'],
     content='Implementation complete. Ready for testing.',
     project_id='proj-123',
+    tenant_key='tenant-abc',
     message_type='broadcast',
     priority='normal',
     from_agent='implementer-1'
@@ -714,6 +717,7 @@ await send_message(
     to_agents=['other-agent-id'],
     content='Need clarification on database schema for users table',
     project_id='proj-id',
+    tenant_key='tenant-key',
     message_type='direct',
     priority='normal',
     from_agent='agent-id'

@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
+from contextlib import asynccontextmanager
+
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,7 +55,8 @@ class MessageService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        websocket_manager: Optional[Any] = None
+        websocket_manager: Optional[Any] = None,
+        test_session: Optional[AsyncSession] = None,
     ):
         """
         Initialize MessageService with database and tenant management.
@@ -62,11 +65,31 @@ class MessageService:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
             websocket_manager: Optional WebSocket manager for real-time event emissions
+            test_session: Optional AsyncSession for tests to share the same transaction
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._websocket_manager = websocket_manager
+        self._test_session = test_session
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def _get_session(self):
+        """
+        Get a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+
+        Returns:
+            Context manager for database session
+        """
+        if self._test_session is not None:
+            # For test sessions, wrap in a context manager that doesn't close
+            @asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._test_session
+            return _test_session_wrapper()
+
+        # Return the context manager directly (no double-wrapping)
+        return self.db_manager.get_session_async()
 
     # ============================================================================
     # Message Sending
@@ -80,6 +103,7 @@ class MessageService:
         message_type: str = "direct",
         priority: str = "normal",
         from_agent: Optional[str] = None,
+        tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Send a message to one or more agents.
@@ -91,6 +115,7 @@ class MessageService:
             message_type: Type of message (default: "direct")
             priority: Message priority (default: "normal")
             from_agent: Sender agent name (default: "orchestrator")
+            tenant_key: Tenant key for multi-tenant isolation (required for security)
 
         Returns:
             Dict with success status and message details or error
@@ -100,22 +125,32 @@ class MessageService:
             ...     to_agents=["impl-1", "analyzer-1"],
             ...     content="Review code changes",
             ...     project_id="project-123",
-            ...     priority="high"
+            ...     priority="high",
+            ...     tenant_key="tenant-abc"
             ... )
             >>> print(result["message_id"])
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                # Get project
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id)
-                )
+            async with self._get_session() as session:
+                # Get project with tenant isolation filter (Handover 0325)
+                if tenant_key:
+                    result = await session.execute(
+                        select(Project).where(
+                            Project.tenant_key == tenant_key,
+                            Project.id == project_id
+                        )
+                    )
+                else:
+                    # Fallback for backward compatibility - will be deprecated
+                    result = await session.execute(
+                        select(Project).where(Project.id == project_id)
+                    )
                 project = result.scalar_one_or_none()
 
                 if not project:
                     return {
                         "success": False,
-                        "error": "Project not found"
+                        "error": "Project not found or access denied"
                     }
 
                 # Resolve agent_type strings to job_id UUIDs before storing
