@@ -7,7 +7,7 @@ import logging
 from typing import Any, Optional
 
 from fastmcp import FastMCP
-from sqlalchemy import select
+from sqlalchemy import and_, select
 
 from giljo_mcp.context_manager import (
     get_filtered_config,
@@ -80,15 +80,21 @@ async def _get_product_config_with_session(
             "error": f"Project {project_id} has no product associated",
         }
 
-    # Get product
-    product_query = select(Product).where(Product.id == project.product_id)
+    # Get product with TENANT VALIDATION
+    # Derive tenant_key from project and validate product belongs to same tenant
+    product_query = select(Product).where(
+        and_(
+            Product.id == project.product_id,
+            Product.tenant_key == project.tenant_key  # TENANT ISOLATION
+        )
+    )
     product_result = await session.execute(product_query)
     product = product_result.scalar_one_or_none()
 
     if not product:
         return {
             "success": False,
-            "error": f"Product {project.product_id} not found",
+            "error": f"Product {project.product_id} not found or tenant mismatch",
         }
 
     # Handle filtered vs unfiltered config
@@ -185,15 +191,21 @@ async def _update_product_config_with_session(
             "error": f"Project {project_id} has no product associated",
         }
 
-    # Get product
-    product_query = select(Product).where(Product.id == project.product_id)
+    # Get product with TENANT VALIDATION
+    # Derive tenant_key from project and validate product belongs to same tenant
+    product_query = select(Product).where(
+        and_(
+            Product.id == project.product_id,
+            Product.tenant_key == project.tenant_key  # TENANT ISOLATION
+        )
+    )
     product_result = await session.execute(product_query)
     product = product_result.scalar_one_or_none()
 
     if not product:
         return {
             "success": False,
-            "error": f"Product {project.product_id} not found",
+            "error": f"Product {project.product_id} not found or tenant mismatch",
         }
 
     # Prepare new config

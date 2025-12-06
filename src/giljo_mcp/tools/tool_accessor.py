@@ -26,6 +26,81 @@ from giljo_mcp.tenant import TenantManager
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
+# ============================================================================
+
+
+async def activate_project(
+    project_id: str,
+    tenant_key: str,
+    session
+) -> dict[str, Any]:
+    """
+    Activate a project with tenant isolation (testable helper).
+
+    This is a standalone helper function that extracts the core logic
+    from ToolAccessor.gil_activate() for testing purposes.
+
+    Args:
+        project_id: Project ID to activate
+        tenant_key: Tenant isolation key
+        session: Database session
+
+    Returns:
+        Success/error dictionary with project details
+    """
+    try:
+        from datetime import datetime, timezone
+
+        # Get project with tenant isolation
+        res = await session.execute(
+            select(Project).where(
+                and_(
+                    Project.id == project_id,
+                    Project.tenant_key == tenant_key
+                )
+            )
+        )
+        project = res.scalar_one_or_none()
+
+        if not project:
+            return {"success": False, "error": "Project not found"}
+
+        if project.status != "inactive":
+            return {"success": False, "error": f"Project cannot be activated from status '{project.status}'"}
+
+        # Verify product belongs to same tenant (if exists)
+        if project.product_id:
+            # TENANT ISOLATION: Filter product by tenant_key
+            prod = await session.execute(
+                select(Product).where(
+                    and_(
+                        Product.id == project.product_id,
+                        Product.tenant_key == tenant_key
+                    )
+                )
+            )
+            product = prod.scalar_one_or_none()
+            if not product or not getattr(product, "is_active", False):
+                return {"success": False, "error": "Parent product inactive or missing"}
+
+        # Activate the project
+        project.status = "active"
+        project.updated_at = datetime.now(timezone.utc)
+        await session.commit()
+
+        return {
+            "success": True,
+            "project_id": str(project.id),
+            "status": "active",
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to activate project: {e}")
+        return {"success": False, "error": str(e)}
+
+
 class ToolAccessor:
     """Provides direct access to MCP tool functionality for API"""
 
@@ -1185,7 +1260,15 @@ class ToolAccessor:
                 if project.status != "inactive":
                     return {"success": False, "error": f"Project cannot be activated from status '{project.status}'"}
                 if project.product_id:
-                    prod = await session.execute(select(Product).where(Product.id == project.product_id))
+                    # TENANT ISOLATION: Filter product by tenant_key
+                    prod = await session.execute(
+                        select(Product).where(
+                            and_(
+                                Product.id == project.product_id,
+                                Product.tenant_key == tenant_key
+                            )
+                        )
+                    )
                     product = prod.scalar_one_or_none()
                     if not product or not getattr(product, "is_active", False):
                         return {"success": False, "error": "Parent product inactive or missing"}
