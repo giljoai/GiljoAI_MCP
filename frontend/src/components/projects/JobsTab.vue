@@ -20,7 +20,6 @@
             <th>Agent Type</th>
             <th>Agent ID</th>
             <th>Agent Status</th>
-            <th>Job Read</th>
             <th>Job Acknowledged</th>
             <th>Messages Sent</th>
             <th>Messages waiting</th>
@@ -54,10 +53,6 @@
               {{ getStatusLabel(agent.status) }}
             </td>
 
-            <!-- Job Read -->
-            <td class="checkbox-cell">
-              <v-icon v-if="agent.mission_read_at" size="small" color="white" icon="mdi-check" />
-            </td>
 
             <!-- Job Acknowledged -->
             <td class="checkbox-cell">

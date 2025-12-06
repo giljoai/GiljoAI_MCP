@@ -152,7 +152,6 @@ async def test_job(db_session: AsyncSession, admin_user: User) -> MCPAgentJob:
         spawned_by=None,
         context_chunks=["chunk_1", "chunk_2"],
         messages=[],
-        acknowledged=False,
     )
 
     db_session.add(job)

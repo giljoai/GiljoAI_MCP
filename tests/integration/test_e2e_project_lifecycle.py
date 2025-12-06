@@ -133,7 +133,6 @@ class MockAgentSimulator:
         job = result.scalar_one()
 
         job.status = "working"
-        job.acknowledged = True
         job.started_at = datetime.now(timezone.utc)
         job.last_progress_at = datetime.now(timezone.utc)
 
@@ -145,7 +144,7 @@ class MockAgentSimulator:
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
-        job.mission_read_at = datetime.now(timezone.utc)
+        # Set mission_acknowledged_at when mission is read
         job.mission_acknowledged_at = datetime.now(timezone.utc)
 
         await self.db_session.flush()
@@ -648,7 +647,6 @@ class TestCompleteProjectLifecycle:
         for job in spawned_jobs:
             # Update job status manually (simulating agent work)
             job.status = "working"
-            job.acknowledged = True
             job.started_at = datetime.now(timezone.utc)
             job.progress = 50
             await db_session.flush()
@@ -978,7 +976,6 @@ class TestCompleteProjectLifecycle:
         for job in jobs:
             # Simulate agent execution
             job.status = "working"
-            job.acknowledged = True
             job.started_at = datetime.now(timezone.utc)
             await db_session.flush()
 

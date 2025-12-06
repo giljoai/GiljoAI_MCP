@@ -58,7 +58,6 @@ async def handle_gil_activate(db_session: AsyncSession, tenant_key: str, project
             status="waiting",
             tool_type="universal",
             progress=0,
-            acknowledged=False,
             context_chunks=[],
             messages=[],
         )

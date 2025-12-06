@@ -52,7 +52,6 @@ def job_to_response(job: dict) -> JobResponse:
         tool_type=job.get("tool_type", "universal"),
         context_chunks=job.get("context_chunks", []),
         messages=job.get("messages", []),
-        acknowledged=job.get("acknowledged", False),
         started_at=job.get("started_at"),
         completed_at=job.get("completed_at"),
         created_at=job["created_at"],

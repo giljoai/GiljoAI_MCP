@@ -35,12 +35,6 @@
       <code class="agent-id">{{ item.job_id ? item.job_id.slice(0, 8) : '—' }}</code>
     </template>
 
-    <!-- Job Read Column (Handover 0240b) -->
-    <template #item.job_read="{ item }">
-      <v-icon :color="item.mission_read_at ? 'success' : 'grey'" size="small">
-        {{ item.mission_read_at ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
-      </v-icon>
-    </template>
 
     <!-- Job Acknowledged Column (Handover 0240b) -->
     <template #item.job_acknowledged="{ item }">
@@ -193,7 +187,6 @@ const headers = [
   { title: 'Agent Type', key: 'agent_type', sortable: true },
   { title: 'Agent ID', key: 'agent_id', sortable: false },
   { title: 'Agent Status', key: 'status', sortable: true },
-  { title: 'Job Read', key: 'job_read', sortable: false, align: 'center' },
   { title: 'Job Acknowledged', key: 'job_acknowledged', sortable: false, align: 'center' },
   { title: 'Messages Sent', key: 'messages_sent', sortable: true, align: 'center' },
   { title: 'Messages Waiting', key: 'messages_waiting', sortable: true, align: 'center' },

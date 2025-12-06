@@ -65,7 +65,6 @@ def mock_agent_job():
         agent_name="impl-worker-1",
         mission="Test agent mission for WebSocket testing",
         status="waiting",
-        acknowledged=False,
         created_at=datetime.now(timezone.utc),
         metadata={}
     )
@@ -83,7 +82,6 @@ def mock_working_job():
         agent_name="impl-worker-1",
         mission="Test agent mission for WebSocket testing",
         status="working",
-        acknowledged=True,
         started_at=datetime.now(timezone.utc),
         created_at=datetime.now(timezone.utc),
         metadata={}
@@ -129,7 +127,7 @@ async def test_acknowledge_job_emits_websocket_event(orchestration_service, mock
         # Verify database update succeeded
         assert response["status"] == "success"
         assert job.status == "working"
-        assert job.acknowledged is True
+        assert job.mission_acknowledged_at is not None  # Handover 0233: replaced acknowledged boolean
 
         # Assert: HTTP bridge was called with correct parameters
         mock_client.post.assert_called_once()
@@ -289,7 +287,6 @@ async def test_websocket_emission_respects_tenant_isolation(orchestration_servic
         agent_name="impl-worker-a",
         mission="Tenant A mission",
         status="waiting",
-        acknowledged=False,
         metadata={}
     )
 

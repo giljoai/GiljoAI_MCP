@@ -61,7 +61,6 @@ class JobResponse(BaseModel):
     spawned_by: Optional[str] = Field(None, description="Job ID of parent job")
     context_chunks: list[str] = Field(default_factory=list, description="Context chunk IDs")
     messages: list[dict[str, Any]] = Field(default_factory=list, description="Job messages")
-    acknowledged: bool = Field(..., description="Has job been acknowledged by agent")
     started_at: Optional[datetime] = Field(None, description="Job start timestamp")
     completed_at: Optional[datetime] = Field(None, description="Job completion timestamp")
     created_at: datetime = Field(..., description="Job creation timestamp")

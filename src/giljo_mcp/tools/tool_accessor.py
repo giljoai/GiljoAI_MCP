@@ -1296,7 +1296,6 @@ class ToolAccessor:
                         status="waiting",
                         tool_type="universal",
                         progress=0,
-                        acknowledged=False,
                         context_chunks=[],
                         messages=[],
                     )

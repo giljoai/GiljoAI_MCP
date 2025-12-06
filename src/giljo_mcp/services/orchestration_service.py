@@ -560,8 +560,8 @@ Begin by fetching your mission.
                 if not job:
                     return {"status": "error", "error": f"Job {job_id} not found"}
 
-                # Idempotent
-                if job.acknowledged and job.status in {"working", "active"}:
+                # Idempotent - if already in working status, return current state
+                if job.status in {"working", "active"}:
                     return {
                         "status": "success",
                         "job": {
@@ -577,10 +577,10 @@ Begin by fetching your mission.
                 # Capture old status before updating
                 old_status = job.status
 
-                job.acknowledged = True
                 # Normalize to 'working' for MCPAgentJob
                 job.status = "working"
                 job.started_at = datetime.now(timezone.utc)
+                job.mission_acknowledged_at = datetime.now(timezone.utc)  # Handover 0233
                 await session.commit()
                 await session.refresh(job)
 
@@ -965,7 +965,6 @@ Begin by fetching your mission.
                         "tool_type": job.tool_type,
                         "context_chunks": job.context_chunks or [],
                         "messages": messages_data,
-                        "acknowledged": job.acknowledged,
                         "started_at": job.started_at,
                         "completed_at": job.completed_at,
                         "created_at": job.created_at,
@@ -1185,7 +1184,6 @@ Begin by fetching your mission.
                 context_budget=job.context_budget,
                 context_chunks=[],
                 messages=[],
-                acknowledged=False,
                 job_metadata=successor_metadata,
             )
 
