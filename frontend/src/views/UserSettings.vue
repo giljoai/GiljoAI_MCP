@@ -18,7 +18,7 @@
         <v-icon start>mdi-bell</v-icon>
         Notifications
       </v-tab>
-      <v-tab value="agents">
+      <v-tab value="agents" data-testid="agent-templates-settings-tab">
         <template #prepend>
           <v-img
             :src="
@@ -33,7 +33,7 @@
         </template>
         Agents
       </v-tab>
-      <v-tab value="context">
+      <v-tab value="context" data-testid="context-settings-tab">
         <v-icon start>mdi-layers-triple</v-icon>
         Context
       </v-tab>
@@ -41,7 +41,7 @@
         <v-icon start>mdi-key-variant</v-icon>
         API Keys
       </v-tab>
-      <v-tab value="integrations">
+      <v-tab value="integrations" data-testid="integrations-settings-tab">
         <v-icon start>mdi-puzzle</v-icon>
         Integrations
       </v-tab>

@@ -65,6 +65,7 @@
                 :loading="loading"
                 hide-details
                 density="compact"
+                data-testid="github-integration-toggle"
                 class="git-toggle-inline"
               />
             </div>
