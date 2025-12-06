@@ -263,13 +263,13 @@ class TestProjectLifecycleMethods:
                 ),
                 MCPAgentJob(
                     agent_type="orchestrator",
-                    status="pending",
+                    status="waiting",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 MCPAgentJob(
                     agent_type="helper",
-                    status="pending",
+                    status="waiting",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),

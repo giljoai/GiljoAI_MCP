@@ -77,7 +77,7 @@ async def test_project_with_data(db_session: AsyncSession, test_user):
             project_id=project.id,
             tenant_key=tenant_key,
             title=f"Test Task {i}",
-            status="pending",
+            status="waiting",
         )
         db_session.add(task)
 
@@ -88,7 +88,7 @@ async def test_project_with_data(db_session: AsyncSession, test_user):
             project_id=project.id,
             tenant_key=tenant_key,
             content=f"Test message {i}",
-            status="pending",
+            status="waiting",
         )
         db_session.add(message)
 

@@ -215,7 +215,7 @@ class TestDatabaseBenchmarks:
                     content=f"Query test message {i} with some content for searching",
                     message_type="direct",
                     priority="normal",
-                    status="pending",
+                    status="waiting",
                 )
                 messages.append(message)
                 session.add(message)
@@ -289,7 +289,7 @@ class TestDatabaseBenchmarks:
                     project_id=test_project.id,
                     agent_name=agent.name,
                     description="Transaction test task",
-                    status="pending",
+                    status="waiting",
                     priority="normal",
                 )
                 session.add(task)
@@ -303,7 +303,7 @@ class TestDatabaseBenchmarks:
                     content="Transaction test message",
                     message_type="direct",
                     priority="normal",
-                    status="pending",
+                    status="waiting",
                 )
                 session.add(message)
 
@@ -349,7 +349,7 @@ class TestDatabaseBenchmarks:
                         content=f"Concurrent test message {idx}",
                         message_type="direct",
                         priority="normal",
-                        status="pending",
+                        status="waiting",
                     )
                     session.add(message)
 
@@ -445,7 +445,7 @@ class TestDatabaseBenchmarks:
                         content=f"Memory test message {record_id} with substantial content " * 10,
                         message_type="direct",
                         priority="normal",
-                        status="pending",
+                        status="waiting",
                     )
                     session.add(message)
 

@@ -639,7 +639,7 @@ class TestOrchestrationTools:
                 Mock(spec=MCPAgentJob, status="completed"),
                 Mock(spec=MCPAgentJob, status="completed"),
                 Mock(spec=MCPAgentJob, status="active"),
-                Mock(spec=MCPAgentJob, status="pending"),
+                Mock(spec=MCPAgentJob, status="waiting"),
             ]
 
             mock_jobs_result = Mock()

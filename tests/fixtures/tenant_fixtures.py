@@ -89,7 +89,7 @@ class TenantFixture:
                     project_id=project.id,
                     agent_type=random.choice(["analyzer", "implementer", "tester", "reviewer"]),
                     mission=f"Test mission for agent {i}",
-                    status="pending",
+                    status="waiting",
                 )
                 agent_jobs.append(job)
                 session.add(job)
@@ -110,7 +110,7 @@ class TenantFixture:
                         to_agents=[receiver.name],
                         content=f"Test message {i} for tenant {tenant_key}",
                         message_type="direct",
-                        status="pending",
+                        status="waiting",
                         priority="normal",
                     )
                     messages.append(message)
@@ -126,7 +126,7 @@ class TenantFixture:
                     content=f"Test task {i} for tenant {tenant_key}",
                     category=random.choice(["development", "testing", "documentation"]),
                     priority=random.choice(["low", "medium", "high"]),
-                    status="pending",
+                    status="waiting",
                 )
                 tasks.append(task)
                 session.add(task)
@@ -314,7 +314,7 @@ class TenantFixture:
                         project_id=project.id,
                         agent_type=random.choice(["analyzer", "implementer", "tester"]),
                         mission=f"Random mission for agent {i}",
-                        status="pending",
+                        status="waiting",
                     )
                 elif entity_type == "message":
                     entity = Message(
@@ -325,7 +325,7 @@ class TenantFixture:
                         to_agents=[f"agent_{random.randint(0, 10)}"],
                         content=f"Random message {i}",
                         message_type="direct",
-                        status="pending",
+                        status="waiting",
                         priority=random.choice(["low", "normal", "high"]),
                     )
                 elif entity_type == "task":
@@ -336,7 +336,7 @@ class TenantFixture:
                         content=f"Random task {i}",
                         category=random.choice(["dev", "test", "docs"]),
                         priority=random.choice(["low", "medium", "high"]),
-                        status="pending",
+                        status="waiting",
                     )
                 else:
                     raise ValueError(f"Unknown entity type: {entity_type}")
