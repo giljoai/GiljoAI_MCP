@@ -211,7 +211,7 @@ class AgentJobRepository:
 
     async def acknowledge_job(self, session: AsyncSession, tenant_key: str, job_id: str) -> bool:
         """
-        Mark job as acknowledged.
+        Mark job as acknowledged (transition to active status).
 
         Args:
             session: Async database session
@@ -225,7 +225,11 @@ class AgentJobRepository:
         job = result.scalar_one_or_none()
 
         if job:
-            job.acknowledged = True
+            # Transition to active status (acknowledgment is implicit in status change)
+            if job.status == "pending":
+                job.status = "active"
+                if not job.started_at:
+                    job.started_at = datetime.utcnow()
             await session.flush()
             return True
         return False

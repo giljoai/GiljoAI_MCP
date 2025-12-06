@@ -220,7 +220,6 @@ class OrchestratorSuccessionManager:
             context_budget=orchestrator.context_budget,  # Same budget
             context_chunks=[],  # Will be populated from handover summary
             messages=[],  # Fresh message queue
-            acknowledged=False,
             job_metadata=successor_metadata,  # Handover 0247 Gap 4: Preserve metadata
         )
 

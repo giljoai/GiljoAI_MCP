@@ -10,11 +10,11 @@ import JobReadAckIndicators from '@/components/StatusBoard/JobReadAckIndicators.
 /**
  * Test suite for AgentTableView with JobReadAckIndicators integration
  *
- * Validates that job read and acknowledged indicators are displayed in agent table
+ * Validates that job acknowledged indicators are displayed in agent table
  *
- * Handover 0233: Frontend job read/acknowledged indicators
+ * Updated for simplified job signaling (mission_read_at removed)
  */
-describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
+describe('AgentTableView with JobReadAckIndicators - Updated', () => {
   let wrapper
   let pinia
   let vuetify
@@ -32,7 +32,6 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
         { status: 'acknowledged', content: 'Message 2' }
       ],
       health_status: 'healthy',
-      mission_read_at: '2025-11-21T10:30:00Z',
       mission_acknowledged_at: '2025-11-21T10:35:00Z'
     },
     {
@@ -44,7 +43,6 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
       progress: 100,
       messages: [],
       health_status: 'healthy',
-      mission_read_at: null,
       mission_acknowledged_at: null
     },
     {
@@ -58,8 +56,7 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
         { status: 'pending', content: 'Error message' }
       ],
       health_status: 'critical',
-      mission_read_at: '2025-11-21T09:15:00Z',
-      mission_acknowledged_at: null
+      mission_acknowledged_at: '2025-11-21T09:15:00Z'
     }
   ]
 
@@ -141,25 +138,6 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
       expect(registeredComponents).toBeDefined()
     })
 
-    it('passes mission_read_at prop to indicator component', () => {
-      wrapper = mount(AgentTableView, {
-        props: {
-          agents: mockAgents,
-          mode: 'jobs'
-        },
-        global: {
-          plugins: [pinia, vuetify],
-          components: {
-            JobReadAckIndicators
-          }
-        }
-      })
-
-      // First agent has mission_read_at set
-      const firstAgent = mockAgents[0]
-      expect(firstAgent.mission_read_at).toBe('2025-11-21T10:30:00Z')
-    })
-
     it('passes mission_acknowledged_at prop to indicator component', () => {
       wrapper = mount(AgentTableView, {
         props: {
@@ -179,7 +157,7 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
       expect(firstAgent.mission_acknowledged_at).toBe('2025-11-21T10:35:00Z')
     })
 
-    it('handles agents with null mission timestamps', () => {
+    it('handles agents with null mission_acknowledged_at', () => {
       wrapper = mount(AgentTableView, {
         props: {
           agents: mockAgents,
@@ -193,13 +171,12 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
         }
       })
 
-      // Second agent has no mission timestamps
+      // Second agent has no mission_acknowledged_at
       const secondAgent = mockAgents[1]
-      expect(secondAgent.mission_read_at).toBeNull()
       expect(secondAgent.mission_acknowledged_at).toBeNull()
     })
 
-    it('handles mixed mission timestamp states', () => {
+    it('handles agents with mission_acknowledged_at set', () => {
       wrapper = mount(AgentTableView, {
         props: {
           agents: mockAgents,
@@ -213,10 +190,9 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
         }
       })
 
-      // Third agent has mission_read_at but not mission_acknowledged_at
+      // Third agent has mission_acknowledged_at
       const thirdAgent = mockAgents[2]
-      expect(thirdAgent.mission_read_at).toBe('2025-11-21T09:15:00Z')
-      expect(thirdAgent.mission_acknowledged_at).toBeNull()
+      expect(thirdAgent.mission_acknowledged_at).toBe('2025-11-21T09:15:00Z')
     })
   })
 
@@ -239,7 +215,7 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
       expect(wrapper.props().agents).toEqual(mockAgents)
       expect(wrapper.props().agents[0].agent_name).toBe('Backend Agent')
       expect(wrapper.props().agents[0].status).toBe('working')
-      expect(wrapper.props().agents[0].mission_read_at).toBe('2025-11-21T10:30:00Z')
+      expect(wrapper.props().agents[0].mission_acknowledged_at).toBe('2025-11-21T10:35:00Z')
     })
   })
 
@@ -388,7 +364,7 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
   })
 
   describe('Edge Cases - Table Rendering', () => {
-    it('handles agents with missing mission timestamp properties in data flow', () => {
+    it('handles agents with missing mission_acknowledged_at property in data flow', () => {
       const agentsWithoutTimestamps = [
         {
           id: 'agent-1',
@@ -396,7 +372,7 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
           agent_name: 'Agent Without Timestamps',
           agent_type: 'implementer',
           status: 'working',
-          // mission_read_at and mission_acknowledged_at not provided
+          // mission_acknowledged_at not provided
         }
       ]
 
@@ -413,30 +389,28 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
         }
       })
 
-      // Verify the agents data is accessible even if timestamps are missing
+      // Verify the agents data is accessible even if mission_acknowledged_at is missing
       expect(wrapper.props().agents[0].agent_name).toBe('Agent Without Timestamps')
-      expect(wrapper.props().agents[0].mission_read_at).toBeUndefined()
       expect(wrapper.props().agents[0].mission_acknowledged_at).toBeUndefined()
     })
 
-    it('handles mixed agent data with and without mission timestamps in data flow', () => {
+    it('handles mixed agent data with and without mission_acknowledged_at in data flow', () => {
       const mixedAgents = [
         {
           id: 'agent-1',
           job_id: 'job-1',
-          agent_name: 'Agent With Timestamps',
+          agent_name: 'Agent With Timestamp',
           agent_type: 'implementer',
           status: 'working',
-          mission_read_at: '2025-11-21T10:30:00Z',
           mission_acknowledged_at: '2025-11-21T10:35:00Z'
         },
         {
           id: 'agent-2',
           job_id: 'job-2',
-          agent_name: 'Agent Without Timestamps',
+          agent_name: 'Agent Without Timestamp',
           agent_type: 'tester',
           status: 'working'
-          // No mission timestamps
+          // No mission_acknowledged_at
         }
       ]
 
@@ -455,8 +429,8 @@ describe('AgentTableView with JobReadAckIndicators - Handover 0233', () => {
 
       // Verify mixed data is accessible
       expect(wrapper.props().agents.length).toBe(2)
-      expect(wrapper.props().agents[0].mission_read_at).toBe('2025-11-21T10:30:00Z')
-      expect(wrapper.props().agents[1].mission_read_at).toBeUndefined()
+      expect(wrapper.props().agents[0].mission_acknowledged_at).toBe('2025-11-21T10:35:00Z')
+      expect(wrapper.props().agents[1].mission_acknowledged_at).toBeUndefined()
     })
   })
 })

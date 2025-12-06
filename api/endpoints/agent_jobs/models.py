@@ -99,7 +99,6 @@ class JobResponse(BaseModel):
     tool_type: str = "universal"
     context_chunks: list[str] = Field(default_factory=list)
     messages: list[dict[str, Any]] = Field(default_factory=list)
-    acknowledged: bool = False
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     created_at: datetime
