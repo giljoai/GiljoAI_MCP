@@ -137,7 +137,7 @@
           :disabled="!confirmed"
           :loading="completing"
           :aria-label="'Complete project'"
-          data-testid="submit-closeout-button"
+          data-testid="submit-closeout-btn"
           @click="handleComplete"
         >
           <v-icon icon="mdi-check-circle" start />
