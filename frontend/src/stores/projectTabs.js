@@ -103,9 +103,11 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       return state.agents.every((a) => a.status === 'complete')
     },
 
-    // Ready state (Handover 0287: Use stagingComplete instead of manual checks)
+    // Ready state: Launch Jobs enabled when staging is complete
+    // Simplified: message:sent event = staging done = ready to launch
+    // No need to check agents/mission - the broadcast message IS the completion signal
     readyToLaunch(state) {
-      return state.stagingComplete && state.orchestratorMission && state.agents.length > 0 && !state.isStaging
+      return state.stagingComplete && !state.isStaging
     },
   },
 
@@ -153,6 +155,13 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       // - If there are non-orchestrator agents, project was launched
       // - If orchestrator is beyond waiting state, project was launched
       this.isLaunched = hasNonOrchestratorAgents || hasActiveOrchestrator
+
+      // Set stagingComplete if we have specialist agents (staging produced agents)
+      // This ensures persistence across page reloads
+      if (hasNonOrchestratorAgents) {
+        this.stagingComplete = true
+        console.info('[ProjectTabs] Specialist agents found - staging marked complete')
+      }
 
       // Log state for debugging (production-safe)
       if (this.isLaunched) {
@@ -426,6 +435,12 @@ export const useProjectTabsStore = defineStore('projectTabs', {
           console.log(
             `[ProjectTabs] Loaded ${response.data.length} existing messages for project ${projectId}`,
           )
+
+          // If messages exist, staging is complete (messages only sent after staging)
+          if (response.data.length > 0) {
+            this.stagingComplete = true
+            console.log('[ProjectTabs] Messages found - staging marked complete')
+          }
         }
       } catch (error) {
         console.error('[ProjectTabs] Failed to load messages:', error)
@@ -553,6 +568,94 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     handleProjectUpdate(data) {
       if (this.currentProject && data.project_id === this.currentProject.id) {
         this.currentProject = { ...this.currentProject, ...data }
+      }
+    },
+
+    // ==================== Real-time Message Counter Updates ====================
+    // These handlers update agent message counters in real-time via WebSocket
+    // Ensures counters update regardless of which tab (Launch/Jobs) is active
+
+    /**
+     * Handle message:sent WebSocket event
+     * Updates the sender agent's "Messages Sent" counter
+     * @param {Object} data - Message sent event data
+     */
+    handleMessageSent(data) {
+      // Verify this event is for the current project
+      if (!this.currentProject || data.project_id !== this.currentProject.id) {
+        return
+      }
+
+      const fromAgent = data.from_agent
+
+      // Find the sender agent and increment their sent count
+      // For broadcasts from orchestrator, from_agent is 'orchestrator'
+      const senderAgent = this.agents.find(
+        (a) => a.agent_type === fromAgent || a.job_id === fromAgent,
+      )
+
+      if (senderAgent) {
+        // Initialize messages array if needed
+        if (!senderAgent.messages) {
+          senderAgent.messages = []
+        }
+
+        // Add outbound message record for tracking
+        senderAgent.messages.push({
+          id: data.message_id,
+          direction: 'outbound',
+          status: 'sent',
+          timestamp: data.timestamp || new Date().toISOString(),
+        })
+
+      }
+
+      // Mark staging as complete when first message is sent (broadcast = staging done)
+      if (!this.stagingComplete && data.message_type === 'broadcast') {
+        this.stagingComplete = true
+      }
+    },
+
+    /**
+     * Handle message:received WebSocket event
+     * Updates recipient agents' "Messages Waiting" counters
+     * @param {Object} data - Message received event data
+     */
+    handleMessageReceived(data) {
+      // Verify this event is for the current project
+      if (!this.currentProject || data.project_id !== this.currentProject.id) {
+        return
+      }
+
+      const recipientIds = data.to_agent_ids || []
+
+      // Update each recipient agent's waiting count
+      for (const recipientId of recipientIds) {
+        const agent = this.agents.find(
+          (a) => a.job_id === recipientId || a.agent_type === recipientId,
+        )
+
+        if (agent) {
+          // Initialize messages array if needed
+          if (!agent.messages) {
+            agent.messages = []
+          }
+
+          // Add inbound message record for tracking
+          agent.messages.push({
+            id: data.message_id,
+            from: data.from_agent,
+            direction: 'inbound',
+            status: 'waiting',
+            timestamp: data.timestamp || new Date().toISOString(),
+          })
+
+        }
+      }
+
+      // Mark staging as complete when first message received
+      if (!this.stagingComplete) {
+        this.stagingComplete = true
       }
     },
   },
