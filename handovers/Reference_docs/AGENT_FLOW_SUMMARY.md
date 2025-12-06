@@ -144,18 +144,22 @@ TASK 5: spawn_agent_job() × N       → Create agent database records
 | `report_error(job_id, error)` | Report blocking issues |
 | `get_next_instruction(job_id, agent_type, tenant_key)` | Check for updates |
 
-### Messaging (Two Systems)
+### Messaging, Signals & Instructions (Three Categories)
 
-**System 1: Messages Table** (Persistent, audit trail)
-- `send_message(to_agent, message, priority)`
-- `broadcast(content, project_id, priority)`
-- `get_messages(agent_id, limit)`
-- `acknowledge_message(message_id, agent_name)` ← Simple signature
+**See:** [Messaging Contract](../../docs/architecture/messaging_contract.md) for full documentation.
 
-**System 2: JSONB Queue** (Real-time, per-job)
-- `send_mcp_message(job_id, tenant_key, content, target, priority)`
-- `read_mcp_messages(job_id, tenant_key)`
-- `acknowledge_message(job_id, tenant_key, message_id, agent_id, response_data)` ← Complex signature
+| Category | Purpose | Store | Tools |
+|----------|---------|-------|-------|
+| **MESSAGES** | Agent-to-agent communication | `messages` table + JSONB mirror | `send_message()`, `receive_messages()`, `acknowledge_message()` |
+| **SIGNALS** | Job status & progress | `MCPAgentJob` table | `acknowledge_job()`, `report_progress()`, `complete_job()` |
+| **INSTRUCTIONS** | Mission/config fetch | `MCPAgentJob.mission` | `get_agent_mission()`, `get_orchestrator_instructions()` |
+
+**Counter Logic** (via WebSocket events):
+- `message:sent` → Increment sender's "Sent" counter
+- `message:received` → Increment recipient's "Waiting" counter
+- `message:acknowledged` → Decrement "Waiting", increment "Read"
+
+**Note:** JSONB (`MCPAgentJob.messages`) is a **cache/mirror** for counter persistence, not a separate messaging system.
 
 ---
 
