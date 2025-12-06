@@ -185,7 +185,7 @@ class TestWebSocketBroadcast:
             project_id=str(uuid4()),
             agent_type="implementor",
             mission="Test mission",
-            status="pending",
+            status="waiting",
         )
 
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)

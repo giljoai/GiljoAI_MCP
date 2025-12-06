@@ -84,7 +84,7 @@ class TestTaskTools:
         create_task = registrar.get_registered_tool("create_task")
 
         result = await create_task(
-            title="Test Task", description="Test task description", priority="high", status="pending"
+            title="Test Task", description="Test task description", priority="high", status="waiting"
         )
 
         AssertionHelpers.assert_success_response(result, ["task_id", "created"])
@@ -175,7 +175,7 @@ class TestTaskTools:
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         list_tasks = registrar.get_registered_tool("list_tasks")
 
-        result = await list_tasks(status="pending")
+        result = await list_tasks(status="waiting")
 
         AssertionHelpers.assert_success_response(result, ["tasks", "total"])
         assert result["total"] == 2
@@ -194,7 +194,7 @@ class TestTaskTools:
                 title="High Priority Task",
                 description="Test task",
                 priority="high",
-                status="pending",
+                status="waiting",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 created_at=datetime.now(timezone.utc),
@@ -204,7 +204,7 @@ class TestTaskTools:
                 title="Low Priority Task",
                 description="Test task",
                 priority="low",
-                status="pending",
+                status="waiting",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 created_at=datetime.now(timezone.utc),
@@ -335,7 +335,7 @@ class TestTaskTools:
                 id=str(uuid.uuid4()),
                 title="Child Task",
                 description="Child task description",
-                status="pending",
+                status="waiting",
                 priority="medium",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
@@ -370,7 +370,7 @@ class TestTaskTools:
                 id=str(uuid.uuid4()),
                 title="Parent Task",
                 description="Parent task",
-                status="pending",
+                status="waiting",
                 priority="medium",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
@@ -385,7 +385,7 @@ class TestTaskTools:
                 id=str(uuid.uuid4()),
                 title="Child Task",
                 description="Child task",
-                status="pending",
+                status="waiting",
                 priority="medium",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
@@ -560,7 +560,7 @@ class TestTaskTools:
                 id=str(uuid.uuid4()),
                 title="Child Task",
                 description="Child task",
-                status="pending",
+                status="waiting",
                 priority="medium",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
@@ -614,7 +614,7 @@ class TestTaskTools:
                 id=str(uuid.uuid4()),
                 title="Bug Fix: Authentication Issue",
                 description="Fix login authentication bug",
-                status="pending",
+                status="waiting",
                 priority="high",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,

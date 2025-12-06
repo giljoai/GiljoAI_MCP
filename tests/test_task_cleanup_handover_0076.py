@@ -114,7 +114,7 @@ class TestTaskModelWithoutAssignmentFields:
             tenant_key=test_tenant_key,
             title="Test Task",
             description="Test Description",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 
@@ -129,7 +129,7 @@ class TestTaskModelWithoutAssignmentFields:
             tenant_key=test_tenant_key,
             title="Test Task",
             description="Test Description",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 
@@ -147,7 +147,7 @@ class TestTaskModelWithoutAssignmentFields:
             product_id=active_product.id,
             title="Test Task",
             description="Test Description",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -177,7 +177,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=active_product.id,
             title="Active Product Task",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -187,7 +187,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=inactive_product.id,
             title="Inactive Product Task",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -197,7 +197,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=None,
             title="NULL Product Task",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -226,7 +226,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=active_product.id,
             title="Product Task",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -236,7 +236,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=None,
             title="NULL Product Task 1",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -246,7 +246,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=None,
             title="NULL Product Task 2",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -275,7 +275,7 @@ class TestProductScopedTaskFiltering:
             tenant_key=test_tenant_key,
             product_id=None,
             title="Unassigned Task",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -319,7 +319,7 @@ class TestTaskToProjectConversion:
             product_id=active_product.id,
             title="Task to Convert",
             description="Task Description",
-            status="pending",
+            status="waiting",
             priority="high",
             created_by_user_id=test_user.id,
         )
@@ -365,7 +365,7 @@ class TestTaskToProjectConversion:
             product_id=None,
             title="Task without Product",
             description="Task Description",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -392,7 +392,7 @@ class TestTaskToProjectConversion:
             tenant_key=test_tenant_key,
             product_id=active_product.id,
             title="Task to Convert",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -434,7 +434,7 @@ class TestMCPTaskCreation:
             product_id=active_product.id,
             title="MCP Task",
             description="Created via MCP",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 
@@ -456,7 +456,7 @@ class TestMCPTaskCreation:
             product_id=None,
             title="MCP Task No Product",
             description="Created via MCP without active product",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 
@@ -476,7 +476,7 @@ class TestMCPTaskCreation:
             tenant_key=test_tenant_key,
             product_id=active_product.id,
             title="MCP Task",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 
@@ -497,7 +497,7 @@ class TestEdgeCases:
             tenant_key=test_tenant_key,
             product_id=active_product.id,
             title="Parent Task",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -511,7 +511,7 @@ class TestEdgeCases:
             product_id=active_product.id,
             parent_task_id=parent_task.id,
             title="Subtask",
-            status="pending",
+            status="waiting",
             priority="medium",
             created_by_user_id=test_user.id,
         )
@@ -535,7 +535,7 @@ class TestEdgeCases:
             tenant_key=tenant1,
             product_id=active_product.id,
             title="Tenant 1 Task",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 
@@ -544,7 +544,7 @@ class TestEdgeCases:
             tenant_key=tenant2,
             product_id=active_product.id,
             title="Tenant 2 Task",
-            status="pending",
+            status="waiting",
             priority="medium",
         )
 

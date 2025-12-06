@@ -128,7 +128,7 @@ async def test_task(db_session: AsyncSession, test_project: Project, test_user: 
         project_id=test_project.id,
         product_id=test_product.id,
         tenant_key="test_tenant",
-        status="pending",
+        status="waiting",
         priority="medium",
         created_by_user_id=test_user.id,
         assigned_to_user_id=test_user.id,
@@ -148,7 +148,7 @@ async def other_user_task(db_session: AsyncSession, test_project: Project, other
         project_id=test_project.id,
         product_id=test_product.id,
         tenant_key="test_tenant",
-        status="pending",
+        status="waiting",
         priority="high",
         created_by_user_id=other_user.id,
     )
@@ -448,7 +448,7 @@ async def test_list_tasks_status_filter(
         project_id=test_project.id,
         product_id=test_product.id,
         tenant_key="test_tenant",
-        status="pending",
+        status="waiting",
         created_by_user_id=test_user.id,
     )
     completed_task = Task(
@@ -495,7 +495,7 @@ async def test_list_tasks_tenant_isolation(
         project_id=test_project.id,
         product_id=test_product.id,
         tenant_key="other_tenant",
-        status="pending",
+        status="waiting",
         created_by_user_id=other_tenant_user.id,
     )
     db_session.add(other_tenant_task)

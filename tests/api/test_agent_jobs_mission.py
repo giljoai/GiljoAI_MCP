@@ -47,7 +47,7 @@ async def test_update_agent_mission_success(
             agent_type="implementor",
             agent_name="Test Implementor",
             mission="Original mission text",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -101,7 +101,7 @@ async def test_update_mission_tenant_isolation(
             agent_type="implementor",
             agent_name="Other Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(other_tenant_job)
         await session.commit()
@@ -136,7 +136,7 @@ async def test_update_mission_validation_empty_mission(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -170,7 +170,7 @@ async def test_update_mission_validation_too_long(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -207,7 +207,7 @@ async def test_update_mission_validation_max_length_boundary(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -264,7 +264,7 @@ async def test_update_mission_missing_field(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -296,7 +296,7 @@ async def test_update_mission_unauthorized(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -385,7 +385,7 @@ async def test_update_mission_updates_timestamp(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()
@@ -433,7 +433,7 @@ async def test_update_mission_with_special_characters(
             agent_type="implementor",
             agent_name="Test Agent",
             mission="Original mission",
-            status="pending",
+            status="waiting",
         )
         session.add(agent_job)
         await session.commit()

@@ -446,7 +446,7 @@ class TestMCPMessagingTools:
             content="Message 1 for agent1",
             message_type="direct",
             priority="normal",
-            status="pending",
+            status="waiting",
             acknowledged_by=[],
             created_at=datetime.now(timezone.utc),
         )
@@ -459,7 +459,7 @@ class TestMCPMessagingTools:
             content="Message 2 for multiple agents",
             message_type="direct",
             priority="high",
-            status="pending",
+            status="waiting",
             acknowledged_by=[],
             created_at=datetime.now(timezone.utc),
         )
@@ -473,7 +473,7 @@ class TestMCPMessagingTools:
             content="Message only for agent2",
             message_type="direct",
             priority="normal",
-            status="pending",
+            status="waiting",
             acknowledged_by=[],
             created_at=datetime.now(timezone.utc),
         )
@@ -539,7 +539,7 @@ class TestMCPMessagingTools:
                 content=f"Pending message {i}",
                 message_type="direct",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 created_at=datetime.now(timezone.utc),
             )
@@ -795,7 +795,7 @@ class TestMCPMessagingTools:
                 content=f"Message {i}",
                 message_type="direct",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 created_at=datetime.now(timezone.utc),
             )

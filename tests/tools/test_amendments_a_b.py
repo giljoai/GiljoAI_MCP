@@ -49,7 +49,7 @@ async def test_orchestrator_job(db_session, test_project, test_tenant):
         tenant_key=test_tenant.tenant_key,
         agent_type="orchestrator",
         mission="Test condensed mission with field priorities applied",
-        status="pending",
+        status="waiting",
         context_budget=150000,
         context_used=0,
         instance_number=1,
@@ -75,7 +75,7 @@ async def test_agent_job(db_session, test_project, test_tenant, test_orchestrato
         tenant_key=test_tenant.tenant_key,
         agent_type="backend",
         mission="Implement authentication system with JWT tokens",
-        status="pending",
+        status="waiting",
         spawned_by=test_orchestrator_job.job_id,
         metadata={
             "created_via": "thin_client_spawn",

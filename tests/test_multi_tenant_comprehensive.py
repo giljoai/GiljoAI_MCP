@@ -79,7 +79,7 @@ class TestMultiTenantIsolation:
                         to_agents=[agents[(j + 1) % 3].name],
                         content=f"Message {j} for tenant {i}",
                         message_type="direct",
-                        status="pending",
+                        status="waiting",
                         priority="normal",
                     )
                     messages.append(message)
@@ -94,7 +94,7 @@ class TestMultiTenantIsolation:
                         content=f"Task {j} for tenant {i}",
                         category=["development", "testing", "documentation", "review"][j],
                         priority=["low", "medium", "high", "critical"][j],
-                        status="pending",
+                        status="waiting",
                     )
                     tasks.append(task)
                     session.add(task)
@@ -311,7 +311,7 @@ class TestMultiTenantIsolation:
                 to_agents=["other_agent"],
                 content="Inherited message",
                 message_type="direct",
-                status="pending",
+                status="waiting",
             )
             session.add(message)
 
@@ -322,7 +322,7 @@ class TestMultiTenantIsolation:
                 content="Inherited task",
                 category="development",
                 priority="medium",
-                status="pending",
+                status="waiting",
             )
             session.add(task)
 
@@ -331,7 +331,7 @@ class TestMultiTenantIsolation:
                 tenant_key=TenantManager.inherit_tenant_key(agent),
                 agent_id=agent.id,
                 job_type="analysis",
-                status="pending",
+                status="waiting",
             )
             session.add(job)
 
@@ -430,7 +430,7 @@ class TestMultiTenantIsolation:
                             to_agents=["stress_agent"],
                             description=f"Stress message {i}",
                             message_type="broadcast",
-                            status="pending",
+                            status="waiting",
                         )
                         session.add(message)
                         counts["messages_sent"] += 1
@@ -442,7 +442,7 @@ class TestMultiTenantIsolation:
                             content=f"Stress task {i}",
                             category="stress",
                             priority="medium",
-                            status="pending",
+                            status="waiting",
                         )
                         session.add(task)
                         counts["tasks_created"] += 1

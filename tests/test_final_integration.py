@@ -294,7 +294,7 @@ class TestFinalIntegration:
             content="Regular message",
             message_type="direct",
             priority="normal",
-            status="pending",
+            status="waiting",
         )
 
         # Create agent interaction

@@ -402,7 +402,7 @@ async def test_all_events_include_tenant_key_in_payload(
         job_id=test_agent_job_data.job_id,
         agent_type=test_agent_job_data.agent_type,
         tenant_key=tenant_key,
-        old_status="pending",
+        old_status="waiting",
         new_status="active"
     )
 

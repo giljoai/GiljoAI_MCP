@@ -70,7 +70,7 @@ class ToolsTestHelper:
             content=content,
             type="direct",
             priority="normal",
-            status="pending",
+            status="waiting",
             project_id=project_id,
             tenant_key=TenantManager.generate_tenant_key(),
             created_at=datetime.now(timezone.utc),

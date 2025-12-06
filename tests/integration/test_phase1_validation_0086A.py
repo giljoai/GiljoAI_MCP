@@ -510,7 +510,7 @@ class TestEventSchemaValidation:
         event = EventFactory.agent_status_changed(
             job_id=job_id,
             tenant_key=tenant_key,
-            old_status="pending",
+            old_status="waiting",
             new_status="active",
             agent_type="orchestrator",
             project_id=project_id,
@@ -549,7 +549,7 @@ class TestEventSchemaValidation:
             EventFactory.agent_status_changed(
                 job_id=job_id,
                 tenant_key=tenant_key,
-                old_status="pending",
+                old_status="waiting",
                 new_status="invalid_status",  # Invalid
                 agent_type="orchestrator",
             )
@@ -609,7 +609,7 @@ class TestEventSchemaValidation:
             EventFactory.agent_status_changed(
                 job_id=str(uuid4()),
                 tenant_key=tenant_key,
-                old_status="pending",
+                old_status="waiting",
                 new_status="active",
                 agent_type="test",
             ),
@@ -770,7 +770,7 @@ class TestPhase1Integration:
         event_active = EventFactory.agent_status_changed(
             job_id=job_id,
             tenant_key=tenant_key,
-            old_status="pending",
+            old_status="waiting",
             new_status="active",
             agent_type="orchestrator",
             project_id=project_id,
