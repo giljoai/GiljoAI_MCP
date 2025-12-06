@@ -56,11 +56,23 @@
 
             <!-- Job Acknowledged -->
             <td class="checkbox-cell">
+              <!-- Checkmark when acknowledged -->
               <v-icon
                 v-if="agent.mission_acknowledged_at"
-                size="small"
-                color="white"
                 icon="mdi-check"
+                color="success"
+                size="small"
+                :title="formatAcknowledgmentTooltip(agent.mission_acknowledged_at)"
+                :aria-label="formatAcknowledgmentTooltip(agent.mission_acknowledged_at)"
+              />
+              <!-- Dash when not acknowledged -->
+              <v-icon
+                v-else
+                icon="mdi-minus-circle-outline"
+                color="grey"
+                size="small"
+                title="Not yet acknowledged"
+                aria-label="Mission not yet acknowledged"
               />
             </td>
 
@@ -468,6 +480,43 @@ function getAgentAbbr(agentType) {
  */
 function formatCount(count) {
   return count && count > 0 ? count.toString() : ''
+}
+
+/**
+ * Format acknowledgment timestamp for tooltip
+ * Returns null for invalid/empty timestamps
+ */
+function formatAcknowledgmentTime(timestamp) {
+  if (!timestamp || timestamp === '') {
+    return null
+  }
+
+  try {
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) {
+      return null
+    }
+    // User-friendly format: "Dec 6, 2025, 10:30 AM"
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  } catch (error) {
+    console.warn('[JobsTab] Invalid timestamp:', timestamp, error)
+    return null
+  }
+}
+
+/**
+ * Format acknowledgment tooltip with "Acknowledged at" prefix
+ */
+function formatAcknowledgmentTooltip(timestamp) {
+  const formatted = formatAcknowledgmentTime(timestamp)
+  return formatted ? `Acknowledged at ${formatted}` : 'Not yet acknowledged'
 }
 
 /**
@@ -953,6 +1002,42 @@ const handleStatusUpdate = (data) => {
 }
 
 /**
+ * Handle mission acknowledged event from WebSocket (Handover 0297)
+ * Updates agent's mission_acknowledged_at field in real-time
+ */
+const handleMissionAcknowledged = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    console.warn('[JobsTab] Mission acknowledged rejected: tenant mismatch', {
+      expected: currentTenantKey.value,
+      received: data.tenant_key,
+    })
+    return
+  }
+
+  console.log('[JobsTab] Mission acknowledged event:', data)
+
+  // Find agent and update mission_acknowledged_at
+  const agent = props.agents.find((a) => a.job_id === data.job_id || a.agent_id === data.job_id)
+  if (agent) {
+    agent.mission_acknowledged_at = data.mission_acknowledged_at
+    console.log(`[JobsTab] Updated mission_acknowledged_at for ${agent.agent_type}:`, data.mission_acknowledged_at)
+
+    // Emit custom event for external listeners
+    window.dispatchEvent(
+      new CustomEvent('agent:mission_acknowledged', {
+        detail: {
+          jobId: data.job_id,
+          timestamp: data.mission_acknowledged_at
+        }
+      })
+    )
+  } else {
+    console.warn(`[JobsTab] Agent not found for mission acknowledged: ${data.job_id}`)
+  }
+}
+
+/**
  * Initialize messages array from backend data on mount
  * This ensures counters persist across page refreshes
  */
@@ -1004,6 +1089,7 @@ onMounted(() => {
 
   // Register WebSocket event handlers
   on('agent:status_changed', handleStatusUpdate)
+  on('job:mission_acknowledged', handleMissionAcknowledged) // Handover 0297
   on('message:sent', handleMessageSent)
   on('message:received', handleMessageReceived) // New: for recipient agents
   on('message:acknowledged', handleMessageAcknowledged)
@@ -1012,6 +1098,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   off('agent:status_changed', handleStatusUpdate)
+  off('job:mission_acknowledged', handleMissionAcknowledged) // Handover 0297
   off('message:sent', handleMessageSent)
   off('message:received', handleMessageReceived) // New: for recipient agents
   off('message:acknowledged', handleMessageAcknowledged)
