@@ -1,5 +1,7 @@
 """
-Test mission tracking fields in table-view API endpoint (Handover 0233)
+Test mission tracking fields in table-view API endpoint - Updated for simplified job signaling
+
+Note: mission_read_at has been removed; only mission_acknowledged_at remains.
 """
 import pytest
 from httpx import AsyncClient
@@ -40,9 +42,9 @@ async def test_project_with_jobs(db_manager, admin_user):
         await session.commit()
         await session.refresh(project)
 
-        # Job 1: With mission_read_at set
+        # Job 1: With mission_acknowledged_at set
         job1_id = str(uuid4())
-        read_time = datetime.now(timezone.utc)
+        ack_time = datetime.now(timezone.utc)
         job1 = MCPAgentJob(
             job_id=job1_id,
             tenant_key=admin_user.tenant_key,
@@ -52,13 +54,13 @@ async def test_project_with_jobs(db_manager, admin_user):
             tool_type="claude-code",
             mission="Test mission 1",
             status="working",
-            mission_read_at=read_time,
+            mission_acknowledged_at=ack_time,
             instance_number=1,
         )
 
         # Job 2: With mission_acknowledged_at set
         job2_id = str(uuid4())
-        ack_time = datetime.now(timezone.utc)
+        ack_time2 = datetime.now(timezone.utc)
         job2 = MCPAgentJob(
             job_id=job2_id,
             tenant_key=admin_user.tenant_key,
@@ -68,11 +70,11 @@ async def test_project_with_jobs(db_manager, admin_user):
             tool_type="claude-code",
             mission="Test mission 2",
             status="working",
-            mission_acknowledged_at=ack_time,
+            mission_acknowledged_at=ack_time2,
             instance_number=1,
         )
 
-        # Job 3: With both fields null
+        # Job 3: With mission_acknowledged_at null
         job3_id = str(uuid4())
         job3 = MCPAgentJob(
             job_id=job3_id,
@@ -83,7 +85,6 @@ async def test_project_with_jobs(db_manager, admin_user):
             tool_type="claude-code",
             mission="Test mission 3",
             status="waiting",
-            mission_read_at=None,
             mission_acknowledged_at=None,
             instance_number=1,
         )
@@ -97,10 +98,10 @@ async def test_project_with_jobs(db_manager, admin_user):
 
 
 @pytest.mark.asyncio
-async def test_table_view_returns_mission_read_at_field(
+async def test_table_view_returns_mission_acknowledged_at_field_for_job1(
     async_client: AsyncClient, auth_headers, test_project_with_jobs
 ):
-    """Test that /api/agent-jobs/table-view returns mission_read_at"""
+    """Test that /api/agent-jobs/table-view returns mission_acknowledged_at for job 1"""
     response = await async_client.get(
         f"/api/agent-jobs/table-view?project_id={test_project_with_jobs.id}",
         headers=auth_headers,
@@ -111,17 +112,17 @@ async def test_table_view_returns_mission_read_at_field(
     assert "rows" in data
 
     # Find our job in response
-    job_row = next((r for r in data["rows"] if r["job_id"] == test_project_with_jobs["job1_id"]), None)
+    job_row = next((r for r in data["rows"] if r["agent_name"] == "Test Orchestrator 1"), None)
     assert job_row is not None, "Job not found in response"
-    assert "mission_read_at" in job_row, "mission_read_at field missing from response"
-    assert job_row["mission_read_at"] is not None
+    assert "mission_acknowledged_at" in job_row, "mission_acknowledged_at field missing from response"
+    assert job_row["mission_acknowledged_at"] is not None
 
 
 @pytest.mark.asyncio
-async def test_table_view_returns_mission_acknowledged_at_field(
+async def test_table_view_returns_mission_acknowledged_at_field_for_job2(
     async_client: AsyncClient, auth_headers, test_project_with_jobs
 ):
-    """Test that /api/agent-jobs/table-view returns mission_acknowledged_at"""
+    """Test that /api/agent-jobs/table-view returns mission_acknowledged_at for job 2"""
     response = await async_client.get(
         f"/api/agent-jobs/table-view?project_id={test_project_with_jobs.id}",
         headers=auth_headers,
@@ -129,24 +130,23 @@ async def test_table_view_returns_mission_acknowledged_at_field(
     assert response.status_code == 200
 
     data = response.json()
-    job_row = next((r for r in data["rows"] if r["job_id"] == test_project_with_jobs["job2_id"]), None)
+    job_row = next((r for r in data["rows"] if r["agent_name"] == "Test Implementer"), None)
     assert job_row is not None, "Job not found in response"
     assert "mission_acknowledged_at" in job_row, "mission_acknowledged_at field missing from response"
     assert job_row["mission_acknowledged_at"] is not None
 
 
 @pytest.mark.asyncio
-async def test_table_view_mission_fields_null_when_not_set(
+async def test_table_view_mission_acknowledged_at_null_when_not_set(
     async_client: AsyncClient, auth_headers, test_project_with_jobs
 ):
-    """Test that mission fields are null when not set"""
+    """Test that mission_acknowledged_at is null when not set"""
     response = await async_client.get(
         f"/api/agent-jobs/table-view?project_id={test_project_with_jobs.id}",
         headers=auth_headers,
     )
     data = response.json()
 
-    job_row = next((r for r in data["rows"] if r["job_id"] == test_project_with_jobs["job3_id"]), None)
+    job_row = next((r for r in data["rows"] if r["agent_name"] == "Test Tester"), None)
     assert job_row is not None, "Job not found in response"
-    assert job_row["mission_read_at"] is None
     assert job_row["mission_acknowledged_at"] is None

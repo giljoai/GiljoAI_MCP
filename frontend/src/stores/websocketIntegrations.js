@@ -298,25 +298,6 @@ export function setupWebSocketIntegrations() {
   // MISSION TRACKING EVENTS (Handover 0233 Phase 5)
   // ============================================
 
-  // Listen for job:mission_read events
-  wsStore.on('job:mission_read', (data) => {
-    console.log('[MISSION_TRACKING] Job mission read event:', data)
-
-    const payload = data.data || data
-
-    // Update agents store
-    const agentsStore = useAgentStore()
-    if (agentsStore && agentsStore.updateAgentField) {
-      agentsStore.updateAgentField(payload.job_id, 'mission_read_at', payload.mission_read_at)
-    }
-
-    // Emit custom event for components
-    window.dispatchEvent(
-      new CustomEvent('agent:mission_read', {
-        detail: { jobId: payload.job_id, timestamp: payload.mission_read_at },
-      }),
-    )
-  })
 
   // Listen for job:mission_acknowledged events
   wsStore.on('job:mission_acknowledged', (data) => {
