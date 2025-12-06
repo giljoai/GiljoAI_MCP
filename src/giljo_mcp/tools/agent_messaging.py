@@ -91,7 +91,8 @@ async def send_mcp_message(
             "timestamp": str (ISO),
             "status": "pending",
             "type": "mcp_message",
-            "is_broadcast": bool
+            "is_broadcast": bool,
+            "direction": "outbound" | "inbound"  # outbound for sender, inbound for recipients
         }
     """
     try:
@@ -134,7 +135,7 @@ async def send_mcp_message(
             message_id = str(uuid.uuid4())
             timestamp = datetime.now(timezone.utc)
 
-            # Create base message structure
+            # Create base message structure (for recipients - inbound)
             message = {
                 "id": message_id,
                 "from_agent": job_id,
@@ -143,6 +144,7 @@ async def send_mcp_message(
                 "status": "pending",
                 "type": "mcp_message",
                 "is_broadcast": False,
+                "direction": "inbound",  # Default for recipients
             }
 
             broadcast_count = 0
@@ -151,10 +153,12 @@ async def send_mcp_message(
                 # Send to orchestrator
                 message["to_agent"] = "orchestrator"
 
-                # Store in sender's messages (for tracking)
+                # Store in sender's messages (for tracking) - outbound for sender
                 if sender_job.messages is None:
                     sender_job.messages = []
-                sender_job.messages.append(message)
+                sender_message = message.copy()
+                sender_message["direction"] = "outbound"
+                sender_job.messages.append(sender_message)
 
             elif target == "broadcast":
                 # Broadcast to all jobs in tenant
@@ -166,11 +170,17 @@ async def send_mcp_message(
                 result = await session.execute(stmt)
                 all_jobs = result.scalars().all()
 
-                # Add message to all jobs (including sender)
+                # Add message to all jobs
                 for job in all_jobs:
                     if job.messages is None:
                         job.messages = []
-                    job.messages.append(message.copy())
+                    msg_copy = message.copy()
+                    # Sender gets outbound, recipients get inbound
+                    if job.job_id == job_id:
+                        msg_copy["direction"] = "outbound"
+                    else:
+                        msg_copy["direction"] = "inbound"
+                    job.messages.append(msg_copy)
                     broadcast_count += 1
 
             elif target == "agent":
@@ -188,10 +198,17 @@ async def send_mcp_message(
 
                 message["to_agent"] = agent_id
 
-                # Add message to target's messages
+                # Add message to sender's messages (outbound)
+                if sender_job.messages is None:
+                    sender_job.messages = []
+                sender_message = message.copy()
+                sender_message["direction"] = "outbound"
+                sender_job.messages.append(sender_message)
+
+                # Add message to target's messages (inbound)
                 if target_job.messages is None:
                     target_job.messages = []
-                target_job.messages.append(message)
+                target_job.messages.append(message)  # Already has direction: inbound
 
             # Commit changes
             await session.commit()
