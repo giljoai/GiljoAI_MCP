@@ -249,7 +249,7 @@ class TestEndpointModels:
             content="Test response",
             message_type="direct",
             priority="normal",
-            status="pending",
+            status="waiting",
             created_at=datetime.now(timezone.utc)
         )
         assert msg.id == "msg-123"

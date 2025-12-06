@@ -63,7 +63,7 @@ class TestGetOrchestratorInstructionsMCP:
                 project_id=project.id,
                 agent_type="orchestrator",
                 mission="Orchestrate test project",
-                status="pending",
+                status="waiting",
                 context_budget=150000,
                 context_used=0,
                 instance_number=1,
@@ -557,7 +557,7 @@ class TestErrorHandling:
                 project_id=uuid4(),  # Non-existent project
                 agent_type="orchestrator",
                 mission="Test",
-                status="pending",
+                status="waiting",
             )
             session.add(orchestrator)
             await session.commit()

@@ -480,7 +480,7 @@ class PerformanceHelper:
                     agent_name=f"load_test_agent_{uuid.uuid4().hex[:8]}",
                     agent_type="tester",
                     mission="Load testing mission",
-                    status="pending",
+                    status="waiting",
                 )
                 session.add(agent_job)
                 session.commit()

@@ -219,7 +219,7 @@ class TestAgentJobWebSocketEvents:
                 job_id=str(uuid4()),
                 agent_type="analyzer",
                 mission="Analyze codebase structure",
-                status="pending",
+                status="waiting",
             )
             session.add(job)
             await session.commit()
@@ -472,7 +472,7 @@ class TestMultiTenantIsolation:
                     job_id=str(uuid4()),
                     agent_type="orchestrator",
                     mission="Tenant A mission",
-                    status="pending",
+                    status="waiting",
                 )
                 session.add(job_a)
                 await session.commit()
@@ -541,7 +541,7 @@ class TestMultiTenantIsolation:
                     job_id=str(uuid4()),
                     agent_type="analyzer",
                     tenant_key=tenant_a,
-                    old_status="pending",
+                    old_status="waiting",
                     new_status="active",
                 )
 
