@@ -102,7 +102,7 @@ async def test_product_with_relations(db_manager, tenant_key):
             product_id=product.id,
             project_id=project1.id,
             tenant_key=tenant_key,
-            status="pending",
+            status="waiting",
         )
         task2 = Task(
             title="Task 2",

@@ -107,7 +107,7 @@ async def test_list_messages_endpoint(async_client: AsyncClient, test_project, d
         content="Test message for listing",
         message_type="direct",
         priority="normal",
-        status="pending",
+        status="waiting",
         created_at=datetime.now(timezone.utc)
     )
     db_session.add(message)
@@ -136,7 +136,7 @@ async def test_list_messages_endpoint_filter_by_status(async_client: AsyncClient
         project_id=test_project.id,
         to_agents=["agent-1"],
         content="Pending message",
-        status="pending"
+        status="waiting"
     )
     message_completed = Message(
         id=str(uuid4()),
@@ -174,7 +174,7 @@ async def test_list_messages_endpoint_filter_by_agent(async_client: AsyncClient,
         project_id=test_project.id,
         to_agents=["target-agent"],
         content="Message for target agent",
-        status="pending"
+        status="waiting"
     )
     message2 = Message(
         id=str(uuid4()),
@@ -182,7 +182,7 @@ async def test_list_messages_endpoint_filter_by_agent(async_client: AsyncClient,
         project_id=test_project.id,
         to_agents=["other-agent"],
         content="Message for other agent",
-        status="pending"
+        status="waiting"
     )
     db_session.add(message1)
     db_session.add(message2)
@@ -214,7 +214,7 @@ async def test_get_message_endpoint(async_client: AsyncClient, test_project, db_
         content="Message to retrieve",
         message_type="direct",
         priority="normal",
-        status="pending"
+        status="waiting"
     )
     db_session.add(message)
     await db_session.commit()
@@ -293,7 +293,7 @@ async def test_delete_message_endpoint(async_client: AsyncClient, test_project, 
         project_id=test_project.id,
         to_agents=["test-agent"],
         content="Message to delete",
-        status="pending"
+        status="waiting"
     )
     db_session.add(message)
     await db_session.commit()
@@ -351,7 +351,7 @@ async def test_message_endpoint_tenant_isolation(async_client: AsyncClient, db_s
         project_id=project1.id,
         to_agents=["agent-1"],
         content="Tenant 1 message",
-        status="pending"
+        status="waiting"
     )
     db_session.add(message)
     await db_session.commit()

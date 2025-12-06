@@ -203,7 +203,7 @@ class TestMessageTools:
                 content="Pending message",
                 type="direct",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 created_at=datetime.now(timezone.utc),
@@ -229,7 +229,7 @@ class TestMessageTools:
         get_messages = registrar.get_registered_tool("get_messages")
 
         # Get only pending messages
-        result = await get_messages(agent_name="agent1", status="pending")
+        result = await get_messages(agent_name="agent1", status="waiting")
         AssertionHelpers.assert_success_response(result)
         assert result["count"] == 1
         assert result["messages"][0]["status"] == "pending"
@@ -454,7 +454,7 @@ class TestMessageTools:
                 content="Low priority message",
                 type="direct",
                 priority="low",
-                status="pending",
+                status="waiting",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 created_at=datetime.now(timezone.utc),
@@ -467,7 +467,7 @@ class TestMessageTools:
                 content="High priority message",
                 type="direct",
                 priority="high",
-                status="pending",
+                status="waiting",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 created_at=datetime.now(timezone.utc),
@@ -578,7 +578,7 @@ class TestMessageTools:
                 message_type="direct",
                 content="Test message 1",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 created_at=datetime.now(timezone.utc),
                 meta_data={"_from_agent": "orchestrator"},
             )
@@ -590,7 +590,7 @@ class TestMessageTools:
                 message_type="direct",
                 content="Test message 2",
                 priority="high",
-                status="pending",
+                status="waiting",
                 created_at=datetime.now(timezone.utc),
                 meta_data={"_from_agent": "orchestrator"},
             )

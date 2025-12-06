@@ -77,7 +77,7 @@ async def test_product_isolation():
             title="Task for Product A",
             description="This task belongs to Product A",
             priority="high",
-            status="pending",
+            status="waiting",
         )
 
         task2 = Task(
@@ -87,7 +87,7 @@ async def test_product_isolation():
             title="Task for Product B",
             description="This task belongs to Product B",
             priority="medium",
-            status="pending",
+            status="waiting",
         )
 
         task3 = Task(
@@ -97,7 +97,7 @@ async def test_product_isolation():
             title="Another Task for Product A",
             description="Another task for Product A",
             priority="low",
-            status="pending",
+            status="waiting",
         )
 
         session.add_all([task1, task2, task3])

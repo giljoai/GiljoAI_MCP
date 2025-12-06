@@ -148,7 +148,7 @@ async def test_job(db_session: AsyncSession, admin_user: User) -> MCPAgentJob:
         tenant_key=admin_user.tenant_key,
         agent_type="implementer",
         mission="Test implementation task",
-        status="pending",
+        status="waiting",
         spawned_by=None,
         context_chunks=["chunk_1", "chunk_2"],
         messages=[],
@@ -325,7 +325,7 @@ async def test_multi_tenant_isolation_list_jobs(
         tenant_key=other_tenant_user.tenant_key,
         agent_type="tester",
         mission="Other tenant job",
-        status="pending",
+        status="waiting",
         messages=[],
     )
     db_session.add(other_job)
@@ -558,7 +558,7 @@ async def test_get_job_hierarchy(
         tenant_key=test_job.tenant_key,
         agent_type="implementer",
         mission="Child job 1",
-        status="pending",
+        status="waiting",
         spawned_by=test_job.job_id,
         messages=[],
     )
@@ -566,7 +566,7 @@ async def test_get_job_hierarchy(
         tenant_key=test_job.tenant_key,
         agent_type="tester",
         mission="Child job 2",
-        status="pending",
+        status="waiting",
         spawned_by=test_job.job_id,
         messages=[],
     )

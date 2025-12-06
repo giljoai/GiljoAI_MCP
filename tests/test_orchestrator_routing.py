@@ -618,7 +618,7 @@ def test_generate_cli_prompt_includes_job_info(orchestrator, test_project, codex
         tenant_key=test_project.tenant_key,
         agent_type="tester",
         mission="Test mission",
-        status="pending",
+        status="waiting",
     )
 
     cli_prompt = orchestrator._generate_cli_prompt(
@@ -639,7 +639,7 @@ def test_generate_cli_prompt_copy_paste_ready(orchestrator, test_project, gemini
         tenant_key=test_project.tenant_key,
         agent_type="reviewer",
         mission="Review code",
-        status="pending",
+        status="waiting",
     )
 
     cli_prompt = orchestrator._generate_cli_prompt(

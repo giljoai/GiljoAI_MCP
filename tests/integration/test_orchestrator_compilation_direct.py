@@ -57,7 +57,7 @@ async def setup_test_environment(
         name="Compilation Test Project",
         description="User requirements for testing compilation behavior",
         mission="",
-        status="pending",
+        status="waiting",
         context_budget=150000,
         context_used=0
     )

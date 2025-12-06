@@ -272,7 +272,7 @@ class TestJobsEndpointMessageCounters:
 
         # CRITICAL: The endpoint currently computes counters based on message direction
         # Let's verify the actual logic:
-        # - unread_count: messages with status="pending" (both sent and received)
+        # - unread_count: messages with status="waiting" (both sent and received)
         # - acknowledged_count: messages with status="acknowledged"
         # - total_messages: len(messages)
 

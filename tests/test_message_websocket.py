@@ -75,7 +75,7 @@ async def test_websocket_acknowledge_event(db_manager, test_project, db_session)
         project_id=test_project.id,
         to_agents=["test-agent"],
         content="Message to acknowledge via WebSocket",
-        status="pending"
+        status="waiting"
     )
     db_session.add(message)
     await db_session.commit()

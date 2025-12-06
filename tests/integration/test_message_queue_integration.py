@@ -69,7 +69,7 @@ def test_acknowledge_message_array(db_manager, results):
                 message_type="direct",
                 content="Test acknowledgment arrays",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -151,7 +151,7 @@ def test_complete_message_with_notes(db_manager, results):
                 message_type="direct",
                 content="Test completion with notes",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -218,7 +218,7 @@ def test_auto_acknowledgment(db_manager, results):
                 message_type="direct",
                 content="Test auto-acknowledgment",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -288,7 +288,7 @@ def test_array_structure_format(db_manager, results):
                 message_type="direct",
                 content="Test array formats",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -364,7 +364,7 @@ def test_multi_agent_delivery(db_manager, results):
                 message_type="direct",
                 content="Multi-agent test message",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -418,7 +418,7 @@ def test_no_message_deletion(db_manager, results):
                 message_type="direct",
                 content="Test deletion prevention",
                 priority="normal",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -471,7 +471,7 @@ def test_broadcast_functionality(db_manager, results):
                 message_type="broadcast",
                 content="System broadcast test",
                 priority="high",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )
@@ -518,7 +518,7 @@ def test_integration_flow(db_manager, results):
                 message_type="direct",
                 content="Integration test task",
                 priority="critical",
-                status="pending",
+                status="waiting",
                 acknowledged_by=[],
                 completed_by=[],
             )

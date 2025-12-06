@@ -101,7 +101,7 @@ async def test_receive_messages_flow(db_manager, db_session, test_project, test_
         content="Test message content",
         message_type="direct",
         priority="normal",
-        status="pending",
+        status="waiting",
         created_at=datetime.now(timezone.utc),
         meta_data={"_job_id": test_agent_jobs[0].job_id}
     )
@@ -141,7 +141,7 @@ async def test_acknowledge_message_flow(db_manager, db_session, test_project):
         content="Message to acknowledge",
         message_type="direct",
         priority="normal",
-        status="pending",
+        status="waiting",
         created_at=datetime.now(timezone.utc)
     )
     db_session.add(message)
@@ -279,7 +279,7 @@ async def test_message_multi_tenant_isolation(db_manager, db_session):
         project_id=project1.id,
         to_agents=["agent-1"],
         content="Message for tenant 1",
-        status="pending"
+        status="waiting"
     )
     message2 = Message(
         id=str(uuid4()),
@@ -287,7 +287,7 @@ async def test_message_multi_tenant_isolation(db_manager, db_session):
         project_id=project2.id,
         to_agents=["agent-2"],
         content="Message for tenant 2",
-        status="pending"
+        status="waiting"
     )
     db_session.add(message1)
     db_session.add(message2)
@@ -330,7 +330,7 @@ async def test_message_priority_ordering(db_manager, db_session, test_project):
             to_agents=["test-agent"],
             content=f"Message with {priority} priority",
             priority=priority,
-            status="pending"
+            status="waiting"
         )
         db_session.add(message)
         messages.append(message)
@@ -367,7 +367,7 @@ async def test_message_retry_count(db_manager, db_session, test_project):
         project_id=test_project.id,
         to_agents=["test-agent"],
         content="Message with retry tracking",
-        status="pending",
+        status="waiting",
         retry_count=0,
         max_retries=3
     )

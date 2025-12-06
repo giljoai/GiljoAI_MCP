@@ -281,7 +281,7 @@ class TestMCPAgentJob:
             tenant_key="test-tenant",
             agent_type="orchestrator",
             mission="Coordinate development project tasks",
-            status="pending",
+            status="waiting",
             spawned_by="parent-agent-id",
             context_chunks=["chunk-1", "chunk-2", "chunk-3"],
             messages=[
@@ -310,7 +310,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_status_workflow(self, db_session):
         """Test job status transitions."""
         agent_job = MCPAgentJob(
-            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze codebase structure", status="pending"
+            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze codebase structure", status="waiting"
         )
 
         db_session.add(agent_job)
@@ -343,7 +343,7 @@ class TestMCPAgentJob:
         """Test tenant isolation in agent jobs."""
         # Create job for tenant A
         job_a = MCPAgentJob(
-            tenant_key="tenant-a", agent_type="implementer", mission="Implement feature for tenant A", status="pending"
+            tenant_key="tenant-a", agent_type="implementer", mission="Implement feature for tenant A", status="waiting"
         )
 
         # Create job for tenant B
@@ -399,7 +399,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_context_chunks_array(self, db_session):
         """Test agent job context chunks array functionality."""
         agent_job = MCPAgentJob(
-            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze with context", status="pending"
+            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze with context", status="waiting"
         )
 
         db_session.add(agent_job)
