@@ -104,66 +104,104 @@ class TaskService:
             >>> print(result["task_id"])
         """
         try:
-            # Use provided tenant_key or get from context
-            if not tenant_key:
-                tenant_key = self.tenant_manager.get_current_tenant()
-
+            if self._session:
+                return await self._log_task_impl(
+                    self._session, content, category, priority, project_id, tenant_key
+                )
             async with self.db_manager.get_session_async() as session:
-                project = None
-
-                # Get or find project
-                if project_id:
-                    result = await session.execute(
-                        select(Project).where(Project.id == project_id)
-                    )
-                    project = result.scalar_one_or_none()
-                else:
-                    # Find first active project
-                    stmt = select(Project).where(Project.status == "active").limit(1)
-                    result = await session.execute(stmt)
-                    project = result.scalar_one_or_none()
-
-                # Create default project if needed
-                if not project:
-                    project = Project(
-                        name="Default Tasks",
-                        mission="Default project for task logging",
-                        tenant_key=tenant_key or f"tk_{uuid4().hex[:12]}",
-                        status="active",
-                    )
-                    session.add(project)
-                    await session.flush()
-
-                # Create task
-                task = Task(
-                    tenant_key=project.tenant_key,
-                    product_id=project.product_id,  # Inherit from project
-                    project_id=str(project.id),
-                    title=content,  # Use content as title
-                    description=content,  # Also store as description
-                    category=category,
-                    priority=priority,
-                    status="pending",
+                return await self._log_task_impl(
+                    session, content, category, priority, project_id, tenant_key
                 )
-
-                session.add(task)
-                await session.commit()
-
-                task_id = str(task.id)
-
-                self._logger.info(
-                    f"Logged task {task_id} in project {project.id}"
-                )
-
-                return {
-                    "success": True,
-                    "task_id": task_id,
-                    "message": "Task logged successfully",
-                }
-
         except Exception as e:
             self._logger.exception(f"Failed to log task: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _log_task_impl(
+        self,
+        session: AsyncSession,
+        content: str,
+        category: Optional[str],
+        priority: str,
+        project_id: Optional[str],
+        tenant_key: Optional[str]
+    ) -> dict[str, Any]:
+        """Implementation of log_task with explicit session parameter."""
+        # Use provided tenant_key or get from context
+        if not tenant_key:
+            tenant_key = self.tenant_manager.get_current_tenant()
+
+        project = None
+
+        # Get or find project
+        if project_id:
+            # Filter by tenant_key to prevent cross-tenant access
+            if tenant_key:
+                result = await session.execute(
+                    select(Project).where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == tenant_key
+                        )
+                    )
+                )
+            else:
+                # Fallback for backward compatibility
+                result = await session.execute(
+                    select(Project).where(Project.id == project_id)
+                )
+            project = result.scalar_one_or_none()
+
+            # If project_id was provided but project not found, fail immediately
+            # This prevents cross-tenant access attempts from creating default projects
+            if not project:
+                return {
+                    "success": False,
+                    "error": f"Project {project_id} not found or access denied"
+                }
+        else:
+            # Find first active project
+            stmt = select(Project).where(Project.status == "active").limit(1)
+            result = await session.execute(stmt)
+            project = result.scalar_one_or_none()
+
+        # Create default project if needed
+        if not project:
+            project = Project(
+                name="Default Tasks",
+                description="Default project for task logging",
+                mission="Default project for task logging",
+                tenant_key=tenant_key or f"tk_{uuid4().hex[:12]}",
+                status="active",
+            )
+            session.add(project)
+            await session.flush()
+
+        # Create task
+        task = Task(
+            tenant_key=project.tenant_key,
+            product_id=project.product_id,  # Inherit from project
+            project_id=str(project.id),
+            title=content,  # Use content as title
+            description=content,  # Also store as description
+            category=category,
+            priority=priority,
+            status="pending",
+        )
+
+        session.add(task)
+        await session.commit()
+
+        task_id = str(task.id)
+
+        self._logger.info(
+            f"Logged task {task_id} in project {project.id}"
+        )
+
+        return {
+            "success": True,
+            "task_id": task_id,
+            "message": "Task logged successfully",
+        }
 
     async def create_task(
         self,
