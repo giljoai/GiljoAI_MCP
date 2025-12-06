@@ -193,7 +193,6 @@ class OrchestratorJobResponse(BaseModel):
     status: str
     progress: int
     tool_type: str
-    acknowledged: bool
     created_at: Optional[datetime]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
