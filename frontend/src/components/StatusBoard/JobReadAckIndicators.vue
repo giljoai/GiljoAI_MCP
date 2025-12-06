@@ -1,15 +1,5 @@
 <template>
-  <div class="job-read-ack-indicators d-flex align-center gap-2">
-    <!-- Job Read indicator -->
-    <v-icon
-      class="read-indicator"
-      :color="missionReadAt ? 'success' : 'grey'"
-      size="small"
-      :title="readTooltip"
-    >
-      {{ missionReadAt ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
-    </v-icon>
-
+  <div class="job-ack-indicator d-flex align-center">
     <!-- Job Acknowledged indicator -->
     <v-icon
       class="ack-indicator"
@@ -26,24 +16,19 @@
 import { computed } from 'vue'
 
 /**
- * JobReadAckIndicators Component
+ * JobReadAckIndicators Component (Simplified)
  *
- * Displays visual indicators for job mission read and acknowledged status.
- * Shows green check icons when status is met, grey dash icons when pending.
- * Includes tooltips with formatted timestamps.
+ * Displays visual indicator for job mission acknowledged status.
+ * Shows green check icon when acknowledged, grey dash icon when pending.
+ * Includes tooltip with formatted timestamp.
  *
  * Props:
- * - missionReadAt: ISO 8601 timestamp string or null
  * - missionAcknowledgedAt: ISO 8601 timestamp string or null
  *
- * Handover 0233: Frontend job read/acknowledged indicators
+ * Note: Job Read functionality removed - only Job Acknowledged remains
  */
 
 const props = defineProps({
-  missionReadAt: {
-    type: String,
-    default: null,
-  },
   missionAcknowledgedAt: {
     type: String,
     default: null,
@@ -74,18 +59,6 @@ function formatTimestamp(timestamp) {
 }
 
 /**
- * Compute tooltip text for mission read status
- */
-const readTooltip = computed(() => {
-  if (!props.missionReadAt) {
-    return 'Not yet read'
-  }
-
-  const formattedTime = formatTimestamp(props.missionReadAt)
-  return formattedTime ? `Read at ${formattedTime}` : 'Not yet read'
-})
-
-/**
  * Compute tooltip text for mission acknowledged status
  */
 const ackTooltip = computed(() => {
@@ -99,15 +72,11 @@ const ackTooltip = computed(() => {
 </script>
 
 <style scoped>
-.job-read-ack-indicators {
-  gap: 0.5rem;
-}
-
-.job-read-ack-indicators .v-icon {
+.job-ack-indicator .v-icon {
   transition: color 0.2s ease;
 }
 
-.job-read-ack-indicators .v-icon:hover {
+.job-ack-indicator .v-icon:hover {
   opacity: 0.8;
 }
 </style>

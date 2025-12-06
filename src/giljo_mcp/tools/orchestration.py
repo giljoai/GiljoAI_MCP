@@ -540,6 +540,34 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                         "severity": "ERROR",
                     }
 
+                # Job Signaling: Set mission_acknowledged_at on FIRST fetch (idempotent)
+                if agent_job.mission_acknowledged_at is None:
+                    agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
+                    await session.commit()
+
+                    # Emit WebSocket event for UI update
+                    try:
+                        from api.websocket_service import get_websocket_service
+                        ws_service = get_websocket_service()
+                        if ws_service:
+                            await ws_service.broadcast_to_project(
+                                agent_job.project_id,
+                                "job:mission_acknowledged",
+                                {
+                                    "job_id": agent_job_id,
+                                    "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
+                                    "timestamp": datetime.now(timezone.utc).isoformat()
+                                }
+                            )
+                    except Exception as ws_error:
+                        # Non-blocking - WebSocket failures shouldn't break MCP tool
+                        logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}")
+
+                    logger.info(
+                        f"[JOB SIGNALING] Mission acknowledged: {agent_job.agent_type}",
+                        extra={"agent_job_id": agent_job_id}
+                    )
+
                 # Mission is stored in job.mission field (thin client pattern)
                 estimated_tokens = len(agent_job.mission or "") // 4
 
@@ -1493,17 +1521,17 @@ The agent templates are now being updated...
                         "contact_support": "If problem persists: support@giljoai.com",
                     }
 
-                # Handover 0233: Track mission_read_at timestamp (idempotent)
+                # Handover 0233: Track mission_acknowledged_at timestamp (idempotent)
                 # Set timestamp on FIRST read only (doesn't overwrite existing)
-                if orchestrator.mission_read_at is None:
-                    orchestrator.mission_read_at = datetime.now(timezone.utc)
+                if orchestrator.mission_acknowledged_at is None:
+                    orchestrator.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()
                     logger.info(
-                        f"[MISSION_TRACKING] Set mission_read_at for orchestrator {orchestrator_id}",
+                        f"[MISSION_TRACKING] Set mission_acknowledged_at for orchestrator {orchestrator_id}",
                         extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key}
                     )
 
-                    # Handover 0233 Phase 5: Emit WebSocket event for mission_read
+                    # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
                     try:
                         # Import websocket manager
                         from api.app import state
@@ -1513,25 +1541,25 @@ The agent templates are now being updated...
                         if ws_manager:
                             await ws_manager.broadcast_to_tenant(
                                 tenant_key=tenant_key,
-                                event_type="job:mission_read",
+                                event_type="job:mission_acknowledged",
                                 data={
                                     "job_id": orchestrator_id,
-                                    "mission_read_at": orchestrator.mission_read_at.isoformat(),
+                                    "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
                                     "timestamp": datetime.now(timezone.utc).isoformat(),
                                 },
                             )
                             logger.info(
-                                f"[WEBSOCKET] Broadcasted job:mission_read event",
+                                f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
                                 extra={
                                     "orchestrator_id": orchestrator_id,
                                     "tenant_key": tenant_key,
-                                    "mission_read_at": orchestrator.mission_read_at.isoformat()
+                                    "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat()
                                 }
                             )
                     except Exception as ws_error:
                         # Non-blocking - WebSocket failures shouldn't break MCP tool
                         logger.warning(
-                            f"[WEBSOCKET] Failed to broadcast job:mission_read event: {ws_error}",
+                            f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
                             extra={"orchestrator_id": orchestrator_id}
                         )
 
@@ -1789,17 +1817,17 @@ async def get_orchestrator_instructions(
                     "severity": "ERROR",
                 }
 
-            # Handover 0233: Track mission_read_at timestamp (idempotent)
+            # Handover 0233: Track mission_acknowledged_at timestamp (idempotent)
             # Set timestamp on FIRST read only (doesn't overwrite existing)
-            if orchestrator.mission_read_at is None:
-                orchestrator.mission_read_at = datetime.now(timezone.utc)
+            if orchestrator.mission_acknowledged_at is None:
+                orchestrator.mission_acknowledged_at = datetime.now(timezone.utc)
                 await session.commit()
                 logger.info(
-                    f"[MISSION_TRACKING] Set mission_read_at for orchestrator {orchestrator_id}",
+                    f"[MISSION_TRACKING] Set mission_acknowledged_at for orchestrator {orchestrator_id}",
                     extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key}
                 )
 
-                # Handover 0233 Phase 5: Emit WebSocket event for mission_read
+                # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
                 try:
                     # Import websocket manager
                     from api.app import state
@@ -1809,25 +1837,25 @@ async def get_orchestrator_instructions(
                     if ws_manager:
                         await ws_manager.broadcast_to_tenant(
                             tenant_key=tenant_key,
-                            event_type="job:mission_read",
+                            event_type="job:mission_acknowledged",
                             data={
                                 "job_id": orchestrator_id,
-                                "mission_read_at": orchestrator.mission_read_at.isoformat(),
+                                "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                             },
                         )
                         logger.info(
-                            f"[WEBSOCKET] Broadcasted job:mission_read event",
+                            f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
                             extra={
                                 "orchestrator_id": orchestrator_id,
                                 "tenant_key": tenant_key,
-                                "mission_read_at": orchestrator.mission_read_at.isoformat()
+                                "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat()
                             }
                         )
                 except Exception as ws_error:
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
-                        f"[WEBSOCKET] Failed to broadcast job:mission_read event: {ws_error}",
+                        f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
                         extra={"orchestrator_id": orchestrator_id}
                     )
 

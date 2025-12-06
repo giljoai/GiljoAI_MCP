@@ -61,7 +61,6 @@ class TableRowData(BaseModel):
     completed_at: Optional[datetime] = None
 
     # Mission tracking (Handover 0233)
-    mission_read_at: Optional[datetime] = None
     mission_acknowledged_at: Optional[datetime] = None
 
     # Instance tracking (orchestrator succession)
@@ -230,7 +229,6 @@ async def get_agent_jobs_table_view(
                 created_at=job.created_at,
                 started_at=job.started_at,
                 completed_at=job.completed_at,
-                mission_read_at=job.mission_read_at,  # Handover 0233
                 mission_acknowledged_at=job.mission_acknowledged_at,  # Handover 0233
                 instance_number=instance_number,
                 is_orchestrator=(job.agent_type == "orchestrator"),

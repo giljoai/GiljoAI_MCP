@@ -6,7 +6,6 @@ These models support the agentic orchestration system.
 """
 
 from sqlalchemy import (
-    Boolean,
     CheckConstraint,
     Column,
     DateTime,
@@ -89,7 +88,6 @@ class MCPAgentJob(Base):
     spawned_by = Column(String(36), nullable=True, comment="Agent ID that spawned this job")
     context_chunks = Column(JSON, default=list, comment="Array of chunk_ids from mcp_context_index for context loading")
     messages = Column(JSONB, default=list, comment="Array of message objects for agent communication")
-    acknowledged = Column(Boolean, default=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -175,16 +173,12 @@ class MCPAgentJob(Base):
         comment="Timestamp when agent job was decommissioned (Handover 0113)"
     )
 
-    # Handover 0233: Mission tracking fields (job lifecycle checkpoints)
-    mission_read_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Timestamp when agent first read mission via get_orchestrator_instructions() (Handover 0233)"
-    )
+    # Job Signaling: Mission acknowledged timestamp (simplified from Handover 0233)
+    # Auto-set when agent first fetches mission via get_agent_mission() or get_orchestrator_instructions()
     mission_acknowledged_at = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Timestamp when agent acknowledged mission via status transition to 'working' (Handover 0233)"
+        comment="Timestamp when agent first fetched mission via get_agent_mission() or get_orchestrator_instructions()"
     )
 
     # Handover 0244a: Template tracking field

@@ -126,7 +126,7 @@ async def acknowledge_job(
     """
     Acknowledge a job (pending -> active).
 
-    Sets acknowledged=True, status=active, and started_at timestamp.
+    Sets mission_acknowledged_at, status=active, and started_at timestamp.
     Idempotent operation.
 
     Args:

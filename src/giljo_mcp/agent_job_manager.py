@@ -137,7 +137,6 @@ class AgentJobManager:
             spawned_by=spawned_by,
             context_chunks=context_chunks or [],
             messages=[],
-            acknowledged=False,
             job_metadata=job_metadata or {},
         )
 
@@ -201,7 +200,6 @@ class AgentJobManager:
                     spawned_by=spec.get("spawned_by"),
                     context_chunks=spec.get("context_chunks", []),
                     messages=[],
-                    acknowledged=False,
                 )
                 session.add(job)
                 jobs.append(job)
@@ -229,7 +227,7 @@ class AgentJobManager:
         """
         Acknowledge a job (pending -> active).
 
-        Sets acknowledged=True, status=active, and started_at timestamp.
+        Sets status=working and started_at timestamp.
 
         Args:
             tenant_key: Tenant key for isolation
@@ -245,8 +243,8 @@ class AgentJobManager:
             # Get job with tenant isolation
             job = self._get_job_or_raise(session, tenant_key, job_id)
 
-            # If already acknowledged, return as-is (idempotent)
-            if job.acknowledged and job.status in {"working", "active"}:
+            # If already in working status, return as-is (idempotent)
+            if job.status in {"working", "active"}:
                 logger.info(f"Job {job_id} already acknowledged, returning current state")
                 session.expunge(job)
                 job.status = self._expose_status(job.status)
@@ -257,7 +255,6 @@ class AgentJobManager:
                 self._validate_status_transition(job.status, "working")
 
             # Update job
-            job.acknowledged = True
             job.status = "working"
             job.started_at = datetime.now(timezone.utc)
 
@@ -306,14 +303,6 @@ class AgentJobManager:
             if job.status != normalized_status:
                 self._validate_status_transition(job.status, normalized_status)
                 job.status = normalized_status
-
-            # Handover 0233: Set mission_acknowledged_at on first transition to 'working'
-            if normalized_status == 'working' and job.mission_acknowledged_at is None:
-                job.mission_acknowledged_at = datetime.now(timezone.utc)
-                logger.info(
-                    f"[MISSION_TRACKING] Set mission_acknowledged_at for job {job_id}",
-                    extra={"job_id": job_id, "tenant_key": tenant_key}
-                )
 
             # Add message if provided
             if metadata and "message" in metadata:
@@ -377,45 +366,7 @@ class AgentJobManager:
                 self._validate_status_transition(job.status, normalized_status)
                 job.status = normalized_status
 
-            # Handover 0233: Set mission_acknowledged_at on first transition to 'working'
-            if new_status == 'working' and job.mission_acknowledged_at is None:
-                job.mission_acknowledged_at = datetime.now(timezone.utc)
-
-                await session.commit()
-
-                # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
-                try:
-                    # Import websocket manager
-                    from api.app import state
-
-                    ws_manager = getattr(state, "websocket_manager", None)
-
-                    if ws_manager:
-                        await ws_manager.broadcast_to_tenant(
-                            tenant_key=tenant_key,
-                            event_type="job:mission_acknowledged",
-                            data={
-                                "job_id": job_id,
-                                "mission_acknowledged_at": job.mission_acknowledged_at.isoformat(),
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                            },
-                        )
-                        logger.info(
-                            f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
-                            extra={
-                                "job_id": job_id,
-                                "tenant_key": tenant_key,
-                                "mission_acknowledged_at": job.mission_acknowledged_at.isoformat()
-                            }
-                        )
-                except Exception as ws_error:
-                    # Non-blocking
-                    logger.warning(
-                        f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}",
-                        extra={"job_id": job_id}
-                    )
-            else:
-                await session.commit()
+            await session.commit()
 
         logger.info(f"Updated job {job_id} status to {new_status} for tenant {tenant_key}")
 
