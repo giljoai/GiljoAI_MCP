@@ -169,6 +169,7 @@
               density="compact"
               @update:model-value="handleToggleActive(item, $event)"
               :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
+              :data-testid="`template-toggle-${item.role}`"
             />
             <v-tooltip v-if="!item.is_active && remainingUserSlots === 0" location="top">
               <template v-slot:activator="{ props }">

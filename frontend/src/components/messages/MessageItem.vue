@@ -1,5 +1,5 @@
 <template>
-  <v-card variant="outlined" class="message-item mb-3" :class="messageClass">
+  <v-card variant="outlined" class="message-item mb-3" :class="messageClass" data-testid="message-item">
     <v-card-text class="pa-3">
       <div class="d-flex align-start">
         <!-- Sender Avatar -->
@@ -12,7 +12,7 @@
           <!-- Header: Sender and Timestamp -->
           <div class="d-flex align-center justify-space-between mb-2">
             <div class="d-flex align-center">
-              <span class="font-weight-medium text-body-1 mr-2">
+              <span class="font-weight-medium text-body-1 mr-2" data-testid="message-from">
                 {{ displaySender }}
               </span>
               <v-icon
@@ -40,13 +40,13 @@
           </div>
 
           <!-- Recipients -->
-          <div v-if="recipients.length > 0" class="text-caption text-medium-emphasis mb-2">
+          <div v-if="recipients.length > 0" class="text-caption text-medium-emphasis mb-2" data-testid="message-to">
             <v-icon icon="mdi-arrow-right" size="12" class="mr-1" />
             {{ recipientsText }}
           </div>
 
           <!-- Message Content with Markdown -->
-          <div class="message-content text-body-2" v-html="renderedContent" />
+          <div class="message-content text-body-2" data-testid="message-content" v-html="renderedContent" />
 
           <!-- Actions -->
           <div v-if="showActions" class="mt-2">

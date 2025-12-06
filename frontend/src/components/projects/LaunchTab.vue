@@ -71,6 +71,8 @@
                     {{ getAgentInitials(agent.agent_type) }}
                   </div>
                   <span class="agent-name" data-testid="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
+                  <span class="agent-type" data-testid="agent-type" style="display: none;">{{ agent.agent_type || '' }}</span>
+                  <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
                   <v-icon
                     size="small"
                     class="edit-icon"
