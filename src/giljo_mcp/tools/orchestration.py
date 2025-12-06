@@ -26,6 +26,94 @@ from giljo_mcp.orchestrator import ProjectOrchestrator
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
+# ============================================================================
+
+
+async def get_project_by_alias(
+    alias: str,
+    tenant_key: str,
+    session
+) -> dict[str, Any]:
+    """
+    Fetch project details using its 6-character alias with tenant isolation.
+
+    This is a testable helper function that enforces tenant boundaries.
+    The MCP tool wrapper calls this function.
+
+    Args:
+        alias: 6-character project alias (case insensitive)
+        tenant_key: Tenant isolation key
+        session: Database session
+
+    Returns:
+        Dictionary containing project details or error
+    """
+    try:
+        if not alias or len(alias) != 6:
+            return {"error": "Alias must be exactly 6 characters"}
+
+        if not tenant_key or not tenant_key.strip():
+            return {"error": "tenant_key is required"}
+
+        alias_upper = alias.upper()
+
+        # TENANT ISOLATION: Filter by both alias pattern AND tenant_key
+        result = await session.execute(
+            select(Project).where(
+                and_(
+                    Project.name.ilike(f"%{alias_upper}%"),
+                    Project.tenant_key == tenant_key
+                )
+            )
+        )
+        project = result.scalar_one_or_none()
+
+        if not project:
+            return {"error": f"Project with alias '{alias_upper}' not found"}
+
+        # Get product details if available with TENANT VALIDATION
+        product_name = None
+        product_tenant = None
+        if project.product_id:
+            # TENANT ISOLATION: Filter product by tenant_key
+            product_result = await session.execute(
+                select(Product).where(
+                    and_(
+                        Product.id == project.product_id,
+                        Product.tenant_key == tenant_key
+                    )
+                )
+            )
+            product = product_result.scalar_one_or_none()
+            if product:
+                product_name = product.name
+                product_tenant = product.tenant_key
+
+        return {
+            "success": True,
+            "project": {
+                "id": str(project.id),
+                "name": project.name,
+                "alias": alias_upper,
+                "tenant_key": project.tenant_key,
+                "mission": project.mission,
+                "status": project.status,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+            },
+            "product": {
+                "id": str(project.product_id) if project.product_id else None,
+                "name": product_name,
+                "tenant_key": product_tenant,
+            } if project.product_id and product_name else None,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get project by alias '{alias}': {e}", exc_info=True)
+        return {"error": f"Failed to fetch project: {e!s}"}
+
+
 # Handover 0281 Phase 1: Default configurations for monolithic context
 DEFAULT_FIELD_PRIORITIES = {
     "product_core": {"toggle": True, "priority": 1},
@@ -882,60 +970,25 @@ Begin by fetching your mission.
     # ========================================================================
 
     @mcp.tool()
-    async def get_project_by_alias(alias: str) -> dict[str, Any]:
+    async def get_project_by_alias_tool(alias: str, tenant_key: str) -> dict[str, Any]:
         """
-        Fetch project details using its 6-character alias.
+        Fetch project details using its 6-character alias (MCP tool wrapper).
 
         This tool enables quick project access without needing to remember
         long UUIDs. Each project has a unique 6-character alphanumeric alias.
 
         Args:
             alias: 6-character project alias (case insensitive)
+            tenant_key: Tenant isolation key
 
         Returns:
             Dictionary containing project details or error
         """
-        try:
-            if not alias or len(alias) != 6:
-                return {"error": "Alias must be exactly 6 characters"}
-
-            alias_upper = alias.upper()
-
-            async with db_manager.get_session_async() as session:
-                # For now, use project name search as fallback until alias column is added
-                result = await session.execute(select(Project).where(Project.name.ilike(f"%{alias_upper}%")))
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"error": f"Project with alias '{alias_upper}' not found"}
-
-                # Get product details if available
-                product_name = None
-                if project.product_id:
-                    product_result = await session.execute(select(Product).where(Product.id == project.product_id))
-                    product = product_result.scalar_one_or_none()
-                    if product:
-                        product_name = product.name
-
-                return {
-                    "success": True,
-                    "project_id": str(project.id),
-                    "project_name": project.name,
-                    "alias": alias_upper,
-                    "tenant_key": project.tenant_key,
-                    "product_id": str(project.product_id) if project.product_id else None,
-                    "product_name": product_name,
-                    "mission": project.mission,
-                    "status": project.status,
-                    "created_at": project.created_at.isoformat() if project.created_at else None,
-                }
-
-        except Exception as e:
-            logger.error(f"Failed to get project by alias '{alias}': {e}", exc_info=True)
-            return {"error": f"Failed to fetch project: {e!s}"}
+        async with db_manager.get_session_async() as session:
+            return await get_project_by_alias(alias, tenant_key, session)
 
     @mcp.tool()
-    async def activate_project_mission(alias: str) -> dict[str, Any]:
+    async def activate_project_mission(alias: str, tenant_key: str) -> dict[str, Any]:
         """
         Activate a project and create mission plan for orchestration.
 
@@ -944,22 +997,26 @@ Begin by fetching your mission.
 
         Args:
             alias: 6-character project alias
+            tenant_key: Tenant isolation key
 
         Returns:
             Dictionary with activation status and launch instructions
         """
         try:
-            # Get project by alias
-            project_result = await get_project_by_alias(alias)
+            # Get project by alias with tenant isolation
+            async with db_manager.get_session_async() as session:
+                project_result = await get_project_by_alias(alias, tenant_key, session)
 
             if "error" in project_result:
                 return project_result
 
-            project_id = project_result["project_id"]
-            tenant_key = project_result["tenant_key"]
-            project_name = project_result["project_name"]
+            project = project_result["project"]
+            product = project_result.get("product")
+            project_id = project["id"]
+            tenant_key = project["tenant_key"]
+            project_name = project["name"]
 
-            if not project_result.get("product_id"):
+            if not product or not product.get("id"):
                 return {"error": f"Project '{alias}' has no associated product vision"}
 
             # Generate formatted instructions for mission activation
@@ -1007,7 +1064,7 @@ The mission plan has been staged and is ready for execution.
             return {"error": f"Failed to activate project: {e!s}"}
 
     @mcp.tool()
-    async def get_launch_prompt(alias: str) -> dict[str, Any]:
+    async def get_launch_prompt(alias: str, tenant_key: str) -> dict[str, Any]:
         """
         Generate orchestration launch instructions for a project.
 
@@ -1016,20 +1073,23 @@ The mission plan has been staged and is ready for execution.
 
         Args:
             alias: 6-character project alias
+            tenant_key: Tenant isolation key
 
         Returns:
             Dictionary with launch instructions
         """
         try:
-            # Get project details
-            project_result = await get_project_by_alias(alias)
+            # Get project details with tenant isolation
+            async with db_manager.get_session_async() as session:
+                project_result = await get_project_by_alias(alias, tenant_key, session)
 
             if "error" in project_result:
                 return project_result
 
-            project_id = project_result["project_id"]
-            tenant_key = project_result["tenant_key"]
-            project_name = project_result["project_name"]
+            project = project_result["project"]
+            project_id = project["id"]
+            tenant_key = project["tenant_key"]
+            project_name = project["name"]
 
             # Format launch instructions
             instructions = f"""
