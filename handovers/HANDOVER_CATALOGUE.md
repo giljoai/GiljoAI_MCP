@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-05
+**Last Updated:** 2025-12-06
 
 ---
 
@@ -38,6 +38,8 @@
 | 0326 | Message Auto-Acknowledge Simplification | Not Started | Medium |
 | 0327 | Playwright Localhost Auth Fix | Not Started | Low |
 | 0328 | Product Service Recursion Fix | Not Started | Low |
+| 0330a-e | **Codebase Quality Audit Series** | Reference | Medium |
+| 0331 | **Message Audit Modal** | **READY** | **HIGH** |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -131,7 +133,7 @@ completed/reference/
 
 ### Current Gaps Available
 - **0304, 0307, 0308, 0317, 0319**: Gaps in 0301-0400 range
-- **0329+**: Next sequential after current development
+- **0332+**: Next sequential after current development
 
 ### Naming Format
 ```
@@ -169,6 +171,13 @@ Some handovers become reference docs (not actionable):
 ## History
 
 ### December 2025
+- 0331: Message Audit Modal (UI feature)
+- 0330a-e: Codebase Quality Audit Series (Reference)
+  - 0330a: Python Linting Report
+  - 0330b: Frontend Linting Report
+  - 0330c: Backend Feature Catalogue
+  - 0330d: Frontend Feature Catalogue
+  - 0330e: De-Linting Risk Assessment
 - 0325: Tenant Isolation Surgical Fix (security)
 - 0299: Unified UI Messaging Endpoint (COMPLETE)
 - 0295-0298: Messaging Contract Series
