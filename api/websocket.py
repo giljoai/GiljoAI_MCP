@@ -1077,11 +1077,11 @@ class WebSocketManager:
                 except Exception:
                     logger.exception(f"Error broadcasting message_received to {client_id}")
                     disconnected.append(client_id)
-        
+
         # Clean up disconnected clients
         for client_id in disconnected:
             self.disconnect(client_id)
-        
+
         logger.debug(f"Broadcast message_received - {message_id} to {len(to_agent_ids)} recipient(s)")
 
     async def broadcast_message_acknowledged(

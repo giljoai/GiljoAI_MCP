@@ -124,7 +124,11 @@ class ToolAccessor:
             websocket_manager=websocket_manager  # Pass WebSocket manager
         )
         self._context_service = ContextService(db_manager, tenant_manager)
-        self._orchestration_service = OrchestrationService(db_manager, tenant_manager)
+        self._orchestration_service = OrchestrationService(
+            db_manager,
+            tenant_manager,
+            message_service=self._message_service  # Pass MessageService for WebSocket-enabled messaging
+        )
 
     # Project Tools
 
