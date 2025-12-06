@@ -307,6 +307,8 @@ class MessageService:
                             content=content,
                             message_type=message_type,
                             priority=priority,
+                            project_id=project.id,
+                            tenant_key=project.tenant_key,
                         )
                         self._logger.info(f"[PERSISTENCE] Saved message {message_id} to agent JSONB columns")
 
@@ -899,6 +901,8 @@ class MessageService:
         content: str,
         message_type: str,
         priority: str,
+        project_id: str,
+        tenant_key: str,
     ) -> None:
         """
         Persist message to mcp_agent_jobs.messages JSONB column for counter persistence.
@@ -914,6 +918,8 @@ class MessageService:
             content: Message content
             message_type: Type of message (direct, broadcast)
             priority: Message priority (low, normal, high)
+            project_id: Project ID to scope sender lookup (prevents cross-project issues)
+            tenant_key: Tenant key for multi-tenant isolation (Handover 0325)
         """
         from sqlalchemy.orm.attributes import flag_modified
         from src.giljo_mcp.models.agents import MCPAgentJob
@@ -924,12 +930,17 @@ class MessageService:
             # Add message to SENDER's outbound messages (for "Messages Sent" counter)
             # Find sender agent - check both job_id (UUID) and agent_type
             # from_agent can be a UUID like "abf6c4fd-68b9-4556-a268-467fa90db480" or agent_type like "orchestrator"
-            from sqlalchemy import or_
+            # CRITICAL: Must filter by tenant_key AND project_id for proper isolation (Handover 0325)
+            from sqlalchemy import and_, or_
             sender_result = await session.execute(
                 select(MCPAgentJob).where(
-                    or_(
-                        MCPAgentJob.job_id == from_agent,
-                        MCPAgentJob.agent_type == from_agent
+                    and_(
+                        MCPAgentJob.tenant_key == tenant_key,
+                        MCPAgentJob.project_id == project_id,
+                        or_(
+                            MCPAgentJob.job_id == from_agent,
+                            MCPAgentJob.agent_type == from_agent
+                        )
                     )
                 ).limit(1)
             )
@@ -957,10 +968,24 @@ class MessageService:
                 self._logger.info(f"[PERSISTENCE] Added outbound message to {from_agent} JSONB column (flagged modified)")
 
             # Add message to each RECIPIENT's inbound messages (for "Messages Waiting" counter)
+            # Skip sender - they already got the outbound copy above
+            sender_job_id = sender_agent.job_id if sender_agent else None
             for recipient_job_id in recipient_job_ids:
+                # Skip sender - don't add inbound message to the sender
+                if recipient_job_id == sender_job_id:
+                    self._logger.debug(
+                        f"[PERSISTENCE] Skipping inbound message for sender {recipient_job_id}"
+                    )
+                    continue
+
+                # Tenant + project isolation on recipient lookup (Handover 0325)
                 recipient_result = await session.execute(
                     select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == recipient_job_id
+                        and_(
+                            MCPAgentJob.tenant_key == tenant_key,
+                            MCPAgentJob.project_id == project_id,
+                            MCPAgentJob.job_id == recipient_job_id
+                        )
                     )
                 )
                 recipient_agent = recipient_result.scalar_one_or_none()
