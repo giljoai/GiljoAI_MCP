@@ -545,20 +545,32 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()
 
-                    # Emit WebSocket event for UI update
+                    # Emit WebSocket event for UI update via HTTP bridge
+                    # MCP tools can't access FastAPI's WebSocketManager directly,
+                    # so we use the HTTP bridge endpoint (Handover 0111)
                     try:
-                        from api.websocket_service import get_websocket_service
-                        ws_service = get_websocket_service()
-                        if ws_service:
-                            await ws_service.broadcast_to_project(
-                                agent_job.project_id,
-                                "job:mission_acknowledged",
-                                {
-                                    "job_id": agent_job_id,
-                                    "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
-                                    "timestamp": datetime.now(timezone.utc).isoformat()
-                                }
+                        import httpx
+
+                        async with httpx.AsyncClient() as client:
+                            bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                            response = await client.post(
+                                bridge_url,
+                                json={
+                                    "event_type": "job:mission_acknowledged",
+                                    "tenant_key": tenant_key,
+                                    "data": {
+                                        "job_id": agent_job_id,
+                                        "project_id": str(agent_job.project_id),
+                                        "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
+                                        "timestamp": datetime.now(timezone.utc).isoformat()
+                                    }
+                                },
+                                timeout=5.0
                             )
+                            if response.status_code == 200:
+                                logger.info(f"[WEBSOCKET] Broadcasted job:mission_acknowledged for {agent_job_id}")
+                            else:
+                                logger.warning(f"[WEBSOCKET] HTTP bridge returned {response.status_code}")
                     except Exception as ws_error:
                         # Non-blocking - WebSocket failures shouldn't break MCP tool
                         logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}")
