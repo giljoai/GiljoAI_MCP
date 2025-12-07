@@ -237,7 +237,8 @@ class TestClaudeCodePrompt:
 
         # Verify check-in protocol
         assert "STEP 2: REMIND EACH SUB-AGENT" in prompt
-        assert "acknowledge_job" in prompt
+        # CLI execution prompt should emphasize get_agent_mission as the atomic start
+        assert "get_agent_mission" in prompt
         assert "report_progress" in prompt
 
         # Verify coordination step
