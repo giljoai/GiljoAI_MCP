@@ -415,6 +415,9 @@ Begin by fetching your mission.
         """
         Get agent-specific mission from database.
 
+        Sets mission_acknowledged_at on first fetch (idempotent) and emits
+        WebSocket event for real-time UI updates (Handover 0297).
+
         Args:
             agent_job_id: Agent job UUID
             tenant_key: Tenant key for isolation
@@ -442,6 +445,34 @@ Begin by fetching your mission.
 
                 if not agent_job:
                     return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+
+                # Job Signaling: Set mission_acknowledged_at on FIRST fetch (idempotent)
+                # Handover 0297: Job Acknowledged column in UI
+                if agent_job.mission_acknowledged_at is None:
+                    agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
+                    await session.commit()
+
+                    self._logger.info(
+                        f"[JOB SIGNALING] Mission acknowledged: {agent_job.agent_type}",
+                        extra={"agent_job_id": agent_job_id}
+                    )
+
+                    # Emit WebSocket event for real-time UI update
+                    if self._message_service and self._message_service._websocket_manager:
+                        try:
+                            await self._message_service._websocket_manager.broadcast_to_tenant(
+                                tenant_key,
+                                "job:mission_acknowledged",
+                                {
+                                    "job_id": agent_job_id,
+                                    "project_id": str(agent_job.project_id),
+                                    "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
+                                    "timestamp": datetime.now(timezone.utc).isoformat()
+                                }
+                            )
+                            self._logger.info(f"[WEBSOCKET] Broadcasted job:mission_acknowledged for {agent_job_id}")
+                        except Exception as ws_error:
+                            self._logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}")
 
                 estimated_tokens = len(agent_job.mission or "") // 4
 
