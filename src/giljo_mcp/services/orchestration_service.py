@@ -1030,6 +1030,7 @@ Begin by fetching your mission.
                         "started_at": job.started_at,
                         "completed_at": job.completed_at,
                         "created_at": job.created_at,
+                        "mission_acknowledged_at": job.mission_acknowledged_at,  # Handover 0297
                         # Note: updated_at field removed - not present in MCPAgentJob model
                     })
 
