@@ -494,6 +494,10 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         """
         Fetch agent-specific mission and context (Thin Client Architecture).
 
+        STDIO/FASTMCP PATH ONLY: This implementation is for stdio MCP transport
+        (FastMCP). HTTP MCP uses ToolAccessor → OrchestrationService.get_agent_mission()
+        which has full WebSocket support for real-time UI updates.
+
         Agents call this to get their targeted mission (not entire project vision).
         Part of Handover 0088 Amendment B - Agent Thin Client Implementation.
 
