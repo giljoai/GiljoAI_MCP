@@ -1902,7 +1902,8 @@ async def get_orchestrator_instructions(
             # Calculate token estimate
             estimated_tokens = len(condensed_mission) // 4
 
-            return {
+            # Build base response
+            response = {
                 "orchestrator_id": orchestrator_id,
                 "project_id": str(project.id),
                 "project_name": project.name,
@@ -1917,6 +1918,42 @@ async def get_orchestrator_instructions(
                 "instance_number": orchestrator.instance_number or 1,
                 "thin_client": True,
             }
+
+            # Handover 0260 Phase 5a: Add agent_spawning_constraint for Claude Code CLI mode
+            execution_mode = metadata.get("execution_mode", "multi_terminal")
+            if execution_mode == "claude_code_cli":
+                # Fetch allowed agent types from active templates
+                result = await session.execute(
+                    select(AgentTemplate.name).where(
+                        and_(
+                            AgentTemplate.tenant_key == tenant_key,
+                            AgentTemplate.is_active == True,  # noqa: E712
+                        )
+                    )
+                )
+                allowed_agent_types = [row[0] for row in result.fetchall()]
+
+                response["agent_spawning_constraint"] = {
+                    "mode": "strict_task_tool",
+                    "allowed_agent_types": allowed_agent_types,
+                    "instruction": (
+                        "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
+                        "The agent_type parameter must be EXACTLY one of the allowed template names. "
+                        "Use agent_name for descriptive labels (displayed in UI). "
+                        f"Allowed agent types: {allowed_agent_types}"
+                    ),
+                }
+
+                logger.info(
+                    f"[AGENT_CONSTRAINT] Added spawning constraint for CLI mode: {len(allowed_agent_types)} allowed types",
+                    extra={
+                        "orchestrator_id": orchestrator_id,
+                        "execution_mode": execution_mode,
+                        "allowed_types": allowed_agent_types,
+                    }
+                )
+
+            return response
 
         except Exception as e:
             logger.error(f"Error in get_orchestrator_instructions: {e}", exc_info=True)
@@ -2120,9 +2157,45 @@ async def _spawn_agent_job_impl(
 
     from sqlalchemy import and_, select
 
-    from giljo_mcp.models import MCPAgentJob
+    from giljo_mcp.models import AgentTemplate, MCPAgentJob
 
     try:
+        # Handover 0260 Phase 5b: Validate agent_type against active templates
+        # Skip validation for orchestrator (special case handled separately)
+        if agent_type != "orchestrator":
+            # Fetch active agent template names
+            template_result = await session.execute(
+                select(AgentTemplate.name).where(
+                    and_(
+                        AgentTemplate.tenant_key == tenant_key,
+                        AgentTemplate.is_active == True,  # noqa: E712
+                    )
+                )
+            )
+            valid_agent_types = [row[0] for row in template_result.fetchall()]
+
+            if agent_type not in valid_agent_types:
+                # Invalid agent_type - provide helpful error message
+                logger.warning(
+                    f"Invalid agent_type '{agent_type}' - not in valid templates",
+                    extra={
+                        "agent_type": agent_type,
+                        "valid_types": valid_agent_types,
+                        "project_id": project_id,
+                        "tenant_key": tenant_key,
+                    }
+                )
+                return {
+                    "success": False,
+                    "error": f"Invalid agent_type '{agent_type}'. Must be one of: {valid_agent_types}",
+                    "hint": (
+                        "The agent_type must match an exact template name (e.g., 'implementer', 'tester'). "
+                        "Use agent_name for descriptive labels (e.g., 'API Validator', 'Backend Tester'). "
+                        "agent_type is used by Task tool to find the correct template."
+                    ),
+                    "valid_agent_types": valid_agent_types,
+                }
+
         # ORCHESTRATOR DUPLICATION PREVENTION
         # Check if we're trying to create an orchestrator
         if agent_type == "orchestrator":
