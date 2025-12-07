@@ -327,10 +327,13 @@ class AgentJobManager:
         tenant_key: str,
     ) -> None:
         """
-        Async version of update_job_status for WebSocket integration (Handover 0233 Phase 5).
+        Update job status with validation.
 
-        Updates job status and tracks mission_acknowledged_at when transitioning to 'working'.
-        Emits WebSocket events for real-time UI updates.
+        Updates job status after validating the transition is allowed.
+
+        Note: This method only updates status. For mission acknowledgment tracking
+        and WebSocket events, use OrchestrationService.get_agent_mission() which
+        sets mission_acknowledged_at and emits job:mission_acknowledged events.
 
         Args:
             job_id: Job ID to update
