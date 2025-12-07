@@ -415,29 +415,39 @@ Begin by fetching your mission.
         """
         Get agent-specific mission from database.
 
-        Sets mission_acknowledged_at on first fetch (idempotent) and emits
-        WebSocket event for real-time UI updates (Handover 0297).
+        For CLI subagents (Handover 0262 / 0332), this method implements
+        the atomic job start semantics:
+
+        - On first successful fetch for a job in "waiting" status:
+          - Sets mission_acknowledged_at (job acknowledged)
+          - Transitions status waiting -> working
+          - Sets started_at timestamp
+          - Emits:
+            - job:mission_acknowledged (drives "Job Acknowledged" column)
+            - agent:status_changed (drives status chip)
+        - On subsequent fetches:
+          - Returns mission and metadata without mutating timestamps or status
+          - Does NOT emit additional WebSocket events (idempotent re-read)
 
         Args:
             agent_job_id: Agent job UUID
             tenant_key: Tenant key for isolation
 
         Returns:
-            Dict with mission details and metadata
-
-        Example:
-            >>> result = await service.get_agent_mission(
-            ...     agent_job_id="job-123",
-            ...     tenant_key="tenant-abc"
-            ... )
+            Dict with mission details and metadata.
         """
         try:
+            first_acknowledgement = False
+            status_changed = False
+            old_status: Optional[str] = None
+            agent_job: Optional[MCPAgentJob] = None
+
             async with self._get_session() as session:
                 result = await session.execute(
                     select(MCPAgentJob).where(
                         and_(
                             MCPAgentJob.job_id == agent_job_id,
-                            MCPAgentJob.tenant_key == tenant_key
+                            MCPAgentJob.tenant_key == tenant_key,
                         )
                     )
                 )
@@ -446,49 +456,106 @@ Begin by fetching your mission.
                 if not agent_job:
                     return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
 
-                # Job Signaling: Set mission_acknowledged_at on FIRST fetch (idempotent)
-                # Handover 0297: Job Acknowledged column in UI
+                # Atomic start semantics on FIRST mission fetch
                 if agent_job.mission_acknowledged_at is None:
-                    agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
+                    now = datetime.now(timezone.utc)
+                    first_acknowledgement = True
+                    old_status = agent_job.status
+
+                    agent_job.mission_acknowledged_at = now
+
+                    # Only transition waiting -> working (do not touch other states)
+                    if agent_job.status == "waiting":
+                        agent_job.status = "working"
+                        agent_job.started_at = now
+                        status_changed = True
+
                     await session.commit()
+                    await session.refresh(agent_job)
 
                     self._logger.info(
-                        f"[JOB SIGNALING] Mission acknowledged: {agent_job.agent_type}",
-                        extra={"agent_job_id": agent_job_id}
+                        "[JOB SIGNALING] Mission acknowledged via get_agent_mission",
+                        extra={
+                            "agent_job_id": agent_job_id,
+                            "agent_type": agent_job.agent_type,
+                            "old_status": old_status,
+                            "new_status": agent_job.status,
+                        },
                     )
 
-                    # Emit WebSocket event for real-time UI update
-                    if self._message_service and self._message_service._websocket_manager:
-                        try:
-                            await self._message_service._websocket_manager.broadcast_to_tenant(
-                                tenant_key,
-                                "job:mission_acknowledged",
-                                {
+            # WebSocket emissions happen after the database transaction is complete
+            if agent_job and first_acknowledgement:
+                try:
+                    import httpx
+
+                    bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+
+                    # 1) job:mission_acknowledged – drives "Job Acknowledged" column
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            bridge_url,
+                            json={
+                                "event_type": "job:mission_acknowledged",
+                                "tenant_key": tenant_key,
+                                "data": {
                                     "job_id": agent_job_id,
                                     "project_id": str(agent_job.project_id),
-                                    "tenant_key": tenant_key,  # Include for frontend validation
                                     "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
-                                    "timestamp": datetime.now(timezone.utc).isoformat()
-                                }
+                                },
+                            },
+                            timeout=5.0,
+                        )
+
+                    # 2) agent:status_changed – only when we actually transitioned to working
+                    if status_changed and old_status is not None:
+                        async with httpx.AsyncClient() as client:
+                            await client.post(
+                                bridge_url,
+                                json={
+                                    "event_type": "agent:status_changed",
+                                    "tenant_key": tenant_key,
+                                    "data": {
+                                        "job_id": agent_job_id,
+                                        "agent_type": agent_job.agent_type,
+                                        "agent_name": agent_job.agent_name,
+                                        "old_status": old_status,
+                                        "status": "working",
+                                        "started_at": agent_job.started_at.isoformat()
+                                        if agent_job.started_at
+                                        else None,
+                                    },
+                                },
+                                timeout=5.0,
                             )
-                            self._logger.info(f"[WEBSOCKET] Broadcasted job:mission_acknowledged for {agent_job_id}")
-                        except Exception as ws_error:
-                            self._logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}")
 
-                estimated_tokens = len(agent_job.mission or "") // 4
+                    self._logger.info(
+                        "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
+                        extra={"agent_job_id": agent_job_id},
+                    )
+                except Exception as ws_error:
+                    # Do not fail mission fetch on WebSocket bridge issues
+                    self._logger.warning(
+                        f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}"
+                    )
 
-                return {
-                    "success": True,
-                    "agent_job_id": agent_job_id,
-                    "agent_name": agent_job.agent_type,
-                    "agent_type": agent_job.agent_type,
-                    "mission": agent_job.mission or "",
-                    "project_id": str(agent_job.project_id),
-                    "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
-                    "estimated_tokens": estimated_tokens,
-                    "status": agent_job.status,
-                    "thin_client": True,
-                }
+            if not agent_job:
+                # Safety guard – should be unreachable due to earlier NOT_FOUND return
+                return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+
+            estimated_tokens = len(agent_job.mission or "") // 4
+
+            return {
+                "success": True,
+                "agent_job_id": agent_job_id,
+                "agent_name": agent_job.agent_type,
+                "agent_type": agent_job.agent_type,
+                "mission": agent_job.mission or "",
+                "project_id": str(agent_job.project_id),
+                "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
+                "estimated_tokens": estimated_tokens,
+                "status": agent_job.status,
+                "thin_client": True,
+            }
 
         except Exception as e:
             self._logger.exception(f"Failed to get agent mission: {e}")
