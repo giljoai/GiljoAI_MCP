@@ -33,6 +33,28 @@ Enhance the "Enable Claude Code CLI" toggle to persist per-project in the databa
 - **Claude Code CLI Mode (ON)**: Strict Task tool instructions, exact `.claude/agents/*.md` template names, only orchestrator gets launch button
 - **Multi-Terminal Mode (OFF)**: All agents get prompts with copy buttons, more lenient orchestrator coordination
 
+### CLI Subagent MCP Protocol (v1 Decision – See 0262)
+To keep hidden Claude Code CLI subagents predictable and thin, we are standardizing on the following protocol (formalized in **0262_agent_mission_protocol_merge_analysis.md**):
+
+- Subagents MUST:
+  - Optionally call `health_check()` to verify MCP connectivity.
+  - Then call `get_agent_mission(agent_job_id, tenant_key)` as their **first MCP tool call**.
+- The first successful `get_agent_mission` for a waiting job will:
+  - Set `mission_acknowledged_at`,
+  - Transition status from `waiting` → `working` (if applicable),
+  - Emit `job:mission_acknowledged` and `agent:status_changed` WebSocket events for the dashboard.
+- Subsequent `get_agent_mission` calls are idempotent mission re-reads and MUST NOT change status or timestamps.
+- `acknowledge_job(job_id, agent_id, tenant_key)` is reserved for:
+  - Queue/worker flows (`get_pending_jobs` → `acknowledge_job` → `get_agent_mission`), and
+  - Admin/HTTP actions that explicitly “claim” a job.
+  It is **not required** in the standard Claude Code CLI subagent protocol.
+- During execution, subagents coordinate and report via:
+  - `send_message(...)` / `receive_messages(...)` and `get_next_instruction(job_id, agent_type, tenant_key)` for message-based instructions,
+  - `complete_job(job_id, result)` when done, or `report_error(job_id, error)` if blocked,
+  - Optional coarse `report_progress(job_id, progress)` at major milestones (not on every minor step).
+
+The implementation tasks in this handover (toggle persistence, prompt generation, tool catalog wiring) should respect this protocol when designing mode-specific prompts and tests.
+
 ---
 
 ## Technical Details
@@ -155,10 +177,10 @@ The `agent_type` is used by Claude Code Task tool. The `agent_name` is for human
 
 ### AGENT BEHAVIOR REQUIREMENTS
 Each spawned agent MUST:
-1. Call get_agent_mission(job_id, tenant_key) immediately on start
-2. Call report_progress() periodically during execution
-3. Call check_orchestrator_messages() between major steps
-4. Call complete_job() or report_error() on completion
+1. Call `get_agent_mission(job_id, tenant_key)` immediately on start (for CLI subagents this both **acknowledges** and **fetches** the mission, and triggers UI signaling as defined in 0262).
+2. Use `send_message(...)` and `get_next_instruction(job_id, agent_type, tenant_key)` to communicate and read instructions between major steps.
+3. Optionally call `report_progress(job_id, progress)` at major milestones (coarse-grained), when additional structured progress is useful beyond messages.
+4. Call `complete_job(job_id, result)` or `report_error(job_id, error)` when finished or blocked so that status and timestamps are updated for the dashboard and audit trail.
 ```
 
 **Multi-Terminal Mode** (default - existing behavior):

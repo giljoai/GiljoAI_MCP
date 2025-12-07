@@ -1,6 +1,6 @@
 # Handover 0262: Agent Mission Protocol Merge Analysis
 
-## Status: RESEARCH / DISCUSSION
+## Status: PARTIAL DECISION / READY FOR IMPLEMENTATION (CLI SUBAGENTS)
 
 ## Context
 
@@ -260,44 +260,140 @@ Keep `get_agent_mission()` as lightweight mission-only fetch.
 
 ---
 
-## Recommendation
+## Recommendation (Updated)
 
-**Option C** appears most aligned with the thin-client architecture:
+**Option C (merged behavior)** remains the best fit for the thin-client architecture, with a **refinement for Claude Code CLI subagents**:
 
-1. Agent calls ONE tool: `get_agent_mission()`
-2. Gets EVERYTHING needed to execute
-3. No need to know about GenericAgentTemplate separately
-4. Works for both multi-terminal and CLI mode
+1. Agents still call a single tool: `get_agent_mission(agent_job_id, tenant_key)`.
+2. That call returns everything needed to execute (mission + key metadata) **and** is treated as the job’s atomic “start” in CLI mode.
+3. GenericAgentTemplate / agent templates describe this behavior so agents do not need to call a separate `acknowledge_job()` in CLI subagent flows.
+4. Multi-terminal mode may continue to use the same tool, but can optionally keep `acknowledge_job()` for queue-style flows.
 
-The template would need a new method:
+The template will still benefit from a helper like:
 ```python
 def render_with_mission(self, ..., mission: str) -> str:
     # Render template but replace "Your Mission" section
     # with actual mission content instead of fetch instructions
 ```
+but for **Claude Code CLI MODE** the key behavioral decision is about how the tools change state, not how much text is embedded.
 
 ---
 
-## Questions for Discussion
+## Decision v1 – CLI Subagents (Claude Code CLI Mode)
 
-1. Should `get_agent_mission()` return a complete executable prompt or just data?
-2. Is the 6-phase protocol too verbose for CLI mode where agents are short-lived?
-3. Should CLI mode agents have a simplified protocol?
-4. How do we handle the "What You'll Receive" section that promises fields not implemented?
+This section records the agreed behavior for **Claude Code CLI mode**, where agents run as subagents in the same terminal and are not individually visible to the user.
+
+### 1. `get_agent_mission` = atomic job start (CLI subagents)
+
+For agents spawned as Claude Code subagents (toggle ON):
+
+- Agents MUST call:
+  - `get_agent_mission(agent_job_id, tenant_key)` as their **first MCP action** (after optional `health_check()`).
+- On the **first** successful call for a job in `waiting` state, the server MUST:
+  - Set `mission_acknowledged_at = now()` for that `MCPAgentJob`.
+  - If current `status == "waiting"` (or alias `"pending"`), set:
+    - `status = "working"` (active execution), and
+    - `started_at = now()`.
+  - Emit WebSocket events to drive the dashboard:
+    - `job:mission_acknowledged` with `{job_id, mission_acknowledged_at, tenant_key}`
+      - Drives the “Job Acknowledged” checkmark column in Jobs/Agent table views.
+    - `agent:status_changed` with `{job_id, old_status, status="working", ...}`
+      - Drives the status chip from “Waiting” → “Working”.
+- On subsequent calls for the same job:
+  - Return the same mission payload and metadata.
+  - **Do not** change status or timestamps (idempotent re-read).
+
+**Implication:** For CLI subagents, `get_agent_mission` is the single, obvious “I have read my mission and started work” signal, and the UI reflects this without needing `acknowledge_job`.
+
+### 2. Role of `acknowledge_job` after this change
+
+We **keep** `acknowledge_job(job_id, agent_id, tenant_key)` but narrow its use:
+
+- Primary use cases:
+  - Queue/worker pattern: `get_pending_jobs` → `acknowledge_job` → `get_agent_mission` for generic worker agents (non-CLI, or future external workers).
+  - Admin / HTTP flows where a human explicitly “claims” a job via `/api/agent-jobs/{job_id}/acknowledge`.
+- Not required in Claude Code CLI subagent templates:
+  - Templates for CLI subagents should **not** instruct agents to call `acknowledge_job` during Phase 1.
+  - Existing documentation should describe `acknowledge_job` as a queue/worker tool, not part of the standard CLI subagent startup sequence.
+
+`acknowledge_job` still:
+
+- Transitions `waiting` → `working`,
+- Sets `started_at` and `mission_acknowledged_at` (for non-CLI flows),
+- Emits `agent:status_changed` for the UI.
+
+But for hidden CLI subagents, those responsibilities are fulfilled by `get_agent_mission` instead.
+
+### 3. Minimal MCP tool set for CLI subagents
+
+To keep CLI subagent prompts thin and behavior predictable, we standardize on this tool set:
+
+- **Initialization**
+  - `health_check()` – optional but recommended first call to verify MCP connectivity.
+  - `get_agent_mission(agent_job_id, tenant_key)` – required; atomic “claim + mission fetch” for CLI subagents.
+
+- **Work & coordination**
+  - `send_message(to_agents, content, project_id, message_type="direct", priority="normal", from_agent)`  
+    - Primary channel for all agent-to-agent and agent-to-user communication.
+  - `get_next_instruction(job_id, agent_type, tenant_key)`  
+    - Friendly “read messages / instructions addressed to me” wrapper over the message queue; agents should poll this between major steps.
+
+- **Completion / failure**
+  - `complete_job(job_id, result)`  
+    - Marks job as complete, emits status change, records completion time and summary.
+  - `report_error(job_id, error)`  
+    - Marks job failed/blocked, stores error, emits status change for the dashboard.
+
+- **Optional / coarse-grained**
+  - `report_progress(job_id, progress)`  
+    - Allowed but should be used sparingly (major milestones) since progress can also be conveyed via `send_message(..., message_type="progress")`.
+
+### 4. UI semantics in CLI mode
+
+With these semantics in place, for Claude Code CLI subagents:
+
+- **“Job Acknowledged” column** shows:
+  - Whether the agent has ever successfully called `get_agent_mission` (i.e., `mission_acknowledged_at` is set).
+- **Status chip** shows:
+  - `waiting` until the first mission fetch,
+  - `working` after `get_agent_mission` or `acknowledge_job` (depending on flow),
+  - `complete`, `failed`, `blocked`, or `cancelled` after `complete_job` / `report_error` / cancel.
+- **Message counters and audit views** (see Handover 0331) remain the primary way for users to see what each hidden subagent has actually done or requested.
+
+This matches the visual expectations in the workflow slides: mission read/acknowledged, active/working, completed/failed, plus rich message history.
+
+---
+
+## Open Questions / Future Work
+
+1. **Template coupling vs data-only response**
+   - For CLI mode we are leaning toward **data-first**: `get_agent_mission` returns structured mission and context data, while templates (GenericAgentTemplate + agent `.md` files) provide protocol text. We may still add `full_prompt` in the response later, but it is not required for this decision.
+2. **Multi-terminal mode alignment**
+   - Multi-terminal agents can either adopt the same “`get_agent_mission` = atomic start” semantics or continue using `acknowledge_job` explicitly. This decision can be deferred; the CLI mode behavior is safe and backward-compatible.
+3. **Context/previous_work payload**
+   - The template still promises `context` and `previous_work`; we should implement at least a minimal version of these fields in the service response and gradually fill them out.
 
 ---
 
 ## Related Handovers
 
-- **0260**: Claude Code CLI Toggle Enhancement (predecessor)
-- **0261**: CLI Implementation Prompt (defines two-phase flow)
-- **0246b**: Generic Agent Template Implementation (created the template)
+- **0260**: Claude Code CLI Toggle & Execution Mode (UI + behavior switch)
+- **0261**: CLI Implementation Prompt (orchestrator thin prompt and Task tool usage)
+- **0246b**: Generic Agent Template Implementation (6-phase protocol)
+- **0297**: UI Message Status and Job Signaling (mission_acknowledged_at + events)
 
 ---
 
 ## Next Steps
 
-1. Decide on merge strategy (A, B, C, or D)
-2. Implement chosen approach
-3. Update CLI implementation prompt to leverage merged response
-4. Test both multi-terminal and CLI mode flows
+1. Implement the `get_agent_mission` atomic start semantics in `OrchestrationService.get_agent_mission` (and ensure ToolAccessor + HTTP MCP code paths use it).
+2. Confirm `job:mission_acknowledged` and `agent:status_changed` are emitted as described for the first mission fetch.
+3. Update GenericAgentTemplate and CLI agent templates so **CLI subagents**:
+   - Call `get_agent_mission(agent_job_id, tenant_key)` as the first MCP tool, and
+   - Do **not** call `acknowledge_job()` unless they are using queue/worker flows.
+4. Update 0260/0261 documentation to reference this decision for CLI mode.
+5. Add/extend tests covering:
+   - First vs subsequent `get_agent_mission` calls,
+   - Status and timestamp transitions,
+   - WebSocket event emission,
+   - Dashboard “Job Acknowledged” and status behavior in CLI mode.

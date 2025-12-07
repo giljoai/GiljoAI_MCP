@@ -11,11 +11,17 @@
 
 ## Task Summary
 
-Build a two-layer message audit modal triggered by the folder icon on agent cards in JobsTab. This enables developers to review agent communication history as an auditable "story" of coordination between agents.
+Build a two-layer message audit modal triggered by the folder icon on agent cards in JobsTab, and connect it to the new numeric **Steps** indicator (Handover 0297) so users can move from “3/5 steps completed” to the underlying conversation and plan.
 
-**Why:** Agents communicate via MCP messaging for coordination and decisions. Currently, only counters are visible (Sent/Waiting/Read). Developers need to audit the full conversation flow to understand what happened and diagnose agent behavior issues.
+**Why:** Agents communicate via MCP messaging for coordination and decisions. Currently, only counters are visible (Sent/Waiting/Read). With 0297, we will also have a `Steps` column driven by `report_progress(mode="todo")`. Developers need to:
 
-**Expected Outcome:** Clicking the folder icon opens a modal showing all messages for that agent, with tabs for filtering and a detail view for expanded message content including broadcast recipient read status.
+- Audit the full conversation flow to understand what happened.
+- See the **plan/TODO list** associated with those steps.
+- Review after-action summaries in context.
+
+**Expected Outcome:** 
+- Clicking the folder icon opens a modal showing all messages for that agent, with tabs for filtering and a detail view for expanded message content including broadcast recipient read status.  
+- Clicking on the **Steps** indicator (or an affordance in the modal) reveals the agent’s declared plan/TODOs and step-by-step narrative, using existing message and completion data.
 
 ---
 
@@ -35,7 +41,7 @@ Build a two-layer message audit modal triggered by the folder icon on agent card
 ### Related Handovers
 - 0295: Messaging Contract (Reference)
 - 0296: Agent Messaging Behavior (Reference)
-- 0297: UI Message Status & Job Signaling (Reference)
+- 0297: UI Message Status & Job Signaling (Reference, introduces `Steps` column)
 - 0299: Unified UI Messaging Endpoint (Complete)
 
 ---
@@ -64,6 +70,16 @@ MessageAuditModal.vue
   ↓ Click message row
 MessageDetailView.vue
   ↓ Layer 2: Full message + recipient status
+
+In addition, the modal should help explain the **Steps** indicator:
+
+`Steps` column (0297)
+  ↓ click or hover affordance (e.g., "3/5")
+MessageAuditModal.vue
+  ↓ Highlight / pre-filter messages related to plan & progress:
+     - `message_type == "plan"` → “Plan / TODOs” section
+     - `message_type == "progress" | "note"` → timeline entries
+  ↓ Optionally show a small "Steps" summary matching the numeric indicator
 ```
 
 ### Message Data Structure (from JSONB)
@@ -117,11 +133,12 @@ Compare arrays to determine read status:
       <!-- Header -->
       <v-card-title>Messages: {{ agentName }}</v-card-title>
 
-      <!-- Tabs: Sent | Waiting | Read -->
+      <!-- Tabs: Sent | Waiting | Read | Plan -->
       <v-tabs v-model="activeTab">
         <v-tab value="sent">Sent ({{ sentCount }})</v-tab>
         <v-tab value="waiting">Waiting ({{ waitingCount }})</v-tab>
         <v-tab value="read">Read ({{ readCount }})</v-tab>
+        <v-tab value="plan">Plan / TODOs ({{ planCount }})</v-tab>
       </v-tabs>
 
       <!-- Message List -->
@@ -159,6 +176,8 @@ const filteredMessages = computed(() => {
       return msgs.filter(m => m.status === 'pending' || m.status === 'waiting')
     case 'read':
       return msgs.filter(m => m.status === 'acknowledged' || m.status === 'read')
+    case 'plan':
+      return msgs.filter(m => m.message_type === 'plan')
     default:
       return msgs
   }
@@ -246,6 +265,24 @@ const displayType = computed(() => {
 - Direct message shows single recipient
 - Broadcast shows all recipients with read (green) / unread (red) status
 
+### Phase 3b: Connect Steps Indicator to Modal (1 hour)
+
+**Goal:** Make it easy to jump from the `Steps` summary in the Jobs/Agent table (Handover 0297) into the plan/progress audit.
+
+**Files:** 
+- `frontend/src/components/projects/JobsTab.vue`
+- `frontend/src/components/orchestration/AgentTableView.vue` (if used)
+
+**Behavior:**
+
+1. When a job has TODO-style progress (`mode="todo"` with `total_steps`/`completed_steps`), the **Steps** cell:
+   - Displays `completed_steps/total_steps`.
+   - Acts as a secondary trigger for `MessageAuditModal` (same modal as the folder icon).
+2. When the modal is opened from the **Steps** cell:
+   - Default `activeTab` should be `"plan"`.
+   - The modal header or a small subheading should show the same `completed_steps/total_steps` value to confirm the connection.
+3. All data for Steps and plan/progress must come from **existing** JSONB/message structures (no new API endpoints or WebSocket event types). 
+
 ### Phase 4: Polish & Edge Cases (30 min)
 
 1. Empty state: "No messages" when list is empty
@@ -257,6 +294,24 @@ const displayType = computed(() => {
 ---
 
 ## Testing Requirements
+
+### Frontend
+
+- `MessageAuditModal`:
+  - Tabs filter correctly; counts match JobsTab counters.
+  - `"Plan / TODOs"` tab shows only `message_type === "plan"` messages.
+  - Opening via folder icon defaults to the last-used tab or `"sent"` (implementation choice), not necessarily `"plan"`.
+  - Opening via the **Steps** cell defaults to `"plan"` and shows the same `completed_steps/total_steps` as the table.
+- `MessageDetailView`:
+  - Recipient status renders correctly for broadcast messages.
+  - Direct messages show minimal recipient info.
+
+### Non-regression / Integration
+
+- Dashboard layout:
+  - Column reorder and Steps column do not break existing message counters or status display (aligned with constraints in 0297).
+- WebSocket behavior:
+  - No new event types introduced; modal and Steps updates rely on the existing message/progress events wired in `websocketIntegrations.js` and related stores.
 
 ### Unit Tests
 
