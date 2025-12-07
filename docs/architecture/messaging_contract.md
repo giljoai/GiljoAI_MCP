@@ -267,6 +267,9 @@ get_orchestrator_instructions(
 )
 
 # Agent fetches mission
+# NOTE (0262 / 0332): In CLI subagent mode, this is the ATOMIC JOB START:
+# - First call sets mission_acknowledged_at and transitions waiting → working
+# - Subsequent calls are idempotent re-reads
 get_agent_mission(
     job_id: str,           # Agent job UUID
     tenant_key: str

@@ -408,6 +408,46 @@ class TestPromptContentValidation:
         # CLI mode should say "Claude Code CLI"
         assert 'Claude Code CLI' in cli_mode_prompt
 
+    @pytest.mark.asyncio
+    async def test_cli_mode_describes_get_agent_mission_atomic_start_and_acknowledge_usage(
+        self, generator, test_project, test_product
+    ):
+        """CLI mode prompt should describe get_agent_mission as atomic start and narrow acknowledge_job usage."""
+        prompt = await generator.generate_staging_prompt(
+            orchestrator_id=str(uuid4()),
+            project_id=test_project.id,
+            claude_code_mode=True,
+        )
+
+        # Should explicitly mention get_agent_mission with job_id and tenant_key
+        assert "get_agent_mission(job_id" in prompt
+        assert "tenant_key" in prompt
+
+        # Should explain that acknowledge_job is queue/admin-only
+        assert "acknowledge_job" in prompt
+        # We don't require exact phrasing, but both concepts should appear
+        assert "queue" in prompt.lower()
+        assert "admin" in prompt.lower()
+
+    @pytest.mark.asyncio
+    async def test_cli_mode_explains_todo_steps_and_plan_messages(
+        self, generator, test_project, test_product
+    ):
+        """CLI mode prompt should teach TODO-style Steps and plan/progress messages."""
+        prompt = await generator.generate_staging_prompt(
+            orchestrator_id=str(uuid4()),
+            project_id=test_project.id,
+            claude_code_mode=True,
+        )
+
+        # TODO-style progress for Steps
+        assert "report_progress" in prompt
+        assert '"mode": "todo"' in prompt or "mode='todo'" in prompt
+
+        # Plan / TODO messages and narrative progress
+        assert 'message_type="plan"' in prompt or "message_type: \"plan\"" in prompt
+        assert 'message_type="progress"' in prompt or "message_type: \"progress\"" in prompt
+
 
 # ============================================================================
 # ERROR HANDLING TESTS
