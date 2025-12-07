@@ -541,11 +541,12 @@ function getMessagesWaiting(agent) {
 
 /**
  * Get count of messages acknowledged/read by agent
+ * Only counts INBOUND messages that were read (not outbound messages sent by agent)
  */
 function getMessagesRead(agent) {
   if (!agent.messages || !Array.isArray(agent.messages)) return 0
   return agent.messages.filter(
-    (m) => m.status === 'acknowledged' || m.status === 'read'
+    (m) => m.direction === 'inbound' && (m.status === 'acknowledged' || m.status === 'read')
   ).length
 }
 
@@ -1091,10 +1092,11 @@ onMounted(() => {
   initializeMessagesFromBackend()
 
   // Register WebSocket event handlers
+  // NOTE: message:sent and message:received are handled by websocketIntegrations.js
+  // which updates projectTabsStore.agents (same data as props.agents). Registering
+  // them here would cause double-counting of messages. (Handover 0297 fix)
   on('agent:status_changed', handleStatusUpdate)
   on('job:mission_acknowledged', handleMissionAcknowledged) // Handover 0297
-  on('message:sent', handleMessageSent)
-  on('message:received', handleMessageReceived) // New: for recipient agents
   on('message:acknowledged', handleMessageAcknowledged)
   on('message:new', handleNewMessage)
 })
@@ -1102,8 +1104,6 @@ onMounted(() => {
 onUnmounted(() => {
   off('agent:status_changed', handleStatusUpdate)
   off('job:mission_acknowledged', handleMissionAcknowledged) // Handover 0297
-  off('message:sent', handleMessageSent)
-  off('message:received', handleMessageReceived) // New: for recipient agents
   off('message:acknowledged', handleMessageAcknowledged)
   off('message:new', handleNewMessage)
 })
