@@ -160,4 +160,35 @@ describe('MessageAuditModal (0331)', () => {
     expect(readText).toContain('read-1')
     expect(readText).toContain('read-2')
   })
+
+  it('shows only plan messages in Plan/TODOs tab when initialTab is plan', async () => {
+    agent = createMockAgent({
+      messages: [
+        createMockMessage({
+          direction: 'outbound',
+          status: 'sent',
+          text: 'plan-1',
+          message_type: 'plan',
+        }),
+        createMockMessage({
+          direction: 'outbound',
+          status: 'sent',
+          text: 'progress-1',
+          message_type: 'progress',
+        }),
+        createMockMessage({
+          direction: 'outbound',
+          status: 'sent',
+          text: 'regular-1',
+        }),
+      ],
+    })
+
+    const wrapper = mountModal({ initialTab: 'plan' })
+    await nextTick()
+
+    const rows = wrapper.findAll('[data-test="audit-message-row"]')
+    expect(rows.length).toBe(1)
+    expect(rows[0].text()).toContain('plan-1')
+  })
 })
