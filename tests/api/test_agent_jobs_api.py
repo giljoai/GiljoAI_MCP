@@ -484,6 +484,10 @@ class TestAgentJobStatus:
         assert len(data["jobs"]) >= 1
         assert data["total"] >= 1
 
+        # Each job should include steps field for dashboard Steps column
+        for job in data["jobs"]:
+            assert "steps" in job
+
     @pytest.mark.asyncio
     async def test_list_jobs_with_filters(
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project, tenant_a_agent_job
@@ -513,6 +517,61 @@ class TestAgentJobStatus:
         data = response.json()
         assert data["limit"] == 5
         assert data["offset"] == 0
+
+    @pytest.mark.asyncio
+    async def test_list_jobs_includes_todo_steps_summary(
+        self,
+        api_client: AsyncClient,
+        tenant_a_admin_token: str,
+        tenant_a_agent_job,
+        db_manager,
+    ):
+        """
+        Jobs endpoint should expose numeric Steps summary when todo_steps metadata exists.
+
+        Behavior (Handover 0297):
+        - When job_metadata.todo_steps has total_steps/completed_steps,
+          jobs endpoint returns steps: {"total": int, "completed": int}
+        """
+        from sqlalchemy import select
+        from src.giljo_mcp.models import MCPAgentJob
+
+        job_id = tenant_a_agent_job["agent_job_id"]
+
+        # Populate todo_steps in job_metadata for the spawned job
+        async with db_manager.get_session_async() as session:
+            result = await session.execute(
+                select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            )
+            job = result.scalar_one()
+
+            job.job_metadata = {
+                **(job.job_metadata or {}),
+                "todo_steps": {
+                    "total_steps": 4,
+                    "completed_steps": 1,
+                    "current_step": "Initial setup",
+                },
+            }
+            await session.commit()
+
+        # Call jobs endpoint
+        response = await api_client.get(
+            "/api/agent-jobs/",
+            cookies={"access_token": tenant_a_admin_token},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "jobs" in data
+
+        # Find our specific job
+        target = next((j for j in data["jobs"] if j["job_id"] == job_id), None)
+        assert target is not None, "Spawned job should be present in jobs list"
+
+        # Steps summary should be present and normalized
+        assert "steps" in target
+        assert target["steps"] == {"total": 4, "completed": 1}
 
     @pytest.mark.asyncio
     async def test_list_jobs_requires_auth(self, api_client: AsyncClient):

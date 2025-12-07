@@ -67,6 +67,10 @@ class TableRowData(BaseModel):
     instance_number: int
     is_orchestrator: bool
 
+    # TODO-style steps summary for dashboard Steps column (Handover 0297)
+    steps_total: Optional[int] = None
+    steps_completed: Optional[int] = None
+
 
 class TableViewResponse(BaseModel):
     """Response for table view endpoint"""
@@ -210,6 +214,27 @@ async def get_agent_jobs_table_view(
         # Determine instance number (orchestrator succession)
         instance_number = job.instance_number if hasattr(job, "instance_number") else 1
 
+        # Derive steps summary from job_metadata.todo_steps (Handover 0297)
+        steps_total = None
+        steps_completed = None
+        try:
+            metadata = job.job_metadata or {}
+            todo_steps = metadata.get("todo_steps") or {}
+            total_steps = todo_steps.get("total_steps")
+            completed_steps = todo_steps.get("completed_steps")
+            if (
+                isinstance(total_steps, int)
+                and total_steps > 0
+                and isinstance(completed_steps, int)
+                and 0 <= completed_steps <= total_steps
+            ):
+                steps_total = total_steps
+                steps_completed = completed_steps
+        except Exception:
+            # Keep table view robust even if metadata is malformed
+            steps_total = None
+            steps_completed = None
+
         rows.append(
             TableRowData(
                 job_id=job.job_id,
@@ -232,6 +257,8 @@ async def get_agent_jobs_table_view(
                 mission_acknowledged_at=job.mission_acknowledged_at,  # Handover 0233
                 instance_number=instance_number,
                 is_orchestrator=(job.agent_type == "orchestrator"),
+                steps_total=steps_total,
+                steps_completed=steps_completed,
             )
         )
 
