@@ -16,6 +16,12 @@
             <span class="text-caption text-medium-emphasis">
               {{ agent?.job_id || 'Unknown job' }}
             </span>
+            <span
+              v-if="steps && typeof steps.completed === 'number' && typeof steps.total === 'number'"
+              class="text-caption text-medium-emphasis"
+            >
+              Steps: {{ steps.completed }} / {{ steps.total }}
+            </span>
           </div>
         </div>
         <v-btn
@@ -60,6 +66,15 @@
             @click="activeTab = 'read'"
           >
             Read ({{ readCount }})
+          </button>
+          <button
+            type="button"
+            class="tab-button"
+            :class="{ active: activeTab === 'plan' }"
+            data-test="messages-tab-plan"
+            @click="activeTab = 'plan'"
+          >
+            Plan / TODOs ({{ planCount }})
           </button>
         </div>
 
@@ -126,12 +141,22 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  // Initial tab when opening the modal: 'waiting' | 'sent' | 'read' | 'plan'
+  initialTab: {
+    type: String,
+    default: 'waiting',
+  },
+  // Optional steps summary for header context (completed/total)
+  steps: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['close'])
 
-// Tabs: 'sent' | 'waiting' | 'read'
-const activeTab = ref('waiting')
+// Tabs: 'sent' | 'waiting' | 'read' | 'plan'
+const activeTab = ref(props.initialTab || 'waiting')
 const selectedMessage = ref(null)
 
 const messages = computed(() =>
@@ -159,13 +184,20 @@ const readMessages = computed(() =>
   ),
 )
 
+// Plan / TODO messages (message_type === 'plan')
+const planMessages = computed(() =>
+  messages.value.filter((m) => m.message_type === 'plan'),
+)
+
 const sentCount = computed(() => sentMessages.value.length)
 const waitingCount = computed(() => waitingMessages.value.length)
 const readCount = computed(() => readMessages.value.length)
+const planCount = computed(() => planMessages.value.length)
 
 const currentMessages = computed(() => {
   if (activeTab.value === 'sent') return sentMessages.value
   if (activeTab.value === 'read') return readMessages.value
+  if (activeTab.value === 'plan') return planMessages.value
   return waitingMessages.value
 })
 
@@ -178,9 +210,12 @@ watch(
   () => props.show,
   (value) => {
     if (!value) {
-      activeTab.value = 'waiting'
       selectedMessage.value = null
+      return
     }
+    // When opening, pick the requested initial tab if provided
+    activeTab.value = props.initialTab || 'waiting'
+    selectedMessage.value = null
   },
 )
 
