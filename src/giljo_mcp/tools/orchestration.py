@@ -541,40 +541,11 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     }
 
                 # Job Signaling: Set mission_acknowledged_at on FIRST fetch (idempotent)
+                # NOTE: This code path is for stdio MCP (FastMCP). HTTP MCP uses
+                # OrchestrationService.get_agent_mission() which has WebSocket support.
                 if agent_job.mission_acknowledged_at is None:
                     agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()
-
-                    # Emit WebSocket event for UI update via HTTP bridge
-                    # MCP tools can't access FastAPI's WebSocketManager directly,
-                    # so we use the HTTP bridge endpoint (Handover 0111)
-                    try:
-                        import httpx
-
-                        async with httpx.AsyncClient() as client:
-                            bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                            response = await client.post(
-                                bridge_url,
-                                json={
-                                    "event_type": "job:mission_acknowledged",
-                                    "tenant_key": tenant_key,
-                                    "data": {
-                                        "job_id": agent_job_id,
-                                        "project_id": str(agent_job.project_id),
-                                        "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
-                                        "timestamp": datetime.now(timezone.utc).isoformat()
-                                    }
-                                },
-                                timeout=5.0
-                            )
-                            if response.status_code == 200:
-                                logger.info(f"[WEBSOCKET] Broadcasted job:mission_acknowledged for {agent_job_id}")
-                            else:
-                                logger.warning(f"[WEBSOCKET] HTTP bridge returned {response.status_code}")
-                    except Exception as ws_error:
-                        # Non-blocking - WebSocket failures shouldn't break MCP tool
-                        logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged: {ws_error}")
-
                     logger.info(
                         f"[JOB SIGNALING] Mission acknowledged: {agent_job.agent_type}",
                         extra={"agent_job_id": agent_job_id}
