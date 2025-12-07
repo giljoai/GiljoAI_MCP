@@ -1,0 +1,83 @@
+<template>
+  <div class="message-detail" data-test="audit-message-detail">
+    <h3 class="text-subtitle-1 mb-2">Message Details</h3>
+
+    <div v-if="!message" class="text-body-2 text-medium-emphasis">
+      Select a message to inspect its details.
+    </div>
+
+    <div v-else>
+      <div class="meta-row">
+        <strong>From:</strong>
+        <span>{{ message.from || 'unknown' }}</span>
+      </div>
+      <div class="meta-row">
+        <strong>Direction:</strong>
+        <span>{{ message.direction || 'unknown' }}</span>
+      </div>
+      <div class="meta-row">
+        <strong>Status:</strong>
+        <span>{{ message.status || 'unknown' }}</span>
+      </div>
+      <div class="meta-row">
+        <strong>Timestamp:</strong>
+        <span>{{ formattedTimestamp }}</span>
+      </div>
+      <div v-if="message.priority" class="meta-row">
+        <strong>Priority:</strong>
+        <span>{{ message.priority }}</span>
+      </div>
+
+      <v-divider class="my-3" />
+
+      <div class="text-caption text-medium-emphasis mb-1">
+        Content
+      </div>
+      <pre class="message-body">
+{{ message.text || message.content || message.message || '' }}
+      </pre>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  message: {
+    type: Object,
+    default: null,
+  },
+})
+
+const formattedTimestamp = computed(() => {
+  if (!props.message) return 'Unknown time'
+  const raw = props.message.timestamp || props.message.created_at
+  if (!raw) return 'Unknown time'
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return 'Unknown time'
+  return date.toLocaleString()
+})
+</script>
+
+<style scoped>
+.message-detail {
+  padding: 16px;
+}
+
+.meta-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.message-body {
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 8px;
+  border-radius: 4px;
+}
+</style>
+
