@@ -1089,7 +1089,7 @@ Create agent jobs.
 Result: Jobs created | Timeout: 30s
 """
 
-        # Handover 0260: Add mode-specific instructions for Claude Code CLI mode
+        # Handover 0260 / 0261 / 0332: Add mode-specific instructions for Claude Code CLI mode
         if claude_code_mode:
             prompt += f"""
 {'='*70}
@@ -1114,12 +1114,26 @@ Example - Spawning 2 implementers:
 
 The agent_type is used by Claude Code Task tool. The agent_name is for human display only.
 
+ACKNOWLEDGE_JOB USAGE (QUEUE/ADMIN ONLY)
+- In CLI subagent mode, do NOT call acknowledge_job() from the agent.
+- The first call to get_agent_mission(job_id, tenant_key) both ACKNOWLEDGES the job
+  and FETCHES the mission (atomic job start).
+- acknowledge_job() is reserved for queue/worker and admin flows only.
+
 AGENT BEHAVIOR REQUIREMENTS
 Each spawned agent MUST:
-1. Call get_agent_mission(job_id, tenant_key) immediately on start
-2. Call report_progress() periodically during execution
-3. Call check_orchestrator_messages() between major steps
-4. Call complete_job() or report_error() on completion
+1. Optionally call health_check() to verify MCP connectivity.
+2. Immediately call get_agent_mission(job_id, tenant_key) as the FIRST action
+   after initialization (atomic mission fetch + acknowledgment).
+3. Use report_progress() for both narrative progress AND TODO-style Steps:
+   - Numeric Steps indicator on the dashboard is driven by:
+     report_progress(job_id, {{"mode": "todo", "total_steps": N, "completed_steps": k,
+     "current_step": "short description of the current step"}})
+4. Use send_message() for plan and narrative updates:
+   - Plan / TODOs:    send_message(..., message_type="plan")
+   - Narrative / log: send_message(..., message_type="progress")
+5. Call get_next_instruction() between major steps to fetch new instructions.
+6. Call complete_job() or report_error() on completion/failure.
 
 You may ONLY spawn agents from the list returned by get_available_agents().
 DO NOT invent, extend, or modify template names.
@@ -1270,10 +1284,16 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             agent_list + "\n",
             "(Pattern: spawn_agent_job() already called during staging - use existing IDs)\n",
             "STEP 2: REMIND EACH SUB-AGENT",
-            f"- acknowledge_job(job_id=\"{{{{job_id}}}}\", agent_id=\"{{{{agent_id}}}}\", tenant_key=\"{self.tenant_key}\")",
-            "- report_progress() after milestones",
-            "- get_next_instruction() for commands from orchestrator",
-            "- complete_job() when done\n",
+            "- First MCP action after optional health_check() must be:\n"
+            f"  get_agent_mission(job_id=\"{{{{job_id}}}}\", tenant_key=\"{self.tenant_key}\")\n"
+            "  (this SINGLE call both acknowledges the job and fetches the mission).\n",
+            "- Use report_progress() after milestones, including TODO-style Steps via:\n"
+            "  report_progress(job_id, {\"mode\": \"todo\", \"total_steps\": N, \"completed_steps\": k,\n"
+            "  \"current_step\": \"short description of the current step\"})\n",
+            "- Use send_message(..., message_type=\"plan\") for plan/TODOs and\n"
+            "  send_message(..., message_type=\"progress\") for narrative updates.\n",
+            "- Call get_next_instruction() for commands from orchestrator.",
+            "- Call complete_job() when done or report_error() on failure.\n",
             "STEP 3: COORDINATE WORKFLOW",
             "- Monitor via get_workflow_status()",
             "- Respond to agent messages",
