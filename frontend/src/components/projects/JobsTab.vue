@@ -292,6 +292,7 @@ import { useToast } from '@/composables/useToast'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
+import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
@@ -566,6 +567,7 @@ function toggleExecutionMode() {
 
 /**
  * Determine if copy button should be shown for an agent
+ * Handover 0260: Consolidated to use actionConfig.shouldShowLaunchAction()
  *
  * Toggle OFF (Manual Mode):
  *   - Show copy button for any waiting agent (all agents can be launched manually)
@@ -575,18 +577,8 @@ function toggleExecutionMode() {
  *   - Hide copy buttons for specialist agents (orchestrator spawns them)
  */
 function shouldShowCopyButton(agent) {
-  // Copy button only shows when agent is waiting
-  if (agent.status !== 'waiting') {
-    return false
-  }
-
-  // If Claude Code CLI mode is OFF, show copy button for all waiting agents
-  if (!usingClaudeCodeSubagents.value) {
-    return true
-  }
-
-  // If Claude Code CLI mode is ON, only show for orchestrator
-  return agent.agent_type === 'orchestrator'
+  // Handover 0260: Use consolidated function from actionConfig.js
+  return shouldShowLaunchAction(agent, usingClaudeCodeSubagents.value)
 }
 
 /**

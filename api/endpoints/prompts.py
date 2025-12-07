@@ -395,6 +395,11 @@ async def generate_staging_prompt(
     project_id: str,
     tool: str = Query("claude-code", pattern="^(claude-code|codex|gemini)$"),
     instance_number: int = Query(1, ge=1, description="Orchestrator instance number"),
+    execution_mode: str = Query(
+        "multi_terminal",
+        pattern="^(multi_terminal|claude_code_cli)$",
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+    ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
     ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
@@ -468,6 +473,20 @@ async def generate_staging_prompt(
             field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
 
+        # Handover 0260: Generate mode-specific staging prompt
+        # Convert execution_mode string to claude_code_mode boolean
+        claude_code_mode = (execution_mode == "claude_code_cli")
+
+        # Use generate_staging_prompt for mode-specific content
+        staging_prompt = await generator.generate_staging_prompt(
+            orchestrator_id=result["orchestrator_id"],
+            project_id=project_id,
+            claude_code_mode=claude_code_mode
+        )
+
+        # Calculate token estimate for staging prompt (1 token ≈ 4 chars)
+        staging_tokens = len(staging_prompt) // 4
+
         # Broadcast WebSocket event for real-time UI update
         if ws_dep.is_available():
             await ws_dep.broadcast_to_tenant(
@@ -492,12 +511,13 @@ async def generate_staging_prompt(
         )
 
         # Return response with 'prompt' key for frontend compatibility
+        # Handover 0260: Use staging_prompt (mode-specific) instead of thin_prompt
         return {
             "orchestrator_id": result["orchestrator_id"],
-            "prompt": result["thin_prompt"],  # Rename thin_prompt → prompt for frontend
+            "prompt": staging_prompt,  # Mode-specific staging prompt
             "instance_number": result["instance_number"],
             "context_budget": result["context_budget"],
-            "estimated_prompt_tokens": result["estimated_prompt_tokens"],
+            "estimated_prompt_tokens": staging_tokens,  # Updated token count for staging prompt
         }
 
     except ValueError as e:

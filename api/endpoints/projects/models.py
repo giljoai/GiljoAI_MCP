@@ -24,6 +24,11 @@ class ProjectCreate(BaseModel):
     product_id: Optional[str] = Field(None, description="Product ID to associate with")
     status: str = Field(default="inactive", description="Project status (Handover 0050b: defaults to inactive)")
     context_budget: int = Field(default=150000, description="Token budget for the project")
+    # Handover 0260: Execution mode for Claude Code CLI toggle
+    execution_mode: str = Field(
+        default="multi_terminal",
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+    )
 
 
 class ProjectUpdate(BaseModel):
@@ -32,6 +37,11 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = None
     mission: Optional[str] = None
     status: Optional[str] = None
+    # Handover 0260: Execution mode for Claude Code CLI toggle
+    execution_mode: Optional[str] = Field(
+        None,
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+    )
 
 
 class AgentSimple(BaseModel):
@@ -62,6 +72,8 @@ class ProjectResponse(BaseModel):
     agent_count: int
     message_count: int
     agents: List[AgentSimple] = []
+    # Handover 0260: Execution mode for Claude Code CLI toggle
+    execution_mode: str = "multi_terminal"
 
 
 class DeletedProjectResponse(BaseModel):

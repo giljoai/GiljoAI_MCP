@@ -89,7 +89,8 @@ async def create_project(
         context_used=0,
         agent_count=0,
         message_count=0,
-        agents=[]
+        agents=[],
+        execution_mode=result.get("execution_mode", "multi_terminal"),  # Handover 0260
     )
 
 
@@ -146,7 +147,8 @@ async def list_projects(
             context_used=proj.get("context_used", 0),
             agent_count=proj.get("agent_count", 0),
             message_count=proj.get("message_count", 0),
-            agents=[]
+            agents=[],
+            execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
         )
         for proj in projects
     ]
