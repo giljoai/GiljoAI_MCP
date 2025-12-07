@@ -47,11 +47,16 @@ To keep hidden Claude Code CLI subagents predictable and thin, we are standardiz
 - `acknowledge_job(job_id, agent_id, tenant_key)` is reserved for:
   - Queue/worker flows (`get_pending_jobs` → `acknowledge_job` → `get_agent_mission`), and
   - Admin/HTTP actions that explicitly “claim” a job.
-  It is **not required** in the standard Claude Code CLI subagent protocol.
+  It is **not required** in the standard Claude Code CLI subagent protocol and SHOULD NOT be used by CLI subagents for normal startup.
 - During execution, subagents coordinate and report via:
   - `send_message(...)` / `receive_messages(...)` and `get_next_instruction(job_id, agent_type, tenant_key)` for message-based instructions,
   - `complete_job(job_id, result)` when done, or `report_error(job_id, error)` if blocked,
-  - Optional coarse `report_progress(job_id, progress)` at major milestones (not on every minor step).
+  - `report_progress(job_id, progress)` for both narrative updates and **TODO-style Steps** using:
+    - `progress = {"mode": "todo", "total_steps": N, "completed_steps": k, "current_step": "short description"}` for the numeric Steps indicator on the dashboard,
+    - `progress = {"status": "in_progress", "message": "..."}` for coarse-grained narrative progress.
+- For plan and narrative content, subagents should use:
+  - `send_message(..., message_type="plan")` for plan/TODO content,
+  - `send_message(..., message_type="progress")` for narrative/log-style updates.
 
 The implementation tasks in this handover (toggle persistence, prompt generation, tool catalog wiring) should respect this protocol when designing mode-specific prompts and tests.
 

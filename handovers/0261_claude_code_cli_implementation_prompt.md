@@ -262,8 +262,9 @@ Task(
 
 ### Step 2: Monitor Subagent Progress
 
-Each subagent will:
-1. Call `get_agent_mission()` to fetch their specific mission
+    Each subagent will:
+    1. Call `get_agent_mission(job_id, tenant_key)` as its FIRST MCP tool call to atomically
+       acknowledge the job and fetch its specific mission
 2. Execute their 6-phase protocol (acknowledge → analyze → plan → execute → verify → complete)
 3. Report progress via MCP message tools
 4. Mark job complete when done
@@ -440,8 +441,10 @@ async def get_agent_mission(
 
 You MUST follow this 6-phase protocol:
 
-### Phase 1: ACKNOWLEDGE
-Call `acknowledge_job(job_id="{job_id}", agent_id="{agent_job.agent_type}")` to mark yourself as active.
+### Phase 1: INITIALIZE & FETCH MISSION
+- Optionally call `health_check()` to verify MCP connectivity.
+- Then call `get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` as your FIRST MCP tool call.
+  This SINGLE call both acknowledges the job and fetches your mission in CLI subagent mode.
 
 ### Phase 2: ANALYZE
 - Understand your mission thoroughly
@@ -450,13 +453,13 @@ Call `acknowledge_job(job_id="{job_id}", agent_id="{agent_job.agent_type}")` to 
 
 ### Phase 3: PLAN
 - Break mission into concrete steps
-- Send status update to orchestrator:
-  `send_message(to_agents=["orchestrator"], content="Plan: ...", project_id="{agent_job.project_id}")`
+- Send structured plan/TODOs to orchestrator:
+  `send_message(to_agents=["orchestrator"], content="Plan: ...", project_id="{agent_job.project_id}", message_type="plan")`
 
 ### Phase 4: EXECUTE
 - Implement your mission
-- Report incremental progress:
-  `report_progress(job_id="{job_id}", progress={{"status": "...", "completed_steps": [...]}}`
+- Report incremental progress and TODO-style Steps:
+  `report_progress(job_id="{job_id}", progress={{"mode": "todo", "total_steps": N, "completed_steps": k, "current_step": "short description"}})`
 
 ### Phase 5: VERIFY
 - Test your work
