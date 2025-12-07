@@ -1068,7 +1068,7 @@ TASK 5: CONTEXT PRIORITIZATION & MISSION
 Build unified mission with user priorities.
 
 1. Fetch complete mission via MCP tool:
-   - get_orchestrator_instructions(orchestrator_id='{orchestrator_id}', tenant_key='{tenant_key}')
+   - get_orchestrator_instructions(orchestrator_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
 2. Review prioritized context
 3. Store final mission via update_project_mission()
 
@@ -1087,7 +1087,54 @@ Create agent jobs.
 2. Verify creation
 
 Result: Jobs created | Timeout: 30s
+"""
 
+        # Handover 0260: Add mode-specific instructions for Claude Code CLI mode
+        if claude_code_mode:
+            prompt += f"""
+{'='*70}
+CLAUDE CODE CLI MODE - STRICT TASK TOOL REQUIREMENTS
+{'='*70}
+CRITICAL: You are running in Claude Code CLI single-terminal mode.
+You MUST spawn agents using Claude Code's native Task tool.
+
+EXACT AGENT NAMING (NO EXCEPTIONS)
+When spawning via Task tool, use subagent_type parameter with EXACT template names:
+- ALLOWED: subagent_type="backend-tester" (matches backend-tester.md)
+- FORBIDDEN: subagent_type="backend-tester-for-api-validation"
+- FORBIDDEN: subagent_type="Backend Tester Agent"
+
+AGENT SPAWNING RULES (CRITICAL)
+1. agent_type parameter: MUST be EXACTLY one of the template names from agent_templates
+2. agent_name parameter: Can be descriptive for UI display
+
+Example - Spawning 2 implementers:
+  spawn_agent_job(agent_type="implementer", agent_name="Folder Structure Implementer", ...)
+  spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
+
+The agent_type is used by Claude Code Task tool. The agent_name is for human display only.
+
+AGENT BEHAVIOR REQUIREMENTS
+Each spawned agent MUST:
+1. Call get_agent_mission(job_id, tenant_key) immediately on start
+2. Call report_progress() periodically during execution
+3. Call check_orchestrator_messages() between major steps
+4. Call complete_job() or report_error() on completion
+
+You may ONLY spawn agents from the list returned by get_available_agents().
+DO NOT invent, extend, or modify template names.
+"""
+        else:
+            prompt += f"""
+{'='*70}
+MULTI-TERMINAL MODE
+{'='*70}
+User will manually launch each agent in separate terminal windows.
+Each agent has [Copy Prompt] button enabled in the UI.
+Coordinate via MCP messaging: send_message(), broadcast(), get_messages()
+"""
+
+        prompt += f"""
 {'='*70}
 TASK 7: PROJECT ACTIVATION
 {'='*70}
