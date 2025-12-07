@@ -781,6 +781,39 @@ Begin by fetching your mission.
                 )
                 job = res.scalar_one_or_none()
 
+                if not job:
+                    return {"status": "error", "error": f"Job {job_id} not found"}
+
+                # Optional TODO-style steps tracking for Steps column (Handover 0297)
+                mode = progress.get("mode")
+                if mode == "todo":
+                    total_steps = progress.get("total_steps")
+                    completed_steps = progress.get("completed_steps")
+                    current_step = progress.get("current_step")
+
+                    if (
+                        isinstance(total_steps, int)
+                        and total_steps > 0
+                        and isinstance(completed_steps, int)
+                        and 0 <= completed_steps <= total_steps
+                    ):
+                        # Persist latest TODO summary into job_metadata.todo_steps
+                        from sqlalchemy.orm.attributes import flag_modified
+
+                        metadata = job.job_metadata or {}
+                        todo_steps = {
+                            "total_steps": total_steps,
+                            "completed_steps": completed_steps,
+                        }
+                        if isinstance(current_step, str) and current_step.strip():
+                            todo_steps["current_step"] = current_step
+
+                        metadata["todo_steps"] = todo_steps
+                        job.job_metadata = metadata
+                        flag_modified(job, "job_metadata")
+                        await session.commit()
+                        await session.refresh(job)
+
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
 
@@ -1080,6 +1113,30 @@ Begin by fetching your mission.
                         f"messages field = {messages_data!r} (type: {type(job.messages)})"
                     )
 
+                    # Derive simple numeric steps summary from job_metadata.todo_steps (Handover 0297)
+                    steps_summary = None
+                    try:
+                        metadata = job.job_metadata or {}
+                        todo_steps = metadata.get("todo_steps") or {}
+                        total_steps = todo_steps.get("total_steps")
+                        completed_steps = todo_steps.get("completed_steps")
+                        if (
+                            isinstance(total_steps, int)
+                            and total_steps > 0
+                            and isinstance(completed_steps, int)
+                            and 0 <= completed_steps <= total_steps
+                        ):
+                            steps_summary = {
+                                "total": total_steps,
+                                "completed": completed_steps,
+                            }
+                    except Exception:
+                        # Do not break listing if metadata has unexpected shape
+                        self._logger.warning(
+                            "[LIST_JOBS] Failed to derive steps summary from job_metadata",
+                            exc_info=True,
+                        )
+
                     job_dicts.append({
                         "id": job.id,
                         "job_id": job.job_id,
@@ -1098,6 +1155,7 @@ Begin by fetching your mission.
                         "completed_at": job.completed_at,
                         "created_at": job.created_at,
                         "mission_acknowledged_at": job.mission_acknowledged_at,  # Handover 0297
+                        "steps": steps_summary,
                         # Note: updated_at field removed - not present in MCPAgentJob model
                     })
 

@@ -104,6 +104,9 @@ class JobResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     mission_acknowledged_at: Optional[datetime] = None  # Handover 0297
+    # Numeric steps summary for TODO-style progress (Handover 0297)
+    # When present, represents completed/total steps for dashboard Steps column.
+    steps: Optional[dict[str, int]] = None
 
 
 class PendingJobsResponse(BaseModel):
