@@ -189,18 +189,18 @@ describe('actionConfig.js', () => {
       it('ensures no divergent behavior between consolidated function and original locations', () => {
         const testCases = [
           // (job, claudeCodeCliMode, expectedResult)
-          ({ status: 'waiting', agent_type: 'orchestrator' }, true, true),
-          ({ status: 'waiting', agent_type: 'orchestrator' }, false, true),
-          ({ status: 'waiting', agent_type: 'implementer' }, true, false),
-          ({ status: 'waiting', agent_type: 'implementer' }, false, true),
-          ({ status: 'working', agent_type: 'orchestrator' }, true, false),
-          ({ status: 'working', agent_type: 'orchestrator' }, false, false),
-          ({ status: 'complete', agent_type: 'orchestrator' }, true, false),
-          ({ status: 'complete', agent_type: 'orchestrator' }, false, false),
-          ({ status: 'blocked', agent_type: 'orchestrator' }, true, false),
-          ({ status: 'blocked', agent_type: 'orchestrator' }, false, false),
-          ({ status: 'failed', agent_type: 'implementer' }, true, false),
-          ({ status: 'failed', agent_type: 'implementer' }, false, false),
+          [{ status: 'waiting', agent_type: 'orchestrator' }, true, true],
+          [{ status: 'waiting', agent_type: 'orchestrator' }, false, true],
+          [{ status: 'waiting', agent_type: 'implementer' }, true, false],
+          [{ status: 'waiting', agent_type: 'implementer' }, false, true],
+          [{ status: 'working', agent_type: 'orchestrator' }, true, false],
+          [{ status: 'working', agent_type: 'orchestrator' }, false, false],
+          [{ status: 'complete', agent_type: 'orchestrator' }, true, false],
+          [{ status: 'complete', agent_type: 'orchestrator' }, false, false],
+          [{ status: 'blocked', agent_type: 'orchestrator' }, true, false],
+          [{ status: 'blocked', agent_type: 'orchestrator' }, false, false],
+          [{ status: 'failed', agent_type: 'implementer' }, true, false],
+          [{ status: 'failed', agent_type: 'implementer' }, false, false],
         ];
 
         testCases.forEach(([job, mode, expected]) => {
