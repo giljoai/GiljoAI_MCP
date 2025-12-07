@@ -132,11 +132,15 @@ describe('JobsTab MessageAuditModal integration (0331)', () => {
           CloseoutModal: true,
           // Stub the audit modal so we can assert props/visibility
           MessageAuditModal: {
-            props: ['show', 'agent'],
+            props: ['show', 'agent', 'initialTab', 'steps'],
             template: `
               <div v-if="show" data-test="message-audit-modal">
                 <span data-test="modal-agent-id">{{ agent.job_id }}</span>
                 <span data-test="modal-message-count">{{ agent.messages.length }}</span>
+                <span data-test="modal-initial-tab">{{ initialTab }}</span>
+                <span data-test="modal-steps">
+                  {{ steps && steps.completed }} / {{ steps && steps.total }}
+                </span>
               </div>
             `,
           },
@@ -156,5 +160,77 @@ describe('JobsTab MessageAuditModal integration (0331)', () => {
     expect(modal.get('[data-test="modal-message-count"]').text()).toBe(
       String(job.messages.length),
     )
+    expect(modal.get('[data-test="modal-initial-tab"]').text()).toBe('waiting')
+  })
+
+  it('opens MessageAuditModal with Plan tab and steps summary when Steps cell is clicked', async () => {
+    const job = createMockJob({
+      steps: { total: 4, completed: 2 },
+      messages: [
+        createMockMessage({ text: 'plan-1', message_type: 'plan' }),
+        createMockMessage({ text: 'regular-1' }),
+      ],
+    })
+
+    const wrapper = mount(JobsTab, {
+      props: {
+        project: {
+          project_id: 'proj-123',
+          name: 'Test Project',
+        },
+        agents: [job],
+        messages: [],
+        allAgentsComplete: false,
+      },
+      global: {
+        plugins: [pinia, vuetify],
+        stubs: {
+          'router-link': true,
+          'v-icon': true,
+          'v-avatar': true,
+          'v-tooltip': {
+            template: '<div><slot name="activator" :props="{}" /><slot /></div>',
+          },
+          'v-dialog': true,
+          'v-card': true,
+          'v-card-title': true,
+          'v-card-text': true,
+          'v-card-actions': true,
+          'v-spacer': true,
+          'v-text-field': true,
+          LaunchSuccessorDialog: true,
+          AgentDetailsModal: true,
+          CloseoutModal: true,
+          MessageAuditModal: {
+            props: ['show', 'agent', 'initialTab', 'steps'],
+            template: `
+              <div v-if="show" data-test="message-audit-modal">
+                <span data-test="modal-agent-id">{{ agent.job_id }}</span>
+                <span data-test="modal-message-count">{{ agent.messages.length }}</span>
+                <span data-test="modal-initial-tab">{{ initialTab }}</span>
+                <span data-test="modal-steps">
+                  {{ steps && steps.completed }} / {{ steps && steps.total }}
+                </span>
+              </div>
+            `,
+          },
+        },
+      },
+    })
+
+    // Click the Steps cell trigger
+    const stepsTrigger = wrapper.get('[data-testid="steps-trigger"]')
+    await stepsTrigger.trigger('click')
+    await flushPromises()
+
+    const modal = wrapper.get('[data-test="message-audit-modal"]')
+    expect(modal.exists()).toBe(true)
+
+    expect(modal.get('[data-test="modal-agent-id"]').text()).toBe(job.job_id)
+    expect(modal.get('[data-test="modal-message-count"]').text()).toBe(
+      String(job.messages.length),
+    )
+    expect(modal.get('[data-test="modal-initial-tab"]').text()).toBe('plan')
+    expect(modal.get('[data-test="modal-steps"]').text().trim()).toBe('2 / 4')
   })
 })
