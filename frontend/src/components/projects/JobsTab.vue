@@ -19,8 +19,9 @@
           <tr>
             <th>Agent Type</th>
             <th>Agent ID</th>
-            <th>Agent Status</th>
             <th>Job Acknowledged</th>
+            <th>Agent Status</th>
+            <th>Steps</th>
             <th>Messages Sent</th>
             <th>Messages waiting</th>
             <th>Messages Read</th>
@@ -74,6 +75,14 @@
                 title="Not yet acknowledged"
                 aria-label="Mission not yet acknowledged"
               />
+            </td>
+
+            <!-- Steps (numeric TODO progress) -->
+            <td class="steps-cell text-center">
+              <span v-if="agent.steps && typeof agent.steps.completed === 'number' && typeof agent.steps.total === 'number'">
+                {{ agent.steps.completed }} / {{ agent.steps.total }}
+              </span>
+              <span v-else>—</span>
             </td>
 
             <!-- Messages Sent -->
