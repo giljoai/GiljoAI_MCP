@@ -43,6 +43,16 @@
       </v-icon>
     </template>
 
+    <!-- Steps Column (Handover 0297: TODO progress summary) -->
+    <template #item.steps="{ item }">
+      <span class="text-body-2">
+        <span v-if="typeof item.steps_completed === 'number' && typeof item.steps_total === 'number'">
+          {{ item.steps_completed }} / {{ item.steps_total }}
+        </span>
+        <span v-else>—</span>
+      </span>
+    </template>
+
     <!-- Messages Sent Column (Handover 0240b) -->
     <template #item.messages_sent="{ item }">
       <span class="text-body-2">{{ item.messages_sent || 0 }}</span>
@@ -183,12 +193,13 @@ useStalenessMonitor(
   emitStaleWarning,
 )
 
-// Table headers configuration (Handover 0240b: 8-column structure)
+// Table headers configuration (Handover 0240b, updated for Steps column)
 const headers = [
   { title: 'Agent Type', key: 'agent_type', sortable: true },
   { title: 'Agent ID', key: 'agent_id', sortable: false },
-  { title: 'Agent Status', key: 'status', sortable: true },
   { title: 'Job Acknowledged', key: 'job_acknowledged', sortable: false, align: 'center' },
+  { title: 'Agent Status', key: 'status', sortable: true },
+  { title: 'Steps', key: 'steps', sortable: false, align: 'center' },
   { title: 'Messages Sent', key: 'messages_sent', sortable: true, align: 'center' },
   { title: 'Messages Waiting', key: 'messages_waiting', sortable: true, align: 'center' },
   { title: 'Messages Read', key: 'messages_read', sortable: true, align: 'center' },
