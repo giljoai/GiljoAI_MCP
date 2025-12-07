@@ -61,6 +61,7 @@ class TestOrchestratorInstructionsConstraint:
                 id=str(uuid.uuid4()),
                 name="Agent Validation Test Project",
                 description="Test project for agent validation",
+                mission="Test mission for agent validation",  # Required field
                 tenant_key=self.tenant_key,
                 product_id=self.product.id,
                 status="active",
@@ -366,6 +367,7 @@ class TestSpawnAgentJobValidation:
                 id=str(uuid.uuid4()),
                 name="Spawn Validation Project",
                 description="Test project for spawn validation",
+                mission="Test mission for spawn validation",  # Required field
                 tenant_key=self.tenant_key,
                 product_id=self.product.id,
                 status="active",
