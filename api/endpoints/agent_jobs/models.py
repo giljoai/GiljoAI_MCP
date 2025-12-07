@@ -103,6 +103,7 @@ class JobResponse(BaseModel):
     completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    mission_acknowledged_at: Optional[datetime] = None  # Handover 0297
 
 
 class PendingJobsResponse(BaseModel):

@@ -55,7 +55,8 @@ def job_to_response(job: dict) -> JobResponse:
         started_at=job.get("started_at"),
         completed_at=job.get("completed_at"),
         created_at=job["created_at"],
-        updated_at=job.get("updated_at")
+        updated_at=job.get("updated_at"),
+        mission_acknowledged_at=job.get("mission_acknowledged_at"),  # Handover 0297
     )
 
 
