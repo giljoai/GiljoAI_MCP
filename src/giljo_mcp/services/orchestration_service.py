@@ -466,6 +466,7 @@ Begin by fetching your mission.
                                 {
                                     "job_id": agent_job_id,
                                     "project_id": str(agent_job.project_id),
+                                    "tenant_key": tenant_key,  # Include for frontend validation
                                     "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
                                     "timestamp": datetime.now(timezone.utc).isoformat()
                                 }
