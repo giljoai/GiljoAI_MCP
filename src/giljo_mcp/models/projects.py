@@ -106,6 +106,15 @@ class Project(Base):
         comment="Structured checklist of closeout tasks (JSONB array)",
     )
 
+    # Handover 0260: Execution mode for Claude Code CLI toggle persistence
+    execution_mode = Column(
+        String(20),
+        nullable=False,
+        default="multi_terminal",
+        server_default=text("'multi_terminal'"),
+        comment="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
+    )
+
     # Backwards compatibility alias for 'id' field (Handover 0086A)
     # DEPRECATED: Will be removed in v4.0
     @hybrid_property

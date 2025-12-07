@@ -115,6 +115,7 @@ import api from '@/services/api'
 import JobReadAckIndicators from '@/components/StatusBoard/JobReadAckIndicators.vue'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
+import { shouldShowLaunchAction } from '@/utils/actionConfig'
 
 /**
  * AgentTableView Component
@@ -201,29 +202,15 @@ function handleRowClick(event, { item }) {
 
 /**
  * Handover 0229: Determine if agent can be launched
+ * Handover 0260: Consolidated to use actionConfig.shouldShowLaunchAction()
+ *
  * Terminal states: cannot be launched
  * Blocked state: cannot be launched
  * Claude Code mode: only orchestrator can be launched
  */
 function canLaunchAgent(agent) {
-  // Terminal states: cannot be launched
-  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned']
-  if (terminalStates.includes(agent.status)) {
-    return false
-  }
-
-  // Blocked state: cannot be launched
-  if (agent.status === 'blocked') {
-    return false
-  }
-
-  // Claude Code mode: only orchestrator can be launched
-  if (props.usingClaudeCodeSubagents) {
-    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
-  }
-
-  // General CLI mode: all non-terminal agents can be launched
-  return true
+  // Handover 0260: Use consolidated function from actionConfig.js
+  return shouldShowLaunchAction(agent, props.usingClaudeCodeSubagents)
 }
 
 /**
