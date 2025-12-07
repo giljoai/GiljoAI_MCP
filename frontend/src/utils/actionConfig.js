@@ -100,12 +100,17 @@ export function getAvailableActions(job, claudeCodeCliMode = false) {
 }
 
 /**
- * Check if launch action should be shown
- * @param {Object} job - Job object
+ * Check if launch action should be shown (Handover 0260: Exported for consolidation)
+ *
+ * Consolidates duplicate logic from:
+ * - JobsTab.vue:shouldShowCopyButton() (lines 577-590)
+ * - AgentTableView.vue:canLaunchAgent() (lines 208-227)
+ *
+ * @param {Object} job - Job object with status and agent_type
  * @param {Boolean} claudeCodeCliMode - Whether Claude Code CLI mode is enabled
- * @returns {Boolean}
+ * @returns {Boolean} True if launch action should be shown
  */
-function shouldShowLaunchAction(job, claudeCodeCliMode) {
+export function shouldShowLaunchAction(job, claudeCodeCliMode) {
   // In Claude Code CLI mode, only orchestrator gets launch button
   if (claudeCodeCliMode && job.agent_type !== 'orchestrator') {
     return false
