@@ -90,6 +90,161 @@ def mock_working_job():
 
 
 @pytest.mark.asyncio
+async def test_get_agent_mission_emits_mission_ack_and_status_changed_events(
+    orchestration_service,
+    mock_db_manager,
+    mock_agent_job,
+):
+    """
+    Verify get_agent_mission performs atomic job start semantics for CLI subagents.
+
+    EXPECTED BEHAVIOR (Handover 0262 / 0332):
+    1. First successful call for a waiting job sets mission_acknowledged_at and started_at
+    2. Job status transitions waiting -> working
+    3. After commit, it emits TWO WebSocket events via HTTP bridge:
+       - job:mission_acknowledged (drives "Job Acknowledged" column)
+       - agent:status_changed (waiting -> working, drives status chip)
+    """
+    db_manager, session = mock_db_manager
+    job = mock_agent_job
+    job.status = "waiting"
+    job.started_at = None
+    job.mission_acknowledged_at = None
+
+    # Mock database query to return job
+    result = MagicMock()
+    result.scalar_one_or_none = MagicMock(return_value=job)
+    session.execute = AsyncMock(return_value=result)
+
+    # Mock httpx client for HTTP bridge calls
+    with patch("httpx.AsyncClient") as mock_httpx:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_httpx.return_value = mock_client
+
+        # Action: First mission fetch (atomic start)
+        response = await orchestration_service.get_agent_mission(
+            agent_job_id=job.job_id,
+            tenant_key="tenant-test-123",
+        )
+
+        # Verify response structure
+        assert response["success"] is True
+        assert response["agent_job_id"] == job.job_id
+        assert response["status"] == "working"
+        assert response["thin_client"] is True
+
+        # Database fields should be updated
+        assert job.mission_acknowledged_at is not None
+        assert isinstance(job.mission_acknowledged_at, datetime)
+        assert job.started_at is not None
+        assert isinstance(job.started_at, datetime)
+        assert job.status == "working"
+
+        # Expect TWO bridge calls: job:mission_acknowledged and agent:status_changed
+        assert mock_client.post.call_count == 2
+
+        # Collect events by type
+        events: dict[str, dict] = {}
+        for call_args in mock_client.post.call_args_list:
+            assert call_args[0][0] == "http://localhost:7272/api/v1/ws-bridge/emit"
+            payload = call_args[1]["json"]
+            event_type = payload["event_type"]
+            events[event_type] = payload
+
+        # job:mission_acknowledged event
+        assert "job:mission_acknowledged" in events
+        mission_payload = events["job:mission_acknowledged"]
+        assert mission_payload["tenant_key"] == "tenant-test-123"
+        mission_data = mission_payload["data"]
+        assert mission_data["job_id"] == job.job_id
+        assert mission_data["project_id"] == str(job.project_id)
+        assert "mission_acknowledged_at" in mission_data
+
+        # agent:status_changed event
+        assert "agent:status_changed" in events
+        status_payload = events["agent:status_changed"]
+        assert status_payload["tenant_key"] == "tenant-test-123"
+        status_data = status_payload["data"]
+        assert status_data["job_id"] == job.job_id
+        assert status_data["old_status"] == "waiting"
+        assert status_data["status"] == "working"
+        assert status_data["agent_type"] == job.agent_type
+        assert status_data["agent_name"] == job.agent_name
+        assert "started_at" in status_data
+
+
+@pytest.mark.asyncio
+async def test_get_agent_mission_is_idempotent_on_subsequent_calls(
+    orchestration_service,
+    mock_db_manager,
+    mock_agent_job,
+):
+    """
+    Verify get_agent_mission is idempotent after first mission fetch.
+
+    EXPECTED BEHAVIOR:
+    - First call: performs atomic start semantics and emits WebSocket events
+    - Subsequent calls: return mission but DO NOT update timestamps or emit new events
+    """
+    db_manager, session = mock_db_manager
+    job = mock_agent_job
+    job.status = "waiting"
+    job.started_at = None
+    job.mission_acknowledged_at = None
+
+    # Mock database query to always return the same job instance
+    result = MagicMock()
+    result.scalar_one_or_none = MagicMock(return_value=job)
+    session.execute = AsyncMock(return_value=result)
+
+    with patch("httpx.AsyncClient") as mock_httpx:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_httpx.return_value = mock_client
+
+        # First call - should perform atomic start
+        first_response = await orchestration_service.get_agent_mission(
+            agent_job_id=job.job_id,
+            tenant_key="tenant-test-123",
+        )
+        assert first_response["success"] is True
+        assert job.status == "working"
+        assert job.mission_acknowledged_at is not None
+        assert job.started_at is not None
+
+        first_ack_time = job.mission_acknowledged_at
+        first_started_at = job.started_at
+
+        # Two events expected on first call
+        assert mock_client.post.call_count == 2
+
+        # Second call - should be a read-only re-fetch
+        second_response = await orchestration_service.get_agent_mission(
+            agent_job_id=job.job_id,
+            tenant_key="tenant-test-123",
+        )
+        assert second_response["success"] is True
+        assert second_response["agent_job_id"] == job.job_id
+        assert second_response["status"] == "working"
+
+        # mission_acknowledged_at and started_at must NOT change
+        assert job.mission_acknowledged_at == first_ack_time
+        assert job.started_at == first_started_at
+
+        # No additional WebSocket bridge calls on second fetch
+        assert mock_client.post.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_acknowledge_job_emits_websocket_event(orchestration_service, mock_db_manager, mock_agent_job):
     """
     Verify acknowledge_job emits agent:status_changed via WebSocket HTTP bridge.
