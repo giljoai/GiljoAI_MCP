@@ -79,9 +79,15 @@
 
             <!-- Steps (numeric TODO progress) -->
             <td class="steps-cell text-center">
-              <span v-if="agent.steps && typeof agent.steps.completed === 'number' && typeof agent.steps.total === 'number'">
+              <button
+                v-if="agent.steps && typeof agent.steps.completed === 'number' && typeof agent.steps.total === 'number'"
+                type="button"
+                class="steps-trigger"
+                data-testid="steps-trigger"
+                @click="handleStepsClick(agent)"
+              >
                 {{ agent.steps.completed }} / {{ agent.steps.total }}
-              </span>
+              </button>
               <span v-else>—</span>
             </td>
 
@@ -288,6 +294,8 @@
     <MessageAuditModal
       :show="showMessageAuditModal"
       :agent="selectedAgent"
+      :initial-tab="messageAuditInitialTab"
+      :steps="selectedAgent && selectedAgent.steps"
       @close="showMessageAuditModal = false"
     />
 
@@ -413,6 +421,7 @@ const showCancelDialog = ref(false)
 const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
 const showMessageAuditModal = ref(false)
+const messageAuditInitialTab = ref('waiting')
 const selectedAgent = ref(null)
 
 /**
@@ -666,11 +675,30 @@ async function handlePlay(agent) {
 
 /**
  * Handle Folder button click
- * Handover 0331: Opens Message Audit Modal for selected agent
+ * Handover 0331: Opens Message Audit Modal for selected agent (Waiting tab)
  */
 function handleFolder(agent) {
   console.log('[JobsTab] Folder action (message audit):', agent.agent_type)
   selectedAgent.value = agent
+  messageAuditInitialTab.value = 'waiting'
+  showMessageAuditModal.value = true
+}
+
+/**
+ * Handle Steps click
+ * Handover 0331: Opens Message Audit Modal focused on Plan / TODOs
+ */
+function handleStepsClick(agent) {
+  if (
+    !agent.steps ||
+    typeof agent.steps.completed !== 'number' ||
+    typeof agent.steps.total !== 'number'
+  ) {
+    return
+  }
+
+  selectedAgent.value = agent
+  messageAuditInitialTab.value = 'plan'
   showMessageAuditModal.value = true
 }
 
@@ -897,7 +925,8 @@ const handleMessageSent = (data) => {
       text: data.content || data.content_preview || data.message || '',
       priority: data.priority || 'medium',
       timestamp: data.timestamp || new Date().toISOString(),
-      to_agent: data.to_agent // Track recipient for audit trail
+      to_agent: data.to_agent, // Track recipient for audit trail
+      message_type: data.message_type
     })
 
     console.log(`[JobsTab] Added SENT message to ${agent.agent_type || agent.agent_name} (sender), total messages: ${agent.messages.length}`)
@@ -983,6 +1012,7 @@ const handleMessageReceived = (data) => {
         text: data.content || data.content_preview || data.message || '',
         priority: data.priority || 'medium',
         timestamp: data.timestamp || new Date().toISOString(),
+        message_type: data.message_type
       })
 
       console.log(
@@ -1015,7 +1045,8 @@ const handleNewMessage = (data) => {
       status: 'pending',
       text: data.message,
       priority: data.priority || 'medium',
-      timestamp: data.timestamp || new Date().toISOString()
+      timestamp: data.timestamp || new Date().toISOString(),
+      message_type: data.message_type
     })
   }
 }
