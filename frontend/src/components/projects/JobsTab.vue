@@ -286,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
@@ -369,8 +369,20 @@ const userStore = useUserStore()
 
 /**
  * State
+ * Handover 0260: Initialize from project.execution_mode for persistence
  */
 const usingClaudeCodeSubagents = ref(false)
+
+/**
+ * Handover 0260: Watch for project changes and sync execution_mode
+ */
+watch(
+  () => props.project?.execution_mode,
+  (newMode) => {
+    usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
+  },
+  { immediate: true }
+)
 const messageText = ref('')
 const selectedRecipient = ref('orchestrator')
 const sending = ref(false)
@@ -553,16 +565,37 @@ function getMessagesRead(agent) {
 
 /**
  * Toggle execution mode (Claude Code CLI vs Manual)
+ * Handover 0260: Persist execution_mode to backend via API
  */
-function toggleExecutionMode() {
-  usingClaudeCodeSubagents.value = !usingClaudeCodeSubagents.value
-  showToast({
-    message: usingClaudeCodeSubagents.value
-      ? 'Claude Code CLI mode enabled'
-      : 'Manual mode enabled',
-    type: 'info',
-    duration: 3000
-  })
+async function toggleExecutionMode() {
+  const newValue = !usingClaudeCodeSubagents.value
+  const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
+
+  // Optimistically update UI
+  usingClaudeCodeSubagents.value = newValue
+
+  try {
+    // Persist to backend
+    const projectId = props.project.project_id || props.project.id
+    await api.projects.update(projectId, { execution_mode: newMode })
+
+    showToast({
+      message: newValue
+        ? 'Claude Code CLI mode enabled'
+        : 'Manual mode enabled',
+      type: 'info',
+      duration: 3000
+    })
+  } catch (error) {
+    // Revert on failure
+    usingClaudeCodeSubagents.value = !newValue
+    console.error('Failed to update execution mode:', error)
+    showToast({
+      message: 'Failed to save execution mode',
+      type: 'error',
+      duration: 3000
+    })
+  }
 }
 
 /**
