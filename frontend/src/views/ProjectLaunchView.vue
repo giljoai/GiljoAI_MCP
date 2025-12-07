@@ -189,8 +189,6 @@ async function fetchProjectDetails() {
     if (agentJobsResponse.data && agentJobsResponse.data.jobs && Array.isArray(agentJobsResponse.data.jobs)) {
       project.value.agents = agentJobsResponse.data.jobs
       console.log('[ProjectLaunchView] Loaded agent jobs:', agentJobsResponse.data.jobs.length)
-      console.log('[ProjectLaunchView] Sample agent messages:', project.value.agents[0]?.messages || 'NO MESSAGES')
-      console.log('[ProjectLaunchView] mission_acknowledged_at:', project.value.agents.map(a => ({type: a.agent_type, ack: a.mission_acknowledged_at})))
     }
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || 'Failed to load project'
