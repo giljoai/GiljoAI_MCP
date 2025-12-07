@@ -1006,34 +1006,37 @@ const handleStatusUpdate = (data) => {
  * Updates agent's mission_acknowledged_at field in real-time
  */
 const handleMissionAcknowledged = (data) => {
+  // Extract payload from nested structure (broadcast_to_tenant nests under data.data)
+  const payload = data.data || data
+
   // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+  if (!currentTenantKey.value || payload.tenant_key !== currentTenantKey.value) {
     console.warn('[JobsTab] Mission acknowledged rejected: tenant mismatch', {
       expected: currentTenantKey.value,
-      received: data.tenant_key,
+      received: payload.tenant_key,
     })
     return
   }
 
-  console.log('[JobsTab] Mission acknowledged event:', data)
+  console.log('[JobsTab] Mission acknowledged event:', payload)
 
   // Find agent and update mission_acknowledged_at
-  const agent = props.agents.find((a) => a.job_id === data.job_id || a.agent_id === data.job_id)
+  const agent = props.agents.find((a) => a.job_id === payload.job_id || a.agent_id === payload.job_id)
   if (agent) {
-    agent.mission_acknowledged_at = data.mission_acknowledged_at
-    console.log(`[JobsTab] Updated mission_acknowledged_at for ${agent.agent_type}:`, data.mission_acknowledged_at)
+    agent.mission_acknowledged_at = payload.mission_acknowledged_at
+    console.log(`[JobsTab] Updated mission_acknowledged_at for ${agent.agent_type}:`, payload.mission_acknowledged_at)
 
     // Emit custom event for external listeners
     window.dispatchEvent(
       new CustomEvent('agent:mission_acknowledged', {
         detail: {
-          jobId: data.job_id,
-          timestamp: data.mission_acknowledged_at
+          jobId: payload.job_id,
+          timestamp: payload.mission_acknowledged_at
         }
       })
     )
   } else {
-    console.warn(`[JobsTab] Agent not found for mission acknowledged: ${data.job_id}`)
+    console.warn(`[JobsTab] Agent not found for mission acknowledged: ${payload.job_id}`)
   }
 }
 
