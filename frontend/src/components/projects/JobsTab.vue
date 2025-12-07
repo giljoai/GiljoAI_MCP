@@ -116,7 +116,7 @@
                 </template>
               </v-tooltip>
 
-              <!-- Folder button: always show (Handover 0243d) -->
+              <!-- Folder button: always show (Handover 0243d + 0331) -->
               <v-tooltip text="Open workspace">
                 <template #activator="{ props: tooltipProps }">
                   <v-btn
@@ -125,6 +125,7 @@
                     size="small"
                     variant="text"
                     color="yellow-darken-2"
+                    data-testid="jobs-folder-btn"
                     @click="handleFolder(agent)"
                   />
                 </template>
@@ -283,6 +284,13 @@
       :agent="selectedAgent"
     />
 
+    <!-- Message Audit Modal (Folder icon - Handover 0331) -->
+    <MessageAuditModal
+      :show="showMessageAuditModal"
+      :agent="selectedAgent"
+      @close="showMessageAuditModal = false"
+    />
+
     <!-- Project Closeout Modal (Handover 0249c) -->
     <CloseoutModal
       :show="showCloseoutModal"
@@ -304,6 +312,7 @@ import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusCo
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
+import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 
 /**
@@ -397,16 +406,13 @@ const selectedRecipient = ref('orchestrator')
 const sending = ref(false)
 
 /**
- * Closeout modal state (Handover 0249c)
+ * Closeout / dialog modal state (Handover 0249c, 0243d, 0331)
  */
 const showCloseoutModal = ref(false)
-
-/**
- * Cancel dialog state (Handover 0243d)
- */
 const showCancelDialog = ref(false)
 const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
+const showMessageAuditModal = ref(false)
 const selectedAgent = ref(null)
 
 /**
@@ -660,10 +666,12 @@ async function handlePlay(agent) {
 
 /**
  * Handle Folder button click
+ * Handover 0331: Opens Message Audit Modal for selected agent
  */
 function handleFolder(agent) {
-  console.log('[JobsTab] Folder action:', agent.agent_type)
-  // TODO: Implement folder action
+  console.log('[JobsTab] Folder action (message audit):', agent.agent_type)
+  selectedAgent.value = agent
+  showMessageAuditModal.value = true
 }
 
 /**
