@@ -174,14 +174,35 @@ Coordinate via MCP messaging: send_message(), broadcast(), get_messages()
 
 ---
 
-### Phase 5: Agent Name Enforcement in MCP Tool
-**Goal:** MCP tool validates and rejects invalid agent_type values
+### Phase 5: Agent Name Enforcement (Two Parts - Belt and Suspenders)
+
+#### Phase 5a: Constraint in `get_orchestrator_instructions`
+**Goal:** Add explicit spawning constraint to MCP response when in CLI mode
+
+**File:** `src/giljo_mcp/tools/orchestration.py:1405-1550+`
+
+**Logic to Add:**
+When `execution_mode='claude_code_cli'`, add constraint to MCP response:
+```python
+if execution_mode == 'claude_code_cli':
+    result['agent_spawning_constraint'] = {
+        'mode': 'strict_task_tool',
+        'allowed_agent_types': [t['name'] for t in agent_templates],
+        'instruction': 'You MUST use Task tool with exact subagent_type names from this list.'
+    }
+```
+
+**Testing:** Unit test verifying constraint appears in MCP response when mode is `claude_code_cli`
+
+---
+
+#### Phase 5b: Validation in `spawn_agent_job`
+**Goal:** Reject invalid `agent_type` values at spawn time
 
 **File:** `src/giljo_mcp/tools/orchestration.py` - `spawn_agent_job` function
 
 **Validation Logic to Add:**
 ```python
-# Validate agent_type matches available templates
 available_templates = get_available_agents(tenant_key, active_only=True)
 valid_agent_types = [t['name'] for t in available_templates]
 
@@ -193,20 +214,9 @@ if agent_type not in valid_agent_types:
     }
 ```
 
-**Additional Enhancement to `get_orchestrator_instructions()`:**
-Add constraint when `execution_mode='claude_code_cli'`:
-```python
-if execution_mode == 'claude_code_cli':
-    result['agent_spawning_constraint'] = {
-        'mode': 'strict_task_tool',
-        'allowed_agent_types': [t['name'] for t in agent_templates],
-        'instruction': 'You MUST use Task tool with exact subagent_type names from this list. NO modifications.'
-    }
-```
+**Testing:** Integration test verifying rejection of invalid agent types, acceptance of valid types
 
-**Outcome:** Belt-and-suspenders enforcement - prompt instructs, MCP validates
-
-**Testing:** Unit test for MCP tool response structure, integration test for constraint inclusion and validation rejection
+**Combined Outcome:** Belt-and-suspenders enforcement - prompt instructs + MCP validates
 
 ---
 
@@ -245,10 +255,11 @@ if execution_mode == 'claude_code_cli':
 3. ✅ Claude Code CLI mode prompt contains strict Task tool instructions with exact agent names
 4. ✅ `get_orchestrator_instructions()` returns `agent_spawning_constraint` when in CLI mode
 5. ✅ Multi-terminal mode works as before (all agents get prompts)
-6. ✅ `agent_type` parameter validated against available templates in `spawn_agent_job`
-7. ✅ `agent_name` displayed in UI as human-readable label
-8. ✅ All tests passing (>80% coverage)
-9. ✅ No regressions in existing functionality
+6. ✅ Agent names in prompt exactly match `/.claude/agents/*.md` templates
+7. ✅ `spawn_agent_job` validates `agent_type` against available templates
+8. ✅ `agent_name` displayed in UI as human-readable label
+9. ✅ All tests passing (>80% coverage)
+10. ✅ No regressions in existing functionality
 
 ---
 
@@ -305,6 +316,41 @@ if execution_mode == 'claude_code_cli':
 
 ---
 
+## Agent Naming Strategy (RESOLVED)
+
+**Decision Made:** Two-parameter approach in `spawn_agent_job`:
+
+| Parameter | Purpose | Example |
+|-----------|---------|---------|
+| `agent_type` | MUST match template name exactly (for Task tool) | `"implementer"` |
+| `agent_name` | Descriptive label for UI display | `"Folder Structure Implementer"` |
+
+**Example - Spawning 2 implementers:**
+```python
+spawn_agent_job(agent_type="implementer", agent_name="Folder Structure Implementer", ...)
+spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
+```
+
+**Validation in `spawn_agent_job`** (Phase 5b):
+```python
+available_templates = get_available_agents(tenant_key, active_only=True)
+valid_agent_types = [t['name'] for t in available_templates]
+
+if agent_type not in valid_agent_types:
+    return {
+        "success": False,
+        "error": f"Invalid agent_type '{agent_type}'. Must be one of: {valid_agent_types}",
+        "hint": "Use agent_name for descriptive labels, agent_type must match template exactly"
+    }
+```
+
+**Files Affected:**
+- `src/giljo_mcp/thin_prompt_generator.py` - Add AGENT SPAWNING RULES to prompt (Phase 4)
+- `src/giljo_mcp/tools/orchestration.py` - Add validation to `spawn_agent_job` (Phase 5b)
+- `src/giljo_mcp/tools/orchestration.py` - Add constraint to `get_orchestrator_instructions` (Phase 5a)
+
+---
+
 ## Progress Updates
 
 ### 2025-12-07 - Documentation Manager (Initial Creation)
@@ -337,7 +383,23 @@ if execution_mode == 'claude_code_cli':
 - Removed "Deferred Decisions" section - no longer deferred
 - Updated success criteria to include agent naming validation
 
+---
+
+### 2025-12-07 - Documentation Manager (Plan File Synchronization)
+**Status:** Handover fully synchronized with plan file
+**Work Done:**
+- Split Phase 5 into two distinct parts (5a: constraint in MCP response, 5b: validation in spawn_agent_job)
+- Added prominent "Agent Naming Strategy" section with clear examples
+- Updated acceptance criteria to match plan file order exactly
+- Verified belt-and-suspenders enforcement approach documented
+- Confirmed all code examples from plan file included
+
+**Changes Made:**
+1. Phase 5 now clearly shows TWO parts with separate testing requirements
+2. Agent naming strategy promoted from progress update to dedicated section
+3. Acceptance criteria expanded from 9 to 10 items matching plan file
+4. Added this progress update entry to track synchronization work
+
 **Next Steps:**
-- Implementation agent to execute phases 1-5
-- Backend validation in spawn_agent_job
-- Prompt updates in ThinClientPromptGenerator
+- TDD Implementor to execute phases 1-5 with test-first approach
+- Backend Integration Tester to verify E2E workflows
