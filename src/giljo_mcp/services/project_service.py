@@ -253,6 +253,7 @@ class ProjectService:
                         "tenant_key": project.tenant_key,
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
+                        "execution_mode": project.execution_mode,  # Handover 0260
                         "created_at": project.created_at.isoformat() if project.created_at else None,
                         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
                         "completed_at": project.completed_at.isoformat() if project.completed_at else None,
@@ -1625,8 +1626,8 @@ class ProjectService:
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
-                # Update allowed fields
-                allowed_fields = {"name", "description", "mission"}
+                # Update allowed fields (Handover 0260: Added execution_mode)
+                allowed_fields = {"name", "description", "mission", "execution_mode"}
                 for field, value in updates.items():
                     if field in allowed_fields:
                         setattr(project, field, value)
@@ -1661,6 +1662,7 @@ class ProjectService:
                         "status": project.status,
                         "mission": project.mission,
                         "description": project.description,
+                        "execution_mode": project.execution_mode,  # Handover 0260
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,

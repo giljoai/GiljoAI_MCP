@@ -208,6 +208,7 @@ async def get_deleted_projects(
             context_used=proj.get("context_used", 0),
             agent_count=proj.get("agent_count", 0),
             message_count=proj.get("message_count", 0),
+            execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
             agents=[]
         )
         for proj in projects
@@ -271,6 +272,7 @@ async def get_active_project(
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
+        execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
     )
 
 
@@ -329,6 +331,7 @@ async def get_project(
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", len(agents_from_service)),
         message_count=proj.get("message_count", 0),
+        execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
         agents=agents_from_service  # Fixed: Use agents from ProjectService, not hardcoded []
     )
 
@@ -404,5 +407,6 @@ async def update_project(
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
+        execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
         agents=[]
     )
