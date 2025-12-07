@@ -350,12 +350,16 @@ class TestStagingExecutionModeAuthentication:
         tenant_a_key = TenantManager.generate_tenant_key()
         tenant_b_key = TenantManager.generate_tenant_key()
 
+        # Generate unique IDs for this test run
+        unique_id_a = uuid4().hex[:8]
+        unique_id_b = uuid4().hex[:8]
+
         async with db_manager.get_session_async() as session:
             # Tenant A user and project
             user_a = User(
-                username=f"user_a_{uuid4().hex[:8]}",
+                username=f"user_a_{unique_id_a}",
                 password_hash=bcrypt.hash("password"),
-                email="user_a@test.com",
+                email=f"user_a_{unique_id_a}@test.com",
                 tenant_key=tenant_a_key,
                 role="developer",
                 is_active=True,
@@ -377,9 +381,9 @@ class TestStagingExecutionModeAuthentication:
 
             # Tenant B user and project
             user_b = User(
-                username=f"user_b_{uuid4().hex[:8]}",
+                username=f"user_b_{unique_id_b}",
                 password_hash=bcrypt.hash("password"),
-                email="user_b@test.com",
+                email=f"user_b_{unique_id_b}@test.com",
                 tenant_key=tenant_b_key,
                 role="developer",
                 is_active=True,
