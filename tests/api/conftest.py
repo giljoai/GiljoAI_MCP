@@ -373,3 +373,23 @@ async def websocket_listener():
             return []
 
     return MockWebSocketListener()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_rate_limits():
+    """
+    Reset rate limit store before each test.
+
+    This fixture runs automatically (autouse=True) before each test to ensure
+    rate limits don't carry over between test runs. Critical for rate limiting
+    tests that expect clean state.
+    """
+    from api.endpoints.agent_templates import reset_rate_limit_store
+
+    # Reset before test
+    reset_rate_limit_store()
+
+    yield
+
+    # Reset after test (cleanup)
+    reset_rate_limit_store()
