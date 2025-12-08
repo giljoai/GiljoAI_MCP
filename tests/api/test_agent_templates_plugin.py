@@ -583,6 +583,6 @@ class TestResponseStructure:
             required_template_fields = {
                 "id", "name", "role", "category", "description",
                 "full_instructions", "capabilities", "version",
-                "background_color", "cli_tool", "model"
+                "background_color", "cli_tool", "model", "is_active"
             }
             assert set(template.keys()) == required_template_fields
