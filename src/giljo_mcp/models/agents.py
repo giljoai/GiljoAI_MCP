@@ -39,7 +39,7 @@ class MCPAgentJob(Base):
     Message Tracking (Auto-implemented):
     - messages (JSONB): Message array with status tracking
       - Status transition: "pending" (unread) → "acknowledged" (read)
-      - Auto-tracking: read_mcp_messages() marks messages as acknowledged
+      - Auto-tracking: MessageService marks messages as acknowledged
     - last_message_check_at (DateTime): Auto-updated when agent reads messages
 
     Progress Tracking:
