@@ -1,6 +1,6 @@
 # Handover 0334: HTTP-Only MCP Consolidation
 
-## Status: READY FOR IMPLEMENTATION
+## Status: COMPLETED
 ## Priority: HIGH
 ## Type: Architecture Cleanup + Feature Completion
 ## Consolidates: 0261 (partial), 0262 (partial), 0297 (partial), 0333 (complete)
@@ -327,6 +327,48 @@ By removing stdio, we:
 - Testing: 1-2 hours
 
 **Total**: 6-8 hours
+
+---
+
+## Implementation Summary
+
+### 2025-12-07 - Completion
+
+**Status:** COMPLETED
+
+### What Was Built
+
+| Task | Status | Commit |
+|------|--------|--------|
+| Task 1: Remove stdio MCP code | ✅ | `70fcfb43` (pre-existing) |
+| Task 2: Fix Steps column format | ✅ | `e600c6ea` |
+| Task 3: Enhance get_agent_mission() | ✅ | `e600c6ea` |
+| Task 4: Update documentation | ✅ | `6854ff9b` |
+
+### Key Files Modified
+
+- `frontend/src/stores/projectTabs.js` - Steps transformation (lines 23-39, 151-153, 169-172, 367-388)
+- `src/giljo_mcp/services/orchestration_service.py` - full_protocol field (lines 48-102, 604-618)
+- `CLAUDE.md` - HTTP-only MCP section updated
+- `docs/ORCHESTRATOR.md` - get_agent_mission() response docs
+
+### Tests Added
+
+- `frontend/tests/stores/projectTabs.steps-transformation.spec.js` (7 tests)
+- `tests/services/test_orchestration_service_agent_mission.py` (5 tests)
+
+### Acceptance Criteria Met
+
+- ✅ `grep -r "stdio" src/giljo_mcp/` returns no results
+- ✅ Steps column shows `completed/total` format
+- ✅ `get_agent_mission()` returns `full_protocol` field with 6-phase protocol
+- ✅ All 12 new tests passing
+- ✅ HTTP MCP functionality unchanged
+
+### User Experience Impact
+
+- **Visible**: Steps column in JobsTab now displays `X / Y` progress (was showing "—")
+- **Invisible**: CLI subagents receive self-documenting lifecycle protocol
 
 ---
 
