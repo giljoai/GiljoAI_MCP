@@ -45,6 +45,63 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _generate_agent_protocol(job_id: str, tenant_key: str) -> str:
+    """
+    Generate the 6-phase agent lifecycle protocol (Handover 0334).
+
+    This protocol is embedded in get_agent_mission() response to provide
+    CLI subagents with self-documenting lifecycle instructions.
+
+    Args:
+        job_id: Agent job UUID for MCP tool calls
+        tenant_key: Tenant key for MCP tool calls
+
+    Returns:
+        Multi-line protocol string with 6 phases and MCP tool references
+    """
+    return f"""## Agent Lifecycle Protocol (6 Phases)
+
+### Phase 1: STARTUP
+- Acknowledge mission receipt by calling `mcp__giljo-mcp__get_agent_mission`
+- Parse mission objectives and requirements
+- Set up local workspace if needed
+
+### Phase 2: EXECUTION
+- Execute assigned tasks from mission
+- Use todo lists to track progress internally
+- Maintain focus on mission objectives
+
+### Phase 3: PROGRESS REPORTING
+- Report progress periodically via `mcp__giljo-mcp__report_progress`:
+  ```
+  report_progress(job_id="{job_id}", progress={{"percent": 50, "message": "Completed X of Y tasks"}})
+  ```
+- Include: percent complete, current step, any blockers
+
+### Phase 4: COMMUNICATION
+- Check for messages via `mcp__giljo-mcp__get_next_instruction`
+- Respond to orchestrator instructions promptly
+- Broadcast completion updates if needed
+
+### Phase 5: COMPLETION
+- Complete job via `mcp__giljo-mcp__complete_job`:
+  ```
+  complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})
+  ```
+- Include: summary of work done, artifacts created, any follow-up needed
+
+### Phase 6: CLEANUP
+- Ensure all files are committed/saved
+- Close any open resources
+- Await acknowledgment or further instructions
+
+---
+**Job Context:**
+- Job ID: `{job_id}`
+- Tenant Key: `{tenant_key}`
+"""
+
+
 class OrchestrationService:
     """
     Service for managing orchestration and agent jobs.
@@ -544,6 +601,9 @@ Begin by fetching your mission.
 
             estimated_tokens = len(agent_job.mission or "") // 4
 
+            # Generate 6-phase lifecycle protocol (Handover 0334)
+            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key)
+
             return {
                 "success": True,
                 "agent_job_id": agent_job_id,
@@ -555,6 +615,7 @@ Begin by fetching your mission.
                 "estimated_tokens": estimated_tokens,
                 "status": agent_job.status,
                 "thin_client": True,
+                "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
             }
 
         except Exception as e:

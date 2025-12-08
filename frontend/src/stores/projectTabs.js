@@ -11,6 +11,33 @@ import { defineStore } from 'pinia'
 import { useWebSocketStore } from './websocket'
 import api from '@/services/api'
 
+/**
+ * Transform flat steps fields to nested object (Handover 0334)
+ *
+ * API returns: { steps_total: 5, steps_completed: 3, current_step: "..." }
+ * UI expects:  { steps: { total: 5, completed: 3, current: "..." } }
+ *
+ * @param {Object} job - Job data from API
+ * @returns {Object} Job data with nested steps object
+ */
+function transformJobSteps(job) {
+  if (!job) return job
+
+  // If already has nested steps object, preserve it
+  if (job.steps && typeof job.steps === 'object') {
+    return job
+  }
+
+  return {
+    ...job,
+    steps: {
+      total: job.steps_total || 0,
+      completed: job.steps_completed || 0,
+      current: job.current_step || null
+    }
+  }
+}
+
 export const useProjectTabsStore = defineStore('projectTabs', {
   state: () => ({
     // Tab navigation
@@ -112,6 +139,19 @@ export const useProjectTabsStore = defineStore('projectTabs', {
   },
 
   actions: {
+    // ==================== Utility Functions ====================
+
+    /**
+     * Transform flat steps fields to nested object (Handover 0334)
+     * Exposed as action for external access (e.g., tests, WebSocket handlers)
+     *
+     * @param {Object} job - Job data from API
+     * @returns {Object} Job data with nested steps object
+     */
+    transformJobSteps(job) {
+      return transformJobSteps(job)
+    },
+
     // ==================== Tab Navigation ====================
 
     /**
@@ -139,7 +179,10 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       // Set project data
       this.currentProject = project
       this.orchestratorMission = project.mission || ''
-      this.agents = Array.isArray(project.agents) ? project.agents : []
+      // Transform agent steps from flat fields to nested object (Handover 0334)
+      this.agents = Array.isArray(project.agents)
+        ? project.agents.map(transformJobSteps)
+        : []
 
       // Production-grade isLaunched detection
       // A project is considered "launched" if it has agent jobs (excluding just orchestrator in waiting state)
@@ -334,7 +377,8 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     addAgent(agent) {
       const exists = this.agents.find((a) => a.job_id === agent.job_id)
       if (!exists) {
-        this.agents.push(agent)
+        // Transform steps from flat fields to nested object (Handover 0334)
+        this.agents.push(transformJobSteps(agent))
       }
     },
 
@@ -346,7 +390,14 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     updateAgent(agentId, updates) {
       const index = this.agents.findIndex((a) => a.job_id === agentId)
       if (index !== -1) {
-        this.agents[index] = { ...this.agents[index], ...updates }
+        // Transform updates with steps fields (Handover 0334)
+        const transformedUpdates = transformJobSteps(updates)
+        // Merge steps object intelligently if both exist
+        const currentAgent = this.agents[index]
+        if (currentAgent.steps && transformedUpdates.steps) {
+          transformedUpdates.steps = { ...currentAgent.steps, ...transformedUpdates.steps }
+        }
+        this.agents[index] = { ...currentAgent, ...transformedUpdates }
       }
     },
 
