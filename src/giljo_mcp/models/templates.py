@@ -86,6 +86,9 @@ class AgentTemplate(Base):
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     avg_generation_ms = Column(Float, nullable=True)  # Performance tracking
 
+    # Export tracking (Handover 0335)
+    last_exported_at = Column(DateTime(timezone=True), nullable=True)  # Timestamp of last export to CLI
+
     # Metadata
     description = Column(Text, nullable=True)
     version = Column(String(20), default="1.0.0")
@@ -121,6 +124,22 @@ class AgentTemplate(Base):
         import re
 
         return re.findall(r"\{(\w+)\}", self.template_content)
+
+    @property
+    def may_be_stale(self) -> bool:
+        """
+        Check if template may be stale (modified after last export).
+
+        Returns True if template has been updated after the last export,
+        indicating the exported CLI version may be outdated.
+
+        Returns:
+            bool: True if updated_at > last_exported_at, False otherwise
+        """
+        if self.updated_at is None or self.last_exported_at is None:
+            return False
+
+        return self.updated_at > self.last_exported_at
 
 
 class TemplateArchive(Base):
