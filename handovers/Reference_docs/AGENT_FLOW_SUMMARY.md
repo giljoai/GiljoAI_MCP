@@ -413,3 +413,4 @@ Zero cross-tenant data leakage possible.
 
 **Alternative Terminal Flow:**
 - Create Task slash command in terminal → Dumps into task list with randomized Name and user written/pasted content → Default settings
+
