@@ -34,9 +34,11 @@ Per-User Tenancy Policy (Nov 2025)
 - “Active Product” is tenant-specific; effective behavior is per user under this policy
 - WebSocket product events are tenant-scoped (no cross-tenant leakage)
 
-HTTP-only MCP (Nov 2025)
-- MCP-over-HTTP JSON-RPC endpoint (/mcp) is authoritative
-- Stdio adapter is deprecated; use HTTP transport with X-API-Key
+HTTP-only MCP (Nov-Dec 2025)
+- MCP-over-HTTP JSON-RPC endpoint (`/mcp`) is authoritative
+- Stdio/FastMCP code paths **removed** (Handover 0334) - no localhost CLI support
+- All clients use HTTP transport with `X-API-Key` authentication
+- `get_agent_mission()` returns `full_protocol` field with 6-phase lifecycle (Handover 0334)
 
 **Backend Refactoring (v3.1)**: Handovers 0120-0130 completed backend transformation (Nov 2025):
 - ✅ 89% Complete (8/9 handovers, 1 deferred)
