@@ -937,6 +937,31 @@ No previous project history available. Starting fresh.
             claude_code_mode=claude_code_mode
         )
 
+    def _get_external_host(self) -> str:
+        """
+        Get external MCP server host from config.
+
+        Returns external_host for user-facing connections,
+        falls back to api_host if not configured.
+        """
+        from pathlib import Path
+        import yaml
+
+        try:
+            config_path = Path("config.yaml")
+            if config_path.exists():
+                with open(config_path, encoding="utf-8") as f:
+                    config_data = yaml.safe_load(f) or {}
+                external_host = config_data.get("services", {}).get("external_host")
+                if external_host:
+                    return external_host
+        except Exception:
+            pass
+
+        # Fallback to api_host from config
+        config = get_config()
+        return config.server.api_host
+
     async def generate_staging_prompt(
         self,
         orchestrator_id: str,
@@ -944,15 +969,10 @@ No previous project history available. Starting fresh.
         claude_code_mode: bool = False
     ) -> str:
         """
-        Generate UNIVERSAL orchestrator prompt (Handover 0253).
+        Generate simple orchestrator staging prompt (Handover 0333).
 
-        Uses "fetch-first" pattern - ALWAYS calls get_orchestrator_instructions()
-        MCP tool first, then adapts workflow based on current state.
-
-        Works in ALL scenarios:
-        - Fresh terminal (full staging workflow)
-        - Existing terminal (skip completed tasks)
-        - Crashed session (resume from last checkpoint)
+        Restores the working pattern from commit 051addde with mode awareness.
+        Replaces the broken 7-task workflow with a simple ~50 line prompt.
 
         Args:
             orchestrator_id: Orchestrator job UUID
@@ -960,230 +980,70 @@ No previous project history available. Starting fresh.
             claude_code_mode: Use Claude Code CLI mode (default: False)
 
         Returns:
-            Universal prompt that works in any terminal session
+            Simple staging prompt (~50-60 lines)
 
         Raises:
             ValueError: If project or product not found
         """
-        logger.info(
-            "Generating staging prompt",
-            extra={
-                "orchestrator_id": orchestrator_id,
-                "project_id": project_id,
-                "claude_code_mode": claude_code_mode,
-                "tenant_key": self.tenant_key
-            }
-        )
-
-        # Fetch required data (reuse existing helpers)
         project = await self._fetch_project(project_id)
         product = await self._fetch_product(project_id)
 
         if not project or not product:
-            logger.error(
-                f"Project {project_id} or product not found",
-                extra={"project_id": project_id, "tenant_key": self.tenant_key}
-            )
             raise ValueError(f"Project {project_id} or its product not found")
 
-        # Determine execution mode label
-        execution_mode = "Claude Code CLI" if claude_code_mode else "Manual Multi-Terminal"
+        # Get MCP server URL
+        config = get_config()
+        mcp_host = self._get_external_host()
+        mcp_port = config.server.api_port
+        mcp_url = f"http://{mcp_host}:{mcp_port}"
 
-        # Build 7-task staging prompt (optimized for <1200 tokens)
-        prompt = f"""STAGING WORKFLOW: {project.name}
-{'='*70}
-IDENTITY
-Project ID: {project_id}
-Product ID: {product.id}
-Tenant: {self.tenant_key}
-Orchestrator: {orchestrator_id}
-Mode: {execution_mode}
-WebSocket: Active
+        execution_mode = "Claude Code CLI" if claude_code_mode else "Multi-Terminal"
 
-{'='*70}
-TASK 1: IDENTITY & CONTEXT VERIFICATION
-{'='*70}
-Verify project identity and orchestrator connection.
-
-1. Confirm project ID: {project_id}
-2. Confirm product ID: {product.id}
-3. Confirm tenant: {self.tenant_key}
-4. Verify orchestrator: {orchestrator_id}
-5. Check WebSocket
-
-Result: All identifiers confirmed | Timeout: 10s
-
-{'='*70}
-TASK 2: MCP HEALTH CHECK
-{'='*70}
-Verify MCP server health and tool availability.
-
-1. Call health_check() MCP tool
-2. Verify response < 2s
-3. List MCP tools
-4. Validate: get_available_agents(), get_orchestrator_instructions()
-
-Result: MCP confirmed | Timeout: 10s
-
-{'='*70}
-TASK 3: ENVIRONMENT UNDERSTANDING
-{'='*70}
-Understand project environment.
-
-1. Read CLAUDE.md in project folder (if exists)
-2. Extract tech stack
-3. Parse structure
-4. Load config
-
-Result: Environment analyzed | Timeout: 30s
-
-{'='*70}
-TASK 4: AGENT DISCOVERY & VERSION CHECK
-{'='*70}
-Discover agents and validate compatibility.
-
-1. Call get_available_agents(include_versions=true) MCP tool
-   Returns: agents with version, capabilities, type
-2. Execute: ls ~/.claude/agents/*.md (or Windows equivalent)
-   Compare expected vs actual filenames
-3. For each agent:
-   - Extract version from MCP response
-   - Verify file exists with correct version date
-   - Check compatibility
-   - Validate capabilities
-   - Verify initialization
-4. Build compatibility matrix
-5. WARN USER if version mismatch detected
-   Example: MCP expects implementer_11242024.md but found implementer_11222024.md
-
-Criteria: version >= min_required, has required_capabilities, status=initialized
-
-CRITICAL: Call get_available_agents() - do NOT hardcode agents
-
-Result: Compatible agents discovered | Timeout: 30s
-
-{'='*70}
-TASK 5: CONTEXT PRIORITIZATION & MISSION
-{'='*70}
-Build unified mission with user priorities.
-
-1. Fetch complete mission via MCP tool:
-   - get_orchestrator_instructions(orchestrator_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
-2. Review prioritized context
-3. Store final mission via update_project_mission()
-
-Result: Mission created | Timeout: 60s
-
-{'='*70}
-TASK 6: AGENT JOB SPAWNING
-{'='*70}
-Create agent jobs.
-
-1. For each compatible agent:
-   - spawn_agent_job()
-   - status: waiting
-   - mode: {(claude_code_mode and 'claude_code') or 'manual'}
-   - mission from Task 5
-2. Verify creation
-
-Result: Jobs created | Timeout: 30s
-"""
-
-        # Handover 0260 / 0261 / 0332: Add mode-specific instructions for Claude Code CLI mode
+        # Mode-specific instructions
         if claude_code_mode:
-            prompt += f"""
-{'='*70}
-CLAUDE CODE CLI MODE - STRICT TASK TOOL REQUIREMENTS
-{'='*70}
-CRITICAL: You are running in Claude Code CLI single-terminal mode.
-You MUST spawn agents using Claude Code's native Task tool.
-
-EXACT AGENT NAMING (NO EXCEPTIONS)
-When spawning via Task tool, use subagent_type parameter with EXACT template names:
-- ALLOWED: subagent_type="backend-tester" (matches backend-tester.md)
-- FORBIDDEN: subagent_type="backend-tester-for-api-validation"
-- FORBIDDEN: subagent_type="Backend Tester Agent"
-
-AGENT SPAWNING RULES (CRITICAL)
-1. agent_type parameter: MUST be EXACTLY one of the template names from agent_templates
-2. agent_name parameter: Can be descriptive for UI display
-
-Example - Spawning 2 implementers:
-  spawn_agent_job(agent_type="implementer", agent_name="Folder Structure Implementer", ...)
-  spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
-
-The agent_type is used by Claude Code Task tool. The agent_name is for human display only.
-
-ACKNOWLEDGE_JOB USAGE (QUEUE/ADMIN ONLY)
-- In CLI subagent mode, do NOT call acknowledge_job() from the agent.
-- The first call to get_agent_mission(job_id, tenant_key) both ACKNOWLEDGES the job
-  and FETCHES the mission (atomic job start).
-- acknowledge_job() is reserved for queue/worker and admin flows only.
-
-AGENT BEHAVIOR REQUIREMENTS
-Each spawned agent MUST:
-1. Optionally call health_check() to verify MCP connectivity.
-2. Immediately call get_agent_mission(job_id, tenant_key) as the FIRST action
-   after initialization (atomic mission fetch + acknowledgment).
-3. Use report_progress() for both narrative progress AND TODO-style Steps:
-   - Numeric Steps indicator on the dashboard is driven by:
-     report_progress(job_id, {{"mode": "todo", "total_steps": N, "completed_steps": k,
-     "current_step": "short description of the current step"}})
-4. Use send_message() for plan and narrative updates:
-   - Plan / TODOs:    send_message(..., message_type="plan")
-   - Narrative / log: send_message(..., message_type="progress")
-5. Call get_next_instruction() between major steps to fetch new instructions.
-6. Call complete_job() or report_error() on completion/failure.
-
-You may ONLY spawn agents from the list returned by get_available_agents().
-DO NOT invent, extend, or modify template names.
-"""
+            mode_block = """CLAUDE CODE CLI MODE:
+- You will spawn agents using Claude Code's Task tool
+- agent_type parameter = subagent_type (MUST match template name exactly)
+- Agents are hidden subprocesses - user sees progress via dashboard
+- After spawning, agents call get_agent_mission() to start work"""
         else:
-            prompt += f"""
-{'='*70}
-MULTI-TERMINAL MODE
-{'='*70}
-User will manually launch each agent in separate terminal windows.
-Each agent has [Copy Prompt] button enabled in the UI.
-Coordinate via MCP messaging: send_message(), broadcast(), get_messages()
+            mode_block = """MULTI-TERMINAL MODE:
+- User will manually copy/paste prompts for each agent
+- Each agent has [Copy Prompt] button in the Implementation tab
+- Coordinate agents via MCP messaging tools"""
+
+        prompt = f"""I am Orchestrator for GiljoAI Project "{project.name}".
+
+IDENTITY:
+- Orchestrator ID: {orchestrator_id}
+- Project ID: {project_id}
+- Tenant Key: {self.tenant_key}
+- Execution Mode: {execution_mode}
+
+MCP CONNECTION:
+- Server URL: {mcp_url}
+- Tool Prefix: mcp__giljo-mcp__
+
+YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
+You are STAGING the project. Your job:
+1) Analyze requirements
+2) Create mission plan
+3) Assign work to specialist agents
+
+STARTUP SEQUENCE:
+1. Verify MCP: health_check()
+2. Fetch context: get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+   Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
+3. CREATE MISSION: Analyze requirements and generate execution plan
+4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
+5. SPAWN AGENTS: spawn_agent_job() for each specialist
+   CRITICAL: agent_type MUST exactly match template name from Step 2
+   agent_name can be descriptive (for UI display only)
+
+{mode_block}
+
+Begin by calling health_check(), then get_orchestrator_instructions().
 """
-
-        prompt += f"""
-{'='*70}
-TASK 7: PROJECT ACTIVATION
-{'='*70}
-Activate project and begin orchestration.
-
-1. Set status: active
-2. Enable WebSocket
-3. Init health monitor
-4. Start polling (5s)
-5. Track context usage
-6. Emit project:activated
-7. Log start
-
-Result: Project active | Timeout: 10s | Status: COMPLETE
-
-{'='*70}
-END STAGING WORKFLOW
-{'='*70}
-"""
-
-        # Calculate token count (conservative estimate: 1 token ≈ 4 characters)
-        estimated_tokens = len(prompt) // 4
-
-        logger.info(
-            "Staging prompt generated successfully",
-            extra={
-                "orchestrator_id": orchestrator_id,
-                "project_id": project_id,
-                "project_name": project.name,
-                "estimated_tokens": estimated_tokens,
-                "prompt_length": len(prompt),
-                "execution_mode": execution_mode,
-                "tenant_key": self.tenant_key
-            }
-        )
 
         return prompt
 
