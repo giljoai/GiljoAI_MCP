@@ -1,11 +1,12 @@
 """
-Orchestration MCP Tools - Extended for Slash Command Support
+Orchestration MCP Tools (HTTP-only)
 
-Provides MCP tools for intelligent multi-agent orchestration with context prioritization and orchestration.
-Exposes orchestration capabilities via Model Context Protocol for agent coordination.
+Production architecture:
+- HTTP MCP endpoint (/mcp) → ToolAccessor → OrchestrationService (service layer)
+- FastMCP tool registrations below are for unit testing only
 
-This module also provides tools that act as "prompt generators" for slash command workflows,
-enabling automated agent setup and project orchestration via Claude Code CLI commands.
+Helper functions (get_project_by_alias, etc.) are used by both paths.
+See: api/endpoints/mcp_http.py for HTTP routing.
 """
 
 import logging
@@ -494,9 +495,8 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         """
         Fetch agent-specific mission and context (Thin Client Architecture).
 
-        STDIO/FASTMCP PATH ONLY: This implementation is for stdio MCP transport
-        (FastMCP). HTTP MCP uses ToolAccessor → OrchestrationService.get_agent_mission()
-        which has full WebSocket support for real-time UI updates.
+        NOTE: This FastMCP tool registration is for testing only.
+        Production HTTP MCP uses ToolAccessor → OrchestrationService.get_agent_mission().
 
         Agents call this to get their targeted mission (not entire project vision).
         Part of Handover 0088 Amendment B - Agent Thin Client Implementation.
@@ -545,8 +545,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     }
 
                 # Job Signaling: Set mission_acknowledged_at on FIRST fetch (idempotent)
-                # NOTE: This code path is for stdio MCP (FastMCP). HTTP MCP uses
-                # OrchestrationService.get_agent_mission() which has WebSocket support.
+                # NOTE: Production uses OrchestrationService.get_agent_mission() with WebSocket support.
                 if agent_job.mission_acknowledged_at is None:
                     agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()

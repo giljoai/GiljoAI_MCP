@@ -548,8 +548,3 @@ def create_auth_middleware(auth_manager: AuthManager):
         return await call_next(request)
 
     return auth_middleware
-
-
-def register_auth_tools(*args, **kwargs):  # Backward-compat stub
-    """Removed: stdio-based FastMCP auth tools are no longer supported (HTTP-only)."""
-    raise NotImplementedError("FastMCP/stdio tool registration has been removed; use HTTP endpoints.")
