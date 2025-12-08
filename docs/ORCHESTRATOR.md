@@ -1,7 +1,7 @@
 # Orchestrator Context Tracking & Succession
 
-**Version**: v3.2+ (Handover 0080, 0246a, 0246b)
-**Last Updated**: 2025-11-24
+**Version**: v3.2+ (Handover 0080, 0246a, 0246b, 0334)
+**Last Updated**: 2025-12-07
 
 ## Overview
 
@@ -385,22 +385,22 @@ mission_data = get_agent_mission(
     tenant_key="user_alice_tenant_001"
 )
 
-# Receives:
+# Receives (Handover 0334 enhanced response):
 {
     "success": true,
+    "agent_job_id": "7e57d004-2b97-0e7a-b45f-5387367791cd",
+    "agent_name": "implementer",
+    "agent_type": "implementer",
     "mission": "Implement user authentication with JWT tokens...",
-    "context": {
-        "project_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-        "product_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-        "agent_type": "implementer",
-        "priority": "high",
-        "related_agents": ["tester", "reviewer"]
-    },
-    "previous_work": [
-        {"agent": "analyzer", "summary": "Analyzed authentication requirements"}
-    ]
+    "project_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "estimated_tokens": 250,
+    "status": "working",
+    "thin_client": true,
+    "full_protocol": "## Agent Lifecycle Protocol (6 Phases)\\n\\n### Phase 1: STARTUP..."
 }
 ```
+
+**Note**: The `full_protocol` field (added in Handover 0334) contains the complete 6-phase lifecycle instructions with job-specific MCP tool call examples. This makes agents self-documenting - they receive both their mission AND how to execute it.
 
 ### Six-Phase Execution Protocol
 
