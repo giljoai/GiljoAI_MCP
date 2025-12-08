@@ -469,3 +469,4 @@ Agent export is where we simplify agent export and import into claude code (only
 Both upon click, create a token time limited folder, then fetches the agents which are toggled as active in the "Agent Template Manager", adds their individual files into a zip and places it in the tokenized folder.  Also when clicked the button copies to clip board the URL and natural langage instructions for the agent files.  Instructions say to backup existing agents into a folder MMDDYY_Agent_backup, and then extracts the newly downloaded agents from the zip.  Finally it tells the end user to reboot the application.  As an option we also have manual download link which triggers the server to add active agents to a zip file and add agent_instructions.md a static file on how to installe them in personal or product folder.
 
 Finally we have a resolved Serena integration that is customizable and tells the user to install Serena MCP first.
+
