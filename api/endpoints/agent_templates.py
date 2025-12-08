@@ -6,11 +6,9 @@ Templates include role-specific missions, MCP tool integration, and behavioral g
 """
 
 import logging
-from collections import defaultdict
-from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -23,7 +21,6 @@ from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-plugin_router = APIRouter()  # Separate router for plugin endpoint (different prefix)
 
 
 # Pydantic models for responses
@@ -40,74 +37,6 @@ class TemplateListResponse(BaseModel):
     count: int = Field(..., description="Number of available templates")
     base_url: str = Field(..., description="Base URL for template downloads")
     files: list[TemplateFileMetadata] = Field(..., description="List of available templates")
-
-
-class PluginTemplate(BaseModel):
-    """Agent template response for Claude Code plugin"""
-    id: str = Field(..., description="Template UUID")
-    name: str = Field(..., description="Human-readable template name")
-    role: str = Field(..., description="Agent role identifier")
-    category: str = Field(..., description="Template category")
-    description: Optional[str] = Field(None, description="Template description")
-    full_instructions: str = Field(..., description="Combined system + user instructions")
-    capabilities: list[str] = Field(default_factory=list, description="Agent capabilities")
-    version: str = Field(..., description="Template version")
-    background_color: Optional[str] = Field(None, description="Hex color code")
-    cli_tool: str = Field(default="claude", description="CLI tool: claude, codex, gemini")
-    model: Optional[str] = Field(None, description="Model selection")
-    is_active: bool = Field(..., description="Whether template is active")  # Required for include_inactive test
-
-
-class PluginTemplateResponse(BaseModel):
-    """Response model for plugin template endpoint"""
-    templates: list[PluginTemplate] = Field(..., description="List of agent templates")
-    tenant_key: str = Field(..., description="Tenant key used for query")
-    count: int = Field(..., description="Number of templates returned")
-    cache_ttl: int = Field(default=300, description="Cache TTL in seconds")
-
-
-# Rate limiting store (in-memory, simple sliding window)
-_rate_limit_store: dict[str, list[datetime]] = defaultdict(list)
-
-
-def check_rate_limit(tenant_key: str, limit: int = 100, window_seconds: int = 60) -> bool:
-    """Check if request is within rate limit. Returns True if allowed."""
-    now = datetime.utcnow()
-    window_start = now - timedelta(seconds=window_seconds)
-
-    # Clean old requests
-    _rate_limit_store[tenant_key] = [
-        t for t in _rate_limit_store[tenant_key] if t > window_start
-    ]
-
-    if len(_rate_limit_store[tenant_key]) >= limit:
-        return False
-
-    _rate_limit_store[tenant_key].append(now)
-    return True
-
-
-def reset_rate_limit_store() -> None:
-    """Reset rate limit store (primarily for testing)"""
-    global _rate_limit_store
-    _rate_limit_store.clear()
-
-
-def build_full_instructions(template: AgentTemplate) -> str:
-    """Build complete instructions from system + user fields"""
-    if template.system_instructions or template.user_instructions:
-        system_part = template.system_instructions or ""
-        user_part = template.user_instructions or ""
-        return f"{system_part}\n\n{user_part}".strip()
-    return template.template_content or ""
-
-
-def generate_default_capabilities(role: str) -> list[str]:
-    """Generate default capabilities from role name"""
-    tokens = role.lower().replace("-", "_").split("_")
-    capabilities = tokens.copy()
-    capabilities.extend(["collaboration", "mcp_integration"])
-    return capabilities
 
 
 # MCP Integration section to append to all templates
@@ -248,80 +177,6 @@ async def list_agent_templates(
     except Exception as e:
         logger.error(f"Failed to list agent templates: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@plugin_router.get("/plugin", response_model=PluginTemplateResponse)
-async def get_templates_for_plugin(
-    tenant_key: str = Query(..., pattern=r"^tk_[A-Za-z0-9]{32}$"),
-    include_inactive: bool = Query(False),
-):
-    """
-    Fetch agent templates for Claude Code plugin (no JWT auth required).
-    Rate limited to 100 requests/minute per tenant_key.
-    Returns empty list for unknown tenants (prevents enumeration).
-    """
-    from api.app import state
-
-    # Rate limiting
-    if not check_rate_limit(tenant_key):
-        logger.warning(f"Rate limit exceeded for tenant: {tenant_key}")
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as session:
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == tenant_key)
-                .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
-                .order_by(AgentTemplate.category, AgentTemplate.role)
-            )
-
-            if not include_inactive:
-                stmt = stmt.where(AgentTemplate.is_active == True)
-
-            result = await session.execute(stmt)
-            templates = result.scalars().all()
-
-        # Build response
-        plugin_templates = []
-        for template in templates:
-            full_instructions = build_full_instructions(template)
-            capabilities = template.meta_data.get("capabilities", []) if template.meta_data else []
-            if not capabilities:
-                capabilities = generate_default_capabilities(template.role or "general")
-
-            plugin_templates.append(
-                PluginTemplate(
-                    id=str(template.id),
-                    name=template.name,
-                    role=template.role or "general",
-                    category=template.category,
-                    description=template.description,
-                    full_instructions=full_instructions,
-                    capabilities=capabilities,
-                    version=template.version,
-                    background_color=template.background_color,
-                    cli_tool=template.cli_tool or "claude",
-                    model=template.model,
-                    is_active=template.is_active,
-                )
-            )
-
-        logger.info(f"Plugin: Returned {len(plugin_templates)} templates for {tenant_key}")
-
-        return PluginTemplateResponse(
-            templates=plugin_templates,
-            tenant_key=tenant_key,
-            count=len(plugin_templates),
-            cache_ttl=300,
-        )
-
-    except Exception as e:
-        logger.error(f"Plugin endpoint error for {tenant_key}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{filename}")

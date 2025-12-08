@@ -861,7 +861,6 @@ def create_app() -> FastAPI:
     app.include_router(projects.router)
     app.include_router(agent_management.router, tags=["Agent Management"])
     app.include_router(agent_templates.router, prefix="/api/v1/agents/templates", tags=["agent-templates"])
-    app.include_router(agent_templates.plugin_router, prefix="/api/v1/agent-templates", tags=["agent-templates-plugin"])
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
