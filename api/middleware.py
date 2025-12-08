@@ -120,6 +120,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/install-script",  # Public install scripts
             "/api/download/agent-templates.zip",  # Optional-auth downloads (handles own auth logic)
             "/api/download/temp",  # Public download with token auth (one-time tokens)
+            "/api/v1/agent-templates/plugin",  # Plugin template endpoint (public with rate limiting)
         ]
         # Always allow token download path (token is the auth)
         if path.startswith("/api/download/temp") or "/api/download/temp/" in path:
