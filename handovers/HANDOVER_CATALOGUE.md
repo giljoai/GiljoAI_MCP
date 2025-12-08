@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-07
+**Last Updated:** 2025-12-07 (0334 Plugin series deleted, replaced with HTTP-Only MCP Consolidation)
 
 ---
 
@@ -44,12 +44,7 @@
 | 0331 | Message Audit Modal | Ready | High |
 | 0332 | Agent Staging and Execution Prompting Overview | Reference | - |
 | 0333 | Staging Prompt Architecture Correction | **COMPLETE** | High |
-| 0334 | Claude Code Plugin - Agent Template Bridge | Ready | High |
-| 0334a | Backend API - Plugin Template Endpoint | Ready | High |
-| 0334b | Claude Code Plugin Package Creation | Ready | High |
-| 0334c | User Profile Setup UI - Plugin | Ready | High |
-| 0334d | Staging Prompt Integration - Pre-Flight | Ready | High |
-| 0334e | Testing & Documentation - Plugin | Ready | Medium |
+| 0334 | HTTP-Only MCP Consolidation | **COMPLETE** | High |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -59,8 +54,9 @@
 | 0250 | HTTPS Enablement (Optional) | Not Started | Low |
 | 0254 | Three Layer Instruction Cleanup | Not Started | Medium |
 | 0256 | Task Templates Cleanup | Not Started | Low |
-| 0260 | Claude Code CLI Mode | Not Started | Medium |
-| 0261 | Task MCP Surface Rationalization | Not Started | Low |
+| 0260 | Claude Code CLI Mode | **COMPLETE** | Medium |
+| 0261 | Task MCP Surface Rationalization | Superseded (0334) | Low |
+| 0262 | Agent Mission Protocol Merge | Superseded (0334) | Medium |
 | 0274 | Orchestrator Investigation | Reference | - |
 | 0275 | Orchestrator Metadata Bug Fix | Reference | - |
 | 0276 | Stage Project Refresh | Complete | - |
@@ -184,7 +180,8 @@ Some handovers become reference docs (not actionable):
 ## History
 
 ### December 2025
-- 0333: Staging Prompt Architecture Correction (active)
+- 0334: HTTP-Only MCP Consolidation (consolidates 0261, 0262, 0297 gaps)
+- 0333: Staging Prompt Architecture Correction (COMPLETE)
 - 0332: Agent Staging and Execution Prompting Overview (reference)
 - 0331: Message Audit Modal (UI feature)
 - 0330a-e: Codebase Quality Audit Series (Reference)
@@ -197,6 +194,8 @@ Some handovers become reference docs (not actionable):
 - 0310: Integration Testing Validation (COMPLETE)
 - 0299: Unified UI Messaging Endpoint (COMPLETE)
 - 0295-0298: Messaging Contract Series
+
+**Note:** 0334a-e (Claude Code Plugin series) were deleted - research showed Claude Code plugins are file-based, not HTTP-fetched. Using existing export/import flow instead.
 
 ### November 2025
 - 0300 Series: Context Management v2.0 (COMPLETE)
