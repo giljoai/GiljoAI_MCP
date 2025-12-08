@@ -26,7 +26,7 @@
 |----|-------|--------|----------|
 | 0295 | Messaging Contract and Categories | Reference | - |
 | 0296 | Agent Messaging Behavior and Templates | Reference | - |
-| 0297 | UI Message Status and Job Signaling | Reference | - |
+| 0297 | UI Message Status and Job Signaling | **COMPLETE** (Steps gap → 0334) | - |
 | 0298 | Legacy Messaging Queue Cleanup | Not Started | Medium |
 | 0299 | Unified UI Messaging Endpoint | **COMPLETE** | High |
 
@@ -45,6 +45,7 @@
 | 0332 | Agent Staging and Execution Prompting Overview | Reference | - |
 | 0333 | Staging Prompt Architecture Correction | **COMPLETE** | High |
 | 0334 | HTTP-Only MCP Consolidation | **COMPLETE** | High |
+| 0335 | CLI Mode Agent Template Validation | Ready | High |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
