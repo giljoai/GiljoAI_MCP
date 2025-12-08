@@ -30,6 +30,23 @@
         <!-- Server Configuration -->
         <h3 class="text-h6 mb-3">Server Configuration from Installation</h3>
 
+        <!-- Plugin Integration Reminder (Handover 0334) -->
+        <v-alert
+          type="warning"
+          variant="tonal"
+          class="mb-4"
+          data-test="plugin-integration-reminder"
+        >
+          <div class="d-flex align-center">
+            <v-icon start>mdi-puzzle-outline</v-icon>
+            <div>
+              <strong>Claude Code Plugin Integration:</strong> The External Host below is used by
+              the Claude Code plugin to connect to this server. Ensure this IP/hostname is
+              accessible from machines running Claude Code. See Handover 0334 for plugin setup.
+            </div>
+          </div>
+        </v-alert>
+
         <v-text-field
           :model-value="config.externalHost"
           label="External Host"
