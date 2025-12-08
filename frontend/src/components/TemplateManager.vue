@@ -159,6 +159,43 @@
           <span class="text-caption">{{ formatDate(item.updated_at) }}</span>
         </template>
 
+        <template v-slot:item.export_status="{ item }">
+          <div class="d-flex flex-column align-center">
+            <v-chip
+              v-if="item.may_be_stale"
+              size="small"
+              color="warning"
+              prepend-icon="mdi-alert"
+              class="mb-1"
+              aria-label="Template may be outdated"
+            >
+              May be outdated
+            </v-chip>
+            <v-tooltip location="top" max-width="300">
+              <template v-slot:activator="{ props }">
+                <span
+                  v-bind="props"
+                  class="text-caption text-grey"
+                  :class="{ 'text-warning': item.may_be_stale }"
+                >
+                  {{ item.last_exported_at ? formatDate(item.last_exported_at) : 'Never exported' }}
+                </span>
+              </template>
+              <span v-if="item.may_be_stale">
+                This template was modified after the last export. Re-export to CLI tools to get the
+                latest version.
+              </span>
+              <span v-else-if="item.last_exported_at">
+                Last exported: {{ formatDate(item.last_exported_at) }}
+              </span>
+              <span v-else>
+                This template has never been exported to CLI tools. Use the export feature to make it
+                available.
+              </span>
+            </v-tooltip>
+          </div>
+        </template>
+
         <template v-slot:item.is_active="{ item }">
           <div class="d-flex align-center justify-center">
             <v-switch
@@ -862,6 +899,7 @@ const headers = [
   { title: 'Tool', key: 'preferred_tool', align: 'start' },
   { title: 'Variables', key: 'variables', align: 'center' },
   { title: 'Active', key: 'is_active', align: 'center' },
+  { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
   { title: 'Updated', key: 'updated_at', align: 'start' },
   { title: 'Actions', key: 'actions', align: 'center', sortable: false },
 ]

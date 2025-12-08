@@ -111,6 +111,9 @@ class TemplateResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime]
+    # Export tracking (Handover 0335)
+    last_exported_at: Optional[datetime] = Field(None, description="Timestamp of last export to CLI")
+    may_be_stale: bool = Field(False, description="True if template modified after last export")
     # Legacy fields
     category: Optional[str] = None
     project_type: Optional[str] = None
