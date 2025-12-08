@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-06
+**Last Updated:** 2025-12-07
 
 ---
 
@@ -33,13 +33,23 @@
 ### Current Development (0300+)
 | ID | Title | Status | Priority |
 |----|-------|--------|----------|
-| 0310 | Integration Testing Validation | In Progress | Medium |
-| 0325 | **Tenant Isolation Surgical Fix** | **READY** | **HIGH** |
-| 0326 | Message Auto-Acknowledge Simplification | Not Started | Medium |
-| 0327 | Playwright Localhost Auth Fix | Not Started | Low |
-| 0328 | Product Service Recursion Fix | Not Started | Low |
-| 0330a-e | **Codebase Quality Audit Series** | Reference | Medium |
-| 0331 | **Message Audit Modal** | **READY** | **HIGH** |
+| 0310 | Integration Testing Validation | **COMPLETE** | Medium |
+| 0313 | SQLAlchemy Async Session Leak Fix | **COMPLETE** | High |
+| 0325 | Tenant Isolation Surgical Fix | **COMPLETE** | High |
+| 0326 | Message Auto-Acknowledge Simplification | **COMPLETE** | Medium |
+| 0327 | Playwright Localhost Auth Fix | **COMPLETE** | Low |
+| 0328 | Product Service Recursion Fix | **COMPLETE** | Low |
+| 0329 | Project Deletion Cascade Messaging Cleanup | **COMPLETE** | Medium |
+| 0330a-e | Codebase Quality Audit Series | Reference | Medium |
+| 0331 | Message Audit Modal | Ready | High |
+| 0332 | Agent Staging and Execution Prompting Overview | Reference | - |
+| 0333 | Staging Prompt Architecture Correction | **COMPLETE** | High |
+| 0334 | Claude Code Plugin - Agent Template Bridge | Ready | High |
+| 0334a | Backend API - Plugin Template Endpoint | Ready | High |
+| 0334b | Claude Code Plugin Package Creation | Ready | High |
+| 0334c | User Profile Setup UI - Plugin | Ready | High |
+| 0334d | Staging Prompt Integration - Pre-Flight | Ready | High |
+| 0334e | Testing & Documentation - Plugin | Ready | Medium |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -122,18 +132,21 @@ completed/reference/
 2. Check `completed/reference/` for conflicts
 3. Use gaps if appropriate
 
-### Used Numbers by Range (Reference Archives)
+### Used Numbers by Range (Full Inventory)
 
-**0001-0100** (Foundation): 0016, 0043, 0047, 0062, 0064-0067, 0075, 0077
-**0101-0200** (Architecture): 0102-0107
-**0201-0300** (GUI & Context): 0225-0239, 0242-0258, 0262-0273, 0281-0285
-**0301-0400** (Services): 0300-0303, 0305-0306, 0309, 0311-0316, 0318, 0320-0324
-**0501-0600** (Remediation): 0500-0509, 0511-0515
-**0601-0700** (Migration): 0601
+**0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
+**0101-0200** (Architecture): 0101-0132, 0135-0139
+**0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
+**0301-0400** (Services): 0300-0316, 0318-0334
+**0501-0600** (Remediation): 0500-0515
+**0601-0700** (Migration): 0600-0631
 
 ### Current Gaps Available
-- **0304, 0307, 0308, 0317, 0319**: Gaps in 0301-0400 range
-- **0332+**: Next sequential after current development
+- **0317**: Gap in 0301-0400 range (documented)
+- **0259, 0277, 0290**: Gaps in 0201-0300 range
+- **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
+- **0133-0134**: Gaps in 0101-0200 range
+- **0335+**: Next sequential after current development
 
 ### Naming Format
 ```
@@ -171,14 +184,17 @@ Some handovers become reference docs (not actionable):
 ## History
 
 ### December 2025
+- 0333: Staging Prompt Architecture Correction (active)
+- 0332: Agent Staging and Execution Prompting Overview (reference)
 - 0331: Message Audit Modal (UI feature)
 - 0330a-e: Codebase Quality Audit Series (Reference)
-  - 0330a: Python Linting Report
-  - 0330b: Frontend Linting Report
-  - 0330c: Backend Feature Catalogue
-  - 0330d: Frontend Feature Catalogue
-  - 0330e: De-Linting Risk Assessment
-- 0325: Tenant Isolation Surgical Fix (security)
+- 0329: Project Deletion Cascade Messaging Cleanup (COMPLETE)
+- 0328: Product Service Recursion Fix (COMPLETE)
+- 0327: Playwright Localhost Auth Fix (COMPLETE)
+- 0326: Message Auto-Acknowledge Simplification (COMPLETE)
+- 0325: Tenant Isolation Surgical Fix (COMPLETE)
+- 0313: SQLAlchemy Async Session Leak Fix (COMPLETE)
+- 0310: Integration Testing Validation (COMPLETE)
 - 0299: Unified UI Messaging Endpoint (COMPLETE)
 - 0295-0298: Messaging Contract Series
 
