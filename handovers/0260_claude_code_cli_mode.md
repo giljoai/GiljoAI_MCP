@@ -1,5 +1,9 @@
 # Handover 0260: Claude Code CLI Toggle Enhancement
 
+> **Note**: Staging prompt aspects of this handover are superseded by Handover 0333.
+> The toggle location moves from Implement tab to Launch tab.
+> Backend execution mode persistence and 0262 protocol remain valid.
+
 **Date:** 2025-12-07
 **From Agent:** Documentation Manager (Planning Session)
 **To Agent:** TDD Implementor + Backend Integration Tester
