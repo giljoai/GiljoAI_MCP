@@ -433,8 +433,10 @@ async function handleStageProject() {
 
   try {
     // Generate thin client staging prompt
+    // Pass execution_mode from project configuration (Handover 0333 Phase 2)
     const response = await api.prompts.staging(props.project.id, {
       tool: 'claude-code',
+      execution_mode: props.project.execution_mode || 'multi_terminal',
     })
 
     if (!response.data?.prompt) {
