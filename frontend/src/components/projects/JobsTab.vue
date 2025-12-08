@@ -1,17 +1,5 @@
 <template>
   <div class="implement-tab-wrapper">
-    <!-- Claude Code CLI Toggle -->
-    <div class="claude-toggle-bar" @click="toggleExecutionMode">
-      <span class="toggle-label">Enable Claude Code CLI</span>
-      <v-tooltip location="bottom">
-        <template v-slot:activator="{ props: tooltipProps }">
-          <v-icon v-bind="tooltipProps" size="small" class="ml-1 help-icon">mdi-help-circle-outline</v-icon>
-        </template>
-        <span>When enabled, the orchestrator uses Claude Code CLI's Task tool to spawn subagents in a single terminal. When disabled, you'll need to manually launch each agent in separate terminals.</span>
-      </v-tooltip>
-      <div class="toggle-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
-    </div>
-
     <!-- Agent Table Container -->
     <div class="table-container">
       <table class="agents-table" data-testid="agent-status-table">
@@ -397,18 +385,7 @@ const userStore = useUserStore()
  * State
  * Handover 0260: Initialize from project.execution_mode for persistence
  */
-const usingClaudeCodeSubagents = ref(false)
 
-/**
- * Handover 0260: Watch for project changes and sync execution_mode
- */
-watch(
-  () => props.project?.execution_mode,
-  (newMode) => {
-    usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
-  },
-  { immediate: true }
-)
 const messageText = ref('')
 const selectedRecipient = ref('orchestrator')
 const sending = ref(false)
@@ -591,51 +568,21 @@ function getMessagesRead(agent) {
  * Toggle execution mode (Claude Code CLI vs Manual)
  * Handover 0260: Persist execution_mode to backend via API
  */
-async function toggleExecutionMode() {
-  const newValue = !usingClaudeCodeSubagents.value
-  const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
-
-  // Optimistically update UI
-  usingClaudeCodeSubagents.value = newValue
-
-  try {
-    // Persist to backend
-    const projectId = props.project.project_id || props.project.id
-    await api.projects.update(projectId, { execution_mode: newMode })
-
-    showToast({
-      message: newValue
-        ? 'Claude Code CLI mode enabled'
-        : 'Manual mode enabled',
-      type: 'info',
-      duration: 3000
-    })
-  } catch (error) {
-    // Revert on failure
-    usingClaudeCodeSubagents.value = !newValue
-    console.error('Failed to update execution mode:', error)
-    showToast({
-      message: 'Failed to save execution mode',
-      type: 'error',
-      duration: 3000
-    })
-  }
-}
 
 /**
- * Determine if copy button should be shown for an agent
- * Handover 0260: Consolidated to use actionConfig.shouldShowLaunchAction()
- *
- * Toggle OFF (Manual Mode):
- *   - Show copy button for any waiting agent (all agents can be launched manually)
- *
- * Toggle ON (Claude Code CLI Mode):
- *   - Show copy button ONLY for waiting orchestrator (it spawns specialists via Task tool)
- *   - Hide copy buttons for specialist agents (orchestrator spawns them)
+ * Determine if copy button should be shown for an agent (Handover 0333 Phase 3)
+ * Reads execution_mode from project prop (read-only, controlled by LaunchTab)
+ * 
+ * Multi-Terminal Mode: All waiting agents show copy button
+ * CLI Mode: Only waiting orchestrator shows copy button
  */
 function shouldShowCopyButton(agent) {
-  // Handover 0260: Use consolidated function from actionConfig.js
-  return shouldShowLaunchAction(agent, usingClaudeCodeSubagents.value)
+  // Get execution mode from project prop (read-only)
+  const executionMode = props.project?.execution_mode
+  const claudeCodeCliMode = executionMode === 'claude_code_cli'
+  
+  // Use consolidated function from actionConfig.js
+  return shouldShowLaunchAction(agent, claudeCodeCliMode)
 }
 
 /**
@@ -1187,51 +1134,6 @@ onUnmounted(() => {
   padding: 20px;
   background: #0e1c2d;
   min-height: 100vh;
-
-  .claude-toggle-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-    padding: 12px 16px;
-    background: rgba(20, 35, 50, 0.6);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-
-    &:hover {
-      background: rgba(20, 35, 50, 0.8);
-    }
-
-    .toggle-label {
-      color: #ccc;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .help-icon {
-      color: rgba(255, 215, 0, 0.6);
-      cursor: help;
-
-      &:hover {
-        color: rgba(255, 215, 0, 0.9);
-      }
-    }
-
-    .toggle-indicator {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #666;
-      transition: background 0.3s, box-shadow 0.3s;
-      margin-left: auto;
-
-      &.active {
-        background: #00ff00;
-        box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
-      }
-    }
-  }
 
   .table-container {
     border: 2px solid rgba(255, 255, 255, 0.2);

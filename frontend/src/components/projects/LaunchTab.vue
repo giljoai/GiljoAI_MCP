@@ -1,5 +1,22 @@
 <template>
   <div class="launch-tab-wrapper">
+    <!-- Execution Mode Toggle (Handover 0333 Phase 1) -->
+    <div class="execution-mode-toggle-bar" data-testid="execution-mode-toggle" @click="toggleExecutionMode">
+      <span class="toggle-label">Execution Mode</span>
+      <span class="toggle-options">
+        <span :class="{ active: !usingClaudeCodeSubagents }">Multi-Terminal</span>
+        <span class="toggle-separator">/</span>
+        <span :class="{ active: usingClaudeCodeSubagents }">Claude Code CLI</span>
+      </span>
+      <v-tooltip location="bottom">
+        <template v-slot:activator="{ props: tooltipProps }">
+          <v-icon v-bind="tooltipProps" size="small" class="ml-1 help-icon">mdi-help-circle-outline</v-icon>
+        </template>
+        <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
+      </v-tooltip>
+      <div class="toggle-indicator" data-testid="execution-mode-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
+    </div>
+
     <!-- Main Container (unified border) - buttons moved to ProjectTabs -->
     <div class="main-container">
       <div class="three-panels">
@@ -245,6 +262,11 @@ const showMissionEditModal = ref(false)
 const selectedAgentForEdit = ref(null)
 
 /**
+ * Execution Mode Toggle (Handover 0333 Phase 1)
+ */
+const usingClaudeCodeSubagents = ref(false)
+
+/**
  * Get instance number for multi-instance agents
  */
 function getInstanceNumber(agent) {
@@ -335,6 +357,42 @@ const handleAgentCreated = (data) => {
   showToast.value = true
 
   console.log('[LaunchTab] Agent card added to UI. Total agents:', agents.value.length)
+}
+
+/**
+ * Toggle Execution Mode (Handover 0333 Phase 1)
+ * Switches between Multi-Terminal and Claude Code CLI modes
+ */
+async function toggleExecutionMode() {
+  const newValue = !usingClaudeCodeSubagents.value
+  const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
+
+  // Optimistically update UI
+  usingClaudeCodeSubagents.value = newValue
+
+  try {
+    // Persist to backend
+    const projectId = props.project.id
+    const { api } = await import('@/services/api')
+    await api.projects.update(projectId, { execution_mode: newMode })
+
+    showToastNotification({
+      message: newValue
+        ? 'Claude Code CLI mode enabled'
+        : 'Manual mode enabled',
+      type: 'info',
+      timeout: 3000
+    })
+  } catch (error) {
+    // Revert on failure
+    usingClaudeCodeSubagents.value = !newValue
+    console.error('Failed to update execution mode:', error)
+    showToastNotification({
+      message: 'Failed to save execution mode',
+      type: 'error',
+      timeout: 3000
+    })
+  }
 }
 
 /**
@@ -512,6 +570,17 @@ watch(
 )
 
 /**
+ * Watch for execution_mode changes (Handover 0333 Phase 1)
+ */
+watch(
+  () => props.project?.execution_mode,
+  (newMode) => {
+    usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
+  },
+  { immediate: true }
+)
+
+/**
  * Expose methods for parent component
  */
 defineExpose({
@@ -544,6 +613,72 @@ defineExpose({
   padding: 20px;
   background: $color-background-primary;
   min-height: 100vh;
+
+  .execution-mode-toggle-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    border: 1px solid $color-text-secondary;
+    border-radius: 8px;
+    background: rgba(212, 165, 116, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $color-text-highlight;
+      background: rgba(212, 165, 116, 0.1);
+    }
+
+    .toggle-label {
+      font-weight: 600;
+      color: $color-text-primary;
+      font-size: 14px;
+      min-width: 120px;
+    }
+
+    .toggle-options {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: $color-text-secondary;
+      font-size: 13px;
+      flex: 1;
+
+      span {
+        transition: color 0.2s ease;
+
+        &.active {
+          color: $color-text-highlight;
+          font-weight: 600;
+        }
+      }
+
+      .toggle-separator {
+        color: $color-text-secondary;
+      }
+    }
+
+    .help-icon {
+      color: $color-text-secondary;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .toggle-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: $color-text-secondary;
+      flex-shrink: 0;
+      transition: background-color 0.2s ease;
+
+      &.active {
+        background: $color-text-highlight;
+      }
+    }
+  }
 
   .main-container {
     border: $border-width-standard solid $color-container-border;
