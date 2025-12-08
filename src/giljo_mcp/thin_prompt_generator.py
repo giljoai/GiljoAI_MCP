@@ -1005,7 +1005,49 @@ No previous project history available. Starting fresh.
 - You will spawn agents using Claude Code's Task tool
 - agent_type parameter = subagent_type (MUST match template name exactly)
 - Agents are hidden subprocesses - user sees progress via dashboard
-- After spawning, agents call get_agent_mission() to start work"""
+- After spawning, agents call get_agent_mission() to start work
+
+## AGENT SPAWNING RULES (CLI MODE - CRITICAL)
+
+When spawning agents, you MUST use TWO parameters correctly:
+
+| Parameter    | Purpose                      | Value Must Be               |
+|--------------|------------------------------|----------------------------|
+| `agent_type` | Template name for Task tool  | EXACT match: "implementer" |
+| `agent_name` | Human-readable UI label      | Descriptive: "Folder Impl" |
+
+### Why This Matters
+Claude Code's Task tool finds agents by filename:
+- `Task(subagent_type="implementer")` → looks for `implementer.md` ✓
+- `Task(subagent_type="Folder Implementer")` → FILE NOT FOUND ✗
+
+### Available Templates
+The `get_orchestrator_instructions()` response contains `cli_mode_rules` with:
+- `agent_spawning_constraint.allowed_agent_types` - list of valid agent_type values
+- `spawning_examples` - correct usage patterns
+
+### Example - Spawning 2 implementers:
+```python
+spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)
+spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
+```
+Both use `agent_type="implementer"` but have different display names.
+
+## AGENT TEMPLATE VALIDATION (CLI MODE)
+
+Before spawning agents, verify templates exist in Claude Code:
+
+### Resolution Priority
+Claude Code checks templates in this order:
+1. **Project agents**: `{project}/.claude/agents/{agent_type}.md` (HIGHEST PRIORITY)
+2. **User agents**: `~/.claude/agents/{agent_type}.md`
+3. **Built-in**: Claude Code defaults (FALLBACK)
+
+### Handle Mismatches (Soft Validation)
+If any required agent is MISSING from both folders:
+- WARN the user: "Template '{agent_type}' not found in .claude/agents/"
+- SUGGEST: "Export templates from GiljoAI Settings → Agent Template Manager"
+- PROCEED with available agents (soft fail - don't block entirely)"""
         else:
             mode_block = """MULTI-TERMINAL MODE:
 - User will manually copy/paste prompts for each agent
