@@ -6,12 +6,12 @@ This queue abstraction is retained for:
 - Legacy orchestrator code compatibility
 - JSONB counter persistence (Job.messages field)
 - Internal debugging and testing
-- Backward compatibility with stdio-based tools
 
 New code should use MessageService directly, not this queue.
 
 See Handover 0295 for the canonical messaging contract.
 See Handover 0298 for cleanup decisions.
+See Handover 0334 for HTTP-only MCP consolidation.
 
 Original Purpose (Handover 0120):
 Provides ACID-compliant, priority-based message queue with intelligent routing.
