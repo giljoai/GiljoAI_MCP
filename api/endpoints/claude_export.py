@@ -330,6 +330,10 @@ async def export_template_to_claude_code(
     full_content = "".join(content_parts)
     file_path.write_text(full_content, encoding="utf-8")
 
+    # Update last_exported_at timestamp (Handover 0335)
+    template.last_exported_at = datetime.now(timezone.utc)
+    await db.commit()
+
     logger.info(
         f"[export_template_to_claude_code] Exported template {template.name} to {file_path} for tenant {tenant_key}"
     )
@@ -495,6 +499,9 @@ async def export_templates_to_claude_code(
             full_content = "".join(content_parts)
             file_path.write_text(full_content, encoding="utf-8")
 
+            # Update last_exported_at timestamp (Handover 0335)
+            template.last_exported_at = datetime.now(timezone.utc)
+
             logger.info(f"Exported template: {template.name} to {file_path}")
 
             exported_files.append(
@@ -508,6 +515,11 @@ async def export_templates_to_claude_code(
             logger.exception(f"Failed to export template {template.name}: {e}")
             # Continue with other templates rather than failing completely
             continue
+
+    # Commit all timestamp updates in a single transaction (Handover 0335)
+    if exported_files:
+        await db.commit()
+        logger.info(f"Updated last_exported_at for {len(exported_files)} templates")
 
     # Compose message with optional warning about recommended limit
     base_message = f"Successfully exported {len(exported_files)} template(s) to {export_dir}"
