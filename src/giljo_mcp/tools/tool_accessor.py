@@ -623,7 +623,8 @@ class ToolAccessor:
 
                 estimated_tokens = len(condensed_mission) // 4
 
-                return {
+                # Build base response
+                response = {
                     "orchestrator_id": orchestrator_id,
                     "project_id": str(project.id),
                     "project_name": project.name,
@@ -632,12 +633,75 @@ class ToolAccessor:
                     "context_budget": orchestrator.context_budget or 150000,
                     "context_used": orchestrator.context_used or 0,
                     "agent_templates": template_list,
+                    "agent_discovery_tool": "get_available_agents()",  # Handover 0246c
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
                     "estimated_tokens": estimated_tokens,
                     "instance_number": orchestrator.instance_number or 1,
                     "thin_client": True,
                 }
+
+                # Handover 0335: Add CLI mode rules when execution_mode == 'claude_code_cli'
+                execution_mode = metadata.get("execution_mode", "multi_terminal")
+                if execution_mode == "claude_code_cli":
+                    # Get allowed agent types from active templates
+                    allowed_agent_types = [t.name for t in templates]
+
+                    # Handover 0260: Agent spawning constraint (backward compatibility)
+                    response["agent_spawning_constraint"] = {
+                        "mode": "strict_task_tool",
+                        "allowed_agent_types": allowed_agent_types,
+                        "instruction": (
+                            "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
+                            "The agent_type parameter must be EXACTLY one of the allowed template names. "
+                            "Use agent_name for descriptive labels (displayed in UI). "
+                            f"Allowed agent types: {allowed_agent_types}"
+                        ),
+                    }
+
+                    # Handover 0335: CLI mode rules - belt-and-suspenders naming enforcement
+                    response["cli_mode_rules"] = {
+                        "agent_type_usage": (
+                            "MUST match template 'name' field exactly for Task tool. "
+                            "This is the filename without .md extension (e.g., 'implementer', 'analyzer')."
+                        ),
+                        "agent_name_usage": (
+                            "Descriptive label for UI display only - NOT for Task tool. "
+                            "Can be any human-readable name (e.g., 'Folder Structure Implementer')."
+                        ),
+                        "task_tool_mapping": (
+                            "Task(subagent_type=X) where X = agent_type value from spawn_agent_job. "
+                            "Claude Code's Task tool finds agents by filename, so agent_type must match exactly."
+                        ),
+                        "validation": "soft",  # Warn but don't block
+                        "template_locations": [
+                            "{project}/.claude/agents/ (priority 1 - project agents)",
+                            "~/.claude/agents/ (priority 2 - user agents)",
+                        ],
+                    }
+
+                    # Handover 0335: Spawning examples showing correct agent_type vs agent_name usage
+                    response["spawning_examples"] = [
+                        {
+                            "scenario": "Two implementers with different tasks",
+                            "calls": [
+                                'spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)',
+                                'spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)',
+                            ],
+                            "note": "Both use agent_type='implementer' - the template name",
+                        },
+                    ]
+
+                    logger.info(
+                        f"[CLI_MODE_RULES] Added CLI mode rules and spawning examples for orchestrator {orchestrator_id}",
+                        extra={
+                            "orchestrator_id": orchestrator_id,
+                            "execution_mode": execution_mode,
+                            "allowed_types": allowed_agent_types,
+                        }
+                    )
+
+                return response
 
         except Exception as e:
             logger.exception(f"Failed to get orchestrator instructions: {e}")
