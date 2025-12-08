@@ -1039,6 +1039,8 @@ STARTUP SEQUENCE:
 5. SPAWN AGENTS: spawn_agent_job() for each specialist
    CRITICAL: agent_type MUST exactly match template name from Step 2
    agent_name can be descriptive (for UI display only)
+6. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
+   This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
 {mode_block}
 
