@@ -1,5 +1,9 @@
 # Handover 0261: Claude Code CLI Implementation Prompt
 
+> **Note**: Staging prompt aspects of this handover are superseded by Handover 0333.
+> The two-phase architecture concept remains valid, but staging prompt is simplified.
+> See 0333 for the corrected staging prompt pattern.
+
 **Date**: 2025-12-07
 **Agent**: Documentation Manager
 **Status**: Pending Implementation
