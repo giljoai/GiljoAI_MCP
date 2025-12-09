@@ -1,0 +1,259 @@
+Claude code vs Multerminal write up
+
+
+ one clarification. "Copy "{} IMPLEMENT" prompt" = a play icon (>) in the agent card is the copy prompt button.
+  Question1: Eitehr case, agent can continue in same session, but user can also choose to go do something else and
+  come back, so the copied "implement prompt" should assume a fresh session as worst case scenario. ANd yes, the
+  orchestrator should be treating the implement phase as a new objective the copy prompt (baseline instructions, thin
+  prompt and inside it fetch job mcp instrcutions) for orchestrator should essentially tell it "Hey, you are
+  orchestreator, {id's and keys} YOu have previusly created a project  mission, sapwned agents and assigne each agent
+  a job, if you need to read the mission  again go {here=mission created by orchestrator}. If you need more context
+  get it {here_refetch_get_orchestrator_instructions}. your job is to to launch a,b,c agents using task tool. Create a
+  TODO list and plan which agent will implement what.  update the dashboardh {mcp_command} on how many tasks you have
+  deteremiend you need. Then launch Subagents using task tool giving each agent the following instructions: {agent
+  type} {job MCP command} {behaviouir instructions, id etc}, etc etc., Question 2: user copies now prompt and pastes
+  it, we cannot interact automatically from a remote server to the users terminal tool on their PC.  the app is web
+  driven [Image #1]. question3. they stay waiting until they change themselves to new states. that should reside in
+  {behaviouir instructions, id etc} and also be in /.claude/agents/*agent*.md file belt and suspenders approach. it
+  can be get_agent_missoin that transitions, however there are more states , reporting completed, failed, blocked,
+  etc. (these exists in Vue I thnk or somewher ein front end) question 4. {} IMPLEMENT is just a name of a tab that
+  navigates to the implement dashboard, here there are agent cards, same agents sapwned in {rocketicon}Launch tab.
+  Users can navigate to dashboard as {}IMEPLEMENT is a nav link to the dashboard, but there is also a conditional
+  button that appears (Launch Jobs) that also directs to {}IMPLEMENT dashboard. this dashboard lists all agent cards
+  and their various interacton icons, one which is the play button (>) which copies the prompt. Question 5. The entire
+  dashboard exists use task tool and subagents if you need to see it. yes, it is a dashboard with agent cards. tehse
+  agent cards have all kinds of columsn of status and message indicators, here are also icons which we will wire up
+  later, INCLUDING this (>) button but we are working on the claude code part only for now.  The system has a toggle
+  system for claude code CLI mode (single terminal with task tool agents) , and Multi terminal mode, for those chat ai
+  agents who are not claude code, nor feature task tool subagents.  IN this multi terminal mode each agents (>) play
+  button prompts its onw terminal prompt but doing essentially the same thing.
+
+
+This is incredibly helpful! Now I fully understand the architecture. Let me redraw my understanding:
+
+  Corrected Architecture Understanding
+
+  The Big Picture (from your diagram)
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                      GiljoAI MCP Server                              │
+  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐ │
+  │  │ Product/     │   │ Frontend     │   │ Project staging          │ │
+  │  │ Project/     │◄─►│ Backend      │◄─►│ Project launch           │ │
+  │  │ Task/Agent   │   │ PostgresDB   │   │ Prompt templates         │ │
+  │  │ Context Mgmt │   │ MCP host     │   │ Message hub / Job assign │ │
+  │  └──────────────┘   └──────────────┘   └──────────────────────────┘ │
+  │                            │                      ▲                  │
+  │                            │                      │ MCP Commands     │
+  └────────────────────────────┼──────────────────────┼──────────────────┘
+                               │                      │
+                      ┌────────▼────────┐             │
+                      │   Webpage UI    │             │
+                      └────────┬────────┘             │
+                               │                      │
+  ┌────────────────────────────┼──────────────────────┼──────────────────┐
+  │  Client PC                 │                      │                  │
+  │                    ┌───────▼───────┐              │                  │
+  │                    │    Browser    │              │                  │
+  │                    └───────┬───────┘              │                  │
+  │                            │                      │                  │
+  │         ┌──────────────────┼──────────────────────┤                  │
+  │         │                  │                      │                  │
+  │         ▼                  ▼                      ▼                  │
+  │  ┌────────────┐    ┌────────────┐         ┌────────────┐            │
+  │  │  Terminal  │    │  Terminal  │   ...   │  Terminal  │            │
+  │  │ Orchestr.  │    │  Agent 1   │         │  Agent N   │            │
+  │  └─────┬──────┘    └─────┬──────┘         └─────┬──────┘            │
+  │        │                 │                      │                    │
+  │        └─────────────────┴──────────────────────┘                    │
+  │                          │                                           │
+  │                          ▼                                           │
+  │                ┌──────────────────┐                                  │
+  │                │ Project Files/   │                                  │
+  │                │ Repo             │                                  │
+  │                └──────────────────┘                                  │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  Key Insight: User COPY/PASTE is the Bridge
+
+  The server cannot push to user terminals. User must:
+  1. Copy prompt from browser (Webpage UI)
+  2. Paste into terminal (Claude Code CLI)
+
+  ---
+  Two Modes: Claude Code CLI vs Multi-Terminal
+
+  | Aspect          | Claude Code CLI Mode                         | Multi-Terminal Mode             |
+  |-----------------|----------------------------------------------|---------------------------------|
+  | Terminals       | 1 (orchestrator uses Task tool)              | N (one per agent)               |
+  | Agent spawning  | Orchestrator → Task(subagent_type=...)       | User copies each agent's prompt |
+  | Play button (>) | Only orchestrator gets implementation prompt | Each agent card has play button |
+  | Target users    | Claude Code users                            | Other AI tools (no Task tool)   |
+
+  ---
+  Corrected Two-Stage Flow (Claude Code CLI Mode)
+
+  Stage 1: STAGING (🚀 Launch Tab)
+
+  User: Copies "Stage Project" prompt → Pastes into Claude Code terminal
+                      ↓
+  Orchestrator (fresh session):
+    1. health_check()
+    2. get_orchestrator_instructions(orch_id, tenant_key)
+       → Gets: project context, vision, agent templates list
+    3. Analyzes requirements
+    4. Creates mission plan
+    5. update_project_mission(project_id, mission)
+    6. spawn_agent_job() for each specialist
+       → Creates jobs in "waiting" status
+    7. send_message(broadcast: "STAGING_COMPLETE")
+                      ↓
+  Output: Mission saved in DB, N agent jobs created (status: "waiting")
+  UI: "Launch Jobs" button appears → navigates to {} IMPLEMENT dashboard
+
+  Stage 2: IMPLEMENTATION ({} IMPLEMENT Tab / Dashboard)
+
+  User: Clicks play (>) on Orchestrator card → Copies implementation prompt
+  User: Pastes into Claude Code terminal (FRESH SESSION - worst case)
+                      ↓
+  Orchestrator (assumes fresh, but might be same session):
+    "Hey, you are orchestrator {orch_id, project_id, tenant_key}
+     You have PREVIOUSLY:
+     - Created a project mission
+     - Spawned agents and assigned each a job
+
+     If you need to re-read mission: {mcp_call_to_get_mission}
+     If you need more context: get_orchestrator_instructions(...)
+
+     YOUR JOB NOW:
+     1. Create TODO list of agents to launch
+     2. Update dashboard with task count: report_progress(...)
+     3. For each agent, spawn via Task tool:
+        Task(
+          subagent_type='{agent_type}',  // MUST match .claude/agents/{agent_type}.md
+          prompt='You are {agent_name}.
+                  Call get_agent_mission(job_id=\"{job_id}\", tenant_key=\"{tenant_key}\")
+                  to fetch your mission and begin execution.'
+        )
+     4. Monitor progress: receive_messages(), get_workflow_status()
+     5. When all complete: complete_job()"
+                      ↓
+  Each Task subagent (in hidden subprocess):
+    1. get_agent_mission(job_id, tenant_key)
+       → Gets mission + full_protocol (6-phase lifecycle)
+       → Transitions job from "waiting" → "working"
+    2. Executes work per mission
+    3. report_progress() for dashboard updates
+    4. send_message() to orchestrator
+    5. complete_job() OR report_error() (→ "completed"/"failed"/"blocked")
+
+  ---
+  Agent Job States (from your answer to Q3)
+
+  waiting → working → completed
+                   ↘ failed
+                   ↘ blocked
+
+  - waiting: Created by spawn_agent_job() in Stage 1
+  - working: Transitioned by get_agent_mission() first call
+  - completed/failed/blocked: Set by agent via MCP tools
+
+  Belt-and-suspenders: State transition instructions are in:
+  1. Implementation prompt (tells agent to call get_agent_mission)
+  2. .claude/agents/{agent_type}.md template (agent behavior)
+
+  ---
+  What the Implementation Prompt Should Contain
+
+  Based on your description, the Stage 2 prompt should be:
+
+  # GiljoAI Orchestrator - IMPLEMENTATION PHASE
+
+  ## IDENTITY
+  - Orchestrator ID: {orch_id}
+  - Project ID: {project_id}
+  - Tenant Key: {tenant_key}
+  - Mode: Claude Code CLI (Task Tool Spawning)
+
+  ## CONTEXT
+  You have PREVIOUSLY completed staging:
+  - Created project mission
+  - Spawned {N} specialist agents
+  - Each agent has a job in "waiting" status
+
+  ## REFRESH CONTEXT (if needed)
+  - Re-read mission: The mission you created is stored in the project
+  - Full context: get_orchestrator_instructions('{orch_id}', '{tenant_key}')
+
+  ## YOUR OBJECTIVE
+  Launch all specialist agents to implement the project.
+
+  ## AGENT JOBS TO LAUNCH
+  | Agent Name | Agent Type | Job ID |
+  |------------|------------|--------|
+  | {agent_name_1} | {agent_type_1} | {job_id_1} |
+  | {agent_name_2} | {agent_type_2} | {job_id_2} |
+  ...
+
+  ## EXECUTION STEPS
+
+  ### Step 1: Plan
+  Create a TODO list. Update dashboard:
+  report_progress(job_id='{orch_job_id}', progress={
+    "mode": "todo",
+    "total_steps": {N},
+    "completed_steps": 0,
+    "current_step": "Launching agents"
+  })
+
+  ### Step 2: Launch Each Agent via Task Tool
+  For each agent above:
+  Task(
+    subagent_type="{agent_type}",  // MUST match template filename exactly
+    prompt="You are {agent_name} for GiljoAI project.
+            Call get_agent_mission(job_id='{job_id}', tenant_key='{tenant_key}')
+            to fetch your mission and begin execution."
+  )
+
+  CRITICAL: subagent_type MUST be exact template name (e.g., "implementer", "tester")
+           NOT descriptive names (e.g., "Folder Structure Implementer")
+
+  ### Step 3: Monitor Progress
+  - receive_messages(agent_id='orchestrator')
+  - get_workflow_status(project_id='{project_id}', tenant_key='{tenant_key}')
+
+  ### Step 4: Complete
+  When all agents report completion:
+  complete_job(job_id='{orch_job_id}', result={"summary": "...", "agents_completed": N})
+
+  ## MCP TOOLS AVAILABLE
+  - get_orchestrator_instructions() - Refresh full context
+  - report_progress() - Update dashboard
+  - receive_messages() - Check agent messages
+  - get_workflow_status() - Monitor all agents
+  - complete_job() - Mark orchestrator done
+
+  Begin by creating your TODO plan.
+
+  ---
+  Questions Answered Summary
+
+  | Q   | Your Answer              | My Understanding                                                            |
+  |-----|--------------------------|-----------------------------------------------------------------------------|
+  | Q1  | Fresh session worst case | Implementation prompt must be self-contained with IDs/keys                  |
+  | Q2  | User copy/paste only     | Server cannot push to terminal - web-driven architecture                    |
+  | Q3  | States managed by agents | get_agent_mission() transitions waiting→working; agents manage other states |
+  | Q4  | {} IMPLEMENT is nav tab  | Dashboard with agent cards, play (>) button copies prompt                   |
+  | Q5  | Dashboard exists         | Agent cards with status columns, icons; CLI mode vs Multi-terminal toggle   |
+
+  ---
+  Next Step: Should I update Handover 0337?
+
+  The handover I created earlier has the right structure but I should update it with:
+  1. The exact implementation prompt format above
+  2. Clarification that (>) play button = copy prompt
+  3. Fresh session assumption
+  4. Reference to mission re-fetch capability
+  5. Multi-terminal mode behavior for (>) on each agent card
+
+  Want me to update 0337 with these details?
