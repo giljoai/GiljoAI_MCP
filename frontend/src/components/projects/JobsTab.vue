@@ -590,8 +590,31 @@ function shouldShowCopyButton(agent) {
  */
 async function handlePlay(agent) {
   try {
-    // Handover 0253: Orchestrator uses UNIVERSAL prompt from LaunchTab
+    // Handover 0337: CLI mode implementation prompt for orchestrator
     if (agent.agent_type === 'orchestrator') {
+      // CLI mode: Generate implementation prompt
+      if (props.project?.execution_mode === 'claude_code_cli') {
+        try {
+          const response = await api.get(`/api/prompts/implementation/${props.project.id}`)
+          const prompt = response.data.prompt
+          await navigator.clipboard.writeText(prompt)
+          showToast({
+            message: `Implementation prompt copied! (${response.data.agent_count} agents ready)`,
+            type: 'success',
+            duration: 5000
+          })
+        } catch (error) {
+          const errorMsg = error.response?.data?.detail || 'Failed to generate implementation prompt'
+          showToast({
+            message: errorMsg,
+            type: 'error',
+            duration: 6000
+          })
+        }
+        return
+      }
+
+      // Multi-terminal mode: Redirect to Launch tab
       showToast({
         message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
         type: 'info',
