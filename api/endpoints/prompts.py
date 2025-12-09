@@ -698,3 +698,152 @@ async def get_execution_prompt(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate execution prompt: {e!s}"
         )
+
+
+@router.get("/implementation/{project_id}")
+async def get_implementation_prompt(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Generate implementation prompt for CLI mode projects (Handover 0337 - Task 1).
+
+    This endpoint generates the implementation phase prompt for Claude Code CLI mode.
+    After staging (where orchestrator plans and spawns agent jobs), the user pastes
+    this implementation prompt to have the orchestrator spawn agents via Task tool.
+
+    Requirements:
+    - Project must exist and be in CLI mode (execution_mode = 'claude_code_cli')
+    - Active orchestrator job must exist (status = 'working')
+    - At least one spawned agent job must exist (status in ['waiting', 'working'])
+    - Multi-tenant isolation enforced
+
+    Process:
+    1. Validate project exists and belongs to tenant
+    2. Validate CLI mode execution
+    3. Fetch active orchestrator job
+    4. Fetch spawned agent jobs
+    5. Generate implementation prompt via ThinClientPromptGenerator
+    6. Return prompt with metadata
+
+    Args:
+        project_id: Project UUID to generate implementation prompt for
+        current_user: Authenticated user (ensures tenant isolation)
+        db: Database session
+
+    Returns:
+        dict: Implementation prompt response with:
+            - prompt: Implementation prompt for orchestrator to spawn agents
+            - orchestrator_job_id: Orchestrator job UUID
+            - agent_count: Number of spawned agents ready to execute
+
+    Raises:
+        HTTPException 404: Project not found or no active orchestrator
+        HTTPException 400: Not CLI mode or no spawned agents
+        HTTPException 403: Tenant isolation violation
+        HTTPException 500: Prompt generation error
+    """
+    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+    try:
+        # 1. Fetch project with multi-tenant filtering
+        project_stmt = select(Project).where(
+            Project.id == project_id,
+            Project.tenant_key == current_user.tenant_key
+        )
+        project_result = await db.execute(project_stmt)
+        project = project_result.scalar_one_or_none()
+
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found or not accessible"
+            )
+
+        # 2. Validate CLI mode
+        if project.execution_mode != 'claude_code_cli':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode."
+            )
+
+        # 3. Fetch active orchestrator job (status = 'working')
+        orchestrator_stmt = select(MCPAgentJob).where(
+            MCPAgentJob.project_id == project_id,
+            MCPAgentJob.tenant_key == current_user.tenant_key,
+            MCPAgentJob.agent_type == 'orchestrator',
+            MCPAgentJob.status == 'working'
+        ).order_by(MCPAgentJob.created_at.desc())
+
+        orchestrator_result = await db.execute(orchestrator_stmt)
+        orchestrator_job = orchestrator_result.scalar_one_or_none()
+
+        if not orchestrator_job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active orchestrator found for this project. Please run staging first."
+            )
+
+        # 4. Fetch spawned agent jobs (waiting or working status)
+        agent_jobs_stmt = select(MCPAgentJob).where(
+            MCPAgentJob.spawned_by == orchestrator_job.job_id,
+            MCPAgentJob.tenant_key == current_user.tenant_key,
+            MCPAgentJob.status.in_(['waiting', 'working'])
+        ).order_by(MCPAgentJob.created_at)
+
+        agent_jobs_result = await db.execute(agent_jobs_stmt)
+        agent_jobs = agent_jobs_result.scalars().all()
+
+        if not agent_jobs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No agent jobs spawned yet. Please run staging first to create agent jobs."
+            )
+
+        # 5. Generate implementation prompt using existing generator method
+        generator = ThinClientPromptGenerator(db, current_user.tenant_key)
+
+        # Build agent jobs list for prompt generator
+        agent_jobs_list = [
+            {
+                'job_id': agent.job_id,
+                'agent_type': agent.agent_type,
+                'agent_name': agent.agent_name or agent.agent_type,
+                'status': agent.status,
+                'mission': agent.mission or '(No mission assigned)'
+            }
+            for agent in agent_jobs
+        ]
+
+        # Call the existing implementation prompt generator
+        prompt = generator._build_claude_code_execution_prompt(
+            orchestrator_id=orchestrator_job.job_id,
+            project=project,
+            agent_jobs=agent_jobs
+        )
+
+        logger.info(
+            f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "
+            f"orchestrator={orchestrator_job.job_id}, agents={len(agent_jobs)}, "
+            f"user={current_user.username}"
+        )
+
+        # 6. Return implementation prompt response
+        return {
+            "prompt": prompt,
+            "orchestrator_job_id": orchestrator_job.job_id,
+            "agent_count": len(agent_jobs)
+        }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+
+    except Exception as e:
+        # Unexpected error during generation
+        logger.exception(f"[IMPLEMENTATION PROMPT] Generation failed for project={project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate implementation prompt: {e!s}"
+        )
