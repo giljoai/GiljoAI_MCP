@@ -176,6 +176,18 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         return
       }
 
+      // CRITICAL: Reset staging state FIRST when switching to a different project
+      // This ensures complete project isolation - state from Project A never leaks to Project B
+      // Fix for: Button states persisting across projects (Handover 0335)
+      const isNewProject = !this.currentProject || this.currentProject.id !== project.id
+      if (isNewProject) {
+        this.isStaging = false
+        this.stagingComplete = false
+        this.isLaunched = false
+        this.messages = []
+        console.info(`[ProjectTabs] Switching to project "${project.name || project.id}" - reset staging state`)
+      }
+
       // Set project data
       this.currentProject = project
       this.orchestratorMission = project.mission || ''
@@ -199,12 +211,13 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       // - If orchestrator is beyond waiting state, project was launched
       this.isLaunched = hasNonOrchestratorAgents || hasActiveOrchestrator
 
-      // Set stagingComplete if we have specialist agents (staging produced agents)
-      // This ensures persistence across page reloads
+      // Set stagingComplete based on THIS project's actual state (not inherited from previous)
+      // This ensures persistence across page reloads while maintaining project isolation
       if (hasNonOrchestratorAgents) {
         this.stagingComplete = true
         console.info('[ProjectTabs] Specialist agents found - staging marked complete')
       }
+      // Note: stagingComplete stays false (from reset above) if project has no specialist agents
 
       // Log state for debugging (production-safe)
       if (this.isLaunched) {
