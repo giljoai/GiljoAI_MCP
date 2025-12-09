@@ -55,6 +55,13 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
     if template.user_instructions:
         merged_content = f"{merged_content}\n\n{template.user_instructions}"
 
+    # Handover 0335: Compute may_be_stale flag
+    may_be_stale = (
+        template.updated_at is not None
+        and template.last_exported_at is not None
+        and template.updated_at > template.last_exported_at
+    )
+
     return TemplateResponse(
         id=template.id,
         tenant_key=template.tenant_key,
@@ -76,6 +83,9 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
         is_active=template.is_active,
         created_at=template.created_at,
         updated_at=template.updated_at,
+        # Handover 0335: Export tracking fields
+        last_exported_at=template.last_exported_at,
+        may_be_stale=may_be_stale,
         category=template.category,
         project_type=template.project_type,
         variables=template.variables or [],
