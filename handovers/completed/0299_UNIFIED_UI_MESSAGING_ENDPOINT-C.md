@@ -1,9 +1,27 @@
 # Handover 0299: Unified UI Messaging Endpoint
 
-## Status: READY FOR IMPLEMENTATION
+## Status: COMPLETE
 ## Priority: HIGH
 ## Type: Backend + Frontend Refactor
 ## Depends On: 0295 (Messaging Contract)
+
+---
+
+## Completion Summary (2025-12-07)
+
+**Work Done:**
+- Unified messaging architecture implemented via `MessageService`
+- Both remote agents (HTTP MCP) and web UI use same backend
+- REST endpoint `/api/v1/messages/send` working
+- WebSocket events firing correctly
+- Messages appear in database correctly
+
+**Architecture:**
+- `MessageService` is single source of truth for ALL messaging
+- `messages` table + JSONB mirror + WebSocket events
+- No more broken 500 errors from old endpoint
+
+---
 
 ---
 

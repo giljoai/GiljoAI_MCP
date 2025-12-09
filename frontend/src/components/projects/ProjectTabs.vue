@@ -67,6 +67,7 @@
           @edit-description="emit('edit-description')"
           @edit-mission="emit('edit-mission', $event)"
           @edit-agent-mission="emit('edit-agent-mission', $event)"
+          @execution-mode-changed="handleExecutionModeChanged"
         />
       </v-window-item>
 
@@ -423,6 +424,19 @@ async function copyPromptToClipboard(text) {
   }
 
   return false
+}
+
+/**
+ * Handle execution mode changed from LaunchTab (Handover 0335)
+ * Updates local project prop to ensure handleStageProject uses fresh value
+ */
+function handleExecutionModeChanged(newMode) {
+  console.log('[ProjectTabs] Execution mode changed to:', newMode)
+  // Mutate the prop's execution_mode to sync with backend
+  // This ensures handleStageProject() uses the correct mode
+  if (props.project) {
+    props.project.execution_mode = newMode
+  }
 }
 
 /**
