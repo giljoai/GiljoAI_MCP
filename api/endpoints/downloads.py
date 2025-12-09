@@ -372,6 +372,30 @@ async def download_agent_templates(
     # Create ZIP archive
     zip_bytes = create_zip_archive(files)
 
+    # Handover 0335: Update last_exported_at and emit WebSocket event (authenticated users only)
+    if current_user and selected:
+        from datetime import datetime, timezone
+
+        from api.websocket import ws_manager
+
+        export_timestamp = datetime.now(timezone.utc)
+
+        # Update last_exported_at for all exported templates
+        for template in selected:
+            template.last_exported_at = export_timestamp
+
+        await db.commit()
+
+        # Emit WebSocket event for real-time UI update
+        await ws_manager.broadcast_templates_exported(
+            tenant_key=current_user.tenant_key,
+            template_ids=[str(t.id) for t in selected],
+            export_type="manual_zip",
+            exported_at=export_timestamp,
+        )
+
+        logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
+
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
     logger.info(
         f"Agent templates ZIP generated ({user_info}): {len(files)} files (capped to distinct roles), {len(zip_bytes)} bytes"
@@ -758,6 +782,7 @@ async def setup_slash_commands_rest(
 async def import_personal_agents_rest(
     request: Request,
     current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """
     REST endpoint wrapper for gil_import_personalagents MCP tool.
@@ -765,7 +790,9 @@ async def import_personal_agents_rest(
     """
     try:
         import os
+        from datetime import datetime, timezone
 
+        from api.websocket import ws_manager
         from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -791,6 +818,35 @@ async def import_personal_agents_rest(
             _server_url=server_url,
         )
 
+        # Handover 0335: Update last_exported_at and emit WebSocket event on success
+        if result.get("success"):
+            export_timestamp = datetime.now(timezone.utc)
+
+            # Query active templates for this tenant
+            stmt = (
+                select(AgentTemplate)
+                .where(AgentTemplate.tenant_key == current_user.tenant_key)
+                .where(AgentTemplate.is_active == True)
+            )
+            templates_result = await db.execute(stmt)
+            templates = templates_result.scalars().all()
+
+            if templates:
+                # Update last_exported_at for all templates
+                for template in templates:
+                    template.last_exported_at = export_timestamp
+                await db.commit()
+
+                # Emit WebSocket event for real-time UI update
+                await ws_manager.broadcast_templates_exported(
+                    tenant_key=current_user.tenant_key,
+                    template_ids=[str(t.id) for t in templates],
+                    export_type="personal_agents",
+                    exported_at=export_timestamp,
+                )
+
+                logger.info(f"Updated last_exported_at for {len(templates)} templates (personal agents export)")
+
         return result
 
     except Exception as e:
@@ -802,6 +858,7 @@ async def import_personal_agents_rest(
 async def import_product_agents_rest(
     request: Request,
     current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """
     REST endpoint wrapper for gil_import_productagents MCP tool.
@@ -809,7 +866,9 @@ async def import_product_agents_rest(
     """
     try:
         import os
+        from datetime import datetime, timezone
 
+        from api.websocket import ws_manager
         from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -834,6 +893,35 @@ async def import_product_agents_rest(
             _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
             _server_url=server_url,
         )
+
+        # Handover 0335: Update last_exported_at and emit WebSocket event on success
+        if result.get("success"):
+            export_timestamp = datetime.now(timezone.utc)
+
+            # Query active templates for this tenant
+            stmt = (
+                select(AgentTemplate)
+                .where(AgentTemplate.tenant_key == current_user.tenant_key)
+                .where(AgentTemplate.is_active == True)
+            )
+            templates_result = await db.execute(stmt)
+            templates = templates_result.scalars().all()
+
+            if templates:
+                # Update last_exported_at for all templates
+                for template in templates:
+                    template.last_exported_at = export_timestamp
+                await db.commit()
+
+                # Emit WebSocket event for real-time UI update
+                await ws_manager.broadcast_templates_exported(
+                    tenant_key=current_user.tenant_key,
+                    template_ids=[str(t.id) for t in templates],
+                    export_type="product_agents",
+                    exported_at=export_timestamp,
+                )
+
+                logger.info(f"Updated last_exported_at for {len(templates)} templates (product agents export)")
 
         return result
 
