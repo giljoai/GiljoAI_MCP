@@ -4,8 +4,12 @@ Integration Tests for Orchestrator Prompt Quality (Handover 0336)
 Verifies prompt quality fixes for:
 1. Tech stack character-by-character encoding bug
 2. Token estimation accuracy mismatch
-3. Vision document depth configuration
-4. CLI mode rules inclusion
+3. CLI mode rules inclusion
+
+NOTE: Vision depth configuration was REMOVED (Handover 0336 rollback)
+- Vision chunks are sized at ~25K tokens on UPLOAD for AI ingestion
+- Full context is ALWAYS preserved at runtime (no truncation)
+- Users cannot arbitrarily cut context depth (too risky for quality)
 
 These tests prevent regression of critical prompt quality issues that
 affect orchestrator performance and user trust in token budgeting.
@@ -285,9 +289,7 @@ class TestTokenEstimationAccuracy:
                         "vision_documents": 2,  # IMPORTANT - include vision
                         "tech_stack": 1,
                     },
-                    "depth_config": {
-                        "vision_chunking": "moderate"  # 17,500 token limit
-                    },
+                    "depth_config": {},  # No vision_chunking - full context always
                 },
             )
             session.add(orchestrator)
@@ -326,40 +328,44 @@ class TestTokenEstimationAccuracy:
 
 
 @pytest.mark.asyncio
-class TestVisionDepthConfiguration:
+class TestFullContextPolicy:
     """
-    Test 3: Vision Document Depth Configuration
+    Test 3: Full Context Policy (Replaces Vision Depth Configuration)
 
-    Verifies vision document is truncated based on vision_chunking depth.
-    Tests that different depth levels respect configured token budgets.
+    Vision depth configuration was REMOVED (Handover 0336 rollback).
+    - Vision chunks are sized at ~25K tokens on UPLOAD for AI ingestion
+    - Full context is ALWAYS preserved at runtime (no truncation)
+    - Users cannot arbitrarily cut context depth (too risky for quality)
+
+    This test verifies that vision documents are included in FULL.
     """
 
-    @pytest.mark.xfail(reason="Bug 0336-3: Vision depth may include more content than expected (investigation needed)")
-    async def test_vision_document_respects_depth_setting(self, db_manager):
-        """Verify vision document is truncated based on vision_chunking depth"""
+    async def test_vision_document_included_in_full(self, db_manager):
+        """Verify vision document is included fully without truncation"""
         tenant_key = f"test_tenant_{uuid4().hex[:8]}"
 
         async with db_manager.get_session_async() as session:
             # Create product
             product = Product(
                 tenant_key=tenant_key,
-                name="Test Product Vision Depth",
-                description="Testing vision depth configuration",
+                name="Test Product Full Vision",
+                description="Testing full context policy",
                 config_data={"tech_stack": {"languages": ["Python"]}},
                 is_active=True,
             )
             session.add(product)
             await session.flush()
 
-            # Create LARGE vision document (~50K tokens)
+            # Create vision document with known content
             vision_content = (
-                "# Massive Vision Document\n\n" + "This is a very long vision document. " * 5000  # ~50K tokens
+                "# Product Vision\n\n"
+                "This is the full vision document content that must be preserved. " * 100
             )
 
             vision_doc = VisionDocument(
                 tenant_key=tenant_key,
                 product_id=product.id,
-                document_name="Large Vision",
+                document_name="Full Vision",
                 document_type="vision",
                 vision_document=vision_content,
                 storage_type="inline",
@@ -373,9 +379,9 @@ class TestVisionDepthConfiguration:
             project = Project(
                 tenant_key=tenant_key,
                 product_id=product.id,
-                name="Test Project Vision Depth",
-                description="Test project for vision depth",
-                mission="Build test project for validating vision document depth configuration",
+                name="Test Project Full Vision",
+                description="Test project for full context",
+                mission="Build test project for validating full context policy",
                 status="active",
                 context_budget=150000,
                 context_used=0,
@@ -383,23 +389,21 @@ class TestVisionDepthConfiguration:
             session.add(project)
             await session.flush()
 
-            # Create orchestrator job with LIGHT vision depth
+            # Create orchestrator job - NO vision_chunking in depth_config
             orchestrator_id = str(uuid4())
             orchestrator = MCPAgentJob(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
                 agent_type="orchestrator",
-                mission="Test orchestrator for vision depth",
+                mission="Test orchestrator for full context",
                 status="waiting",
                 context_budget=150000,
                 context_used=0,
                 instance_number=1,
                 job_metadata={
-                    "field_priorities": {"vision_documents": 2},
-                    "depth_config": {
-                        "vision_chunking": "light"  # 10,000 token limit
-                    },
+                    "field_priorities": {"vision_documents": 2},  # Include vision
+                    "depth_config": {},  # No depth limits - full context always
                 },
             )
             session.add(orchestrator)
@@ -413,27 +417,22 @@ class TestVisionDepthConfiguration:
             orchestrator_id=orchestrator_id, tenant_key=tenant_key
         )
 
-        # ASSERT: Mission should be truncated to fit light budget (~10K tokens = ~40K chars)
+        # ASSERT: Full vision content should be present
         mission = result["mission"]
-        mission_chars = len(mission)
 
-        # Light vision should limit to ~10K tokens (40K chars)
-        # Allow some overhead for formatting, but should be significantly truncated
-        max_expected_chars = 40000 * 1.5  # 50% overhead for formatting
-
-        assert mission_chars <= max_expected_chars, (
-            f"Vision content not truncated properly: "
-            f"{mission_chars} chars > {max_expected_chars} chars (expected ~40K for 10K token budget)"
+        # Key phrase from vision should be present
+        assert "full vision document content that must be preserved" in mission, (
+            "Full vision content should be included without truncation"
         )
 
-        # Verify truncation marker is present
-        assert "[... vision truncated" in mission.lower(), (
-            "Truncation marker should be present when vision exceeds budget"
+        # Should NOT have truncation marker
+        assert "[... vision truncated" not in mission.lower(), (
+            "Full context policy: no truncation markers should appear"
         )
 
         print(
-            f"\n[VISION_DEPTH] Light depth successfully limited mission to {mission_chars} chars "
-            f"(~{mission_chars // 4} tokens)"
+            f"\n[FULL_CONTEXT] Vision document included in full: "
+            f"{len(mission)} chars (no truncation)"
         )
 
 
@@ -546,7 +545,7 @@ class TestPromptQualityRegression:
 
     @pytest.mark.xfail(reason="Bug 0336-2: Token estimation inaccuracy affects comprehensive test")
     async def test_comprehensive_prompt_quality_check(self, db_manager):
-        """Comprehensive test: Tech stack + token estimation + vision depth + CLI mode"""
+        """Comprehensive test: Tech stack + token estimation + full context + CLI mode"""
         tenant_key = f"test_tenant_{uuid4().hex[:8]}"
 
         async with db_manager.get_session_async() as session:
@@ -573,7 +572,7 @@ class TestPromptQualityRegression:
                 product_id=product.id,
                 document_name="Test Vision",
                 document_type="vision",
-                vision_document="# Vision\n\n" + "Product vision content. " * 1000,
+                vision_document="# Vision\n\n" + "Product vision content that should be fully preserved. " * 100,
                 storage_type="inline",
                 is_active=True,
                 display_order=1,
@@ -595,7 +594,7 @@ class TestPromptQualityRegression:
             session.add(project)
             await session.flush()
 
-            # Create orchestrator job with CLI mode
+            # Create orchestrator job with CLI mode - NO vision_chunking (full context)
             orchestrator_id = str(uuid4())
             orchestrator = MCPAgentJob(
                 job_id=orchestrator_id,
@@ -612,7 +611,7 @@ class TestPromptQualityRegression:
                         "tech_stack": 1,
                         "vision_documents": 2,
                     },
-                    "depth_config": {"vision_chunking": "moderate"},
+                    "depth_config": {},  # No vision_chunking - full context policy
                     "execution_mode": "claude_code_cli",
                 },
             )
@@ -645,9 +644,9 @@ class TestPromptQualityRegression:
             f"Token estimation accuracy within 20%: {discrepancy_ratio:.1%}"
         )
 
-        # 3. Vision depth respected
-        # Moderate depth should limit to ~17,500 tokens (~70K chars)
-        assert len(mission) <= 70000 * 1.5, "Vision depth should limit mission size"
+        # 3. Full context preserved (vision document included without truncation)
+        assert "should be fully preserved" in mission, "Full context should be preserved"
+        assert "[... vision truncated" not in mission.lower(), "No truncation markers in full context"
 
         # 4. CLI mode rules included
         assert "agent_spawning_constraint" in result, "CLI mode constraint present"
@@ -657,7 +656,7 @@ class TestPromptQualityRegression:
             f"\n[COMPREHENSIVE] All quality checks passed:\n"
             f"  - Tech stack: Correct formatting ✓\n"
             f"  - Token estimation: {(1 - discrepancy_ratio) * 100:.1f}% accurate ✓\n"
-            f"  - Vision depth: {len(mission)} chars ✓\n"
+            f"  - Full context: {len(mission)} chars (no truncation) ✓\n"
             f"  - CLI mode: Agent constraint present ✓"
         )
 
