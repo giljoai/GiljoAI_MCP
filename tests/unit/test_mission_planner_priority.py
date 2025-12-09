@@ -64,7 +64,11 @@ class TestMissionPlannerPriority:
         product.id = "product_full_config"
         product.tenant_key = "tenant_test"
         product.name = "Full Config Product"
-        product.vision_document = "Test vision document content"
+        vision_text = "Test vision document content"
+        product.vision_document = vision_text
+        product.primary_vision_text = vision_text
+        product.primary_vision_path = None
+        product.vision_documents = []
         product.vision_type = "inline"
         product.chunked = False
 
@@ -91,6 +95,12 @@ class TestMissionPlannerPriority:
             },
         }
 
+        # Add product_memory for history extraction
+        product.product_memory = {
+            "sequential_history": [],
+            "git_integration": {"enabled": False}
+        }
+
         return product
 
     @pytest.fixture
@@ -104,7 +114,11 @@ class TestMissionPlannerPriority:
         product.id = "product_minimal"
         product.tenant_key = "tenant_test"
         product.name = "Minimal Config Product"
-        product.vision_document = "Minimal test vision"
+        vision_text = "Minimal test vision"
+        product.vision_document = vision_text
+        product.primary_vision_text = vision_text
+        product.primary_vision_path = None
+        product.vision_documents = []
         product.vision_type = "inline"
         product.chunked = False
 
@@ -113,6 +127,12 @@ class TestMissionPlannerPriority:
             "tech_stack": {"languages": ["Python"], "backend": ["FastAPI"], "frontend": ["Vue 3"]},
             "architecture": {"pattern": "Monolithic"},
             "features": {"core": ["Basic CRUD"]},
+        }
+
+        # Add product_memory for history extraction
+        product.product_memory = {
+            "sequential_history": [],
+            "git_integration": {"enabled": False}
         }
 
         return product
@@ -128,10 +148,20 @@ class TestMissionPlannerPriority:
         product.id = "product_no_config"
         product.tenant_key = "tenant_test"
         product.name = "No Config Product"
-        product.vision_document = "Test vision without config"
+        vision_text = "Test vision without config"
+        product.vision_document = vision_text
+        product.primary_vision_text = vision_text
+        product.primary_vision_path = None
+        product.vision_documents = []
         product.vision_type = "inline"
         product.chunked = False
         product.config_data = None
+
+        # Add product_memory for history extraction
+        product.product_memory = {
+            "sequential_history": [],
+            "git_integration": {"enabled": False}
+        }
 
         return product
 
