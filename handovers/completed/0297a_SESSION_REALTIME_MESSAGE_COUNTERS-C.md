@@ -127,7 +127,8 @@ Frontend: websocketIntegrations.js listeners
 
 - `frontend/src/stores/projectTabs.js` (lines 574-660) - New handlers
 - `frontend/src/stores/websocketIntegrations.js` (lines 211-246) - Global listeners
-- `handovers/0297_UI_MESSAGE_STATUS_AND_JOB_SIGNALING.md` - Parent handover with remaining work
+- `handovers/completed/0297_UI_MESSAGE_STATUS_AND_JOB_SIGNALING-C.md` - Parent handover (archived)
+- `handovers/0334_HTTP_ONLY_MCP_CONSOLIDATION.md` - Steps column fix (remaining from 0297)
 
 ---
 

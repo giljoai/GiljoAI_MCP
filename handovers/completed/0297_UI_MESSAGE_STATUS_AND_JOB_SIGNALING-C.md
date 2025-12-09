@@ -1,9 +1,31 @@
 # Handover 0297: UI Message Status & Job Signaling Alignment
 
-## Status: IN PROGRESS (0297a complete)
+## Status: MOSTLY COMPLETE (Remaining work consolidated into 0334)
 ## Priority: HIGH
 ## Type: Frontend + API Integration
 ## Depends On: 0295 (Messaging contract), 0296 (Template behavior)
+
+---
+
+## Completion Summary (2025-12-07)
+
+**What's Done:**
+- Backend `report_progress(mode="todo")` implemented (lines 788-815 in orchestration_service.py)
+- Persists to `job_metadata.todo_steps`
+- `mission_acknowledged_at` field exists and is set
+- WebSocket events working (`job:mission_acknowledged`, `agent:status_changed`)
+- Message counters working via 0297a
+- Job Acknowledged column working (checkmark appears)
+
+**Remaining Gap (Consolidated into 0334):**
+- Steps column UI data format mismatch
+  - API returns: `steps_total`, `steps_completed` (flat)
+  - UI expects: `agent.steps.completed`, `agent.steps.total` (nested)
+  - Fix: Add transformation in `frontend/src/stores/projectTabs.js`
+
+**See Handover 0334** for the Steps column fix implementation.
+
+---
 
 ---
 

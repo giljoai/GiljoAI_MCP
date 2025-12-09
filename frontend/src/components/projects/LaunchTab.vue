@@ -179,6 +179,7 @@ const props = defineProps({
 const emit = defineEmits([
   'edit-description',
   'edit-mission',
+  'execution-mode-changed', // Handover 0335: Notify parent when execution mode changes
   'edit-agent-mission',
 ])
 
@@ -375,6 +376,10 @@ async function toggleExecutionMode() {
     const projectId = props.project.id
     const { api } = await import('@/services/api')
     await api.projects.update(projectId, { execution_mode: newMode })
+
+    // Handover 0335: Emit event so parent can update project prop
+    // This ensures ProjectTabs.handleStageProject() uses fresh execution_mode
+    emit('execution-mode-changed', newMode)
 
     showToastNotification({
       message: newValue
