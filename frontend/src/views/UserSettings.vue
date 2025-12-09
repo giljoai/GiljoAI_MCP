@@ -305,7 +305,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, provide, onMounted, onUnmounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
@@ -338,6 +338,11 @@ const toggling = ref(false)
 // Git Integration state (system-level like Serena)
 // This state is shared with ContextPriorityConfig via props
 const gitEnabled = ref(false)
+
+// Handover 0335: Provide template export event data to child components
+// This allows TemplateManager to receive export events even when not actively mounted
+const templateExportEvent = ref(null)
+provide('templateExportEvent', templateExportEvent)
 const showGitAdvanced = ref(false)
 const gitConfig = ref({
   use_in_prompts: false,
@@ -501,12 +506,18 @@ onMounted(async () => {
   // ContextPriorityConfig tab is not actively mounted
   on('product:git:settings:changed', handleGitIntegrationUpdate)
   console.log('[USER SETTINGS] WebSocket listener registered for git integration updates')
+
+  // Handover 0335: Listen for template export events at parent level
+  // This ensures events are captured even when TemplateManager tab is not active
+  on('template:exported', handleTemplateExportEvent)
+  console.log('[USER SETTINGS] WebSocket listener registered for template export events')
 })
 
 onUnmounted(() => {
-  // Clean up WebSocket listener to prevent memory leaks
+  // Clean up WebSocket listeners to prevent memory leaks
   off('product:git:settings:changed', handleGitIntegrationUpdate)
-  console.log('[USER SETTINGS] WebSocket listener cleaned up')
+  off('template:exported', handleTemplateExportEvent) // Handover 0335
+  console.log('[USER SETTINGS] WebSocket listeners cleaned up')
 })
 
 // Git Integration Functions (system-level like Serena)
@@ -598,6 +609,39 @@ function handleGitIntegrationUpdate(data) {
   console.log('[USER SETTINGS] Git integration updated via WebSocket:', {
     enabled: newState,
     timestamp: new Date().toISOString(),
+  })
+}
+
+/**
+ * Handover 0335: Handle template export WebSocket events
+ * This handler is at parent level to ensure it fires regardless of
+ * which tab is currently active. The event data is provided to TemplateManager
+ * via Vue's provide/inject system.
+ *
+ * @param {Object} data - WebSocket event data (already normalized by websocket store)
+ * @param {string} data.tenant_key - Multi-tenant isolation key
+ * @param {string[]} data.template_ids - List of exported template UUIDs
+ * @param {string} data.export_type - Export type (manual_zip, personal_agents, product_agents)
+ * @param {string} data.exported_at - ISO timestamp of export
+ */
+function handleTemplateExportEvent(data) {
+  console.log('[USER SETTINGS] Received template:exported event:', data)
+
+  if (!data || !data.template_ids || !data.exported_at) {
+    console.warn('[USER SETTINGS] Invalid template export event - missing required fields:', data)
+    return
+  }
+
+  // Update the provided ref so TemplateManager can react to it
+  // Include a unique ID to ensure Vue detects the change even if same templates
+  templateExportEvent.value = {
+    ...data,
+    _eventId: Date.now(), // Force reactivity
+  }
+
+  console.log('[USER SETTINGS] Template export event forwarded to child components:', {
+    templateCount: data.template_ids?.length || 0,
+    exportType: data.export_type,
   })
 }
 </script>

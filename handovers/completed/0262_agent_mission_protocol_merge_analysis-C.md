@@ -1,6 +1,30 @@
 # Handover 0262: Agent Mission Protocol Merge Analysis
 
-## Status: PARTIAL DECISION / READY FOR IMPLEMENTATION (CLI SUBAGENTS)
+## Status: SUPERSEDED BY 0334 (HTTP-Only MCP Consolidation)
+
+---
+
+## Completion Summary (2025-12-07)
+
+**HTTP Path - COMPLETE:**
+- `OrchestrationService.get_agent_mission()` implements full atomic job start
+- Sets `mission_acknowledged_at` on first call
+- Transitions `waiting` → `working` status
+- Emits WebSocket events (`job:mission_acknowledged`, `agent:status_changed`)
+- Located at: `orchestration_service.py` lines 410-558
+
+**Stdio Path - REMOVED (Not Fixed):**
+- GiljoAI is HTTP-only MCP - no localhost stdio users
+- Stdio code already disabled via stubs in `__init__.py`
+- Decision: Remove instead of fix (see 0334)
+
+**Protocol Enhancement - Consolidated into 0334:**
+- `get_agent_mission()` returns raw mission, not full protocol
+- Enhancement to return `full_protocol` field moved to 0334 Task 3
+
+**See Handover 0334** for remaining implementation.
+
+---
 
 ## Context
 
