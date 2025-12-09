@@ -1045,8 +1045,16 @@ Success Criteria:
             # Format category name (capitalize first letter)
             category_label = category.replace("_", " ").capitalize()
 
-            # Join values with commas
-            values_str = ", ".join(values)
+            # Join values with commas (handle both string and list types)
+            if isinstance(values, str):
+                # Already a string - use as-is
+                values_str = values
+            elif isinstance(values, list):
+                # List of values - join with commas
+                values_str = ", ".join(str(v) for v in values)
+            else:
+                # Fallback for other types - convert to string
+                values_str = str(values)
 
             formatted_lines.append(f"**{category_label}**: {values_str}")
 
@@ -1201,9 +1209,10 @@ Success Criteria:
         # Handover 0283: Default depth configuration for backward compatibility
         if depth_config is None:
             depth_config = {
-                "memory_360": 5,              # Default: 5 projects (moderate)
-                "git_history": 20,            # Default: 20 commits (moderate)
-                "agent_templates": "full"     # Default: full descriptions
+                "memory_360": 5,  # Default: 5 projects (moderate)
+                "git_history": 20,  # Default: 20 commits (moderate)
+                "agent_templates": "full",  # Default: full descriptions
+                "vision_chunking": "moderate",  # Default: 17,500 tokens (moderate)
             }
 
         # Fix #1: Apply default field priorities when user has no config
@@ -1288,61 +1297,132 @@ Success Criteria:
 
         vision_priority = effective_priorities.get("vision_documents", 4)  # Default: EXCLUDED (user opt-in)
         if vision_priority > 0:
-            # Check if vision is chunked
-            product_has_chunks = (
-                any(doc.is_active and doc.chunked and doc.chunk_count > 0 for doc in product.vision_documents)
-                if product.vision_documents
-                else False
-            )
+            # Get vision_chunking depth setting
+            vision_chunking = depth_config.get("vision_chunking", "moderate")
 
-            if product_has_chunks:
-                # Use relevant chunks based on project description
-                async with self.db_manager.get_session_async() as session:
-                    vision_chunks = await self._get_relevant_vision_chunks(
-                        session=session,
-                        product=product,
-                        project=project,
-                        max_tokens=10000,  # Vision section token budget
-                    )
+            # Map chunking depth to max tokens (from get_vision_document.py)
+            vision_max_tokens = {
+                "none": 0,
+                "light": 10000,
+                "moderate": 17500,
+                "heavy": 24000
+            }.get(vision_chunking, 17500)
 
-                if vision_chunks:
-                    # Combine chunks into formatted section
-                    chunk_texts = [chunk["content"] for chunk in vision_chunks]
-                    vision_text = "\n\n".join(chunk_texts)
+            # Skip vision if disabled
+            if vision_max_tokens == 0:
+                logger.debug(
+                    "Vision documents excluded by depth_config (chunking=none)",
+                    extra={
+                        "field": "vision_documents",
+                        "depth_setting": vision_chunking,
+                        "operation": "build_context_with_priorities",
+                    }
+                )
+            else:
+                # Check if vision is chunked
+                product_has_chunks = (
+                    any(doc.is_active and doc.chunked and doc.chunk_count > 0 for doc in product.vision_documents)
+                    if product.vision_documents
+                    else False
+                )
 
-                    # Apply priority framing
-                    formatted_vision = self._apply_priority_framing(
-                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                        content=vision_text,
-                        priority=vision_priority,
-                        category_key="vision_documents",
-                    )
+                if product_has_chunks:
+                    # Use relevant chunks based on project description
+                    async with self.db_manager.get_session_async() as session:
+                        vision_chunks = await self._get_relevant_vision_chunks(
+                            session=session,
+                            product=product,
+                            project=project,
+                            max_tokens=vision_max_tokens,  # Use depth config instead of hardcoded 10000
+                        )
 
-                    if formatted_vision:  # Only add if not excluded (priority != 4)
-                        context_sections.append(formatted_vision)
-                    vision_tokens = self._count_tokens(formatted_vision)
-                    total_tokens += vision_tokens
-                    tokens_before_reduction += self._count_tokens(f"## Product Vision\n{product.primary_vision_text}")
+                    if vision_chunks:
+                        # Combine chunks into formatted section
+                        chunk_texts = [chunk["content"] for chunk in vision_chunks]
+                        vision_text = "\n\n".join(chunk_texts)
 
-                    logger.info(
-                        f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
-                        extra={
-                            "field": "vision_documents",  # Handover 0282: v2.0 field name
-                            "priority": vision_priority,
-                            "detail_level": "chunked",
-                            "tokens": vision_tokens,
-                            "chunks_used": len(vision_chunks),
-                            "relevance_scores": [c["relevance_score"] for c in vision_chunks],
-                        },
-                    )
+                        # Apply priority framing
+                        formatted_vision = self._apply_priority_framing(
+                            section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                            content=vision_text,
+                            priority=vision_priority,
+                            category_key="vision_documents",
+                        )
+
+                        if formatted_vision:  # Only add if not excluded (priority != 4)
+                            context_sections.append(formatted_vision)
+                        vision_tokens = self._count_tokens(formatted_vision)
+                        total_tokens += vision_tokens
+                        tokens_before_reduction += self._count_tokens(f"## Product Vision\n{product.primary_vision_text}")
+
+                        logger.info(
+                            f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
+                            extra={
+                                "field": "vision_documents",  # Handover 0282: v2.0 field name
+                                "priority": vision_priority,
+                                "detail_level": "chunked",
+                                "tokens": vision_tokens,
+                                "chunks_used": len(vision_chunks),
+                                "relevance_scores": [c["relevance_score"] for c in vision_chunks],
+                            },
+                        )
+                    else:
+                        # Chunks marked but not found - fallback to full text with truncation
+                        logger.warning(
+                            "Vision marked as chunked but no chunks returned - using full text",
+                            extra={"product_id": str(product.id), "operation": "build_context_with_priorities"},
+                        )
+                        vision_text = product.primary_vision_text
+                        if vision_text:
+                            # Truncate to max_tokens budget
+                            max_chars = vision_max_tokens * 4  # ~4 chars per token
+                            if len(vision_text) > max_chars:
+                                original_length = len(vision_text)
+                                vision_text = vision_text[:max_chars] + "\n\n[... vision truncated to fit token budget ...]"
+                                logger.info(
+                                    f"Vision truncated from {original_length} to {len(vision_text)} chars (budget: {vision_max_tokens} tokens)",
+                                    extra={
+                                        "field": "vision_documents",
+                                        "depth_setting": vision_chunking,
+                                        "max_tokens": vision_max_tokens,
+                                        "original_chars": original_length,
+                                        "truncated_chars": len(vision_text),
+                                    }
+                                )
+
+                            # Apply priority framing
+                            formatted_vision = self._apply_priority_framing(
+                                section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                                content=vision_text,
+                                priority=vision_priority,
+                                category_key="vision_documents",
+                            )
+
+                            if formatted_vision:  # Only add if not excluded (priority != 4)
+                                context_sections.append(formatted_vision)
+                            vision_tokens = self._count_tokens(formatted_vision)
+                            total_tokens += vision_tokens
+                            tokens_before_reduction += vision_tokens
                 else:
-                    # Chunks marked but not found - fallback to full text
-                    logger.warning(
-                        "Vision marked as chunked but no chunks returned - using full text",
-                        extra={"product_id": str(product.id), "operation": "build_context_with_priorities"},
-                    )
+                    # Not chunked - use full text with truncation
                     vision_text = product.primary_vision_text
                     if vision_text:
+                        # Truncate to max_tokens budget
+                        max_chars = vision_max_tokens * 4  # ~4 chars per token
+                        if len(vision_text) > max_chars:
+                            original_length = len(vision_text)
+                            vision_text = vision_text[:max_chars] + "\n\n[... vision truncated to fit token budget ...]"
+                            logger.info(
+                                f"Vision truncated from {original_length} to {len(vision_text)} chars (budget: {vision_max_tokens} tokens)",
+                                extra={
+                                    "field": "vision_documents",
+                                    "depth_setting": vision_chunking,
+                                    "max_tokens": vision_max_tokens,
+                                    "original_chars": original_length,
+                                    "truncated_chars": len(vision_text),
+                                }
+                            )
+
                         # Apply priority framing
                         formatted_vision = self._apply_priority_framing(
                             section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
@@ -1356,33 +1436,16 @@ Success Criteria:
                         vision_tokens = self._count_tokens(formatted_vision)
                         total_tokens += vision_tokens
                         tokens_before_reduction += vision_tokens
-            else:
-                # Not chunked - use full text (original behavior)
-                vision_text = product.primary_vision_text
-                if vision_text:
-                    # Apply priority framing
-                    formatted_vision = self._apply_priority_framing(
-                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                        content=vision_text,
-                        priority=vision_priority,
-                        category_key="vision_documents",
-                    )
 
-                    if formatted_vision:  # Only add if not excluded (priority != 4)
-                        context_sections.append(formatted_vision)
-                    vision_tokens = self._count_tokens(formatted_vision)
-                    total_tokens += vision_tokens
-                    tokens_before_reduction += vision_tokens
-
-                    logger.debug(
-                        f"Product vision (full text): {vision_tokens} tokens (not chunked)",
-                        extra={
-                            "field": "vision_documents",  # Handover 0282: v2.0 field name
-                            "priority": vision_priority,
-                            "detail_level": "full",
-                            "tokens": vision_tokens,
-                        },
-                    )
+                        logger.debug(
+                            f"Product vision (full text): {vision_tokens} tokens (not chunked)",
+                            extra={
+                                "field": "vision_documents",  # Handover 0282: v2.0 field name
+                                "priority": vision_priority,
+                                "detail_level": "full",
+                                "tokens": vision_tokens,
+                            },
+                        )
 
         # === MANDATORY: Project Description (ALWAYS included - non-negotiable) ===
         desc_text = project.description or ""
@@ -1476,7 +1539,20 @@ Success Criteria:
                 # Convert string format to dict
                 tech_stack_data = {"technologies": [tech_stack_raw]}
             elif isinstance(tech_stack_raw, dict):
-                tech_stack_data = tech_stack_raw
+                # Normalize dict values to ensure they're lists (not strings)
+                # This prevents character-by-character iteration in _format_tech_stack
+                tech_stack_data = {}
+                for key, value in tech_stack_raw.items():
+                    if isinstance(value, list):
+                        tech_stack_data[key] = value
+                    elif isinstance(value, str):
+                        # Don't split strings - keep as single item list
+                        tech_stack_data[key] = [value] if value else []
+                    elif value is not None:
+                        # Convert other types to single-item list
+                        tech_stack_data[key] = [str(value)]
+                    else:
+                        tech_stack_data[key] = []
             else:
                 tech_stack_data = {}
 
