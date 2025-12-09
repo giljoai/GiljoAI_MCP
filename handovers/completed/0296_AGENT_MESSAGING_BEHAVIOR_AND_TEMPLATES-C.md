@@ -1,9 +1,23 @@
 # Handover 0296: Agent Messaging Behavior & Template Updates
 
-## Status: READY FOR IMPLEMENTATION  
-## Priority: HIGH  
-## Type: Template / Prompt Refactor + Tests  
+## Status: REFERENCE DOCUMENT (No implementation needed)
+## Priority: HIGH
+## Type: Template / Prompt Refactor + Tests
 ## Depends On: 0295_MESSAGING_CONTRACT_AND_CATEGORIES.md
+
+---
+
+## Note (2025-12-07)
+
+This document serves as a **reference specification** for agent messaging behavior.
+The messaging contract and template updates described here have been incorporated into:
+- Current agent templates in `src/giljo_mcp/templates/`
+- Thin prompt generator patterns
+- MessageService implementation
+
+No separate implementation action needed - this is design documentation.
+
+---
 
 ---
 

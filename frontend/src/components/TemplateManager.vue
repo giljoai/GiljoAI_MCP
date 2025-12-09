@@ -759,7 +759,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
 import api from '@/services/api'
 import TemplateArchive from './TemplateArchive.vue'
 import { format } from 'date-fns'
@@ -770,6 +770,11 @@ import { useUserStore } from '@/stores/user'
 const { on, off } = useWebSocketV2()
 const userStore = useUserStore()
 const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
+
+// Handover 0335: Inject template export event from parent (UserSettings.vue)
+// This allows receiving export events even when this component is not mounted
+// (v-window-item lazy loads components)
+const templateExportEvent = inject('templateExportEvent', ref(null))
 
 // Utility functions (inline to avoid external dependency)
 function generatePersonalAgentsInstructions(downloadUrl) {
@@ -1462,45 +1467,82 @@ const viewDiff = async (template) => {
   }
 }
 
-// Handover 0335: Handle template export WebSocket event
+// Handover 0335: Handle template export WebSocket event (Enhanced with debugging)
 const handleTemplateExported = (data) => {
+  console.log('[TemplateManager] Received template:exported event', {
+    payload: data,
+    currentTenant: currentTenantKey.value,
+    hasTemplates: templates.value.length > 0,
+  })
+
+  // Normalize payload - WebSocket store flattens nested data structure
+  // Backend sends: { type, data: { tenant_key, template_ids, ... }, timestamp }
+  // Store normalizes to: { type, tenant_key, template_ids, ..., timestamp }
+  const tenantKey = data.tenant_key
+  const templateIds = data.template_ids
+  const exportedAt = data.exported_at
+  const exportType = data.export_type
+
+  // Validate required fields
+  if (!tenantKey || !templateIds || !exportedAt) {
+    console.warn('[TemplateManager] Export event rejected: missing required fields', {
+      hasTenantKey: !!tenantKey,
+      hasTemplateIds: !!templateIds,
+      hasExportedAt: !!exportedAt,
+      payload: data,
+    })
+    return
+  }
+
   // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+  if (tenantKey !== currentTenantKey.value) {
     console.warn('[TemplateManager] Export event rejected: tenant mismatch', {
       expected: currentTenantKey.value,
-      received: data.tenant_key,
+      received: tenantKey,
     })
     return
   }
 
   // Update local template state with new export timestamp
-  const exportedAt = data.exported_at
-  const templateIdSet = new Set(data.template_ids)
+  const templateIdSet = new Set(templateIds)
+  let updateCount = 0
 
   templates.value.forEach((template) => {
     if (templateIdSet.has(template.id)) {
       template.last_exported_at = exportedAt
       template.may_be_stale = false // Clear staleness indicator
+      updateCount++
     }
   })
 
-  console.log(
-    `[TemplateManager] Updated ${data.template_ids.length} templates as exported (${data.export_type})`
-  )
+  if (updateCount > 0) {
+    console.log(
+      `[TemplateManager] Updated ${updateCount}/${templateIds.length} templates as exported (${exportType})`
+    )
+  } else {
+    console.warn(
+      `[TemplateManager] No templates matched exported IDs. Available: ${templates.value.map((t) => t.id).join(', ')}. Exported: ${templateIds.join(', ')}`
+    )
+  }
 }
 
 // Lifecycle
 onMounted(() => {
+  console.log('[TemplateManager] Mounting with tenant:', currentTenantKey.value)
+
   loadTemplates()
   loadActiveCount() // Handover 0075: Load active agent count
 
-  // Handover 0335: Subscribe to template export events
+  // Handover 0335: Subscribe to template export WebSocket events
+  // Pattern matches JobsTab and LaunchTab (working components)
   on('template:exported', handleTemplateExported)
+  console.log('[TemplateManager] Registered handler for template:exported event')
 })
 
 onUnmounted(() => {
-  // Handover 0335: Unsubscribe from template export events
+  // Handover 0335: Cleanup WebSocket subscription
   off('template:exported', handleTemplateExported)
+  console.log('[TemplateManager] Unregistered handler for template:exported event')
 })
 
 // Watch for variable changes
@@ -1509,6 +1551,28 @@ watch(
   () => {
     editingTemplate.value.variables = detectedVariables.value
   },
+)
+
+// Handover 0335: Watch for export events from parent (UserSettings.vue)
+// This handles the case where export happens on a different tab and this component
+// was not mounted at the time of the WebSocket event
+watch(
+  templateExportEvent,
+  (newEvent) => {
+    if (!newEvent) return
+
+    console.log('[TemplateManager] Received export event from parent via inject:', newEvent)
+
+    // Validate tenant_key matches current user
+    if (newEvent.tenant_key !== currentTenantKey.value) {
+      console.warn('[TemplateManager] Export event tenant mismatch, ignoring')
+      return
+    }
+
+    // Process the event just like the direct WebSocket handler
+    handleTemplateExported(newEvent)
+  },
+  { deep: true }
 )
 </script>
 

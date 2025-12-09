@@ -376,8 +376,6 @@ async def download_agent_templates(
     if current_user and selected:
         from datetime import datetime, timezone
 
-        from api.websocket import ws_manager
-
         export_timestamp = datetime.now(timezone.utc)
 
         # Update last_exported_at for all exported templates
@@ -386,13 +384,15 @@ async def download_agent_templates(
 
         await db.commit()
 
-        # Emit WebSocket event for real-time UI update
-        await ws_manager.broadcast_templates_exported(
-            tenant_key=current_user.tenant_key,
-            template_ids=[str(t.id) for t in selected],
-            export_type="manual_zip",
-            exported_at=export_timestamp,
-        )
+        # Emit WebSocket event for real-time UI update (access from app state)
+        ws_manager = getattr(request.app.state, "websocket_manager", None)
+        if ws_manager:
+            await ws_manager.broadcast_templates_exported(
+                tenant_key=current_user.tenant_key,
+                template_ids=[str(t.id) for t in selected],
+                export_type="manual_zip",
+                exported_at=export_timestamp,
+            )
 
         logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
 
@@ -792,7 +792,6 @@ async def import_personal_agents_rest(
         import os
         from datetime import datetime, timezone
 
-        from api.websocket import ws_manager
         from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -837,13 +836,15 @@ async def import_personal_agents_rest(
                     template.last_exported_at = export_timestamp
                 await db.commit()
 
-                # Emit WebSocket event for real-time UI update
-                await ws_manager.broadcast_templates_exported(
-                    tenant_key=current_user.tenant_key,
-                    template_ids=[str(t.id) for t in templates],
-                    export_type="personal_agents",
-                    exported_at=export_timestamp,
-                )
+                # Emit WebSocket event for real-time UI update (access from app state)
+                ws_manager = getattr(request.app.state, "websocket_manager", None)
+                if ws_manager:
+                    await ws_manager.broadcast_templates_exported(
+                        tenant_key=current_user.tenant_key,
+                        template_ids=[str(t.id) for t in templates],
+                        export_type="personal_agents",
+                        exported_at=export_timestamp,
+                    )
 
                 logger.info(f"Updated last_exported_at for {len(templates)} templates (personal agents export)")
 
@@ -868,7 +869,6 @@ async def import_product_agents_rest(
         import os
         from datetime import datetime, timezone
 
-        from api.websocket import ws_manager
         from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -913,13 +913,15 @@ async def import_product_agents_rest(
                     template.last_exported_at = export_timestamp
                 await db.commit()
 
-                # Emit WebSocket event for real-time UI update
-                await ws_manager.broadcast_templates_exported(
-                    tenant_key=current_user.tenant_key,
-                    template_ids=[str(t.id) for t in templates],
-                    export_type="product_agents",
-                    exported_at=export_timestamp,
-                )
+                # Emit WebSocket event for real-time UI update (access from app state)
+                ws_manager = getattr(request.app.state, "websocket_manager", None)
+                if ws_manager:
+                    await ws_manager.broadcast_templates_exported(
+                        tenant_key=current_user.tenant_key,
+                        template_ids=[str(t.id) for t in templates],
+                        export_type="product_agents",
+                        exported_at=export_timestamp,
+                    )
 
                 logger.info(f"Updated last_exported_at for {len(templates)} templates (product agents export)")
 

@@ -1,8 +1,30 @@
 # Handover 0333: Staging Prompt Architecture Correction
 
-## Status: READY FOR IMPLEMENTATION
+## Status: COMPLETE
 
 ## Priority: HIGH - Staging prompt is currently broken
+
+---
+
+## Completion Summary (2025-12-07)
+
+**Work Done:**
+- Restored simple ~50 line staging prompt in `generate_staging_prompt()` (commit c10411d6)
+- Added broadcast message step (Step 6) for STAGING_COMPLETE signal (commit 6484c92c)
+- CLI toggle moved to LaunchTab.vue (working)
+- Mode-specific blocks for CLI vs Multi-Terminal working
+
+**Key Files Modified:**
+- `src/giljo_mcp/thin_prompt_generator.py` (lines 964-1047)
+- `frontend/src/components/projects/LaunchTab.vue`
+
+**Verification:**
+- Staging prompt is ~50 lines (not 150+)
+- No references to non-existent `get_available_agents()`
+- Broadcast step enables Launch Jobs button
+- All 0262/0297/0331 functionality preserved
+
+---
 
 ## Supersedes / Corrects
 - **0260**: Move CLI toggle from Implement tab → Launch tab
