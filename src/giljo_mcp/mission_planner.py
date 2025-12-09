@@ -685,19 +685,21 @@ Success Criteria:
         # 100% - no reduction
         return field_text
 
-    async def _get_relevant_vision_chunks(self, session, product, project, max_tokens: int = 10000) -> list[dict]:
+    async def _get_relevant_vision_chunks(
+        self, session, product, project, max_tokens: int | None = None
+    ) -> list[dict]:
         """
-        Retrieve relevant vision chunks based on project description.
+        Retrieve vision chunks, optionally ranked by relevance to project description.
 
-        This method implements intelligent chunk selection to reduce context size
-        while maintaining relevance. Uses keyword-based ranking to prioritize
-        chunks that match the project's focus.
+        IMPORTANT: Full context policy - pass max_tokens=None to fetch ALL chunks
+        without truncation. Vision chunks are pre-sized at ~25K tokens on upload
+        for optimal AI ingestion.
 
         Args:
             session: Database session for chunk queries
             product: Product model with vision documents
             project: Project model with description (used for relevance ranking)
-            max_tokens: Maximum tokens to include from chunks (default: 10K)
+            max_tokens: Maximum tokens to include from chunks, or None for ALL chunks
 
         Returns:
             List of chunk dicts with 'content' and 'relevance_score' keys.
@@ -710,19 +712,24 @@ Success Criteria:
             1. Check if product has chunked vision documents
             2. Query mcp_context_index for chunks linked to vision_document_id
             3. Rank chunks by relevance to project.description
-            4. Return top N chunks within token budget
+            4. If max_tokens=None, return ALL chunks (full context policy)
+            5. Otherwise, return top N chunks within token budget
 
-        Example:
+        Example (full context):
             chunks = await planner._get_relevant_vision_chunks(
                 session=session,
                 product=product,
                 project=project,
-                max_tokens=8000
+                max_tokens=None  # Fetch ALL chunks
             )
-            # Returns: [
-            #   {'content': '...', 'relevance_score': 0.85, 'tokens': 1200},
-            #   {'content': '...', 'relevance_score': 0.72, 'tokens': 950},
-            # ]
+
+        Example (with budget):
+            chunks = await planner._get_relevant_vision_chunks(
+                session=session,
+                product=product,
+                project=project,
+                max_tokens=8000  # Limit to 8K tokens
+            )
         """
         from sqlalchemy import select
 
@@ -792,7 +799,27 @@ Success Criteria:
         # Rank chunks by relevance to project description
         ranked_chunks = self._rank_chunk_relevance(chunks=chunks, project_description=project.description or "")
 
-        # Select top chunks within token budget
+        # Full context policy: if max_tokens=None, return ALL chunks without truncation
+        if max_tokens is None:
+            # Add token counts to each chunk for reference
+            for chunk_data in ranked_chunks:
+                chunk_data["tokens"] = self._count_tokens(chunk_data["content"])
+
+            total_tokens = sum(c["tokens"] for c in ranked_chunks)
+            logger.info(
+                f"Full context: returning ALL {len(ranked_chunks)} chunks ({total_tokens} tokens)",
+                extra={
+                    "product_id": str(product.id),
+                    "project_id": str(project.id),
+                    "chunks_returned": len(ranked_chunks),
+                    "total_tokens": total_tokens,
+                    "max_tokens": "unlimited",
+                    "operation": "get_relevant_vision_chunks",
+                },
+            )
+            return ranked_chunks
+
+        # Token budget mode: select top chunks within budget
         selected_chunks = []
         total_tokens = 0
 
@@ -1212,7 +1239,6 @@ Success Criteria:
                 "memory_360": 5,  # Default: 5 projects (moderate)
                 "git_history": 20,  # Default: 20 commits (moderate)
                 "agent_templates": "full",  # Default: full descriptions
-                "vision_chunking": "moderate",  # Default: 17,500 tokens (moderate)
             }
 
         # Fix #1: Apply default field priorities when user has no config
@@ -1297,133 +1323,64 @@ Success Criteria:
 
         vision_priority = effective_priorities.get("vision_documents", 4)  # Default: EXCLUDED (user opt-in)
         if vision_priority > 0:
-            # Get vision_chunking depth setting
-            vision_chunking = depth_config.get("vision_chunking", "moderate")
+            # Check if vision is chunked (pre-processed on upload into ~25K token chapters)
+            # Rollback 0336: Fetch ALL chunks without truncation - full context always
+            product_has_chunks = (
+                any(doc.is_active and doc.chunked and doc.chunk_count > 0 for doc in product.vision_documents)
+                if product.vision_documents
+                else False
+            )
 
-            # Map chunking depth to max tokens (from get_vision_document.py)
-            vision_max_tokens = {
-                "none": 0,
-                "light": 10000,
-                "moderate": 17500,
-                "heavy": 24000
-            }.get(vision_chunking, 17500)
+            if product_has_chunks:
+                # Fetch ALL chunks - no token budget limit (full context policy)
+                # Chunks are already sized at ~25K tokens on upload for AI ingestion
+                async with self.db_manager.get_session_async() as session:
+                    vision_chunks = await self._get_relevant_vision_chunks(
+                        session=session,
+                        product=product,
+                        project=project,
+                        max_tokens=None,  # Fetch ALL chunks - no limit
+                    )
 
-            # Skip vision if disabled
-            if vision_max_tokens == 0:
-                logger.debug(
-                    "Vision documents excluded by depth_config (chunking=none)",
-                    extra={
-                        "field": "vision_documents",
-                        "depth_setting": vision_chunking,
-                        "operation": "build_context_with_priorities",
-                    }
-                )
-            else:
-                # Check if vision is chunked
-                product_has_chunks = (
-                    any(doc.is_active and doc.chunked and doc.chunk_count > 0 for doc in product.vision_documents)
-                    if product.vision_documents
-                    else False
-                )
+                if vision_chunks:
+                    # Combine chunks into formatted section
+                    chunk_texts = [chunk["content"] for chunk in vision_chunks]
+                    vision_text = "\n\n".join(chunk_texts)
 
-                if product_has_chunks:
-                    # Use relevant chunks based on project description
-                    async with self.db_manager.get_session_async() as session:
-                        vision_chunks = await self._get_relevant_vision_chunks(
-                            session=session,
-                            product=product,
-                            project=project,
-                            max_tokens=vision_max_tokens,  # Use depth config instead of hardcoded 10000
-                        )
+                    # Apply priority framing
+                    formatted_vision = self._apply_priority_framing(
+                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                        content=vision_text,
+                        priority=vision_priority,
+                        category_key="vision_documents",
+                    )
 
-                    if vision_chunks:
-                        # Combine chunks into formatted section
-                        chunk_texts = [chunk["content"] for chunk in vision_chunks]
-                        vision_text = "\n\n".join(chunk_texts)
+                    if formatted_vision:  # Only add if not excluded (priority != 4)
+                        context_sections.append(formatted_vision)
+                    vision_tokens = self._count_tokens(formatted_vision)
+                    total_tokens += vision_tokens
+                    tokens_before_reduction += self._count_tokens(f"## Product Vision\n{product.primary_vision_text}")
 
-                        # Apply priority framing
-                        formatted_vision = self._apply_priority_framing(
-                            section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                            content=vision_text,
-                            priority=vision_priority,
-                            category_key="vision_documents",
-                        )
-
-                        if formatted_vision:  # Only add if not excluded (priority != 4)
-                            context_sections.append(formatted_vision)
-                        vision_tokens = self._count_tokens(formatted_vision)
-                        total_tokens += vision_tokens
-                        tokens_before_reduction += self._count_tokens(f"## Product Vision\n{product.primary_vision_text}")
-
-                        logger.info(
-                            f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
-                            extra={
-                                "field": "vision_documents",  # Handover 0282: v2.0 field name
-                                "priority": vision_priority,
-                                "detail_level": "chunked",
-                                "tokens": vision_tokens,
-                                "chunks_used": len(vision_chunks),
-                                "relevance_scores": [c["relevance_score"] for c in vision_chunks],
-                            },
-                        )
-                    else:
-                        # Chunks marked but not found - fallback to full text with truncation
-                        logger.warning(
-                            "Vision marked as chunked but no chunks returned - using full text",
-                            extra={"product_id": str(product.id), "operation": "build_context_with_priorities"},
-                        )
-                        vision_text = product.primary_vision_text
-                        if vision_text:
-                            # Truncate to max_tokens budget
-                            max_chars = vision_max_tokens * 4  # ~4 chars per token
-                            if len(vision_text) > max_chars:
-                                original_length = len(vision_text)
-                                vision_text = vision_text[:max_chars] + "\n\n[... vision truncated to fit token budget ...]"
-                                logger.info(
-                                    f"Vision truncated from {original_length} to {len(vision_text)} chars (budget: {vision_max_tokens} tokens)",
-                                    extra={
-                                        "field": "vision_documents",
-                                        "depth_setting": vision_chunking,
-                                        "max_tokens": vision_max_tokens,
-                                        "original_chars": original_length,
-                                        "truncated_chars": len(vision_text),
-                                    }
-                                )
-
-                            # Apply priority framing
-                            formatted_vision = self._apply_priority_framing(
-                                section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                                content=vision_text,
-                                priority=vision_priority,
-                                category_key="vision_documents",
-                            )
-
-                            if formatted_vision:  # Only add if not excluded (priority != 4)
-                                context_sections.append(formatted_vision)
-                            vision_tokens = self._count_tokens(formatted_vision)
-                            total_tokens += vision_tokens
-                            tokens_before_reduction += vision_tokens
+                    logger.info(
+                        f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
+                        extra={
+                            "field": "vision_documents",  # Handover 0282: v2.0 field name
+                            "priority": vision_priority,
+                            "detail_level": "chunked",
+                            "tokens": vision_tokens,
+                            "chunks_used": len(vision_chunks),
+                            "total_chunks": sum(doc.chunk_count for doc in product.vision_documents if doc.is_active and doc.chunked),
+                        },
+                    )
                 else:
-                    # Not chunked - use full text with truncation
+                    # Chunks marked but not found - fallback to full text (no truncation)
+                    logger.warning(
+                        "Vision marked as chunked but no chunks returned - using full text",
+                        extra={"product_id": str(product.id), "operation": "build_context_with_priorities"},
+                    )
                     vision_text = product.primary_vision_text
                     if vision_text:
-                        # Truncate to max_tokens budget
-                        max_chars = vision_max_tokens * 4  # ~4 chars per token
-                        if len(vision_text) > max_chars:
-                            original_length = len(vision_text)
-                            vision_text = vision_text[:max_chars] + "\n\n[... vision truncated to fit token budget ...]"
-                            logger.info(
-                                f"Vision truncated from {original_length} to {len(vision_text)} chars (budget: {vision_max_tokens} tokens)",
-                                extra={
-                                    "field": "vision_documents",
-                                    "depth_setting": vision_chunking,
-                                    "max_tokens": vision_max_tokens,
-                                    "original_chars": original_length,
-                                    "truncated_chars": len(vision_text),
-                                }
-                            )
-
-                        # Apply priority framing
+                        # Apply priority framing - NO truncation (full context policy)
                         formatted_vision = self._apply_priority_framing(
                             section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
                             content=vision_text,
@@ -1436,16 +1393,33 @@ Success Criteria:
                         vision_tokens = self._count_tokens(formatted_vision)
                         total_tokens += vision_tokens
                         tokens_before_reduction += vision_tokens
+            else:
+                # Not chunked - use full text (no truncation - full context policy)
+                vision_text = product.primary_vision_text
+                if vision_text:
+                    # Apply priority framing - NO truncation
+                    formatted_vision = self._apply_priority_framing(
+                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
+                        content=vision_text,
+                        priority=vision_priority,
+                        category_key="vision_documents",
+                    )
 
-                        logger.debug(
-                            f"Product vision (full text): {vision_tokens} tokens (not chunked)",
-                            extra={
-                                "field": "vision_documents",  # Handover 0282: v2.0 field name
-                                "priority": vision_priority,
-                                "detail_level": "full",
-                                "tokens": vision_tokens,
-                            },
-                        )
+                    if formatted_vision:  # Only add if not excluded (priority != 4)
+                        context_sections.append(formatted_vision)
+                    vision_tokens = self._count_tokens(formatted_vision)
+                    total_tokens += vision_tokens
+                    tokens_before_reduction += vision_tokens
+
+                    logger.debug(
+                        f"Product vision (full text): {vision_tokens} tokens (not chunked)",
+                        extra={
+                            "field": "vision_documents",  # Handover 0282: v2.0 field name
+                            "priority": vision_priority,
+                            "detail_level": "full",
+                            "tokens": vision_tokens,
+                        },
+                    )
 
         # === MANDATORY: Project Description (ALWAYS included - non-negotiable) ===
         desc_text = project.description or ""
