@@ -729,6 +729,55 @@ class WebSocketManager:
 
         logger.info(f"Broadcast template:update - {template_name} ({operation}) by user {user_id}")
 
+    async def broadcast_templates_exported(
+        self,
+        tenant_key: str,
+        template_ids: list[str],
+        export_type: str,  # 'manual_zip', 'personal_agents', 'product_agents'
+        exported_at: Optional[datetime] = None,
+    ):
+        """
+        Broadcast template export event (Handover 0335).
+
+        Notifies TemplateManager.vue to update last_exported_at timestamps
+        and clear may_be_stale indicators in real-time.
+
+        Args:
+            tenant_key: Multi-tenant isolation key
+            template_ids: List of exported template UUIDs
+            export_type: One of 'manual_zip', 'personal_agents', 'product_agents'
+            exported_at: Export timestamp (defaults to now)
+        """
+        export_timestamp = (exported_at or datetime.now(timezone.utc)).isoformat()
+
+        message = {
+            "type": "template:exported",
+            "data": {
+                "tenant_key": tenant_key,
+                "template_ids": template_ids,
+                "export_type": export_type,
+                "exported_at": export_timestamp,
+                "exported_count": len(template_ids),
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation - only broadcast to same tenant
+        sent_count = 0
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                    sent_count += 1
+                except Exception:
+                    logger.exception("Error broadcasting template:exported to websocket")
+
+        logger.info(
+            f"Broadcast template:exported - {len(template_ids)} templates "
+            f"({export_type}) to {sent_count} client(s) for tenant {tenant_key}"
+        )
+
     # Agent Job Event Broadcasts (Handover 0019)
 
     async def broadcast_job_created(
