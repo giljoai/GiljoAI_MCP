@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ThinPromptResponse:
     """Thin client prompt response."""
+
     prompt: str
     orchestrator_id: str
     project_id: str
@@ -115,7 +116,7 @@ class ThinClientPromptGenerator:
         tool: str = "universal",
         instance_number: int = 1,
         field_priorities: Optional[Dict[str, int]] = None,
-        depth_config: Optional[Dict[str, Any]] = None  # NEW PARAMETER (Handover 0315)
+        depth_config: Optional[Dict[str, Any]] = None,  # NEW PARAMETER (Handover 0315)
     ) -> Dict[str, Any]:
         """
         Generate a thin orchestrator prompt for a specified project.
@@ -139,12 +140,7 @@ class ThinClientPromptGenerator:
             Dict with orchestrator_id and thin_prompt
         """
         # Fetch project using tenant_key from instance
-        project_stmt = select(Project).where(
-            and_(
-                Project.id == project_id,
-                Project.tenant_key == self.tenant_key
-            )
-        )
+        project_stmt = select(Project).where(and_(Project.id == project_id, Project.tenant_key == self.tenant_key))
         project_result = await self.db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
 
@@ -158,12 +154,7 @@ class ThinClientPromptGenerator:
         if user_id and (not field_priorities or not depth_config):
             from src.giljo_mcp.models.auth import User
 
-            user_stmt = select(User).where(
-                and_(
-                    User.id == user_id,
-                    User.tenant_key == self.tenant_key
-                )
-            )
+            user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
             user_result = await self.db.execute(user_stmt)
             user = user_result.scalar_one_or_none()
 
@@ -184,23 +175,29 @@ class ThinClientPromptGenerator:
                 "git_commits": 25,
                 "agent_template_detail": "standard",
                 "tech_stack_sections": "all",
-                "architecture_depth": "overview"
+                "architecture_depth": "overview",
             }
 
         # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
         # This prevents duplicate orchestrator creation on every "Stage Project" button click
         # Fixed: Include "working" status, remove invalid "active" and "pending" statuses
-        existing_orch_stmt = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.project_id == project_id,
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == self.tenant_key,
-                MCPAgentJob.status.in_(["waiting", "working"])  # Only active orchestrator statuses
+        existing_orch_stmt = (
+            select(MCPAgentJob)
+            .where(
+                and_(
+                    MCPAgentJob.project_id == project_id,
+                    MCPAgentJob.agent_type == "orchestrator",
+                    MCPAgentJob.tenant_key == self.tenant_key,
+                    MCPAgentJob.status.in_(["waiting", "working"]),  # Only active orchestrator statuses
+                )
             )
-        ).order_by(MCPAgentJob.created_at.desc())  # Get most recent if multiple exist
+            .order_by(MCPAgentJob.created_at.desc())
+        )  # Get most recent if multiple exist
 
         existing_orch_result = await self.db.execute(existing_orch_stmt)
-        existing_orchestrator = existing_orch_result.scalars().first()  # Use first() to handle edge case of multiple active orchestrators
+        existing_orchestrator = (
+            existing_orch_result.scalars().first()
+        )  # Use first() to handle edge case of multiple active orchestrators
 
         if existing_orchestrator:
             # Reuse existing active orchestrator
@@ -216,7 +213,7 @@ class ThinClientPromptGenerator:
                 "user_id": user_id,
                 "tool": tool,
                 "created_via": "thin_client_generator",
-                "reused_at": str(datetime.now())  # Track when metadata was updated
+                "reused_at": str(datetime.now()),  # Track when metadata was updated
             }
 
             # Commit metadata update to database
@@ -246,7 +243,7 @@ class ThinClientPromptGenerator:
                     and_(
                         MCPAgentJob.tenant_key == self.tenant_key,
                         MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.agent_type == "orchestrator"
+                        MCPAgentJob.agent_type == "orchestrator",
                     )
                 )
                 instance_result = await self.db.execute(instance_stmt)
@@ -274,8 +271,8 @@ class ThinClientPromptGenerator:
                     "depth_config": depth_config,  # NEW: Handover 0315
                     "user_id": user_id,
                     "tool": tool,
-                    "created_via": "thin_client_generator"
-                }
+                    "created_via": "thin_client_generator",
+                },
             )
 
             self.db.add(orchestrator)
@@ -283,8 +280,7 @@ class ThinClientPromptGenerator:
             await self.db.refresh(orchestrator)
 
             logger.info(
-                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} "
-                f"(instance #{instance_number})"
+                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} " f"(instance #{instance_number})"
             )
 
         # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
@@ -297,7 +293,7 @@ class ThinClientPromptGenerator:
             tool=tool,
             field_priorities=field_priorities or {},
             depth_config=depth_config,
-            user_id=user_id
+            user_id=user_id,
         )
 
         # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
@@ -312,10 +308,7 @@ class ThinClientPromptGenerator:
         # This enables "Stage Project refresh" - when user changes field priorities
         # and clicks "Stage Project" again, they get updated instructions immediately
         regenerated_mission = await self._regenerate_mission(
-            product=product,
-            project=project,
-            field_priorities=field_priorities or {},
-            user_id=user_id
+            product=product, project=project, field_priorities=field_priorities or {}, user_id=user_id
         )
 
         # Estimate tokens
@@ -327,9 +320,7 @@ class ThinClientPromptGenerator:
                 f"~{estimated_mission_tokens} tokens (reflects current field priorities)"
             )
         else:
-            logger.warning(
-                f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}"
-            )
+            logger.warning(f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}")
 
         return {
             "orchestrator_id": orchestrator_id,
@@ -343,11 +334,7 @@ class ThinClientPromptGenerator:
         }
 
     async def _regenerate_mission(
-        self,
-        product: Product,
-        project: Project,
-        field_priorities: Dict[str, int],
-        user_id: Optional[str]
+        self, product: Product, project: Project, field_priorities: Dict[str, int], user_id: Optional[str]
     ) -> str:
         """
         Regenerate orchestrator mission with current field priorities.
@@ -408,9 +395,7 @@ class ThinClientPromptGenerator:
             if product and product.config_data and arch_priority > 0:
                 architecture = product.config_data.get("architecture", {})
                 if architecture and architecture.get("patterns"):
-                    mission_parts.append(
-                        f"## Architecture\n{', '.join(architecture['patterns'])}"
-                    )
+                    mission_parts.append(f"## Architecture\n{', '.join(architecture['patterns'])}")
 
             # Join all parts
             if mission_parts:
@@ -420,10 +405,9 @@ class ThinClientPromptGenerator:
                     f"{len(regenerated)} chars"
                 )
                 return regenerated
-            else:
-                # Fallback if no parts available
-                logger.warning("[ThinPromptGenerator] No mission parts available for regeneration")
-                return project.mission or f"Mission for project: {project.name}"
+            # Fallback if no parts available
+            logger.warning("[ThinPromptGenerator] No mission parts available for regeneration")
+            return project.mission or f"Mission for project: {project.name}"
 
         except Exception as e:
             logger.exception(f"[ThinPromptGenerator] Failed to regenerate mission: {e}")
@@ -431,12 +415,7 @@ class ThinClientPromptGenerator:
             return project.mission or f"Mission for project: {project.name}"
 
     def _build_thin_prompt(
-        self,
-        orchestrator_id: str,
-        project_id: str,
-        project_name: str,
-        instance_number: int,
-        tool: str
+        self, orchestrator_id: str, project_id: str, project_name: str, instance_number: int, tool: str
     ) -> str:
         """
         Build thin client prompt (~10 lines).
@@ -533,7 +512,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         tool: str,
         field_priorities: Dict[str, int],
         depth_config: Dict[str, Any],
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> str:
         """
         Generate thin prompt listing available MCP tools by priority (Handover 0315).
@@ -744,7 +723,7 @@ No previous project history available. Starting fresh.
             '- git log --since="1 week ago" --pretty=format:"%h - %s (%an, %ar)"',
             "- git show --stat HEAD~5..HEAD",
             "",
-            "Combine git history with 360 Memory for full context."
+            "Combine git history with 360 Memory for full context.",
         ]
 
         return "\n".join(git_lines)
@@ -764,10 +743,7 @@ No previous project history available. Starting fresh.
 
         # Fetch project first
         project_stmt = select(ProjectModel).where(
-            and_(
-                ProjectModel.id == project_id,
-                ProjectModel.tenant_key == self.tenant_key
-            )
+            and_(ProjectModel.id == project_id, ProjectModel.tenant_key == self.tenant_key)
         )
         project_result = await self.db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
@@ -777,10 +753,7 @@ No previous project history available. Starting fresh.
 
         # Fetch product via project.product_id
         product_stmt = select(Product).where(
-            and_(
-                Product.id == project.product_id,
-                Product.tenant_key == self.tenant_key
-            )
+            and_(Product.id == project.product_id, Product.tenant_key == self.tenant_key)
         )
         product_result = await self.db.execute(product_stmt)
         product = product_result.scalar_one_or_none()
@@ -800,10 +773,7 @@ No previous project history available. Starting fresh.
         from src.giljo_mcp.models.projects import Project as ProjectModel
 
         project_stmt = select(ProjectModel).where(
-            and_(
-                ProjectModel.id == project_id,
-                ProjectModel.tenant_key == self.tenant_key
-            )
+            and_(ProjectModel.id == project_id, ProjectModel.tenant_key == self.tenant_key)
         )
         project_result = await self.db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
@@ -818,7 +788,7 @@ No previous project history available. Starting fresh.
         instance_number: int,
         tool: str,
         product,
-        field_priorities: Optional[Dict[str, int]] = None
+        field_priorities: Optional[Dict[str, int]] = None,
     ) -> str:
         """
         Build thin client prompt WITH 360 Memory, Git integration, and Agent templates.
@@ -845,7 +815,7 @@ No previous project history available. Starting fresh.
             project_id=project_id,
             project_name=project_name,
             instance_number=instance_number,
-            tool=tool
+            tool=tool,
         )
 
         # Inject 360 Memory (ALWAYS)
@@ -866,13 +836,7 @@ No previous project history available. Starting fresh.
             # Split at marker and insert context
             before_role, after_role = base_prompt.split(insertion_marker, 1)
             enhanced_prompt = (
-                before_role +
-                memory_section +
-                git_section +
-                agent_section +
-                "\n" +
-                insertion_marker +
-                after_role
+                before_role + memory_section + git_section + agent_section + "\n" + insertion_marker + after_role
             )
         else:
             # Fallback: append at end if marker not found
@@ -893,12 +857,7 @@ No previous project history available. Starting fresh.
             }
         """
         # Get user config from database
-        result = await self.db.execute(
-            select(User).where(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        result = await self.db.execute(select(User).where(User.id == user_id, User.tenant_key == self.tenant_key))
         user = result.scalar_one_or_none()
 
         if not user or not user.field_priority_config:
@@ -907,14 +866,11 @@ No previous project history available. Starting fresh.
         return user.field_priority_config
 
     async def generate_execution_prompt(
-        self,
-        orchestrator_job_id: str,
-        project_id: str,
-        claude_code_mode: bool = False
+        self, orchestrator_job_id: str, project_id: str, claude_code_mode: bool = False
     ) -> str:
         """
         DEPRECATED: Use generate_staging_prompt() instead (universal Scenario B).
-        
+
         This method is kept for backward compatibility only.
         Will be removed in v4.0.
         """
@@ -926,15 +882,13 @@ No previous project history available. Starting fresh.
                 "recommended_method": "generate_staging_prompt",
                 "orchestrator_job_id": orchestrator_job_id,
                 "project_id": project_id,
-                "tenant_key": self.tenant_key
-            }
+                "tenant_key": self.tenant_key,
+            },
         )
-        
+
         # Redirect to universal prompt generator
         return await self.generate_staging_prompt(
-            orchestrator_id=orchestrator_job_id,
-            project_id=project_id,
-            claude_code_mode=claude_code_mode
+            orchestrator_id=orchestrator_job_id, project_id=project_id, claude_code_mode=claude_code_mode
         )
 
     def _get_external_host(self) -> str:
@@ -945,6 +899,7 @@ No previous project history available. Starting fresh.
         falls back to api_host if not configured.
         """
         from pathlib import Path
+
         import yaml
 
         try:
@@ -963,10 +918,7 @@ No previous project history available. Starting fresh.
         return config.server.api_host
 
     async def generate_staging_prompt(
-        self,
-        orchestrator_id: str,
-        project_id: str,
-        claude_code_mode: bool = False
+        self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False
     ) -> str:
         """
         Generate simple orchestrator staging prompt (Handover 0333).
@@ -1091,18 +1043,13 @@ Begin by calling health_check(), then get_orchestrator_instructions().
 
         return prompt
 
-    def _build_multi_terminal_execution_prompt(
-        self,
-        orchestrator_id: str,
-        project,
-        agent_jobs: list
-    ) -> str:
+    def _build_multi_terminal_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list) -> str:
         """
         Build multi-terminal mode execution prompt.
 
         User manually launches agents in separate terminals.
         Orchestrator coordinates their work via MCP.
-        
+
         Handover 0247 Gap 3: Added Product ID to identity section.
         """
         # Format agent list
@@ -1145,67 +1092,220 @@ AGENT TEAM:
 Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self.tenant_key}')
 """
 
-    def _build_claude_code_execution_prompt(
-        self,
-        orchestrator_id: str,
-        project,
-        agent_jobs: list
-    ) -> str:
+    def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list) -> str:
         """
         Build Claude Code subagent mode execution prompt.
 
         Orchestrator spawns sub-agents using Task tool.
         Sub-agents receive identity via instructions string.
-        
+
         Handover 0247 Gap 3: Added Product ID to identity section.
+        Handover 0337 Task 3: Complete 7-section implementation prompt.
         """
-        # Format agent list with missions
+        # SECTION 1: Context Recap
+        context_recap = [
+            "# GiljoAI Implementation Phase - Claude Code CLI Mode",
+            "",
+            "## Who You Are",
+            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
+            f"Tenant: {self.tenant_key}",
+            f"Project ID: {project.id}",
+            f"Product ID: {project.product_id}",
+            "",
+            "## What You've Already Done",
+            "In a PREVIOUS session, you completed staging:",
+            "- Analyzed project requirements",
+            "- Created mission plan",
+            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
+            "",
+            "## Current State",
+            "All agent jobs are in waiting status, ready for execution.",
+            "Your job now: Spawn and coordinate these agents to complete the project.",
+            "---",
+            "",
+        ]
+
+        # SECTION 2: Agent Jobs List (with CRITICAL agent_type field)
         agent_spawn_lines = []
         if agent_jobs:
             for idx, agent in enumerate(agent_jobs, 1):
                 mission = agent.mission or "(No mission assigned)"
-                agent_spawn_lines.append(
-                    f"{idx}. {agent.agent_name}:\n"
-                    f"   - Mission: {mission}\n"
-                    f"   - Agent ID: {agent.job_id}\n"
-                    f"   - Job ID: {agent.job_id}"
+                # Truncate long missions
+                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
+
+                agent_spawn_lines.extend(
+                    [
+                        f"**{idx}. {agent.agent_name}**",
+                        f"   - Agent Type: `{agent.agent_type}` (matches .claude/agents/{agent.agent_type}.md)",
+                        f"   - Job ID: `{agent.job_id}`",
+                        f"   - Status: {agent.status}",
+                        f"   - Mission Summary: {mission_summary}",
+                        "",
+                    ]
                 )
         else:
             agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
 
-        agent_list = "\n\n".join(agent_spawn_lines)
+        agent_list_section = [
+            "## Agent Jobs to Execute",
+            "",
+            "Below are the specialist agents spawned during staging.",
+            "Each has a unique job_id and agent_type.",
+            "",
+        ] + agent_spawn_lines
 
-        sections = [
-            "PROJECT EXECUTION PHASE - CLAUDE CODE SUBAGENT MODE\n",
-            f"Orchestrator ID: {orchestrator_id}",
-            f"Project ID: {project.id}",
-            f"Product ID: {project.product_id}",
-            f"Project: {project.name}",
-            f"Tenant Key: {self.tenant_key}\n",
-            "YOUR ROLE: SPAWN & COORDINATE SUB-AGENTS\n",
-            "STEP 1: ACTIVATE AGENT TEAM",
-            "For each agent below, spawn Claude Code sub-agent using Task tool:\n",
-            agent_list + "\n",
-            "(Pattern: spawn_agent_job() already called during staging - use existing IDs)\n",
-            "STEP 2: REMIND EACH SUB-AGENT",
-            "- First MCP action after optional health_check() must be:\n"
-            f"  get_agent_mission(job_id=\"{{{{job_id}}}}\", tenant_key=\"{self.tenant_key}\")\n"
-            "  (this SINGLE call both acknowledges the job and fetches the mission).\n",
-            "- Use report_progress() after milestones, including TODO-style Steps via:\n"
-            "  report_progress(job_id, {\"mode\": \"todo\", \"total_steps\": N, \"completed_steps\": k,\n"
-            "  \"current_step\": \"short description of the current step\"})\n",
-            "- Use send_message(..., message_type=\"plan\") for plan/TODOs and\n"
-            "  send_message(..., message_type=\"progress\") for narrative updates.\n",
-            "- Call get_next_instruction() for commands from orchestrator.",
-            "- Call complete_job() when done or report_error() on failure.\n",
-            "STEP 3: COORDINATE WORKFLOW",
-            "- Monitor via get_workflow_status()",
-            "- Respond to agent messages",
-            "- Handle blockers\n",
-            "Reference: See Handover 0106b for full sub-agent spawn instructions"
+        # SECTION 3: Task Tool Spawning Template
+        spawning_section = [
+            "## How to Spawn Agents via Task Tool",
+            "",
+            "### Spawning Template",
+            "Use this exact syntax to spawn each agent in parallel:",
+            "",
+            "```python",
+            "Task(",
+            '    subagent_type="{agent_type}",  # CRITICAL: Use agent_type, NOT agent_name',
+            '    instructions="""',
+            "    You are {agent_name} (job_id: {job_id})",
+            "    Tenant: {tenant_key}",
+            "    ",
+            '    First action: Call get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")',
+            "    This fetches your full mission and acknowledges the job.",
+            '    """',
+            ")",
+            "```",
+            "",
         ]
-        
-        return "\n".join(sections)
+
+        # Add concrete example if agents exist
+        if agent_jobs:
+            first = agent_jobs[0]
+            spawning_section.extend(
+                [
+                    "### Example: First Agent",
+                    "```python",
+                    "Task(",
+                    f'    subagent_type="{first.agent_type}",',
+                    '    instructions="""',
+                    f"    You are {first.agent_name} (job_id: {first.job_id})",
+                    f"    Tenant: {self.tenant_key}",
+                    "    ",
+                    f'    First action: Call get_agent_mission(job_id="{first.job_id}", tenant_key="{self.tenant_key}")',
+                    "    This fetches your full mission and acknowledges the job.",
+                    '    """',
+                    ")",
+                    "```",
+                    "",
+                    "**Important**: Spawn ALL agents in parallel for maximum efficiency.",
+                    "Each agent runs independently and coordinates via MCP server.",
+                    "",
+                ]
+            )
+
+        # SECTION 4: Monitoring Instructions (Enhanced)
+        monitoring_section = [
+            "## Monitoring Agent Progress",
+            "",
+            "### get_workflow_status()",
+            "Check all agent statuses:",
+            "```python",
+            f'get_workflow_status(project_id="{project.id}", tenant_key="{self.tenant_key}")',
+            "```",
+            "",
+            "Returns:",
+            "```json",
+            "{",
+            '  "agents": [',
+            '    {"job_id": "...", "status": "working", "progress": 45},',
+            '    {"job_id": "...", "status": "blocked", "block_reason": "..."}',
+            "  ]",
+            "}",
+            "```",
+            "",
+            "### Handle Blockers",
+            "- When agent status is 'blocked', read their messages",
+            "- Respond via send_message() with instructions",
+            "- Update their next_instruction field if needed",
+            "",
+            "### Message Handling",
+            "- Agents report progress via report_progress() and send_message()",
+            "- Monitor messages for questions or blockers",
+            "- Respond promptly to keep workflow moving",
+            "",
+        ]
+
+        # SECTION 5: Context Refresh Capability
+        context_refresh_section = [
+            "## Refreshing Your Context",
+            "",
+            "If you need to re-read your orchestrator mission:",
+            "```python",
+            f'get_orchestrator_instructions(orchestrator_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            "```",
+            "",
+            "This MCP tool fetches your original staging mission and context.",
+            "Use this if you lose track of project objectives or need to verify requirements.",
+            "",
+        ]
+
+        # SECTION 6: CLI Mode Constraints (CRITICAL)
+        cli_constraints_section = [
+            "## CLI Mode Constraints",
+            "",
+            "**WARNING: Agent Template Files Required**",
+            "- Each agent_type needs a file: `.claude/agents/{agent_type}.md`",
+            '- If file is missing: "Subagent type not found" error',
+            '- Example: agent_type="implementer" requires `.claude/agents/implementer.md`',
+            "",
+            "**WARNING: Exact Naming Required**",
+            "- Task tool parameter `subagent_type` expects `agent_type`, NOT `agent_name`",
+            '- agent_type: Technical ID (e.g., "implementer")',
+            '- agent_name: Display name (e.g., "Folder Structure Implementer")',
+            '- Using agent_name will fail with "Subagent type not found"',
+            "",
+            "**WARNING: MCP Communication Only**",
+            "- All agents run in THIS terminal (Claude Code CLI mode)",
+            "- Coordination happens via MCP server (not direct communication)",
+            "- All MCP tools require tenant_key for multi-tenant isolation",
+            "",
+        ]
+
+        # SECTION 7: Completion Instructions
+        completion_section = [
+            "## When You're Done",
+            "",
+            "### Verify Sub-Agents Completed",
+            "1. Check all agents via get_workflow_status()",
+            "2. Ensure all have status='complete' (no failures or blockers)",
+            "3. Review final deliverables",
+            "",
+            "### Complete Your Orchestrator Job",
+            "When all sub-agents are done and project is complete:",
+            "```python",
+            f'complete_job(job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            "```",
+            "",
+            "### Handover (if needed)",
+            "If you reach context limits before completion:",
+            "- Use `/gil_handover` slash command to trigger succession",
+            "- Or call orchestrator succession MCP tool",
+            "- A new orchestrator will continue from where you left off",
+            "",
+            "---",
+            "Reference: See Handover 0106b for full sub-agent spawn instructions",
+        ]
+
+        # Combine all sections
+        all_sections = (
+            context_recap
+            + agent_list_section
+            + spawning_section
+            + monitoring_section
+            + context_refresh_section
+            + cli_constraints_section
+            + completion_section
+        )
+
+        return "\n".join(all_sections)
 
     def _get_field_priority(self, field_name: str, user_priorities: Optional[dict]) -> Optional[int]:
         """
