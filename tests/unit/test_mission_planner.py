@@ -42,7 +42,7 @@ class TestMissionPlanner:
         product.id = "product_123"
         product.tenant_key = "tenant_abc"
         product.name = "Test Product"
-        product.vision_document = """
+        vision_text = """
         # Product Vision
 
         ## Technical Stack
@@ -69,12 +69,21 @@ class TestMissionPlanner:
         - Database migrations must be reversible
         - Frontend components must be reusable
         """
+        product.vision_document = vision_text
+        product.primary_vision_text = vision_text  # Add for new vision handling
+        product.primary_vision_path = None
+        product.vision_documents = []  # No chunked documents
         product.vision_type = "inline"
         product.chunked = True
         product.config_data = {
             "tech_stack": ["Python", "FastAPI", "PostgreSQL", "Vue3"],
             "features": ["authentication", "api", "notifications", "dashboard"],
             "guidelines": ["microservices", "event-driven", "TDD", "CI/CD"],
+        }
+        # Add product_memory for history extraction
+        product.product_memory = {
+            "sequential_history": [],
+            "git_integration": {"enabled": False}
         }
         return product
 
