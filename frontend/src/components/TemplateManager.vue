@@ -759,10 +759,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '@/services/api'
 import TemplateArchive from './TemplateArchive.vue'
 import { format } from 'date-fns'
+import { useWebSocketV2 } from '@/composables/useWebSocket'
+import { useUserStore } from '@/stores/user'
+
+// Handover 0335: WebSocket setup for real-time export status updates
+const { on, off } = useWebSocketV2()
+const userStore = useUserStore()
+const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
+
 // Utility functions (inline to avoid external dependency)
 function generatePersonalAgentsInstructions(downloadUrl) {
   return `Download from: ${downloadUrl}
@@ -1454,10 +1462,45 @@ const viewDiff = async (template) => {
   }
 }
 
+// Handover 0335: Handle template export WebSocket event
+const handleTemplateExported = (data) => {
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    console.warn('[TemplateManager] Export event rejected: tenant mismatch', {
+      expected: currentTenantKey.value,
+      received: data.tenant_key,
+    })
+    return
+  }
+
+  // Update local template state with new export timestamp
+  const exportedAt = data.exported_at
+  const templateIdSet = new Set(data.template_ids)
+
+  templates.value.forEach((template) => {
+    if (templateIdSet.has(template.id)) {
+      template.last_exported_at = exportedAt
+      template.may_be_stale = false // Clear staleness indicator
+    }
+  })
+
+  console.log(
+    `[TemplateManager] Updated ${data.template_ids.length} templates as exported (${data.export_type})`
+  )
+}
+
 // Lifecycle
 onMounted(() => {
   loadTemplates()
   loadActiveCount() // Handover 0075: Load active agent count
+
+  // Handover 0335: Subscribe to template export events
+  on('template:exported', handleTemplateExported)
+})
+
+onUnmounted(() => {
+  // Handover 0335: Unsubscribe from template export events
+  off('template:exported', handleTemplateExported)
 })
 
 // Watch for variable changes
