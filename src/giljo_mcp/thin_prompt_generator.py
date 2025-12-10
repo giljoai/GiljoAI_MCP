@@ -953,81 +953,100 @@ No previous project history available. Starting fresh.
 
         # Mode-specific instructions
         if claude_code_mode:
-            mode_block = """CLAUDE CODE CLI MODE:
-- You will spawn agents using Claude Code's Task tool
-- agent_type parameter = subagent_type (MUST match template name exactly)
-- Agents are hidden subprocesses - user sees progress via dashboard
-- After spawning, agents call get_agent_mission() to start work
+            # Handover 0342: Trimmed CLI mode block - verbose version commented out below
+            # Full enforcement rules are in get_orchestrator_instructions() response
+            mode_block = """CLI MODE CRITICAL:
+This project uses Claude Code CLI for implementation. When spawning agents:
+- agent_type: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (e.g., "implementer")
+- agent_name: Descriptive display label only (e.g., "Backend API Implementer")
 
-## AGENT_TYPE LIFECYCLE (SINGLE SOURCE OF TRUTH)
+In implementation phase, Task(subagent_type=X) uses agent_type value, NOT agent_name.
+Full cli_mode_rules, allowed_agent_types, and examples are in get_orchestrator_instructions() response."""
 
-**ABSOLUTE RULE**: agent_type is the SINGLE SOURCE OF TRUTH for Task tool.
-If you spawned with agent_type="implementer", you MUST use Task(subagent_type="implementer").
-No exceptions. No variations. No creative naming.
-
-| Phase          | Operation                                    | Parameter Used    |
-|----------------|----------------------------------------------|-------------------|
-| 1. Staging     | spawn_agent_job(agent_type="implementer")    | agent_type        |
-| 2. Job Created | Job record stores agent_type="implementer"   | agent_type        |
-| 3. Launch      | Task(subagent_type="implementer")            | agent_type        |
-| 4. File Lookup | Claude Code finds: implementer.md            | agent_type        |
-
-agent_type is the ONLY value that flows through the entire lifecycle.
-agent_name is NEVER used for any tool operations - display label ONLY.
-
-## FORBIDDEN PATTERNS (WILL FAIL)
-
-These patterns WILL cause "Subagent type not found" errors:
-
-FORBIDDEN:
-- Task(subagent_type="{agent_name}")         # Using display name - FAILS
-- Task(subagent_type="Backend Implementor")  # Creative variation - FAILS
-- Task(subagent_type="frontend-impl")        # Hyphenated variation - FAILS
-- Task(subagent_type="IMPLEMENTER")          # Case variation - FAILS
-- Any value OTHER than exact agent_type from spawn_agent_job - FAILS
-
-## AGENT SPAWNING RULES (CLI MODE - CRITICAL)
-
-When spawning agents, you MUST use TWO parameters correctly:
-
-| Parameter    | Purpose                            | Value Must Be               |
-|--------------|------------------------------------|-----------------------------|
-| `agent_type` | Template name for Task tool        | EXACT match: "implementer"  |
-| `agent_name` | Human-readable UI label (DISPLAY)  | Descriptive: "Folder Impl"  |
-
-### Why This Matters
-Claude Code's Task tool finds agents by filename:
-- `Task(subagent_type="implementer")` → looks for `implementer.md` ✓
-- `Task(subagent_type="Folder Implementer")` → FILE NOT FOUND ✗
-
-### Available Templates
-The `get_orchestrator_instructions()` response contains `cli_mode_rules` with:
-- `agent_spawning_constraint.allowed_agent_types` - list of valid agent_type values
-- `spawning_examples` - correct usage patterns
-
-### Example - Spawning 2 implementers:
-```python
-spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)
-spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
-```
-Both use `agent_type="implementer"` but have different display names.
-In implementation phase: BOTH are launched with Task(subagent_type="implementer")
-
-## AGENT TEMPLATE VALIDATION (CLI MODE)
-
-Before spawning agents, verify templates exist in Claude Code:
-
-### Resolution Priority
-Claude Code checks templates in this order:
-1. **Project agents**: `{project}/.claude/agents/{agent_type}.md` (HIGHEST PRIORITY)
-2. **User agents**: `~/.claude/agents/{agent_type}.md`
-3. **Built-in**: Claude Code defaults (FALLBACK)
-
-### Handle Mismatches (Soft Validation)
-If any required agent is MISSING from both folders:
-- WARN the user: "Template '{agent_type}' not found in .claude/agents/"
-- SUGGEST: "Export templates from GiljoAI Settings → Agent Template Manager"
-- PROCEED with available agents (soft fail - don't block entirely)"""
+            # ============================================================================
+            # VERBOSE CLI MODE BLOCK (COMMENTED OUT - Handover 0342)
+            # Preserved for rollback if concise version proves insufficient.
+            # This content is now delivered via get_orchestrator_instructions() response
+            # in the cli_mode_rules, agent_spawning_constraint, and spawning_examples fields.
+            # ============================================================================
+            # mode_block_verbose = """CLAUDE CODE CLI MODE:
+            # - You will spawn agents using Claude Code's Task tool
+            # - agent_type parameter = subagent_type (MUST match template name exactly)
+            # - Agents are hidden subprocesses - user sees progress via dashboard
+            # - After spawning, agents call get_agent_mission() to start work
+            #
+            # ## AGENT_TYPE LIFECYCLE (SINGLE SOURCE OF TRUTH)
+            #
+            # **ABSOLUTE RULE**: agent_type is the SINGLE SOURCE OF TRUTH for Task tool.
+            # If you spawned with agent_type="implementer", you MUST use Task(subagent_type="implementer").
+            # No exceptions. No variations. No creative naming.
+            #
+            # | Phase          | Operation                                    | Parameter Used    |
+            # |----------------|----------------------------------------------|-------------------|
+            # | 1. Staging     | spawn_agent_job(agent_type="implementer")    | agent_type        |
+            # | 2. Job Created | Job record stores agent_type="implementer"   | agent_type        |
+            # | 3. Launch      | Task(subagent_type="implementer")            | agent_type        |
+            # | 4. File Lookup | Claude Code finds: implementer.md            | agent_type        |
+            #
+            # agent_type is the ONLY value that flows through the entire lifecycle.
+            # agent_name is NEVER used for any tool operations - display label ONLY.
+            #
+            # ## FORBIDDEN PATTERNS (WILL FAIL)
+            #
+            # These patterns WILL cause "Subagent type not found" errors:
+            #
+            # FORBIDDEN:
+            # - Task(subagent_type="{agent_name}")         # Using display name - FAILS
+            # - Task(subagent_type="Backend Implementor")  # Creative variation - FAILS
+            # - Task(subagent_type="frontend-impl")        # Hyphenated variation - FAILS
+            # - Task(subagent_type="IMPLEMENTER")          # Case variation - FAILS
+            # - Any value OTHER than exact agent_type from spawn_agent_job - FAILS
+            #
+            # ## AGENT SPAWNING RULES (CLI MODE - CRITICAL)
+            #
+            # When spawning agents, you MUST use TWO parameters correctly:
+            #
+            # | Parameter    | Purpose                            | Value Must Be               |
+            # |--------------|------------------------------------|-----------------------------|
+            # | `agent_type` | Template name for Task tool        | EXACT match: "implementer"  |
+            # | `agent_name` | Human-readable UI label (DISPLAY)  | Descriptive: "Folder Impl"  |
+            #
+            # ### Why This Matters
+            # Claude Code's Task tool finds agents by filename:
+            # - `Task(subagent_type="implementer")` → looks for `implementer.md` ✓
+            # - `Task(subagent_type="Folder Implementer")` → FILE NOT FOUND ✗
+            #
+            # ### Available Templates
+            # The `get_orchestrator_instructions()` response contains `cli_mode_rules` with:
+            # - `agent_spawning_constraint.allowed_agent_types` - list of valid agent_type values
+            # - `spawning_examples` - correct usage patterns
+            #
+            # ### Example - Spawning 2 implementers:
+            # ```python
+            # spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)
+            # spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
+            # ```
+            # Both use `agent_type="implementer"` but have different display names.
+            # In implementation phase: BOTH are launched with Task(subagent_type="implementer")
+            #
+            # ## AGENT TEMPLATE VALIDATION (CLI MODE)
+            #
+            # Before spawning agents, verify templates exist in Claude Code:
+            #
+            # ### Resolution Priority
+            # Claude Code checks templates in this order:
+            # 1. **Project agents**: `{project}/.claude/agents/{agent_type}.md` (HIGHEST PRIORITY)
+            # 2. **User agents**: `~/.claude/agents/{agent_type}.md`
+            # 3. **Built-in**: Claude Code defaults (FALLBACK)
+            #
+            # ### Handle Mismatches (Soft Validation)
+            # If any required agent is MISSING from both folders:
+            # - WARN the user: "Template '{agent_type}' not found in .claude/agents/"
+            # - SUGGEST: "Export templates from GiljoAI Settings → Agent Template Manager"
+            # - PROCEED with available agents (soft fail - don't block entirely)"""
+            # ============================================================================
+            # END VERBOSE CLI MODE BLOCK
+            # ============================================================================
         else:
             mode_block = """MULTI-TERMINAL MODE:
 - User will manually copy/paste prompts for each agent
