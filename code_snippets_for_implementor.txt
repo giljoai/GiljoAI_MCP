@@ -1,0 +1,142 @@
+CODE SNIPPETS FOR IMPLEMENTATION PROMPT ENHANCEMENT
+Handover 0337 Task 3 | For TDD Implementor
+
+Target: src/giljo_mcp/thin_prompt_generator.py
+Method: _build_claude_code_execution_prompt() lines 1147-1207
+
+========================================
+CRITICAL BLOCKER #1: Missing agent_type Field
+Section 2 | Priority: P0 | Lines 1169-1173
+========================================
+
+CURRENT (WRONG - NO agent_type):
+    agent_spawn_lines.append(
+        f"{idx}. {agent.agent_name}:\n"
+        f"   - Mission: {mission}\n"
+        f"   - Job ID: {agent.job_id}"
+    )
+
+REPLACE WITH (CORRECT - HAS agent_type):
+    mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
+    
+    agent_spawn_lines.append(
+        f"{idx}. **{agent.agent_name}**\n"
+        f"   - Agent Type: `{agent.agent_type}` (matches .claude/agents/{agent.agent_type}.md)\n"
+        f"   - Job ID: `{agent.job_id}**\n"
+        f"   - Status: {agent.status}\n"
+        f"   - Mission Summary: {mission_summary}"
+    )
+
+Why Critical: Task tool requires agent_type, not agent_name
+Impact: Without this, orchestrators cannot spawn agents
+
+========================================
+SNIPPET 1: Context Recap
+Section 1 | Priority: P0 | Insert after line 1183
+========================================
+
+context_recap = [
+    "# GiljoAI Implementation Phase - Claude Code CLI Mode",
+    "## Who You Are",
+    f"You are Orchestrator (job_id: {orchestrator_id}) for project {project.id}",
+    f"Tenant: {self.tenant_key}",
+    "",
+    "## What You've Already Done",
+    "In a PREVIOUS session, you completed staging:",
+    "- Analyzed project requirements",
+    "- Created mission plan",
+    f"- Spawned {len(agent_jobs)} specialist agents",
+    "",
+    "## Current State",
+    "All agent jobs are in waiting status, ready for execution.",
+    "---"
+]
+
+sections = context_recap + [
+    "PROJECT EXECUTION PHASE - CLAUDE CODE SUBAGENT MODE",
+    # ... rest continues
+
+========================================
+SNIPPET 2: Task Tool Template
+Section 3 | Priority: P0 | Insert after line 1177
+========================================
+
+spawning_template = [
+    "",
+    "### Spawning Template",
+    "Task() syntax with placeholders",
+    "Shows exact parameter names",
+    "Includes get_agent_mission() call",
+    ""
+]
+
+if agent_jobs:
+    first = agent_jobs[0]
+    spawning_template.extend([
+        "### Example (First Agent)",
+        f"Real example with job_id: {first.job_id}",
+        f"Agent type: {first.agent_type}",
+        "**Important**: Spawn all agents in parallel"
+    ])
+
+sections.extend(spawning_template)
+
+========================================
+SNIPPET 3: CLI Mode Constraints
+Section 6 | Priority: P0 | New section
+========================================
+
+cli_constraints = [
+    "",
+    "## CLI Mode Constraints",
+    "",
+    "WARNING: Agent Template Files Required:",
+    "- Each agent_type needs .claude/agents/{agent_type}.md",
+    "- If missing: Subagent type not found error",
+    "",
+    "WARNING: Exact Naming Required:",
+    "- Use agent_type, NOT agent_name",
+    '- Example: Use "implementer" not "Folder Structure Implementer"',
+    "",
+    "WARNING: MCP Communication:",
+    "- All agents run in THIS terminal",
+    "- Coordination via MCP server only"
+]
+
+sections.extend(cli_constraints)
+
+========================================
+TEST REQUIREMENTS
+========================================
+
+def test_section_1_context_recap():
+    assert "## Who You Are" in prompt
+    assert "PREVIOUS session" in prompt
+
+def test_section_2_agent_type_field():
+    assert "Agent Type:" in prompt
+    assert ".claude/agents/" in prompt
+
+def test_section_3_task_template():
+    assert "### Spawning Template" in prompt
+
+def test_section_6_cli_constraints():
+    assert "## CLI Mode Constraints" in prompt
+
+========================================
+IMPLEMENTATION ORDER
+========================================
+
+1. Section 2 fix (agent_type) - 10 min - CRITICAL
+2. Section 1 (context recap) - 10 min - HIGH
+3. Section 3 (Task template) - 30 min - HIGH
+4. Section 6 (CLI constraints) - 15 min - CRITICAL
+5. Section 4 (monitoring) - 20 min - MEDIUM
+6. Section 5 (context refresh) - 15 min - MEDIUM
+7. Section 7 (completion) - 15 min - MEDIUM
+
+Total: ~2.5 hours
+
+========================================
+END OF SNIPPETS
+========================================
