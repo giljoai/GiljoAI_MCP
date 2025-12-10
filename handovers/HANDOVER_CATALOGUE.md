@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-07 (0334 Plugin series deleted, replaced with HTTP-Only MCP Consolidation)
+**Last Updated:** 2025-12-09 (0335 series closed out - CLI Mode Agent Template Validation complete)
 
 ---
 
@@ -138,7 +138,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0334
+**0301-0400** (Services): 0300-0316, 0318-0341
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 
@@ -147,7 +147,7 @@ completed/reference/
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
-- **0335+**: Next sequential after current development
+- **0342+**: Next sequential after current development
 
 ### Naming Format
 ```
