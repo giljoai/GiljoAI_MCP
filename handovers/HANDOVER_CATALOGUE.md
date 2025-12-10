@@ -46,6 +46,7 @@
 | 0333 | Staging Prompt Architecture Correction | **COMPLETE** | High |
 | 0334 | HTTP-Only MCP Consolidation | **COMPLETE** | High |
 | 0335 | CLI Mode Agent Template Validation | **COMPLETE** | High |
+| 0337 | CLI Mode Implementation Prompt Fix | **COMPLETE** | Critical |
 | 0339 | Stage 1 Agent Type Enforcement | **COMPLETE** | High |
 | 0340 | CLI Mode Two-Phase Architecture Summary | Ready (Stage 2) | High |
 | 0341 | CLI Mode Stage 2 Implementation Prompt | Ready for Agent | High |
@@ -187,6 +188,7 @@ Some handovers become reference docs (not actionable):
 - 0341: CLI Mode Stage 2 Implementation Prompt (Ready for TDD Implementor agent)
 - 0340: CLI Mode Two-Phase Architecture Summary (Stage 2 pending)
 - 0339: Stage 1 Agent Type Enforcement (COMPLETE - belt-and-suspenders)
+- 0337: CLI Mode Implementation Prompt Fix (COMPLETE - 6 subagents, 23 tests passing)
 - 0335: CLI Mode Agent Template Validation (COMPLETE)
 - 0334: HTTP-Only MCP Consolidation (consolidates 0261, 0262, 0297 gaps)
 - 0333: Staging Prompt Architecture Correction (COMPLETE)
