@@ -678,6 +678,24 @@ class ToolAccessor:
                             "{project}/.claude/agents/ (priority 1 - project agents)",
                             "~/.claude/agents/ (priority 2 - user agents)",
                         ],
+                        "agent_type_is_truth": {
+                            "statement": "agent_type is the SINGLE SOURCE OF TRUTH for Task tool operations",
+                            "usage": "spawn_agent_job(agent_type=X) → Task(subagent_type=X)",
+                            "agent_name_purpose": "Display label ONLY - never for tool calling"
+                        },
+                        "forbidden_patterns": [
+                            {"pattern": "Task(subagent_type=agent_name)", "reason": "agent_name is display only"},
+                            {"pattern": "Task(subagent_type='Backend Implementor')", "reason": "Creative variation will fail"},
+                            {"pattern": "Task(subagent_type='frontend-impl')", "reason": "Hyphenated variation will fail"},
+                            {"pattern": "Task(subagent_type='IMPLEMENTER')", "reason": "Case mismatch will fail"},
+                            {"pattern": "Any variation of agent_type", "reason": "Only exact agent_type value works"}
+                        ],
+                        "lifecycle_flow": [
+                            {"phase": 1, "name": "Staging", "operation": "spawn_agent_job(agent_type='X')", "param": "agent_type"},
+                            {"phase": 2, "name": "Job Created", "operation": "Job.agent_type = 'X'", "param": "agent_type"},
+                            {"phase": 3, "name": "Launch", "operation": "Task(subagent_type='X')", "param": "agent_type"},
+                            {"phase": 4, "name": "File Lookup", "operation": "Claude Code finds X.md", "param": "agent_type"}
+                        ],
                     }
 
                     # Handover 0335: Spawning examples showing correct agent_type vs agent_name usage

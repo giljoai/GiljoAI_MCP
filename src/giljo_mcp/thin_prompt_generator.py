@@ -959,14 +959,41 @@ No previous project history available. Starting fresh.
 - Agents are hidden subprocesses - user sees progress via dashboard
 - After spawning, agents call get_agent_mission() to start work
 
+## AGENT_TYPE LIFECYCLE (SINGLE SOURCE OF TRUTH)
+
+**ABSOLUTE RULE**: agent_type is the SINGLE SOURCE OF TRUTH for Task tool.
+If you spawned with agent_type="implementer", you MUST use Task(subagent_type="implementer").
+No exceptions. No variations. No creative naming.
+
+| Phase          | Operation                                    | Parameter Used    |
+|----------------|----------------------------------------------|-------------------|
+| 1. Staging     | spawn_agent_job(agent_type="implementer")    | agent_type        |
+| 2. Job Created | Job record stores agent_type="implementer"   | agent_type        |
+| 3. Launch      | Task(subagent_type="implementer")            | agent_type        |
+| 4. File Lookup | Claude Code finds: implementer.md            | agent_type        |
+
+agent_type is the ONLY value that flows through the entire lifecycle.
+agent_name is NEVER used for any tool operations - display label ONLY.
+
+## FORBIDDEN PATTERNS (WILL FAIL)
+
+These patterns WILL cause "Subagent type not found" errors:
+
+FORBIDDEN:
+- Task(subagent_type="{agent_name}")         # Using display name - FAILS
+- Task(subagent_type="Backend Implementor")  # Creative variation - FAILS
+- Task(subagent_type="frontend-impl")        # Hyphenated variation - FAILS
+- Task(subagent_type="IMPLEMENTER")          # Case variation - FAILS
+- Any value OTHER than exact agent_type from spawn_agent_job - FAILS
+
 ## AGENT SPAWNING RULES (CLI MODE - CRITICAL)
 
 When spawning agents, you MUST use TWO parameters correctly:
 
-| Parameter    | Purpose                      | Value Must Be               |
-|--------------|------------------------------|----------------------------|
-| `agent_type` | Template name for Task tool  | EXACT match: "implementer" |
-| `agent_name` | Human-readable UI label      | Descriptive: "Folder Impl" |
+| Parameter    | Purpose                            | Value Must Be               |
+|--------------|------------------------------------|-----------------------------|
+| `agent_type` | Template name for Task tool        | EXACT match: "implementer"  |
+| `agent_name` | Human-readable UI label (DISPLAY)  | Descriptive: "Folder Impl"  |
 
 ### Why This Matters
 Claude Code's Task tool finds agents by filename:
@@ -984,6 +1011,7 @@ spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)
 spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
 ```
 Both use `agent_type="implementer"` but have different display names.
+In implementation phase: BOTH are launched with Task(subagent_type="implementer")
 
 ## AGENT TEMPLATE VALIDATION (CLI MODE)
 
