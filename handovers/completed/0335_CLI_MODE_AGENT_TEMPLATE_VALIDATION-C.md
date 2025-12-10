@@ -1,7 +1,28 @@
 # Handover 0335: CLI Mode Agent Template Validation
 
-## Status: READY FOR IMPLEMENTATION
+## Status: COMPLETE
 ## Priority: HIGH
+## Completed: 2025-12-09
+
+---
+
+## Completion Summary
+
+**All 4 tasks completed:**
+- Task 1: `cli_mode_rules` in `get_orchestrator_instructions` response ✅
+- Task 2: Staging prompt validation section (CLI mode) ✅
+- Task 3: `last_exported_at` column + `may_be_stale` property ✅
+- Task 4: UI staleness indicator in TemplateManager ✅
+
+**Additional bug fixes during implementation:**
+- WebSocket `ws_manager` import fix (use `app.state`)
+- Vue lazy-loading WebSocket fix (provide/inject pattern)
+- API response missing export fields fix
+- Execution mode prop staleness fix (event emission)
+
+**Key commits:** `1b488be8`, `858a0e10`, `1f35ea5b`, `66c76019`, `2db3b3bb`, `617b5298`
+
+**See also:** `handover_0335_session_complete.md` for detailed session memory
 ## Type: Prompt Enhancement + Soft Validation
 ## Depends On: 0260 (CLI Toggle), 0334 (full_protocol in get_agent_mission)
 
