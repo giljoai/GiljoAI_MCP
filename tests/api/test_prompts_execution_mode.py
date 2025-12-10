@@ -198,7 +198,7 @@ class TestStagingPromptContentByMode:
     async def test_claude_code_cli_mode_includes_strict_instructions(
         self, api_client: AsyncClient, test_project_for_prompts
     ):
-        """Claude Code CLI mode prompt MUST contain strict instructions"""
+        """Claude Code CLI mode prompt MUST contain CLI MODE CRITICAL section"""
         project, token = test_project_for_prompts
 
         response = await api_client.get(
@@ -209,15 +209,16 @@ class TestStagingPromptContentByMode:
         assert response.status_code == 200
         prompt = response.json()['prompt']
 
-        # MUST contain CLI mode sections
-        assert 'CLAUDE CODE CLI MODE' in prompt
-        assert 'STRICT TASK TOOL REQUIREMENTS' in prompt
+        # Handover 0342: Trimmed CLI mode - now uses concise CLI MODE CRITICAL block
+        # Full rules are in get_orchestrator_instructions() response
+        assert 'CLI MODE CRITICAL' in prompt
+        assert 'SINGLE SOURCE OF TRUTH' in prompt
 
     @pytest.mark.asyncio
-    async def test_cli_mode_includes_exact_agent_naming_section(
+    async def test_cli_mode_includes_agent_type_guidance(
         self, api_client: AsyncClient, test_project_for_prompts
     ):
-        """CLI mode prompt must include EXACT AGENT NAMING section"""
+        """CLI mode prompt must include agent_type vs agent_name guidance"""
         project, token = test_project_for_prompts
 
         response = await api_client.get(
@@ -228,15 +229,18 @@ class TestStagingPromptContentByMode:
         assert response.status_code == 200
         prompt = response.json()['prompt']
 
-        # Must contain exact naming requirements
-        assert 'EXACT AGENT NAMING' in prompt
-        assert 'NO EXCEPTIONS' in prompt or 'CRITICAL' in prompt
+        # Handover 0342: Concise agent_type guidance
+        assert 'agent_type' in prompt
+        assert 'agent_name' in prompt
+        # Must explain agent_type is for templates, agent_name is for display
+        assert 'template' in prompt.lower() or 'EXACTLY match' in prompt
+        assert 'display' in prompt.lower() or 'Descriptive' in prompt
 
     @pytest.mark.asyncio
-    async def test_cli_mode_includes_forbidden_examples(
+    async def test_cli_mode_references_get_orchestrator_instructions(
         self, api_client: AsyncClient, test_project_for_prompts
     ):
-        """CLI mode must show FORBIDDEN agent naming examples"""
+        """CLI mode must reference get_orchestrator_instructions for full rules"""
         project, token = test_project_for_prompts
 
         response = await api_client.get(
@@ -247,19 +251,16 @@ class TestStagingPromptContentByMode:
         assert response.status_code == 200
         prompt = response.json()['prompt']
 
-        # Must contain forbidden examples
-        assert 'FORBIDDEN' in prompt
-        # Must show at least one bad example
-        assert (
-            'backend-tester-for-api-validation' in prompt or
-            'Backend Tester Agent' in prompt
-        ), "Prompt must include forbidden naming examples"
+        # Handover 0342: Full rules deferred to MCP response
+        assert 'get_orchestrator_instructions' in prompt
+        # Should mention that full rules are in the response
+        assert 'cli_mode_rules' in prompt or 'allowed_agent_types' in prompt
 
     @pytest.mark.asyncio
-    async def test_cli_mode_includes_agent_spawning_rules(
+    async def test_cli_mode_includes_task_tool_reference(
         self, api_client: AsyncClient, test_project_for_prompts
     ):
-        """CLI mode must include agent spawning parameter rules"""
+        """CLI mode must reference Task tool subagent_type usage"""
         project, token = test_project_for_prompts
 
         response = await api_client.get(
@@ -270,9 +271,10 @@ class TestStagingPromptContentByMode:
         assert response.status_code == 200
         prompt = response.json()['prompt']
 
-        # Must explain Task tool parameters
-        assert 'subagent_type parameter' in prompt or 'agent_type parameter' in prompt
-        assert 'agent_name parameter' in prompt
+        # Handover 0342: Concise Task tool reference
+        assert 'Task(subagent_type=' in prompt or 'subagent_type' in prompt
+        # Must clarify that agent_type (not agent_name) is used
+        assert 'NOT agent_name' in prompt or 'agent_type value' in prompt
 
 
 # ============================================================================
