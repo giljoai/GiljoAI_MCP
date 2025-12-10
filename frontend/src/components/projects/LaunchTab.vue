@@ -1,7 +1,13 @@
 <template>
   <div class="launch-tab-wrapper">
     <!-- Execution Mode Toggle (Handover 0333 Phase 1) -->
-    <div class="execution-mode-toggle-bar" data-testid="execution-mode-toggle" @click="toggleExecutionMode">
+    <!-- Lock added in Handover 0343 -->
+    <div
+      class="execution-mode-toggle-bar"
+      :class="{ 'toggle-locked': isExecutionModeLocked }"
+      data-testid="execution-mode-toggle"
+      @click="toggleExecutionMode"
+    >
       <span class="toggle-label">Execution Mode</span>
       <span class="toggle-options">
         <span :class="{ active: !usingClaudeCodeSubagents }">Multi-Terminal</span>
@@ -14,6 +20,7 @@
         </template>
         <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
       </v-tooltip>
+      <v-icon v-if="isExecutionModeLocked" size="small" class="ml-1 lock-icon">mdi-lock</v-icon>
       <div class="toggle-indicator" data-testid="execution-mode-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
     </div>
 
@@ -208,6 +215,14 @@ const nonOrchestratorAgents = computed(() => {
 })
 
 /**
+ * Check if execution mode is locked (Handover 0343)
+ * Execution mode is locked when an orchestrator job exists
+ */
+const isExecutionModeLocked = computed(() => {
+  return agents.value.some(agent => agent.agent_type === 'orchestrator')
+})
+
+/**
  * Get agent color based on type
  */
 const getAgentColor = (agentType) => {
@@ -363,8 +378,19 @@ const handleAgentCreated = (data) => {
 /**
  * Toggle Execution Mode (Handover 0333 Phase 1)
  * Switches between Multi-Terminal and Claude Code CLI modes
+ * Handover 0343: Prevent toggle when orchestrator exists
  */
 async function toggleExecutionMode() {
+  // Handover 0343: Check if execution mode is locked
+  if (isExecutionModeLocked.value) {
+    showToastNotification({
+      message: 'Execution mode locked after staging begins. Complete or cancel the orchestrator job to unlock.',
+      type: 'warning',
+      timeout: 3000
+    })
+    return
+  }
+
   const newValue = !usingClaudeCodeSubagents.value
   const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
 
@@ -636,6 +662,17 @@ defineExpose({
       background: rgba(212, 165, 116, 0.1);
     }
 
+    // Handover 0343: Locked state styles
+    &.toggle-locked {
+      cursor: not-allowed;
+      opacity: 0.6;
+
+      &:hover {
+        border-color: $color-text-secondary;
+        background: rgba(212, 165, 116, 0.05);
+      }
+    }
+
     .toggle-label {
       font-weight: 600;
       color: $color-text-primary;
@@ -668,6 +705,12 @@ defineExpose({
     .help-icon {
       color: $color-text-secondary;
       margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    // Handover 0343: Lock icon styling
+    .lock-icon {
+      color: $color-text-secondary;
       flex-shrink: 0;
     }
 

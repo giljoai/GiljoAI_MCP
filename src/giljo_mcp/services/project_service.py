@@ -1626,6 +1626,24 @@ class ProjectService:
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
+                # Handover 0343: Lock execution_mode after staging
+                if "execution_mode" in updates:
+                    from src.giljo_mcp.models.agents import MCPAgentJob
+                    orch_result = await session.execute(
+                        select(MCPAgentJob.job_id).where(
+                            and_(
+                                MCPAgentJob.project_id == project_id,
+                                MCPAgentJob.agent_type == 'orchestrator',
+                                MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant()
+                            )
+                        ).limit(1)
+                    )
+                    if orch_result.scalar_one_or_none():
+                        return {
+                            "success": False,
+                            "error": "Cannot change execution mode after staging. An orchestrator already exists."
+                        }
+
                 # Update allowed fields (Handover 0260: Added execution_mode)
                 allowed_fields = {"name", "description", "mission", "execution_mode"}
                 for field, value in updates.items():
