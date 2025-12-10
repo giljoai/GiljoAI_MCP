@@ -434,3 +434,29 @@ if agent_type not in valid_agent_types:
 **Next Steps:**
 - TDD Implementor to execute phases 1-5 with test-first approach
 - Backend Integration Tester to verify E2E workflows
+
+---
+
+### 2025-12-09 - Claude Opus 4.5 (Final Completion)
+**Status:** COMPLETED
+**Work Done:**
+- Phase 1: Consolidate duplicate functions - DONE (actionConfig.js canonical)
+- Phase 2: Backend persistence - DONE (execution_mode column exists)
+- Phase 3: Frontend toggle persistence - DONE (toggle survives refresh)
+- Phase 4: Mode-specific prompt generation - DONE (0339 commit)
+  - Added AGENT_TYPE LIFECYCLE section with 4-phase flow table
+  - Added FORBIDDEN PATTERNS section with 5 explicit failure examples
+  - Added ABSOLUTE RULE callout ("agent_type is SINGLE SOURCE OF TRUTH")
+- Phase 5a: Constraint in get_orchestrator_instructions - DONE (0339 commit)
+  - Added agent_type_is_truth, forbidden_patterns, lifecycle_flow fields
+- Phase 5b: Validation in spawn_agent_job - DONE (Invalid agent_type error exists)
+
+**Commits:**
+- 6b6eb173: feat(0339): Strengthen agent_type enforcement in CLI mode (belt-and-suspenders)
+- Prior commits: Toggle persistence, backend schema, frontend binding
+
+**Final Notes:**
+- All 10 success criteria met
+- Tests: 29 passed, 2 skipped (functionality moved to agent templates)
+- Multi-terminal mode verified unchanged
+- Belt-and-suspenders enforcement: Prompt + MCP response + spawn validation
