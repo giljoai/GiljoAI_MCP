@@ -344,6 +344,153 @@ class TestCLIModeRules:
         assert "subagent_type" in task_mapping or "Task" in task_mapping, \
             "task_tool_mapping should mention Task tool or subagent_type"
 
+    async def test_cli_mode_rules_contains_new_fields(
+        self,
+        db_manager: DatabaseManager,
+        cli_mode_context: dict,
+    ):
+        """
+        Verify cli_mode_rules contains new fields from Handover 0336.
+
+        New fields:
+        - agent_type_is_truth: Dict with SSOT explanation
+        - forbidden_patterns: List of forbidden pattern dicts
+        - lifecycle_flow: List of 4-phase lifecycle dicts
+        """
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_manager = TenantManager()
+        tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+        result = await tool_accessor.get_orchestrator_instructions(
+            orchestrator_id=cli_mode_context["orchestrator_id"],
+            tenant_key=cli_mode_context["tenant_key"],
+        )
+
+        assert "cli_mode_rules" in result
+        cli_rules = result["cli_mode_rules"]
+
+        # New fields from Handover 0336
+        new_fields = [
+            "agent_type_is_truth",
+            "forbidden_patterns",
+            "lifecycle_flow",
+        ]
+
+        for field in new_fields:
+            assert field in cli_rules, f"cli_mode_rules missing new field: {field}"
+
+        # Verify field types
+        assert isinstance(cli_rules["agent_type_is_truth"], dict), \
+            "agent_type_is_truth should be a dict"
+        assert isinstance(cli_rules["forbidden_patterns"], list), \
+            "forbidden_patterns should be a list"
+        assert isinstance(cli_rules["lifecycle_flow"], list), \
+            "lifecycle_flow should be a list"
+
+    async def test_cli_mode_rules_agent_type_is_truth_structure(
+        self,
+        db_manager: DatabaseManager,
+        cli_mode_context: dict,
+    ):
+        """
+        Verify agent_type_is_truth field contains required sub-fields.
+        """
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_manager = TenantManager()
+        tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+        result = await tool_accessor.get_orchestrator_instructions(
+            orchestrator_id=cli_mode_context["orchestrator_id"],
+            tenant_key=cli_mode_context["tenant_key"],
+        )
+
+        cli_rules = result.get("cli_mode_rules", {})
+        agent_type_is_truth = cli_rules.get("agent_type_is_truth", {})
+
+        # Should have required sub-fields
+        required_sub_fields = ["statement", "usage", "agent_name_purpose"]
+        for field in required_sub_fields:
+            assert field in agent_type_is_truth, \
+                f"agent_type_is_truth missing sub-field: {field}"
+
+        # Verify statement content
+        statement = agent_type_is_truth["statement"]
+        assert "SINGLE SOURCE OF TRUTH" in statement, \
+            "statement should mention 'SINGLE SOURCE OF TRUTH'"
+
+    async def test_cli_mode_rules_forbidden_patterns_structure(
+        self,
+        db_manager: DatabaseManager,
+        cli_mode_context: dict,
+    ):
+        """
+        Verify forbidden_patterns contains list of pattern dicts.
+        """
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_manager = TenantManager()
+        tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+        result = await tool_accessor.get_orchestrator_instructions(
+            orchestrator_id=cli_mode_context["orchestrator_id"],
+            tenant_key=cli_mode_context["tenant_key"],
+        )
+
+        cli_rules = result.get("cli_mode_rules", {})
+        forbidden_patterns = cli_rules.get("forbidden_patterns", [])
+
+        # Should have at least 5 forbidden patterns
+        assert len(forbidden_patterns) >= 5, \
+            f"forbidden_patterns should have at least 5 patterns, found {len(forbidden_patterns)}"
+
+        # Each pattern should have pattern and reason
+        for pattern_obj in forbidden_patterns:
+            assert "pattern" in pattern_obj, "Forbidden pattern missing 'pattern' field"
+            assert "reason" in pattern_obj, "Forbidden pattern missing 'reason' field"
+
+    async def test_cli_mode_rules_lifecycle_flow_structure(
+        self,
+        db_manager: DatabaseManager,
+        cli_mode_context: dict,
+    ):
+        """
+        Verify lifecycle_flow contains 4-phase lifecycle table.
+        """
+        from giljo_mcp.tenant import TenantManager
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tenant_manager = TenantManager()
+        tool_accessor = ToolAccessor(db_manager, tenant_manager)
+
+        result = await tool_accessor.get_orchestrator_instructions(
+            orchestrator_id=cli_mode_context["orchestrator_id"],
+            tenant_key=cli_mode_context["tenant_key"],
+        )
+
+        cli_rules = result.get("cli_mode_rules", {})
+        lifecycle_flow = cli_rules.get("lifecycle_flow", [])
+
+        # Should have exactly 4 phases
+        assert len(lifecycle_flow) == 4, \
+            f"lifecycle_flow should have exactly 4 phases, found {len(lifecycle_flow)}"
+
+        # Each phase should have required fields
+        required_phase_fields = ["phase", "name", "operation", "param"]
+        for phase_obj in lifecycle_flow:
+            for field in required_phase_fields:
+                assert field in phase_obj, \
+                    f"Lifecycle phase missing field: {field}"
+
+        # Verify phase numbers are 1-4
+        phase_numbers = [phase["phase"] for phase in lifecycle_flow]
+        assert phase_numbers == [1, 2, 3, 4], \
+            f"Lifecycle phases should be numbered 1-4, got {phase_numbers}"
+
 
 @pytest.mark.asyncio
 class TestCLIModeRulesBackwardCompatibility:

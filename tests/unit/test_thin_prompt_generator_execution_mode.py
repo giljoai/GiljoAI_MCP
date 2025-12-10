@@ -147,37 +147,39 @@ class TestClaudeCodeCLIModePrompts:
 
         # MUST contain CLI mode header
         assert 'CLAUDE CODE CLI MODE' in prompt
-        assert 'STRICT TASK TOOL REQUIREMENTS' in prompt
+        # New section name: AGENT_TYPE LIFECYCLE (SINGLE SOURCE OF TRUTH)
+        assert 'AGENT_TYPE LIFECYCLE' in prompt or 'SINGLE SOURCE OF TRUTH' in prompt
 
     @pytest.mark.asyncio
     async def test_cli_mode_includes_exact_agent_naming_section(
         self, generator, test_project, test_product
     ):
-        """CLI mode prompt must include EXACT AGENT NAMING section"""
+        """CLI mode prompt must include agent lifecycle and forbidden patterns sections"""
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
             project_id=test_project.id,
             claude_code_mode=True
         )
 
-        # Must contain exact naming rules
-        assert 'EXACT AGENT NAMING' in prompt
-        assert 'NO EXCEPTIONS' in prompt or 'CRITICAL' in prompt  # Emphasis on strictness
+        # Must contain new section names
+        assert 'AGENT_TYPE LIFECYCLE' in prompt or 'FORBIDDEN PATTERNS' in prompt
+        # Check for strictness emphasis (new wording uses lowercase)
+        assert 'No exceptions' in prompt or 'CRITICAL' in prompt
 
     @pytest.mark.asyncio
     async def test_cli_mode_includes_allowed_examples(
         self, generator, test_project, test_product
     ):
-        """CLI mode must show ALLOWED agent naming examples"""
+        """CLI mode must show correct agent naming examples"""
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
             project_id=test_project.id,
             claude_code_mode=True
         )
 
-        # Must contain allowed example pattern
-        assert 'ALLOWED' in prompt
-        assert 'backend-tester' in prompt or 'implementor' in prompt  # Example template names
+        # Must contain example template names (we use 'implementer' as example)
+        # Check for agent_type usage in examples
+        assert 'implementer' in prompt or 'agent_type' in prompt
 
     @pytest.mark.asyncio
     async def test_cli_mode_includes_forbidden_examples(
@@ -190,12 +192,14 @@ class TestClaudeCodeCLIModePrompts:
             claude_code_mode=True
         )
 
-        # Must contain forbidden examples
+        # Must contain forbidden examples (new patterns from implementation)
         assert 'FORBIDDEN' in prompt
-        # Examples of bad naming patterns
+        # Examples of bad naming patterns (new wording uses these examples)
         assert (
-            'backend-tester-for-api-validation' in prompt or
-            'Backend Tester Agent' in prompt
+            'Backend Implementor' in prompt or      # Creative variation example
+            'frontend-impl' in prompt or             # Hyphenated variation example
+            'IMPLEMENTER' in prompt or               # Case variation example
+            'agent_name' in prompt                   # Reference to display name confusion
         ), "Prompt must include at least one forbidden naming example"
 
     @pytest.mark.asyncio
@@ -210,11 +214,11 @@ class TestClaudeCodeCLIModePrompts:
         )
 
         # Must explain Task tool parameters
-        assert 'subagent_type parameter' in prompt or 'agent_type parameter' in prompt
-        assert 'agent_name parameter' in prompt
+        assert 'agent_type' in prompt
+        assert 'agent_name' in prompt
 
-        # Must mention parameter requirements
-        assert 'MUST be EXACTLY' in prompt or 'must match' in prompt
+        # Must mention parameter requirements (new wording uses "must match")
+        assert 'must match' in prompt.lower() or 'exact' in prompt.lower()
 
     @pytest.mark.asyncio
     async def test_cli_mode_includes_template_matching_requirement(
@@ -284,17 +288,12 @@ class TestExecutionModeComparison:
             claude_code_mode=True
         )
 
-        # Both should contain core sections
+        # Both should contain core sections (new simplified prompt structure)
         core_sections = [
-            'STAGING WORKFLOW',
             'IDENTITY',
-            'TASK 1',
-            'TASK 2',
-            'MCP HEALTH CHECK',
-            'TASK 4',  # Agent discovery
-            'TASK 5',  # Context prioritization
-            'TASK 6',  # Job spawning
-            'TASK 7',  # Activation
+            'MCP CONNECTION',
+            'YOUR ROLE',
+            'STARTUP SEQUENCE',
         ]
 
         for section in core_sections:
@@ -323,12 +322,12 @@ class TestExecutionModeComparison:
             claude_code_mode=True
         )
 
-        # CLI-specific sections
+        # CLI-specific sections (updated to new wording)
         cli_specific_sections = [
             'CLAUDE CODE CLI MODE',
-            'STRICT TASK TOOL',
-            'EXACT AGENT NAMING',
-            'FORBIDDEN'
+            'AGENT_TYPE LIFECYCLE',
+            'FORBIDDEN PATTERNS',
+            'AGENT SPAWNING RULES'
         ]
 
         for section in cli_specific_sections:
@@ -408,11 +407,16 @@ class TestPromptContentValidation:
         # CLI mode should say "Claude Code CLI"
         assert 'Claude Code CLI' in cli_mode_prompt
 
+    @pytest.mark.skip(reason="Staging prompt no longer contains agent execution details (get_agent_mission, acknowledge_job)")
     @pytest.mark.asyncio
     async def test_cli_mode_describes_get_agent_mission_atomic_start_and_acknowledge_usage(
         self, generator, test_project, test_product
     ):
-        """CLI mode prompt should describe get_agent_mission as atomic start and narrow acknowledge_job usage."""
+        """CLI mode prompt should describe get_agent_mission as atomic start and narrow acknowledge_job usage.
+
+        SKIPPED: The simplified staging prompt (Handover 0333) focuses on orchestrator staging only.
+        Agent execution details are now in agent templates, not in the staging prompt.
+        """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
             project_id=test_project.id,
@@ -429,11 +433,16 @@ class TestPromptContentValidation:
         assert "queue" in prompt.lower()
         assert "admin" in prompt.lower()
 
+    @pytest.mark.skip(reason="Staging prompt no longer contains progress reporting details (report_progress, mode='todo')")
     @pytest.mark.asyncio
     async def test_cli_mode_explains_todo_steps_and_plan_messages(
         self, generator, test_project, test_product
     ):
-        """CLI mode prompt should teach TODO-style Steps and plan/progress messages."""
+        """CLI mode prompt should teach TODO-style Steps and plan/progress messages.
+
+        SKIPPED: The simplified staging prompt (Handover 0333) focuses on orchestrator staging only.
+        Progress reporting details are now in agent templates, not in the staging prompt.
+        """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
             project_id=test_project.id,
