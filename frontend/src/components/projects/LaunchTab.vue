@@ -216,10 +216,15 @@ const nonOrchestratorAgents = computed(() => {
 
 /**
  * Check if execution mode is locked (Handover 0343)
- * Execution mode is locked when an orchestrator job exists
+ * Execution mode is locked when a STAGED orchestrator job exists
+ * (has job_id and is not just a UI placeholder)
  */
 const isExecutionModeLocked = computed(() => {
-  return agents.value.some(agent => agent.agent_type === 'orchestrator')
+  return agents.value.some(agent =>
+    agent.agent_type === 'orchestrator' &&
+    agent.job_id &&
+    ['waiting', 'working', 'complete', 'cancelled'].includes(agent.status)
+  )
 })
 
 /**
