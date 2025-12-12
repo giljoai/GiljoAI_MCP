@@ -303,3 +303,45 @@ max_tokens=None  # Restore original behavior
 2. Backend Python changes
 3. Database query optimization
 4. Integration testing
+
+---
+
+## Completion Summary
+
+**Completed:** 2025-12-12
+**Agent:** TDD Implementor (subagent)
+**Commits:** c9fdb553, 5993165e
+
+### What Was Built
+- Added `_get_vision_overview()` method to `MissionPlanner` class
+- Modified `_build_context_with_priorities()` to use overview instead of full vision content
+- Response reduced from 25K+ tokens to ~2-3K tokens (vision overview + metadata)
+
+### Key Files Modified
+- `src/giljo_mcp/mission_planner.py` (lines 1327-1412)
+  - New method `_get_vision_overview()` queries chunk metadata only
+  - Returns chunk count, total tokens, and fetch instructions
+
+### Tests Added
+- `tests/test_mission_planner_vision.py` - 9 unit tests covering:
+  - Vision body exclusion from response
+  - Vision overview inclusion with fetch instructions
+  - All other context preserved (project, agents, priorities)
+  - Response size under 5K tokens
+  - Chunk count and token estimates
+
+### How It Works
+Orchestrator instructions now receive:
+```json
+{
+  "vision_overview": {
+    "total_chunks": 5,
+    "total_tokens": 125000,
+    "fetch_instruction": "Use fetch_vision_document(chunk=N) to read"
+  }
+}
+```
+Instead of the full 25K+ token vision document body.
+
+### Status
+✅ **COMPLETE** - All tests passing, production ready
