@@ -32,23 +32,42 @@ def estimate_tokens(data: Any) -> int:
 
 
 def get_max_tokens(chunking: str) -> int:
-    """Map chunking depth to max token budget."""
+    """Map chunking depth to max token budget.
+    
+    Handles both old-style depth values and new summary-based values:
+    - Old style (no Sumy): light, moderate, heavy, full
+    - New style (with Sumy): summary_light, summary_moderate, full
+    """
     mapping = {
+        # Old style - token-based
         "none": 0,
         "light": 10000,
         "moderate": 17500,
-        "heavy": 24000  # Safe margin below 25K Claude Code limit
+        "heavy": 24000,  # Safe margin below 25K Claude Code limit
+        "full": 24000,   # Full is same as heavy for backward compat
+        # New style - summary + chunks
+        "summary_light": 2500,    # ~500 tokens (summary) + ~2000 tokens (light chunks)
+        "summary_moderate": 5000, # ~500 tokens (summary) + ~4500 tokens (moderate chunks)
     }
     return mapping.get(chunking, 17500)
 
 
 def get_max_chunks(chunking: str) -> int:
-    """Map chunking depth to max chunk count."""
+    """Map chunking depth to max chunk count.
+    
+    For summary_* depths, limits chunks to append after summary.
+    For full, returns all chunks.
+    """
     mapping = {
+        # Old style - token-based
         "none": 0,
         "light": 2,
         "moderate": 4,
-        "heavy": 100  # Effectively unlimited
+        "heavy": 100,  # Effectively unlimited
+        "full": 100,   # Full is same as heavy for backward compat
+        # New style - summary + chunks (chunk counts for the chunks portion only)
+        "summary_light": 1,  # Just 1 chunk after summary (light)
+        "summary_moderate": 2,  # 2 chunks after summary (moderate)
     }
     return mapping.get(chunking, 4)
 
@@ -280,6 +299,15 @@ async def get_vision_document(
         # Apply pagination: skip offset chunks, take up to limit chunks
         paginated_chunks = all_chunks[offset:offset + max_chunks] if offset < total_chunks else []
 
+        # Handle summary_* depths: include summary from first chunked document
+        summary_text = None
+        if chunking.startswith('summary_'):
+            # Get summary from first active chunked vision document
+            for doc in chunked_docs:
+                if doc.summary_text:
+                    summary_text = doc.summary_text.strip()
+                    break
+
         selected_chunks = []
         total_tokens = 0
 
@@ -322,19 +350,25 @@ async def get_vision_document(
             max_tokens=max_tokens
         )
 
-        return {
-            "source": "vision_documents",
-            "depth": chunking,
-            "data": selected_chunks,
-            "metadata": {
-                "product_id": product_id,
-                "tenant_key": tenant_key,
-                "total_chunks": total_chunks,
-                "offset": offset,
-                "limit": max_chunks,
-                "returned_chunks": len(selected_chunks),
-                "has_more": has_more,
-                "next_offset": next_offset,
-                "estimated_tokens": total_tokens
-            }
+        # Build response data
+        response_data = {"source": "vision_documents", "depth": chunking}
+        
+        # Include summary if available (for summary_* depths)
+        if summary_text:
+            response_data["summary"] = summary_text
+            
+        response_data["data"] = selected_chunks
+        response_data["metadata"] = {
+            "product_id": product_id,
+            "tenant_key": tenant_key,
+            "total_chunks": total_chunks,
+            "offset": offset,
+            "limit": max_chunks,
+            "returned_chunks": len(selected_chunks),
+            "has_more": has_more,
+            "next_offset": next_offset,
+            "estimated_tokens": total_tokens,
+            "has_summary": bool(summary_text)
         }
+        
+        return response_data
