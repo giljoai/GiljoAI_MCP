@@ -51,7 +51,7 @@
     <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
       <!-- Context Settings -->
       <v-window-item value="context">
-        <ContextPriorityConfig :git-integration-enabled="gitEnabled" />
+        <ContextPriorityConfig :git-integration-enabled="gitEnabled" :vision-summarization-enabled="visionSummarizationEnabled" />
       </v-window-item>
 
       <!-- Agents -->
