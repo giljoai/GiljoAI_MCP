@@ -172,6 +172,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  visionSummarizationEnabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // Context definitions
@@ -185,8 +189,8 @@ const contexts = [
   {
     key: 'vision_documents',
     label: 'Vision Documents',
-    options: ['none', 'light', 'moderate', 'heavy'],
-    helpText: 'Vision document depth: none|light(10K)|moderate(17.5K)|heavy(24K) tokens'
+    // options will be generated dynamically in formatOptions() based on visionSummarizationEnabled
+    helpText: 'Vision document depth: configure based on Sumy status'
   },
   {
     key: 'memory_360',
@@ -269,7 +273,7 @@ const priorityOnlyContexts = computed(() => {
 })
 
 const depthControlledContexts = computed(() => {
-  return contexts.filter(c => c.options)
+  return contexts.filter(c => c.options || c.key === 'vision_documents')
 })
 
 // Methods
@@ -320,6 +324,25 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
+  // Special handling for vision_documents: options are dynamic based on visionSummarizationEnabled
+  if (context.key === 'vision_documents') {
+    if (props.visionSummarizationEnabled) {
+      // When Sumy is enabled: Summary + depth options
+      return [
+        { title: 'Summary + Light', value: 'summary_light' },
+        { title: 'Summary + Moderate', value: 'summary_moderate' },
+        { title: 'Full (Original)', value: 'full' }
+      ]
+    } else {
+      // When Sumy is disabled: Token-based options
+      return [
+        { title: 'Light (~10K tokens)', value: 'light' },
+        { title: 'Moderate (~17.5K tokens)', value: 'moderate' },
+        { title: 'Full', value: 'full' }
+      ]
+    }
+  }
+  
   if (!context.options) return []
 
   return context.options.map((opt) => {
@@ -331,16 +354,7 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
       }
       return { title: String(opt), value: opt }
     }
-    // String options
-    if (context.key === 'vision_documents') {
-      const visionLabels: Record<string, string> = {
-        'none': 'None',
-        'light': 'Light (10K tokens)',
-        'moderate': 'Moderate (17.5K tokens)',
-        'heavy': 'Heavy (24K tokens)'
-      }
-      return { title: visionLabels[opt as string] || opt, value: opt }
-    }
+    // String options (other than vision_documents)
     // Default: capitalize first letter
     return { title: opt.charAt(0).toUpperCase() + opt.slice(1).replace('_', ' '), value: opt }
   })
