@@ -135,8 +135,12 @@ document.execCommand = vi.fn(() => true)
 vi.mock('@/services/api', () => ({
   api: {
     prompts: {
+      estimateTokens: vi.fn(() => Promise.resolve({ data: { tokens: 1000 } })),
+      staging: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock staging prompt' } })),
       execution: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock orchestrator prompt' } })),
-      agentPrompt: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock agent prompt' } }))
+      agentPrompt: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock agent prompt' } })),
+      // Handover 0344: CLI mode implementation prompt
+      implementation: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock implementation prompt', agent_count: 3 } }))
     },
     get: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock prompt text' } })),
     post: vi.fn(() => Promise.resolve({ data: { success: true } })),
