@@ -1202,7 +1202,7 @@ class ProductService:
                 try:
                     from src.giljo_mcp.services.settings_service import SettingsService
                     settings_service = SettingsService(session=session, tenant_key=self.tenant_key)
-                    settings = await settings_service.get_settings(category="vision")
+                    settings = await settings_service.get_settings(category="general")
                     should_summarize = settings.get("vision_summarization_enabled", False)
                 except Exception:
                     # Setting doesn't exist or error retrieving - default to disabled
