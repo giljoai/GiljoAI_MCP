@@ -325,9 +325,9 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
   // Sumy LSA summarization is always enabled, no toggle needed
   if (context.key === 'vision_documents') {
     return [
-      { title: 'Light (5K tokens)', value: 'light', subtitle: '~250 sentences, 87% compression' },
-      { title: 'Moderate (12.5K tokens)', value: 'moderate', subtitle: '~625 sentences, 69% compression' },
-      { title: 'Heavy (25K tokens)', value: 'heavy', subtitle: '~1,250 sentences, 37% compression' },
+      { title: 'Low (5K tokens)', value: 'light', subtitle: '~250 sentences, 87% compression' },
+      { title: 'Medium (12.5K tokens)', value: 'moderate', subtitle: '~625 sentences, 69% compression' },
+      { title: 'High (25K tokens)', value: 'heavy', subtitle: '~1,250 sentences, 37% compression' },
       { title: 'Full (All)', value: 'full', subtitle: 'Complete document, no compression' }
     ]
   }
