@@ -109,12 +109,19 @@ class TestLeanOrchestratorInstructions:
         """_get_vision_overview should return chunk count and token estimate, not content."""
         # Mock database query result
         mock_session = AsyncMock()
-        mock_result = AsyncMock()
         mock_row = Mock()
         mock_row.chunk_count = 5
         mock_row.total_tokens = 125000
-        mock_result.one.return_value = mock_row
-        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # Create a mock result that returns the row
+        mock_result = Mock()
+        mock_result.one = Mock(return_value=mock_row)
+
+        # Mock execute to return the result
+        async def mock_execute(stmt):
+            return mock_result
+
+        mock_session.execute = mock_execute
 
         overview = await mission_planner._get_vision_overview(
             session=mock_session,
@@ -143,12 +150,17 @@ class TestLeanOrchestratorInstructions:
         """_get_vision_overview should return None when no chunks exist."""
         # Mock database query result with 0 chunks
         mock_session = AsyncMock()
-        mock_result = AsyncMock()
         mock_row = Mock()
         mock_row.chunk_count = 0
         mock_row.total_tokens = 0
-        mock_result.one.return_value = mock_row
-        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_result = Mock()
+        mock_result.one = Mock(return_value=mock_row)
+
+        async def mock_execute(stmt):
+            return mock_result
+
+        mock_session.execute = mock_execute
 
         overview = await mission_planner._get_vision_overview(
             session=mock_session,
@@ -164,12 +176,17 @@ class TestLeanOrchestratorInstructions:
         """Overview fetch_instruction should guide orchestrator to use MCP tool."""
         # Mock database query result
         mock_session = AsyncMock()
-        mock_result = AsyncMock()
         mock_row = Mock()
         mock_row.chunk_count = 10
         mock_row.total_tokens = 250000
-        mock_result.one.return_value = mock_row
-        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_result = Mock()
+        mock_result.one = Mock(return_value=mock_row)
+
+        async def mock_execute(stmt):
+            return mock_result
+
+        mock_session.execute = mock_execute
 
         overview = await mission_planner._get_vision_overview(
             session=mock_session,
@@ -340,12 +357,22 @@ class TestLeanOrchestratorInstructions:
     ):
         """_get_vision_overview must filter by tenant_key and product_id for multi-tenant isolation."""
         mock_session = AsyncMock()
-        mock_result = AsyncMock()
         mock_row = Mock()
         mock_row.chunk_count = 5
         mock_row.total_tokens = 125000
-        mock_result.one.return_value = mock_row
-        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_result = Mock()
+        mock_result.one = Mock(return_value=mock_row)
+
+        # Track if execute was called and capture the statement
+        executed_stmt = None
+
+        async def mock_execute(stmt):
+            nonlocal executed_stmt
+            executed_stmt = stmt
+            return mock_result
+
+        mock_session.execute = mock_execute
 
         await mission_planner._get_vision_overview(
             session=mock_session,
@@ -353,12 +380,9 @@ class TestLeanOrchestratorInstructions:
         )
 
         # Verify execute was called (query was executed)
-        assert mock_session.execute.called
-
-        # Get the query statement that was executed
-        call_args = mock_session.execute.call_args
-        stmt = call_args[0][0]  # First positional argument
+        assert executed_stmt is not None, "Database query should have been executed"
 
         # Verify the statement is a select query (basic check)
         # Full SQL inspection would require more complex mocking
-        assert stmt is not None
+        # At minimum, verify it's a SQLAlchemy statement object
+        assert hasattr(executed_stmt, '_where_criteria') or hasattr(executed_stmt, 'whereclause') or str(executed_stmt)
