@@ -562,6 +562,8 @@ export const api = {
         params: { claude_code_mode: claudeCodeMode },
       }),
     agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
+    // Handover 0344: CLI mode implementation prompt for orchestrator play button
+    implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),
   },
 
   // Downloads (Natural Language Instructions via MCP Tools)

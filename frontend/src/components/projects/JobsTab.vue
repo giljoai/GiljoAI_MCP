@@ -595,7 +595,7 @@ async function handlePlay(agent) {
       // CLI mode: Generate implementation prompt
       if (props.project?.execution_mode === 'claude_code_cli') {
         try {
-          const response = await api.get(`/api/prompts/implementation/${props.project.id}`)
+          const response = await api.prompts.implementation(props.project.id)
           const prompt = response.data.prompt
           await navigator.clipboard.writeText(prompt)
           showToast({
