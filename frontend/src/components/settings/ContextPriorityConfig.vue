@@ -265,7 +265,8 @@ const visionStats = ref(null)
 
 // Computed properties to split contexts into two groups
 const priorityOnlyContexts = computed(() => {
-  return contexts.filter(c => !c.options)
+  // Exclude vision_documents - it belongs in depthControlledContexts only
+  return contexts.filter(c => !c.options && c.key !== 'vision_documents')
 })
 
 const depthControlledContexts = computed(() => {
