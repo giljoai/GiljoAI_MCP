@@ -290,6 +290,13 @@
               @update:enabled="toggleGit"
               @openAdvanced="openGitAdvanced"
             />
+
+            <!-- Vision Summarization Integration -->
+            <VisionSummarizationCard
+              :enabled="visionSummarizationEnabled"
+              :loading="togglingVisionSummarization"
+              @update:enabled="toggleVisionSummarization"
+            />
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -319,6 +326,7 @@ import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.v
 import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
+import VisionSummarizationCard from '@/components/settings/integrations/VisionSummarizationCard.vue'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
 
@@ -338,6 +346,10 @@ const toggling = ref(false)
 // Git Integration state (system-level like Serena)
 // This state is shared with ContextPriorityConfig via props
 const gitEnabled = ref(false)
+
+// Vision Summarization state
+const visionSummarizationEnabled = ref(false)
+const togglingVisionSummarization = ref(false)
 
 // Handover 0335: Provide template export event data to child components
 // This allows TemplateManager to receive export events even when not actively mounted
@@ -501,6 +513,9 @@ onMounted(async () => {
   // Load git integration settings (system-level)
   await loadGitSettings()
 
+  // Load vision summarization settings
+  await checkVisionSummarizationStatus()
+
   // Listen for real-time Git integration changes via WebSocket
   // This listener is at parent level to ensure it captures events even when
   // ContextPriorityConfig tab is not actively mounted
@@ -610,6 +625,37 @@ function handleGitIntegrationUpdate(data) {
     enabled: newState,
     timestamp: new Date().toISOString(),
   })
+}
+
+// Vision Summarization Functions
+async function checkVisionSummarizationStatus() {
+  try {
+    const settings = await api.get('/api/settings/general')
+    visionSummarizationEnabled.value = settings.data.settings.vision_summarization_enabled || false
+    console.log('[USER SETTINGS] Vision summarization status:', visionSummarizationEnabled.value)
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to check vision summarization status:', error)
+    visionSummarizationEnabled.value = false
+  }
+}
+
+async function toggleVisionSummarization(enabled) {
+  console.log('[USER SETTINGS] Vision summarization toggled:', enabled)
+  togglingVisionSummarization.value = true
+
+  try {
+    const result = await api.put('/api/settings/general', {
+      settings: { vision_summarization_enabled: enabled }
+    })
+    visionSummarizationEnabled.value = result.data.settings.vision_summarization_enabled
+    console.log('[USER SETTINGS] Vision summarization toggle result:', result.data)
+  } catch (error) {
+    console.error('[USER SETTINGS] Vision summarization toggle failed:', error)
+    // Revert on error
+    visionSummarizationEnabled.value = !enabled
+  } finally {
+    togglingVisionSummarization.value = false
+  }
 }
 
 /**
