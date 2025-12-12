@@ -108,7 +108,7 @@ export const api = {
   // Products
   products: {
     list: (params) => apiClient.get('/api/v1/products/', { params }),
-    get: (id) => apiClient.get(`/api/v1/products/${id}/`),
+    get: (id) => apiClient.get(`/api/v1/products/${id}`),
     getActive: () => apiClient.get('/api/v1/products/refresh-active'),
     create: (data) => {
       // Handover 0507: Send JSON to match backend ProductCreate schema
@@ -130,9 +130,9 @@ export const api = {
       if (data.projectPath !== undefined) payload.project_path = data.projectPath
       if (data.configData !== undefined) payload.config_data = data.configData // FIX: Add config_data (Handover 0507)
       if (data.isActive !== undefined) payload.is_active = data.isActive
-      return apiClient.put(`/api/v1/products/${id}/`, payload)
+      return apiClient.put(`/api/v1/products/${id}`, payload)
     },
-    delete: (id) => apiClient.delete(`/api/v1/products/${id}/`),
+    delete: (id) => apiClient.delete(`/api/v1/products/${id}`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
 
     // Vision document endpoints (Handover 0507: Consolidated to /vision)
@@ -145,7 +145,7 @@ export const api = {
     },
     listVision: (id) => apiClient.get(`/api/v1/products/${id}/vision`),
     deleteVision: (id, docId) => apiClient.delete(`/api/v1/products/${id}/vision/${docId}`),
-    getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks/`),
+    getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks`),
     // Real-time token estimate for active product (Handover 0049)
     getActiveProductTokenEstimate: () => apiClient.get('/api/v1/products/active/token-estimate'),
     // Product activation endpoints (Handover 0049)
