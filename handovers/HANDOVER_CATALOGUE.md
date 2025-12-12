@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-12 (0345e added - Sumy Semantic Compression Levels)
+**Last Updated:** 2025-12-12 (0338, 0345a-e archived - Vision Document Optimization Series COMPLETE)
 
 ---
 
@@ -51,10 +51,11 @@
 | 0340 | CLI Mode Two-Phase Architecture Summary | Ready (Stage 2) | High |
 | 0341 | CLI Mode Stage 2 Implementation Prompt | Ready for Agent | High |
 | 0344 | CLI Mode Play Button API Fix | Ready for Implementation | Critical |
-| 0345a | Lean Orchestrator Instructions | Ready for Agent | **CRITICAL** |
-| 0345b | Sumy LSA Integration | Ready (depends on 0345a) | High |
-| 0345c | Vision Settings UI | Ready (depends on 0345a) | Medium |
-| 0345e | Sumy Semantic Compression Levels | Ready (depends on 0345b) | High |
+| 0338 | CPU-Based Vision Summarization | **COMPLETE** (Research → 0345 Series) | - |
+| 0345a | Lean Orchestrator Instructions | **COMPLETE** | - |
+| 0345b | Sumy LSA Integration | **COMPLETE** | - |
+| 0345c | Vision Settings UI | **COMPLETE** (Toggle superseded by 0345e) | - |
+| 0345e | Sumy Semantic Compression Levels | **COMPLETE** | - |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -190,7 +191,12 @@ Some handovers become reference docs (not actionable):
 ## History
 
 ### December 2025
-- 0345a-e: Vision Document Context Optimization Series (Lean orchestrator instructions + Sumy LSA + Settings UI + Semantic compression levels)
+- 0338, 0345a-e: Vision Document Context Optimization Series (COMPLETE)
+  - 0338: CPU-based summarization research (foundation for 0345 series)
+  - 0345a: Lean orchestrator instructions (25K → 2K tokens)
+  - 0345b: Sumy LSA integration (70-80% compression)
+  - 0345c: Vision Settings UI (toggle superseded by 0345e)
+  - 0345e: Semantic compression levels (Light/Moderate/Heavy/Full)
 - 0344: CLI Mode Play Button API Fix (api.get doesn't exist + wrong URL)
 - 0341: CLI Mode Stage 2 Implementation Prompt (Ready for TDD Implementor agent)
 - 0340: CLI Mode Two-Phase Architecture Summary (Stage 2 pending)
