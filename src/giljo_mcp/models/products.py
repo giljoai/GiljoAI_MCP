@@ -13,6 +13,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -361,6 +362,18 @@ class VisionDocument(Base):
     total_tokens = Column(Integer, nullable=True, comment="Estimated total tokens in document")
     file_size = Column(
         BigInteger, nullable=True, comment="Original file size in bytes (NULL for inline content without file)"
+    )
+
+    # Summarization metadata (Handover 0345b)
+    summary_text = Column(Text, nullable=True, comment="Extractive summary using LSA (optional, generated when enabled)")
+    is_summarized = Column(
+        Boolean, default=False, nullable=False, comment="Has document been summarized using LSA algorithm"
+    )
+    original_token_count = Column(
+        Integer, nullable=True, comment="Original document token count before summarization"
+    )
+    compression_ratio = Column(
+        Float, nullable=True, comment="Compression ratio achieved (0.0-1.0, e.g., 0.75 = 75% compression)"
     )
 
     # Versioning and integrity

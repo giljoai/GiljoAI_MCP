@@ -646,6 +646,20 @@ class UnifiedInstaller:
             )
 
             self._print_success("Dependencies installed successfully")
+
+            # Download NLTK data for vision summarization (Handover 0345b)
+            self._print_info("Downloading NLTK data for vision summarization...")
+            try:
+                nltk_result = self._download_nltk_data(pip_executable)
+                if nltk_result["success"]:
+                    self._print_success("NLTK data downloaded successfully")
+                else:
+                    self._print_warning(f"NLTK data download failed: {nltk_result.get('error', 'Unknown error')}")
+                    self._print_warning("Vision summarization may not work correctly")
+            except Exception as e:
+                self._print_warning(f"NLTK data download failed: {e}")
+                self._print_warning("Vision summarization may not work correctly")
+
             result["success"] = True
             return result
 
@@ -1646,6 +1660,64 @@ class UnifiedInstaller:
             if self._is_port_available(port):
                 return port
         return None
+
+    def _download_nltk_data(self, python_executable: Path) -> Dict[str, Any]:
+        """
+        Download required NLTK data for vision summarization (Handover 0345b).
+
+        Downloads:
+        - punkt: Tokenizer models
+        - stopwords: Stopword corpus for multiple languages
+
+        Args:
+            python_executable: Path to venv python executable
+
+        Returns:
+            Result dictionary with success status
+        """
+        result = {"success": False}
+
+        try:
+            # Download NLTK data using Python subprocess
+            # This ensures it's installed in the correct venv
+            nltk_code = """
+import nltk
+import sys
+
+try:
+    # Download punkt_tab tokenizer (required for sentence splitting in NLTK 3.9+)
+    nltk.download('punkt_tab', quiet=True)
+
+    # Download stopwords (required for LSA summarization)
+    nltk.download('stopwords', quiet=True)
+
+    print("NLTK data downloaded successfully")
+    sys.exit(0)
+except Exception as e:
+    print(f"NLTK download failed: {e}", file=sys.stderr)
+    sys.exit(1)
+"""
+            # Run NLTK download in venv
+            process_result = subprocess.run(
+                [str(python_executable), "-c", nltk_code],
+                capture_output=True,
+                text=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+            if process_result.returncode == 0:
+                result["success"] = True
+            else:
+                result["error"] = process_result.stderr or "Unknown error"
+
+            return result
+
+        except subprocess.TimeoutExpired:
+            result["error"] = "Download timed out"
+            return result
+        except Exception as e:
+            result["error"] = str(e)
+            return result
 
     # Output helpers
     def _print_header(self, text: str) -> None:

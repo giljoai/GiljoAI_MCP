@@ -40,6 +40,12 @@ aiofiles>=24.1.0           # Async file I/O operations (required for product vis
 tiktoken>=0.5.0            # Token counting for Context Management System (context prioritization and orchestration)
 structlog>=25.0.0          # Structured logging (required by MCP context tools)
 
+# Vision Document Summarization (Handover 0345b - Optional CPU-based feature)
+sumy>=0.11.0               # Extractive summarization using LSA algorithm
+nltk>=3.8                  # Natural language processing (tokenization, stopwords)
+numpy>=1.24.0              # Required by sumy for LSA calculations
+scipy>=1.10.0              # Required by sumy for SVD in LSA
+
 # Platform-Specific
 pywin32>=306; sys_platform == "win32"  # Windows service management (Windows only)
 
