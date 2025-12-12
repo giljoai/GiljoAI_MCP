@@ -1196,9 +1196,56 @@ class ProductService:
 
                 self._logger.info(f"Created vision document {doc.id} for product {product_id}")
 
+                # Check if summarization is enabled (Handover 0345b)
+                # Default to False if setting doesn't exist (backward compatible)
+                should_summarize = False
+                try:
+                    from src.giljo_mcp.services.settings_service import SettingsService
+                    settings_service = SettingsService(session=session, tenant_key=self.tenant_key)
+                    settings = await settings_service.get_settings(category="vision")
+                    should_summarize = settings.get("vision_summarization_enabled", False)
+                except Exception:
+                    # Setting doesn't exist or error retrieving - default to disabled
+                    should_summarize = False
+
+                # Calculate total tokens for threshold check
+                total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
+
+                # Summarize if enabled AND document exceeds threshold (30K tokens)
+                if should_summarize and total_tokens > 30000:
+                    try:
+                        from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+
+                        self._logger.info(
+                            f"Vision summarization enabled for doc {doc.id}: {total_tokens} tokens"
+                        )
+
+                        summarizer = VisionDocumentSummarizer()
+                        summary_result = summarizer.summarize(content, target_tokens=25000)
+
+                        # Update document with summary metadata
+                        doc.summary_text = summary_result["summary"]
+                        doc.is_summarized = True
+                        doc.original_token_count = summary_result["original_tokens"]
+                        doc.compression_ratio = summary_result["compression_ratio"]
+
+                        await session.commit()
+
+                        self._logger.info(
+                            f"Vision document {doc.id} summarized: "
+                            f"{summary_result['original_tokens']} → {summary_result['summary_tokens']} tokens "
+                            f"({summary_result['compression_ratio']*100:.0f}% compression) "
+                            f"in {summary_result['processing_time_ms']}ms"
+                        )
+                    except Exception as e:
+                        # Summarization failed but document created - log warning and continue
+                        self._logger.warning(
+                            f"Document {doc.id} created but summarization failed: {e}"
+                        )
+
                 # Auto-chunk if enabled
                 chunks_created = 0
-                total_tokens = 0
+                chunk_total_tokens = 0  # Track chunker's token count separately
 
                 if auto_chunk:
                     chunker = VisionDocumentChunker(target_chunk_size=max_tokens)
@@ -1212,7 +1259,9 @@ class ProductService:
 
                     if chunk_result["success"]:
                         chunks_created = chunk_result["chunks_created"]
-                        total_tokens = chunk_result["total_tokens"]
+                        chunk_total_tokens = chunk_result["total_tokens"]
+                        # Update total_tokens for return value (use chunker's accurate count)
+                        total_tokens = chunk_total_tokens
 
                         self._logger.info(
                             f"Chunked document {doc.id}: {chunks_created} chunks, " f"{total_tokens} tokens"
