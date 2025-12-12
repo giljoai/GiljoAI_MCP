@@ -1196,46 +1196,50 @@ class ProductService:
 
                 self._logger.info(f"Created vision document {doc.id} for product {product_id}")
 
-                # Check if summarization is enabled (Handover 0345b)
-                # Default to False if setting doesn't exist (backward compatible)
-                should_summarize = False
-                try:
-                    from src.giljo_mcp.services.settings_service import SettingsService
-                    settings_service = SettingsService(session=session, tenant_key=self.tenant_key)
-                    settings = await settings_service.get_settings(category="general")
-                    should_summarize = settings.get("vision_summarization_enabled", False)
-                except Exception:
-                    # Setting doesn't exist or error retrieving - default to disabled
-                    should_summarize = False
-
-                # Calculate total tokens for threshold check
+                # Multi-level summarization (Handover 0345e)
+                # Always generate summaries for large documents (no toggle check)
+                # Threshold: 5K tokens (smallest summary level)
                 total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
 
-                # Summarize if enabled AND document exceeds threshold (30K tokens)
-                if should_summarize and total_tokens > 30000:
+                # Generate multi-level summaries if document exceeds threshold
+                if total_tokens > 5000:
                     try:
                         from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
                         self._logger.info(
-                            f"Vision summarization enabled for doc {doc.id}: {total_tokens} tokens"
+                            f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens"
                         )
 
                         summarizer = VisionDocumentSummarizer()
-                        summary_result = summarizer.summarize(content, target_tokens=25000)
+                        summaries = summarizer.summarize_multi_level(content)
 
-                        # Update document with summary metadata
-                        doc.summary_text = summary_result["summary"]
+                        # Store all three summary levels
+                        doc.summary_light = summaries["light"]["summary"]
+                        doc.summary_moderate = summaries["moderate"]["summary"]
+                        doc.summary_heavy = summaries["heavy"]["summary"]
+                        doc.summary_light_tokens = summaries["light"]["tokens"]
+                        doc.summary_moderate_tokens = summaries["moderate"]["tokens"]
+                        doc.summary_heavy_tokens = summaries["heavy"]["tokens"]
                         doc.is_summarized = True
-                        doc.original_token_count = summary_result["original_tokens"]
-                        doc.compression_ratio = summary_result["compression_ratio"]
+                        doc.original_token_count = summaries["original_tokens"]
+
+                        # Backward compatibility: set summary_text to heavy summary
+                        doc.summary_text = summaries["heavy"]["summary"]
+                        doc.compression_ratio = (
+                            (summaries["original_tokens"] - summaries["heavy"]["tokens"])
+                            / summaries["original_tokens"]
+                            if summaries["original_tokens"] > 0 else 0.0
+                        )
 
                         await session.commit()
 
                         self._logger.info(
                             f"Vision document {doc.id} summarized: "
-                            f"{summary_result['original_tokens']} → {summary_result['summary_tokens']} tokens "
-                            f"({summary_result['compression_ratio']*100:.0f}% compression) "
-                            f"in {summary_result['processing_time_ms']}ms"
+                            f"Light={summaries['light']['tokens']} tokens, "
+                            f"Moderate={summaries['moderate']['tokens']} tokens, "
+                            f"Heavy={summaries['heavy']['tokens']} tokens "
+                            f"(from {summaries['original_tokens']} tokens) "
+                            f"in {summaries['processing_time_ms']}ms"
                         )
                     except Exception as e:
                         # Summarization failed but document created - log warning and continue
