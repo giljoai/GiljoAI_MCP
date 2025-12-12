@@ -361,7 +361,6 @@ function navigateToIntegrations() {
 }
 
 
-async function fetchConfig() {
 async function fetchVisionStats() {
   fetchingVisionStats.value = true
   try {
@@ -385,6 +384,7 @@ function formatTokenCount(tokens) {
   return tokens.toString()
 }
 
+async function fetchConfig() {
   loading.value = true
   try {
     // Fetch priorities from field-priority endpoint
