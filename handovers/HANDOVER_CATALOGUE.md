@@ -50,6 +50,7 @@
 | 0339 | Stage 1 Agent Type Enforcement | **COMPLETE** | High |
 | 0340 | CLI Mode Two-Phase Architecture Summary | Ready (Stage 2) | High |
 | 0341 | CLI Mode Stage 2 Implementation Prompt | Ready for Agent | High |
+| 0344 | CLI Mode Play Button API Fix | Ready for Implementation | Critical |
 
 ### Backlog (Various)
 | ID | Title | Status | Priority |
@@ -185,6 +186,7 @@ Some handovers become reference docs (not actionable):
 ## History
 
 ### December 2025
+- 0344: CLI Mode Play Button API Fix (api.get doesn't exist + wrong URL)
 - 0341: CLI Mode Stage 2 Implementation Prompt (Ready for TDD Implementor agent)
 - 0340: CLI Mode Two-Phase Architecture Summary (Stage 2 pending)
 - 0339: Stage 1 Agent Type Enforcement (COMPLETE - belt-and-suspenders)
