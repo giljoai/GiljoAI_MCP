@@ -525,3 +525,45 @@ describe('ContextPriorityConfig - Vision Documents Depth', () => {
 ### Testing Patterns
 - `frontend/tests/components/` - Existing component tests for patterns
 - `frontend/tests/views/` - Existing view tests for integration patterns
+
+---
+
+## Completion Summary
+
+**Completed:** 2025-12-12
+**Agent:** TDD Implementor + Frontend Tester (subagents)
+**Commits:** 2a044ead, 8f85cb04, b82a0d4e
+
+### What Was Built
+- Created `VisionSummarizationCard.vue` toggle component
+- Added vision depth selector to `ContextPriorityConfig.vue`
+- Integrated settings with backend API
+
+### Key Files Created/Modified
+- `frontend/src/components/settings/integrations/VisionSummarizationCard.vue` (NEW → DELETED in 0345e)
+  - Toggle switch for Sumy LSA integration
+  - Loading state handling
+  - Props-based communication
+- `frontend/src/views/UserSettings.vue`
+  - State: `visionSummarizationEnabled`, `togglingVisionSummarization`
+  - Methods: `checkVisionSummarizationStatus()`, `toggleVisionSummarization()`
+- `frontend/src/components/settings/ContextPriorityConfig.vue`
+  - Added vision documents to depth-controlled contexts
+  - Options: none/light/moderate/heavy
+
+### Bug Fixes During Implementation
+- Fixed API path: `/api/settings/general` → `/api/v1/settings/general`
+- Fixed settings category: Backend reading "vision" but should read "general"
+
+### Tests Added
+- 50 frontend unit tests for:
+  - Toggle rendering and events
+  - Loading state behavior
+  - API call verification
+  - Depth selector options
+
+### Note
+**PARTIALLY SUPERSEDED BY 0345e**: The VisionSummarizationCard toggle was removed in 0345e (Sumy is now always available). The depth selector work was preserved and enhanced.
+
+### Status
+✅ **COMPLETE** - Toggle removed, depth selector retained in 0345e
