@@ -865,3 +865,51 @@ git push
 ---
 
 **Handover Status**: Ready for implementation after 0345b completion. Supersedes Sumy toggle logic from 0345c.
+
+---
+
+## Completion Summary
+
+**Completed:** 2025-12-12
+**Agent:** TDD Implementor + Frontend Tester (subagents)
+**Commits:** 140ae9af, e84ef654, 23321f9c, 946b857e8eb1 (migration)
+
+### What Was Built
+- Multi-level semantic compression: Light (5K), Moderate (12.5K), Heavy (25K), Full
+- `summarize_multi_level()` method with cascading compression
+- Database columns for three summary levels
+- Updated depth selector with meaningful compression options
+- Removed Sumy toggle (now always available)
+
+### Key Files Modified
+- `src/giljo_mcp/services/vision_summarizer.py`
+  - Added `summarize_multi_level()` method (lines 226-318)
+  - Cascading compression: heavy → moderate → light
+  - Returns all three summaries in one pass
+- `src/giljo_mcp/models/products.py` - Added 6 columns:
+  - `summary_light`, `summary_moderate`, `summary_heavy`
+  - `summary_light_tokens`, `summary_moderate_tokens`, `summary_heavy_tokens`
+- `src/giljo_mcp/services/product_service.py`
+  - Upload now generates all 3 summary levels automatically
+  - Threshold lowered from 30K to 5K tokens
+- `src/giljo_mcp/mission_planner.py`
+  - `_build_context_with_priorities()` now retrieves appropriate summary based on depth config
+- `frontend/src/views/UserSettings.vue`
+  - Removed toggle, added static info card
+  - Deleted VisionSummarizationCard import
+- `frontend/src/components/settings/ContextPriorityConfig.vue`
+  - Updated options: None, Light (5K), Moderate (12.5K), Heavy (25K), Full
+
+### Database Migration
+- `946b857e8eb1_add_multi_level_vision_summaries.py`
+- 6 nullable columns added to `vision_documents` table
+
+### How Depth Config Works
+When orchestrator fetches instructions:
+- `light` → Returns `summary_light` (~5K tokens, 250 sentences)
+- `moderate` → Returns `summary_moderate` (~12.5K tokens, 625 sentences)
+- `heavy` → Returns `summary_heavy` (~25K tokens, 1250 sentences)
+- `full` → Returns all original chunks (fetch instructions)
+
+### Status
+✅ **COMPLETE** - All tests passing, semantic compression operational
