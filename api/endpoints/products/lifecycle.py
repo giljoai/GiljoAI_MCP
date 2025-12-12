@@ -8,12 +8,14 @@ using ProductService.
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
 
 from .dependencies import get_product_service
+from api.dependencies import get_tenant_key
 from .models import (
     ProductActivationResponse,
     ProductDeleteResponse,
@@ -21,6 +23,7 @@ from .models import (
     CascadeImpact,
     ActiveProductRefreshResponse,
     TokenEstimateResponse,
+    VisionDocumentStatsResponse,
 )
 
 
@@ -452,4 +455,88 @@ async def get_token_estimate(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get token estimate: {str(e)}"
+        )
+
+
+@router.get("/active/vision-stats", response_model=VisionDocumentStatsResponse)
+async def get_vision_document_stats(
+    current_user: User = Depends(get_current_active_user),
+    service: ProductService = Depends(get_product_service),
+    db: AsyncSession = Depends(get_db_session),
+    tenant_key: str = Depends(get_tenant_key),
+) -> VisionDocumentStatsResponse:
+    """
+    Get vision document statistics for active product.
+
+    Returns token counts and metadata for the active product's vision document.
+    Used by frontend to dynamically display context depth options with actual token counts.
+
+    Handover 0345: Dynamic vision document token counts for context depth configuration.
+    """
+    logger.debug(f"User {current_user.username} requesting vision stats for active product")
+
+    try:
+        # Get active product
+        result = await service.get_active_product()
+
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        product_data = result.get("product")
+
+        if not product_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No active product found"
+            )
+
+        product_id = product_data["id"]
+        product_name = product_data["name"]
+
+        # Query for active vision documents
+        from sqlalchemy import select, and_
+        from src.giljo_mcp.models import VisionDocument
+
+        stmt = select(VisionDocument).where(
+            and_(
+                VisionDocument.tenant_key == tenant_key,
+                VisionDocument.product_id == product_id,
+                VisionDocument.is_active == True
+            )
+        ).order_by(VisionDocument.created_at.desc())
+
+        result_db = await db.execute(stmt)
+        vision_doc = result_db.scalar_one_or_none()
+
+        if not vision_doc:
+            # No vision document for this product
+            return VisionDocumentStatsResponse(
+                product_id=product_id,
+                product_name=product_name,
+                has_vision_document=False,
+                total_tokens=0,
+                chunk_count=0,
+                is_summarized=False,
+                summary_tokens=0
+            )
+
+        # Vision document exists, return its stats
+        meta_data = vision_doc.meta_data or {}
+        return VisionDocumentStatsResponse(
+            product_id=product_id,
+            product_name=product_name,
+            has_vision_document=True,
+            total_tokens=vision_doc.total_tokens or 0,
+            chunk_count=vision_doc.chunk_count or 0,
+            is_summarized=meta_data.get("is_summarized", False),
+            summary_tokens=meta_data.get("summary_tokens", 0)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get vision document stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get vision document stats: {str(e)}"
         )

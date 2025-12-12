@@ -151,6 +151,17 @@ class TokenEstimateResponse(BaseModel):
     percentage_used: float = Field(..., description="Percentage of budget used")
 
 
+class VisionDocumentStatsResponse(BaseModel):
+    """Vision document statistics response for active product"""
+
+    product_id: str = Field(..., description="Active product ID")
+    product_name: str = Field(..., description="Active product name")
+    has_vision_document: bool = Field(..., description="Whether active product has a vision document")
+    total_tokens: int = Field(default=0, description="Total tokens in vision document")
+    chunk_count: int = Field(default=0, description="Number of chunks in vision document")
+    is_summarized: bool = Field(default=False, description="Whether vision document is summarized")
+    summary_tokens: int = Field(default=0, description="Token count of summary (if available)")
+
 class CascadeImpact(BaseModel):
     """Cascade impact response for product deletion"""
 
