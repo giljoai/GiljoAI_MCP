@@ -222,3 +222,97 @@ class VisionDocumentSummarizer:
             # If consolidation fails, return text as-is
             # Better to be slightly over target than lose content
             return text
+
+    def summarize_multi_level(
+        self,
+        text: str,
+        levels: Dict[str, int] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate multiple summary levels in one pass using cascading compression.
+
+        Handover 0345e: Multi-level semantic compression for vision documents.
+        Generates light, moderate, and heavy summaries efficiently by cascading
+        from heavy → moderate → light, reusing previous summaries as input.
+
+        Algorithm:
+        1. Generate heavy summary from original text (most detailed)
+        2. Generate moderate summary from heavy summary (cascade)
+        3. Generate light summary from moderate summary (cascade)
+
+        This cascading approach is more efficient than summarizing 3 times from
+        the original, and ensures hierarchical coherence (light ⊆ moderate ⊆ heavy).
+
+        Args:
+            text: Full document text to summarize
+            levels: Optional dict mapping level names to target token counts
+                   Default: {"light": 5000, "moderate": 12500, "heavy": 25000}
+
+        Returns:
+            Dictionary containing:
+            {
+                "light": {
+                    "summary": str,
+                    "tokens": int,
+                    "sentences": int
+                },
+                "moderate": {
+                    "summary": str,
+                    "tokens": int,
+                    "sentences": int
+                },
+                "heavy": {
+                    "summary": str,
+                    "tokens": int,
+                    "sentences": int
+                },
+                "original_tokens": int,
+                "processing_time_ms": int
+            }
+
+        Example:
+            >>> summarizer = VisionDocumentSummarizer()
+            >>> result = summarizer.summarize_multi_level(large_doc)
+            >>> print(f"Light: {result['light']['tokens']} tokens")
+            >>> print(f"Moderate: {result['moderate']['tokens']} tokens")
+            >>> print(f"Heavy: {result['heavy']['tokens']} tokens")
+        """
+        if levels is None:
+            levels = {
+                "light": 5000,
+                "moderate": 12500,
+                "heavy": 25000
+            }
+
+        start_time = time.time()
+        results = {}
+
+        original_tokens = self.estimate_tokens(text)
+
+        # Generate summaries in descending order (heavy → moderate → light)
+        # Optimization: Use previous summary as input for next level (cascading)
+        previous_text = text
+
+        for level in ["heavy", "moderate", "light"]:
+            target_tokens = levels[level]
+
+            # Summarize from previous level (cascading compression)
+            summary_result = self.summarize(previous_text, target_tokens=target_tokens)
+
+            # Count sentences (split on period followed by space or end)
+            summary_text = summary_result["summary"]
+            sentences = [s.strip() for s in summary_text.split('.') if s.strip()]
+
+            results[level] = {
+                "summary": summary_text,
+                "tokens": summary_result["summary_tokens"],
+                "sentences": len(sentences)
+            }
+
+            # Use this summary as input for next level (cascade)
+            previous_text = summary_text
+
+        results["original_tokens"] = original_tokens
+        results["processing_time_ms"] = int((time.time() - start_time) * 1000)
+
+        return results
