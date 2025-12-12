@@ -364,8 +364,8 @@ class VisionDocument(Base):
         BigInteger, nullable=True, comment="Original file size in bytes (NULL for inline content without file)"
     )
 
-    # Summarization metadata (Handover 0345b)
-    summary_text = Column(Text, nullable=True, comment="Extractive summary using LSA (optional, generated when enabled)")
+    # Summarization metadata (Handover 0345b, enhanced in 0345e)
+    summary_text = Column(Text, nullable=True, comment="DEPRECATED: Use summary_heavy instead (kept for backward compatibility)")
     is_summarized = Column(
         Boolean, default=False, nullable=False, comment="Has document been summarized using LSA algorithm"
     )
@@ -373,7 +373,27 @@ class VisionDocument(Base):
         Integer, nullable=True, comment="Original document token count before summarization"
     )
     compression_ratio = Column(
-        Float, nullable=True, comment="Compression ratio achieved (0.0-1.0, e.g., 0.75 = 75% compression)"
+        Float, nullable=True, comment="DEPRECATED: Use per-level token counts instead (kept for backward compatibility)"
+    )
+
+    # Multi-level summaries (Handover 0345e)
+    summary_light = Column(
+        Text, nullable=True, comment="Light summary (~5K tokens, ~250 sentences, 87% compression)"
+    )
+    summary_moderate = Column(
+        Text, nullable=True, comment="Moderate summary (~12.5K tokens, ~625 sentences, 69% compression)"
+    )
+    summary_heavy = Column(
+        Text, nullable=True, comment="Heavy summary (~25K tokens, ~1,250 sentences, 37% compression)"
+    )
+    summary_light_tokens = Column(
+        Integer, nullable=True, comment="Actual token count in light summary"
+    )
+    summary_moderate_tokens = Column(
+        Integer, nullable=True, comment="Actual token count in moderate summary"
+    )
+    summary_heavy_tokens = Column(
+        Integer, nullable=True, comment="Actual token count in heavy summary"
     )
 
     # Versioning and integrity
