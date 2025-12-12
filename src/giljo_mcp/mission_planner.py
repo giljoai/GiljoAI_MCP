@@ -20,10 +20,13 @@ import re
 from typing import Any, ClassVar, Optional
 
 import tiktoken
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config.defaults import DEFAULT_FIELD_PRIORITY
 from .database import DatabaseManager
 from .models import Product, Project, User
+from .models.context import MCPContextIndex
 from .orchestration_types import AgentConfig, Mission, RequirementAnalysis
 from .prompt_generation.testing_config_generator import TestingConfigGenerator
 from .repositories.context_repository import ContextRepository
@@ -685,6 +688,53 @@ Success Criteria:
         # 100% - no reduction
         return field_text
 
+    async def _get_vision_overview(
+        self,
+        session: AsyncSession,
+        product: Product,
+    ) -> dict | None:
+        """
+        Generate minimal vision overview instead of full content.
+
+        Handover 0345a: Reduces orchestrator instructions from 25K+ to ~2-3K tokens
+        by replacing full vision body with metadata + fetch instructions.
+
+        Returns:
+            dict with keys: total_chunks, total_tokens, fetch_instruction
+            None if no chunks exist
+
+        Example:
+            {
+                "total_chunks": 5,
+                "total_tokens": 125000,
+                "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them."
+            }
+        """
+        # Query chunk metadata only (not content) for efficiency
+        stmt = (
+            select(
+                func.count(MCPContextIndex.id).label("chunk_count"),
+                func.sum(MCPContextIndex.token_count).label("total_tokens"),
+            )
+            .where(
+                MCPContextIndex.tenant_key == product.tenant_key,
+                MCPContextIndex.product_id == product.id,
+            )
+        )
+        result = await session.execute(stmt)
+        row = result.one()
+
+        if row.chunk_count == 0:
+            return None
+
+        total_tokens = row.total_tokens or 0
+
+        return {
+            "total_chunks": row.chunk_count,
+            "total_tokens": total_tokens,
+            "fetch_instruction": f"You have {row.chunk_count} vision chunks (~{total_tokens:,} tokens). Use fetch_vision_document(chunk=N) to read them."
+        }
+
     async def _get_relevant_vision_chunks(
         self, session, product, project, max_tokens: int | None = None
     ) -> list[dict]:
@@ -1317,14 +1367,13 @@ Success Criteria:
             )
 
         # === Product Vision (vision_documents priority) ===
-        # Vision document provides foundational context
-        # NEW: Use chunked vision if available, fallback to full text
+        # Handover 0345a: Use vision overview instead of full content to reduce token usage
+        # from 25K+ tokens to ~100 tokens. Orchestrator can fetch full content via MCP tool.
         # Handover 0282: Fixed key from "product_vision" to "vision_documents" (v2.0 field name)
 
         vision_priority = effective_priorities.get("vision_documents", 4)  # Default: EXCLUDED (user opt-in)
-        if vision_priority > 0:
+        if vision_priority > 0 and vision_priority != 4:  # Not excluded
             # Check if vision is chunked (pre-processed on upload into ~25K token chapters)
-            # Rollback 0336: Fetch ALL chunks without truncation - full context always
             product_has_chunks = (
                 any(doc.is_active and doc.chunked and doc.chunk_count > 0 for doc in product.vision_documents)
                 if product.vision_documents
@@ -1332,94 +1381,90 @@ Success Criteria:
             )
 
             if product_has_chunks:
-                # Fetch ALL chunks - no token budget limit (full context policy)
-                # Chunks are already sized at ~25K tokens on upload for AI ingestion
+                # Fetch vision overview (metadata only) instead of full content
                 async with self.db_manager.get_session_async() as session:
-                    vision_chunks = await self._get_relevant_vision_chunks(
+                    vision_overview = await self._get_vision_overview(
                         session=session,
                         product=product,
-                        project=project,
-                        max_tokens=None,  # Fetch ALL chunks - no limit
                     )
 
-                if vision_chunks:
-                    # Combine chunks into formatted section
-                    chunk_texts = [chunk["content"] for chunk in vision_chunks]
-                    vision_text = "\n\n".join(chunk_texts)
+                if vision_overview:
+                    # Format overview with chunk count and fetch instructions
+                    overview_content = (
+                        f"**Vision Documentation**: {vision_overview['total_chunks']} chunks "
+                        f"(~{vision_overview['total_tokens']:,} tokens)\n\n"
+                        f"{vision_overview['fetch_instruction']}"
+                    )
 
                     # Apply priority framing
                     formatted_vision = self._apply_priority_framing(
-                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                        content=vision_text,
+                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision Overview"),
+                        content=overview_content,
                         priority=vision_priority,
                         category_key="vision_documents",
                     )
 
-                    if formatted_vision:  # Only add if not excluded (priority != 4)
+                    if formatted_vision:
                         context_sections.append(formatted_vision)
                     vision_tokens = self._count_tokens(formatted_vision)
                     total_tokens += vision_tokens
-                    tokens_before_reduction += self._count_tokens(f"## Product Vision\n{product.primary_vision_text}")
+                    # Track original size for metrics (estimate based on chunk count)
+                    tokens_before_reduction += vision_overview['total_tokens']
 
                     logger.info(
-                        f"Product vision (chunked): {vision_tokens} tokens from {len(vision_chunks)} chunks",
+                        f"Product vision (overview): {vision_tokens} tokens (reduced from ~{vision_overview['total_tokens']:,} tokens)",
                         extra={
-                            "field": "vision_documents",  # Handover 0282: v2.0 field name
+                            "field": "vision_documents",
                             "priority": vision_priority,
-                            "detail_level": "chunked",
+                            "detail_level": "overview",
                             "tokens": vision_tokens,
-                            "chunks_used": len(vision_chunks),
-                            "total_chunks": sum(doc.chunk_count for doc in product.vision_documents if doc.is_active and doc.chunked),
+                            "total_chunks": vision_overview['total_chunks'],
+                            "tokens_saved": vision_overview['total_tokens'] - vision_tokens,
                         },
                     )
                 else:
-                    # Chunks marked but not found - fallback to full text (no truncation)
+                    # Chunks marked but not found - log warning
                     logger.warning(
-                        "Vision marked as chunked but no chunks returned - using full text",
+                        "Vision marked as chunked but no chunks found in context index",
                         extra={"product_id": str(product.id), "operation": "build_context_with_priorities"},
                     )
-                    vision_text = product.primary_vision_text
+            else:
+                # Not chunked - provide minimal overview
+                # For non-chunked vision, just indicate it's available via primary_vision_text
+                if product.primary_vision_text:
+                    vision_text = product.primary_vision_text.strip()
                     if vision_text:
-                        # Apply priority framing - NO truncation (full context policy)
+                        # Provide brief overview for non-chunked vision
+                        vision_length = len(vision_text)
+                        estimated_tokens = self._count_tokens(vision_text)
+                        overview_content = (
+                            f"**Vision Documentation**: Available (not chunked, ~{estimated_tokens:,} tokens)\n\n"
+                            f"Note: Vision content is available but not chunked. Consider uploading as chunked document for better orchestrator performance."
+                        )
+
                         formatted_vision = self._apply_priority_framing(
-                            section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                            content=vision_text,
+                            section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision Overview"),
+                            content=overview_content,
                             priority=vision_priority,
                             category_key="vision_documents",
                         )
 
-                        if formatted_vision:  # Only add if not excluded (priority != 4)
+                        if formatted_vision:
                             context_sections.append(formatted_vision)
                         vision_tokens = self._count_tokens(formatted_vision)
                         total_tokens += vision_tokens
-                        tokens_before_reduction += vision_tokens
-            else:
-                # Not chunked - use full text (no truncation - full context policy)
-                vision_text = product.primary_vision_text
-                if vision_text:
-                    # Apply priority framing - NO truncation
-                    formatted_vision = self._apply_priority_framing(
-                        section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                        content=vision_text,
-                        priority=vision_priority,
-                        category_key="vision_documents",
-                    )
+                        tokens_before_reduction += estimated_tokens
 
-                    if formatted_vision:  # Only add if not excluded (priority != 4)
-                        context_sections.append(formatted_vision)
-                    vision_tokens = self._count_tokens(formatted_vision)
-                    total_tokens += vision_tokens
-                    tokens_before_reduction += vision_tokens
-
-                    logger.debug(
-                        f"Product vision (full text): {vision_tokens} tokens (not chunked)",
-                        extra={
-                            "field": "vision_documents",  # Handover 0282: v2.0 field name
-                            "priority": vision_priority,
-                            "detail_level": "full",
-                            "tokens": vision_tokens,
-                        },
-                    )
+                        logger.debug(
+                            f"Product vision (non-chunked overview): {vision_tokens} tokens (reduced from ~{estimated_tokens:,} tokens)",
+                            extra={
+                                "field": "vision_documents",
+                                "priority": vision_priority,
+                                "detail_level": "overview",
+                                "tokens": vision_tokens,
+                                "tokens_saved": estimated_tokens - vision_tokens,
+                            },
+                        )
 
         # === MANDATORY: Project Description (ALWAYS included - non-negotiable) ===
         desc_text = project.description or ""
