@@ -172,10 +172,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  visionSummarizationEnabled: {
-    type: Boolean,
-    default: false,
-  },
 })
 
 // Context definitions
@@ -189,8 +185,7 @@ const contexts = [
   {
     key: 'vision_documents',
     label: 'Vision Documents',
-    // options will be generated dynamically in formatOptions() based on visionSummarizationEnabled
-    helpText: 'Vision document depth: configure based on Sumy status'
+    helpText: 'Semantic compression using LSA extractive summarization'
   },
   {
     key: 'memory_360',
@@ -326,48 +321,16 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  // Special handling for vision_documents: use actual token counts from vision stats
+  // Handover 0345e: Semantic compression levels (Light/Moderate/Heavy/Full)
+  // Sumy LSA summarization is always enabled, no toggle needed
   if (context.key === 'vision_documents') {
-    const stats = visionStats.value
-    
-    // If no vision document exists, show disabled option
-    if (!stats?.has_vision_document) {
-      return [
-        { title: 'No vision document uploaded', value: 'none', disabled: true },
-      ]
-    }
-    
-    if (props.visionSummarizationEnabled && stats?.is_summarized) {
-      // When Sumy is enabled and summary exists: use actual token counts
-      const summaryTokens = stats.summary_tokens || 5000
-      const lightTokens = summaryTokens + 2500
-      const moderateTokens = summaryTokens + 5000
-      const fullTokens = stats.total_tokens || 20000
-      
-      return [
-        { title: 'Summary + Light (~' + formatTokenCount(lightTokens) + ' tokens)', value: 'summary_light' },
-        { title: 'Summary + Moderate (~' + formatTokenCount(moderateTokens) + ' tokens)', value: 'summary_moderate' },
-        { title: 'Full (' + formatTokenCount(fullTokens) + ' tokens)', value: 'full' }
-      ]
-    } else if (stats?.total_tokens) {
-      // When Sumy is disabled or no summary: use actual token counts
-      const totalTokens = stats.total_tokens || 20000
-      const lightTokens = Math.round(totalTokens * 0.5)
-      const moderateTokens = Math.round(totalTokens * 0.87)
-      
-      return [
-        { title: 'Light (~' + formatTokenCount(lightTokens) + ' tokens)', value: 'light' },
-        { title: 'Moderate (~' + formatTokenCount(moderateTokens) + ' tokens)', value: 'moderate' },
-        { title: 'Full (' + formatTokenCount(totalTokens) + ' tokens)', value: 'full' }
-      ]
-    } else {
-      // Fallback to estimated token counts if no stats available
-      return [
-        { title: 'Light (~10K tokens)', value: 'light' },
-        { title: 'Moderate (~17.5K tokens)', value: 'moderate' },
-        { title: 'Full', value: 'full' }
-      ]
-    }
+    return [
+      { title: 'None', value: 'none', subtitle: '0 tokens' },
+      { title: 'Light (5K tokens)', value: 'light', subtitle: '~250 sentences, 87% compression' },
+      { title: 'Moderate (12.5K tokens)', value: 'moderate', subtitle: '~625 sentences, 69% compression' },
+      { title: 'Heavy (25K tokens)', value: 'heavy', subtitle: '~1,250 sentences, 37% compression' },
+      { title: 'Full (All)', value: 'full', subtitle: 'Complete document, no compression' }
+    ]
   }
   
   if (!context.options) return []
