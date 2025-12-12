@@ -40,7 +40,7 @@
       <div class="mb-4">
         <div class="text-subtitle-2 font-weight-medium mb-2">Priority Configuration (What to Fetch)</div>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          Set field priorities to control which context is included in agent prompts.
+          Toggle fields on/off to include/exclude from context. Set priority for included fields.
         </v-alert>
 
         <!-- Priority-only Context Rows -->
@@ -237,7 +237,6 @@ const priorityOptions = [
   { title: 'Critical', value: 1 },
   { title: 'Important', value: 2 },
   { title: 'Reference', value: 3 },
-  { title: 'Exclude', value: 4 },
 ]
 
 // State
