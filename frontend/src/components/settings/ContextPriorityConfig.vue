@@ -266,6 +266,8 @@ const config = ref<Record<string, ContextConfig>>({
 
 const loading = ref(false)
 const saving = ref(false)
+const fetchingVisionStats = ref(false)
+const visionStats = ref(null)
 
 // Computed properties to split contexts into two groups
 const priorityOnlyContexts = computed(() => {
@@ -324,17 +326,42 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  // Special handling for vision_documents: options are dynamic based on visionSummarizationEnabled
+  // Special handling for vision_documents: use actual token counts from vision stats
   if (context.key === 'vision_documents') {
-    if (props.visionSummarizationEnabled) {
-      // When Sumy is enabled: Summary + depth options
+    const stats = visionStats.value
+    
+    // If no vision document exists, show disabled option
+    if (!stats?.has_vision_document) {
       return [
-        { title: 'Summary + Light', value: 'summary_light' },
-        { title: 'Summary + Moderate', value: 'summary_moderate' },
-        { title: 'Full (Original)', value: 'full' }
+        { title: 'No vision document uploaded', value: 'none', disabled: true },
+      ]
+    }
+    
+    if (props.visionSummarizationEnabled && stats?.is_summarized) {
+      // When Sumy is enabled and summary exists: use actual token counts
+      const summaryTokens = stats.summary_tokens || 5000
+      const lightTokens = summaryTokens + 2500
+      const moderateTokens = summaryTokens + 5000
+      const fullTokens = stats.total_tokens || 20000
+      
+      return [
+        { title: 'Summary + Light (~' + formatTokenCount(lightTokens) + ' tokens)', value: 'summary_light' },
+        { title: 'Summary + Moderate (~' + formatTokenCount(moderateTokens) + ' tokens)', value: 'summary_moderate' },
+        { title: 'Full (' + formatTokenCount(fullTokens) + ' tokens)', value: 'full' }
+      ]
+    } else if (stats?.total_tokens) {
+      // When Sumy is disabled or no summary: use actual token counts
+      const totalTokens = stats.total_tokens || 20000
+      const lightTokens = Math.round(totalTokens * 0.5)
+      const moderateTokens = Math.round(totalTokens * 0.87)
+      
+      return [
+        { title: 'Light (~' + formatTokenCount(lightTokens) + ' tokens)', value: 'light' },
+        { title: 'Moderate (~' + formatTokenCount(moderateTokens) + ' tokens)', value: 'moderate' },
+        { title: 'Full (' + formatTokenCount(totalTokens) + ' tokens)', value: 'full' }
       ]
     } else {
-      // When Sumy is disabled: Token-based options
+      // Fallback to estimated token counts if no stats available
       return [
         { title: 'Light (~10K tokens)', value: 'light' },
         { title: 'Moderate (~17.5K tokens)', value: 'moderate' },
@@ -372,6 +399,29 @@ function navigateToIntegrations() {
 
 
 async function fetchConfig() {
+async function fetchVisionStats() {
+  fetchingVisionStats.value = true
+  try {
+    const response = await axios.get('/api/v1/products/active/vision-stats')
+    visionStats.value = response.data
+    console.log('[CONTEXT PRIORITY CONFIG] Vision stats loaded:', visionStats.value)
+  } catch (error) {
+    console.warn('[CONTEXT PRIORITY CONFIG] Failed to fetch vision stats:', error)
+    // Gracefully handle error - use null and formatOptions will show defaults
+    visionStats.value = null
+  } finally {
+    fetchingVisionStats.value = false
+  }
+}
+
+function formatTokenCount(tokens) {
+  if (tokens >= 1000) {
+    const k = (tokens / 1000).toFixed(1)
+    return k + 'K'
+  }
+  return tokens.toString()
+}
+
   loading.value = true
   try {
     // Fetch priorities from field-priority endpoint
@@ -486,6 +536,8 @@ onMounted(async () => {
   // Fetch context config on mount
   // Git integration status is passed from parent via props (UserSettings.vue)
   fetchConfig()
+  // Fetch vision stats for dynamic token counts
+  await fetchVisionStats()
 })
 
 // Expose for testing
@@ -497,12 +549,16 @@ defineExpose({
   config,
   loading,
   saving,
+  fetchingVisionStats,
+  visionStats,
   toggleContext,
   updatePriority,
   updateDepth,
   saveConfig,
   isContextDisabled,
   navigateToIntegrations,
+  fetchVisionStats,
+  formatTokenCount,
 })
 </script>
 
