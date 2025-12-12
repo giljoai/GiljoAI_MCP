@@ -178,11 +178,16 @@ const props = defineProps({
 // Priority-only fields (no depth controls)
 const contexts = [
   { key: 'product_description', label: 'Product Description' },
-  { key: 'vision_documents', label: 'Vision Documents' },
   { key: 'tech_stack', label: 'Tech Stack' },
   { key: 'architecture', label: 'Architecture' },
   { key: 'testing', label: 'Testing' },
   // Depth-controlled fields
+  {
+    key: 'vision_documents',
+    label: 'Vision Documents',
+    options: ['none', 'light', 'moderate', 'heavy'],
+    helpText: 'Vision document depth: none|light(10K)|moderate(17.5K)|heavy(24K) tokens'
+  },
   {
     key: 'memory_360',
     label: '360 Memory',
@@ -246,10 +251,10 @@ interface ContextConfig {
 
 const config = ref<Record<string, ContextConfig>>({
   product_description: { enabled: true, priority: 1 },
-  vision_documents: { enabled: true, priority: 2 },
   tech_stack: { enabled: true, priority: 2 },
   architecture: { enabled: true, priority: 2 },
   testing: { enabled: true, priority: 2 },
+  vision_documents: { enabled: true, priority: 2, depth: 'moderate' },
   memory_360: { enabled: true, priority: 2, count: 3 },
   git_history: { enabled: false, priority: 4, count: 25 },
   agent_templates: { enabled: true, priority: 2, depth: 'type_only' },
@@ -296,7 +301,7 @@ function updateDepth(key: string, value: string | number) {
   // Determine if this is a count-based or depth-based context
   if (key === 'memory_360' || key === 'git_history') {
     config.value[key].count = value as number
-  } else {
+  } else if (key === 'vision_documents' || key === 'agent_templates') {
     config.value[key].depth = value as string
   }
   saveConfig() // Auto-save
@@ -308,8 +313,10 @@ function getDepthValue(key: string): string | number | undefined {
 
   if (key === 'memory_360' || key === 'git_history') {
     return contextConfig.count
+  } else if (key === 'vision_documents' || key === 'agent_templates') {
+    return contextConfig.depth
   }
-  return contextConfig.depth
+  return undefined
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
@@ -324,7 +331,17 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
       }
       return { title: String(opt), value: opt }
     }
-    // String options - capitalize first letter
+    // String options
+    if (context.key === 'vision_documents') {
+      const visionLabels: Record<string, string> = {
+        'none': 'None',
+        'light': 'Light (10K tokens)',
+        'moderate': 'Moderate (17.5K tokens)',
+        'heavy': 'Heavy (24K tokens)'
+      }
+      return { title: visionLabels[opt as string] || opt, value: opt }
+    }
+    // Default: capitalize first letter
     return { title: opt.charAt(0).toUpperCase() + opt.slice(1).replace('_', ' '), value: opt }
   })
 }
@@ -366,7 +383,7 @@ async function fetchConfig() {
       })
     })
 
-    // Fetch depth config from context/depth endpoint (only 3 fields with depth controls)
+    // Fetch depth config from context/depth endpoint (only 4 fields with depth controls)
     try {
       const depthResponse = await axios.get('/api/v1/users/me/context/depth')
       const depthData = depthResponse.data?.depth_config || {}
@@ -377,6 +394,9 @@ async function fetchConfig() {
       }
       if (depthData.git_commits && config.value.git_history) {
         config.value.git_history.count = depthData.git_commits
+      }
+      if (depthData.vision_document_depth && config.value.vision_documents) {
+        config.value.vision_documents.depth = depthData.vision_document_depth
       }
       if (depthData.agent_template_detail && config.value.agent_templates) {
         config.value.agent_templates.depth = depthData.agent_template_detail
@@ -405,12 +425,13 @@ async function saveConfig() {
     })
     console.log('[CONTEXT PRIORITY CONFIG] Field priorities saved successfully')
 
-    // Save depth config to context/depth endpoint (only 3 fields with depth controls)
+    // Save depth config to context/depth endpoint (only 4 fields with depth controls)
     try {
       await axios.put('/api/v1/users/me/context/depth', {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
+          vision_document_depth: config.value.vision_documents?.depth || 'moderate',
           agent_template_detail: config.value.agent_templates?.depth || 'type_only',
         }
       })
