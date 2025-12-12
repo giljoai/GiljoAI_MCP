@@ -630,7 +630,7 @@ function handleGitIntegrationUpdate(data) {
 // Vision Summarization Functions
 async function checkVisionSummarizationStatus() {
   try {
-    const settings = await api.get('/api/settings/general')
+    const settings = await api.get('/api/v1/settings/general')
     visionSummarizationEnabled.value = settings.data.settings.vision_summarization_enabled || false
     console.log('[USER SETTINGS] Vision summarization status:', visionSummarizationEnabled.value)
   } catch (error) {
@@ -644,7 +644,7 @@ async function toggleVisionSummarization(enabled) {
   togglingVisionSummarization.value = true
 
   try {
-    const result = await api.put('/api/settings/general', {
+    const result = await api.put('/api/v1/settings/general', {
       settings: { vision_summarization_enabled: enabled }
     })
     visionSummarizationEnabled.value = result.data.settings.vision_summarization_enabled
