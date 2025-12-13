@@ -30,10 +30,10 @@
       <v-progress-linear :model-value="uploadProgress" color="primary" height="6" class="mt-2" />
     </v-alert>
 
-    <!-- Chunking indicator for large files -->
+    <!-- Summarization indicator for large files -->
     <v-alert v-if="isChunking" type="info" variant="tonal" density="compact" class="mb-4">
-      <v-icon start>mdi-scissors-cutting</v-icon>
-      Chunking large document... This may take a moment.
+      <v-icon start>mdi-text-box-check</v-icon>
+      Generating summaries... This may take a moment.
     </v-alert>
 
     <!-- Existing Documents (Edit Mode Only) -->
@@ -121,7 +121,7 @@
       </v-list>
 
       <v-alert type="info" variant="tonal" density="compact">
-        Files will be auto-chunked for context (25K token limit)
+        Large files will be auto-summarized (light 33%, medium 66%)
       </v-alert>
     </div>
   </div>
