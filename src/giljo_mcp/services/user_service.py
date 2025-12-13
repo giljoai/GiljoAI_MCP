@@ -1111,7 +1111,7 @@ class UserService:
 
         # Return depth config (from user or defaults)
         depth_config = user.depth_config or {
-            "vision_chunking": "moderate",
+            "vision_documents": "moderate",
             "memory_last_n_projects": 3,
             "git_commits": 25,
             "agent_template_detail": "standard",
@@ -1142,7 +1142,7 @@ class UserService:
         Example:
             >>> result = await service.update_depth_config(
             ...     "abc-123",
-            ...     {"vision_chunking": "heavy", "git_commits": 50}
+            ...     {"vision_documents": "heavy", "git_commits": 50}
             ... )
         """
         try:
@@ -1167,10 +1167,10 @@ class UserService:
         valid_memory = [1, 3, 5, 10]
         valid_git = [10, 25, 50, 100]
 
-        if "vision_chunking" in config and config["vision_chunking"] not in valid_vision:
+        if "vision_documents" in config and config["vision_documents"] not in valid_vision:
             return {
                 "success": False,
-                "error": f"Invalid vision_chunking. Must be one of: {', '.join(valid_vision)}"
+                "error": f"Invalid vision_documents. Must be one of: {', '.join(valid_vision)}"
             }
 
         stmt = select(User).where(
@@ -1274,7 +1274,7 @@ class UserService:
             return {"success": False, "error": "User not found"}
 
         depth_config = user.depth_config or {
-            "vision_chunking": "moderate",
+            "vision_documents": "moderate",
             "memory_last_n_projects": 3,
             "git_commits": 25,
             "agent_template_detail": "standard",

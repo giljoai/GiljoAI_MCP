@@ -190,36 +190,36 @@ describe('ContextPriorityConfig - Vision Documents Depth', () => {
   /**
    * Test: Vision documents API payload includes depth
    */
-  it('includes vision_document_depth in API depth_config payload', () => {
+  it('includes vision_documents in API depth_config payload', () => {
     const depthPayload = {
       depth_config: {
         memory_last_n_projects: config.memory_360.count || 3,
         git_commits: config.git_history.count || 25,
-        vision_document_depth: config.vision_documents.depth || 'moderate',
+        vision_documents: config.vision_documents.depth || 'moderate',
         agent_template_detail: config.agent_templates.depth || 'type_only',
       },
     }
 
-    expect(depthPayload.depth_config).toHaveProperty('vision_document_depth')
-    expect(depthPayload.depth_config.vision_document_depth).toBe('moderate')
+    expect(depthPayload.depth_config).toHaveProperty('vision_documents')
+    expect(depthPayload.depth_config.vision_documents).toBe('moderate')
   })
 
   /**
-   * Test: API response maps vision_document_depth to config
+   * Test: API response maps vision_documents to config
    */
-  it('maps vision_document_depth from API response to config', () => {
+  it('maps vision_documents from API response to config', () => {
     const apiResponse = {
       depth_config: {
         memory_last_n_projects: 3,
         git_commits: 25,
-        vision_document_depth: 'heavy',
+        vision_documents: 'heavy',
         agent_template_detail: 'type_only',
       },
     }
 
     // Simulate mapping
-    if (apiResponse.depth_config.vision_document_depth && config.vision_documents) {
-      config.vision_documents.depth = apiResponse.depth_config.vision_document_depth
+    if (apiResponse.depth_config.vision_documents && config.vision_documents) {
+      config.vision_documents.depth = apiResponse.depth_config.vision_documents
     }
 
     expect(config.vision_documents.depth).toBe('heavy')
