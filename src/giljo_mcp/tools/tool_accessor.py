@@ -550,11 +550,30 @@ class ToolAccessor:
                 # Generate condensed mission
                 planner = MissionPlanner(self.db_manager)
                 metadata = orchestrator.job_metadata or {}
-                field_priorities = metadata.get("field_priorities", {})
                 user_id = metadata.get("user_id")
 
+                # Handover 0346: Fetch FRESH user config if user_id available
+                # This allows settings changes to take effect immediately without re-staging
+                if user_id:
+                    from giljo_mcp.tools.orchestration import _get_user_config
+                    user_config = await _get_user_config(user_id, tenant_key, session)
+                    field_priorities = user_config["field_priorities"]
+                    depth_config = user_config["depth_config"]
+                    logger.info(
+                        "[USER_CONFIG] Fetched fresh user config for ToolAccessor",
+                        extra={"orchestrator_id": orchestrator_id, "user_id": user_id}
+                    )
+                else:
+                    # Fall back to frozen job_metadata config
+                    field_priorities = metadata.get("field_priorities", {})
+                    depth_config = metadata.get("depth_config", {})
+                    logger.debug(
+                        "[USER_CONFIG] No user_id, using frozen job_metadata config",
+                        extra={"orchestrator_id": orchestrator_id}
+                    )
+
                 condensed_mission = await planner._build_context_with_priorities(
-                    product=product, project=project, field_priorities=field_priorities, user_id=user_id, include_serena=include_serena
+                    product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id, include_serena=include_serena
                 )
 
                 # Handover 0277: Inject simplified Serena MCP notice if enabled
@@ -642,7 +661,8 @@ class ToolAccessor:
                 }
 
                 # Handover 0335: Add CLI mode rules when execution_mode == 'claude_code_cli'
-                execution_mode = metadata.get("execution_mode", "multi_terminal")
+                # Handover 0346: Read from Project table for live switching (not frozen metadata)
+                execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
                 if execution_mode == "claude_code_cli":
                     # Get allowed agent types from active templates
                     allowed_agent_types = [t.name for t in templates]
