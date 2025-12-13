@@ -194,14 +194,16 @@
                     class="border rounded mb-2"
                   >
                     <template v-slot:prepend>
-                      <v-icon :color="doc.is_summarized ? 'success' : 'warning'">
-                        {{ doc.is_summarized ? 'mdi-check-circle' : 'mdi-clock-outline' }}
+                      <v-icon :color="(doc.is_summarized || doc.chunked) ? 'success' : 'warning'">
+                        {{ (doc.is_summarized || doc.chunked) ? 'mdi-check-circle' : 'mdi-clock-outline' }}
                       </v-icon>
                     </template>
 
                     <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
                     <v-list-item-subtitle>
-                      {{ doc.is_summarized ? 'Summarized' : 'Processing' }} • {{ formatDate(doc.created_at) }}
+                      {{ doc.is_summarized ? 'Summarized' : 'Processing' }}
+                      <span v-if="doc.chunked"> • {{ doc.chunk_count }} chunks</span>
+                      • {{ formatDate(doc.created_at) }}
                     </v-list-item-subtitle>
 
                     <template v-slot:append>
