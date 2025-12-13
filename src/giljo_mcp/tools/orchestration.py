@@ -182,7 +182,17 @@ async def _get_user_config(
             }
 
         # Get user's custom configs or fall back to defaults
-        field_priorities = user.field_priority_config if user.field_priority_config is not None else DEFAULT_FIELD_PRIORITIES.copy()
+        # Handover 0346: Handle nested v2.0 format {"version": "2.0", "priorities": {...}}
+        raw_field_priorities = user.field_priority_config
+        if raw_field_priorities is not None:
+            # Extract priorities from v2.0 nested structure if present
+            if isinstance(raw_field_priorities, dict) and "priorities" in raw_field_priorities:
+                field_priorities = raw_field_priorities["priorities"]
+            else:
+                field_priorities = raw_field_priorities
+        else:
+            field_priorities = DEFAULT_FIELD_PRIORITIES.copy()
+
         depth_config = user.depth_config if user.depth_config is not None else DEFAULT_DEPTH_CONFIG.copy()
 
         logger.info(
