@@ -1213,6 +1213,9 @@ class ProductService:
                         summarizer = VisionDocumentSummarizer()
                         summaries = summarizer.summarize_multi_level(content)
 
+                        # Re-attach doc to session after previous commit (fixes detached state)
+                        session.add(doc)
+
                         # Store all three summary levels
                         doc.summary_light = summaries["light"]["summary"]
                         doc.summary_moderate = summaries["moderate"]["summary"]
@@ -1640,3 +1643,83 @@ class ProductService:
         )
 
         return product
+
+    async def purge_expired_deleted_products(self, days_before_purge: int = 10) -> dict[str, Any]:
+        """
+        Hard delete products that were soft-deleted more than specified days ago.
+
+        SQLAlchemy cascade="all, delete-orphan" handles child relationships:
+        - Projects (and their children via ProjectService cascade)
+        - Tasks
+        - VisionDocuments
+
+        Called from startup.py on server start for automatic cleanup.
+
+        Args:
+            days_before_purge: Number of days before permanent deletion (default: 10)
+
+        Returns:
+            dict: Purge results with count and details
+                - success: bool - Operation success status
+                - purged_count: int - Number of products purged
+                - products: list - Details of purged products
+                - error: str - Error message if failed
+
+        Example:
+            >>> result = await service.purge_expired_deleted_products()
+            >>> print(f"Purged {result['purged_count']} expired products")
+        """
+
+        if not self.db_manager:
+            self._logger.error("[Product Purge] Cannot purge - database manager not available")
+            return {"success": False, "error": "Database not available"}
+
+        try:
+            async with self._get_session() as session:
+                # Find products deleted more than specified days ago
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_before_purge)
+
+                stmt = select(Product).where(
+                    Product.deleted_at.isnot(None),
+                    Product.deleted_at < cutoff_date,
+                )
+
+                result = await session.execute(stmt)
+                expired_products = result.scalars().all()
+
+                if not expired_products:
+                    self._logger.info(
+                        f"[Product Purge] No expired deleted products to purge (cutoff: {days_before_purge} days)"
+                    )
+                    return {"success": True, "purged_count": 0, "products": []}
+
+                # Hard delete each expired product (cascade handles children)
+                purged_products = []
+                for product in expired_products:
+                    purged_info = {
+                        "id": product.id,
+                        "name": product.name,
+                        "tenant_key": product.tenant_key,
+                        "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
+                    }
+                    days_ago = (datetime.now(timezone.utc) - product.deleted_at).days
+
+                    await session.delete(product)
+                    purged_products.append(purged_info)
+
+                    self._logger.info(
+                        f"[Product Purge] Auto-purged expired product {product.id} "
+                        f"(deleted {days_ago} days ago)"
+                    )
+
+                await session.commit()
+
+                self._logger.info(
+                    f"[Product Purge] Successfully purged {len(purged_products)} expired deleted products"
+                )
+
+                return {"success": True, "purged_count": len(purged_products), "products": purged_products}
+
+        except Exception as e:
+            self._logger.exception(f"[Product Purge] Failed to purge expired deleted products: {e}")
+            return {"success": False, "error": str(e), "purged_count": 0}
