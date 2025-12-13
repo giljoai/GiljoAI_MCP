@@ -1580,9 +1580,26 @@ The agent templates are now being updated...
                 # Get field priorities and depth config from orchestrator job_metadata (Handover 0088 + 0283)
                 # Uses dedicated job_metadata JSONB column for thin client data
                 metadata = orchestrator.job_metadata or {}
-                field_priorities = metadata.get("field_priorities", {})
-                depth_config = metadata.get("depth_config", {})
                 user_id = metadata.get("user_id")
+
+                # Handover 0346: Fetch FRESH user config if user_id available
+                # This allows settings changes to take effect immediately without re-staging
+                if user_id:
+                    user_config = await _get_user_config(user_id, tenant_key, session)
+                    field_priorities = user_config["field_priorities"]
+                    depth_config = user_config["depth_config"]
+                    logger.info(
+                        "[USER_CONFIG] Fetched fresh user config for MCP tool",
+                        extra={"orchestrator_id": orchestrator_id, "user_id": user_id}
+                    )
+                else:
+                    # Fall back to frozen job_metadata config
+                    field_priorities = metadata.get("field_priorities", {})
+                    depth_config = metadata.get("depth_config", {})
+                    logger.debug(
+                        "[USER_CONFIG] No user_id, using frozen job_metadata config",
+                        extra={"orchestrator_id": orchestrator_id}
+                    )
 
                 # Check if Serena is enabled (from config.yaml)
                 # Serena toggle is in My Settings → Integrations
