@@ -128,8 +128,8 @@ class VisionDocumentSummarizer:
         chunks = self._chunk_text(text, chunk_size)
 
         # Calculate sentences per chunk
-        # Heuristic: ~20 tokens per sentence
-        total_sentences_needed = int(target_tokens / 20)
+        # Heuristic: ~25 tokens per sentence (more aggressive compression)
+        total_sentences_needed = int(target_tokens / 25)
         sentences_per_chunk = max(5, total_sentences_needed // len(chunks))
 
         # Summarize each chunk independently
@@ -147,8 +147,8 @@ class VisionDocumentSummarizer:
         # Combine chunk summaries
         combined = "\n\n".join(summaries)
 
-        # REDUCE: consolidate if still over target (with 10% buffer)
-        if self.estimate_tokens(combined) > target_tokens * 1.1:
+        # REDUCE: consolidate if still over target (with 5% buffer)
+        if self.estimate_tokens(combined) > target_tokens * 1.05:
             combined = self._consolidate(combined, target_tokens)
 
         summary_tokens = self.estimate_tokens(combined)
@@ -215,7 +215,7 @@ class VisionDocumentSummarizer:
         """
         try:
             parser = PlaintextParser.from_string(text, Tokenizer(self.language))
-            sentence_count = max(5, int(target_tokens / 20))  # ~20 tokens per sentence
+            sentence_count = max(5, int(target_tokens / 25))  # ~25 tokens per sentence (more aggressive)
             sentences = self.summarizer(parser.document, sentence_count)
             return " ".join(str(s) for s in sentences)
         except Exception:
@@ -229,19 +229,20 @@ class VisionDocumentSummarizer:
         levels: Dict[str, int] = None
     ) -> Dict[str, Any]:
         """
-        Generate multiple summary levels in one pass using cascading compression.
+        Generate multiple summary levels independently from original text.
 
-        Handover 0345e: Multi-level semantic compression for vision documents.
-        Generates light, moderate, and heavy summaries efficiently by cascading
-        from heavy → moderate → light, reusing previous summaries as input.
+        Handover 0348: Fixed cascading bug that prevented hitting target token counts.
+        Each summary level (light, moderate, heavy) is now generated independently
+        from the original text to ensure accurate compression to targets.
 
         Algorithm:
-        1. Generate heavy summary from original text (most detailed)
-        2. Generate moderate summary from heavy summary (cascade)
-        3. Generate light summary from moderate summary (cascade)
+        1. Generate heavy summary from original text (25K tokens)
+        2. Generate moderate summary from original text (12.5K tokens)
+        3. Generate light summary from original text (5K tokens)
 
-        This cascading approach is more efficient than summarizing 3 times from
-        the original, and ensures hierarchical coherence (light ⊆ moderate ⊆ heavy).
+        Previous cascading approach (heavy → moderate → light) failed when heavy
+        exceeded target, preventing smaller levels from hitting their targets.
+        Independent summarization ensures each level compresses accurately.
 
         Args:
             text: Full document text to summarize
@@ -289,15 +290,13 @@ class VisionDocumentSummarizer:
 
         original_tokens = self.estimate_tokens(text)
 
-        # Generate summaries in descending order (heavy → moderate → light)
-        # Optimization: Use previous summary as input for next level (cascading)
-        previous_text = text
-
+        # Generate summaries independently from original text
+        # This ensures each level hits its target token count accurately
         for level in ["heavy", "moderate", "light"]:
             target_tokens = levels[level]
 
-            # Summarize from previous level (cascading compression)
-            summary_result = self.summarize(previous_text, target_tokens=target_tokens)
+            # Always summarize from original text (no cascading)
+            summary_result = self.summarize(text, target_tokens=target_tokens)
 
             # Count sentences (split on period followed by space or end)
             summary_text = summary_result["summary"]
@@ -308,9 +307,6 @@ class VisionDocumentSummarizer:
                 "tokens": summary_result["summary_tokens"],
                 "sentences": len(sentences)
             }
-
-            # Use this summary as input for next level (cascade)
-            previous_text = summary_text
 
         results["original_tokens"] = original_tokens
         results["processing_time_ms"] = int((time.time() - start_time) * 1000)
