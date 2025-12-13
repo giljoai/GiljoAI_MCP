@@ -94,8 +94,9 @@
                     size="small"
                     variant="tonal"
                     color="primary"
-                    :disabled="!doc.vision_document"
-                    @click="showSummary(doc, 'full')"
+                    :disabled="!doc.original_token_count"
+                    :loading="loadingFullDoc === doc.id"
+                    @click="showFullDocument(doc)"
                     class="cursor-pointer"
                   >
                     Full
@@ -269,6 +270,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import api from '@/services/api'
 
 const props = defineProps({
   modelValue: {
@@ -306,6 +308,7 @@ const summaryContent = ref('')
 const summaryTitle = ref('')
 const summaryLevel = ref('')
 const summaryTokens = ref(0)
+const loadingFullDoc = ref(null)  // Track which doc is loading full content
 
 const summaryLevelColor = computed(() => {
   // Handover 0246b: Updated to Light/Medium/Full
@@ -333,6 +336,47 @@ function showSummary(doc, level) {
   summaryLevel.value = config.label
   summaryTokens.value = doc[config.tokens] || 0
   summaryDialog.value = true
+}
+
+/**
+ * Fetch and show full document content (Handover 0246b)
+ * Full document is not included in list response to save bandwidth
+ */
+async function showFullDocument(doc) {
+  // If we already have the content cached, show it
+  if (doc.vision_document) {
+    summaryContent.value = doc.vision_document
+    summaryTitle.value = `${doc.document_name || doc.filename} - Full Document`
+    summaryLevel.value = 'Full'
+    summaryTokens.value = doc.original_token_count || 0
+    summaryDialog.value = true
+    return
+  }
+
+  // Fetch full document from API
+  try {
+    loadingFullDoc.value = doc.id
+    const response = await api.visionDocuments.get(doc.id)
+    const fullDoc = response.data
+
+    // Cache the content on the doc object
+    doc.vision_document = fullDoc.vision_document
+
+    summaryContent.value = fullDoc.vision_document || 'No content available'
+    summaryTitle.value = `${doc.document_name || doc.filename} - Full Document`
+    summaryLevel.value = 'Full'
+    summaryTokens.value = fullDoc.original_token_count || doc.original_token_count || 0
+    summaryDialog.value = true
+  } catch (error) {
+    console.error('Failed to fetch full document:', error)
+    summaryContent.value = 'Error: Could not load full document'
+    summaryTitle.value = `${doc.document_name || doc.filename} - Error`
+    summaryLevel.value = 'Full'
+    summaryTokens.value = 0
+    summaryDialog.value = true
+  } finally {
+    loadingFullDoc.value = null
+  }
 }
 
 function formatTokens(tokens) {
