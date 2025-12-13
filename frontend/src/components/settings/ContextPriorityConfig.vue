@@ -421,8 +421,8 @@ async function fetchConfig() {
       if (depthData.git_commits && config.value.git_history) {
         config.value.git_history.count = depthData.git_commits
       }
-      if (depthData.vision_document_depth && config.value.vision_documents) {
-        config.value.vision_documents.depth = depthData.vision_document_depth
+      if (depthData.vision_documents && config.value.vision_documents) {
+        config.value.vision_documents.depth = depthData.vision_documents
       }
       if (depthData.agent_template_detail && config.value.agent_templates) {
         config.value.agent_templates.depth = depthData.agent_template_detail
@@ -457,7 +457,7 @@ async function saveConfig() {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
-          vision_document_depth: config.value.vision_documents?.depth || 'moderate',
+          vision_documents: config.value.vision_documents?.depth || 'moderate',
           agent_template_detail: config.value.agent_templates?.depth || 'type_only',
         }
       })

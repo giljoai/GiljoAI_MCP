@@ -209,6 +209,185 @@ exceptionally well, loading instantly, respecting user privacy, and never
 getting in the way of actual work.
 
 
+================================================================================
+COPY/PASTE QUICK REFERENCE - FOR GILJOAI MCP [+ NEW PRODUCT] MODAL
+================================================================================
+
+Use these snippets to quickly populate the product creation form in GiljoAI MCP:
+
+---
+
+{Product Name}
+TinyContacts
+
+---
+
+{Description (Context for Orchestrator)}
+Modern contact management application for individuals and small teams. Streamlined
+CRUD interface for managing contacts with photos, emails, phone numbers, and
+important dates. Single-page React app with FastAPI backend, featuring instant
+search, modal-based editing, and local-first architecture. Target users: freelancers,
+consultants, small business owners. Key features: photo uploads with automatic
+optimization, important dates tracking (birthdays, anniversaries), tag-based
+organization, fuzzy search, export capabilities. Privacy-first design with local
+SQLite storage (PostgreSQL for teams). Sub-100ms API responses, <1s search across
+10K+ contacts. WCAG 2.1 AA accessibility compliance.
+
+---
+
+{Programming Languages}
+Python 3.11+
+JavaScript ES2023
+TypeScript 5.0+
+
+---
+
+{Frontend Frameworks & Libraries}
+React 18.2+
+TypeScript 5.0+
+Vite 5.0+ (build tooling)
+Tailwind CSS 3.3+ (styling)
+TanStack Query 5.0+ (data fetching)
+React Hook Form 7.45+ (form management)
+React Router 6+ (routing)
+
+---
+
+{Backend Frameworks & Services}
+FastAPI 0.104+
+SQLAlchemy 2.0+ (ORM)
+SQLModel (Pydantic integration)
+Alembic (migrations)
+Uvicorn 0.23+ (ASGI server)
+Pillow 10.0+ (image processing)
+Pydantic 2.0+ (validation)
+
+---
+
+{Databases & Data Storage}
+SQLite 3.35+ (single-user/development)
+PostgreSQL 13+ (multi-user/production)
+Local filesystem storage (contact photos)
+Configurable storage paths
+
+---
+
+{Infrastructure & DevOps}
+Docker + Docker Compose (containerization)
+Uvicorn/Gunicorn (ASGI production server)
+Nginx (reverse proxy, optional)
+GitHub Actions (CI/CD)
+Systemd services (Linux deployment)
+
+---
+
+{Primary Architecture Pattern}
+Modular monolith with service layer separation. Backend organized into distinct
+service modules (ProductService, ProjectService, OrchestrationService) with clear
+boundaries and responsibilities. Event-driven components for real-time updates via
+WebSockets. Repository pattern for data access abstraction. MVC-inspired separation
+with FastAPI routers (controllers), service layer (business logic), and SQLAlchemy
+models (data). Frontend follows component-based architecture with state management
+via TanStack Query for server state and React hooks for local state.
+
+---
+
+{Design Patterns and Principles}
+Repository Pattern (data access abstraction)
+Dependency Injection (FastAPI dependencies, service layer)
+Factory Pattern (model creation, image processing)
+SOLID Principles (single responsibility services, open/closed for extensions)
+Adapter Pattern (database abstraction SQLite/PostgreSQL)
+Strategy Pattern (image optimization, validation rules)
+Observer Pattern (WebSocket event broadcasting)
+Singleton Pattern (database connection pooling)
+MVC Architecture (router/service/model separation)
+
+---
+
+{API Style and Communication}
+REST API (primary interface, JSON payloads)
+OpenAPI 3.0 (automatic documentation via FastAPI)
+WebSocket (real-time updates for multi-user scenarios, planned v2.0)
+Multipart/form-data (photo uploads)
+Server-Sent Events (optional for live updates)
+HTTP/2 support (via modern ASGI servers)
+CORS configuration (cross-origin support for SPA)
+
+---
+
+{Architecture Notes}
+Local-first architecture: SQLite default for single-user, PostgreSQL for teams.
+Zero-config deployment goal with sensible defaults. Progressive enhancement from
+single-user to multi-tenant without major refactoring. Photo storage abstraction
+enables future migration to cloud storage (S3, GCS) without business logic changes.
+Async/await throughout backend for I/O efficiency. Frontend uses optimistic updates
+for perceived performance. All file paths use pathlib.Path() for cross-platform
+compatibility. Database migrations managed via Alembic with version control. API
+versioning strategy: URL-based (/api/v1/) when breaking changes required. Caching
+strategy: browser cache for static assets, TanStack Query for API responses, no
+server-side cache in v1.0. Security: input validation via Pydantic, parameterized
+queries prevent SQL injection, CSRF protection for multi-user deployments.
+
+
+================================================================================
+FEATURES & QUALITY STANDARDS
+================================================================================
+
+{Core Features}
+Contact Management: Create, read, update, delete contacts with name, email, phone,
+photo, and custom notes. Photo uploads with automatic resizing and optimization
+(thumbnail, card, full-size variants). Important dates tracking: birthdays,
+anniversaries, custom milestones with label and date. Tag-based organization for
+categorizing contacts (clients, friends, family, conference attendees, etc.).
+Instant search: fuzzy search across name, email, phone with real-time results as
+you type. Advanced filtering: filter by tags, date ranges, contacts with/without
+photos. Single-page interface with modal-based editing for zero-navigation workflow.
+Drag-and-drop photo uploads. Data export: vCard and CSV formats for portability
+(v2.0). Import contacts from CSV, vCard, email signatures (v2.0). Keyboard shortcuts
+for power users. Responsive design: mobile, tablet, desktop optimized. Dark mode
+support. Offline functionality (PWA features, v2.0). Multi-user support with
+authentication and permissions (v2.0). Activity history and audit logs (v2.0).
+Duplicate detection and merging (v3.0). Reminders for upcoming birthdays and
+important dates (v3.0). Backup and restore functionality. Accessibility: WCAG 2.1
+Level AA compliance, keyboard navigation, screen reader support.
+
+---
+
+{Testing Strategy and Approach}
+Hybrid approach (combination of TDD for critical paths, integration testing for
+workflows, E2E for user journeys)
+
+NOTE: Select "Hybrid approach" from the dropdown menu
+
+---
+
+{Test Coverage Target}
+85%
+
+NOTE: Set the slider to 85%
+
+---
+
+{Testing Frameworks and Tools}
+pytest 7.4+ (backend unit and integration tests)
+pytest-asyncio (async test support)
+pytest-cov (coverage reporting)
+httpx (FastAPI test client for API testing)
+Faker (test data generation)
+Vitest 1.0+ (frontend unit tests, Jest-compatible)
+React Testing Library (component testing)
+Cypress 13+ (E2E testing, user workflows)
+MSW - Mock Service Worker (API mocking for frontend)
+c8 (frontend coverage)
+Ruff (Python linting)
+Black (Python formatting)
+ESLint (JavaScript/TypeScript linting)
+Prettier (JavaScript/TypeScript formatting)
+mypy (Python type checking, optional)
+TypeScript compiler (type checking)
+Pre-commit hooks (automated quality gates)
+
 
 ================================================================================
 SECTION 2: TECHNICAL STACK & ARCHITECTURE (DETAILED)
