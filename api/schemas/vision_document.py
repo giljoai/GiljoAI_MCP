@@ -12,7 +12,7 @@ Provides request/response models for:
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class VisionDocumentCreate(BaseModel):
@@ -87,7 +87,24 @@ class VisionDocumentResponse(BaseModel):
     chunked_at: Optional[datetime] = Field(None, description="Last chunking timestamp")
     meta_data: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
+    # Summary fields (Sumy LSA compression - Handover 0345e)
+    summary_light: Optional[str] = Field(None, description="Low compression summary (~5K tokens)")
+    summary_moderate: Optional[str] = Field(None, description="Medium compression summary (~12.5K tokens)")
+    summary_heavy: Optional[str] = Field(None, description="High compression summary (~25K tokens)")
+    summary_light_tokens: Optional[int] = Field(None, description="Token count for low summary")
+    summary_moderate_tokens: Optional[int] = Field(None, description="Token count for medium summary")
+    summary_heavy_tokens: Optional[int] = Field(None, description="Token count for high summary")
+    has_summaries: bool = Field(False, description="Whether summaries have been generated")
+
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='after')
+    def compute_has_summaries(self) -> 'VisionDocumentResponse':
+        """Compute has_summaries based on presence of summary fields."""
+        self.has_summaries = bool(
+            self.summary_light or self.summary_moderate or self.summary_heavy
+        )
+        return self
 
 
 class RechunkRequest(BaseModel):
