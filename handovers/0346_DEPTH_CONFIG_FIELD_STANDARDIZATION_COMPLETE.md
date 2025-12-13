@@ -8,10 +8,12 @@
 
 ## Summary
 
-Fixed the vision document depth toggle in Settings → Context which had **no effect** due to two bugs:
+Fixed the vision document depth toggle in Settings → Context which had **no effect** due to three bugs:
 
 1. **Field name mismatch** across layers (frontend/backend/consumer)
 2. **MCP tool using frozen config** instead of fetching fresh user settings
+3. **ToolAccessor wrapper also using frozen config** (same issue in second code path)
+4. **Execution mode read from frozen metadata** instead of Project table (live switching broken)
 
 ---
 
@@ -43,11 +45,31 @@ else:
     depth_config = metadata.get("depth_config", {})
 ```
 
+### Bug 3: ToolAccessor Wrapper Also Using Frozen Config
+
+**Location:** `src/giljo_mcp/tools/tool_accessor.py` (line ~550)
+
+**Problem:** The `ToolAccessor.get_orchestrator_instructions()` method had the same issue as Bug 2, plus it was NOT passing `depth_config` to `_build_context_with_priorities` at all!
+
+**Fix:** Applied same pattern - fetch fresh user config if `user_id` available, pass `depth_config` to mission planner.
+
+### Bug 4: Execution Mode Read from Frozen Metadata
+
+**Location:** Both `orchestration.py` and `tool_accessor.py`
+
+**Problem:** `execution_mode` was read from `job_metadata` (frozen at staging time), so toggling between Claude Code CLI and Multi-Terminal modes in the UI had no effect until re-staging.
+
+**Fix:** Read `execution_mode` from `Project.execution_mode` column (live database value):
+```python
+# Handover 0346: Read from Project table for live switching (not frozen metadata)
+execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
+```
+
 ---
 
 ## Files Modified
 
-### Backend (6 files)
+### Backend (7 files)
 | File | Change |
 |------|--------|
 | `api/endpoints/users.py` | `vision_chunking` → `vision_documents` in DepthConfig Pydantic model |
@@ -55,7 +77,8 @@ else:
 | `src/giljo_mcp/services/user_service.py` | 3 locations: defaults + validation |
 | `src/giljo_mcp/services/project_service.py` | Default dict key |
 | `src/giljo_mcp/thin_prompt_generator.py` | Docstring + default |
-| `src/giljo_mcp/tools/orchestration.py` | **MCP tool now fetches fresh user config** |
+| `src/giljo_mcp/tools/orchestration.py` | **MCP tool: fresh user config + execution_mode from Project** |
+| `src/giljo_mcp/tools/tool_accessor.py` | **ToolAccessor: fresh user config + depth_config + execution_mode from Project** |
 
 ### Frontend (2 files)
 | File | Change |
@@ -79,6 +102,7 @@ else:
 | `f2680bd8` | feat: Standardize vision document depth field to vision_documents |
 | `d11d8a2a` | fix: Update existing tests to use vision_documents field name |
 | `7e23a3fa` | fix: MCP tool fetches fresh user config instead of frozen job_metadata |
+| `21897e35` | fix: Both execution modes now use fresh user config and live project settings |
 
 ---
 
