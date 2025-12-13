@@ -228,8 +228,8 @@ class DepthConfig(BaseModel):
     - architecture_depth: overview, detailed
     """
 
-    vision_documents: Literal["none", "light", "moderate", "heavy"] = Field(
-        default="moderate", description="Vision document depth level (affects token usage)"
+    vision_documents: Literal["none", "light", "medium", "full"] = Field(
+        default="medium", description="Vision document depth level (affects token usage)"
     )
     memory_last_n_projects: Literal[1, 3, 5, 10] = Field(
         default=3, description="Number of recent projects to include in 360 memory"
@@ -246,7 +246,7 @@ class DepthConfig(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "vision_documents": "moderate",
+                "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",
@@ -869,7 +869,7 @@ async def get_depth_config(
     Example Response:
         {
             "depth_config": {
-                "vision_documents": "moderate",
+                "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",

@@ -53,7 +53,7 @@
 
                 <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
                 <v-list-item-subtitle>
-                  {{ doc.chunk_count || 0 }} chunks •
+                  {{ doc.is_summarized ? 'Summarized' : 'Processing' }} •
                   {{ formatFileSize(doc.file_size || 0) }}
                 </v-list-item-subtitle>
               </v-list-item>
@@ -123,11 +123,10 @@
           <v-card v-if="visionDocuments.length > 0" variant="tonal" color="primary" class="mt-3">
             <v-card-text class="py-2">
               <div class="text-caption">
-                <v-icon size="16" class="mr-1">mdi-chart-box-outline</v-icon>
-                <strong>Total chunks:</strong> {{ totalChunks }} @ ~20K tokens each<br />
+                <v-icon size="16" class="mr-1">mdi-file-document-multiple</v-icon>
+                <strong>Documents:</strong> {{ visionDocuments.length }} ({{ summarizedCount }} summarized)<br />
                 <v-icon size="16" class="mr-1">mdi-folder-outline</v-icon>
-                <strong>Total file sizes:</strong> {{ totalFileSize }} across
-                {{ visionDocuments.length }} document(s)
+                <strong>Total size:</strong> {{ totalFileSize }}
               </div>
             </v-card-text>
           </v-card>
@@ -342,9 +341,9 @@ function formatTokens(tokens) {
   return tokens.toString()
 }
 
-// Computed properties for aggregate stats
-const totalChunks = computed(() => {
-  return props.visionDocuments.reduce((sum, doc) => sum + (doc.chunk_count || 0), 0)
+// Computed properties for aggregate stats (Handover 0246b: removed chunk count)
+const summarizedCount = computed(() => {
+  return props.visionDocuments.filter(doc => doc.is_summarized).length
 })
 
 const totalFileSize = computed(() => {
