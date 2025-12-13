@@ -97,7 +97,7 @@ class VisionDocumentRepository:
             tenant_key=tenant_key,
             product_id=product_id,
             document_name=document_name,
-            vision_document=content if storage_type in ("inline", "hybrid") else None,
+            vision_document=content,  # Handover 0246b: Always store full content in DB
             vision_path=file_path if storage_type in ("file", "hybrid") else None,
             storage_type=storage_type,
             document_type=document_type,
