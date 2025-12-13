@@ -8,7 +8,7 @@
 
 ## Summary
 
-Fixed the vision document depth toggle in Settings → Context which had **no effect** due to three bugs:
+Fixed the vision document depth toggle in Settings → Context which had **no effect** due to four bugs:
 
 1. **Field name mismatch** across layers (frontend/backend/consumer)
 2. **MCP tool using frozen config** instead of fetching fresh user settings
@@ -55,7 +55,7 @@ else:
 
 ### Bug 4: Execution Mode Read from Frozen Metadata
 
-**Location:** Both `orchestration.py` and `tool_accessor.py`
+**Location:** Both `orchestration.py` (line ~1939) and `tool_accessor.py` (line ~665)
 
 **Problem:** `execution_mode` was read from `job_metadata` (frozen at staging time), so toggling between Claude Code CLI and Multi-Terminal modes in the UI had no effect until re-staging.
 
@@ -103,6 +103,7 @@ execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execu
 | `d11d8a2a` | fix: Update existing tests to use vision_documents field name |
 | `7e23a3fa` | fix: MCP tool fetches fresh user config instead of frozen job_metadata |
 | `21897e35` | fix: Both execution modes now use fresh user config and live project settings |
+| `b89b48d7` | docs: Update handover with execution mode fixes |
 
 ---
 
@@ -117,6 +118,17 @@ Total: 51 passed, 2 skipped, 0 failed
 ---
 
 ## Architecture Understanding Gained
+
+### Two Code Paths for get_orchestrator_instructions
+
+There are **TWO separate implementations** that both needed fixing:
+
+| Code Path | File | Purpose |
+|-----------|------|---------|
+| MCP Tool | `orchestration.py` (line ~1404) | `@mcp.tool()` decorated, called via HTTP |
+| ToolAccessor | `tool_accessor.py` (line ~475) | Wrapper class, used internally |
+
+Both now fetch fresh user config and read execution_mode from Project table.
 
 ### Prompt Assembly Flow
 
@@ -133,12 +145,13 @@ Stage Project (button)
        ↓
 Agent calls MCP tool: get_orchestrator_instructions()
        │
-       ├── Fetches FRESH user settings (with fix)
+       ├── Fetches FRESH user settings (field_priorities, depth_config)
+       ├── Reads execution_mode from Project table (live switching!)
        ├── Loads product, project, vision docs
        ├── Applies Sumy summarization at configured depth
        └── Returns assembled mission prompt
 
-  ✅ Prompt assembled ON-DEMAND
+  ✅ Prompt assembled ON-DEMAND with LIVE settings
 ```
 
 ### Vision Document Depth Levels
@@ -152,6 +165,28 @@ Agent calls MCP tool: get_orchestrator_instructions()
 | `"none"` | Vision excluded entirely |
 
 Summaries are pre-computed via Sumy LSA during upload, stored in VisionDocument model.
+
+### Execution Mode Storage
+
+| Location | Purpose |
+|----------|---------|
+| `Project.execution_mode` column | **Source of truth** (live UI toggle) |
+| `job_metadata["execution_mode"]` | Fallback only (legacy support) |
+
+---
+
+## What Now Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  BOTH modes (Claude Code CLI + Multi-Terminal):                 │
+│                                                                 │
+│  ✅ Depth config changes take effect immediately                │
+│  ✅ Field priority changes take effect immediately              │
+│  ✅ Execution mode toggle works without re-staging              │
+│  ✅ No need to re-stage project after settings changes          │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -169,27 +204,36 @@ pytest tests/services/test_user_service.py -v --no-cov
 # Database check (user's depth_config)
 PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c \
   "SELECT depth_config FROM users WHERE tenant_key = 'YOUR_TENANT_KEY';"
+
+# Database check (project's execution_mode)
+PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c \
+  "SELECT id, name, execution_mode FROM projects WHERE tenant_key = 'YOUR_TENANT_KEY';"
 ```
 
 ---
 
 ## Remaining Work
 
-None - handover complete. Move to `handovers/completed/`.
+None - handover complete.
 
 ---
 
 ## Notes for Future Agents
 
-1. **Two get_orchestrator_instructions functions exist** in `orchestration.py`:
-   - MCP tool version (line ~1404) - decorated with `@mcp.tool()`
-   - Standalone async function (line ~1736) - called internally
+1. **Two get_orchestrator_instructions implementations exist:**
+   - `orchestration.py` (MCP tool version, line ~1404) - `@mcp.tool()` decorated
+   - `tool_accessor.py` (ToolAccessor wrapper, line ~475) - class method
 
-   Both now fetch fresh user config when user_id is available.
+   **Both** now fetch fresh user config and read execution_mode from Project table.
 
 2. **config_manager.py still has `vision_chunking`** - this is a **feature flag** to enable/disable vision chunking functionality, NOT the depth config field. Do not rename.
 
-3. **Settings changes are now live** - no need to re-stage a project to test different depth levels. Just change settings and call the MCP tool again.
+3. **Settings changes are now live** - no need to re-stage a project to test different depth levels or execution modes. Just change settings and call the MCP tool again.
+
+4. **CLI mode rules differ slightly** between the two code paths:
+   - `tool_accessor.py` has detailed `cli_mode_rules` and `spawning_examples`
+   - `orchestration.py` only has `agent_spawning_constraint`
+   - Both enforce the same core behavior (agent type matching)
 
 ---
 
