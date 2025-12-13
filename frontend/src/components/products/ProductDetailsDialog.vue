@@ -101,7 +101,7 @@
                     Full
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.original_tokens ? `~${formatTokens(doc.original_tokens)} tokens (100%)` : 'Full document' }}
+                      {{ doc.original_token_count ? `~${formatTokens(doc.original_token_count)} tokens (100%)` : 'Full document' }}
                     </v-tooltip>
                   </v-chip>
                 </div>
@@ -322,7 +322,7 @@ function showSummary(doc, level) {
   const levelMap = {
     light: { field: 'summary_light', tokens: 'summary_light_tokens', label: 'Light' },
     medium: { field: 'summary_medium', tokens: 'summary_medium_tokens', label: 'Medium' },
-    full: { field: 'vision_document', tokens: 'original_tokens', label: 'Full' },
+    full: { field: 'vision_document', tokens: 'original_token_count', label: 'Full' },
   }
 
   const config = levelMap[level]
