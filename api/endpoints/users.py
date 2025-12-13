@@ -220,7 +220,7 @@ class DepthConfig(BaseModel):
     Orthogonal to priority system (which controls WHAT to fetch).
 
     Valid values per field:
-    - vision_chunking: none, light, moderate, heavy
+    - vision_documents: none, light, moderate, heavy
     - memory_last_n_projects: 1, 3, 5, 10
     - git_commits: 10, 25, 50, 100
     - agent_template_detail: minimal, standard, full
@@ -228,8 +228,8 @@ class DepthConfig(BaseModel):
     - architecture_depth: overview, detailed
     """
 
-    vision_chunking: Literal["none", "light", "moderate", "heavy"] = Field(
-        default="moderate", description="Vision document chunking level (affects token usage)"
+    vision_documents: Literal["none", "light", "moderate", "heavy"] = Field(
+        default="moderate", description="Vision document depth level (affects token usage)"
     )
     memory_last_n_projects: Literal[1, 3, 5, 10] = Field(
         default=3, description="Number of recent projects to include in 360 memory"
@@ -246,7 +246,7 @@ class DepthConfig(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "vision_chunking": "moderate",
+                "vision_documents": "moderate",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",
@@ -869,7 +869,7 @@ async def get_depth_config(
     Example Response:
         {
             "depth_config": {
-                "vision_chunking": "moderate",
+                "vision_documents": "moderate",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",
@@ -918,7 +918,7 @@ async def update_depth_config(
     Example Request:
         {
             "depth_config": {
-                "vision_chunking": "heavy",
+                "vision_documents": "heavy",
                 "memory_last_n_projects": 5,
                 "git_commits": 50,
                 "agent_template_detail": "full",
