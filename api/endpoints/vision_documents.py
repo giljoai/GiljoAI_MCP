@@ -224,6 +224,33 @@ async def create_vision_document(
                 # Summarization failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but summarization failed: {e}")
 
+        # Auto-chunk large documents (>20K tokens) for pagination support
+        # Handover 0347: Restore chunking removed in 0246b (Claude Code 25K limit)
+        if total_tokens > 20000:
+            try:
+                from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+
+                logger.info(f"Chunking document {doc.id}: {total_tokens} tokens exceeds 20K threshold")
+
+                chunker = VisionDocumentChunker(target_chunk_size=20000)
+                chunk_result = await chunker.chunk_vision_document(
+                    session=db,
+                    tenant_key=tenant_key,
+                    vision_document_id=str(doc.id)
+                )
+                await db.commit()
+
+                if chunk_result.get("success"):
+                    logger.info(
+                        f"Chunked document {doc.id}: {chunk_result.get('chunks_created', 0)} chunks, "
+                        f"{chunk_result.get('total_tokens', 0)} tokens"
+                    )
+                else:
+                    logger.warning(f"Document {doc.id} created but chunking failed: {chunk_result.get('error')}")
+            except Exception as e:
+                # Chunking failed but document created - log warning and continue
+                logger.warning(f"Document {doc.id} created but chunking failed: {e}")
+
         await db.refresh(doc)
 
         return VisionDocumentResponse.model_validate(doc)
