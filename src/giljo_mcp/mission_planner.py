@@ -1393,11 +1393,17 @@ Success Criteria:
                     from src.giljo_mcp.models.products import VisionDocument
 
                     # Get active vision document with summaries
+                    # Handover 0346: Order by display_order first (user intent),
+                    # then created_at DESC (newest document wins when display_order equal)
+                    # This ensures deterministic behavior and prefers recently uploaded documents
                     stmt = select(VisionDocument).where(
                         VisionDocument.product_id == product.id,
                         VisionDocument.tenant_key == product.tenant_key,
                         VisionDocument.is_active == True
-                    ).order_by(VisionDocument.display_order).limit(1)
+                    ).order_by(
+                        VisionDocument.display_order,
+                        VisionDocument.created_at.desc()
+                    ).limit(1)
 
                     result = await session.execute(stmt)
                     vision_doc = result.scalar_one_or_none()
