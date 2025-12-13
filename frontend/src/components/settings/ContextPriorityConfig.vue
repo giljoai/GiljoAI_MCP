@@ -255,7 +255,7 @@ const config = ref<Record<string, ContextConfig>>({
   vision_documents: { enabled: true, priority: 2, depth: 'medium' },  // Handover 0246b: changed from 'moderate'
   memory_360: { enabled: true, priority: 2, count: 3 },
   git_history: { enabled: false, priority: 4, count: 25 },
-  agent_templates: { enabled: true, priority: 2, depth: 'type_only' },
+  agent_templates: { enabled: true, priority: 2, depth: 'standard' },
 })
 
 const loading = ref(false)
@@ -456,8 +456,8 @@ async function saveConfig() {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
-          vision_documents: config.value.vision_documents?.depth || 'moderate',
-          agent_template_detail: config.value.agent_templates?.depth || 'type_only',
+          vision_documents: config.value.vision_documents?.depth || 'medium',
+          agent_template_detail: config.value.agent_templates?.depth || 'standard',
         }
       })
       console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
