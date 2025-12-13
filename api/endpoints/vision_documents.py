@@ -214,6 +214,43 @@ async def create_vision_document(
                     detail=f"Document upload failed during chunking: {chunk_error!s}",
                 )
 
+        # Generate multi-level summaries (Sumy LSA compression)
+        # Threshold: 5K tokens (smallest summary level)
+        total_tokens = len(document_content) // 4  # Rough estimate: 1 token ≈ 4 chars
+        if total_tokens > 5000:
+            try:
+                from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+
+                logger.info(f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens")
+
+                summarizer = VisionDocumentSummarizer()
+                summaries = summarizer.summarize_multi_level(document_content)
+
+                # Re-attach doc to session and store summaries
+                db.add(doc)
+                doc.summary_light = summaries["light"]["summary"]
+                doc.summary_moderate = summaries["moderate"]["summary"]
+                doc.summary_heavy = summaries["heavy"]["summary"]
+                doc.summary_light_tokens = summaries["light"]["tokens"]
+                doc.summary_moderate_tokens = summaries["moderate"]["tokens"]
+                doc.summary_heavy_tokens = summaries["heavy"]["tokens"]
+                doc.is_summarized = True
+                doc.original_token_count = summaries["original_tokens"]
+
+                await db.commit()
+
+                logger.info(
+                    f"Vision document {doc.id} summarized: "
+                    f"Low={summaries['light']['tokens']} tokens, "
+                    f"Medium={summaries['moderate']['tokens']} tokens, "
+                    f"High={summaries['heavy']['tokens']} tokens "
+                    f"(from {summaries['original_tokens']} tokens) "
+                    f"in {summaries['processing_time_ms']}ms"
+                )
+            except Exception as e:
+                # Summarization failed but document created - log warning and continue
+                logger.warning(f"Document {doc.id} created but summarization failed: {e}")
+
         await db.refresh(doc)
 
         return VisionDocumentResponse.model_validate(doc)
