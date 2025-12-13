@@ -93,7 +93,7 @@
                   <v-chip
                     size="small"
                     variant="tonal"
-                    color="primary"
+                    color="info"
                     :disabled="!doc.original_token_count"
                     :loading="loadingFullDoc === doc.id"
                     @click="showFullDocument(doc)"
@@ -315,8 +315,8 @@ const summaryLevelColor = computed(() => {
   switch (summaryLevel.value) {
     case 'Light': return 'success'
     case 'Medium': return 'warning'
-    case 'Full': return 'primary'
-    default: return 'primary'
+    case 'Full': return 'info'  // Lighter blue for dark mode visibility
+    default: return 'info'
   }
 })
 
