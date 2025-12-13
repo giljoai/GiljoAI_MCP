@@ -1762,7 +1762,7 @@ class ProjectService:
                 # Apply defaults for depth_config if not set
                 if not depth_config:
                     depth_config = {
-                        "vision_chunking": "moderate",
+                        "vision_documents": "moderate",
                         "memory_last_n_projects": 3,
                         "git_commits": 25,
                         "agent_template_detail": "standard",
