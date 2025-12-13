@@ -534,11 +534,7 @@ const totalAgents = computed(() => {
   )
 })
 
-// Vision document aggregate stats for product details
-const totalChunks = computed(() => {
-  return detailsVisionDocuments.value.reduce((sum, doc) => sum + (doc.chunk_count || 0), 0)
-})
-
+// Vision document aggregate stats for product details (Handover 0246b: removed totalChunks)
 const totalFileSize = computed(() => {
   const bytes = detailsVisionDocuments.value.reduce((sum, doc) => sum + (doc.file_size || 0), 0)
   return formatFileSize(bytes)
@@ -933,15 +929,14 @@ async function saveProduct(payload) {
       visionUploadError.value = null
 
       let successCount = 0
-      let totalChunks = 0
 
       for (let i = 0; i < visionFiles.value.length; i++) {
         const file = visionFiles.value[i]
 
         try {
-          // Handover 0508: Show chunking indicator for large files (>75KB ≈ >25K tokens)
+          // Handover 0246b: Show summarizing indicator for large files (>75KB ≈ >25K tokens)
           if (file.size > 75 * 1024) {
-            isChunking.value = true
+            isChunking.value = true  // Reusing variable, now means "summarizing"
           }
 
           // Simulate upload progress
@@ -964,23 +959,14 @@ async function saveProduct(payload) {
           uploadProgress.value = 100
 
           successCount++
-          totalChunks += response.data?.chunks_created || response.data?.chunk_count || 0
 
-          // Handover 0508: Show success toast with chunk count
-          const chunkCount = response.data?.chunks_created || response.data?.chunk_count || 0
-          if (chunkCount > 1) {
-            showToast({
-              message: `${file.name} uploaded and split into ${chunkCount} chunks`,
-              type: 'success',
-              duration: 4000,
-            })
-          } else {
-            showToast({
-              message: `${file.name} uploaded successfully`,
-              type: 'success',
-              duration: 3000,
-            })
-          }
+          // Handover 0246b: Simplified - no chunking, show summarization status
+          const isSummarized = response.data?.is_summarized || false
+          showToast({
+            message: `${file.name} uploaded${isSummarized ? ' and summarized' : ''}`,
+            type: 'success',
+            duration: 3000,
+          })
         } catch (uploadError) {
           console.error(`Failed to upload ${file.name}:`, uploadError)
 
@@ -1021,10 +1007,10 @@ async function saveProduct(payload) {
 
       uploadingVision.value = false
 
-      // Handover 0508: Show summary toast if multiple files uploaded
+      // Handover 0246b: Show summary toast if multiple files uploaded
       if (successCount > 1) {
         showToast({
-          message: `Successfully uploaded ${successCount}/${visionFiles.value.length} vision documents (${totalChunks} total chunks)`,
+          message: `Successfully uploaded ${successCount}/${visionFiles.value.length} vision documents`,
           type: 'success',
           duration: 5000,
         })
