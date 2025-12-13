@@ -128,7 +128,7 @@ class TestRequirementAnalysis:
         )
 
         assert analysis.work_types == {"architecture": "system_design", "implementation": "backend"}
-        assert analysis.complexity == "moderate"
+        assert analysis.complexity == "medium"
         assert analysis.tech_stack == ["Python", "FastAPI", "PostgreSQL"]
         assert analysis.keywords == ["authentication", "API", "database"]
         assert analysis.estimated_agents_needed == 3
@@ -207,7 +207,7 @@ class TestRequirementAnalysis:
             estimated_agents_needed=2,
         )
 
-        assert analysis.complexity == "moderate"
+        assert analysis.complexity == "medium"
 
     def test_complexity_validation_complex(self):
         """Test complexity field with 'complex' value."""

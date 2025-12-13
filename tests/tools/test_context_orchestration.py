@@ -117,7 +117,7 @@ async def test_get_user_config_with_custom_settings(db_manager: DatabaseManager)
     }
 
     custom_depth_config = {
-        "vision_chunking": "heavy",  # Custom: more chunks than default
+        "vision_chunking": "full",  # Custom: more chunks than default
         "memory_last_n_projects": 10,  # Custom: more projects than default
         "git_commits": 50,  # Custom: more commits
         "agent_template_detail": "full"  # Custom: full detail
@@ -212,7 +212,7 @@ async def test_get_user_config_with_defaults(db_manager: DatabaseManager):
             email=f"test_{uuid4().hex[:8]}@example.com",
             field_priority_config=None,  # No custom config
             depth_config={  # User has default depth_config from model defaults
-                "vision_chunking": "moderate",
+                "vision_chunking": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",
