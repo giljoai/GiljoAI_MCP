@@ -1376,6 +1376,16 @@ Success Criteria:
             # Get depth configuration (Handover 0345e)
             vision_depth = depth_config.get("vision_documents", "moderate")  # Default to moderate
 
+            # DEBUG: Handover 0346 - Trace vision depth configuration
+            logger.info(
+                f"[VISION_DEPTH_DEBUG] depth_config received: {depth_config}",
+                extra={"operation": "_build_context_with_priorities"}
+            )
+            logger.info(
+                f"[VISION_DEPTH_DEBUG] vision_depth value: '{vision_depth}' (from depth_config.get('vision_documents'))",
+                extra={"operation": "_build_context_with_priorities"}
+            )
+
             # Check if product has vision documents
             if product.vision_documents:
                 async with self.db_manager.get_session_async() as session:
@@ -1396,8 +1406,15 @@ Success Criteria:
                         vision_content = None
                         estimated_original_tokens = vision_doc.original_token_count or 0
 
+                        # DEBUG: Handover 0346 - Trace summarization state
+                        logger.info(
+                            f"[VISION_DEPTH_DEBUG] vision_doc.is_summarized: {vision_doc.is_summarized}",
+                            extra={"has_light": vision_doc.summary_light is not None, "has_mod": vision_doc.summary_moderate is not None, "has_heavy": vision_doc.summary_heavy is not None}
+                        )
+
                         # Select appropriate content based on depth configuration
                         if vision_depth == "full":
+                            logger.info("[VISION_DEPTH_DEBUG] Taking FULL path - fetching all chunks")
                             # Fetch all original chunks
                             vision_chunks = await self._get_relevant_vision_chunks(
                                 session=session,
@@ -1410,21 +1427,27 @@ Success Criteria:
                                 estimated_original_tokens = sum(chunk.get("tokens", 0) for chunk in vision_chunks)
                         elif vision_doc.is_summarized:
                             # Use pre-computed semantic summary based on depth
+                            logger.info(f"[VISION_DEPTH_DEBUG] Taking SUMMARIZED path - vision_depth='{vision_depth}'")
                             if vision_depth == "light" and vision_doc.summary_light:
+                                logger.info("[VISION_DEPTH_DEBUG] Using summary_light")
                                 vision_content = vision_doc.summary_light
                                 estimated_original_tokens = vision_doc.original_token_count or 0
                             elif vision_depth == "moderate" and vision_doc.summary_moderate:
+                                logger.info("[VISION_DEPTH_DEBUG] Using summary_moderate")
                                 vision_content = vision_doc.summary_moderate
                                 estimated_original_tokens = vision_doc.original_token_count or 0
                             elif vision_depth == "heavy" and vision_doc.summary_heavy:
+                                logger.info("[VISION_DEPTH_DEBUG] Using summary_heavy")
                                 vision_content = vision_doc.summary_heavy
                                 estimated_original_tokens = vision_doc.original_token_count or 0
                             else:
+                                logger.info(f"[VISION_DEPTH_DEBUG] Falling back to any available summary (requested '{vision_depth}' not available)")
                                 # Fallback to moderate if requested level unavailable
                                 vision_content = vision_doc.summary_moderate or vision_doc.summary_heavy or vision_doc.summary_light
                                 estimated_original_tokens = vision_doc.original_token_count or 0
                         else:
                             # Not summarized - fallback to chunks with conservative limit
+                            logger.info("[VISION_DEPTH_DEBUG] Taking FALLBACK path - not summarized, using chunks with 15K limit")
                             vision_chunks = await self._get_relevant_vision_chunks(
                                 session=session,
                                 product=product,
