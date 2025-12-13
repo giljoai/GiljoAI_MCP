@@ -173,6 +173,9 @@ async def list_vision_documents(
         # Convert to response models
         response_docs = []
         for doc in documents:
+            # Check if summaries exist
+            has_summaries = bool(doc.summary_light or doc.summary_moderate or doc.summary_heavy)
+
             response_docs.append(VisionDocumentResponse(
                 id=doc.id,
                 tenant_key=doc.tenant_key,
@@ -194,6 +197,14 @@ async def list_vision_documents(
                 updated_at=doc.updated_at,
                 chunked_at=doc.chunked_at,
                 meta_data=doc.meta_data or {},
+                # Summary fields (Sumy LSA compression)
+                summary_light=doc.summary_light,
+                summary_moderate=doc.summary_moderate,
+                summary_heavy=doc.summary_heavy,
+                summary_light_tokens=doc.summary_light_tokens,
+                summary_moderate_tokens=doc.summary_moderate_tokens,
+                summary_heavy_tokens=doc.summary_heavy_tokens,
+                has_summaries=has_summaries,
             ))
 
         logger.debug(f"Retrieved {len(response_docs)} vision documents for product {product_id}")
