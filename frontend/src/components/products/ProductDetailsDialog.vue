@@ -58,8 +58,8 @@
                 </v-list-item-subtitle>
               </v-list-item>
 
-              <!-- Summary Levels Preview -->
-              <v-card-text v-if="doc.has_summaries" class="pt-0 pb-2">
+              <!-- Summary Levels Preview (Handover 0246b: light/medium/full) -->
+              <v-card-text v-if="doc.is_summarized || doc.vision_document" class="pt-0 pb-2">
                 <div class="text-caption text-medium-emphasis mb-1">Summary Previews</div>
                 <div class="d-flex justify-space-around">
                   <v-chip
@@ -67,41 +67,41 @@
                     variant="tonal"
                     color="success"
                     :disabled="!doc.summary_light"
-                    @click="showSummary(doc, 'low')"
+                    @click="showSummary(doc, 'light')"
                     class="cursor-pointer"
                   >
-                    Low
+                    Light
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_light_tokens ? `~${formatTokens(doc.summary_light_tokens)} tokens` : 'Not available' }}
+                      {{ doc.summary_light_tokens ? `~${formatTokens(doc.summary_light_tokens)} tokens (33%)` : 'Not available' }}
                     </v-tooltip>
                   </v-chip>
                   <v-chip
                     size="small"
                     variant="tonal"
                     color="warning"
-                    :disabled="!doc.summary_moderate"
+                    :disabled="!doc.summary_medium"
                     @click="showSummary(doc, 'medium')"
                     class="cursor-pointer"
                   >
                     Medium
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_moderate_tokens ? `~${formatTokens(doc.summary_moderate_tokens)} tokens` : 'Not available' }}
+                      {{ doc.summary_medium_tokens ? `~${formatTokens(doc.summary_medium_tokens)} tokens (66%)` : 'Not available' }}
                     </v-tooltip>
                   </v-chip>
                   <v-chip
                     size="small"
                     variant="tonal"
-                    color="error"
-                    :disabled="!doc.summary_heavy"
-                    @click="showSummary(doc, 'high')"
+                    color="primary"
+                    :disabled="!doc.vision_document"
+                    @click="showSummary(doc, 'full')"
                     class="cursor-pointer"
                   >
-                    High
+                    Full
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_heavy_tokens ? `~${formatTokens(doc.summary_heavy_tokens)} tokens` : 'Not available' }}
+                      {{ doc.original_tokens ? `~${formatTokens(doc.original_tokens)} tokens (100%)` : 'Full document' }}
                     </v-tooltip>
                   </v-chip>
                 </div>
@@ -308,26 +308,28 @@ const summaryLevel = ref('')
 const summaryTokens = ref(0)
 
 const summaryLevelColor = computed(() => {
+  // Handover 0246b: Updated to Light/Medium/Full
   switch (summaryLevel.value) {
-    case 'Low': return 'success'
+    case 'Light': return 'success'
     case 'Medium': return 'warning'
-    case 'High': return 'error'
+    case 'Full': return 'primary'
     default: return 'primary'
   }
 })
 
 function showSummary(doc, level) {
+  // Handover 0246b: Updated to light/medium/full
   const levelMap = {
-    low: { field: 'summary_light', tokens: 'summary_light_tokens', label: 'Low' },
-    medium: { field: 'summary_moderate', tokens: 'summary_moderate_tokens', label: 'Medium' },
-    high: { field: 'summary_heavy', tokens: 'summary_heavy_tokens', label: 'High' },
+    light: { field: 'summary_light', tokens: 'summary_light_tokens', label: 'Light' },
+    medium: { field: 'summary_medium', tokens: 'summary_medium_tokens', label: 'Medium' },
+    full: { field: 'vision_document', tokens: 'original_tokens', label: 'Full' },
   }
 
   const config = levelMap[level]
   if (!config || !doc[config.field]) return
 
   summaryContent.value = doc[config.field]
-  summaryTitle.value = `${doc.document_name || doc.filename} - Summary`
+  summaryTitle.value = `${doc.document_name || doc.filename} - ${level === 'full' ? 'Full Document' : 'Summary'}`
   summaryLevel.value = config.label
   summaryTokens.value = doc[config.tokens] || 0
   summaryDialog.value = true
