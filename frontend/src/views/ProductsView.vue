@@ -145,6 +145,28 @@
                           </div>
                         </v-col>
                       </v-row>
+
+                      <!-- Vision Document Status (Handover 0347) -->
+                      <div v-if="product.vision_documents?.length > 0" class="mt-2">
+                        <v-chip
+                          size="x-small"
+                          variant="tonal"
+                          :color="getVisionChunkedCount(product) > 0 ? 'success' : 'warning'"
+                          class="mr-1"
+                        >
+                          <v-icon start size="12">mdi-file-document</v-icon>
+                          {{ product.vision_documents.length }} docs
+                        </v-chip>
+                        <v-chip
+                          v-if="getVisionChunkedCount(product) > 0"
+                          size="x-small"
+                          variant="tonal"
+                          color="primary"
+                        >
+                          <v-icon start size="12">mdi-database</v-icon>
+                          {{ getVisionTotalChunks(product) }} chunks
+                        </v-chip>
+                      </div>
                     </v-card-text>
 
                     <v-card-actions class="justify-center">
@@ -577,6 +599,17 @@ function getCompletedProjectsCount(product) {
   return Math.max(0, totalProjects - unfinishedProjects)
 }
 
+// Handover 0347: Vision document chunk helpers
+function getVisionChunkedCount(product) {
+  if (!product.vision_documents) return 0
+  return product.vision_documents.filter(doc => doc.chunked).length
+}
+
+function getVisionTotalChunks(product) {
+  if (!product.vision_documents) return 0
+  return product.vision_documents.reduce((sum, doc) => sum + (doc.chunk_count || 0), 0)
+}
+
 function getProductMetric(productId, metric) {
   return productStore.productMetrics[productId]?.[metric] || 0
 }
@@ -929,14 +962,15 @@ async function saveProduct(payload) {
       visionUploadError.value = null
 
       let successCount = 0
+      let totalChunks = 0
 
       for (let i = 0; i < visionFiles.value.length; i++) {
         const file = visionFiles.value[i]
 
         try {
-          // Handover 0246b: Show summarizing indicator for large files (>75KB ≈ >25K tokens)
+          // Handover 0347: Show chunking indicator for large files (>75KB ≈ >25K tokens)
           if (file.size > 75 * 1024) {
-            isChunking.value = true  // Reusing variable, now means "summarizing"
+            isChunking.value = true
           }
 
           // Simulate upload progress
@@ -959,11 +993,18 @@ async function saveProduct(payload) {
           uploadProgress.value = 100
 
           successCount++
+          const chunkCount = response.data?.chunk_count || 0
+          totalChunks += chunkCount
 
-          // Handover 0246b: Simplified - no chunking, show summarization status
+          // Handover 0347: Show chunk count and summarization status
           const isSummarized = response.data?.is_summarized || false
+          const isChunked = response.data?.chunked || chunkCount > 0
+          let statusParts = []
+          if (isSummarized) statusParts.push('summarized')
+          if (isChunked) statusParts.push(`${chunkCount} chunks`)
+
           showToast({
-            message: `${file.name} uploaded${isSummarized ? ' and summarized' : ''}`,
+            message: `${file.name} uploaded${statusParts.length ? ' (' + statusParts.join(', ') + ')' : ''}`,
             type: 'success',
             duration: 3000,
           })
@@ -1007,10 +1048,10 @@ async function saveProduct(payload) {
 
       uploadingVision.value = false
 
-      // Handover 0246b: Show summary toast if multiple files uploaded
+      // Handover 0347: Show summary toast with chunk count if multiple files uploaded
       if (successCount > 1) {
         showToast({
-          message: `Successfully uploaded ${successCount}/${visionFiles.value.length} vision documents`,
+          message: `Successfully uploaded ${successCount}/${visionFiles.value.length} vision documents${totalChunks > 0 ? ` (${totalChunks} total chunks)` : ''}`,
           type: 'success',
           duration: 5000,
         })
