@@ -1936,7 +1936,8 @@ async def get_orchestrator_instructions(
             }
 
             # Handover 0260 Phase 5a: Add agent_spawning_constraint for Claude Code CLI mode
-            execution_mode = metadata.get("execution_mode", "multi_terminal")
+            # Handover 0346: Read from Project table for live switching (not frozen metadata)
+            execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
             if execution_mode == "claude_code_cli":
                 # Fetch allowed agent types from active templates
                 result = await session.execute(
