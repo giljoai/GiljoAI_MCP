@@ -1424,14 +1424,50 @@ Success Criteria:
                             extra={"has_light": vision_doc.summary_light is not None, "has_mod": vision_doc.summary_moderate is not None, "has_heavy": vision_doc.summary_heavy is not None}
                         )
 
-                        # Handover 0246b: Simplified depth selection (no chunking)
-                        # Full mode uses vision_document column directly
+                        # Handover 0347: Restore pagination for Full mode (Claude Code 25K limit)
+                        # Full mode returns overview + fetch instruction for chunked docs
                         # Light/Medium modes use pre-computed summaries
                         if vision_depth == "full":
-                            # Full: Use complete original document from vision_document column
-                            logger.info("[VISION_DEPTH_DEBUG] Taking FULL path - using vision_document column directly")
-                            vision_content = vision_doc.vision_document
-                            estimated_original_tokens = vision_doc.original_token_count or self._count_tokens(vision_content or "")
+                            # Full: Check if document has chunks for pagination
+                            logger.info("[VISION_DEPTH_DEBUG] Taking FULL path")
+                            estimated_original_tokens = vision_doc.original_token_count or self._count_tokens(vision_doc.vision_document or "")
+
+                            # Check if document is chunked (supports pagination)
+                            if vision_doc.chunked and vision_doc.chunk_count > 0:
+                                # Return overview + fetch instruction (NOT full content)
+                                # Claude Code has 25K token limit on tool outputs
+                                logger.info(f"[VISION_DEPTH_DEBUG] Document chunked: {vision_doc.chunk_count} chunks, returning pagination instructions")
+                                vision_content = f"""## Vision Document Overview
+
+**Document**: {vision_doc.document_name or 'Product Vision'}
+**Total Content**: {estimated_original_tokens:,} tokens across {vision_doc.chunk_count} chunks
+**Status**: Full content available via pagination
+
+### How to Read Full Content
+
+Call the MCP tool `fetch_vision_document` with pagination:
+
+```
+fetch_vision_document(product_id="{product.id}", offset=0, limit=1)  # Page 1 (~20K tokens)
+fetch_vision_document(product_id="{product.id}", offset=1, limit=1)  # Page 2
+# ... continue until has_more=false
+```
+
+Each page returns ~20K tokens (under Claude Code's 25K limit).
+The response includes `has_more` and `next_offset` fields to guide pagination.
+
+**Note**: Light/Medium depth modes return summarized content directly.
+For full content, use pagination as shown above.
+"""
+                            else:
+                                # No chunks - return first ~20K tokens with truncation warning
+                                logger.info("[VISION_DEPTH_DEBUG] Document not chunked, returning truncated content")
+                                max_chars = 80000  # ~20K tokens
+                                full_content = vision_doc.vision_document or ""
+                                if len(full_content) > max_chars:
+                                    vision_content = full_content[:max_chars] + f"\n\n---\n**[CONTENT TRUNCATED]**\nDocument has {estimated_original_tokens:,} tokens but only ~20K shown.\nRe-upload document to enable chunking for full pagination support."
+                                else:
+                                    vision_content = full_content
                         elif vision_depth == "medium":
                             # Medium: Use summary_medium (66% of original) or fallback to summary_moderate
                             logger.info("[VISION_DEPTH_DEBUG] Taking MEDIUM path")
