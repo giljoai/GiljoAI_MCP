@@ -69,7 +69,7 @@ async def test_orchestrator_metadata_new_creation(
         },
     }
     test_user.depth_config = {
-        "vision_chunking": "moderate",
+        "vision_chunking": "medium",
         "memory_last_n_projects": 3,
         "git_commits": 25,
         "agent_template_detail": "standard",
@@ -122,7 +122,7 @@ async def test_orchestrator_metadata_new_creation(
     # CRITICAL: job_metadata contains depth config from user settings
     assert "depth_config" in orchestrator.job_metadata
     depth_config = orchestrator.job_metadata["depth_config"]
-    assert depth_config["vision_chunking"] == "moderate"
+    assert depth_config["vision_chunking"] == "medium"
     assert depth_config["memory_last_n_projects"] == 3
     assert depth_config["git_commits"] == 25
 
@@ -207,7 +207,7 @@ async def test_orchestrator_metadata_reuse_updates(
         },
     }
     test_user.depth_config = {
-        "vision_chunking": "heavy",  # Changed from default
+        "vision_chunking": "full",  # Changed from default
         "memory_last_n_projects": 5,  # Changed from default
         "git_commits": 50,  # Changed from default
         "agent_template_detail": "full",  # Changed from default
@@ -248,7 +248,7 @@ async def test_orchestrator_metadata_reuse_updates(
     # CRITICAL: Updated depth config matches user's current settings
     assert "depth_config" in old_orchestrator.job_metadata
     depth_config = old_orchestrator.job_metadata["depth_config"]
-    assert depth_config["vision_chunking"] == "heavy"  # User's updated value
+    assert depth_config["vision_chunking"] == "full"  # User's updated value
     assert depth_config["memory_last_n_projects"] == 5  # User's updated value
     assert depth_config["git_commits"] == 50  # User's updated value
 
@@ -321,7 +321,7 @@ async def test_orchestrator_metadata_default_values(
     # Default depth_config values (from ThinClientPromptGenerator line 179-186)
     assert "depth_config" in orchestrator.job_metadata
     depth_config = orchestrator.job_metadata["depth_config"]
-    assert depth_config["vision_chunking"] == "moderate"
+    assert depth_config["vision_chunking"] == "medium"
     assert depth_config["memory_last_n_projects"] == 3
     assert depth_config["git_commits"] == 25
     assert depth_config["agent_template_detail"] == "standard"

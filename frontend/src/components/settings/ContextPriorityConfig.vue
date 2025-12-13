@@ -252,7 +252,7 @@ const config = ref<Record<string, ContextConfig>>({
   tech_stack: { enabled: true, priority: 2 },
   architecture: { enabled: true, priority: 2 },
   testing: { enabled: true, priority: 2 },
-  vision_documents: { enabled: true, priority: 2, depth: 'moderate' },
+  vision_documents: { enabled: true, priority: 2, depth: 'medium' },  // Handover 0246b: changed from 'moderate'
   memory_360: { enabled: true, priority: 2, count: 3 },
   git_history: { enabled: false, priority: 4, count: 25 },
   agent_templates: { enabled: true, priority: 2, depth: 'type_only' },
@@ -321,14 +321,13 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  // Handover 0345e: Semantic compression levels (Light/Moderate/Heavy/Full)
-  // Sumy LSA summarization is always enabled, no toggle needed
+  // Handover 0246b: Simplified to 3 depth levels (percentage-based)
+  // Light: 33% of original, Medium: 66% of original, Full: 100%
   if (context.key === 'vision_documents') {
     return [
-      { title: 'Low (5K tokens)', value: 'light', subtitle: '~250 sentences, 87% compression' },
-      { title: 'Medium (12.5K tokens)', value: 'moderate', subtitle: '~625 sentences, 69% compression' },
-      { title: 'High (25K tokens)', value: 'heavy', subtitle: '~1,250 sentences, 37% compression' },
-      { title: 'Full (All)', value: 'full', subtitle: 'Complete document, no compression' }
+      { title: 'Light (~33%)', value: 'light', subtitle: '~13K tokens for 40K doc, 67% compression' },
+      { title: 'Medium (~66%)', value: 'medium', subtitle: '~26K tokens for 40K doc, 34% compression' },
+      { title: 'Full (100%)', value: 'full', subtitle: 'Complete original document, no compression' }
     ]
   }
   

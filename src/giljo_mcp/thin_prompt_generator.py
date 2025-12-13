@@ -27,7 +27,7 @@ Priority System (Handover 0313):
 - Priority 4 (EXCLUDED): Not listed in prompt, ignored by orchestrator
 
 Depth Configuration (Handover 0314):
-- vision_documents: "none" | "light" | "moderate" | "heavy"
+- vision_documents: "none" | "light" | "medium" | "full"
 - memory_last_n_projects: 1 | 3 | 5 | 10
 - git_commits: 10 | 25 | 50 | 100
 - agent_template_detail: "minimal" | "standard" | "full"
@@ -170,7 +170,7 @@ class ThinClientPromptGenerator:
         # Apply defaults for depth_config if still not set
         if not depth_config:
             depth_config = {
-                "vision_documents": "moderate",
+                "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",

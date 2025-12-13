@@ -4,11 +4,15 @@ Reuses logic from:
 - mission_planner._get_relevant_vision_chunks() (lines 695-832)
 - tools/chunking.py EnhancedChunker class
 
-Token Budget by Depth:
+Token Budget by Depth (Handover 0246b):
 - "none": 0 tokens (empty response)
 - "light": ~10K tokens (first 2 chunks)
-- "moderate": ~17.5K tokens (first 4 chunks)
-- "heavy": ~30K tokens (all chunks)
+- "medium": ~17.5K tokens (first 4 chunks)
+- "full": ~30K tokens (all chunks)
+
+Backward Compatibility:
+- "moderate" maps to "medium"
+- "heavy" maps to "medium"
 """
 
 import structlog
@@ -33,19 +37,25 @@ def estimate_tokens(data: Any) -> int:
 
 def get_max_tokens(chunking: str) -> int:
     """Map chunking depth to max token budget.
-    
-    Handles both old-style depth values and new summary-based values:
-    - Old style (no Sumy): light, moderate, heavy, full
-    - New style (with Sumy): summary_light, summary_moderate, full
+
+    Handles both new-style depth values and summary-based values:
+    - Standard style: light, medium, full
+    - Summary style (with Sumy): summary_light, summary_moderate, full
+    - Backward compat: moderate -> medium, heavy -> medium
     """
+    # Backward compatibility mapping (Handover 0246b)
+    if chunking == "moderate":
+        chunking = "medium"
+    elif chunking == "heavy":
+        chunking = "medium"
+
     mapping = {
-        # Old style - token-based
+        # Standard style - token-based
         "none": 0,
         "light": 10000,
-        "moderate": 17500,
-        "heavy": 24000,  # Safe margin below 25K Claude Code limit
-        "full": 24000,   # Full is same as heavy for backward compat
-        # New style - summary + chunks
+        "medium": 17500,
+        "full": 24000,   # Safe margin below 25K Claude Code limit
+        # Summary style - summary + chunks
         "summary_light": 2500,    # ~500 tokens (summary) + ~2000 tokens (light chunks)
         "summary_moderate": 5000, # ~500 tokens (summary) + ~4500 tokens (moderate chunks)
     }
@@ -54,18 +64,23 @@ def get_max_tokens(chunking: str) -> int:
 
 def get_max_chunks(chunking: str) -> int:
     """Map chunking depth to max chunk count.
-    
+
     For summary_* depths, limits chunks to append after summary.
     For full, returns all chunks.
     """
+    # Backward compatibility mapping (Handover 0246b)
+    if chunking == "moderate":
+        chunking = "medium"
+    elif chunking == "heavy":
+        chunking = "medium"
+
     mapping = {
-        # Old style - token-based
+        # Standard style - token-based
         "none": 0,
         "light": 2,
-        "moderate": 4,
-        "heavy": 100,  # Effectively unlimited
-        "full": 100,   # Full is same as heavy for backward compat
-        # New style - summary + chunks (chunk counts for the chunks portion only)
+        "medium": 4,
+        "full": 100,   # Effectively unlimited
+        # Summary style - summary + chunks (chunk counts for the chunks portion only)
         "summary_light": 1,  # Just 1 chunk after summary (light)
         "summary_moderate": 2,  # 2 chunks after summary (moderate)
     }
@@ -75,7 +90,7 @@ def get_max_chunks(chunking: str) -> int:
 async def get_vision_document(
     product_id: str,
     tenant_key: str,
-    chunking: str = "moderate",
+    chunking: str = "medium",
     offset: int = 0,
     limit: int = None,
     db_manager: Optional[DatabaseManager] = None
@@ -89,7 +104,7 @@ async def get_vision_document(
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
-        chunking: Depth level ("none", "light", "moderate", "heavy")
+        chunking: Depth level ("none", "light", "medium", "full")
         offset: Number of chunks to skip (for pagination)
         limit: Max chunks to return (None = use chunking default)
         db_manager: Database manager instance
