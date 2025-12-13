@@ -239,6 +239,48 @@ async def create_vision_document(
         )
 
 
+@router.get("/{document_id}", response_model=VisionDocumentResponse)
+async def get_vision_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Get a single vision document by ID.
+
+    **Handover 0246b**: Returns full document including vision_document content.
+    Used for "Full" preview in product details dialog.
+
+    **Multi-Tenant Isolation**: Only returns document if it belongs to the authenticated tenant.
+
+    Args:
+        document_id: Vision document ID
+
+    Returns:
+        VisionDocumentResponse with full content
+
+    Raises:
+        404: Document not found or belongs to different tenant
+    """
+    from src.giljo_mcp.models import VisionDocument
+
+    result = await db.execute(
+        select(VisionDocument).where(
+            VisionDocument.id == document_id,
+            VisionDocument.tenant_key == tenant_key,
+        )
+    )
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vision document {document_id} not found"
+        )
+
+    return VisionDocumentResponse.model_validate(doc)
+
+
 @router.get("/product/{product_id}", response_model=List[VisionDocumentResponse])
 async def list_vision_documents(
     product_id: str,
