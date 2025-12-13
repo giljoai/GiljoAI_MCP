@@ -249,7 +249,7 @@ class TestMissionPlanner:
         """Test complexity assessment for moderate projects."""
         complexity = mission_planner._assess_complexity(description_length=600, feature_count=4, tech_stack_size=4)
 
-        assert complexity == "moderate"
+        assert complexity == "medium"
 
     def test_assess_complexity_complex(self, mission_planner):
         """Test complexity assessment for complex projects."""

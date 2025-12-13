@@ -226,28 +226,27 @@ class VisionDocumentSummarizer:
     def summarize_multi_level(
         self,
         text: str,
-        levels: Dict[str, int] = None
+        levels: Dict[str, float] = None
     ) -> Dict[str, Any]:
         """
-        Generate multiple summary levels independently from original text.
+        Generate 2 summary levels based on percentage of original content.
 
-        Handover 0348: Fixed cascading bug that prevented hitting target token counts.
-        Each summary level (light, moderate, heavy) is now generated independently
-        from the original text to ensure accurate compression to targets.
+        Handover 0246b: Simplified from 3 fixed-token levels to 2 percentage-based levels.
+        - Light: 33% of original (keeps most important content)
+        - Medium: 66% of original (keeps more context)
 
         Algorithm:
-        1. Generate heavy summary from original text (25K tokens)
-        2. Generate moderate summary from original text (12.5K tokens)
-        3. Generate light summary from original text (5K tokens)
+        1. Calculate original token count
+        2. Generate medium summary (66% of original)
+        3. Generate light summary (33% of original)
 
-        Previous cascading approach (heavy → moderate → light) failed when heavy
-        exceeded target, preventing smaller levels from hitting their targets.
-        Independent summarization ensures each level compresses accurately.
+        Each level is generated independently from original text (no cascading).
 
         Args:
             text: Full document text to summarize
-            levels: Optional dict mapping level names to target token counts
-                   Default: {"light": 5000, "moderate": 12500, "heavy": 25000}
+            levels: Optional dict mapping level names to reduction percentages
+                   Default: {"light": 0.33, "medium": 0.66}
+                   Values represent RETENTION ratio (0.33 = keep 33%)
 
         Returns:
             Dictionary containing:
@@ -257,12 +256,7 @@ class VisionDocumentSummarizer:
                     "tokens": int,
                     "sentences": int
                 },
-                "moderate": {
-                    "summary": str,
-                    "tokens": int,
-                    "sentences": int
-                },
-                "heavy": {
+                "medium": {
                     "summary": str,
                     "tokens": int,
                     "sentences": int
@@ -274,15 +268,14 @@ class VisionDocumentSummarizer:
         Example:
             >>> summarizer = VisionDocumentSummarizer()
             >>> result = summarizer.summarize_multi_level(large_doc)
-            >>> print(f"Light: {result['light']['tokens']} tokens")
-            >>> print(f"Moderate: {result['moderate']['tokens']} tokens")
-            >>> print(f"Heavy: {result['heavy']['tokens']} tokens")
+            >>> print(f"Light: {result['light']['tokens']} tokens (~33%)")
+            >>> print(f"Medium: {result['medium']['tokens']} tokens (~66%)")
         """
+        # Default: percentage-based reduction (Handover 0246b)
         if levels is None:
             levels = {
-                "light": 5000,
-                "moderate": 12500,
-                "heavy": 25000
+                "light": 0.33,   # Keep 33% of original
+                "medium": 0.66,  # Keep 66% of original
             }
 
         start_time = time.time()
@@ -290,10 +283,23 @@ class VisionDocumentSummarizer:
 
         original_tokens = self.estimate_tokens(text)
 
+        # Handle empty or very small documents
+        if original_tokens == 0:
+            return {
+                "light": {"summary": "", "tokens": 0, "sentences": 0},
+                "medium": {"summary": "", "tokens": 0, "sentences": 0},
+                "original_tokens": 0,
+                "processing_time_ms": 0,
+            }
+
         # Generate summaries independently from original text
-        # This ensures each level hits its target token count accurately
-        for level in ["heavy", "moderate", "light"]:
-            target_tokens = levels[level]
+        # Process medium first (larger), then light (smaller)
+        for level in ["medium", "light"]:
+            retention_ratio = levels[level]
+            target_tokens = int(original_tokens * retention_ratio)
+
+            # Minimum 500 tokens for meaningful summary
+            target_tokens = max(500, target_tokens)
 
             # Always summarize from original text (no cascading)
             summary_result = self.summarize(text, target_tokens=target_tokens)

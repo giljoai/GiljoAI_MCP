@@ -100,7 +100,7 @@ async def test_user_with_priorities(db_session: AsyncSession, test_tenant_key: s
             }
         },
         depth_config={
-            "vision_chunking": "moderate",
+            "vision_chunking": "medium",
             "memory_last_n_projects": 3,
             "git_commits": 25,
             "agent_template_detail": "standard",
@@ -752,7 +752,7 @@ async def test_depth_config_persists_and_applies(
     BEHAVIOR TEST: Depth config should persist in job_metadata and apply on MCP calls.
 
     Depth config controls:
-    - vision_chunking: "none", "light", "moderate", "heavy"
+    - vision_chunking: "light", "medium", "full"
     - memory_last_n_projects: 1, 3, 5, 10
     - git_commits: 10, 25, 50, 100
     - agent_template_detail: "minimal", "standard", "full"

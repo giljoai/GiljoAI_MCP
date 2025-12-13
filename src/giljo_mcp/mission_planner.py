@@ -1367,14 +1367,20 @@ Success Criteria:
             )
 
         # === Product Vision (vision_documents priority) ===
-        # Handover 0345e: Use depth configuration for semantic compression levels
-        # Levels: light (5K), moderate (12.5K), heavy (25K), full (all chunks)
+        # Handover 0246b: Simplified depth configuration
+        # Levels: light (33%), medium (66%), full (complete document)
+        # Removed: heavy level, chunk-based assembly for full mode
         # Handover 0282: Fixed key from "product_vision" to "vision_documents" (v2.0 field name)
 
         vision_priority = effective_priorities.get("vision_documents", 4)  # Default: EXCLUDED (user opt-in)
         if vision_priority > 0 and vision_priority != 4:  # Not excluded
-            # Get depth configuration (Handover 0345e)
-            vision_depth = depth_config.get("vision_documents", "moderate")  # Default to moderate
+            # Get depth configuration (Handover 0246b: default changed to medium)
+            vision_depth = depth_config.get("vision_documents", "medium")  # Default to medium
+            # Backward compatibility: map old values to new (Handover 0246b)
+            if vision_depth == "moderate":
+                vision_depth = "medium"
+            elif vision_depth == "heavy":
+                vision_depth = "medium"  # Heavy maps to medium (closest match)
 
             # DEBUG: Handover 0346 - Trace vision depth configuration
             logger.info(
@@ -1418,51 +1424,41 @@ Success Criteria:
                             extra={"has_light": vision_doc.summary_light is not None, "has_mod": vision_doc.summary_moderate is not None, "has_heavy": vision_doc.summary_heavy is not None}
                         )
 
-                        # Select appropriate content based on depth configuration
+                        # Handover 0246b: Simplified depth selection (no chunking)
+                        # Full mode uses vision_document column directly
+                        # Light/Medium modes use pre-computed summaries
                         if vision_depth == "full":
-                            logger.info("[VISION_DEPTH_DEBUG] Taking FULL path - fetching all chunks")
-                            # Fetch all original chunks
-                            vision_chunks = await self._get_relevant_vision_chunks(
-                                session=session,
-                                product=product,
-                                project=project,
-                                max_tokens=None,  # All chunks
-                            )
-                            if vision_chunks:
-                                vision_content = "\n\n".join([chunk["content"] for chunk in vision_chunks])
-                                estimated_original_tokens = sum(chunk.get("tokens", 0) for chunk in vision_chunks)
-                        elif vision_doc.is_summarized:
-                            # Use pre-computed semantic summary based on depth
-                            logger.info(f"[VISION_DEPTH_DEBUG] Taking SUMMARIZED path - vision_depth='{vision_depth}'")
-                            if vision_depth == "light" and vision_doc.summary_light:
-                                logger.info("[VISION_DEPTH_DEBUG] Using summary_light")
-                                vision_content = vision_doc.summary_light
-                                estimated_original_tokens = vision_doc.original_token_count or 0
-                            elif vision_depth == "moderate" and vision_doc.summary_moderate:
-                                logger.info("[VISION_DEPTH_DEBUG] Using summary_moderate")
-                                vision_content = vision_doc.summary_moderate
-                                estimated_original_tokens = vision_doc.original_token_count or 0
-                            elif vision_depth == "heavy" and vision_doc.summary_heavy:
-                                logger.info("[VISION_DEPTH_DEBUG] Using summary_heavy")
-                                vision_content = vision_doc.summary_heavy
-                                estimated_original_tokens = vision_doc.original_token_count or 0
+                            # Full: Use complete original document from vision_document column
+                            logger.info("[VISION_DEPTH_DEBUG] Taking FULL path - using vision_document column directly")
+                            vision_content = vision_doc.vision_document
+                            estimated_original_tokens = vision_doc.original_token_count or self._count_tokens(vision_content or "")
+                        elif vision_depth == "medium":
+                            # Medium: Use summary_medium (66% of original) or fallback to summary_moderate
+                            logger.info("[VISION_DEPTH_DEBUG] Taking MEDIUM path")
+                            vision_content = vision_doc.summary_medium or vision_doc.summary_moderate
+                            if vision_content:
+                                logger.info("[VISION_DEPTH_DEBUG] Using summary_medium")
                             else:
-                                logger.info(f"[VISION_DEPTH_DEBUG] Falling back to any available summary (requested '{vision_depth}' not available)")
-                                # Fallback to moderate if requested level unavailable
-                                vision_content = vision_doc.summary_moderate or vision_doc.summary_heavy or vision_doc.summary_light
-                                estimated_original_tokens = vision_doc.original_token_count or 0
+                                # Fallback to full document if no summary available
+                                logger.info("[VISION_DEPTH_DEBUG] No medium summary, falling back to vision_document")
+                                vision_content = vision_doc.vision_document
+                            estimated_original_tokens = vision_doc.original_token_count or 0
+                        elif vision_depth == "light":
+                            # Light: Use summary_light (33% of original)
+                            logger.info("[VISION_DEPTH_DEBUG] Taking LIGHT path")
+                            vision_content = vision_doc.summary_light
+                            if vision_content:
+                                logger.info("[VISION_DEPTH_DEBUG] Using summary_light")
+                            else:
+                                # Fallback to medium, then full
+                                vision_content = vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
+                                logger.info("[VISION_DEPTH_DEBUG] No light summary, using fallback")
+                            estimated_original_tokens = vision_doc.original_token_count or 0
                         else:
-                            # Not summarized - fallback to chunks with conservative limit
-                            logger.info("[VISION_DEPTH_DEBUG] Taking FALLBACK path - not summarized, using chunks with 15K limit")
-                            vision_chunks = await self._get_relevant_vision_chunks(
-                                session=session,
-                                product=product,
-                                project=project,
-                                max_tokens=15000,  # Conservative fallback
-                            )
-                            if vision_chunks:
-                                vision_content = "\n\n".join([chunk["content"] for chunk in vision_chunks])
-                                estimated_original_tokens = vision_doc.total_tokens or 15000
+                            # Unknown depth - use medium as default
+                            logger.info(f"[VISION_DEPTH_DEBUG] Unknown depth '{vision_depth}', defaulting to medium")
+                            vision_content = vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
+                            estimated_original_tokens = vision_doc.original_token_count or 0
 
                         if vision_content:
                             # Apply priority framing
