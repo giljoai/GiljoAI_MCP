@@ -674,7 +674,7 @@ async def test_get_depth_config_defaults(user_service, test_user):
 
     assert result["success"] is True
     assert "config" in result
-    assert "vision_chunking" in result["config"]
+    assert "vision_documents" in result["config"]
 
 
 # ============================================================================
@@ -685,7 +685,7 @@ async def test_get_depth_config_defaults(user_service, test_user):
 async def test_update_depth_config_success(user_service, test_user, db_session):
     """Test successful depth config update"""
     new_depth = {
-        "vision_chunking": "heavy",
+        "vision_documents": "heavy",
         "memory_last_n_projects": 10,
         "git_commits": 100
     }
@@ -705,7 +705,7 @@ async def test_update_depth_config_success(user_service, test_user, db_session):
 async def test_update_depth_config_validation(user_service, test_user):
     """Test that update_depth_config validates config"""
     invalid_depth = {
-        "vision_chunking": "invalid_level"  # Invalid
+        "vision_documents": "invalid_level"  # Invalid
     }
 
     result = await user_service.update_depth_config(
