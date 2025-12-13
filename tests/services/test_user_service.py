@@ -654,7 +654,7 @@ async def test_reset_field_priority_config_clears_custom(user_service, test_user
 async def test_get_depth_config_custom(user_service, test_user, db_session):
     """Test that get_depth_config returns custom config"""
     custom_depth = {
-        "vision_chunking": "heavy",
+        "vision_chunking": "full",
         "memory_last_n_projects": 5,
         "git_commits": 50
     }
@@ -685,7 +685,7 @@ async def test_get_depth_config_defaults(user_service, test_user):
 async def test_update_depth_config_success(user_service, test_user, db_session):
     """Test successful depth config update"""
     new_depth = {
-        "vision_documents": "heavy",
+        "vision_documents": "full",
         "memory_last_n_projects": 10,
         "git_commits": 100
     }

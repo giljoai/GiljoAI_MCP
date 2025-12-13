@@ -25,14 +25,14 @@ class TestDepthConfigFieldStandardization:
             "DepthConfig must have 'vision_documents' field"
         assert not hasattr(config, 'vision_chunking'), \
             "DepthConfig must NOT have deprecated 'vision_chunking' field"
-        assert config.vision_documents == 'moderate', \
-            "Default vision_documents should be 'moderate'"
+        assert config.vision_documents == 'medium', \
+            "Default vision_documents should be 'medium'"
 
     def test_depth_config_accepts_all_levels(self):
         """Verify all valid depth levels are accepted."""
         from api.endpoints.users import DepthConfig
 
-        valid_levels = ['none', 'light', 'moderate', 'heavy']
+        valid_levels = ['light', 'medium', 'full']
         for level in valid_levels:
             config = DepthConfig(vision_documents=level)
             assert config.vision_documents == level, \
@@ -56,8 +56,8 @@ class TestDepthConfigFieldStandardization:
             "User.depth_config default must contain 'vision_documents' key"
         assert 'vision_chunking' not in default_depth_config, \
             "User.depth_config default must NOT contain deprecated 'vision_chunking' key"
-        assert default_depth_config['vision_documents'] == 'moderate', \
-            "Default vision_documents level should be 'moderate'"
+        assert default_depth_config['vision_documents'] == 'medium', \
+            "Default vision_documents level should be 'medium'"
 
     def test_user_service_get_depth_config_uses_vision_documents(self):
         """Verify UserService get_depth_config uses 'vision_documents' key in default."""
@@ -128,7 +128,7 @@ class TestDepthConfigAPIRoundtrip:
 
         # POST depth config with vision_documents
         depth_config_payload = {
-            'vision_documents': 'heavy',
+            'vision_documents': 'full',
             'product_core': 'exclude',
             'tech_stack': 'required',
             'architecture': 'overview',
@@ -155,7 +155,7 @@ class TestDepthConfigAPIRoundtrip:
             f"GET depth config failed: {response.json()}"
 
         data = response.json()
-        assert data['vision_documents'] == 'heavy', \
+        assert data['vision_documents'] == 'full', \
             "GET should return same vision_documents value as POST"
         assert 'vision_chunking' not in data, \
             "GET should NOT return deprecated 'vision_chunking' field"
