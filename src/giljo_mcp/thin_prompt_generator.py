@@ -27,7 +27,7 @@ Priority System (Handover 0313):
 - Priority 4 (EXCLUDED): Not listed in prompt, ignored by orchestrator
 
 Depth Configuration (Handover 0314):
-- vision_chunking: "none" | "light" | "moderate" | "heavy"
+- vision_documents: "none" | "light" | "moderate" | "heavy"
 - memory_last_n_projects: 1 | 3 | 5 | 10
 - git_commits: 10 | 25 | 50 | 100
 - agent_template_detail: "minimal" | "standard" | "full"
@@ -170,7 +170,7 @@ class ThinClientPromptGenerator:
         # Apply defaults for depth_config if still not set
         if not depth_config:
             depth_config = {
-                "vision_chunking": "moderate",
+                "vision_documents": "moderate",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
                 "agent_template_detail": "standard",
@@ -528,7 +528,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
             instance_number: Orchestrator instance number
             tool: AI coding tool (claude-code, codex, gemini, universal)
             field_priorities: User field priority configuration (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
-            depth_config: User depth configuration (vision_chunking, memory_last_n_projects, etc.)
+            depth_config: User depth configuration (vision_documents, memory_last_n_projects, etc.)
 
         Returns:
             Thin prompt with MCP tool references grouped by priority
