@@ -1111,7 +1111,7 @@ class UserService:
 
         # Return depth config (from user or defaults)
         depth_config = user.depth_config or {
-            "vision_documents": "moderate",
+            "vision_documents": "medium",
             "memory_last_n_projects": 3,
             "git_commits": 25,
             "agent_template_detail": "standard",
@@ -1163,7 +1163,7 @@ class UserService:
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Validate config values
-        valid_vision = ["none", "light", "moderate", "heavy"]
+        valid_vision = ["none", "light", "medium", "full"]
         valid_memory = [1, 3, 5, 10]
         valid_git = [10, 25, 50, 100]
 
@@ -1274,7 +1274,7 @@ class UserService:
             return {"success": False, "error": "User not found"}
 
         depth_config = user.depth_config or {
-            "vision_documents": "moderate",
+            "vision_documents": "medium",
             "memory_last_n_projects": 3,
             "git_commits": 25,
             "agent_template_detail": "standard",

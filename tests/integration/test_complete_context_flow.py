@@ -74,7 +74,7 @@ async def fully_configured_user(db_session, integration_tenant_key):
             },
         },
         depth_config={
-            "vision_chunking": "heavy",
+            "vision_chunking": "full",
             "memory_last_n_projects": 10,
             "git_commits": 50,
         },
@@ -192,12 +192,12 @@ class TestCompleteSettingsPersistence:
         """
         # Verify initial state
         assert fully_configured_user.depth_config is not None
-        assert fully_configured_user.depth_config["vision_chunking"] == "heavy"
+        assert fully_configured_user.depth_config["vision_chunking"] == "full"
 
         # Simulate database round-trip
         await db_session.flush()
         retrieved_user = await db_session.get(User, fully_configured_user.id)
-        assert retrieved_user.depth_config["vision_chunking"] == "heavy"
+        assert retrieved_user.depth_config["vision_chunking"] == "full"
 
     async def test_github_integration_setting_persists(
         self,

@@ -79,7 +79,7 @@ class TestProjectServiceFieldPriorities:
             }
         }
         mock_user.depth_config = {
-            "vision_chunking": "moderate",
+            "vision_chunking": "medium",
             "memory_last_n_projects": 3,
             "git_commits": 25,
             "agent_template_detail": "standard"

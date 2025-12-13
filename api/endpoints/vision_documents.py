@@ -1,15 +1,17 @@
 """
-Vision Documents API Endpoints for Handover 0043 Phase 5.
+Vision Documents API Endpoints.
 
-Implements REST API for multi-vision document support:
+Implements REST API for vision document management:
 - POST / - Create vision document with file upload or inline content
 - GET /product/{product_id} - List all vision documents for a product
-- PUT /{document_id} - Update vision document content with auto re-chunk
-- DELETE /{document_id} - Delete vision document with CASCADE chunks
-- POST /{document_id}/rechunk - Trigger re-chunking
+- PUT /{document_id} - Update vision document content
+- DELETE /{document_id} - Delete vision document
 
 All endpoints enforce multi-tenant isolation via get_tenant_key() dependency.
 File uploads use cross-platform path handling with pathlib.Path.
+
+Handover 0246b: Simplified storage - complete documents stored in vision_document TEXT column.
+Summaries (light/medium) generated via VisionDocumentSummarizer for large documents.
 """
 
 import logging
@@ -75,7 +77,6 @@ async def create_vision_document(
     document_type: str = Form("vision"),
     content: Optional[str] = Form(None),
     vision_file: Optional[UploadFile] = File(None),
-    auto_chunk: bool = Form(True),
     display_order: int = Form(0),
     version: str = Form("1.0.0"),
     db: AsyncSession = Depends(get_db),
@@ -85,14 +86,16 @@ async def create_vision_document(
     """
     Create a new vision document for a product.
 
+    **Storage**: Complete document stored in `vision_document` TEXT column.
+
+    **Summarization**: Large documents (>5K tokens) automatically generate:
+    - Light summary (33% of original)
+    - Medium summary (66% of original)
+
     **Storage Options**:
     - **File Upload**: Provide `vision_file` (sets storage_type="file")
     - **Inline Content**: Provide `content` (sets storage_type="inline")
     - **Both**: Provide both (sets storage_type="hybrid")
-
-    **Auto-Chunking**:
-    - If `auto_chunk=True` (default), document is chunked immediately using EnhancedChunker
-    - Chunks are stored in MCPContextIndex with vision_document_id link
 
     **Cross-Platform Path Handling**:
     - Uses pathlib.Path for all file operations (Windows/Linux/Mac compatible)
@@ -104,7 +107,6 @@ async def create_vision_document(
         document_type: Document category (vision, architecture, features, etc.)
         content: Inline document content (optional)
         vision_file: Uploaded file (optional)
-        auto_chunk: Automatically chunk document after creation (default: True)
         display_order: Display order in UI (default: 0)
         version: Semantic version (default: "1.0.0")
 
@@ -114,7 +116,7 @@ async def create_vision_document(
     Raises:
         HTTPException 400: If neither content nor file provided
         HTTPException 404: If product not found
-        HTTPException 500: If creation or chunking fails
+        HTTPException 500: If creation or summarization fails
     """
     try:
         # DEBUG: Log tenant_key and product_id
@@ -188,32 +190,6 @@ async def create_vision_document(
         )
         await db.commit()
 
-        # Optionally chunk immediately
-        if auto_chunk:
-            try:
-                from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
-
-                chunker = VisionDocumentChunker()
-                result = await chunker.chunk_vision_document(db, tenant_key, doc.id)
-
-                if not result.get("success"):
-                    # Chunking failed - rollback document creation (fail-fast)
-                    await db.rollback()
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Document upload failed during chunking: {result.get('error')}",
-                    )
-
-            except HTTPException:
-                raise
-            except Exception as chunk_error:
-                logger.error(f"Chunking error for document {doc.id}: {chunk_error}", exc_info=True)
-                await db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Document upload failed during chunking: {chunk_error!s}",
-                )
-
         # Generate multi-level summaries (Sumy LSA compression)
         # Threshold: 5K tokens (smallest summary level)
         total_tokens = len(document_content) // 4  # Rough estimate: 1 token ≈ 4 chars
@@ -226,14 +202,12 @@ async def create_vision_document(
                 summarizer = VisionDocumentSummarizer()
                 summaries = summarizer.summarize_multi_level(document_content)
 
-                # Re-attach doc to session and store summaries
+                # Re-attach doc to session and store summaries (Handover 0246b: light and medium only)
                 db.add(doc)
                 doc.summary_light = summaries["light"]["summary"]
-                doc.summary_moderate = summaries["moderate"]["summary"]
-                doc.summary_heavy = summaries["heavy"]["summary"]
+                doc.summary_medium = summaries["medium"]["summary"]
                 doc.summary_light_tokens = summaries["light"]["tokens"]
-                doc.summary_moderate_tokens = summaries["moderate"]["tokens"]
-                doc.summary_heavy_tokens = summaries["heavy"]["tokens"]
+                doc.summary_medium_tokens = summaries["medium"]["tokens"]
                 doc.is_summarized = True
                 doc.original_token_count = summaries["original_tokens"]
 
@@ -241,9 +215,8 @@ async def create_vision_document(
 
                 logger.info(
                     f"Vision document {doc.id} summarized: "
-                    f"Low={summaries['light']['tokens']} tokens, "
-                    f"Medium={summaries['moderate']['tokens']} tokens, "
-                    f"High={summaries['heavy']['tokens']} tokens "
+                    f"Light={summaries['light']['tokens']} tokens, "
+                    f"Medium={summaries['medium']['tokens']} tokens "
                     f"(from {summaries['original_tokens']} tokens) "
                     f"in {summaries['processing_time_ms']}ms"
                 )
@@ -313,7 +286,6 @@ async def list_vision_documents(
 async def update_vision_document(
     document_id: str,
     content: str = Form(...),
-    auto_rechunk: bool = Form(True),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
@@ -323,26 +295,19 @@ async def update_vision_document(
 
     **Automatic Updates**:
     - Recalculates content hash (SHA-256)
-    - Resets chunked flag to False (content changed)
-    - Resets chunk_count to 0
     - Updates updated_at timestamp
-
-    **Auto Re-Chunking**:
-    - If `auto_rechunk=True` (default), document is re-chunked immediately
-    - Old chunks are deleted first (by vision_document_id)
-    - New chunks are created from updated content
+    - Regenerates summaries for large documents (>5K tokens)
 
     Args:
         document_id: Document ID to update
         content: New document content
-        auto_rechunk: Automatically re-chunk after update (default: True)
 
     Returns:
         VisionDocumentResponse: Updated vision document
 
     Raises:
         HTTPException 404: If document not found
-        HTTPException 500: If update or re-chunking fails
+        HTTPException 500: If update or summarization fails
     """
     try:
         # Update content
@@ -357,21 +322,36 @@ async def update_vision_document(
 
         await db.commit()
 
-        # Optionally re-chunk
-        if auto_rechunk:
+        # Regenerate summaries for large documents
+        total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
+        if total_tokens > 5000:
             try:
-                from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+                from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
-                chunker = VisionDocumentChunker()
-                result = await chunker.chunk_vision_document(db, tenant_key, document_id)
+                logger.info(f"Regenerating summaries for updated doc {document_id}: {total_tokens} tokens")
 
-                if not result.get("success"):
-                    logger.warning(f"Re-chunking failed for document {document_id}: {result.get('error')}")
-                    # Don't rollback - content update succeeded, chunking can be retried
+                summarizer = VisionDocumentSummarizer()
+                summaries = summarizer.summarize_multi_level(content)
 
-            except Exception as chunk_error:
-                logger.error(f"Re-chunking error for document {document_id}: {chunk_error}", exc_info=True)
-                # Continue - content updated successfully, chunking can be retried later
+                # Update summaries (Handover 0246b: light and medium only)
+                db.add(doc)
+                doc.summary_light = summaries["light"]["summary"]
+                doc.summary_medium = summaries["medium"]["summary"]
+                doc.summary_light_tokens = summaries["light"]["tokens"]
+                doc.summary_medium_tokens = summaries["medium"]["tokens"]
+                doc.is_summarized = True
+                doc.original_token_count = summaries["original_tokens"]
+
+                await db.commit()
+
+                logger.info(
+                    f"Vision document {document_id} summaries updated: "
+                    f"Light={summaries['light']['tokens']} tokens, "
+                    f"Medium={summaries['medium']['tokens']} tokens"
+                )
+            except Exception as e:
+                # Summarization failed but content updated - log warning and continue
+                logger.warning(f"Document {document_id} updated but summarization failed: {e}")
 
         await db.refresh(doc)
 
@@ -435,40 +415,37 @@ async def delete_vision_document(
         )
 
 
-@router.post("/{document_id}/rechunk", response_model=RechunkResponse)
-async def rechunk_vision_document(
+@router.post("/{document_id}/regenerate-summaries", response_model=RechunkResponse)
+async def regenerate_summaries(
     document_id: str,
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
 ):
     """
-    Trigger re-chunking of a vision document.
+    Regenerate summaries for a vision document.
 
-    **Re-Chunking Process**:
+    **Regeneration Process**:
     1. Get vision document content
-    2. Delete existing chunks (by vision_document_id)
-    3. Chunk content using EnhancedChunker
-    4. Create new chunks in MCPContextIndex
-    5. Update vision document metadata (chunked=True, chunk_count, total_tokens)
+    2. Generate light and medium summaries using LSA
+    3. Update document with new summaries
 
     **Use Cases**:
-    - Content was updated without auto_rechunk
-    - Chunking failed during creation/update
-    - Chunker algorithm changed (want to re-chunk with new logic)
+    - Summarization failed during creation/update
+    - Want to regenerate summaries after algorithm changes
 
     Args:
-        document_id: Document ID to re-chunk
+        document_id: Document ID to regenerate summaries for
 
     Returns:
-        RechunkResponse: Re-chunking result with chunks_created count
+        RechunkResponse: Result with success status (reusing schema for compatibility)
 
     Raises:
         HTTPException 404: If document not found
-        HTTPException 500: If re-chunking fails
+        HTTPException 500: If summarization fails
     """
     try:
-        from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+        from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
         # Verify document exists and belongs to tenant
         doc = await vision_repo.get_by_id(db, tenant_key, document_id)
@@ -477,26 +454,50 @@ async def rechunk_vision_document(
                 status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found"
             )
 
-        # Trigger re-chunking
-        chunker = VisionDocumentChunker()
-        result = await chunker.chunk_vision_document(db, tenant_key, document_id)
-
-        if not result.get("success"):
-            await db.rollback()
+        # Get document content
+        content = doc.vision_document
+        if not content:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Chunking failed: {result.get('error')}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Vision document {document_id} has no content to summarize"
             )
+
+        # Generate summaries
+        logger.info(f"Regenerating summaries for doc {document_id}")
+        summarizer = VisionDocumentSummarizer()
+        summaries = summarizer.summarize_multi_level(content)
+
+        # Update document
+        db.add(doc)
+        doc.summary_light = summaries["light"]["summary"]
+        doc.summary_medium = summaries["medium"]["summary"]
+        doc.summary_light_tokens = summaries["light"]["tokens"]
+        doc.summary_medium_tokens = summaries["medium"]["tokens"]
+        doc.is_summarized = True
+        doc.original_token_count = summaries["original_tokens"]
 
         await db.commit()
 
-        return RechunkResponse(**result)
+        logger.info(
+            f"Vision document {document_id} summaries regenerated: "
+            f"Light={summaries['light']['tokens']} tokens, "
+            f"Medium={summaries['medium']['tokens']} tokens"
+        )
+
+        return RechunkResponse(
+            success=True,
+            message=f"Summaries regenerated successfully",
+            chunks_created=2,  # light and medium summaries
+            total_tokens=summaries["original_tokens"]
+        )
 
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
-        logger.error(f"Failed to rechunk vision document: {e}", exc_info=True)
+        logger.error(f"Failed to regenerate summaries: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to rechunk vision document: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate summaries: {e!s}"
         )

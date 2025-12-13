@@ -34,7 +34,7 @@ class TestDepthConfigValidation:
     def test_valid_depth_config_defaults(self):
         """Test that default depth configuration is valid"""
         config = DepthConfig()
-        assert config.vision_chunking == "moderate"
+        assert config.vision_chunking == "medium"
         assert config.memory_last_n_projects == 3
         assert config.git_commits == 25
         assert config.agent_template_detail == "standard"
@@ -44,7 +44,7 @@ class TestDepthConfigValidation:
     def test_valid_depth_config_all_options(self):
         """Test valid depth configuration with all fields specified"""
         valid_config = {
-            "vision_chunking": "heavy",
+            "vision_chunking": "full",
             "memory_last_n_projects": 10,
             "git_commits": 100,
             "agent_template_detail": "full",
@@ -52,7 +52,7 @@ class TestDepthConfigValidation:
             "architecture_depth": "detailed"
         }
         config = DepthConfig(**valid_config)
-        assert config.vision_chunking == "heavy"
+        assert config.vision_chunking == "full"
         assert config.memory_last_n_projects == 10
         assert config.git_commits == 100
         assert config.agent_template_detail == "full"
@@ -62,7 +62,7 @@ class TestDepthConfigValidation:
     def test_invalid_vision_chunking_value(self):
         """Test that invalid vision_chunking value is rejected"""
         invalid_config = {
-            "vision_chunking": "ultra",  # Invalid - must be none/light/moderate/heavy
+            "vision_chunking": "ultra",  # Invalid - must be light/medium/full
             "memory_last_n_projects": 3
         }
         with pytest.raises(ValidationError):
@@ -71,7 +71,7 @@ class TestDepthConfigValidation:
     def test_invalid_memory_last_n_projects_value(self):
         """Test that invalid memory_last_n_projects value is rejected"""
         invalid_config = {
-            "vision_chunking": "moderate",
+            "vision_chunking": "medium",
             "memory_last_n_projects": 7  # Invalid - must be 1/3/5/10
         }
         with pytest.raises(ValidationError):
@@ -80,7 +80,7 @@ class TestDepthConfigValidation:
     def test_invalid_git_commits_value(self):
         """Test that invalid git_commits value is rejected"""
         invalid_config = {
-            "vision_chunking": "moderate",
+            "vision_chunking": "medium",
             "git_commits": 75  # Invalid - must be 10/25/50/100
         }
         with pytest.raises(ValidationError):
@@ -114,7 +114,7 @@ class TestDepthConfigValidation:
         """Test UpdateDepthConfigRequest wrapper schema"""
         depth_config = DepthConfig()
         request = UpdateDepthConfigRequest(depth_config=depth_config)
-        assert request.depth_config.vision_chunking == "moderate"
+        assert request.depth_config.vision_chunking == "medium"
 
 
 # ============================================================================
@@ -144,7 +144,7 @@ class TestDepthConfigEndpoints:
 
         # Verify default values
         depth_config = data["depth_config"]
-        assert depth_config["vision_chunking"] == "moderate"
+        assert depth_config["vision_chunking"] == "medium"
         assert depth_config["memory_last_n_projects"] == 3
         assert depth_config["git_commits"] == 25
         assert depth_config["agent_template_detail"] == "standard"
@@ -159,7 +159,7 @@ class TestDepthConfigEndpoints:
         """Test PUT /me/context/depth updates depth configuration"""
         new_config = {
             "depth_config": {
-                "vision_chunking": "heavy",
+                "vision_chunking": "full",
                 "memory_last_n_projects": 5,
                 "git_commits": 50,
                 "agent_template_detail": "full",
@@ -177,7 +177,7 @@ class TestDepthConfigEndpoints:
         data = response.json()
 
         # Verify updated values
-        assert data["depth_config"]["vision_chunking"] == "heavy"
+        assert data["depth_config"]["vision_chunking"] == "full"
         assert data["depth_config"]["memory_last_n_projects"] == 5
         assert data["depth_config"]["git_commits"] == 50
         assert data["depth_config"]["agent_template_detail"] == "full"
@@ -249,7 +249,7 @@ class TestDepthConfigEndpoints:
         # Tenant A sets config
         config_a = {
             "depth_config": {
-                "vision_chunking": "heavy",
+                "vision_chunking": "full",
                 "memory_last_n_projects": 10,
                 "git_commits": 100,
                 "agent_template_detail": "full",
@@ -287,7 +287,7 @@ class TestDepthConfigEndpoints:
             "/api/v1/users/me/context/depth",
             headers=auth_headers_tenant_a
         )
-        assert response_a.json()["depth_config"]["vision_chunking"] == "heavy"
+        assert response_a.json()["depth_config"]["vision_chunking"] == "full"
 
         # Verify Tenant B's config
         response_b = await api_client.get(
@@ -319,7 +319,7 @@ class TestDepthConfigWebSocketEvents:
         """Test that depth_config_updated WebSocket event is emitted"""
         new_config = {
             "depth_config": {
-                "vision_chunking": "heavy",
+                "vision_chunking": "full",
                 "memory_last_n_projects": 5,
                 "git_commits": 50,
                 "agent_template_detail": "full",
@@ -340,7 +340,7 @@ class TestDepthConfigWebSocketEvents:
         assert len(events) > 0
 
         event_data = events[0]
-        assert event_data["depth_config"]["vision_chunking"] == "heavy"
+        assert event_data["depth_config"]["vision_chunking"] == "full"
 
     async def test_websocket_event_includes_user_id(
         self,

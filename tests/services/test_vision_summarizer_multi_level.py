@@ -66,19 +66,19 @@ def generate_test_document(tokens: int) -> str:
 class TestMultiLevelSummarization:
     """Test suite for multi-level semantic compression."""
 
-    def test_summarize_multi_level_returns_three_summaries(self):
-        """Should generate light, moderate, and heavy summaries."""
+    def test_summarize_multi_level_returns_two_summaries(self):
+        """Should generate light and medium summaries (NOT full - full = original doc)."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text)
 
         assert "light" in result
-        assert "moderate" in result
-        assert "heavy" in result
+        assert "medium" in result
+        assert "full" not in result  # Full depth = original document (no summary)
 
         # Each level should have summary, tokens, and sentences
-        for level in ["light", "moderate", "heavy"]:
+        for level in ["light", "medium"]:
             assert "summary" in result[level]
             assert "tokens" in result[level]
             assert "sentences" in result[level]
@@ -86,37 +86,35 @@ class TestMultiLevelSummarization:
             assert isinstance(result[level]["tokens"], int)
             assert isinstance(result[level]["sentences"], int)
 
-    def test_light_moderate_heavy_token_targets(self):
+    def test_light_medium_token_targets(self):
         """Token counts should approximately match targets (±20% tolerance)."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text)
 
-        # Light: ~5K tokens (allow 4K-6K)
-        assert 4000 <= result["light"]["tokens"] <= 6000, \
-            f"Light summary has {result['light']['tokens']} tokens, expected 4K-6K"
+        # Light: ~33% of original (~16.5K tokens, allow 13K-20K)
+        assert 13000 <= result["light"]["tokens"] <= 20000, \
+            f"Light summary has {result['light']['tokens']} tokens, expected 13K-20K"
 
-        # Moderate: ~12.5K tokens (allow 10K-15K)
-        assert 10000 <= result["moderate"]["tokens"] <= 15000, \
-            f"Moderate summary has {result['moderate']['tokens']} tokens, expected 10K-15K"
+        # Medium: ~66% of original (~33K tokens, allow 26K-40K)
+        assert 26000 <= result["medium"]["tokens"] <= 40000, \
+            f"Medium summary has {result['medium']['tokens']} tokens, expected 26K-40K"
 
-        # Heavy: ~25K tokens (allow 20K-30K)
-        assert 20000 <= result["heavy"]["tokens"] <= 30000, \
-            f"Heavy summary has {result['heavy']['tokens']} tokens, expected 20K-30K"
+        # NOTE: Full depth (100%) is NOT a summary - it returns the original document
 
-    def test_light_is_subset_of_moderate_is_subset_of_heavy(self):
-        """Cascading summaries should preserve hierarchy (lighter < heavier)."""
+    def test_light_is_less_than_medium(self):
+        """Light summary should be smaller than medium summary."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text)
 
-        # Light should be shortest, heavy should be longest
-        assert result["light"]["tokens"] < result["moderate"]["tokens"], \
-            f"Light ({result['light']['tokens']}) should be < Moderate ({result['moderate']['tokens']})"
-        assert result["moderate"]["tokens"] < result["heavy"]["tokens"], \
-            f"Moderate ({result['moderate']['tokens']}) should be < Heavy ({result['heavy']['tokens']})"
+        # Light should be shorter than medium
+        assert result["light"]["tokens"] < result["medium"]["tokens"], \
+            f"Light ({result['light']['tokens']}) should be < Medium ({result['medium']['tokens']})"
+
+        # NOTE: Full depth would be the original document (not a summary)
 
     def test_multi_level_processing_time_under_15_seconds(self):
         """Generating 3 summaries should take <15 sec for 100K tokens."""
@@ -146,22 +144,23 @@ class TestMultiLevelSummarization:
         assert result["processing_time_ms"] > 0
 
     def test_custom_level_targets(self):
-        """Should accept custom target token counts per level."""
+        """Should accept custom percentage targets per level."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=50000)
 
+        # Custom percentages (not token counts - Handover 0246b changed to percentages)
         custom_levels = {
-            "light": 3000,
-            "moderate": 8000,
-            "heavy": 15000
+            "light": 0.20,  # Keep 20% of original
+            "medium": 0.50,  # Keep 50% of original
         }
 
         result = summarizer.summarize_multi_level(text, levels=custom_levels)
 
         # Check custom targets are approximately met (±20% tolerance)
-        assert 2400 <= result["light"]["tokens"] <= 3600  # 3K ± 20%
-        assert 6400 <= result["moderate"]["tokens"] <= 9600  # 8K ± 20%
-        assert 12000 <= result["heavy"]["tokens"] <= 18000  # 15K ± 20%
+        # 20% of 50K = 10K tokens
+        assert 8000 <= result["light"]["tokens"] <= 12000
+        # 50% of 50K = 25K tokens
+        assert 20000 <= result["medium"]["tokens"] <= 30000
 
     def test_small_document_handling(self):
         """Should handle documents smaller than target sizes gracefully."""
@@ -172,12 +171,10 @@ class TestMultiLevelSummarization:
 
         # Should still generate summaries, even if small
         assert result["light"]["tokens"] <= result["original_tokens"]
-        assert result["moderate"]["tokens"] <= result["original_tokens"]
-        assert result["heavy"]["tokens"] <= result["original_tokens"]
+        assert result["medium"]["tokens"] <= result["original_tokens"]
 
         # Light should be smallest
-        assert result["light"]["tokens"] <= result["moderate"]["tokens"]
-        assert result["moderate"]["tokens"] <= result["heavy"]["tokens"]
+        assert result["light"]["tokens"] <= result["medium"]["tokens"]
 
     def test_summaries_are_extractive_not_abstractive(self):
         """Summaries should only contain sentences from original (no hallucination)."""
@@ -190,7 +187,7 @@ class TestMultiLevelSummarization:
         original_sentences = [s.strip() for s in text.split('.') if s.strip()]
 
         # Check that summary sentences come from original
-        for level in ["light", "moderate", "heavy"]:
+        for level in ["light", "medium"]:
             summary = result[level]["summary"]
             summary_sentences = [s.strip() for s in summary.split('.') if s.strip()]
 
@@ -210,17 +207,17 @@ class TestMultiLevelSummarization:
                 f"{level} summary appears non-extractive (only {match_ratio*100:.0f}% matches)"
 
     def test_default_levels_when_none_provided(self):
-        """Should use default levels (5K/12.5K/25K) when levels parameter is None."""
+        """Should use default levels (33%/66%) when levels parameter is None."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text, levels=None)
 
-        # Default targets: light=5K, moderate=12.5K, heavy=25K
+        # Default targets: light=33% (~16.5K), medium=66% (~33K)
+        # NOTE: Full (100%) is NOT a summary - it returns the original document
         # Allow ±20% tolerance
-        assert 4000 <= result["light"]["tokens"] <= 6000
-        assert 10000 <= result["moderate"]["tokens"] <= 15000
-        assert 20000 <= result["heavy"]["tokens"] <= 30000
+        assert 13000 <= result["light"]["tokens"] <= 20000
+        assert 26000 <= result["medium"]["tokens"] <= 40000
 
 
 @pytest.mark.asyncio
@@ -258,24 +255,22 @@ class TestUploadWithMultiLevelSummaries:
         assert vision_doc is not None
         assert vision_doc.is_summarized is True
 
-        # Check all three summary levels exist
+        # Check both summary levels exist (light and medium only)
         assert vision_doc.summary_light is not None
-        assert vision_doc.summary_moderate is not None
-        assert vision_doc.summary_heavy is not None
+        assert vision_doc.summary_medium is not None
+        # NOTE: summary_full does NOT exist - full depth returns original document
 
         # Check token counts are populated
         assert vision_doc.summary_light_tokens is not None
-        assert vision_doc.summary_moderate_tokens is not None
-        assert vision_doc.summary_heavy_tokens is not None
+        assert vision_doc.summary_medium_tokens is not None
 
         # Verify token counts match targets (±20%)
-        assert 4000 <= vision_doc.summary_light_tokens <= 6000
-        assert 10000 <= vision_doc.summary_moderate_tokens <= 15000
-        assert 20000 <= vision_doc.summary_heavy_tokens <= 30000
+        # For 50K token original: light=33% (~16.5K), medium=66% (~33K)
+        assert 13000 <= vision_doc.summary_light_tokens <= 20000
+        assert 26000 <= vision_doc.summary_medium_tokens <= 40000
 
-        # Verify hierarchy (light < moderate < heavy)
-        assert vision_doc.summary_light_tokens < vision_doc.summary_moderate_tokens
-        assert vision_doc.summary_moderate_tokens < vision_doc.summary_heavy_tokens
+        # Verify hierarchy (light < medium)
+        assert vision_doc.summary_light_tokens < vision_doc.summary_medium_tokens
 
 
 @pytest.mark.asyncio

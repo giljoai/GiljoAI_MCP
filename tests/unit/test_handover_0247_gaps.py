@@ -87,7 +87,7 @@ def mock_orchestrator():
     orch.job_metadata = {
         "execution_mode": "claude_code",
         "field_priorities": {"vision": 1, "architecture": 2},
-        "depth_config": {"vision_chunking": "moderate"},
+        "depth_config": {"vision_chunking": "medium"},
         "user_id": str(uuid4()),
         "tool": "claude-code",
         "created_via": "thin_client_generator"
