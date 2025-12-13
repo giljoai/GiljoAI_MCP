@@ -92,8 +92,9 @@
                   </v-chip>
                   <v-chip
                     size="small"
-                    variant="tonal"
+                    variant="flat"
                     color="info"
+                    text-color="grey-lighten-4"
                     :disabled="!doc.original_token_count"
                     :loading="loadingFullDoc === doc.id"
                     @click="showFullDocument(doc)"
