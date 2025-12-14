@@ -575,25 +575,27 @@ Success Criteria:
         if priority <= 4:
             if priority == 1:
                 return "full"  # CRITICAL - always include
-            if priority == 2:
+            elif priority == 2:
                 return "moderate"  # IMPORTANT - include if budget allows
-            if priority == 3:
+            elif priority == 3:
                 return "abbreviated"  # NICE_TO_HAVE - include if space remains
-            if priority == 4:
+            elif priority == 4:
                 return "exclude"  # EXCLUDED - never include
-            return "exclude"  # Priority 0 or negative = exclude
+            else:
+                return "exclude"  # Priority 0 or negative = exclude
 
         # v1.0 legacy support (0-10 scale)
         # Keep for backward compatibility during transition period
-        if priority >= 10:
+        elif priority >= 10:
             return "full"  # 0% context prioritization
-        if priority >= 7:
+        elif priority >= 7:
             return "moderate"  # 25% context prioritization
-        if priority >= 4:
+        elif priority >= 4:
             return "abbreviated"  # 50% context prioritization
-        if priority >= 1:
+        elif priority >= 1:
             return "minimal"  # 80% context prioritization
-        return "exclude"  # 100% context prioritization (omitted)  # 100% context prioritization (omitted)
+        else:
+            return "exclude"  # 100% context prioritization (omitted)  # 100% context prioritization (omitted)
 
     def _should_include_field(self, priority: int) -> bool:
         """
@@ -709,12 +711,15 @@ Success Criteria:
             }
         """
         # Query chunk metadata only (not content) for efficiency
-        stmt = select(
-            func.count(MCPContextIndex.id).label("chunk_count"),
-            func.sum(MCPContextIndex.token_count).label("total_tokens"),
-        ).where(
-            MCPContextIndex.tenant_key == product.tenant_key,
-            MCPContextIndex.product_id == product.id,
+        stmt = (
+            select(
+                func.count(MCPContextIndex.id).label("chunk_count"),
+                func.sum(MCPContextIndex.token_count).label("total_tokens"),
+            )
+            .where(
+                MCPContextIndex.tenant_key == product.tenant_key,
+                MCPContextIndex.product_id == product.id,
+            )
         )
         result = await session.execute(stmt)
         row = result.one()
@@ -727,10 +732,12 @@ Success Criteria:
         return {
             "total_chunks": row.chunk_count,
             "total_tokens": total_tokens,
-            "fetch_instruction": f"You have {row.chunk_count} vision chunks (~{total_tokens:,} tokens). Use fetch_vision_document(chunk=N) to read them.",
+            "fetch_instruction": f"You have {row.chunk_count} vision chunks (~{total_tokens:,} tokens). Use fetch_vision_document(chunk=N) to read them."
         }
 
-    async def _get_relevant_vision_chunks(self, session, product, project, max_tokens: int | None = None) -> list[dict]:
+    async def _get_relevant_vision_chunks(
+        self, session, product, project, max_tokens: int | None = None
+    ) -> list[dict]:
         """
         Retrieve vision chunks, optionally ranked by relevance to project description.
 
@@ -1189,7 +1196,7 @@ Success Criteria:
 """
 
         # Priority 2 = IMPORTANT
-        if priority == 2:
+        elif priority == 2:
             return f"""## **IMPORTANT: {section_name}** (Priority 2)
 **High priority context**
 
@@ -1197,7 +1204,7 @@ Success Criteria:
 """
 
         # Priority 3 = REFERENCE
-        if priority == 3:
+        elif priority == 3:
             return f"""## {section_name} (Priority 3 - REFERENCE)
 **Supplemental information**
 
@@ -1206,253 +1213,6 @@ Success Criteria:
 
         # Fallback: no framing (shouldn't happen with valid priorities)
         return content
-
-    def _transform_sections_to_yaml(
-        self,
-        context_sections: list[str],
-        field_priorities: dict,
-        depth_config: dict,
-        product: Product,
-        project: Project,
-    ) -> str:
-        """
-        Transform markdown context sections to YAML format using YAMLContextBuilder.
-
-        Handover 0347b: Converts existing markdown sections into structured YAML
-        with 3-tier priority system (CRITICAL/IMPORTANT/REFERENCE).
-
-        Args:
-            context_sections: List of markdown-formatted context sections
-            field_priorities: Dict mapping field names to priority (1-4)
-            depth_config: Dict mapping field names to depth levels
-            product: Product model
-            project: Project model
-
-        Returns:
-            YAML-formatted context string
-
-        Priority Mapping:
-            Priority 1 → CRITICAL (inline, always read)
-            Priority 2 → IMPORTANT (condensed with fetch_details)
-            Priority 3 → REFERENCE (summary with fetch_tool)
-            Priority 4 → EXCLUDED (not present in output)
-        """
-        from src.giljo_mcp.yaml_context_builder import YAMLContextBuilder
-
-        builder = YAMLContextBuilder()
-
-        # Parse sections and categorize by priority
-        # Section format: "## **CRITICAL: Field Name** (Priority 1)" or similar
-        for section in context_sections:
-            # Extract field information from section
-            field_name = self._extract_field_name_from_section(section)
-            priority = field_priorities.get(field_name, 2)  # Default to IMPORTANT
-
-            if priority == 4:  # EXCLUDED - skip
-                continue
-
-            # Extract clean content (remove priority framing headers)
-            clean_content = self._strip_priority_framing(section)
-
-            # Add to appropriate YAML tier
-            if priority == 1:  # CRITICAL
-                builder.add_critical(field_name)
-                # Convert markdown content to structured data
-                content_data = self._parse_section_to_dict(clean_content, field_name)
-                builder.add_critical_content(field_name, content_data)
-
-            elif priority == 2:  # IMPORTANT
-                builder.add_important(field_name)
-                # Condensed version with fetch_details pointer
-                condensed_data = self._create_condensed_content(
-                    clean_content, field_name, product, project, depth_config
-                )
-                builder.add_important_content(field_name, condensed_data)
-
-            elif priority == 3:  # REFERENCE
-                builder.add_reference(field_name)
-                # Summary only with fetch_tool pointer
-                summary_data = self._create_summary_content(clean_content, field_name, product, project, depth_config)
-                builder.add_reference_content(field_name, summary_data)
-
-        return builder.to_yaml()
-
-    def _extract_field_name_from_section(self, section: str) -> str:
-        """
-        Extract field name from markdown section header.
-
-        Examples:
-            "## **CRITICAL: Product Context** (Priority 1)" → "product_core"
-            "## Tech Stack (Priority 3)" → "tech_stack"
-        """
-        # Extract from headers like "## **CRITICAL: Product Context**" or "## Tech Stack"
-        import re
-
-        # Try to extract from priority-framed header
-        match = re.search(r"##\s+\*?\*?(?:CRITICAL|IMPORTANT):\s+([^*]+)\*?\*?", section)
-        if match:
-            header_text = match.group(1).strip()
-        else:
-            # Try simple header format
-            match = re.search(r"##\s+([^\(]+)", section)
-            if match:
-                header_text = match.group(1).strip()
-            else:
-                return "unknown"
-
-        # Map human-readable names to backend field keys
-        name_to_key = {
-            "Product Context": "product_core",
-            "Product Core": "product_core",
-            "Product Vision": "vision_documents",
-            "Vision Documents": "vision_documents",
-            "Tech Stack": "tech_stack",
-            "Architecture": "architecture",
-            "Testing Configuration": "testing",
-            "Historical Context (360 Memory)": "memory_360",
-            "360 Memory": "memory_360",
-            "Git Integration": "git_history",
-            "Project Description": "project_description",
-            "Codebase Context (Serena)": "serena_context",
-            "Agent Templates": "agent_templates",
-        }
-
-        return name_to_key.get(header_text, header_text.lower().replace(" ", "_"))
-
-    def _strip_priority_framing(self, section: str) -> str:
-        """
-        Remove priority framing headers from markdown section.
-
-        Removes lines like:
-        - "## **CRITICAL: Field Name** (Priority 1)"
-        - "**REQUIRED FOR ALL OPERATIONS**"
-        - "**Why This Matters**: ..."
-        """
-        import re
-
-        lines = section.split("\n")
-        clean_lines = []
-
-        for line in lines:
-            # Skip priority framing lines
-            if re.match(r"##\s+\*?\*?(?:CRITICAL|IMPORTANT)", line):
-                continue
-            if line.strip() in [
-                "**REQUIRED FOR ALL OPERATIONS**",
-                "**High priority context**",
-                "**Supplemental information**",
-            ]:
-                continue
-            if line.strip().startswith("**Why This Matters**:"):
-                continue
-            if re.match(r"\(Priority \d+", line.strip()):
-                continue
-
-            clean_lines.append(line)
-
-        return "\n".join(clean_lines).strip()
-
-    def _parse_section_to_dict(self, content: str, field_name: str) -> dict:
-        """
-        Parse markdown content into structured dict for YAML output.
-
-        For CRITICAL tier - full content inline.
-        """
-        import re
-
-        # Simple parsing - convert markdown to dict structure
-        # For now, return as-is wrapped in dict
-        # More sophisticated parsing could extract key-value pairs from markdown
-
-        if field_name == "product_core":
-            # Extract name and description
-            name_match = re.search(r"\*\*Name\*\*:\s*(.+)", content)
-            desc_match = re.search(r"\*\*Description\*\*:\s*(.+)", content, re.DOTALL)
-            return {
-                "name": name_match.group(1).strip() if name_match else "",
-                "description": desc_match.group(1).strip() if desc_match else "",
-            }
-        if field_name == "tech_stack":
-            # Parse tech stack structure
-            # For now, return simplified version
-            return {"content": content, "format": "inline"}
-        # Generic: return content as-is
-        return {"content": content}
-
-    def _create_condensed_content(
-        self, content: str, field_name: str, product: Product, project: Project, depth_config: dict
-    ) -> dict:
-        """
-        Create condensed content for IMPORTANT tier with fetch_details pointer.
-
-        Priority 2 fields get abbreviated content + MCP tool pointer for full details.
-        """
-        # Extract summary (first 200 chars)
-        summary = content[:200] + "..." if len(content) > 200 else content
-
-        # Build fetch_details pointer based on field type
-        fetch_tool = self._get_fetch_tool_for_field(field_name, product, project, depth_config)
-
-        return {
-            "summary": summary,
-            "fetch_details": fetch_tool if fetch_tool else "See full context above",
-        }
-
-    def _create_summary_content(
-        self, content: str, field_name: str, product: Product, project: Project, depth_config: dict
-    ) -> dict:
-        """
-        Create summary-only content for REFERENCE tier with fetch_tool pointer.
-
-        Priority 3 fields get minimal summary + MCP tool for on-demand fetching.
-        """
-        # Extract minimal summary (counts, names, etc.)
-        if field_name == "memory_360":
-            # Count number of projects in history
-            history = product.product_memory.get("sequential_history", []) if product.product_memory else []
-            summary = f"{len(history)} previous project(s) in history"
-        elif field_name == "vision_documents":
-            summary = "Product vision document available"
-        elif field_name == "git_history":
-            summary = "Git integration enabled"
-        else:
-            summary = f"{field_name.replace('_', ' ').title()} available"
-
-        # Build fetch_tool pointer with depth parameters
-        fetch_tool = self._get_fetch_tool_for_field(field_name, product, project, depth_config)
-
-        return {
-            "summary": summary,
-            "fetch_tool": fetch_tool if fetch_tool else f"fetch_{field_name}(...)",
-        }
-
-    def _get_fetch_tool_for_field(self, field_name: str, product: Product, project: Project, depth_config: dict) -> str:
-        """
-        Generate MCP tool call string for fetching field details.
-
-        Includes depth configuration parameters where applicable.
-        """
-        if field_name == "vision_documents":
-            depth = depth_config.get("vision_documents", "medium")
-            return f"fetch_vision_document(product_id='{product.id}', depth='{depth}')"
-        if field_name == "memory_360":
-            limit = depth_config.get("memory_360", 5)
-            return f"fetch_360_memory(product_id='{product.id}', limit={limit})"
-        if field_name == "git_history":
-            limit = depth_config.get("git_history", 20)
-            return f"fetch_git_history(product_id='{product.id}', limit={limit})"
-        if field_name == "agent_templates":
-            depth = depth_config.get("agent_templates", "full")
-            return f"get_available_agents(tenant_key='{product.tenant_key}', detail='{depth}')"
-        if field_name == "architecture":
-            return f"fetch_architecture(product_id='{product.id}')"
-        if field_name == "testing":
-            return f"fetch_testing_config(product_id='{product.id}')"
-        if field_name == "tech_stack":
-            return f"fetch_tech_stack(product_id='{product.id}')"
-        if field_name == "product_core":
-            return f"fetch_product_context(product_id='{product.id}')"
-        return ""
 
     async def _build_context_with_priorities(
         self,
@@ -1625,34 +1385,31 @@ Success Criteria:
             # DEBUG: Handover 0346 - Trace vision depth configuration
             logger.info(
                 f"[VISION_DEPTH_DEBUG] depth_config received: {depth_config}",
-                extra={"operation": "_build_context_with_priorities"},
+                extra={"operation": "_build_context_with_priorities"}
             )
             logger.info(
                 f"[VISION_DEPTH_DEBUG] vision_depth value: '{vision_depth}' (from depth_config.get('vision_documents'))",
-                extra={"operation": "_build_context_with_priorities"},
+                extra={"operation": "_build_context_with_priorities"}
             )
 
             # Check if product has vision documents
             if product.vision_documents:
                 async with self.db_manager.get_session_async() as session:
                     from sqlalchemy import select
-
                     from src.giljo_mcp.models.products import VisionDocument
 
                     # Get active vision document with summaries
                     # Handover 0346: Order by display_order first (user intent),
                     # then created_at DESC (newest document wins when display_order equal)
                     # This ensures deterministic behavior and prefers recently uploaded documents
-                    stmt = (
-                        select(VisionDocument)
-                        .where(
-                            VisionDocument.product_id == product.id,
-                            VisionDocument.tenant_key == product.tenant_key,
-                            VisionDocument.is_active == True,
-                        )
-                        .order_by(VisionDocument.display_order, VisionDocument.created_at.desc())
-                        .limit(1)
-                    )
+                    stmt = select(VisionDocument).where(
+                        VisionDocument.product_id == product.id,
+                        VisionDocument.tenant_key == product.tenant_key,
+                        VisionDocument.is_active == True
+                    ).order_by(
+                        VisionDocument.display_order,
+                        VisionDocument.created_at.desc()
+                    ).limit(1)
 
                     result = await session.execute(stmt)
                     vision_doc = result.scalar_one_or_none()
@@ -1664,11 +1421,7 @@ Success Criteria:
                         # DEBUG: Handover 0346 - Trace summarization state
                         logger.info(
                             f"[VISION_DEPTH_DEBUG] vision_doc.is_summarized: {vision_doc.is_summarized}",
-                            extra={
-                                "has_light": vision_doc.summary_light is not None,
-                                "has_mod": vision_doc.summary_moderate is not None,
-                                "has_heavy": vision_doc.summary_heavy is not None,
-                            },
+                            extra={"has_light": vision_doc.summary_light is not None, "has_mod": vision_doc.summary_moderate is not None, "has_heavy": vision_doc.summary_heavy is not None}
                         )
 
                         # Handover 0347: Restore pagination for Full mode (Claude Code 25K limit)
@@ -1677,17 +1430,13 @@ Success Criteria:
                         if vision_depth == "full":
                             # Full: Check if document has chunks for pagination
                             logger.info("[VISION_DEPTH_DEBUG] Taking FULL path")
-                            estimated_original_tokens = vision_doc.original_token_count or self._count_tokens(
-                                vision_doc.vision_document or ""
-                            )
+                            estimated_original_tokens = vision_doc.original_token_count or self._count_tokens(vision_doc.vision_document or "")
 
                             # Check if document is chunked (supports pagination)
                             if vision_doc.chunked and vision_doc.chunk_count > 0:
                                 # Return overview + fetch instruction (NOT full content)
                                 # Claude Code has 25K token limit on tool outputs
-                                logger.info(
-                                    f"[VISION_DEPTH_DEBUG] Document chunked: {vision_doc.chunk_count} chunks, returning pagination instructions"
-                                )
+                                logger.info(f"[VISION_DEPTH_DEBUG] Document chunked: {vision_doc.chunk_count} chunks, returning pagination instructions")
                                 vision_content = f"""## Vision Document Overview
 
 **Document**: {vision_doc.document_name or 'Product Vision'}
@@ -1716,10 +1465,7 @@ For full content, use pagination as shown above.
                                 max_chars = 80000  # ~20K tokens
                                 full_content = vision_doc.vision_document or ""
                                 if len(full_content) > max_chars:
-                                    vision_content = (
-                                        full_content[:max_chars]
-                                        + f"\n\n---\n**[CONTENT TRUNCATED]**\nDocument has {estimated_original_tokens:,} tokens but only ~20K shown.\nRe-upload document to enable chunking for full pagination support."
-                                    )
+                                    vision_content = full_content[:max_chars] + f"\n\n---\n**[CONTENT TRUNCATED]**\nDocument has {estimated_original_tokens:,} tokens but only ~20K shown.\nRe-upload document to enable chunking for full pagination support."
                                 else:
                                     vision_content = full_content
                         elif vision_depth == "medium":
@@ -1741,19 +1487,13 @@ For full content, use pagination as shown above.
                                 logger.info("[VISION_DEPTH_DEBUG] Using summary_light")
                             else:
                                 # Fallback to medium, then full
-                                vision_content = (
-                                    vision_doc.summary_medium
-                                    or vision_doc.summary_moderate
-                                    or vision_doc.vision_document
-                                )
+                                vision_content = vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
                                 logger.info("[VISION_DEPTH_DEBUG] No light summary, using fallback")
                             estimated_original_tokens = vision_doc.original_token_count or 0
                         else:
                             # Unknown depth - use medium as default
                             logger.info(f"[VISION_DEPTH_DEBUG] Unknown depth '{vision_depth}', defaulting to medium")
-                            vision_content = (
-                                vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
-                            )
+                            vision_content = vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
                             estimated_original_tokens = vision_doc.original_token_count or 0
 
                         if vision_content:
@@ -2079,24 +1819,8 @@ For full content, use pagination as shown above.
             },
         )
 
-        # Handover 0347b: Transform markdown sections to YAML format
-        yaml_context = self._transform_sections_to_yaml(
-            context_sections, effective_priorities, depth_config, product, project
-        )
-
-        # Log YAML token count
-        yaml_tokens = self._count_tokens(yaml_context)
-        logger.info(
-            f"YAML context generated: {yaml_tokens} tokens (markdown was: {total_tokens} tokens)",
-            extra={
-                "yaml_tokens": yaml_tokens,
-                "markdown_tokens": total_tokens,
-                "format": "yaml",
-                "operation": "build_context_with_priorities",
-            },
-        )
-
-        return yaml_context
+        # Join all sections with double newlines for readability
+        return "\n\n".join(context_sections)
 
     async def _extract_product_history(self, product: Product, priority: int, max_entries: int = 10) -> str:
         """
