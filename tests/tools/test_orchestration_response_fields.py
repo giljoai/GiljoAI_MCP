@@ -271,9 +271,7 @@ class TestTokenImpact:
         estimated_tokens = len(json_str) / 4
 
         # Verify within acceptable range (375 ± 100)
-        assert 275 <= estimated_tokens <= 475, (
-            f"Token estimate {estimated_tokens} outside expected range 275-475"
-        )
+        assert 275 <= estimated_tokens <= 475, f"Token estimate {estimated_tokens} outside expected range 275-475"
 
     def test_cli_mode_reduces_tokens(self):
         """Test that CLI mode reduces tokens by excluding multi_terminal_mode_rules."""
