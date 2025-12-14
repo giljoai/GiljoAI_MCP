@@ -420,7 +420,7 @@ export const api = {
     list: (params) => apiClient.get('/api/v1/templates/', { params }),
     get: (id) => apiClient.get(`/api/v1/templates/${id}/`),
     create: (data) => apiClient.post('/api/v1/templates/', data),
-    update: (id, data) => apiClient.put(`/api/v1/templates/${id}/`, data),
+    update: (id, data) => apiClient.put(`/api/v1/templates/${id}`, data),
     delete: (id, archive = false) =>
       apiClient.delete(`/api/v1/templates/${id}/`, { params: { archive } }),
     history: (id, limit = 10) =>
