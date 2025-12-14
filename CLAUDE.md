@@ -1,5 +1,25 @@
 # CLAUDE.md
 
+## CRITICAL: Agent Routing Rules (Hook-Enforced)
+
+**BLOCKED Built-in Agents** - These will be DENIED by PreToolUse hook:
+- `general-purpose` - Use custom agents instead
+- `Explore` - Use custom agents instead
+- `Plan` - Use custom agents instead
+- `claude-code-guide` - Use custom agents instead
+- `statusline-setup` - Use custom agents instead
+
+**ALLOWED Agents** - Only agents from these folders are permitted:
+- Project: `.claude/agents/*.md`
+- User: `~/.claude/agents/*.md`
+
+**Available Custom Agents** (this project):
+`backend-integration-tester` | `database-expert` | `deep-researcher` | `documentation-manager` | `frontend-tester` | `installation-flow-agent` | `network-security-engineer` | `orchestrator-coordinator` | `system-architect` | `tdd-implementor` | `ux-designer` | `version-manager`
+
+**Hook Location**: `.claude/hooks/block-builtin-agents.js`
+
+---
+
 Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Server** codebase.
 
 ## What We're Building
@@ -245,7 +265,7 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Agent Jobs**: Use AgentJobManager for lifecycle, AgentCommunicationQueue for messaging
 - **Context Management v2.0**: 2-dimensional model (Priority × Depth) - orchestrator fetches context via MCP tools based on user configuration
 - **Serena MCP**: Use Serena's symbolic tools for code navigation (find_symbol, get_symbols_overview, find_referencing_symbols) - REQUIRED for exploring codebase efficiently and avoiding full file reads
-- **Subagents**: ALWAYS use custom subagents from `.claude/agents/` first before generic built-in agents. Available specialists: `database-expert`, `tdd-implementor`, `backend-integration-tester`, `system-architect`, `deep-researcher`, `documentation-manager`, `frontend-tester`, `network-security-engineer`, `orchestrator-coordinator`, `ux-designer`, `version-manager`, `installation-flow-agent`
+- **Subagents**: Built-in agents BLOCKED by hook - see **CRITICAL: Agent Routing Rules** at top of file. Use ONLY custom agents from `.claude/agents/`
 
 ## Service Layer Architecture & Patterns
 
