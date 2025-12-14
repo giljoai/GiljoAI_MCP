@@ -32,11 +32,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-async def get_project_by_alias(
-    alias: str,
-    tenant_key: str,
-    session
-) -> dict[str, Any]:
+async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str, Any]:
     """
     Fetch project details using its 6-character alias with tenant isolation.
 
@@ -62,12 +58,7 @@ async def get_project_by_alias(
 
         # TENANT ISOLATION: Filter by both alias pattern AND tenant_key
         result = await session.execute(
-            select(Project).where(
-                and_(
-                    Project.name.ilike(f"%{alias_upper}%"),
-                    Project.tenant_key == tenant_key
-                )
-            )
+            select(Project).where(and_(Project.name.ilike(f"%{alias_upper}%"), Project.tenant_key == tenant_key))
         )
         project = result.scalar_one_or_none()
 
@@ -80,12 +71,7 @@ async def get_project_by_alias(
         if project.product_id:
             # TENANT ISOLATION: Filter product by tenant_key
             product_result = await session.execute(
-                select(Product).where(
-                    and_(
-                        Product.id == project.product_id,
-                        Product.tenant_key == tenant_key
-                    )
-                )
+                select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
             )
             product = product_result.scalar_one_or_none()
             if product:
@@ -103,11 +89,15 @@ async def get_project_by_alias(
                 "status": project.status,
                 "created_at": project.created_at.isoformat() if project.created_at else None,
             },
-            "product": {
-                "id": str(project.product_id) if project.product_id else None,
-                "name": product_name,
-                "tenant_key": product_tenant,
-            } if project.product_id and product_name else None,
+            "product": (
+                {
+                    "id": str(project.product_id) if project.product_id else None,
+                    "name": product_name,
+                    "tenant_key": product_tenant,
+                }
+                if project.product_id and product_name
+                else None
+            ),
         }
 
     except Exception as e:
@@ -125,21 +115,19 @@ DEFAULT_FIELD_PRIORITIES = {
     "testing_config": {"toggle": True, "priority": 3},
     "memory_360": {"toggle": True, "priority": 2},
     "git_history": {"toggle": False, "priority": 4},
-    "agent_templates": {"toggle": True, "priority": 2}
+    "agent_templates": {"toggle": True, "priority": 2},
 }
 
 DEFAULT_DEPTH_CONFIG = {
-    "memory_360": 5,              # Number of projects in 360 Memory (1/3/5/10)
-    "git_history": 20,            # Number of commits in git log examples (5/10/25/50/100)
-    "agent_templates": "full",    # Agent template detail level ("minimal", "standard", "full")
-    "vision_documents": "medium"  # Vision document depth ("none", "light", "medium", "full")
+    "memory_360": 5,  # Number of projects in 360 Memory (1/3/5/10)
+    "git_history": 20,  # Number of commits in git log examples (5/10/25/50/100)
+    "agent_templates": "full",  # Agent template detail level ("minimal", "standard", "full")
+    "vision_documents": "medium",  # Vision document depth ("none", "light", "medium", "full")
 }
 
 
 async def _get_user_config(
-    user_id: str,
-    tenant_key: str,
-    session: Any  # AsyncSession type hint would create circular import
+    user_id: str, tenant_key: str, session: Any  # AsyncSession type hint would create circular import
 ) -> Dict[str, Any]:
     """
     Fetch user's field_priority_config and depth_config from database.
@@ -162,25 +150,16 @@ async def _get_user_config(
     try:
         # Query user with tenant isolation
         result = await session.execute(
-            select(User).where(
-                and_(
-                    User.id == user_id,
-                    User.tenant_key == tenant_key,
-                    User.is_active == True
-                )
-            )
+            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active == True))
         )
         user = result.scalar_one_or_none()
 
         if not user:
             logger.warning(
                 f"[USER_CONFIG] User {user_id} not found or inactive for tenant {tenant_key}, using defaults",
-                extra={"user_id": user_id, "tenant_key": tenant_key}
+                extra={"user_id": user_id, "tenant_key": tenant_key},
             )
-            return {
-                "field_priorities": DEFAULT_FIELD_PRIORITIES.copy(),
-                "depth_config": DEFAULT_DEPTH_CONFIG.copy()
-            }
+            return {"field_priorities": DEFAULT_FIELD_PRIORITIES.copy(), "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
         # Get user's custom configs or fall back to defaults
         # Handover 0346: Handle nested v2.0 format {"version": "2.0", "priorities": {...}}
@@ -202,27 +181,20 @@ async def _get_user_config(
                 "user_id": user_id,
                 "tenant_key": tenant_key,
                 "has_custom_field_priorities": user.field_priority_config is not None,
-                "has_custom_depth_config": user.depth_config is not None
-            }
+                "has_custom_depth_config": user.depth_config is not None,
+            },
         )
 
-        return {
-            "field_priorities": field_priorities,
-            "depth_config": depth_config
-        }
+        return {"field_priorities": field_priorities, "depth_config": depth_config}
 
     except Exception as e:
         logger.error(
             f"[USER_CONFIG] Failed to fetch user config: {e}",
             extra={"user_id": user_id, "tenant_key": tenant_key},
-            exc_info=True
+            exc_info=True,
         )
         # Fall back to defaults on error
-        return {
-            "field_priorities": DEFAULT_FIELD_PRIORITIES.copy(),
-            "depth_config": DEFAULT_DEPTH_CONFIG.copy()
-        }
-
+        return {"field_priorities": DEFAULT_FIELD_PRIORITIES.copy(), "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
 
 def _infer_execution_mode_from_tool(tool_type: str | None) -> str:
@@ -344,9 +316,7 @@ def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
             template_dict["launch_instructions"] = template.meta_data["launch_instructions"]
         else:
             # Provide default launch instruction if not specified
-            template_dict["launch_instructions"] = (
-                f"cd $PROJECT_PATH && {execution_mode} --agent {template.name}"
-            )
+            template_dict["launch_instructions"] = f"cd $PROJECT_PATH && {execution_mode} --agent {template.name}"
 
         formatted_templates.append(template_dict)
 
@@ -562,7 +532,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     await session.commit()
                     logger.info(
                         f"[JOB SIGNALING] Mission acknowledged: {agent_job.agent_type}",
-                        extra={"agent_job_id": agent_job_id}
+                        extra={"agent_job_id": agent_job_id},
                     )
 
                 # Mission is stored in job.mission field (thin client pattern)
@@ -762,7 +732,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                                 MCPAgentJob.project_id == project_id,
                                 MCPAgentJob.tenant_key == tenant_key,
                                 MCPAgentJob.agent_type == "orchestrator",
-                                MCPAgentJob.status.in_(["waiting", "working"])
+                                MCPAgentJob.status.in_(["waiting", "working"]),
                             )
                         )
                     )
@@ -776,15 +746,15 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                                 "project_id": project_id,
                                 "tenant_key": tenant_key,
                                 "existing_job_id": existing_orchestrator.job_id,
-                                "existing_status": existing_orchestrator.status
-                            }
+                                "existing_status": existing_orchestrator.status,
+                            },
                         )
                         return {
                             "success": False,
                             "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
-                                     f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
+                            f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
                             "existing_job_id": existing_orchestrator.job_id,
-                            "existing_status": existing_orchestrator.status
+                            "existing_status": existing_orchestrator.status,
                         }
 
                 # No duplicate found (or not an orchestrator) - proceed with creation
@@ -855,9 +825,9 @@ Begin by fetching your mission.
                                     "thin_client": True,
                                     "prompt_tokens": prompt_tokens,
                                     "mission_tokens": mission_tokens,
-                                }
+                                },
                             },
-                            timeout=5.0  # 5 second timeout
+                            timeout=5.0,  # 5 second timeout
                         )
 
                         if response.status_code == 200:
@@ -1397,7 +1367,7 @@ The agent templates are now being updated...
 
         logger.info(
             "Orchestrator requesting available agents",
-            extra={"tenant_key": tenant_key, "active_only": active_only, "depth": depth}
+            extra={"tenant_key": tenant_key, "active_only": active_only, "depth": depth},
         )
 
         async with db_manager.get_session_async() as session:
@@ -1406,7 +1376,7 @@ The agent templates are now being updated...
         if result["success"]:
             logger.info(
                 f"Returned {result['data']['count']} available agents (depth={depth})",
-                extra={"tenant_key": tenant_key, "depth": depth}
+                extra={"tenant_key": tenant_key, "depth": depth},
             )
 
         return result
@@ -1525,7 +1495,7 @@ The agent templates are now being updated...
                     await session.commit()
                     logger.info(
                         f"[MISSION_TRACKING] Set mission_acknowledged_at for orchestrator {orchestrator_id}",
-                        extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key}
+                        extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key},
                     )
 
                     # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
@@ -1550,14 +1520,14 @@ The agent templates are now being updated...
                                 extra={
                                     "orchestrator_id": orchestrator_id,
                                     "tenant_key": tenant_key,
-                                    "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat()
-                                }
+                                    "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
+                                },
                             )
                     except Exception as ws_error:
                         # Non-blocking - WebSocket failures shouldn't break MCP tool
                         logger.warning(
                             f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
-                            extra={"orchestrator_id": orchestrator_id}
+                            extra={"orchestrator_id": orchestrator_id},
                         )
 
                 # Get project with tenant isolation
@@ -1601,7 +1571,7 @@ The agent templates are now being updated...
                     depth_config = user_config["depth_config"]
                     logger.info(
                         "[USER_CONFIG] Fetched fresh user config for MCP tool",
-                        extra={"orchestrator_id": orchestrator_id, "user_id": user_id}
+                        extra={"orchestrator_id": orchestrator_id, "user_id": user_id},
                     )
                 else:
                     # Fall back to frozen job_metadata config
@@ -1609,7 +1579,7 @@ The agent templates are now being updated...
                     depth_config = metadata.get("depth_config", {})
                     logger.debug(
                         "[USER_CONFIG] No user_id, using frozen job_metadata config",
-                        extra={"orchestrator_id": orchestrator_id}
+                        extra={"orchestrator_id": orchestrator_id},
                     )
 
                 # Check if Serena is enabled (from config.yaml)
@@ -1624,11 +1594,13 @@ The agent templates are now being updated...
                     if config_path.exists():
                         with open(config_path, encoding="utf-8") as f:
                             config_data = yaml.safe_load(f) or {}
-                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        include_serena = (
+                            config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        )
                         if include_serena:
                             logger.info(
                                 f"[SERENA] Enabled for orchestrator {orchestrator_id}",
-                                extra={"orchestrator_id": orchestrator_id, "project_id": str(project.id)}
+                                extra={"orchestrator_id": orchestrator_id, "project_id": str(project.id)},
                             )
                 except Exception as e:
                     logger.warning(f"[SERENA] Failed to read config for Serena toggle: {e}")
@@ -1636,7 +1608,12 @@ The agent templates are now being updated...
 
                 # Handover 0283: Generate condensed mission with field priorities and depth config applied
                 condensed_mission = await planner._build_context_with_priorities(
-                    product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id, include_serena=include_serena
+                    product=product,
+                    project=project,
+                    field_priorities=field_priorities,
+                    depth_config=depth_config,
+                    user_id=user_id,
+                    include_serena=include_serena,
                 )
 
                 # Handover 0277: Inject simplified Serena MCP notice if enabled
@@ -1650,7 +1627,10 @@ The agent templates are now being updated...
                         condensed_mission = serena_instructions + "\n\n---\n\n" + condensed_mission
                         logger.info(
                             f"[SERENA] Injected simplified Serena notice into orchestrator mission",
-                            extra={"orchestrator_id": orchestrator_id, "serena_instructions_length": len(serena_instructions)}
+                            extra={
+                                "orchestrator_id": orchestrator_id,
+                                "serena_instructions_length": len(serena_instructions),
+                            },
                         )
                     except Exception as e:
                         logger.warning(f"[SERENA] Failed to inject Serena notice: {e}")
@@ -1706,7 +1686,7 @@ The agent templates are now being updated...
                     "mission": condensed_mission,
                     "context_budget": orchestrator.context_budget or 150000,
                     "context_used": orchestrator.context_used or 0,
-                "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
+                    "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
                     "estimated_tokens": estimated_tokens,
@@ -1863,7 +1843,7 @@ async def get_orchestrator_instructions(
     orchestrator_id: str,
     tenant_key: str,
     user_id: Optional[str] = None,  # Handover 0281 Phase 1: User-specific config
-    db_manager: "DatabaseManager" = None
+    db_manager: "DatabaseManager" = None,
 ) -> dict[str, Any]:
     """
     Fetch orchestrator instructions (standalone for testing).
@@ -1936,7 +1916,7 @@ async def get_orchestrator_instructions(
                 await session.commit()
                 logger.info(
                     f"[MISSION_TRACKING] Set mission_acknowledged_at for orchestrator {orchestrator_id}",
-                    extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key}
+                    extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key},
                 )
 
                 # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
@@ -1961,14 +1941,14 @@ async def get_orchestrator_instructions(
                             extra={
                                 "orchestrator_id": orchestrator_id,
                                 "tenant_key": tenant_key,
-                                "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat()
-                            }
+                                "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
+                            },
                         )
                 except Exception as ws_error:
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
                         f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
-                        extra={"orchestrator_id": orchestrator_id}
+                        extra={"orchestrator_id": orchestrator_id},
                     )
 
             # Get project and product
@@ -1984,7 +1964,7 @@ async def get_orchestrator_instructions(
                 select(Product)
                 .options(
                     joinedload(Product.vision_documents),  # Eager load vision documents
-                    joinedload(Product.projects)  # Eager load projects
+                    joinedload(Product.projects),  # Eager load projects
                 )
                 .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
             )
@@ -2004,7 +1984,7 @@ async def get_orchestrator_instructions(
                 depth_config = user_config["depth_config"]
                 logger.info(
                     "[USER_CONFIG] Applied user-specific configuration to orchestrator instructions",
-                    extra={"orchestrator_id": orchestrator_id, "user_id": user_id, "tenant_key": tenant_key}
+                    extra={"orchestrator_id": orchestrator_id, "user_id": user_id, "tenant_key": tenant_key},
                 )
             else:
                 # Fall back to job_metadata or empty dict (existing behavior)
@@ -2012,23 +1992,28 @@ async def get_orchestrator_instructions(
                 depth_config = metadata.get("depth_config", {})
                 logger.debug(
                     "[USER_CONFIG] No user_id provided, using job_metadata config",
-                    extra={"orchestrator_id": orchestrator_id}
+                    extra={"orchestrator_id": orchestrator_id},
                 )
 
             # Handover 0283: Pass depth_config to mission planner
             condensed_mission = await planner._build_context_with_priorities(
-                product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id
+                product=product,
+                project=project,
+                field_priorities=field_priorities,
+                depth_config=depth_config,
+                user_id=user_id,
             )
 
             # Handover 0246c: Agent templates no longer embedded
             # Use get_available_agents() MCP tool instead
 
-
             # Calculate token estimate
             estimated_tokens = len(condensed_mission) // 4
 
             # Handover 0346: Read execution mode from Project table for live switching (not frozen metadata)
-            execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
+            execution_mode = getattr(project, "execution_mode", None) or metadata.get(
+                "execution_mode", "multi_terminal"
+            )
             cli_mode = execution_mode == "claude_code_cli"
 
             # Build base response
@@ -2085,7 +2070,7 @@ async def get_orchestrator_instructions(
                         "orchestrator_id": orchestrator_id,
                         "execution_mode": execution_mode,
                         "allowed_types": allowed_agent_types,
-                    }
+                    },
                 )
 
             return response
@@ -2318,7 +2303,7 @@ async def _spawn_agent_job_impl(
                         "valid_types": valid_agent_types,
                         "project_id": project_id,
                         "tenant_key": tenant_key,
-                    }
+                    },
                 )
                 return {
                     "success": False,
@@ -2341,7 +2326,7 @@ async def _spawn_agent_job_impl(
                         MCPAgentJob.project_id == project_id,
                         MCPAgentJob.tenant_key == tenant_key,
                         MCPAgentJob.agent_type == "orchestrator",
-                        MCPAgentJob.status.in_(["waiting", "working"])
+                        MCPAgentJob.status.in_(["waiting", "working"]),
                     )
                 )
             )
@@ -2355,15 +2340,15 @@ async def _spawn_agent_job_impl(
                         "project_id": project_id,
                         "tenant_key": tenant_key,
                         "existing_job_id": existing_orchestrator.job_id,
-                        "existing_status": existing_orchestrator.status
-                    }
+                        "existing_status": existing_orchestrator.status,
+                    },
                 )
                 return {
                     "success": False,
                     "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
-                             f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
+                    f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
                     "existing_job_id": existing_orchestrator.job_id,
-                    "existing_status": existing_orchestrator.status
+                    "existing_status": existing_orchestrator.status,
                 }
 
         # No duplicate found (or not an orchestrator) - proceed with creation
