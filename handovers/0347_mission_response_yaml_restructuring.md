@@ -9,6 +9,128 @@
 
 ---
 
+## Sub-Project Breakdown
+
+**Recommendation**: This handover encompasses multiple distinct deliverables. For better manageability, it is structured as sub-projects that can be executed independently or in parallel where dependencies allow.
+
+### Dependency Graph
+
+```
+0347a (YAML Builder) ──┬──> 0347b (MissionPlanner Refactor) ──┬──> 0347d (Agent Templates Depth)
+                       │                                       │
+                       │                                       └──> 0347e (Vision Doc 4-Level)
+                       │
+0347c (Response Fields) ────────────────────────────────────────────> 0347f (Integration Testing)
+```
+
+### Sub-Project Summary
+
+| ID | Name | Dependencies | Effort | Status |
+|----|------|--------------|--------|--------|
+| **0347a** | YAML Context Builder | None | 2h | Not Started |
+| **0347b** | MissionPlanner YAML Refactor | 0347a | 4h | Not Started |
+| **0347c** | Response Fields Enhancement | None | 2h | Not Started |
+| **0347d** | Agent Templates Depth Toggle | 0347b | 2h | Not Started |
+| **0347e** | Vision Document 4-Level Depth | 0347b | 3h | Not Started |
+| **0347f** | Integration & E2E Testing | All above | 3h | Not Started |
+
+### Parallel Execution Opportunities
+
+- **Wave 1** (can start immediately): 0347a + 0347c
+- **Wave 2** (after 0347a): 0347b
+- **Wave 3** (after 0347b): 0347d + 0347e (parallel)
+- **Wave 4** (after all): 0347f
+
+### Sub-Project Details
+
+#### 0347a: YAML Context Builder
+**Scope**: Create `src/giljo_mcp/yaml_context_builder.py` utility class
+**Deliverables**:
+- YAMLContextBuilder class with priority sections (CRITICAL/IMPORTANT/REFERENCE)
+- Unit tests in `tests/services/test_yaml_context_builder.py`
+- Token estimation method
+
+**Success Criteria**:
+- All unit tests pass
+- Valid YAML output parseable by PyYAML
+- Token estimation within 10% accuracy
+
+---
+
+#### 0347b: MissionPlanner YAML Refactor
+**Scope**: Refactor `_build_context_with_priorities()` to use YAML builder
+**Deliverables**:
+- Updated MissionPlanner class
+- Markdown-to-YAML migration
+- `mission_format: yaml` in response
+
+**Success Criteria**:
+- Mission field contains valid YAML
+- Token count reduced by >90%
+- All existing tests pass
+
+---
+
+#### 0347c: Response Fields Enhancement
+**Scope**: Add 6 new orchestrator guidance fields
+**Deliverables**:
+- `post_staging_behavior` field
+- `required_final_action` field
+- `multi_terminal_mode_rules` field (when cli_mode=false)
+- `error_handling` field
+- `agent_spawning_limits` field
+- `context_management` field
+
+**Success Criteria**:
+- All fields present in response
+- Mode-aware conditional logic works
+- ~175 tokens added
+
+---
+
+#### 0347d: Agent Templates Depth Toggle
+**Scope**: Implement Type Only vs Full modes for agent templates
+**Deliverables**:
+- Depth toggle in UI
+- Conditional template content inclusion
+- Full mode fetches complete agent prompts
+
+**Success Criteria**:
+- Type Only: ~50 tokens/agent
+- Full: ~2000-3000 tokens/agent
+- Toggle persists in depth_config
+
+---
+
+#### 0347e: Vision Document 4-Level Depth
+**Scope**: Implement Optional/Light/Medium/Full depth levels
+**Deliverables**:
+- 4-option dropdown in UI
+- Summarization for Light (33%) and Medium (66%)
+- Mandatory read instructions for Full mode
+- Pointer-only for Optional mode
+
+**Success Criteria**:
+- Each level produces correct token count
+- Full mode includes REQUIRED_READING instruction
+- Orchestrators comply with Full mode requirements
+
+---
+
+#### 0347f: Integration & E2E Testing
+**Scope**: Comprehensive testing across all sub-projects
+**Deliverables**:
+- Integration tests for complete workflow
+- E2E tests via MCP tool calls
+- Coverage report >80%
+
+**Success Criteria**:
+- All integration tests pass
+- YAML parsing works end-to-end
+- Token estimates match actual usage
+
+---
+
 ## Task Summary
 
 The `get_orchestrator_instructions` MCP tool returns a `mission` field containing ~21,000 tokens of markdown-concatenated context. This is inefficient, hard to parse, and wastes tokens on content that could be fetched on-demand.
@@ -157,6 +279,515 @@ git_history:
   commits: 25
   fetch_tool: fetch_git_history(limit=25)
 ```
+
+---
+
+## Additional Response Fields (Enhancement)
+
+Beyond restructuring the `mission` field to YAML, the `get_orchestrator_instructions` response should include additional fields to provide better orchestrator guidance. These fields complement the existing `cli_mode_rules` and `agent_spawning_constraint` fields that are already conditionally added based on mode and configuration.
+
+### Priority & Impact Analysis
+
+| Enhancement | Impact | Effort | Priority |
+|-------------|--------|--------|----------|
+| `post_staging_behavior` | High | Low | High |
+| `required_final_action` | High | Low | High |
+| `multi_terminal_mode_rules` | Medium | Low | Medium |
+| `error_handling` | Medium | Medium | Medium |
+| `agent_spawning_limits` | Low | Low | Low |
+| `context_management` | Low | Low | Low |
+
+### Field Specifications
+
+#### 1. `post_staging_behavior` (High Priority)
+
+**Purpose:** Clarify what orchestrator does after staging completes. Currently, orchestrators may be unclear about whether they should wait for agent execution or terminate.
+
+**Structure:**
+```json
+{
+  "post_staging_behavior": {
+    "cli_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. Implementation happens via Task tool in separate execution.",
+    "multi_terminal_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. User manually launches agents via [Copy Prompt] buttons."
+  }
+}
+```
+
+**Implementation Note:** This field is mode-aware and provides different guidance based on `cli_mode` setting. Add conditional logic in `get_orchestrator_instructions` similar to existing `cli_mode_rules`.
+
+---
+
+#### 2. `required_final_action` (High Priority)
+
+**Purpose:** Reinforce the critical STAGING_COMPLETE broadcast requirement. This broadcast enables the "Launch Jobs" button in the UI and is frequently missed by orchestrators.
+
+**Structure:**
+```json
+{
+  "required_final_action": {
+    "action": "send_message",
+    "params": {
+      "to_agents": ["all"],
+      "message_type": "broadcast",
+      "content_template": "STAGING_COMPLETE: Mission created, {N} agents spawned"
+    },
+    "why": "Enables Launch Jobs button in UI - REQUIRED"
+  }
+}
+```
+
+**Implementation Note:** Include template variable `{N}` for agent count. Orchestrator should substitute this with actual spawned agent count.
+
+---
+
+#### 3. `multi_terminal_mode_rules` (Medium Priority)
+
+**Purpose:** Provide parity with `cli_mode_rules`. Currently, CLI mode gets explicit guidance via `cli_mode_rules`, but Multi-Terminal mode has no equivalent field when `cli_mode` is disabled.
+
+**Structure:**
+```json
+{
+  "multi_terminal_mode_rules": {
+    "agent_launching": "User clicks [Copy Prompt] button in Implementation tab",
+    "coordination": "Agents communicate via MCP messaging tools",
+    "orchestrator_role": "Staging only - no active coordination after broadcast"
+  }
+}
+```
+
+**Implementation Note:** Add this field conditionally when `cli_mode: false`. This provides balance - both modes get explicit guidance about their execution model.
+
+---
+
+#### 4. `error_handling` (Medium Priority)
+
+**Purpose:** Provide guidance when things go wrong during staging. Reduces orchestrator confusion when encountering spawn failures or invalid agent types.
+
+**Structure:**
+```json
+{
+  "error_handling": {
+    "invalid_agent_type": "Verify against allowed_agent_types list before calling spawn_agent_job",
+    "spawn_failure": "Log via report_error(), do not proceed with remaining agents",
+    "mcp_connection_lost": "Abort staging, notify user"
+  }
+}
+```
+
+**Implementation Note:** Static field - same content regardless of mode or configuration.
+
+---
+
+#### 5. `agent_spawning_limits` (Low Priority)
+
+**Purpose:** Make limits explicit. Architecture slides specify max 8 agent types with unlimited instances per type, but this is not communicated in the response.
+
+**Structure:**
+```json
+{
+  "agent_spawning_limits": {
+    "max_agent_types": 8,
+    "max_instances_per_type": "unlimited",
+    "recommended_total": "2-5 agents for typical projects"
+  }
+}
+```
+
+**Implementation Note:** Static field. Reference architecture documentation at `docs/ARCHITECTURE.md`.
+
+---
+
+#### 6. `context_management` (Low Priority)
+
+**Purpose:** Explain how to use the existing `context_budget` field and when to trigger succession. Currently, `context_budget` is returned but orchestrators don't know what to do with it.
+
+**Structure:**
+```json
+{
+  "context_management": {
+    "context_budget": 150000,
+    "warning_threshold": 0.8,
+    "action_at_threshold": "Consider triggering succession via create_successor_orchestrator"
+  }
+}
+```
+
+**Implementation Note:** `context_budget` value should match the existing `context_budget` field already in the response (line 1656 in `orchestration.py`). This field provides context about how to use that value.
+
+---
+
+### Implementation Location
+
+Add these fields in `src/giljo_mcp/tools/orchestration.py`, function `get_orchestrator_instructions()`, around line 1673-1687 where the response dictionary is constructed.
+
+**Current Response Structure:**
+```python
+return {
+    "orchestrator_id": orchestrator_id,
+    "project_id": str(project.id),
+    "project_name": project.name,
+    "project_description": project.description or "",
+    "mission": condensed_mission,
+    "mission_format": "yaml",  # Handover 0347
+    "context_budget": orchestrator.context_budget or 150000,
+    "context_used": orchestrator.context_used or 0,
+    "agent_discovery_tool": "get_available_agents()",
+    "field_priorities": field_priorities,
+    "token_reduction_applied": bool(field_priorities),
+    "estimated_tokens": estimated_tokens,
+    "instance_number": orchestrator.instance_number or 1,
+    "thin_client": True,
+}
+```
+
+**Enhanced Response Structure (after adding fields):**
+```python
+return {
+    "orchestrator_id": orchestrator_id,
+    "project_id": str(project.id),
+    "project_name": project.name,
+    "project_description": project.description or "",
+    "mission": condensed_mission,
+    "mission_format": "yaml",
+    "context_budget": orchestrator.context_budget or 150000,
+    "context_used": orchestrator.context_used or 0,
+    "agent_discovery_tool": "get_available_agents()",
+    "field_priorities": field_priorities,
+    "token_reduction_applied": bool(field_priorities),
+    "estimated_tokens": estimated_tokens,
+    "instance_number": orchestrator.instance_number or 1,
+    "thin_client": True,
+
+    # Enhancement fields (Handover 0347 - Additional Response Fields)
+    "post_staging_behavior": _get_post_staging_behavior(cli_mode),
+    "required_final_action": _get_required_final_action(),
+    "multi_terminal_mode_rules": _get_multi_terminal_rules() if not cli_mode else None,
+    "error_handling": _get_error_handling(),
+    "agent_spawning_limits": _get_spawning_limits(),
+    "context_management": _get_context_management(orchestrator.context_budget or 150000),
+}
+```
+
+### Helper Functions to Add
+
+Create these helper functions in `orchestration.py` to generate the field content:
+
+```python
+def _get_post_staging_behavior(cli_mode: bool) -> dict:
+    """Generate post_staging_behavior field."""
+    return {
+        "cli_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. Implementation happens via Task tool in separate execution.",
+        "multi_terminal_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. User manually launches agents via [Copy Prompt] buttons."
+    }
+
+def _get_required_final_action() -> dict:
+    """Generate required_final_action field."""
+    return {
+        "action": "send_message",
+        "params": {
+            "to_agents": ["all"],
+            "message_type": "broadcast",
+            "content_template": "STAGING_COMPLETE: Mission created, {N} agents spawned"
+        },
+        "why": "Enables Launch Jobs button in UI - REQUIRED"
+    }
+
+def _get_multi_terminal_rules() -> dict:
+    """Generate multi_terminal_mode_rules field."""
+    return {
+        "agent_launching": "User clicks [Copy Prompt] button in Implementation tab",
+        "coordination": "Agents communicate via MCP messaging tools",
+        "orchestrator_role": "Staging only - no active coordination after broadcast"
+    }
+
+def _get_error_handling() -> dict:
+    """Generate error_handling field."""
+    return {
+        "invalid_agent_type": "Verify against allowed_agent_types list before calling spawn_agent_job",
+        "spawn_failure": "Log via report_error(), do not proceed with remaining agents",
+        "mcp_connection_lost": "Abort staging, notify user"
+    }
+
+def _get_spawning_limits() -> dict:
+    """Generate agent_spawning_limits field."""
+    return {
+        "max_agent_types": 8,
+        "max_instances_per_type": "unlimited",
+        "recommended_total": "2-5 agents for typical projects"
+    }
+
+def _get_context_management(context_budget: int) -> dict:
+    """Generate context_management field."""
+    return {
+        "context_budget": context_budget,
+        "warning_threshold": 0.8,
+        "action_at_threshold": "Consider triggering succession via create_successor_orchestrator"
+    }
+```
+
+### Token Impact
+
+| Field | Estimated Tokens |
+|-------|-----------------|
+| `post_staging_behavior` | ~40 |
+| `required_final_action` | ~35 |
+| `multi_terminal_mode_rules` | ~25 |
+| `error_handling` | ~30 |
+| `agent_spawning_limits` | ~20 |
+| `context_management` | ~25 |
+| **TOTAL** | **~175 tokens** |
+
+Adding these fields increases response size by ~175 tokens, but provides significant value in orchestrator guidance and reduces errors during staging.
+
+### Relationship to Existing Fields
+
+These new fields complement existing conditional fields:
+
+**Existing (from current codebase):**
+- `cli_mode_rules` - Added when `cli_mode: true`
+- `agent_spawning_constraint` - Added when spawning constraints exist
+
+**New (this enhancement):**
+- `post_staging_behavior` - Always added (mode-aware content)
+- `required_final_action` - Always added
+- `multi_terminal_mode_rules` - Added when `cli_mode: false` (parity with cli_mode_rules)
+- `error_handling` - Always added
+- `agent_spawning_limits` - Always added
+- `context_management` - Always added
+
+This creates balanced guidance across both execution modes while keeping token overhead reasonable.
+
+---
+
+## Agent Templates Depth Toggle
+
+### Overview
+
+The user can toggle between "Type Only" and "Full" modes for agent templates via the Context Depth UI. This controls how much agent information is included in the `get_orchestrator_instructions` response.
+
+### Mode Comparison
+
+**Type Only Mode (Default - Token Efficient)**
+
+Returns minimal agent metadata sufficient for `spawn_agent_job`:
+
+```json
+"agent_templates": [
+  {
+    "name": "implementer",
+    "role": "implementer",
+    "description": "Implementation specialist for writing production-grade code"
+  }
+]
+```
+
+Token cost: ~50 tokens per agent (~250 tokens for 5 agents)
+
+**Full Mode (Complete Agent Context)**
+
+Returns full agent template including the complete agent prompt/instructions:
+
+```json
+"agent_templates": [
+  {
+    "name": "implementer",
+    "role": "implementer",
+    "description": "Implementation specialist for writing production-grade code",
+    "content": "## MCP COMMUNICATION PROTOCOL (Handover 0090)\n\nYou have access to comprehensive MCP tools...[full agent prompt]...",
+    "cli_tool": "claude",
+    "background_color": "#3498DB",
+    "category": "role"
+  }
+]
+```
+
+Token cost: ~2000-3000 tokens per agent (~10,000-15,000 tokens for 5 agents)
+
+### Implementation
+
+When "Full" mode is selected, `get_orchestrator_instructions` should:
+
+1. Get list of enabled agent templates for the tenant
+2. For each enabled agent, call `get_template(template_name)`
+3. Merge the full template data into the `agent_templates` array
+4. Include fields: `name`, `role`, `description`, `content`, `cli_tool`, `background_color`, `category`
+
+### Use Cases
+
+| Mode | When to Use |
+|------|-------------|
+| Type Only | Standard staging - orchestrator only needs agent names for `spawn_agent_job` |
+| Full | Orchestrator needs to understand agent capabilities for task assignment decisions |
+| Full | Custom/specialized agents where orchestrator should review full instructions |
+| Full | Debugging agent behavior or validating agent prompts |
+
+### Token Budget Impact
+
+| Agents | Type Only | Full Mode | Delta |
+|--------|-----------|-----------|-------|
+| 3 agents | ~150 tokens | ~7,500 tokens | +7,350 |
+| 5 agents | ~250 tokens | ~12,500 tokens | +12,250 |
+| 8 agents | ~400 tokens | ~20,000 tokens | +19,600 |
+
+**Recommendation:** Default to "Type Only" for token efficiency. Use "Full" only when orchestrator needs to make nuanced agent assignment decisions based on agent capabilities.
+
+### MCP Tool Reference
+
+The `get_template` MCP tool fetches full agent template:
+
+```python
+# Called internally by get_orchestrator_instructions when Full mode enabled
+template = await get_template(template_name="implementer")
+
+# Returns:
+{
+  "id": "uuid",
+  "name": "implementer",
+  "role": "implementer",
+  "content": "## MCP COMMUNICATION PROTOCOL...",  # Full agent prompt
+  "cli_tool": "claude",
+  "background_color": "#3498DB",
+  "category": "role",
+  "tenant_key": "tk_...",
+  "product_id": null  # null = global, uuid = product-specific
+}
+```
+
+### Files to Modify for This Feature
+
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/tools/orchestration.py` | Check depth_config["agent_templates"], call get_template() for each if "full" |
+| `src/giljo_mcp/mission_planner.py` | Add helper method `_get_full_agent_templates()` |
+| `api/endpoints/context_depth.py` | Ensure "agent_templates" toggle saves "type_only" or "full" value |
+
+---
+
+## Vision Document 4-Level Depth Configuration
+
+### Overview
+
+User feedback indicates that the current "Full" mode (pointer + pagination) may lead orchestrators to skip reading the vision document entirely, even when the user explicitly requested full context. The solution is to add explicit behavioral instructions based on depth level.
+
+### Proposed 4 Levels
+
+| Level | Content Strategy | Orchestrator Behavior | Token Cost |
+|-------|-----------------|----------------------|------------|
+| **Optional** | Pointer + pagination only | Orchestrator decides whether to fetch | ~200 tokens |
+| **Light** | 33% summarized content inline | Read what's provided | ~10-12K tokens |
+| **Medium** | 66% summarized content inline | Read what's provided | ~20-24K tokens |
+| **Full** | Pointer + MANDATORY read instruction | MUST fetch and read all chunks | ~200 tokens + fetch |
+
+### "Full" Mode - Mandatory Read Instruction
+
+When user selects "Full" depth, the vision document section should include explicit instructions:
+
+```markdown
+## Vision Document - REQUIRED READING
+
+**User has configured FULL context depth for this product.**
+
+BEFORE creating your mission plan, you MUST:
+1. Fetch ALL vision document chunks using pagination
+2. Read and internalize the complete product vision
+3. Reference specific vision elements in your mission plan
+
+This is NOT optional. The user explicitly requested full context depth.
+Skipping this step violates the user's configuration intent.
+
+### Fetch Commands
+
+fetch_vision_document(product_id="<id>", offset=0, limit=1)  # Chunk 1
+fetch_vision_document(product_id="<id>", offset=1, limit=1)  # Chunk 2
+# Continue until has_more=false
+```
+
+### "Optional" Mode - Orchestrator Discretion
+
+When user selects "Optional" (or no preference), provide neutral guidance:
+
+```markdown
+## Vision Document - Available on Request
+
+**Total Content**: {token_count} tokens across {chunk_count} chunks
+**Status**: Available via pagination if needed
+
+### When to Fetch
+- Complex feature implementation requiring deep product understanding
+- UX decisions needing alignment with product philosophy
+- Architectural choices that should match product vision
+
+### Fetch Commands (if needed)
+fetch_vision_document(product_id="<id>", offset=0, limit=1)
+```
+
+### Implementation Location
+
+File: `src/giljo_mcp/mission_planner.py`
+
+In `_build_context_with_priorities()`, check `depth_config.get("vision_documents")`:
+
+```python
+vision_depth = depth_config.get("vision_documents", "optional")
+
+if vision_depth == "full":
+    # Add MANDATORY read instruction
+    builder.add_critical("vision_documents")
+    builder.add_critical_content("vision_documents", {
+        "status": "REQUIRED_READING",
+        "instruction": "MUST fetch and read all chunks before mission creation",
+        "total_tokens": vision_doc.original_token_count,
+        "chunks": vision_doc.chunk_count,
+        "fetch_commands": _generate_fetch_commands(product.id, vision_doc.chunk_count)
+    })
+elif vision_depth == "medium":
+    # Inline 66% summarized content
+    summarized = await self._get_summarized_vision(vision_doc, ratio=0.66)
+    builder.add_important_content("vision_documents", summarized)
+elif vision_depth == "light":
+    # Inline 33% summarized content
+    summarized = await self._get_summarized_vision(vision_doc, ratio=0.33)
+    builder.add_important_content("vision_documents", summarized)
+else:  # optional
+    # Pointer only, orchestrator decides
+    builder.add_reference("vision_documents")
+    builder.add_reference_content("vision_documents", {
+        "available": True,
+        "total_tokens": vision_doc.original_token_count,
+        "fetch_tool": "fetch_vision_document(product_id, offset, limit)"
+    })
+```
+
+### UI Dropdown Options
+
+Update the Context Depth UI to show these 4 options for vision_documents:
+
+```typescript
+const visionDepthOptions = [
+  { value: "optional", label: "Optional (Orchestrator decides)" },
+  { value: "light", label: "Light (33% summary)" },
+  { value: "medium", label: "Medium (66% summary)" },
+  { value: "full", label: "Full (Mandatory complete read)" }
+];
+```
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/mission_planner.py` | Add 4-level vision depth logic |
+| `api/endpoints/context_depth.py` | Update valid values for vision_documents |
+| `frontend/src/components/ContextDepth.tsx` | Add 4-option dropdown |
+| `tests/services/test_mission_planner.py` | Add tests for each depth level |
+
+### Token Impact by Level
+
+| Level | Vision Inline | Total Mission | Savings vs Full Inline |
+|-------|--------------|---------------|----------------------|
+| Optional | 0 | ~1,500 | 95% |
+| Light | ~10K | ~12K | 68% |
+| Medium | ~20K | ~22K | 30% |
+| Full | 0 (fetched separately) | ~1,500 | 95% |
 
 ---
 
