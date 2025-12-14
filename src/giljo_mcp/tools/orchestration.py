@@ -1761,6 +1761,104 @@ async def health_check() -> dict[str, Any]:
     }
 
 
+# ============================================================================
+# ORCHESTRATOR RESPONSE HELPER FUNCTIONS (Handover 0347c)
+# ============================================================================
+
+
+def _get_post_staging_behavior(cli_mode: bool) -> dict:
+    """
+    Generate post_staging_behavior field (mode-aware).
+
+    Args:
+        cli_mode: True if execution_mode is "claude_code_cli", False for "multi_terminal"
+
+    Returns:
+        Dict with mode-specific behavior guidance
+    """
+    return {
+        "cli_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. Implementation happens via Task tool in separate execution.",
+        "multi_terminal_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. User manually launches agents via [Copy Prompt] buttons.",
+    }
+
+
+def _get_required_final_action() -> dict:
+    """
+    Generate required_final_action field.
+
+    Returns:
+        Dict with required broadcast action for enabling Launch button
+    """
+    return {
+        "action": "send_message",
+        "params": {
+            "to_agents": ["all"],
+            "message_type": "broadcast",
+            "content_template": "STAGING_COMPLETE: Mission created, {N} agents spawned",
+        },
+        "why": "Enables Launch Jobs button in UI - REQUIRED",
+    }
+
+
+def _get_multi_terminal_rules() -> dict:
+    """
+    Generate multi_terminal_mode_rules field.
+
+    Returns:
+        Dict with multi-terminal execution rules
+    """
+    return {
+        "agent_launching": "User clicks [Copy Prompt] button in Implementation tab",
+        "coordination": "Agents communicate via MCP messaging tools",
+        "orchestrator_role": "Staging only - no active coordination after broadcast",
+    }
+
+
+def _get_error_handling() -> dict:
+    """
+    Generate error_handling field.
+
+    Returns:
+        Dict with error handling guidance
+    """
+    return {
+        "invalid_agent_type": "Verify against allowed_agent_types list before calling spawn_agent_job",
+        "spawn_failure": "Log via report_error(), do not proceed with remaining agents",
+        "mcp_connection_lost": "Abort staging, notify user",
+    }
+
+
+def _get_spawning_limits() -> dict:
+    """
+    Generate agent_spawning_limits field.
+
+    Returns:
+        Dict with agent spawning limits
+    """
+    return {
+        "max_agent_types": 8,
+        "max_instances_per_type": "unlimited",
+        "recommended_total": "2-5 agents for typical projects",
+    }
+
+
+def _get_context_management(context_budget: int) -> dict:
+    """
+    Generate context_management field.
+
+    Args:
+        context_budget: Context budget in tokens (default 150000)
+
+    Returns:
+        Dict with context management guidance
+    """
+    return {
+        "context_budget": context_budget,
+        "warning_threshold": 0.8,
+        "action_at_threshold": "Consider triggering succession via create_successor_orchestrator",
+    }
+
+
 async def get_orchestrator_instructions(
     orchestrator_id: str,
     tenant_key: str,
@@ -1929,6 +2027,10 @@ async def get_orchestrator_instructions(
             # Calculate token estimate
             estimated_tokens = len(condensed_mission) // 4
 
+            # Handover 0346: Read execution mode from Project table for live switching (not frozen metadata)
+            execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
+            cli_mode = execution_mode == "claude_code_cli"
+
             # Build base response
             response = {
                 "orchestrator_id": orchestrator_id,
@@ -1944,11 +2046,16 @@ async def get_orchestrator_instructions(
                 "estimated_tokens": estimated_tokens,
                 "instance_number": orchestrator.instance_number or 1,
                 "thin_client": True,
+                # Handover 0347c: Add 6 new guidance fields
+                "post_staging_behavior": _get_post_staging_behavior(cli_mode),
+                "required_final_action": _get_required_final_action(),
+                "multi_terminal_mode_rules": _get_multi_terminal_rules() if not cli_mode else None,
+                "error_handling": _get_error_handling(),
+                "agent_spawning_limits": _get_spawning_limits(),
+                "context_management": _get_context_management(orchestrator.context_budget or 150000),
             }
 
             # Handover 0260 Phase 5a: Add agent_spawning_constraint for Claude Code CLI mode
-            # Handover 0346: Read from Project table for live switching (not frozen metadata)
-            execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
             if execution_mode == "claude_code_cli":
                 # Fetch allowed agent types from active templates
                 result = await session.execute(
