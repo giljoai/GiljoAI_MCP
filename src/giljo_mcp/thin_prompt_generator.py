@@ -921,10 +921,13 @@ No previous project history available. Starting fresh.
         self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False
     ) -> str:
         """
-        Generate simple orchestrator staging prompt (Handover 0333).
+        Generate orchestrator staging prompt with framing-based context (Handover 0350b).
 
-        Restores the working pattern from commit 051addde with mode awareness.
-        Replaces the broken 7-task workflow with a simple ~50 line prompt.
+        The prompt instructs orchestrators to:
+        1. Fetch framing instructions via get_orchestrator_instructions()
+        2. Call fetch_context() for CRITICAL tier items (REQUIRED)
+        3. Call fetch_context() for IMPORTANT tier items (RECOMMENDED)
+        4. Optionally call fetch_context() for REFERENCE tier items
 
         Args:
             orchestrator_id: Orchestrator job UUID
@@ -932,7 +935,7 @@ No previous project history available. Starting fresh.
             claude_code_mode: Use Claude Code CLI mode (default: False)
 
         Returns:
-            Simple staging prompt (~50-60 lines)
+            Staging prompt (~60-70 lines)
 
         Raises:
             ValueError: If project or product not found
@@ -953,100 +956,13 @@ No previous project history available. Starting fresh.
 
         # Mode-specific instructions
         if claude_code_mode:
-            # Handover 0342: Trimmed CLI mode block - verbose version commented out below
-            # Full enforcement rules are in get_orchestrator_instructions() response
             mode_block = """CLI MODE CRITICAL:
 This project uses Claude Code CLI for implementation. When spawning agents:
 - agent_type: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (e.g., "implementer")
 - agent_name: Descriptive display label only (e.g., "Backend API Implementer")
 
 In implementation phase, Task(subagent_type=X) uses agent_type value, NOT agent_name.
-Full cli_mode_rules, allowed_agent_types, and examples are in get_orchestrator_instructions() response."""
-
-            # ============================================================================
-            # VERBOSE CLI MODE BLOCK (COMMENTED OUT - Handover 0342)
-            # Preserved for rollback if concise version proves insufficient.
-            # This content is now delivered via get_orchestrator_instructions() response
-            # in the cli_mode_rules, agent_spawning_constraint, and spawning_examples fields.
-            # ============================================================================
-            # mode_block_verbose = """CLAUDE CODE CLI MODE:
-            # - You will spawn agents using Claude Code's Task tool
-            # - agent_type parameter = subagent_type (MUST match template name exactly)
-            # - Agents are hidden subprocesses - user sees progress via dashboard
-            # - After spawning, agents call get_agent_mission() to start work
-            #
-            # ## AGENT_TYPE LIFECYCLE (SINGLE SOURCE OF TRUTH)
-            #
-            # **ABSOLUTE RULE**: agent_type is the SINGLE SOURCE OF TRUTH for Task tool.
-            # If you spawned with agent_type="implementer", you MUST use Task(subagent_type="implementer").
-            # No exceptions. No variations. No creative naming.
-            #
-            # | Phase          | Operation                                    | Parameter Used    |
-            # |----------------|----------------------------------------------|-------------------|
-            # | 1. Staging     | spawn_agent_job(agent_type="implementer")    | agent_type        |
-            # | 2. Job Created | Job record stores agent_type="implementer"   | agent_type        |
-            # | 3. Launch      | Task(subagent_type="implementer")            | agent_type        |
-            # | 4. File Lookup | Claude Code finds: implementer.md            | agent_type        |
-            #
-            # agent_type is the ONLY value that flows through the entire lifecycle.
-            # agent_name is NEVER used for any tool operations - display label ONLY.
-            #
-            # ## FORBIDDEN PATTERNS (WILL FAIL)
-            #
-            # These patterns WILL cause "Subagent type not found" errors:
-            #
-            # FORBIDDEN:
-            # - Task(subagent_type="{agent_name}")         # Using display name - FAILS
-            # - Task(subagent_type="Backend Implementor")  # Creative variation - FAILS
-            # - Task(subagent_type="frontend-impl")        # Hyphenated variation - FAILS
-            # - Task(subagent_type="IMPLEMENTER")          # Case variation - FAILS
-            # - Any value OTHER than exact agent_type from spawn_agent_job - FAILS
-            #
-            # ## AGENT SPAWNING RULES (CLI MODE - CRITICAL)
-            #
-            # When spawning agents, you MUST use TWO parameters correctly:
-            #
-            # | Parameter    | Purpose                            | Value Must Be               |
-            # |--------------|------------------------------------|-----------------------------|
-            # | `agent_type` | Template name for Task tool        | EXACT match: "implementer"  |
-            # | `agent_name` | Human-readable UI label (DISPLAY)  | Descriptive: "Folder Impl"  |
-            #
-            # ### Why This Matters
-            # Claude Code's Task tool finds agents by filename:
-            # - `Task(subagent_type="implementer")` → looks for `implementer.md` ✓
-            # - `Task(subagent_type="Folder Implementer")` → FILE NOT FOUND ✗
-            #
-            # ### Available Templates
-            # The `get_orchestrator_instructions()` response contains `cli_mode_rules` with:
-            # - `agent_spawning_constraint.allowed_agent_types` - list of valid agent_type values
-            # - `spawning_examples` - correct usage patterns
-            #
-            # ### Example - Spawning 2 implementers:
-            # ```python
-            # spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)
-            # spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)
-            # ```
-            # Both use `agent_type="implementer"` but have different display names.
-            # In implementation phase: BOTH are launched with Task(subagent_type="implementer")
-            #
-            # ## AGENT TEMPLATE VALIDATION (CLI MODE)
-            #
-            # Before spawning agents, verify templates exist in Claude Code:
-            #
-            # ### Resolution Priority
-            # Claude Code checks templates in this order:
-            # 1. **Project agents**: `{project}/.claude/agents/{agent_type}.md` (HIGHEST PRIORITY)
-            # 2. **User agents**: `~/.claude/agents/{agent_type}.md`
-            # 3. **Built-in**: Claude Code defaults (FALLBACK)
-            #
-            # ### Handle Mismatches (Soft Validation)
-            # If any required agent is MISSING from both folders:
-            # - WARN the user: "Template '{agent_type}' not found in .claude/agents/"
-            # - SUGGEST: "Export templates from GiljoAI Settings → Agent Template Manager"
-            # - PROCEED with available agents (soft fail - don't block entirely)"""
-            # ============================================================================
-            # END VERBOSE CLI MODE BLOCK
-            # ============================================================================
+Full cli_mode_rules and allowed_agent_types are in get_orchestrator_instructions() response."""
         else:
             mode_block = """MULTI-TERMINAL MODE:
 - User will manually copy/paste prompts for each agent
@@ -1068,19 +984,44 @@ MCP CONNECTION:
 YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
 You are STAGING the project. Your job:
 1) Analyze requirements
-2) Create mission plan
-3) Assign work to specialist agents
+2) Fetch context using 3-tier priority system
+3) Create mission plan
+4) Assign work to specialist agents
 
 STARTUP SEQUENCE:
-1. Verify MCP: health_check()
-2. Fetch context: get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
-   Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
-3. CREATE MISSION: Analyze requirements and generate execution plan
-4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
-5. SPAWN AGENTS: spawn_agent_job() for each specialist
-   CRITICAL: agent_type MUST exactly match template name from Step 2
+
+1. VERIFY MCP: health_check()
+
+2. FETCH FRAMING: get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+   Returns:
+   - identity: Your orchestrator/project IDs
+   - project_context_inline: Project description (ALWAYS inline)
+   - context_fetch_instructions: 3-tier framing (critical/important/reference)
+
+3. FETCH CRITICAL CONTEXT (REQUIRED):
+   For each item in context_fetch_instructions.critical:
+   - Call: fetch_context(categories=[item.category], product_id=..., tenant_key=...)
+   - These are REQUIRED - you MUST fetch them before proceeding
+
+4. FETCH IMPORTANT CONTEXT (RECOMMENDED):
+   For each item in context_fetch_instructions.important:
+   - Call: fetch_context(categories=[item.category], product_id=..., tenant_key=...)
+   - These are RECOMMENDED - fetch unless budget constrained
+
+5. FETCH REFERENCE CONTEXT (OPTIONAL):
+   For items in context_fetch_instructions.reference:
+   - Call fetch_context() only if project scope requires
+   - These are OPTIONAL - use as needed
+
+6. CREATE MISSION: Analyze fetched context and generate execution plan
+
+7. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
+
+8. SPAWN AGENTS: spawn_agent_job() for each specialist
+   CRITICAL: agent_type MUST exactly match template name
    agent_name can be descriptive (for UI display only)
-6. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
+
+9. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
 {mode_block}
