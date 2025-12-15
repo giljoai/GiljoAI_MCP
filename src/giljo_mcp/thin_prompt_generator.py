@@ -30,7 +30,7 @@ Depth Configuration (Handover 0314):
 - vision_documents: "none" | "light" | "medium" | "full"
 - memory_last_n_projects: 1 | 3 | 5 | 10
 - git_commits: 10 | 25 | 50 | 100
-- agent_template_detail: "minimal" | "standard" | "full"
+- agent_templates: "type_only" | "full"
 - tech_stack_sections: "required" | "all"
 - architecture_depth: "overview" | "detailed"
 
@@ -173,7 +173,7 @@ class ThinClientPromptGenerator:
                 "vision_documents": "medium",
                 "memory_last_n_projects": 3,
                 "git_commits": 25,
-                "agent_template_detail": "standard",
+                "agent_templates": "type_only",
                 "tech_stack_sections": "all",
                 "architecture_depth": "overview",
             }
