@@ -58,7 +58,7 @@ class TestFieldPriorityEndpoints:
             "priorities": {
                 "product_core": 1,
                 "vision_documents": 2,
-                "project_context": 3,
+                "project_description": 3,
                 "memory_360": 4,
                 "git_history": 1,
                 "agent_templates": 2,
@@ -146,7 +146,7 @@ class TestFieldPriorityEndpoints:
             "priorities": {
                 "product_core": 4,
                 "vision_documents": 4,
-                "project_context": 4,
+                "project_description": 4,
                 "memory_360": 1,
                 "git_history": 1,
                 "agent_templates": 1,
@@ -246,7 +246,7 @@ class TestFieldPriorityEndpoints:
             "priorities": {
                 "product_core": 2,
                 "vision_documents": 3,
-                "project_context": 1,
+                "project_description": 1,
             },
         }
 
@@ -267,7 +267,7 @@ class TestFieldPriorityEndpoints:
             data = response.json()
             assert data["priorities"]["product_core"] == 2
             assert data["priorities"]["vision_documents"] == 3
-            assert data["priorities"]["project_context"] == 1
+            assert data["priorities"]["project_description"] == 1
 
     async def test_field_priority_update_overwrites_previous(
         self,
@@ -282,7 +282,7 @@ class TestFieldPriorityEndpoints:
             "priorities": {
                 "product_core": 1,
                 "vision_documents": 1,
-                "project_context": 1,
+                "project_description": 1,
             },
         }
 
@@ -298,7 +298,7 @@ class TestFieldPriorityEndpoints:
             "priorities": {
                 "product_core": 4,
                 "vision_documents": 4,
-                "project_context": 4,
+                "project_description": 4,
             },
         }
 

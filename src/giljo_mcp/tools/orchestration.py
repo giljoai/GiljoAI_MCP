@@ -108,7 +108,7 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
 # Handover 0281 Phase 1: Default configurations for monolithic context
 DEFAULT_FIELD_PRIORITIES = {
     "product_core": {"toggle": True, "priority": 1},
-    "project_context": {"toggle": True, "priority": 1},
+    "project_description": {"toggle": True, "priority": 1},
     "vision_documents": {"toggle": True, "priority": 2},
     "tech_stack": {"toggle": True, "priority": 2},
     "architecture": {"toggle": True, "priority": 3},
@@ -492,7 +492,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             - agent_name: Human-readable name
             - agent_type: Type (backend, frontend, etc.)
             - mission: Agent-specific mission
-            - project_context: Relevant project context
+            - project_description: Relevant project context
             - estimated_tokens: Token count
             - thin_client: True (architecture flag)
 

@@ -1158,7 +1158,7 @@ class TestAgentJobMetadataIntegration:
             "360_memory": 2,
             "git_history": 2,
             "agent_templates": 3,
-            "project_context": 1
+            "project_description": 1
         }
 
         manager = AgentJobManager(db_manager)

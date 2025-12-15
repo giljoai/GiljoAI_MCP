@@ -129,7 +129,7 @@ async def test_get_product_context_multi_tenant_isolation():
 
 
 @pytest.mark.asyncio
-async def test_get_project_context_basic():
+async def test_get_project_description_basic():
     """Test get_project returns project info (excluding context_budget)"""
     from src.giljo_mcp.tools.context_tools.get_project import get_project
 
@@ -159,7 +159,7 @@ async def test_get_project_context_basic():
         db_manager=mock_db_manager
     )
 
-    assert result["source"] == "project_context"
+    assert result["source"] == "project_description"
     assert result["data"]["project_name"] == "Test Project"
     assert result["data"]["context_used"] == 50000
     assert "context_budget" not in result["data"]  # EXCLUDED (deprecated)
@@ -167,7 +167,7 @@ async def test_get_project_context_basic():
 
 
 @pytest.mark.asyncio
-async def test_get_project_context_with_summary():
+async def test_get_project_description_with_summary():
     """Test get_project includes summary when requested"""
     from src.giljo_mcp.tools.context_tools.get_project import get_project
 

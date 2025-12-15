@@ -87,7 +87,7 @@ async def user_with_priorities(db_session, test_tenant_key):
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 3,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 2,
                 "git_history": 4
             }
@@ -138,7 +138,7 @@ async def test_field_priorities_persist_with_priorities_key(
             "product_core": 1,
             "vision_documents": 1,
             "agent_templates": 2,
-            "project_context": 1,
+            "project_description": 1,
             "memory_360": 3,
             "git_history": 4
         }
@@ -222,7 +222,7 @@ async def test_field_priorities_retrieved_with_correct_structure(
         "product_core": 1,
         "vision_documents": 2,
         "agent_templates": 3,
-        "project_context": 1,
+        "project_description": 1,
         "memory_360": 2,
         "git_history": 4
     }
@@ -295,7 +295,7 @@ async def test_field_priorities_version_is_2_0(
             "product_core": 1,
             "vision_documents": 2,
             "agent_templates": 3,
-            "project_context": 1
+            "project_description": 1
         }
     }
 

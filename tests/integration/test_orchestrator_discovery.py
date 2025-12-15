@@ -99,7 +99,7 @@ class TestOrchestratorTokenReduction:
                     "product_core": 1,
                     "vision_documents": 2,
                     "agent_templates": 3,
-                    "project_context": 1,
+                    "project_description": 1,
                     "memory_360": 3,
                     "git_history": 3
                 }
@@ -156,7 +156,7 @@ class TestOrchestratorTokenReduction:
                     "product_core": 1,
                     "vision_documents": 2,
                     "agent_templates": 3,
-                    "project_context": 1,
+                    "project_description": 1,
                     "memory_360": 3,
                     "git_history": 3
                 }

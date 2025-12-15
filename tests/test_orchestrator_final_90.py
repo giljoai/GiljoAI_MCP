@@ -104,7 +104,7 @@ class TestOrchestratorFinalNinety:
         # Verify exception handling worked (may or may not have been hit depending on timing)
         assert exception_count >= 0
 
-    async def test_monitor_project_context_inactive_project_break(self, orchestrator):
+    async def test_monitor_project_description_inactive_project_break(self, orchestrator):
         """Test monitoring loop breaking when project becomes inactive."""
         # Create and activate project
         project = await orchestrator.create_project(name="Inactive Test", mission="Test inactive break")
@@ -128,7 +128,7 @@ class TestOrchestratorFinalNinety:
         # Monitoring should have stopped
         assert project.id not in orchestrator._context_monitors
 
-    async def test_monitor_project_context_project_not_found(self, orchestrator):
+    async def test_monitor_project_description_project_not_found(self, orchestrator):
         """Test monitoring when project becomes not found (line 672)."""
         # Create and activate project
         project = await orchestrator.create_project(name="Not Found Test", mission="Test not found")
@@ -180,7 +180,7 @@ class TestOrchestratorFinalNinety:
         # Complete project
         await orchestrator.complete_project(project.id)
 
-    async def test_monitor_project_context_warning_logging(self, orchestrator):
+    async def test_monitor_project_description_warning_logging(self, orchestrator):
         """Test monitoring warning logging when handoff needed (lines 679-682)."""
         # Create and activate project
         project = await orchestrator.create_project(name="Warning Log", mission="Test warning logging")
