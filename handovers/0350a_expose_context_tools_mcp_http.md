@@ -1,558 +1,614 @@
-# Handover 0350a: Expose Context Tools via MCP HTTP
+# Handover 0350a: Create Unified `fetch_context()` MCP Tool
 
 **Series**: 0350 (Context Management On-Demand Architecture)
-**Date**: 2025-01-15
+**Date**: 2025-12-15
 **Status**: Not Started
 **Priority**: High
 **Complexity**: Medium
 
 ---
 
-## Overview
+## Architectural Decision (2025-12-15)
 
-GiljoAI MCP has 9 context tools implemented in `src/giljo_mcp/tools/context_tools/` (Handover 0316) but they are NOT exposed via the MCP HTTP endpoint. This handover wires them up for HTTP-based MCP clients (Claude Code, Codex CLI, etc.) to access the Context Management v2.0 system.
+**Use ONE unified `fetch_context()` tool instead of 9 individual `get_*` tools.**
 
-**Impact**: Enables external MCP clients to fetch context using priority/depth configuration without going through fat prompts.
+### Rationale
+
+| Factor | 9 Individual Tools | 1 Unified Tool | Winner |
+|--------|-------------------|----------------|--------|
+| **MCP Context Budget** | ~900 tokens (9 schemas) | ~180 tokens (1 schema) | Unified |
+| **AI Tool Selection** | Decision fatigue (which of 9?) | Clear single entry point | Unified |
+| **SaaS Metering** | 9 endpoints to track | 1 endpoint to track | Unified |
+| **API Versioning** | 9 APIs to version | 1 API to version | Unified |
+| **Power User Flexibility** | Full control | Categories param = same control | Unified |
+
+### Architecture
+
+```
+PUBLIC (exposed via MCP HTTP, loaded into agent context):
+  fetch_context(categories, depth_config, ...)  <- ~180 tokens
+
+INTERNAL (not exposed, zero context cost):
+  get_product_context()      |
+  get_vision_document()      |
+  get_tech_stack()           |  Called internally by
+  get_architecture()         |  fetch_context()
+  get_testing()              |
+  get_360_memory()           |
+  get_git_history()          |
+  get_agent_templates()      |
+  get_project()              |
+```
+
+### Token Budget Savings
+- **Before**: 9 tool schemas x ~100 tokens = ~900 tokens consumed at agent startup
+- **After**: 1 tool schema x ~180 tokens = ~180 tokens consumed at agent startup
+- **Savings**: ~720 tokens available for actual work
 
 ---
 
-## Background
+## Overview
 
-### Context Management v2.0 (Handover 0316)
+Create a single `fetch_context()` MCP tool that dispatches to the 9 internal context tools based on the `categories` parameter. This tool will be the ONLY context-fetching tool exposed via MCP HTTP.
 
-GiljoAI uses a 2-dimensional context model:
-- **Priority Dimension**: CRITICAL (P1) → IMPORTANT (P2) → NICE_TO_HAVE (P3) → EXCLUDED (P4)
-- **Depth Dimension**: Per-field granularity (e.g., vision: none/light/medium/full, 360 memory: 1/3/5/10 projects)
+**Impact**:
+- 720 token savings in MCP tool schema overhead
+- Simpler AI tool selection (1 tool vs 9)
+- Single entry point for SaaS metering and audit logging
+- Server-side application of user's priority/depth configuration
 
-**9 Context Tools** (implemented but not exposed):
-1. `get_product_context` - Product name, description, features (~100 tokens)
-2. `get_vision_document` - Vision chunks with depth control (0-30K tokens)
-3. `get_tech_stack` - Programming languages, frameworks, databases (200-400 tokens)
-4. `get_architecture` - Architecture patterns, API style (300-1.5K tokens)
-5. `get_testing` - Quality standards, strategy, frameworks (0-400 tokens)
-6. `get_360_memory` - Project closeout summaries (500-5K tokens)
-7. `get_git_history` - Aggregated git commits (500-5K tokens)
-8. `get_agent_templates` - Agent template library (400-2.4K tokens)
-9. `get_project` - Current project metadata (~300 tokens)
+---
 
-**Current State**:
-- ✅ Tools implemented in `src/giljo_mcp/tools/context_tools/`
-- ✅ Tools tested via direct imports
-- ❌ NOT exposed in `mcp_http.py` tool_map
-- ❌ NO ToolAccessor wrapper methods
-- ❌ NOT listed in MCP `tools/list` endpoint
+## Tool Signature
 
-**Goal**: Make all 9 tools callable via MCP HTTP with multi-tenant isolation and proper error handling.
+### `fetch_context()`
+
+```python
+async def fetch_context(
+    product_id: str,
+    tenant_key: str,
+    project_id: Optional[str] = None,
+    categories: List[str] = ["all"],
+    depth_config: Optional[Dict[str, str]] = None,
+    apply_user_config: bool = True,
+    format: str = "structured"
+) -> Dict[str, Any]:
+    """
+    Unified context fetcher for orchestrators and agents.
+
+    Fetches context from multiple categories in a single call.
+    Server applies user's saved priority/depth configuration when apply_user_config=True.
+
+    Args:
+        product_id: Product UUID
+        tenant_key: Tenant isolation key
+        project_id: Optional project UUID (required for 'project' category)
+        categories: List of categories to fetch, or ["all"] for all categories
+                   Valid: product_core, vision_documents, tech_stack, architecture,
+                          testing, memory_360, git_history, agent_templates, project
+        depth_config: Override depth settings per category
+                     Example: {"vision_documents": "light", "agent_templates": "minimal"}
+        apply_user_config: Apply user's saved priority/depth settings (default: True)
+        format: Response format - "structured" (nested by category) or "flat" (merged)
+
+    Returns:
+        Dict with context data organized by category, plus metadata
+    """
+```
+
+### MCP Tool Schema (JSON-RPC)
+
+```json
+{
+    "name": "fetch_context",
+    "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300). Use apply_user_config=true to respect user's saved settings.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "product_id": {
+                "type": "string",
+                "description": "Product UUID"
+            },
+            "tenant_key": {
+                "type": "string",
+                "description": "Tenant isolation key"
+            },
+            "project_id": {
+                "type": "string",
+                "description": "Project UUID (required for 'project' category)"
+            },
+            "categories": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["all", "product_core", "vision_documents", "tech_stack",
+                             "architecture", "testing", "memory_360", "git_history",
+                             "agent_templates", "project"]
+                },
+                "description": "Categories to fetch. Use ['all'] for all categories.",
+                "default": ["all"]
+            },
+            "depth_config": {
+                "type": "object",
+                "description": "Override depth per category. Example: {\"vision_documents\": \"light\"}",
+                "additionalProperties": {"type": "string"}
+            },
+            "apply_user_config": {
+                "type": "boolean",
+                "description": "Apply user's saved priority/depth settings (default: true)",
+                "default": true
+            },
+            "format": {
+                "type": "string",
+                "enum": ["structured", "flat"],
+                "description": "Response format (default: structured)",
+                "default": "structured"
+            }
+        },
+        "required": ["product_id", "tenant_key"]
+    }
+}
+```
 
 ---
 
 ## Technical Implementation
 
-### Phase 1: Add Tools to `mcp_http.py` Tool Map
+### Phase 1: Create `fetch_context.py` Module
 
-**File**: `F:\GiljoAI_MCP\api\endpoints\mcp_http.py`
-
-**Location**: Lines 138-528 (tool definitions), lines 564-609 (tool_map)
-
-#### Step 1.1: Add Tool Definitions to `handle_tools_list()`
-
-Insert after line 527 (before closing `]` of tools array):
+**File**: `src/giljo_mcp/tools/context_tools/fetch_context.py` (NEW)
 
 ```python
-        # Context Management Tools (Handover 0350)
+"""
+Unified context fetcher for GiljoAI MCP.
+
+Handover 0350a: Single entry point for all context fetching.
+Dispatches to internal get_* tools based on categories parameter.
+"""
+
+from typing import Any, Dict, List, Optional
+import logging
+
+from giljo_mcp.database import DatabaseManager
+
+# Internal tools (NOT exposed via MCP)
+from giljo_mcp.tools.context_tools.get_product_context import get_product_context
+from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+from giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+from giljo_mcp.tools.context_tools.get_architecture import get_architecture
+from giljo_mcp.tools.context_tools.get_testing import get_testing
+from giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
+from giljo_mcp.tools.context_tools.get_git_history import get_git_history
+from giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
+from giljo_mcp.tools.context_tools.get_project import get_project
+
+logger = logging.getLogger(__name__)
+
+# Category to internal tool mapping
+CATEGORY_TOOLS = {
+    "product_core": get_product_context,
+    "vision_documents": get_vision_document,
+    "tech_stack": get_tech_stack,
+    "architecture": get_architecture,
+    "testing": get_testing,
+    "memory_360": get_360_memory,
+    "git_history": get_git_history,
+    "agent_templates": get_agent_templates,
+    "project": get_project,
+}
+
+# Default depth settings per category
+DEFAULT_DEPTHS = {
+    "product_core": None,  # No depth param
+    "vision_documents": "medium",
+    "tech_stack": "all",
+    "architecture": "overview",
+    "testing": "full",
+    "memory_360": 5,  # last_n_projects
+    "git_history": 25,  # commits
+    "agent_templates": "standard",
+    "project": None,  # No depth param
+}
+
+ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
+
+
+async def fetch_context(
+    product_id: str,
+    tenant_key: str,
+    project_id: Optional[str] = None,
+    categories: List[str] = None,
+    depth_config: Optional[Dict[str, Any]] = None,
+    apply_user_config: bool = True,
+    format: str = "structured",
+    db_manager: Optional[DatabaseManager] = None,
+) -> Dict[str, Any]:
+    """
+    Unified context fetcher - dispatches to internal tools.
+
+    See module docstring for full documentation.
+    """
+    if categories is None:
+        categories = ["all"]
+
+    # Expand "all" to full category list
+    if "all" in categories:
+        categories = ALL_CATEGORIES.copy()
+
+    # Validate categories
+    invalid = [c for c in categories if c not in CATEGORY_TOOLS]
+    if invalid:
+        return {
+            "error": f"Invalid categories: {invalid}",
+            "valid_categories": ALL_CATEGORIES,
+            "metadata": {"estimated_tokens": 0}
+        }
+
+    # Load user config if requested
+    effective_depths = DEFAULT_DEPTHS.copy()
+    if apply_user_config and db_manager:
+        user_config = await _load_user_depth_config(product_id, tenant_key, db_manager)
+        if user_config:
+            effective_depths.update(user_config)
+
+    # Apply explicit depth overrides
+    if depth_config:
+        effective_depths.update(depth_config)
+
+    # Fetch each category
+    results = {}
+    total_tokens = 0
+    errors = []
+
+    for category in categories:
+        try:
+            result = await _fetch_category(
+                category=category,
+                product_id=product_id,
+                tenant_key=tenant_key,
+                project_id=project_id,
+                depth=effective_depths.get(category),
+                db_manager=db_manager
+            )
+            results[category] = result.get("data", {})
+            total_tokens += result.get("metadata", {}).get("estimated_tokens", 0)
+        except Exception as e:
+            logger.error(f"Error fetching {category}: {e}")
+            errors.append({"category": category, "error": str(e)})
+
+    # Build response
+    response = {
+        "source": "fetch_context",
+        "categories_requested": categories,
+        "categories_returned": list(results.keys()),
+        "data": results if format == "structured" else _flatten_results(results),
+        "metadata": {
+            "estimated_tokens": total_tokens,
+            "format": format,
+            "apply_user_config": apply_user_config,
+            "depth_config_applied": effective_depths,
+        }
+    }
+
+    if errors:
+        response["errors"] = errors
+
+    return response
+
+
+async def _fetch_category(
+    category: str,
+    product_id: str,
+    tenant_key: str,
+    project_id: Optional[str],
+    depth: Any,
+    db_manager: DatabaseManager,
+) -> Dict[str, Any]:
+    """Dispatch to internal tool based on category."""
+
+    tool_func = CATEGORY_TOOLS[category]
+
+    # Build kwargs based on category
+    kwargs = {"db_manager": db_manager}
+
+    if category == "project":
+        if not project_id:
+            return {"data": {}, "metadata": {"error": "project_id required", "estimated_tokens": 0}}
+        kwargs["project_id"] = project_id
+        kwargs["tenant_key"] = tenant_key
+    elif category == "agent_templates":
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+        if depth:
+            kwargs["detail"] = depth
+    elif category == "vision_documents":
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+        if depth:
+            kwargs["chunking"] = depth
+    elif category == "memory_360":
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+        if depth:
+            kwargs["last_n_projects"] = int(depth)
+    elif category == "git_history":
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+        if depth:
+            kwargs["commits"] = int(depth)
+    elif category in ("tech_stack", "architecture", "testing"):
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+        if depth:
+            kwargs["depth" if category != "tech_stack" else "sections"] = depth
+    else:
+        kwargs["product_id"] = product_id
+        kwargs["tenant_key"] = tenant_key
+
+    return await tool_func(**kwargs)
+
+
+async def _load_user_depth_config(
+    product_id: str,
+    tenant_key: str,
+    db_manager: DatabaseManager
+) -> Optional[Dict[str, Any]]:
+    """Load user's saved depth configuration from database."""
+    # TODO: Implement user config loading from User.field_priority JSONB
+    # For now, return None to use defaults
+    return None
+
+
+def _flatten_results(results: Dict[str, Any]) -> Dict[str, Any]:
+    """Flatten nested category results into single dict."""
+    flat = {}
+    for category, data in results.items():
+        if isinstance(data, dict):
+            for key, value in data.items():
+                flat[f"{category}_{key}"] = value
+        else:
+            flat[category] = data
+    return flat
+```
+
+### Phase 2: Add to `mcp_http.py`
+
+**File**: `api/endpoints/mcp_http.py`
+
+#### Step 2.1: Add Tool Definition to `handle_tools_list()`
+
+Insert in the tools array (around line 527):
+
+```python
+        # Unified Context Tool (Handover 0350a)
         {
-            "name": "get_product_context",
-            "description": "Fetch product core information (name, description, features, path, status). Returns ~100 tokens. Multi-tenant isolated by product_id + tenant_key.",
+            "name": "fetch_context",
+            "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300). Use apply_user_config=true to respect user's saved settings. Single tool replaces 9 individual tools for 720 token savings in MCP schema overhead.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "product_id": {"type": "string", "description": "Product UUID"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "include_metadata": {
+                    "project_id": {"type": "string", "description": "Project UUID (for 'project' category)"},
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["all", "product_core", "vision_documents", "tech_stack",
+                                     "architecture", "testing", "memory_360", "git_history",
+                                     "agent_templates", "project"]
+                        },
+                        "description": "Categories to fetch. ['all'] for everything.",
+                        "default": ["all"]
+                    },
+                    "depth_config": {
+                        "type": "object",
+                        "description": "Override depth per category. Example: {\"vision_documents\": \"light\"}"
+                    },
+                    "apply_user_config": {
                         "type": "boolean",
-                        "description": "Include meta_data JSONB field (default: false)",
-                        "default": False
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_vision_document",
-            "description": "Fetch vision document chunks with depth control. Depth options: 'none' (0 tokens), 'light' (~10K tokens, 2 chunks), 'medium' (~17.5K tokens, 4 chunks), 'full' (~24K tokens, all chunks). Supports pagination via offset/limit. Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "chunking": {
-                        "type": "string",
-                        "enum": ["none", "light", "medium", "full"],
-                        "description": "Depth level (default: medium)",
-                        "default": "medium"
+                        "description": "Apply user's saved settings (default: true)",
+                        "default": True
                     },
-                    "offset": {
-                        "type": "integer",
-                        "description": "Skip first N chunks (for pagination, default: 0)",
-                        "default": 0
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Max chunks to return (None = use chunking default)"
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_tech_stack",
-            "description": "Fetch tech stack information with depth control. Sections: 'required' (languages, frameworks, database, ~200 tokens) or 'all' (includes infrastructure, dev_tools, ~400 tokens). Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "sections": {
+                    "format": {
                         "type": "string",
-                        "enum": ["required", "all"],
-                        "description": "Detail level (default: all)",
-                        "default": "all"
+                        "enum": ["structured", "flat"],
+                        "default": "structured"
                     }
                 },
                 "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_architecture",
-            "description": "Fetch architecture documentation with depth control. Depth: 'overview' (primary pattern + truncated notes, ~300 tokens) or 'detailed' (full architecture notes, ~1.5K tokens). Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "depth": {
-                        "type": "string",
-                        "enum": ["overview", "detailed"],
-                        "description": "Detail level (default: overview)",
-                        "default": "overview"
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_testing",
-            "description": "Fetch testing strategy and quality standards. Depth: 'none' (0 tokens), 'basic' (strategy + coverage_target, ~150 tokens), 'full' (all fields + frameworks, ~400 tokens). Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "depth": {
-                        "type": "string",
-                        "enum": ["none", "basic", "full"],
-                        "description": "Detail level (default: full)",
-                        "default": "full"
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_360_memory",
-            "description": "Fetch 360 memory (sequential project history) with depth control. Returns last N projects from product_memory.sequential_history. Depth: 1 project (~500 tokens), 3 projects (~1.5K tokens), 5 projects (~2.5K tokens), 10 projects (~5K tokens). Supports pagination via offset/limit. Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "last_n_projects": {
-                        "type": "integer",
-                        "description": "Number of recent projects (default: 3)",
-                        "default": 3
-                    },
-                    "offset": {
-                        "type": "integer",
-                        "description": "Skip first N projects (for pagination, default: 0)",
-                        "default": 0
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Max projects to return (None = return all up to last_n_projects)"
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_git_history",
-            "description": "Fetch git commit history with depth control. Returns aggregated commits from product_memory.sequential_history. Depth: 10 commits (~500 tokens), 25 commits (~1.25K tokens), 50 commits (~2.5K tokens), 100 commits (~5K tokens). Returns empty if GitHub integration disabled. Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "commits": {
-                        "type": "integer",
-                        "description": "Number of recent commits (default: 25)",
-                        "default": 25
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_agent_templates",
-            "description": "Fetch agent templates with depth control. Templates are tenant-wide (not product-specific). Depth: 'minimal' (name + one-line purpose, ~400 tokens), 'standard' (name + purpose + key config, ~800 tokens), 'full' (complete template JSON, ~2.4K tokens). Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "string", "description": "Product UUID (for context, not filtering)"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "detail": {
-                        "type": "string",
-                        "enum": ["minimal", "standard", "full"],
-                        "description": "Detail level (default: standard)",
-                        "default": "standard"
-                    }
-                },
-                "required": ["product_id", "tenant_key"]
-            }
-        },
-        {
-            "name": "get_project",
-            "description": "Fetch current project context (metadata, mission, status). Returns ~300 tokens. Optionally includes orchestrator_summary if project completed. Multi-tenant isolated.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "include_summary": {
-                        "type": "boolean",
-                        "description": "Include orchestrator_summary if completed (default: false)",
-                        "default": False
-                    }
-                },
-                "required": ["project_id", "tenant_key"]
             }
         },
 ```
 
-#### Step 1.2: Add Tool Routes to `handle_tools_call()` Tool Map
+#### Step 2.2: Add Tool Route to `handle_tools_call()` Tool Map
 
-Insert after line 608 (before closing `}` of tool_map):
+Insert in tool_map (around line 608):
 
 ```python
-        # Context Management Tools (Handover 0350)
-        "get_product_context": state.tool_accessor.get_product_context,
-        "get_vision_document": state.tool_accessor.get_vision_document,
-        "get_tech_stack": state.tool_accessor.get_tech_stack,
-        "get_architecture": state.tool_accessor.get_architecture,
-        "get_testing": state.tool_accessor.get_testing,
-        "get_360_memory": state.tool_accessor.get_360_memory,
-        "get_git_history": state.tool_accessor.get_git_history,
-        "get_agent_templates": state.tool_accessor.get_agent_templates,
-        "get_project": state.tool_accessor.get_project,
+        # Unified Context Tool (Handover 0350a)
+        "fetch_context": state.tool_accessor.fetch_context,
+```
+
+### Phase 3: Add ToolAccessor Wrapper
+
+**File**: `src/giljo_mcp/tools/tool_accessor.py`
+
+Insert after existing context-related methods:
+
+```python
+    # Unified Context Tool (Handover 0350a)
+
+    async def fetch_context(
+        self,
+        product_id: str,
+        tenant_key: str,
+        project_id: Optional[str] = None,
+        categories: List[str] = None,
+        depth_config: Optional[Dict[str, Any]] = None,
+        apply_user_config: bool = True,
+        format: str = "structured"
+    ) -> Dict[str, Any]:
+        """
+        Unified context fetcher - single entry point for all context.
+
+        Handover 0350a: Replaces 9 individual tools with 1 unified tool.
+        Saves ~720 tokens in MCP schema overhead.
+
+        Args:
+            product_id: Product UUID
+            tenant_key: Tenant isolation key
+            project_id: Project UUID (required for 'project' category)
+            categories: Categories to fetch, or ["all"]
+            depth_config: Override depth settings per category
+            apply_user_config: Apply user's saved priority/depth (default: True)
+            format: "structured" (nested) or "flat" (merged)
+
+        Returns:
+            Dict with context data organized by category
+        """
+        from giljo_mcp.tools.context_tools.fetch_context import fetch_context
+
+        return await fetch_context(
+            product_id=product_id,
+            tenant_key=tenant_key,
+            project_id=project_id,
+            categories=categories or ["all"],
+            depth_config=depth_config,
+            apply_user_config=apply_user_config,
+            format=format,
+            db_manager=self.db_manager
+        )
+```
+
+### Phase 4: Update `__init__.py`
+
+**File**: `src/giljo_mcp/tools/context_tools/__init__.py`
+
+Add export for fetch_context:
+
+```python
+from giljo_mcp.tools.context_tools.fetch_context import fetch_context
+
+__all__ = [
+    "fetch_context",  # PUBLIC - exposed via MCP HTTP
+    # Internal tools (not exposed, used by fetch_context)
+    "get_product_context",
+    "get_vision_document",
+    "get_tech_stack",
+    "get_architecture",
+    "get_testing",
+    "get_360_memory",
+    "get_git_history",
+    "get_agent_templates",
+    "get_project",
+]
 ```
 
 ---
 
-### Phase 2: Add ToolAccessor Wrapper Methods
+## Usage Examples
 
-**File**: `F:\GiljoAI_MCP\src\giljo_mcp\tools\tool_accessor.py`
-
-**Location**: After line 319 (after `get_product_settings()` method)
-
-**Pattern**: Each wrapper follows the async delegation pattern with db_manager injection.
-
-#### Step 2.1: Add 9 Wrapper Methods
-
-Insert after line 319:
+### Basic Usage (All Categories)
 
 ```python
-    # Context Management Tools (Handover 0350)
+# Fetch all context with user's saved settings
+result = await fetch_context(
+    product_id="uuid-123",
+    tenant_key="tk_abc"
+)
+# Returns ~35K tokens (all categories at default depth)
+```
 
-    async def get_product_context(
-        self,
-        product_id: str,
-        tenant_key: str,
-        include_metadata: bool = False
-    ) -> dict[str, Any]:
-        """
-        Fetch product core information (Product Context tool).
+### Specific Categories
 
-        Handover 0350: Wrapper for get_product_context() MCP tool.
-        Returns product name, description, features, path, status (~100 tokens).
+```python
+# Fetch only product core and tech stack
+result = await fetch_context(
+    product_id="uuid-123",
+    tenant_key="tk_abc",
+    categories=["product_core", "tech_stack"]
+)
+# Returns ~500 tokens
+```
 
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            include_metadata: Include meta_data JSONB field (default: False)
+### With Depth Override
 
-        Returns:
-            Dict with product info and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_product_context import get_product_context
+```python
+# Fetch vision at light depth (saves tokens)
+result = await fetch_context(
+    product_id="uuid-123",
+    tenant_key="tk_abc",
+    categories=["vision_documents"],
+    depth_config={"vision_documents": "light"}
+)
+# Returns ~10K tokens instead of ~17.5K
+```
 
-        return await get_product_context(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            include_metadata=include_metadata,
-            db_manager=self.db_manager
-        )
+### Power User (Override User Config)
 
-    async def get_vision_document(
-        self,
-        product_id: str,
-        tenant_key: str,
-        chunking: str = "medium",
-        offset: int = 0,
-        limit: Optional[int] = None
-    ) -> dict[str, Any]:
-        """
-        Fetch vision document chunks with depth control (Vision Documents tool).
+```python
+# Ignore user's saved settings, use explicit depths
+result = await fetch_context(
+    product_id="uuid-123",
+    tenant_key="tk_abc",
+    categories=["vision_documents", "agent_templates"],
+    depth_config={
+        "vision_documents": "full",
+        "agent_templates": "minimal"
+    },
+    apply_user_config=False
+)
+```
 
-        Handover 0350: Wrapper for get_vision_document() MCP tool.
-        Returns vision chunks based on depth: none/light/medium/full (0-30K tokens).
+---
 
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            chunking: Depth level ("none", "light", "medium", "full")
-            offset: Skip first N chunks (for pagination)
-            limit: Max chunks to return (None = use chunking default)
+## Response Structure
 
-        Returns:
-            Dict with vision chunks and pagination metadata
-        """
-        from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+### Structured Format (Default)
 
-        return await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking=chunking,
-            offset=offset,
-            limit=limit,
-            db_manager=self.db_manager
-        )
+```json
+{
+    "source": "fetch_context",
+    "categories_requested": ["product_core", "tech_stack"],
+    "categories_returned": ["product_core", "tech_stack"],
+    "data": {
+        "product_core": {
+            "product_name": "GiljoAI MCP",
+            "description": "Multi-tenant orchestration server",
+            "features": ["context management", "agent coordination"]
+        },
+        "tech_stack": {
+            "languages": ["Python 3.11"],
+            "frameworks": ["FastAPI", "Vue 3"],
+            "database": "PostgreSQL 18"
+        }
+    },
+    "metadata": {
+        "estimated_tokens": 500,
+        "format": "structured",
+        "apply_user_config": true,
+        "depth_config_applied": {
+            "product_core": null,
+            "tech_stack": "all"
+        }
+    }
+}
+```
 
-    async def get_tech_stack(
-        self,
-        product_id: str,
-        tenant_key: str,
-        sections: str = "all"
-    ) -> dict[str, Any]:
-        """
-        Fetch tech stack information with depth control (Tech Stack tool).
+### Flat Format
 
-        Handover 0350: Wrapper for get_tech_stack() MCP tool.
-        Returns tech stack fields: required (languages, frameworks, database) or all (200-400 tokens).
-
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            sections: Detail level ("required" or "all")
-
-        Returns:
-            Dict with tech stack info and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
-
-        return await get_tech_stack(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            sections=sections,
-            offset=0,  # Reserved for future pagination
-            limit=None,  # Reserved for future pagination
-            db_manager=self.db_manager
-        )
-
-    async def get_architecture(
-        self,
-        product_id: str,
-        tenant_key: str,
-        depth: str = "overview"
-    ) -> dict[str, Any]:
-        """
-        Fetch architecture documentation with depth control (Architecture tool).
-
-        Handover 0350: Wrapper for get_architecture() MCP tool.
-        Returns architecture patterns, API style, design patterns (300-1.5K tokens).
-
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            depth: Detail level ("overview" or "detailed")
-
-        Returns:
-            Dict with architecture info and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_architecture import get_architecture
-
-        return await get_architecture(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            depth=depth,
-            offset=0,  # Reserved for future pagination
-            limit=None,  # Reserved for future pagination
-            db_manager=self.db_manager
-        )
-
-    async def get_testing(
-        self,
-        product_id: str,
-        tenant_key: str,
-        depth: str = "full"
-    ) -> dict[str, Any]:
-        """
-        Fetch testing strategy and quality standards (Testing tool).
-
-        Handover 0350: Wrapper for get_testing() MCP tool.
-        Returns quality standards, testing strategy, frameworks (0-400 tokens).
-
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            depth: Detail level ("none", "basic", "full")
-
-        Returns:
-            Dict with testing config and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_testing import get_testing
-
-        return await get_testing(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            depth=depth,
-            db_manager=self.db_manager
-        )
-
-    async def get_360_memory(
-        self,
-        product_id: str,
-        tenant_key: str,
-        last_n_projects: int = 3,
-        offset: int = 0,
-        limit: Optional[int] = None
-    ) -> dict[str, Any]:
-        """
-        Fetch 360 memory (sequential project history) with depth control (360 Memory tool).
-
-        Handover 0350: Wrapper for get_360_memory() MCP tool.
-        Returns last N projects from product_memory.sequential_history (500-5K tokens).
-
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            last_n_projects: Number of recent projects (1/3/5/10)
-            offset: Skip first N projects (for pagination)
-            limit: Max projects to return (None = use last_n_projects)
-
-        Returns:
-            Dict with sequential history and pagination metadata
-        """
-        from giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
-
-        return await get_360_memory(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            last_n_projects=last_n_projects,
-            offset=offset,
-            limit=limit,
-            db_manager=self.db_manager
-        )
-
-    async def get_git_history(
-        self,
-        product_id: str,
-        tenant_key: str,
-        commits: int = 25
-    ) -> dict[str, Any]:
-        """
-        Fetch git commit history with depth control (Git History tool).
-
-        Handover 0350: Wrapper for get_git_history() MCP tool.
-        Returns aggregated commits from product_memory.sequential_history (500-5K tokens).
-        Returns empty if GitHub integration disabled.
-
-        Args:
-            product_id: Product UUID
-            tenant_key: Tenant isolation key
-            commits: Number of recent commits (10/25/50/100)
-
-        Returns:
-            Dict with git commits and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_git_history import get_git_history
-
-        return await get_git_history(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            commits=commits,
-            offset=0,  # Reserved for future pagination
-            limit=None,  # Reserved for future pagination
-            db_manager=self.db_manager
-        )
-
-    async def get_agent_templates(
-        self,
-        product_id: str,
-        tenant_key: str,
-        detail: str = "standard"
-    ) -> dict[str, Any]:
-        """
-        Fetch agent templates with depth control (Agent Templates tool).
-
-        Handover 0350: Wrapper for get_agent_templates() MCP tool.
-        Returns active agent templates (tenant-wide, not product-specific) (400-2.4K tokens).
-
-        Args:
-            product_id: Product UUID (for context, not filtering)
-            tenant_key: Tenant isolation key
-            detail: Detail level ("minimal", "standard", "full")
-
-        Returns:
-            Dict with agent templates and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
-
-        return await get_agent_templates(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            detail=detail,
-            offset=0,  # Reserved for future pagination
-            limit=None,  # Reserved for future pagination
-            db_manager=self.db_manager
-        )
-
-    async def get_project(
-        self,
-        project_id: str,
-        tenant_key: str,
-        include_summary: bool = False
-    ) -> dict[str, Any]:
-        """
-        Fetch current project context (Project Context tool).
-
-        Handover 0350: Wrapper for get_project() MCP tool.
-        Returns project metadata, mission, status (~300 tokens).
-
-        Args:
-            project_id: Project UUID
-            tenant_key: Tenant isolation key
-            include_summary: Include orchestrator_summary if completed (default: False)
-
-        Returns:
-            Dict with project info and metadata
-        """
-        from giljo_mcp.tools.context_tools.get_project import get_project
-
-        return await get_project(
-            project_id=project_id,
-            tenant_key=tenant_key,
-            include_summary=include_summary,
-            db_manager=self.db_manager
-        )
+```json
+{
+    "source": "fetch_context",
+    "data": {
+        "product_core_product_name": "GiljoAI MCP",
+        "product_core_description": "Multi-tenant orchestration server",
+        "tech_stack_languages": ["Python 3.11"],
+        "tech_stack_frameworks": ["FastAPI", "Vue 3"]
+    },
+    "metadata": {...}
+}
 ```
 
 ---
@@ -561,149 +617,116 @@ Insert after line 319:
 
 ### Unit Tests
 
-**Location**: `F:\GiljoAI_MCP\tests\tools\test_context_tools_mcp_http.py` (NEW FILE)
+**File**: `tests/tools/test_fetch_context.py` (NEW)
 
 ```python
-"""
-Unit tests for Context Tools MCP HTTP integration (Handover 0350)
-
-Tests verify that context tools are properly exposed via MCP HTTP endpoint
-and ToolAccessor wrapper methods work correctly.
-"""
+"""Unit tests for fetch_context unified tool (Handover 0350a)"""
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.mark.asyncio
-async def test_get_product_context_via_tool_accessor():
-    """Test get_product_context() via ToolAccessor wrapper"""
-    from giljo_mcp.tools.tool_accessor import ToolAccessor
+async def test_fetch_context_all_categories():
+    """Test fetching all categories"""
+    from giljo_mcp.tools.context_tools.fetch_context import fetch_context
 
-    db_manager = MagicMock()
-    tenant_manager = MagicMock()
-    accessor = ToolAccessor(db_manager, tenant_manager)
-
-    with patch('giljo_mcp.tools.context_tools.get_product_context.get_product_context') as mock_func:
-        mock_func.return_value = {
-            "source": "product_context",
-            "data": {"product_name": "Test Product"},
-            "metadata": {"estimated_tokens": 100}
-        }
-
-        result = await accessor.get_product_context(
+    with patch.multiple(
+        'giljo_mcp.tools.context_tools.fetch_context',
+        get_product_context=AsyncMock(return_value={"data": {"name": "Test"}, "metadata": {"estimated_tokens": 100}}),
+        get_tech_stack=AsyncMock(return_value={"data": {"languages": ["Python"]}, "metadata": {"estimated_tokens": 200}}),
+        # ... mock other tools
+    ):
+        result = await fetch_context(
             product_id="test-uuid",
             tenant_key="tenant-abc",
-            include_metadata=False
+            categories=["product_core", "tech_stack"],
+            db_manager=MagicMock()
         )
 
-        assert result["source"] == "product_context"
-        assert "product_name" in result["data"]
-        mock_func.assert_called_once_with(
-            product_id="test-uuid",
-            tenant_key="tenant-abc",
-            include_metadata=False,
-            db_manager=db_manager
-        )
+        assert result["source"] == "fetch_context"
+        assert "product_core" in result["data"]
+        assert "tech_stack" in result["data"]
+        assert result["metadata"]["estimated_tokens"] == 300
 
 
 @pytest.mark.asyncio
-async def test_get_vision_document_via_tool_accessor():
-    """Test get_vision_document() via ToolAccessor wrapper"""
-    from giljo_mcp.tools.tool_accessor import ToolAccessor
+async def test_fetch_context_invalid_category():
+    """Test error handling for invalid category"""
+    from giljo_mcp.tools.context_tools.fetch_context import fetch_context
 
-    db_manager = MagicMock()
-    tenant_manager = MagicMock()
-    accessor = ToolAccessor(db_manager, tenant_manager)
+    result = await fetch_context(
+        product_id="test-uuid",
+        tenant_key="tenant-abc",
+        categories=["invalid_category"],
+        db_manager=MagicMock()
+    )
 
-    with patch('giljo_mcp.tools.context_tools.get_vision_document.get_vision_document') as mock_func:
-        mock_func.return_value = {
-            "source": "vision_documents",
-            "depth": "light",
-            "data": [{"content": "chunk 1", "chunk_order": 1}],
-            "metadata": {"estimated_tokens": 2500}
-        }
+    assert "error" in result
+    assert "invalid_category" in result["error"]
 
-        result = await accessor.get_vision_document(
+
+@pytest.mark.asyncio
+async def test_fetch_context_depth_override():
+    """Test depth override works"""
+    from giljo_mcp.tools.context_tools.fetch_context import fetch_context
+
+    with patch(
+        'giljo_mcp.tools.context_tools.fetch_context.get_vision_document',
+        new_callable=AsyncMock
+    ) as mock_vision:
+        mock_vision.return_value = {"data": [], "metadata": {"estimated_tokens": 0}}
+
+        await fetch_context(
             product_id="test-uuid",
             tenant_key="tenant-abc",
-            chunking="light",
-            offset=0,
-            limit=2
+            categories=["vision_documents"],
+            depth_config={"vision_documents": "light"},
+            db_manager=MagicMock()
         )
 
-        assert result["source"] == "vision_documents"
-        assert result["depth"] == "light"
-        mock_func.assert_called_once()
-
-
-# Add similar tests for remaining 7 tools...
+        # Verify light depth was passed
+        call_kwargs = mock_vision.call_args.kwargs
+        assert call_kwargs.get("chunking") == "light"
 ```
 
 ### Integration Tests
 
-**Location**: `F:\GiljoAI_MCP\tests\integration\test_context_tools_mcp_endpoint.py` (NEW FILE)
+**File**: `tests/integration/test_fetch_context_mcp.py` (NEW)
 
 ```python
-"""
-Integration tests for Context Tools MCP HTTP endpoint (Handover 0350)
-
-Tests verify end-to-end flow: HTTP request → MCP endpoint → ToolAccessor → Context tool
-"""
+"""Integration tests for fetch_context MCP endpoint (Handover 0350a)"""
 
 import pytest
 from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_mcp_tools_list_includes_context_tools(test_client: AsyncClient, api_key_header):
-    """Verify all 9 context tools appear in tools/list"""
-
-    # MCP initialize
-    init_response = await test_client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"client_info": {"name": "test-client"}},
-            "id": 1
-        },
-        headers=api_key_header
-    )
-    assert init_response.status_code == 200
+async def test_mcp_tools_list_includes_fetch_context(test_client: AsyncClient, api_key_header):
+    """Verify fetch_context appears in tools/list"""
 
     # MCP tools/list
-    list_response = await test_client.post(
+    response = await test_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/list",
-            "params": {},
-            "id": 2
-        },
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1},
         headers=api_key_header
     )
 
-    assert list_response.status_code == 200
-    data = list_response.json()
+    assert response.status_code == 200
+    tools = response.json()["result"]["tools"]
+    tool_names = [t["name"] for t in tools]
 
-    tool_names = [tool["name"] for tool in data["result"]["tools"]]
+    # Should have fetch_context
+    assert "fetch_context" in tool_names
 
-    # Verify all 9 context tools present
-    assert "get_product_context" in tool_names
-    assert "get_vision_document" in tool_names
-    assert "get_tech_stack" in tool_names
-    assert "get_architecture" in tool_names
-    assert "get_testing" in tool_names
-    assert "get_360_memory" in tool_names
-    assert "get_git_history" in tool_names
-    assert "get_agent_templates" in tool_names
-    assert "get_project" in tool_names
+    # Should NOT have individual tools (they're internal)
+    assert "get_product_context" not in tool_names
+    assert "get_vision_document" not in tool_names
 
 
 @pytest.mark.asyncio
-async def test_mcp_call_get_product_context(test_client: AsyncClient, api_key_header, test_product):
-    """Test calling get_product_context via MCP HTTP"""
+async def test_mcp_call_fetch_context(test_client: AsyncClient, api_key_header, test_product):
+    """Test calling fetch_context via MCP HTTP"""
 
     response = await test_client.post(
         "/mcp",
@@ -711,246 +734,91 @@ async def test_mcp_call_get_product_context(test_client: AsyncClient, api_key_he
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "get_product_context",
+                "name": "fetch_context",
                 "arguments": {
                     "product_id": str(test_product.id),
                     "tenant_key": test_product.tenant_key,
-                    "include_metadata": False
+                    "categories": ["product_core"]
                 }
             },
-            "id": 3
+            "id": 2
         },
         headers=api_key_header
     )
 
     assert response.status_code == 200
-    data = response.json()
-
-    assert "result" in data
-    assert data["result"]["isError"] is False
-
-    # Parse content text (JSON string)
-    import json
-    result_data = json.loads(data["result"]["content"][0]["text"])
-
-    assert result_data["source"] == "product_context"
-    assert "data" in result_data
-    assert "metadata" in result_data
-
-
-# Add similar integration tests for remaining 8 tools...
+    result = response.json()["result"]
+    assert result["isError"] is False
 ```
-
----
-
-## Error Handling
-
-All context tools follow consistent error patterns:
-
-### 1. **Product Not Found**
-```json
-{
-    "source": "product_context",
-    "data": {},
-    "metadata": {
-        "error": "product_not_found",
-        "estimated_tokens": 0
-    }
-}
-```
-
-### 2. **Empty Data (No Vision Documents)**
-```json
-{
-    "source": "vision_documents",
-    "data": [],
-    "metadata": {
-        "total_chunks": 0,
-        "estimated_tokens": 0
-    }
-}
-```
-
-### 3. **GitHub Integration Disabled**
-```json
-{
-    "source": "git_history",
-    "data": [],
-    "metadata": {
-        "git_integration_enabled": false,
-        "reason": "git_integration_disabled"
-    }
-}
-```
-
----
-
-## Multi-Tenant Isolation
-
-**CRITICAL**: All context tools enforce multi-tenant isolation by filtering queries with BOTH `product_id` AND `tenant_key` (or `project_id` + `tenant_key` for project context).
-
-**Example Query Pattern** (from `get_product_context.py`):
-```python
-stmt = select(Product).where(
-    Product.id == product_id,
-    Product.tenant_key == tenant_key
-)
-```
-
-**No Cross-Tenant Leakage**: If a client provides valid `product_id` but wrong `tenant_key`, the tool returns empty/not-found response (NOT an error that leaks existence).
 
 ---
 
 ## Token Budget Reference
 
-| Tool                  | Depth               | Estimated Tokens |
-|-----------------------|---------------------|------------------|
-| `get_product_context` | (always full)       | ~100             |
-| `get_vision_document` | none                | 0                |
-|                       | light (2 chunks)    | ~10,000          |
-|                       | medium (4 chunks)   | ~17,500          |
-|                       | full (all chunks)   | ~24,000          |
-| `get_tech_stack`      | required            | ~200             |
-|                       | all                 | ~400             |
-| `get_architecture`    | overview            | ~300             |
-|                       | detailed            | ~1,500           |
-| `get_testing`         | none                | 0                |
-|                       | basic               | ~150             |
-|                       | full                | ~400             |
-| `get_360_memory`      | 1 project           | ~500             |
-|                       | 3 projects          | ~1,500           |
-|                       | 5 projects          | ~2,500           |
-|                       | 10 projects         | ~5,000           |
-| `get_git_history`     | 10 commits          | ~500             |
-|                       | 25 commits          | ~1,250           |
-|                       | 50 commits          | ~2,500           |
-|                       | 100 commits         | ~5,000           |
-| `get_agent_templates` | minimal             | ~400             |
-|                       | standard            | ~800             |
-|                       | full                | ~2,400           |
-| `get_project`         | (always full)       | ~300             |
+| Category | Depth Options | Token Range |
+|----------|--------------|-------------|
+| `product_core` | (none) | ~100 |
+| `vision_documents` | none/light/medium/full | 0 / ~10K / ~17.5K / ~24K |
+| `tech_stack` | required/all | ~200 / ~400 |
+| `architecture` | overview/detailed | ~300 / ~1.5K |
+| `testing` | none/basic/full | 0 / ~150 / ~400 |
+| `memory_360` | 1/3/5/10 projects | ~500 / ~1.5K / ~2.5K / ~5K |
+| `git_history` | 10/25/50/100 commits | ~500 / ~1.25K / ~2.5K / ~5K |
+| `agent_templates` | minimal/standard/full | ~400 / ~800 / ~2.4K |
+| `project` | (none) | ~300 |
 
-**Total Budget Range**: 100 tokens (minimal) → ~50,000 tokens (all tools at max depth)
+**Total Range**: ~100 tokens (single category) to ~50K tokens (all at max depth)
 
 ---
 
 ## Files Modified
 
-### 1. `api/endpoints/mcp_http.py`
-- **Lines 138-527**: Add 9 tool definitions to `handle_tools_list()`
-- **Lines 564-609**: Add 9 tool routes to `handle_tools_call()` tool_map
-
-### 2. `src/giljo_mcp/tools/tool_accessor.py`
-- **After line 319**: Add 9 async wrapper methods for context tools
-
-### 3. Tests (NEW FILES)
-- `tests/tools/test_context_tools_mcp_http.py` - Unit tests for wrapper methods
-- `tests/integration/test_context_tools_mcp_endpoint.py` - Integration tests for MCP endpoint
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/tools/context_tools/fetch_context.py` | NEW - Unified dispatcher |
+| `src/giljo_mcp/tools/context_tools/__init__.py` | Add fetch_context export |
+| `api/endpoints/mcp_http.py` | Add tool definition + route |
+| `src/giljo_mcp/tools/tool_accessor.py` | Add wrapper method |
+| `tests/tools/test_fetch_context.py` | NEW - Unit tests |
+| `tests/integration/test_fetch_context_mcp.py` | NEW - Integration tests |
 
 ---
 
 ## Success Criteria
 
-- ✅ All 9 context tools listed in `mcp_http.py` tools/list response
-- ✅ All 9 tools callable via MCP HTTP `tools/call` method
-- ✅ All 9 ToolAccessor wrapper methods implemented and working
-- ✅ Multi-tenant isolation enforced (product_id + tenant_key filtering)
-- ✅ Error handling consistent across all tools (empty responses for not-found)
-- ✅ Unit tests pass (>80% coverage for wrapper methods)
-- ✅ Integration tests pass (end-to-end MCP HTTP flow)
-- ✅ Token estimates accurate (within 10% of documented budgets)
-
----
-
-## Rollback Plan
-
-If issues arise after deployment:
-
-1. **Remove tool definitions** from `handle_tools_list()` (lines 138-527)
-2. **Remove tool routes** from `handle_tools_call()` tool_map (lines 564-609)
-3. **Comment out wrapper methods** in `tool_accessor.py` (lines 319+)
-4. **Restart API server**: `python api/run_api.py`
-
-**No database changes required** - this handover only exposes existing tools.
-
----
-
-## Documentation Updates Required
-
-### 1. `docs/MCP_TOOLS_MANUAL.md`
-Add section:
-
-```markdown
-## Context Management Tools (v3.2+)
-
-GiljoAI provides 9 context tools for fetching product/project information with granular depth control.
-
-### `get_product_context`
-Fetch product core information (name, description, features).
-- **Token Budget**: ~100
-- **Parameters**: `product_id`, `tenant_key`, `include_metadata` (optional)
-
-### `get_vision_document`
-Fetch vision document chunks with depth control.
-- **Token Budget**: 0-24K (depth: none/light/medium/full)
-- **Parameters**: `product_id`, `tenant_key`, `chunking`, `offset`, `limit`
-
-[... document remaining 7 tools ...]
-```
-
-### 2. `CLAUDE.md`
-Update Context Management section:
-
-```markdown
-**9 MCP Context Tools** (HTTP-exposed as of v3.2):
-1. `get_product_context` - Product name, description, features → **"Product Core" badge**
-2. `get_vision_document` - Vision document chunks (paginated) → **"Vision Documents" badge**
-[... list remaining tools ...]
-
-**Example Usage** (Claude Code CLI):
-```bash
-# Fetch product context
-mcp__giljo-mcp__get_product_context(product_id="...", tenant_key="...")
-
-# Fetch light vision chunks
-mcp__giljo-mcp__get_vision_document(product_id="...", tenant_key="...", chunking="light")
-```
-```
-
----
-
-## Related Handovers
-
-- **Handover 0316**: Context Management v2.0 implementation (created the 9 context tools)
-- **Handover 0088**: Thin Client Architecture (prompted need for MCP-exposed context tools)
-- **Handover 0246**: Orchestrator Workflow Pipeline (uses these tools for context fetching)
-- **Handover 0334**: HTTP-only MCP (removed stdio, made HTTP authoritative transport)
-
----
-
-## Notes
-
-- **No Breaking Changes**: Existing MCP tools continue to work unchanged
-- **Backward Compatible**: Tools support legacy depth values (e.g., "moderate" → "medium")
-- **Pagination Ready**: Vision, 360 Memory support pagination (offset/limit) for future scaling
-- **Git Integration Aware**: `get_git_history` returns empty if GitHub integration disabled
-- **Agent Templates Tenant-Wide**: `get_agent_templates` returns templates for entire tenant (not product-specific)
+- [ ] `fetch_context` appears in MCP tools/list response
+- [ ] `fetch_context` callable via MCP HTTP tools/call
+- [ ] Individual `get_*` tools NOT exposed via MCP (internal only)
+- [ ] Categories param filters which tools are called
+- [ ] depth_config overrides default depths
+- [ ] apply_user_config loads user's saved settings
+- [ ] Multi-tenant isolation enforced
+- [ ] Unit tests pass (>80% coverage)
+- [ ] Integration tests pass
+- [ ] Token savings verified (~720 tokens saved vs 9 individual tools)
 
 ---
 
 ## Completion Checklist
 
-- [ ] Phase 1: Add tool definitions to `mcp_http.py` (handle_tools_list)
-- [ ] Phase 1: Add tool routes to `mcp_http.py` (handle_tools_call)
-- [ ] Phase 2: Add 9 wrapper methods to `tool_accessor.py`
-- [ ] Testing: Create unit tests (`test_context_tools_mcp_http.py`)
-- [ ] Testing: Create integration tests (`test_context_tools_mcp_endpoint.py`)
-- [ ] Testing: Run full test suite (`pytest tests/ -v`)
-- [ ] Documentation: Update `MCP_TOOLS_MANUAL.md`
-- [ ] Documentation: Update `CLAUDE.md` Context Management section
-- [ ] Verification: Test all 9 tools via MCP HTTP client (Claude Code CLI)
-- [ ] Deployment: Commit changes with message: "feat: Expose 9 context tools via MCP HTTP (Handover 0350)"
+- [ ] Phase 1: Create `fetch_context.py` module
+- [ ] Phase 2: Add tool definition to `mcp_http.py`
+- [ ] Phase 2: Add tool route to `mcp_http.py` tool_map
+- [ ] Phase 3: Add ToolAccessor wrapper method
+- [ ] Phase 4: Update `__init__.py` exports
+- [ ] Testing: Create unit tests
+- [ ] Testing: Create integration tests
+- [ ] Verification: Test via MCP HTTP client
+- [ ] Commit: "feat: Create unified fetch_context() MCP tool (Handover 0350a)"
 
 ---
 
-**Estimated Effort**: 2-3 hours (straightforward plumbing work, no business logic changes)
+## Related Handovers
+
+- **0350b**: Refactor `get_orchestrator_instructions()` to reference `fetch_context()`
+- **0350c**: Frontend 3-tier UI + field rename
+- **0350d**: Documentation updates for unified tool
+
+---
+
+**Estimated Effort**: 3-4 hours (new module + plumbing + tests)
