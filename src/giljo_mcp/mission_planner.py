@@ -1790,19 +1790,25 @@ Partial reading defeats the purpose of this configuration."""
                 # Depth handling is INDEPENDENT of priority tier - user controls both dimensions
                 vision_content_data = None
 
-                if vision_depth == "optional":
-                    # Pointer + pagination only (~200 tokens)
+                if vision_depth in ("optional", "none"):
+                    # Pointer + fetch commands (~200 tokens) - same structure as "full" but optional
+                    # "none" = UI toggle value, "optional" = legacy/backend name
+                    # Both mean: "available if agent needs it" - not mandatory
+                    fetch_commands = self._generate_fetch_commands(str(product.id), vision_doc.chunk_count or 0)
+
                     vision_content_data = {
-                        "status": "AVAILABLE_ON_REQUEST",
+                        "status": "AVAILABLE_IF_NEEDED",
+                        "instruction": "Vision document available if you need deeper product context. Fetch on-demand.",
                         "document_name": vision_doc.document_name or "Product Vision",
                         "total_tokens": vision_doc.original_token_count or 0,
                         "chunk_count": vision_doc.chunk_count or 0,
-                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                        "fetch_commands": fetch_commands,
                         "when_to_fetch": [
                             "When you need detailed product vision context",
                             "When project requirements reference vision elements",
                             "When making architecture decisions aligned with vision"
                         ],
+                        "note": "Reading is OPTIONAL. Only fetch if task requires vision document details.",
                         "depth": "optional"
                     }
 
