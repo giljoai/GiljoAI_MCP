@@ -572,9 +572,18 @@ class ToolAccessor:
                         extra={"orchestrator_id": orchestrator_id}
                     )
 
-                condensed_mission = await planner._build_context_with_priorities(
+                condensed_mission_data = await planner._build_context_with_priorities(
                     product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id, include_serena=include_serena
                 )
+
+                # Handover 0347b: Convert dict to JSON string for mission text
+                # _build_context_with_priorities now returns a dict with priority-framed structure
+                import json as json_lib
+                if isinstance(condensed_mission_data, dict):
+                    condensed_mission = json_lib.dumps(condensed_mission_data, indent=2)
+                else:
+                    # Fallback for legacy string returns
+                    condensed_mission = str(condensed_mission_data) if condensed_mission_data else ""
 
                 # Handover 0277: Inject simplified Serena MCP notice if enabled
                 if include_serena:
