@@ -1285,8 +1285,6 @@ Success Criteria:
                 }
                 for p in recent_projects
             ],
-            "fetch_tool": "fetch_360_memory(product_id, offset, limit)",
-            "instruction": f"Call fetch_360_memory() to paginate through all {total_projects} projects"
         }
 
     def _generate_mandatory_read_instruction(self, product: Product, vision_doc) -> str:
