@@ -27,7 +27,7 @@ ALLOWED_PRIORITY_CATEGORIES = {
     "architecture",
     "testing",
     "agent_templates",
-    "project_context",
+    "project_description",
     "memory_360",
     "git_history",
 }

@@ -37,8 +37,8 @@ async def orchestrator(db_manager):
 class TestOrchestratorForcedMonitoring:
     """Force monitoring loop execution for coverage."""
 
-    async def test_direct_monitor_project_context_execution(self, orchestrator):
-        """Directly call _monitor_project_context to force line coverage."""
+    async def test_direct_monitor_project_description_execution(self, orchestrator):
+        """Directly call _monitor_project_description to force line coverage."""
         # Create and activate project
         project = await orchestrator.create_project(name="Direct Monitor", mission="Direct monitoring test")
         await orchestrator.activate_project(project.id)
@@ -55,7 +55,7 @@ class TestOrchestratorForcedMonitoring:
         # This ensures the monitoring loop code is executed
         try:
             # Call the monitoring task directly (it will run once and then we'll stop it)
-            monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
+            monitor_task = asyncio.create_task(orchestrator._monitor_project_description(project.id))
 
             # Let it run briefly to execute the monitoring loop
             await asyncio.sleep(0.1)
@@ -87,7 +87,7 @@ class TestOrchestratorForcedMonitoring:
         await orchestrator.update_context_usage(agent.id, 20000)
 
         # Start monitoring task
-        monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
+        monitor_task = asyncio.create_task(orchestrator._monitor_project_description(project.id))
 
         # Let monitoring run briefly
         await asyncio.sleep(0.05)
@@ -120,7 +120,7 @@ class TestOrchestratorForcedMonitoring:
 
         try:
             # Start monitoring task
-            monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
+            monitor_task = asyncio.create_task(orchestrator._monitor_project_description(project.id))
 
             # Let it run and hit the exception
             await asyncio.sleep(0.1)
@@ -167,7 +167,7 @@ class TestOrchestratorForcedMonitoring:
 
         # Run monitoring multiple times to ensure all paths are hit
         for _i in range(3):
-            monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
+            monitor_task = asyncio.create_task(orchestrator._monitor_project_description(project.id))
             await asyncio.sleep(0.05)  # Let one cycle run
             monitor_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

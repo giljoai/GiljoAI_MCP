@@ -520,7 +520,7 @@ class TestMissionPlanner:
         assert isinstance(mission.context_chunk_ids, list)
 
     @pytest.mark.asyncio
-    async def test_generate_agent_mission_includes_project_context(
+    async def test_generate_agent_mission_includes_project_description(
         self, mission_planner, sample_product, sample_project
     ):
         """Test that generated mission includes project context."""

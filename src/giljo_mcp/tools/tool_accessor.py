@@ -465,7 +465,7 @@ class ToolAccessor:
 
         Returns a lean response (~500 tokens) with:
         - identity: Orchestrator/project identifiers
-        - project_context_inline: Description + mission (always inline)
+        - project_description_inline: Description + mission (always inline)
         - context_fetch_instructions: Framing pointers to fetch_context() tool
 
         The orchestrator uses these instructions to call fetch_context() on-demand,
@@ -576,7 +576,7 @@ class ToolAccessor:
                         "tenant_key": tenant_key,
                         "instance_number": orchestrator.instance_number or 1,
                     },
-                    "project_context_inline": {
+                    "project_description_inline": {
                         "description": project.description or "",
                         "mission": orchestrator.mission or "",
                     },

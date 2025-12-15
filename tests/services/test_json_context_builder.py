@@ -319,7 +319,7 @@ class TestEdgeCases:
         builder = JSONContextBuilder()
         builder.add_critical("product_core")
         builder.add_critical("tech_stack")
-        builder.add_critical("project_context")
+        builder.add_critical("project_description")
 
         assert len(builder.critical_fields) == 3
         result = builder.build()

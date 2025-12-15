@@ -110,7 +110,7 @@ class TestEndToEndPriorityWorkflow:
                 "product_core": 1,  # CRITICAL (unchanged)
                 "agent_templates": 1,  # CRITICAL (unchanged)
                 "vision_documents": 3,  # NICE_TO_HAVE (changed from 2)
-                "project_context": 2,  # IMPORTANT (unchanged)
+                "project_description": 2,  # IMPORTANT (unchanged)
                 "memory_360": 2,  # IMPORTANT (changed from 3)
                 "git_history": 1,  # CRITICAL (changed from 4 - now enabled)
             },
@@ -163,7 +163,7 @@ class TestEndToEndPriorityWorkflow:
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 1,
-                "project_context": 3,
+                "project_description": 3,
                 "memory_360": 4,
                 "git_history": 4,
             },
@@ -219,7 +219,7 @@ class TestFrontendIntegration:
         1. agent_templates (Priority 1 - CRITICAL)
         2. product_core (Priority 1 - CRITICAL)
         3. vision_documents (Priority 2 - IMPORTANT)
-        4. project_context (Priority 2 - IMPORTANT)
+        4. project_description (Priority 2 - IMPORTANT)
         5. memory_360 (Priority 3 - NICE_TO_HAVE)
         6. git_history (Priority 4 - EXCLUDED)
         """
@@ -228,7 +228,7 @@ class TestFrontendIntegration:
                 "agent_templates": 1,  # Top priority (dragged to position 1)
                 "product_core": 1,  # Second priority (position 2)
                 "vision_documents": 2,  # Third (position 3)
-                "project_context": 2,  # Fourth (position 4)
+                "project_description": 2,  # Fourth (position 4)
                 "memory_360": 3,  # Fifth (position 5)
                 "git_history": 4,  # Last (position 6)
             },
@@ -261,7 +261,7 @@ class TestFrontendIntegration:
                 "product_core": 1,
                 "agent_templates": 1,
                 "vision_documents": 2,  # IMPORTANT
-                "project_context": 2,
+                "project_description": 2,
                 "memory_360": 3,
                 "git_history": 4,
             },
@@ -303,7 +303,7 @@ class TestFrontendIntegration:
                 "product_core": 1,
                 "agent_templates": 1,
                 "vision_documents": 2,
-                "project_context": 2,
+                "project_description": 2,
                 "memory_360": 3,
                 "git_history": 2,  # Changed from 4 to 2 (enabled)
             },
@@ -430,7 +430,7 @@ class TestMultiTenantIsolation:
                 "product_core": 1,
                 "agent_templates": 1,
                 "vision_documents": 2,
-                "project_context": 3,
+                "project_description": 3,
                 "memory_360": 4,
                 "git_history": 4,
             },
@@ -450,7 +450,7 @@ class TestMultiTenantIsolation:
                 "product_core": 1,
                 "agent_templates": 1,
                 "vision_documents": 3,  # Different from Tenant A
-                "project_context": 2,  # Different from Tenant A
+                "project_description": 2,  # Different from Tenant A
                 "memory_360": 2,  # Different from Tenant A
                 "git_history": 1,  # Different from Tenant A (enabled)
             },
@@ -536,7 +536,7 @@ class TestWebSocketRealTimeSynchronization:
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 1,
-                "project_context": 3,
+                "project_description": 3,
                 "memory_360": 4,
                 "git_history": 4,
             },

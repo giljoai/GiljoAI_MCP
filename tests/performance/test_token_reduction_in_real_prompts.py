@@ -203,7 +203,7 @@ class TestTokenReductionInRealPrompts:
                 "field_priorities": {
                     "product_core": 1,
                     "agent_templates": 2,  # IMPORTANT
-                    "project_context": 1
+                    "project_description": 1
                 }
             }
         )

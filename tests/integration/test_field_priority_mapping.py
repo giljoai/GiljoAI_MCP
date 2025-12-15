@@ -15,7 +15,7 @@ Categories (v2.0):
     - product_core: Product description + tech stack (languages, backend, frontend, database, infrastructure)
     - agent_templates: Active agent behavior configurations
     - vision_documents: Chunked vision document uploads
-    - project_context: Project description, user notes, architecture notes
+    - project_description: Project description, user notes, architecture notes
     - memory_360: Cumulative project history (learnings, decisions, sequential closeouts)
     - git_history: Recent commits from git integration
 
@@ -49,7 +49,7 @@ class TestPrioritySystemV2Defaults:
             "product_core",
             "agent_templates",
             "vision_documents",
-            "project_context",
+            "project_description",
             "memory_360",
             "git_history",
         }
@@ -80,9 +80,9 @@ class TestPrioritySystemV2Defaults:
         assert DEFAULT_FIELD_PRIORITY["priorities"]["agent_templates"] == 1
 
     def test_default_important_categories(self):
-        """Verify vision_documents and project_context are IMPORTANT (Priority 2)"""
+        """Verify vision_documents and project_description are IMPORTANT (Priority 2)"""
         assert DEFAULT_FIELD_PRIORITY["priorities"]["vision_documents"] == 2
-        assert DEFAULT_FIELD_PRIORITY["priorities"]["project_context"] == 2
+        assert DEFAULT_FIELD_PRIORITY["priorities"]["project_description"] == 2
 
     def test_default_nice_to_have_categories(self):
         """Verify memory_360 is NICE_TO_HAVE (Priority 3)"""
@@ -107,7 +107,7 @@ class TestPriorityHelperFunctions:
         """Test retrieving all IMPORTANT (Priority 2) categories"""
         important_categories = get_categories_by_priority(2)
         assert "vision_documents" in important_categories
-        assert "project_context" in important_categories
+        assert "project_description" in important_categories
         assert len(important_categories) == 2
 
     def test_get_categories_by_priority_nice_to_have(self):

@@ -66,7 +66,7 @@ class TestAllowedPriorityCategoriesValidation:
             "product_core",
             "vision_documents",
             "agent_templates",
-            "project_context",
+            "project_description",
             "memory_360",
             "git_history",
         ]
@@ -114,7 +114,7 @@ class TestAllowedPriorityCategoriesValidation:
             "git_history",
             "memory_360",
             "product_core",
-            "project_context",
+            "project_description",
             "tech_stack",
             "testing",
             "vision_documents",

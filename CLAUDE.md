@@ -153,10 +153,10 @@ log_file = 'F:/logs/app.log'
 GiljoAI uses a 2-dimensional context management model:
 
 **Priority Dimension** (WHAT to fetch):
-- Priority 1 (CRITICAL) - Always included
-- Priority 2 (IMPORTANT) - High priority
-- Priority 3 (NICE_TO_HAVE) - Medium priority
-- Priority 4 (EXCLUDED) - Never included
+- Priority 1 (CRITICAL) - Orchestrator MUST call (mandatory)
+- Priority 2 (IMPORTANT) - Orchestrator SHOULD call (recommended)
+- Priority 3 (REFERENCE) - Orchestrator MAY call (optional)
+- Priority 4 (OFF) - Not mentioned (excluded)
 
 **Depth Dimension** (HOW MUCH detail):
 - Product Core: include/exclude (~100 tokens)

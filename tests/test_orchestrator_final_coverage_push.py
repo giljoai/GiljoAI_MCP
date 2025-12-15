@@ -33,8 +33,8 @@ async def orchestrator(db_manager):
 class TestOrchestratorFinalCoveragePush:
     """Final tests to push coverage above 90%."""
 
-    async def test_monitor_project_context_complete_loop_execution(self, orchestrator):
-        """Test complete execution of _monitor_project_context loop (lines 667-682)."""
+    async def test_monitor_project_description_complete_loop_execution(self, orchestrator):
+        """Test complete execution of _monitor_project_description loop (lines 667-682)."""
         # Create and activate project
         project = await orchestrator.create_project(name="Complete Loop", mission="Test complete loop")
         await orchestrator.activate_project(project.id)
@@ -65,7 +65,7 @@ class TestOrchestratorFinalCoveragePush:
         # Verify monitoring stopped
         assert project.id not in orchestrator._context_monitors
 
-    async def test_monitor_project_context_exception_recovery(self, orchestrator):
+    async def test_monitor_project_description_exception_recovery(self, orchestrator):
         """Test monitoring loop exception handling and recovery (lines 688-690, 699)."""
         # Create and activate project
         project = await orchestrator.create_project(name="Exception Recovery", mission="Test exception recovery")
@@ -102,7 +102,7 @@ class TestOrchestratorFinalCoveragePush:
         # Verify exceptions may or may not have occurred depending on timing
         assert call_count >= 0
 
-    async def test_monitor_project_context_inactive_project_detection(self, orchestrator):
+    async def test_monitor_project_description_inactive_project_detection(self, orchestrator):
         """Test monitoring detects inactive project and breaks loop."""
         # Create and activate project
         project = await orchestrator.create_project(name="Inactive Detection", mission="Test inactive detection")
@@ -126,7 +126,7 @@ class TestOrchestratorFinalCoveragePush:
         # Monitoring should have stopped when project became inactive
         assert project.id not in orchestrator._context_monitors
 
-    async def test_monitor_project_context_project_not_found_handling(self, orchestrator):
+    async def test_monitor_project_description_project_not_found_handling(self, orchestrator):
         """Test monitoring handles project not found scenario (line 672)."""
         # Create and activate project
         project = await orchestrator.create_project(name="Not Found", mission="Test not found")
@@ -179,7 +179,7 @@ class TestOrchestratorFinalCoveragePush:
         # Complete project
         await orchestrator.complete_project(project.id)
 
-    async def test_monitor_project_context_warning_log_coverage(self, orchestrator):
+    async def test_monitor_project_description_warning_log_coverage(self, orchestrator):
         """Test monitoring warning log when handoff needed (lines 679-682)."""
         # Create and activate project
         project = await orchestrator.create_project(name="Warning Log", mission="Test warning log")

@@ -557,7 +557,7 @@ async def test_get_field_priority_config_custom(user_service, test_user, db_sess
             "product_core": 1,
             "vision_documents": 2,
             "agent_templates": 3,
-            "project_context": 4
+            "project_description": 4
         }
     }
     test_user.field_priority_config = custom_config
@@ -593,7 +593,7 @@ async def test_update_field_priority_config_success(user_service, test_user, db_
             "product_core": 1,
             "vision_documents": 1,
             "agent_templates": 2,
-            "project_context": 3
+            "project_description": 3
         }
     }
 

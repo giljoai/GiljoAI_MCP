@@ -262,7 +262,7 @@ async def test_orchestrator_fetches_all_9_context_tools(mock_db_manager):
     r5 = await get_project(
         "orch-project-id", "orch-tenant", False, mock_db_manager
     )
-    results.append(r5["source"] == "project_context")
+    results.append(r5["source"] == "project_description")
 
     # All 5 tools should work
     assert all(results), "Not all context tools are functional"
@@ -427,7 +427,7 @@ async def test_bug_fixes_verified_e2e(mock_db_manager):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_project_context_no_context_budget(mock_db_manager):
+async def test_project_description_no_context_budget(mock_db_manager):
     """Test that get_project does NOT return context_budget (deprecated field)"""
     project = Project(
         id="project-test-id",

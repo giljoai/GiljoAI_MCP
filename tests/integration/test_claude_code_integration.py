@@ -619,7 +619,7 @@ class TestContextBudgetTracking:
             assert parent.context_used == initial_context + 20000
 
     @pytest.mark.asyncio
-    async def test_project_context_budget_updated(self, db_session, test_project):
+    async def test_project_description_budget_updated(self, db_session, test_project):
         """Test that project-level context budget is updated"""
         from src.giljo_mcp.database import DatabaseManager
 
@@ -646,7 +646,7 @@ class TestContextBudgetTracking:
             session.add(parent)
             await session.commit()
 
-            initial_project_context = test_project.context_used
+            initial_project_description = test_project.context_used
 
             # Spawn and complete sub-agent
             spawn_result = await mcp._tools["spawn_and_log_sub_agent"](
@@ -662,7 +662,7 @@ class TestContextBudgetTracking:
 
             # Refresh project and verify context updated
             await session.refresh(test_project)
-            assert test_project.context_used == initial_project_context + 15000
+            assert test_project.context_used == initial_project_description + 15000
 
 
 if __name__ == "__main__":

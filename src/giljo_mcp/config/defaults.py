@@ -10,30 +10,35 @@ Handover 0313: Priority System Refactor (v1.0 → v2.0)
 - v2.0: Priority = fetch order / mandatory flag (1/2/3/4 = CRITICAL/IMPORTANT/NICE/EXCLUDED)
 
 Priority Tiers (v2.0):
-    Priority 1 (CRITICAL - Always fetch, highest priority):
-        - product_core: Product description + tech stack (languages, backend, frontend, database, infrastructure)
-        - agent_templates: Active agent behavior configurations
+    Priority 1 (CRITICAL - Orchestrator MUST call):
+        - product_core: Product name, description, core features
+        - project_description: Current project metadata (locked field - always CRITICAL)
+        - memory_360: Cumulative project history (sequential closeouts)
 
-        These categories are essential for orchestrator operation and are always
-        fetched first, regardless of token budget constraints.
+        These MCP tools are mentioned with MANDATORY framing in orchestrator
+        instructions. Orchestrator is expected to call these tools every time.
 
-    Priority 2 (IMPORTANT - Fetch if budget allows):
-        - vision_documents: Chunked vision document uploads (product vision, features, roadmap)
-        - project_context: Project description, user notes, architecture notes
+    Priority 2 (IMPORTANT - Orchestrator SHOULD call):
+        - tech_stack: Tech stack configuration (languages, frameworks, databases)
+        - git_history: Recent commits from git integration (if enabled)
 
-        These categories provide critical product context and are fetched unless
-        token budget is severely constrained.
+        These MCP tools are mentioned with STRONG RECOMMENDATION in orchestrator
+        instructions. Orchestrator should call unless budget is constrained.
 
-    Priority 3 (NICE_TO_HAVE - Fetch if budget remaining):
-        - memory_360: Cumulative project history (sequential closeouts, outcomes, decisions)
+    Priority 3 (REFERENCE - Orchestrator MAY call):
+        - vision_documents: Chunked vision document uploads (paginated)
+        - architecture: Architecture patterns, API style, design patterns
+        - agent_templates: Agent template library (for task assignment)
+        - testing: Quality standards, testing strategy, frameworks
 
-        These categories provide historical context and are fetched only if token
-        budget allows after CRITICAL and IMPORTANT categories.
+        These MCP tools are mentioned as OPTIONAL SUPPLEMENTAL context in
+        orchestrator instructions. Orchestrator calls if project scope requires.
 
-    Priority 4 (EXCLUDED - Never fetch by default):
-        - git_history: Recent commits from git integration
+    Priority 4 (OFF - Not mentioned):
+        No default fields set to OFF. Users can toggle any field to OFF via UI.
 
-        These categories are excluded by default but users can enable via UI.
+        These MCP tools are NOT MENTIONED in orchestrator instructions. They
+        are excluded entirely from context assembly.
 
 Depth Controls (v2.0 - Handover 0314):
     Each category's depth is controlled independently via depth_config JSONB column.
@@ -75,20 +80,23 @@ from typing import Any, Dict
 DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
     "version": "2.0",
     "priorities": {
-        # Priority 1 (CRITICAL): Always fetch, highest priority
-        # Core technical foundation and active agent configurations
-        "product_core": 1,  # description, tech_stack (languages, backend, frontend, database, infrastructure)
-        "agent_templates": 1,  # Active agent behavior configurations
-        # Priority 2 (IMPORTANT): Fetch if budget allows
-        # Product vision and current project context
-        "vision_documents": 2,  # Chunked vision document uploads
-        "project_context": 2,  # project description, user notes, architecture notes
-        # Priority 3 (NICE_TO_HAVE): Fetch if budget remaining
-        # Cumulative project history
-        "memory_360": 3,  # Sequential project history, outcomes, decisions
-        # Priority 4 (EXCLUDED): Never fetch by default
-        # Recent commit history (optional, can be enabled per user)
-        "git_history": 4,  # Recent commits from git integration
+        # Priority 1 (CRITICAL): Orchestrator MUST call these MCP tools
+        # These tools are mentioned with mandatory framing in instructions
+        "product_core": 1,        # Product name, description, core features
+        "project_description": 1, # Current project metadata (locked - always CRITICAL)
+        "memory_360": 1,          # Cumulative project history (sequential closeouts)
+
+        # Priority 2 (IMPORTANT): Orchestrator SHOULD call if budget allows
+        # These tools are mentioned with strong recommendation in instructions
+        "tech_stack": 2,          # Tech stack configuration (languages, frameworks, databases)
+        "git_history": 2,         # Recent commits from git integration (if enabled)
+
+        # Priority 3 (REFERENCE): Orchestrator MAY call if project scope requires
+        # These tools are mentioned as optional supplemental context
+        "vision_documents": 3,    # Chunked vision document uploads (paginated)
+        "architecture": 3,        # Architecture patterns, API style, design patterns
+        "agent_templates": 3,     # Agent template library (for task assignment)
+        "testing": 3,             # Quality standards, testing strategy, frameworks
     },
 }
 
