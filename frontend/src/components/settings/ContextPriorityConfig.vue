@@ -255,12 +255,6 @@ const priorityOptions = [
     title: 'REFERENCE',
     subtitle: 'Orchestrator MAY call if project scope requires',
     color: 'blue-darken-2'
-  },
-  {
-    value: 4,
-    title: 'OFF',
-    subtitle: 'Tool not mentioned in orchestrator instructions',
-    color: 'grey'
   }
 ]
 
