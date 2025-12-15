@@ -1684,6 +1684,7 @@ The agent templates are now being updated...
                     "project_name": project.name,
                     "project_description": project.description or "",
                     "mission": condensed_mission,
+                    "mission_format": "json",  # Handover 0347b: JSON format indicator
                     "context_budget": orchestrator.context_budget or 150000,
                     "context_used": orchestrator.context_used or 0,
                     "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
@@ -2023,6 +2024,7 @@ async def get_orchestrator_instructions(
                 "project_name": project.name,
                 "project_description": project.description or "",
                 "mission": condensed_mission,
+                "mission_format": "json",  # Handover 0347b: JSON format indicator
                 "context_budget": orchestrator.context_budget or 150000,
                 "context_used": orchestrator.context_used or 0,
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
