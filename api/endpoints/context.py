@@ -3,6 +3,9 @@ Context and vision management API endpoints
 
 Handover 0018: Context Management System API
 Provides endpoints for vision document chunking, indexing, and dynamic context loading.
+
+Handover 0347e: 4-level vision depth validation
+Validates vision_documents depth values (optional, light, medium, full).
 """
 
 from typing import Any, List, Optional
@@ -14,6 +17,9 @@ from api.dependencies import get_tenant_key
 
 
 router = APIRouter()
+
+# Handover 0347e: Valid vision depth values for 4-level system
+VALID_VISION_DEPTH_VALUES = ["optional", "light", "medium", "full"]
 
 
 class ContextIndexResponse(BaseModel):
