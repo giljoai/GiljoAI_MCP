@@ -4,7 +4,7 @@
 **Date**: 2025-12-15
 **Status**: PROPOSED
 **Priority**: HIGH
-**Context**: Handover 0350 (Fetch Tools Research), Handover 0347 (Context Management v2.0)
+**Context**: Handover 0350a (fetch_context() unified tool), Handover 0347 (Context Management v2.0)
 
 ## Executive Summary
 
@@ -43,7 +43,7 @@ or use the GrepTool to search for specific content.
 | 360 Memory | **10K+ tokens** | OVERFLOW |
 | Inline Total | **100K+** | IMPOSSIBLE |
 
-**Solution**: Return ~500 token framing instructions; orchestrator fetches what it needs via individual `get_*` MCP tools.
+**Solution**: Return ~500 token framing instructions; orchestrator fetches what it needs via unified `fetch_context()` MCP tool.
 
 ---
 
@@ -61,17 +61,23 @@ or use the GrepTool to search for specific content.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  INLINE (always in response)        FRAMING (fetch pointers)  │
+│  INLINE (always in response)        FRAMING (single tool)     │
 │  ─────────────────────────────      ───────────────────────── │
-│  • project_description              • get_product_context     │
-│  • mission (if exists)              • get_vision_document     │
-│  • identity (IDs, keys)             • get_tech_stack          │
-│                                     • get_architecture        │
-│  (~100-200 tokens)                  • get_testing             │
-│                                     • get_360_memory          │
-│                                     • get_git_history         │
-│                                     • get_agent_templates     │
-│                                     • get_project             │
+│  • project_description              • fetch_context()         │
+│  • mission (if exists)                - categories param      │
+│  • identity (IDs, keys)               - depth_config param    │
+│                                       - apply_user_config     │
+│  (~100-200 tokens)                                            │
+│                                     Categories available:     │
+│                                     • product_core            │
+│                                     • vision_documents        │
+│                                     • tech_stack              │
+│                                     • architecture            │
+│                                     • testing                 │
+│                                     • memory_360              │
+│                                     • git_history             │
+│                                     • agent_templates         │
+│                                     • project                 │
 │                                                               │
 │  Total Response: ~500 tokens (under 25K limit)                │
 └────────────────────────────────────────────────────────────────┘
@@ -473,7 +479,7 @@ Call `fetch_context()` for REFERENCE tier items if project scope requires:
 
 ## Tool Implementation: fetch_context()
 
-**IMPORTANT**: This handover does NOT implement the `fetch_context()` tool. That is Handover 0352 (separate implementation).
+**IMPORTANT**: This handover does NOT implement the `fetch_context()` tool. That is **Handover 0350a** (prerequisite - must be completed first).
 
 This handover focuses on REFACTORING `get_orchestrator_instructions()` to RETURN FRAMING INSTRUCTIONS instead of inline context.
 
@@ -481,27 +487,22 @@ The framing instructions will reference `fetch_context()` tool with this signatu
 
 ```python
 async def fetch_context(
-    category: Literal[
-        "product_core",
-        "vision_documents",
-        "tech_stack",
-        "architecture",
-        "testing",
-        "memory_360",
-        "git_history",
-        "agent_templates"
-    ],
     product_id: str,
     tenant_key: str,
-    offset: Optional[int] = None,  # For vision_documents pagination
-    limit: Optional[int] = None,   # Override user's depth if needed
-    depth: Optional[str] = None    # For agent_templates (type_only vs full)
+    project_id: Optional[str] = None,
+    categories: List[str] = ["all"],  # Can specify multiple: ["product_core", "tech_stack"]
+    depth_config: Optional[Dict[str, str]] = None,  # Per-category depth overrides
+    apply_user_config: bool = True,  # Whether to apply user's saved settings
+    format: str = "structured"  # "structured" or "flat"
 ) -> dict:
     """
-    Fetch context by category (Handover 0352 - NOT THIS HANDOVER).
+    Unified context fetch tool (Handover 0350a - PREREQUISITE).
 
+    Single entry point for all context categories.
     Respects user's depth settings from Settings -> Context UI.
     Returns actual context data, not framing instructions.
+
+    See Handover 0350a for full implementation details.
     """
 ```
 
@@ -702,8 +703,9 @@ async def get_orchestrator_instructions(self, orchestrator_id: str, tenant_key: 
 
 ## Related Handovers
 
-- **Handover 0350**: Fetch Tools Implementation Research (context for this work)
-- **Handover 0352**: FUTURE - Implement `fetch_context()` MCP tool (NOT this handover)
+- **Handover 0350a**: Create Unified `fetch_context()` Tool (PREREQUISITE - must complete first)
+- **Handover 0350c**: Frontend 3-Tier UI + Field Rename (companion - UI changes)
+- **Handover 0350d**: Documentation Updates (companion - docs)
 - **Handover 0347**: Context Management v2.0 (field priorities, depth config)
 - **Handover 0246a**: 7-Task Staging Workflow (updated with framing instructions)
 - **Handover 0088**: Thin Client Architecture (original vision)
