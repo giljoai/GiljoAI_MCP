@@ -1807,44 +1807,64 @@ Partial reading defeats the purpose of this configuration."""
                     }
 
                 elif vision_depth == "light":
-                    # 33% summarized content inline (~10-12K tokens)
-                    vision_content = vision_doc.content if hasattr(vision_doc, 'content') and vision_doc.content else ""
-                    if not vision_content and vision_doc.text_content:
-                        vision_content = vision_doc.text_content
+                    # 33% SUMY-summarized content from DB (~10-12K tokens)
+                    # Uses pre-computed summary_light field (LSA algorithm)
+                    summary_content = vision_doc.summary_light or ""
+                    summary_tokens = vision_doc.summary_light_tokens or self._count_tokens(summary_content)
 
-                    summary_content = self._summarize_vision_content(vision_content, 0.33)
-
-                    vision_content_data = {
-                        "status": "INLINE_SUMMARY",
-                        "coverage": "33% of original vision",
-                        "inline_content": summary_content,
-                        "document_name": vision_doc.document_name or "Product Vision",
-                        "original_tokens": vision_doc.original_token_count or 0,
-                        "summary_tokens": self._count_tokens(summary_content),
-                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
-                        "note": "This is a 33% summary. Use fetch_vision_document() for complete content.",
-                        "depth": "light"
-                    }
+                    if summary_content:
+                        vision_content_data = {
+                            "status": "INLINE_SUMMARY",
+                            "coverage": "33% of original vision (SUMY LSA)",
+                            "inline_content": summary_content,
+                            "document_name": vision_doc.document_name or "Product Vision",
+                            "original_tokens": vision_doc.original_token_count or 0,
+                            "summary_tokens": summary_tokens,
+                            "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                            "note": "This is a 33% SUMY summary. Use fetch_vision_document() for complete content.",
+                            "depth": "light"
+                        }
+                    else:
+                        # Fallback if summary not yet generated
+                        vision_content_data = {
+                            "status": "SUMMARY_NOT_AVAILABLE",
+                            "document_name": vision_doc.document_name or "Product Vision",
+                            "total_tokens": vision_doc.original_token_count or 0,
+                            "chunk_count": vision_doc.chunk_count or 0,
+                            "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                            "note": "Light summary not yet generated. Use fetch_vision_document() to read full content.",
+                            "depth": "light"
+                        }
 
                 elif vision_depth == "medium":
-                    # 66% summarized content inline (~20-24K tokens)
-                    vision_content = vision_doc.content if hasattr(vision_doc, 'content') and vision_doc.content else ""
-                    if not vision_content and vision_doc.text_content:
-                        vision_content = vision_doc.text_content
+                    # 66% SUMY-summarized content from DB (~20-24K tokens)
+                    # Uses pre-computed summary_medium field (LSA algorithm)
+                    summary_content = vision_doc.summary_medium or ""
+                    summary_tokens = vision_doc.summary_medium_tokens or self._count_tokens(summary_content)
 
-                    summary_content = self._summarize_vision_content(vision_content, 0.66)
-
-                    vision_content_data = {
-                        "status": "INLINE_SUMMARY",
-                        "coverage": "66% of original vision",
-                        "inline_content": summary_content,
-                        "document_name": vision_doc.document_name or "Product Vision",
-                        "original_tokens": vision_doc.original_token_count or 0,
-                        "summary_tokens": self._count_tokens(summary_content),
-                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
-                        "note": "This is a 66% summary. Use fetch_vision_document() for complete content.",
-                        "depth": "medium"
-                    }
+                    if summary_content:
+                        vision_content_data = {
+                            "status": "INLINE_SUMMARY",
+                            "coverage": "66% of original vision (SUMY LSA)",
+                            "inline_content": summary_content,
+                            "document_name": vision_doc.document_name or "Product Vision",
+                            "original_tokens": vision_doc.original_token_count or 0,
+                            "summary_tokens": summary_tokens,
+                            "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                            "note": "This is a 66% SUMY summary. Use fetch_vision_document() for complete content.",
+                            "depth": "medium"
+                        }
+                    else:
+                        # Fallback if summary not yet generated
+                        vision_content_data = {
+                            "status": "SUMMARY_NOT_AVAILABLE",
+                            "document_name": vision_doc.document_name or "Product Vision",
+                            "total_tokens": vision_doc.original_token_count or 0,
+                            "chunk_count": vision_doc.chunk_count or 0,
+                            "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                            "note": "Medium summary not yet generated. Use fetch_vision_document() to read full content.",
+                            "depth": "medium"
+                        }
 
                 elif vision_depth == "full":
                     # Pointer + MANDATORY read instruction (~200 tokens + fetch cost)
