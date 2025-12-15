@@ -1,12 +1,10 @@
-"""MCP tool for fetching tech stack information with depth control.
+"""MCP tool for fetching tech stack information.
 
 Reuses logic from:
 - mission_planner._format_tech_stack() (lines 927-999)
 - Product model tech stack fields
 
-Token Budget by Depth:
-- "required": Only required fields (programming_languages, frameworks, database) (~200 tokens)
-- "all": All tech stack sections (~400 tokens)
+Always returns ALL tech stack fields (no truncation).
 """
 
 import structlog
@@ -30,21 +28,19 @@ def estimate_tokens(data: Any) -> int:
 async def get_tech_stack(
     product_id: str,
     tenant_key: str,
-    sections: str = "all",
     offset: int = 0,
     limit: int = None,
     db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
-    Fetch tech stack information for given product with depth control.
+    Fetch tech stack information for given product.
 
     Handover 0316: Reads from Product.config_data.tech_stack JSONB object (not direct columns).
-    Returns tech stack fields based on sections parameter.
+    Handover 0351: Removed sections parameter - always returns ALL fields.
 
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
-        sections: Detail level ("required" or "all")
         offset: Skip first N items (reserved for future pagination)
         limit: Max items to return (reserved for future pagination)
         db_manager: Database manager instance
@@ -56,7 +52,6 @@ async def get_tech_stack(
         Dict with tech stack from config_data.tech_stack:
         {
             "source": "tech_stack",
-            "depth": "all",
             "data": {
                 "programming_languages": ["Python", "TypeScript"],
                 "frontend_frameworks": ["Vue 3"],
@@ -78,15 +73,13 @@ async def get_tech_stack(
     Example:
         result = await get_tech_stack(
             product_id="123e4567-e89b-12d3-a456-426614174000",
-            tenant_key="tenant_abc",
-            sections="all"
+            tenant_key="tenant_abc"
         )
     """
     logger.info(
         "fetching_tech_stack_context",
         product_id=product_id,
-        tenant_key=tenant_key,
-        depth=sections
+        tenant_key=tenant_key
     )
 
     if db_manager is None:
@@ -111,7 +104,6 @@ async def get_tech_stack(
             )
             return {
                 "source": "tech_stack",
-                "depth": sections,
                 "data": {},
                 "metadata": {
                     "product_id": product_id,
@@ -122,26 +114,18 @@ async def get_tech_stack(
             }
 
         # Handover 0316: Access config_data JSONB (not direct columns)
+        # Handover 0351: Removed sections parameter - always returns ALL fields
         config_data = product.config_data or {}
         tech_stack = config_data.get("tech_stack", {})
 
-        if sections == "required":
-            # v2.0 backward compatibility: Return only required fields
-            data = {
-                "programming_languages": tech_stack.get("languages", []),
-                "frameworks": tech_stack.get("frontend", []) + tech_stack.get("backend", []),
-                "database": tech_stack.get("database", [])
-            }
-        else:  # "all"
-            # v2.0 backward compatibility: Return all tech stack fields
-            data = {
-                "programming_languages": tech_stack.get("languages", []),
-                "frontend_frameworks": tech_stack.get("frontend", []),
-                "backend_frameworks": tech_stack.get("backend", []),
-                "databases": tech_stack.get("database", []),
-                "infrastructure": tech_stack.get("infrastructure", []),
-                "dev_tools": tech_stack.get("dev_tools", [])
-            }
+        data = {
+            "programming_languages": tech_stack.get("languages", []),
+            "frontend_frameworks": tech_stack.get("frontend", []),
+            "backend_frameworks": tech_stack.get("backend", []),
+            "databases": tech_stack.get("database", []),
+            "infrastructure": tech_stack.get("infrastructure", []),
+            "dev_tools": tech_stack.get("dev_tools", [])
+        }
 
         # Calculate token estimate
         total_tokens = estimate_tokens(data)
@@ -152,13 +136,11 @@ async def get_tech_stack(
             tenant_key=tenant_key,
             has_config_data=bool(product.config_data),
             has_tech_stack=bool(config_data.get("tech_stack")),
-            depth=sections,
             estimated_tokens=total_tokens
         )
 
         return {
             "source": "tech_stack",
-            "depth": sections,
             "data": data,
             "metadata": {
                 "product_id": product_id,

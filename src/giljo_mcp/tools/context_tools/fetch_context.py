@@ -4,6 +4,8 @@ Unified context fetcher for GiljoAI MCP.
 Handover 0350a: Single entry point for all context fetching.
 Dispatches to internal get_* tools based on categories parameter.
 
+Handover 0351: Removed depth params for tech_stack, architecture, testing.
+
 Token Budget Savings:
 - Before: 9 tool schemas x ~100 tokens = ~900 tokens consumed at agent startup
 - After: 1 tool schema x ~180 tokens = ~180 tokens consumed at agent startup
@@ -43,15 +45,15 @@ CATEGORY_TOOLS = {
 
 # Default depth settings per category
 DEFAULT_DEPTHS = {
-    "product_core": None,  # No depth param
+    "product_core": None,        # No depth param
     "vision_documents": "medium",
-    "tech_stack": "all",
-    "architecture": "overview",
-    "testing": "full",
-    "memory_360": 5,  # last_n_projects
-    "git_history": 25,  # commits
-    "agent_templates": "standard",
-    "project": None,  # No depth param
+    "tech_stack": None,          # No depth param (Handover 0351)
+    "architecture": None,        # No depth param (Handover 0351)
+    "testing": None,             # No depth param (Handover 0351)
+    "memory_360": 5,             # last_n_projects
+    "git_history": 25,           # commits
+    "agent_templates": "type_only",  # Renamed from "standard" (Handover 0351)
+    "project": None,             # No depth param
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
@@ -166,10 +168,6 @@ async def fetch_context(
 
     # Load user config if requested
     effective_depths = DEFAULT_DEPTHS.copy()
-    if apply_user_config and db_manager:
-        user_config = await _load_user_depth_config(product_id, tenant_key, db_manager)
-        if user_config:
-            effective_depths.update(user_config)
 
     # Apply explicit depth overrides
     if depth_config:
@@ -288,14 +286,12 @@ async def _fetch_category(
     elif category == "tech_stack":
         kwargs["product_id"] = product_id
         kwargs["tenant_key"] = tenant_key
-        if depth:
-            kwargs["sections"] = depth
+        # No depth param (Handover 0351)
 
     elif category in ("architecture", "testing"):
         kwargs["product_id"] = product_id
         kwargs["tenant_key"] = tenant_key
-        if depth:
-            kwargs["depth"] = depth
+        # No depth param (Handover 0351)
 
     else:  # product_core
         kwargs["product_id"] = product_id
@@ -303,24 +299,6 @@ async def _fetch_category(
         # No depth param for product_core
 
     return await tool_func(**kwargs)
-
-
-async def _load_user_depth_config(
-    product_id: str,
-    tenant_key: str,
-    db_manager: DatabaseManager
-) -> Optional[Dict[str, Any]]:
-    """
-    Load user's saved depth configuration from database.
-
-    TODO: Implement user config loading from User.field_priority JSONB.
-    For now, return None to use defaults.
-
-    Future implementation will query User model for current user's
-    saved depth preferences and return them as a dict.
-    """
-    # Placeholder for future implementation
-    return None
 
 
 def _flatten_results(results: Dict[str, Any]) -> Dict[str, Any]:

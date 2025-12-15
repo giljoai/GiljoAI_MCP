@@ -3,6 +3,8 @@ Testing Configuration Tool - Handover 0316
 
 Fetch testing strategy and quality standards for context generation.
 Returns quality_standards (direct field) + test_config from config_data.
+
+Handover 0351: Removed depth parameter - always returns FULL data.
 """
 
 import structlog
@@ -24,27 +26,23 @@ def estimate_tokens(data: Any) -> int:
 async def get_testing(
     product_id: str,
     tenant_key: str,
-    depth: str = "full",
     db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
     Fetch testing strategy and quality standards (Testing).
 
     Handover 0316: Returns quality_standards (direct field) + test_config from config_data.
+    Handover 0351: Removed depth parameter - always returns FULL data.
 
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
-        depth: Detail level ("none", "basic", "full")
-            - none: Returns empty (0 tokens)
-            - basic: strategy + coverage_target (~150 tokens)
-            - full: All fields + frameworks (~400 tokens)
         db_manager: Database manager instance
+
     Returns:
         Dict with testing config:
         {
             "source": "testing",
-            "depth": "full",
             "data": {
                 "quality_standards": "80% coverage, zero bugs",
                 "testing_strategy": "TDD with unit/integration tests",
@@ -65,33 +63,18 @@ async def get_testing(
     Example:
         result = await get_testing(
             product_id="123e4567-e89b-12d3-a456-426614174000",
-            tenant_key="tenant_abc",
-            depth="full"
+            tenant_key="tenant_abc"
         )
     """
     logger.info(
         "fetching_testing_context",
         product_id=product_id,
-        tenant_key=tenant_key,
-        depth=depth
+        tenant_key=tenant_key
     )
 
     if db_manager is None:
         logger.error("db_manager is required", operation="get_testing")
         raise ValueError("db_manager parameter is required")
-
-    # Handle "none" depth early
-    if depth == "none":
-        return {
-            "source": "testing",
-            "depth": depth,
-            "data": {},
-            "metadata": {
-                "product_id": product_id,
-                "tenant_key": tenant_key,
-                "estimated_tokens": 0
-            }
-        }
 
     async with db_manager.get_session_async() as session:
         # Fetch product with multi-tenant isolation
@@ -111,7 +94,6 @@ async def get_testing(
             )
             return {
                 "source": "testing",
-                "depth": depth,
                 "data": {},
                 "metadata": {
                     "product_id": product_id,
@@ -125,22 +107,14 @@ async def get_testing(
         config_data = product.config_data or {}
         test_config = config_data.get("test_config", {})
 
-        if depth == "basic":
-            # v2.0 backward compatibility
-            data = {
-                "quality_standards": product.quality_standards or "",
-                "testing_strategy": test_config.get("strategy", ""),
-                "coverage_target": test_config.get("coverage_target", 80)
-            }
-        else:  # "full"
-            # v2.0 backward compatibility
-            data = {
-                "quality_standards": product.quality_standards or "",
-                "testing_strategy": test_config.get("strategy", ""),
-                "coverage_target": test_config.get("coverage_target", 80),
-                "testing_frameworks": test_config.get("frameworks", []),
-                "test_commands": config_data.get("test_commands", [])
-            }
+        # Handover 0351: Always return FULL data
+        data = {
+            "quality_standards": product.quality_standards or "",
+            "testing_strategy": test_config.get("strategy", ""),
+            "coverage_target": test_config.get("coverage_target", 80),
+            "testing_frameworks": test_config.get("frameworks", []),
+            "test_commands": config_data.get("test_commands", [])
+        }
 
         # Calculate token estimate
         total_tokens = estimate_tokens(data)
@@ -149,7 +123,6 @@ async def get_testing(
             "testing_context_fetched",
             product_id=product_id,
             tenant_key=tenant_key,
-            depth=depth,
             has_quality_standards=bool(product.quality_standards),
             has_test_config=bool(test_config),
             estimated_tokens=total_tokens
@@ -157,7 +130,6 @@ async def get_testing(
 
         return {
             "source": "testing",
-            "depth": depth,
             "data": data,
             "metadata": {
                 "product_id": product_id,
