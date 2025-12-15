@@ -1765,7 +1765,7 @@ class ProjectService:
                         "vision_documents": "medium",
                         "memory_last_n_projects": 3,
                         "git_commits": 25,
-                        "agent_template_detail": "standard",
+                        "agent_templates": "type_only",
                         "tech_stack_sections": "all",
                         "architecture_depth": "overview"
                     }
