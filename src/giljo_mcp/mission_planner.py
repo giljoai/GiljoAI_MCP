@@ -1648,13 +1648,13 @@ Partial reading defeats the purpose of this configuration."""
 
         # Product Core (name, description, features)
         product_core_priority = effective_priorities.get("product_core", 1)
-        if product_core_priority == 1:
-            builder.add_critical("product_core")
-            builder.add_critical_content("product_core", {
+        if product_core_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
+            product_core_content = {
                 "name": product.name,
                 "description": product.description or "",
                 "tenant_key": product.tenant_key
-            })
+            }
+            self._add_to_tier_by_priority(builder, "product_core", product_core_priority, product_core_content)
 
         # Project Description (MANDATORY - always included)
         builder.add_critical("project_description")
@@ -1663,11 +1663,11 @@ Partial reading defeats the purpose of this configuration."""
             "description": project.description or ""
         })
 
-        # Tech Stack (if priority 1)
+        # Tech Stack
         tech_stack_priority = effective_priorities.get("tech_stack", 2)
-        if tech_stack_priority == 1 and product.config_data:
+        if tech_stack_priority in [1, 2, 3] and product.config_data:  # Process unless EXCLUDED (4)
             tech_stack_raw = product.config_data.get("tech_stack", {})
-            
+
             # Normalize to dict format
             if isinstance(tech_stack_raw, list):
                 tech_stack_data = {"technologies": tech_stack_raw}
@@ -1679,35 +1679,44 @@ Partial reading defeats the purpose of this configuration."""
                 tech_stack_data = {}
 
             if tech_stack_data:
-                builder.add_critical("tech_stack")
-                builder.add_critical_content("tech_stack", tech_stack_data)
+                self._add_to_tier_by_priority(builder, "tech_stack", tech_stack_priority, tech_stack_data)
 
         # === IMPORTANT TIER (Priority 2): Condensed content + fetch pointers ===
 
         # Architecture
         arch_priority = effective_priorities.get("architecture", 2)
-        if arch_priority == 2 and product.config_data:
+        if arch_priority in [1, 2, 3] and product.config_data:  # Process unless EXCLUDED (4)
             arch_text = product.config_data.get("architecture", "")
             if arch_text:
-                builder.add_important("architecture")
-                builder.add_important_content("architecture", {
+                arch_content = {
                     "summary": arch_text[:500] + "..." if len(arch_text) > 500 else arch_text,
                     "fetch_tool": "fetch_architecture(product_id)",
                     "detail_level": "condensed"
-                })
+                }
+                self._add_to_tier_by_priority(builder, "architecture", arch_priority, arch_content)
 
         # Testing Configuration
+        # Note: Database stores testing data under "test_config" key
         testing_priority = effective_priorities.get("testing", 2)
-        if testing_priority == 2 and product.config_data:
-            testing_data = product.config_data.get("testing", {})
-            if testing_data:
-                builder.add_important("testing")
-                builder.add_important_content("testing", {
-                    "methodology": testing_data.get("methodology", ""),
+        if testing_priority in [1, 2, 3] and product.config_data:  # Process unless EXCLUDED (4)
+            testing_data = product.config_data.get("test_config", {})
+            # Check if any testing fields have content
+            has_testing_content = any([
+                testing_data.get("quality_standards"),
+                testing_data.get("strategy"),
+                testing_data.get("frameworks"),
+                testing_data.get("coverage_target")
+            ])
+            if testing_data and has_testing_content:
+                testing_content = {
+                    "quality_standards": testing_data.get("quality_standards", ""),
+                    "strategy": testing_data.get("strategy", ""),
+                    "frameworks": testing_data.get("frameworks", ""),
                     "coverage_target": testing_data.get("coverage_target", 80),
                     "fetch_tool": "fetch_testing_config(product_id)",
                     "detail_level": "condensed"
-                })
+                }
+                self._add_to_tier_by_priority(builder, "testing", testing_priority, testing_content)
 
         # Agent Templates (Handover 0347d: 2-level depth system)
         # FIX (0347 production bug): Handle ALL priority tiers (1/2/3), not just priority 2
