@@ -59,7 +59,7 @@ async def user_tenant_a(db_session, tenant_a_key):
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 3,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 2,
                 "git_history": 4  # Tenant A excludes git_history
             }
@@ -87,7 +87,7 @@ async def user_tenant_b(db_session, tenant_b_key):
                 "product_core": 1,
                 "vision_documents": 4,  # Tenant B excludes vision_documents
                 "agent_templates": 2,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 4,  # Tenant B excludes memory_360
                 "git_history": 2   # Tenant B INCLUDES git_history (different from A)
             }

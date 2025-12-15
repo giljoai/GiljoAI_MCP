@@ -65,7 +65,7 @@ async def test_orchestrator_metadata_new_creation(
             "memory_360": 3,  # NICE_TO_HAVE
             "git_history": 4,  # EXCLUDED
             "agent_templates": 1,  # CRITICAL
-            "project_context": 2,  # IMPORTANT
+            "project_description": 2,  # IMPORTANT
         },
     }
     test_user.depth_config = {
@@ -203,7 +203,7 @@ async def test_orchestrator_metadata_reuse_updates(
             "memory_360": 3,
             "git_history": 4,
             "agent_templates": 1,
-            "project_context": 2,
+            "project_description": 2,
         },
     }
     test_user.depth_config = {

@@ -468,7 +468,7 @@ class TestMixedPriorities:
         field_priorities = {
             "product_core": 4,  # EXCLUDED
             "vision_documents": 4,  # EXCLUDED
-            "project_context": 4,  # EXCLUDED
+            "project_description": 4,  # EXCLUDED
             "tech_stack": 4,  # EXCLUDED
             "architecture": 4,  # EXCLUDED
             "testing": 4,  # EXCLUDED

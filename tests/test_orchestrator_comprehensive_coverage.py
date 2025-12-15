@@ -112,7 +112,7 @@ class TestOrchestratorComprehensiveCoverage:
         await orchestrator._stop_context_monitor(project.id)
         assert project.id not in orchestrator._context_monitors
 
-    async def test_monitor_project_context_background_task(self, orchestrator):
+    async def test_monitor_project_description_background_task(self, orchestrator):
         """Test the background context monitoring task."""
         # Create project and agent
         project = await orchestrator.create_project(name="Background Test", mission="Test background monitoring")

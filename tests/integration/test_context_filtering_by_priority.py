@@ -53,7 +53,7 @@ async def user_excluding_git_history(db_session, test_tenant_key):
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 3,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 2,
                 "git_history": 4  # EXCLUDED
             }
@@ -81,7 +81,7 @@ async def user_excluding_vision_and_memory(db_session, test_tenant_key):
                 "product_core": 1,
                 "vision_documents": 4,  # EXCLUDED
                 "agent_templates": 2,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 4,  # EXCLUDED
                 "git_history": 3
             }
@@ -109,7 +109,7 @@ async def user_including_everything(db_session, test_tenant_key):
                 "product_core": 1,
                 "vision_documents": 1,
                 "agent_templates": 2,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 2,
                 "git_history": 3
             }
@@ -239,7 +239,7 @@ async def test_priority_4_contexts_excluded_from_mission(
     expected_contexts = [
         "product_core",  # Priority 1
         "vision_documents",  # Priority 2
-        "project_context"  # Priority 1
+        "project_description"  # Priority 1
     ]
 
     # At least one expected context should be mentioned
@@ -250,7 +250,7 @@ async def test_priority_4_contexts_excluded_from_mission(
 
     assert has_expected_context, (
         "Mission should contain other contexts (priority 1-3) even when some are excluded. "
-        "Expected at least one of: product_core, vision_documents, project_context"
+        "Expected at least one of: product_core, vision_documents, project_description"
     )
 
 
@@ -441,14 +441,14 @@ async def test_empty_field_priorities_uses_system_defaults(
 
     # System defaults should include at minimum:
     # - product_core (always critical)
-    # - project_context (always critical)
+    # - project_description (always critical)
 
     assert "product" in thin_prompt.lower(), (
         "System defaults should include product_core context"
     )
 
     assert "project" in thin_prompt.lower(), (
-        "System defaults should include project_context"
+        "System defaults should include project_description"
     )
 
 
