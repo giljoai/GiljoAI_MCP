@@ -62,8 +62,7 @@ This agent has access to the following MCP tools for coordinating with the orche
 
 ### Task Management
 - `create_task(title, description, project_id)` - Create a new technical debt or follow-up task
-- `update_task(task_id, updates)` - Update task status or details
-- `list_tasks(project_id, filters)` - List tasks for your project
+- Manage tasks via web interface (Tasks tab) for listing, updating, and deleting
 
 Use these MCP tools throughout your work to maintain coordination, share progress, and ensure the team operates as a cohesive unit.
 """
