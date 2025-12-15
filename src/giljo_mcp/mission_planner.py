@@ -1289,6 +1289,180 @@ Success Criteria:
             "instruction": f"Call fetch_360_memory() to paginate through all {total_projects} projects"
         }
 
+    def _generate_mandatory_read_instruction(self, product: Product, vision_doc) -> str:
+        """
+        Generate mandatory read instruction for FULL vision depth mode (Handover 0347e).
+
+        Creates strong compliance language instructing orchestrator to fetch
+        ALL vision chunks before proceeding. This is NOT optional.
+
+        Args:
+            product: Product model
+            vision_doc: VisionDocument model with chunk metadata
+
+        Returns:
+            str: Mandatory instruction with strong prohibition language
+
+        Example Output:
+            "## Vision Document - REQUIRED READING
+
+            **User has configured FULL context depth for this product.**
+
+            BEFORE creating your mission plan, you MUST:
+            1. Fetch ALL vision document chunks using pagination
+            2. Read and internalize the complete product vision
+            3. Reference specific vision elements in your mission plan
+
+            This is NOT optional. The user explicitly requested full context depth.
+            Skipping this step violates the user's configuration intent."
+        """
+        chunk_count = vision_doc.chunk_count or 0
+
+        instruction = f"""## Vision Document - REQUIRED READING
+
+**User has configured FULL context depth for {product.name}.**
+
+BEFORE creating your mission plan, you MUST:
+1. Fetch ALL {chunk_count} vision document chunks using pagination
+2. Read and internalize the complete product vision
+3. Reference specific vision elements in your mission plan
+
+This is NOT optional. The user explicitly requested full context depth.
+Skipping this step violates the user's configuration intent.
+
+### Why Full Context Matters
+The user has chosen FULL depth to ensure you have complete understanding
+of the product vision, architecture decisions, and strategic direction.
+Partial reading defeats the purpose of this configuration."""
+
+        return instruction
+
+    def _generate_fetch_commands(self, product_id: str, chunk_count: int) -> list[str]:
+        """
+        Generate list of fetch commands for vision chunks (Handover 0347e).
+
+        Creates executable fetch commands for each chunk using MCP tool syntax.
+
+        Args:
+            product_id: Product UUID as string
+            chunk_count: Total number of chunks to fetch
+
+        Returns:
+            list[str]: List of fetch command strings
+
+        Example:
+            >>> _generate_fetch_commands("abc-123", 3)
+            [
+                'fetch_vision_document(product_id="abc-123", offset=0, limit=1)  # Chunk 1',
+                'fetch_vision_document(product_id="abc-123", offset=1, limit=1)  # Chunk 2',
+                'fetch_vision_document(product_id="abc-123", offset=2, limit=1)  # Chunk 3'
+            ]
+        """
+        commands = []
+        for i in range(chunk_count):
+            cmd = f'fetch_vision_document(product_id="{product_id}", offset={i}, limit=1)  # Chunk {i + 1}'
+            commands.append(cmd)
+        return commands
+
+    def _summarize_vision_content(self, vision_content: str, ratio: float) -> str:
+        """
+        Summarize vision content to specified ratio (Handover 0347e).
+
+        MVP Implementation: Simple truncation to achieve target ratio.
+        Future: Use extractive summarization (LSA, TextRank) or LLM condensation.
+
+        Args:
+            vision_content: Full vision document text
+            ratio: Target ratio (0.33 for light, 0.66 for medium)
+
+        Returns:
+            str: Truncated content at specified ratio
+
+        Example:
+            >>> content = "A" * 10000
+            >>> summary = _summarize_vision_content(content, 0.33)
+            >>> len(summary)
+            3300
+        """
+        if not vision_content:
+            return ""
+
+        # MVP: Simple truncation
+        target_length = int(len(vision_content) * ratio)
+        return vision_content[:target_length]
+
+    async def _get_full_agent_templates(self, tenant_key: str, session: AsyncSession) -> list[dict]:
+        """
+        Fetch full agent templates for tenant (Handover 0347d).
+
+        Returns complete agent template data including full content field
+        for "full" depth mode. This provides orchestrators with complete
+        agent prompts for nuanced task assignment (~2500 tokens/agent).
+
+        Args:
+            tenant_key: Tenant isolation key
+            session: SQLAlchemy AsyncSession
+
+        Returns:
+            List of agent template dicts with all fields:
+            [
+                {
+                    "name": "backend-integration-tester",
+                    "role": "Backend Integration Tester",
+                    "description": "Specialist in backend integration testing...",
+                    "content": "# Backend Integration Tester Agent\n\n...",  # Full prompt
+                    "cli_tool": "claude-code",
+                    "background_color": "#4CAF50",
+                    "category": "testing"
+                },
+                ...
+            ]
+
+        Multi-Tenant Isolation:
+            Filters by tenant_key and is_active=True
+
+        Token Impact:
+            Full mode: ~2500 tokens per agent (5 agents = ~12,500 tokens)
+            Type-only mode should NOT call this function
+        """
+        from sqlalchemy import and_, select
+        from src.giljo_mcp.models import AgentTemplate
+
+        # Query active agent templates for tenant
+        stmt = select(AgentTemplate).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.is_active == True,
+            )
+        ).order_by(AgentTemplate.name)
+
+        result = await session.execute(stmt)
+        templates = result.scalars().all()
+
+        # Convert to dict format with all fields
+        template_dicts = []
+        for template in templates:
+            template_dicts.append({
+                "name": template.name,
+                "role": template.role,
+                "description": template.description or "",
+                "content": template.content or "",  # Full prompt content
+                "cli_tool": template.cli_tool or "claude-code",
+                "background_color": template.background_color or "#808080",
+                "category": template.category or "general",
+            })
+
+        logger.debug(
+            f"Fetched {len(template_dicts)} full agent templates",
+            extra={
+                "tenant_key": tenant_key,
+                "template_count": len(template_dicts),
+                "operation": "_get_full_agent_templates",
+            },
+        )
+
+        return template_dicts
+
     async def _build_context_with_priorities(
         self,
         product: Product,
@@ -1444,37 +1618,173 @@ Success Criteria:
                     "detail_level": "condensed"
                 })
 
-        # Agent Templates (if priority 2)
+        # Agent Templates (Handover 0347d: 2-level depth system)
         agent_templates_priority = effective_priorities.get("agent_templates", 2)
         if agent_templates_priority == 2:
             builder.add_important("agent_templates")
-            builder.add_important_content("agent_templates", {
-                "summary": "Agent templates available via get_available_agents() MCP tool",
-                "fetch_tool": "get_available_agents(tenant_key, active_only=True)",
-                "instruction": "Call get_available_agents() to discover all available specialist agents"
-            })
+
+            # Get depth configuration (default: type_only for token efficiency)
+            agent_depth = depth_config.get("agent_templates", "type_only")
+
+            if agent_depth == "full":
+                # Full mode: Fetch complete agent templates with prompts (~2500 tokens/agent)
+                async with self.db_manager.get_session_async() as session:
+                    full_templates = await self._get_full_agent_templates(product.tenant_key, session)
+
+                builder.add_important_content("agent_templates", {
+                    "depth": "full",
+                    "detail_level": "complete_prompts",
+                    "templates": full_templates,
+                    "instruction": "All agent templates included with full prompts for nuanced task assignment",
+                    "token_impact": f"~{len(full_templates) * 2500} tokens (full prompts)"
+                })
+
+                logger.info(
+                    f"Agent templates: FULL mode - included {len(full_templates)} complete prompts",
+                    extra={
+                        "template_count": len(full_templates),
+                        "depth": "full",
+                        "estimated_tokens": len(full_templates) * 2500,
+                    }
+                )
+            else:
+                # Type-only mode (default): Minimal metadata only (~50 tokens/agent)
+                # Fetch minimal template data
+                async with self.db_manager.get_session_async() as session:
+                    full_templates = await self._get_full_agent_templates(product.tenant_key, session)
+
+                # Truncate descriptions to ~200 chars for type_only
+                minimal_templates = []
+                for template in full_templates:
+                    desc = template["description"]
+                    truncated_desc = desc[:200] + "..." if len(desc) > 200 else desc
+
+                    minimal_templates.append({
+                        "name": template["name"],
+                        "role": template["role"],
+                        "description": truncated_desc,
+                    })
+
+                builder.add_important_content("agent_templates", {
+                    "depth": "type_only",
+                    "detail_level": "minimal_metadata",
+                    "templates": minimal_templates,
+                    "fetch_tool": "get_available_agents(tenant_key, active_only=True)",
+                    "instruction": "Agent templates listed with basic metadata. Call get_available_agents() for complete details if needed.",
+                    "token_impact": f"~{len(minimal_templates) * 50} tokens (type only)"
+                })
+
+                logger.info(
+                    f"Agent templates: TYPE_ONLY mode - included {len(minimal_templates)} minimal entries",
+                    extra={
+                        "template_count": len(minimal_templates),
+                        "depth": "type_only",
+                        "estimated_tokens": len(minimal_templates) * 50,
+                    }
+                )
 
         # === REFERENCE TIER (Priority 3): Summaries + fetch tools ===
 
-        # Vision Documents
+        # Vision Documents (Handover 0347e: 4-level depth system)
         vision_priority = effective_priorities.get("vision_documents", 4)
         if vision_priority == 3:
             vision_doc = await self._get_active_vision_doc(product)
             if vision_doc:
                 builder.add_reference("vision_documents")
-                
-                # Get depth configuration
-                vision_depth = depth_config.get("vision_documents", "medium")
-                
-                builder.add_reference_content("vision_documents", {
-                    "document_name": vision_doc.document_name or "Product Vision",
-                    "total_tokens": vision_doc.original_token_count or 0,
-                    "is_chunked": vision_doc.chunked,
-                    "chunk_count": vision_doc.chunk_count or 0,
-                    "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
-                    "instruction": f"Call fetch_vision_document() to paginate through vision content. Depth: {vision_depth}",
-                    "depth": vision_depth
-                })
+
+                # Get depth configuration (default: optional for backward compatibility)
+                vision_depth = depth_config.get("vision_documents", "optional")
+
+                # Handle 4 depth levels
+                if vision_depth == "optional":
+                    # Pointer + pagination only (~200 tokens)
+                    builder.add_reference_content("vision_documents", {
+                        "status": "AVAILABLE_ON_REQUEST",
+                        "document_name": vision_doc.document_name or "Product Vision",
+                        "total_tokens": vision_doc.original_token_count or 0,
+                        "chunk_count": vision_doc.chunk_count or 0,
+                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                        "when_to_fetch": [
+                            "When you need detailed product vision context",
+                            "When project requirements reference vision elements",
+                            "When making architecture decisions aligned with vision"
+                        ],
+                        "depth": "optional"
+                    })
+
+                elif vision_depth == "light":
+                    # 33% summarized content inline (~10-12K tokens)
+                    # Fetch vision content if available
+                    vision_content = vision_doc.content if hasattr(vision_doc, 'content') and vision_doc.content else ""
+                    if not vision_content and vision_doc.text_content:
+                        vision_content = vision_doc.text_content
+
+                    # Summarize to 33%
+                    summary_content = self._summarize_vision_content(vision_content, 0.33)
+
+                    builder.add_reference_content("vision_documents", {
+                        "status": "INLINE_SUMMARY",
+                        "coverage": "33% of original vision",
+                        "inline_content": summary_content,
+                        "document_name": vision_doc.document_name or "Product Vision",
+                        "original_tokens": vision_doc.original_token_count or 0,
+                        "summary_tokens": self._count_tokens(summary_content),
+                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                        "note": "This is a 33% summary. Use fetch_vision_document() for complete content.",
+                        "depth": "light"
+                    })
+
+                elif vision_depth == "medium":
+                    # 66% summarized content inline (~20-24K tokens)
+                    vision_content = vision_doc.content if hasattr(vision_doc, 'content') and vision_doc.content else ""
+                    if not vision_content and vision_doc.text_content:
+                        vision_content = vision_doc.text_content
+
+                    # Summarize to 66%
+                    summary_content = self._summarize_vision_content(vision_content, 0.66)
+
+                    builder.add_reference_content("vision_documents", {
+                        "status": "INLINE_SUMMARY",
+                        "coverage": "66% of original vision",
+                        "inline_content": summary_content,
+                        "document_name": vision_doc.document_name or "Product Vision",
+                        "original_tokens": vision_doc.original_token_count or 0,
+                        "summary_tokens": self._count_tokens(summary_content),
+                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                        "note": "This is a 66% summary. Use fetch_vision_document() for complete content.",
+                        "depth": "medium"
+                    })
+
+                elif vision_depth == "full":
+                    # Pointer + MANDATORY read instruction (~200 tokens + fetch cost)
+                    mandatory_instruction = self._generate_mandatory_read_instruction(product, vision_doc)
+                    fetch_commands = self._generate_fetch_commands(str(product.id), vision_doc.chunk_count or 0)
+
+                    builder.add_reference_content("vision_documents", {
+                        "status": "REQUIRED_READING",
+                        "mandatory_instruction": mandatory_instruction,
+                        "document_name": vision_doc.document_name or "Product Vision",
+                        "total_tokens": vision_doc.original_token_count or 0,
+                        "chunk_count": vision_doc.chunk_count or 0,
+                        "fetch_commands": fetch_commands,
+                        "warning": "User explicitly configured FULL depth. You MUST fetch ALL chunks before proceeding.",
+                        "depth": "full"
+                    })
+
+                else:
+                    # Unknown depth - fallback to optional
+                    logger.warning(
+                        f"Unknown vision depth '{vision_depth}', falling back to 'optional'",
+                        extra={"vision_depth": vision_depth, "product_id": str(product.id)}
+                    )
+                    builder.add_reference_content("vision_documents", {
+                        "status": "AVAILABLE_ON_REQUEST",
+                        "document_name": vision_doc.document_name or "Product Vision",
+                        "total_tokens": vision_doc.original_token_count or 0,
+                        "chunk_count": vision_doc.chunk_count or 0,
+                        "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                        "depth": "optional"
+                    })
 
         # 360 Memory
         memory_priority = effective_priorities.get("memory_360", 4)
