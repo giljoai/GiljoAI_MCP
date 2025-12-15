@@ -247,7 +247,7 @@ async def handle_tools_list(
                 },
             },
         },
-        # Task Management Tools
+        # Task Management Tools (MCP tools retired Dec 2025 - only create_task kept)
         {
             "name": "create_task",
             "description": "Create a new task",
@@ -256,59 +256,9 @@ async def handle_tools_list(
                 "properties": {
                     "title": {"type": "string", "description": "Task title"},
                     "description": {"type": "string", "description": "Task description"},
-                    "assigned_to": {"type": "string", "description": "Agent to assign task to"},
                     "priority": {"type": "string", "description": "Task priority"},
                 },
                 "required": ["title"],
-            },
-        },
-        {
-            "name": "list_tasks",
-            "description": "List tasks with optional filters",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "status": {"type": "string", "description": "Filter by task status"},
-                    "assigned_to": {"type": "string", "description": "Filter by assignee"},
-                    "project_id": {"type": "string", "description": "Filter by project"},
-                },
-            },
-        },
-        {
-            "name": "update_task",
-            "description": "Update task details or status",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "status": {"type": "string", "description": "New status"},
-                    "updates": {"type": "object", "description": "Updates to apply"},
-                },
-                "required": ["task_id"],
-            },
-        },
-        {
-            "name": "assign_task",
-            "description": "Assign task to an agent",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "agent_id": {"type": "string", "description": "Agent to assign to"},
-                },
-                "required": ["task_id", "agent_id"],
-            },
-        },
-        {
-            "name": "complete_task",
-            "description": "Mark task as completed",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "Task ID to complete"},
-                    "result": {"type": "string", "description": "Completion result/notes"},
-                },
-                "required": ["task_id"],
             },
         },
         # Template Management Tools (read-only via MCP)
@@ -613,12 +563,8 @@ async def handle_tools_call(
         "send_message": state.tool_accessor.send_message,
         "receive_messages": state.tool_accessor.receive_messages,
         "list_messages": state.tool_accessor.list_messages,
-        # Task Management
+        # Task Management (MCP tools retired Dec 2025 - only create_task kept)
         "create_task": state.tool_accessor.create_task,
-        "list_tasks": state.tool_accessor.list_tasks,
-        "update_task": state.tool_accessor.update_task,
-        "assign_task": state.tool_accessor.assign_task,
-        "complete_task": state.tool_accessor.complete_task,
         # Template Management (read-only via MCP)
         "get_template": state.tool_accessor.get_template,
         # Agent Coordination (Handover 0045)
