@@ -121,8 +121,8 @@ DEFAULT_FIELD_PRIORITIES = {
 DEFAULT_DEPTH_CONFIG = {
     "memory_360": 5,  # Number of projects in 360 Memory (1/3/5/10)
     "git_history": 20,  # Number of commits in git log examples (5/10/25/50/100)
-    "agent_templates": "full",  # Agent template detail level ("minimal", "standard", "full")
-    "vision_documents": "medium",  # Vision document depth ("none", "light", "medium", "full")
+    "agent_templates": "type_only",  # Agent template detail level ("type_only", "full") - Handover 0347d
+    "vision_documents": "optional",  # Vision document depth ("optional", "light", "medium", "full") - Handover 0347e
 }
 
 
