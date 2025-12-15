@@ -566,6 +566,13 @@ class ToolAccessor:
                     for t in templates
                 ]
 
+                # Resolve project path (local developer folder pointer, stored on Product)
+                project_path = None
+                if product is not None:
+                    # Product.project_path is a developer-provided filesystem hint.
+                    # It is returned verbatim so agents know where the codebase lives locally.
+                    project_path = getattr(product, "project_path", None)
+
                 # Build framing-based response (Handover 0350b)
                 # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
@@ -579,6 +586,7 @@ class ToolAccessor:
                     "project_description_inline": {
                         "description": project.description or "",
                         "mission": orchestrator.mission or "",
+                        "project_path": project_path,
                     },
                     "context_fetch_instructions": fetch_instructions,
                     "agent_templates": template_list,  # Staging prompt: "Returns: ... AVAILABLE AGENT TEMPLATES"
