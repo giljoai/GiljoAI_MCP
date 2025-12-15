@@ -57,7 +57,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
                     "project_name": "Test Project",
                     "instance_number": 1,
                 },
-                "project_context_inline": {
+                "project_description_inline": {
                     "description": "Test description",
                     "mission": "",
                 },
@@ -78,12 +78,12 @@ class TestGetOrchestratorInstructionsFramingResponse:
             assert "tenant_key" in result["identity"]
 
     @pytest.mark.asyncio
-    async def test_response_contains_project_context_inline(self, tool_accessor):
-        """Test that response contains project_context_inline with description and mission."""
+    async def test_response_contains_project_description_inline(self, tool_accessor):
+        """Test that response contains project_description_inline with description and mission."""
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {
+                "project_description_inline": {
                     "description": "Build a new feature",
                     "mission": "Existing mission plan",
                 },
@@ -93,9 +93,9 @@ class TestGetOrchestratorInstructionsFramingResponse:
 
             result = await mock_method("test-orch-id", "test-tenant")
 
-            assert "project_context_inline" in result
-            assert "description" in result["project_context_inline"]
-            assert "mission" in result["project_context_inline"]
+            assert "project_description_inline" in result
+            assert "description" in result["project_description_inline"]
+            assert "mission" in result["project_description_inline"]
 
     @pytest.mark.asyncio
     async def test_response_contains_context_fetch_instructions(self, tool_accessor):
@@ -103,7 +103,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {"description": "", "mission": ""},
+                "project_description_inline": {"description": "", "mission": ""},
                 "context_fetch_instructions": {
                     "critical": [{"field": "product_core", "tool": "fetch_context"}],
                     "important": [{"field": "tech_stack", "tool": "fetch_context"}],
@@ -125,7 +125,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {"description": "", "mission": ""},
+                "project_description_inline": {"description": "", "mission": ""},
                 "context_fetch_instructions": {"critical": [], "important": [], "reference": []},
                 "thin_client": True,
                 "architecture": "framing_based",
@@ -141,7 +141,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {"description": "", "mission": ""},
+                "project_description_inline": {"description": "", "mission": ""},
                 "context_fetch_instructions": {"critical": [], "important": [], "reference": []},
                 "thin_client": True,
             }
@@ -166,7 +166,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
                 "project_name": "Test Project",
                 "instance_number": 1,
             },
-            "project_context_inline": {
+            "project_description_inline": {
                 "description": "Build a new feature for the application",
                 "mission": "",
             },
@@ -222,7 +222,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {"description": "", "mission": ""},
+                "project_description_inline": {"description": "", "mission": ""},
                 "context_fetch_instructions": {"critical": [], "important": [], "reference": []},
                 "mcp_tools_available": [
                     "fetch_context",
@@ -249,7 +249,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {"description": "", "mission": ""},
+                "project_description_inline": {"description": "", "mission": ""},
                 "context_fetch_instructions": {"critical": [], "important": [], "reference": []},
                 "context_budget": 150000,
                 "context_used": 0,
@@ -269,12 +269,12 @@ class TestGetOrchestratorInstructionsFramingResponse:
     async def test_response_does_not_contain_large_mission_field(self, tool_accessor):
         """Test that response does not contain large inline mission field."""
         # The old response had a 'mission' field with 4-8K tokens of inline context.
-        # The new response should have mission ONLY in project_context_inline (orchestrator's plan),
+        # The new response should have mission ONLY in project_description_inline (orchestrator's plan),
         # NOT the full inline context.
         with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
-                "project_context_inline": {
+                "project_description_inline": {
                     "description": "Project description",
                     "mission": "Short orchestrator mission plan",
                 },

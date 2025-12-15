@@ -76,7 +76,7 @@ class TestPriorityFramingHelper:
             section_name="Architecture",
             content=content,
             priority=3,
-            category_key="project_context"
+            category_key="project_description"
         )
 
         # Assert REFERENCE framing elements
@@ -369,7 +369,7 @@ class TestPriorityFramingSectionNames:
         expected_categories = [
             "product_core",
             "vision_documents",
-            "project_context",
+            "project_description",
             "agent_templates",
             "memory_360",
             "git_history",

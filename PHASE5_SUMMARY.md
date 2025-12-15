@@ -30,7 +30,7 @@ Successfully refactored `frontend/src/views/UserSettings.vue` from v1.0 (13 indi
   'product_core',
   'vision_documents',
   'agent_templates',
-  'project_context',
+  'project_description',
   'memory_360',
   'git_history'
 ]
@@ -138,7 +138,7 @@ Handover 0313 Phase 5 complete ✅
 grep -n "PRIORITY_CRITICAL\|PRIORITY_IMPORTANT\|PRIORITY_NICE\|PRIORITY_EXCLUDED" frontend/src/views/UserSettings.vue
 
 # Check 6 categories are present
-grep -n "product_core\|vision_documents\|agent_templates\|project_context\|memory_360\|git_history" frontend/src/views/UserSettings.vue
+grep -n "product_core\|vision_documents\|agent_templates\|project_description\|memory_360\|git_history" frontend/src/views/UserSettings.vue
 
 # Check priority4Fields usage
 grep -n "priority4Fields" frontend/src/views/UserSettings.vue

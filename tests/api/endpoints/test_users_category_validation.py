@@ -5,7 +5,7 @@ Tests ensure backend only accepts valid backend categories:
 - product_core
 - vision_documents
 - agent_templates
-- project_context
+- project_description
 - memory_360
 - git_history
 - tech_stack (added for frontend integration)
@@ -31,7 +31,7 @@ class TestFieldPriorityConfigCategoryValidation:
             "product_core": 1,
             "vision_documents": 2,
             "agent_templates": 3,
-            "project_context": 2,
+            "project_description": 2,
             "memory_360": 3,
             "git_history": 3,
         }

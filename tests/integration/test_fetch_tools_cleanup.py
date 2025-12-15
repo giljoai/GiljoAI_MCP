@@ -35,7 +35,7 @@ class TestFetchToolsCleanup:
             "fetch_tech_stack",
             "fetch_architecture",
             "fetch_product_context",
-            "fetch_project_context",
+            "fetch_project_description",
             "fetch_testing_config",
         ]
 
@@ -134,7 +134,7 @@ class TestFetchToolsCleanup:
         cmd = [
             "grep",
             "-r",
-            r"fetch_vision_document\|fetch_360_memory\|fetch_git_history\|fetch_agent_templates\|fetch_tech_stack\|fetch_architecture\|fetch_product_context\|fetch_project_context\|fetch_testing_config",
+            r"fetch_vision_document\|fetch_360_memory\|fetch_git_history\|fetch_agent_templates\|fetch_tech_stack\|fetch_architecture\|fetch_product_context\|fetch_project_description\|fetch_testing_config",
             "F:/GiljoAI_MCP/src/",
             "--include=*.py",
         ]

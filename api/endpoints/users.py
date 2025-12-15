@@ -137,7 +137,7 @@ class FieldPriorityConfig(BaseModel):
     - v2.0: Priority = fetch order / mandatory flag (1/2/3/4)
 
     Valid categories: product_core, vision_documents, agent_templates,
-                     project_context, memory_360, git_history
+                     project_description, memory_360, git_history
 
     Valid priorities:
     - 1: CRITICAL (always fetch, highest priority)
@@ -162,7 +162,7 @@ class FieldPriorityConfig(BaseModel):
         2. At least one category must have Priority 1 (CRITICAL)
         3. Cannot have all categories as EXCLUDED (Priority 4)
         4. Valid categories only: product_core, vision_documents, agent_templates,
-                                  project_context, memory_360, git_history,
+                                  project_description, memory_360, git_history,
                                   tech_stack, architecture, testing
         """
         valid_priorities = {1, 2, 3, 4}
@@ -170,7 +170,7 @@ class FieldPriorityConfig(BaseModel):
             "product_core",
             "vision_documents",
             "agent_templates",
-            "project_context",
+            "project_description",
             "memory_360",
             "git_history",
             "tech_stack",
@@ -279,6 +279,28 @@ def user_to_response(user: User) -> UserResponse:
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login=user.last_login.isoformat() if user.last_login else None,
     )
+
+
+def migrate_project_context_to_description(user_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Migrate old 'project_context' field name to 'project_description'.
+
+    Handles backward compatibility for existing user configurations created
+    before Handover 0350c renamed this field.
+
+    Args:
+        user_config: User's field priority configuration dict
+
+    Returns:
+        Updated config with project_context renamed to project_description
+    """
+    if "priorities" in user_config:
+        priorities = user_config["priorities"]
+        if "project_context" in priorities and "project_description" not in priorities:
+            priorities["project_description"] = priorities.pop("project_context")
+    elif "project_context" in user_config and "project_description" not in user_config:
+        user_config["project_description"] = user_config.pop("project_context")
+    return user_config
 
 
 # API Endpoints
@@ -714,7 +736,7 @@ async def get_field_priority_config(
                 "product_core": 1,
                 "agent_templates": 1,
                 "vision_documents": 2,
-                "project_context": 2,
+                "project_description": 2,
                 "memory_360": 3,
                 "git_history": 4
             }
@@ -765,7 +787,7 @@ async def update_field_priority_config(
                 "product_core": 1,
                 "agent_templates": 1,
                 "vision_documents": 2,
-                "project_context": 2,
+                "project_description": 2,
                 "memory_360": 3,
                 "git_history": 4
             }

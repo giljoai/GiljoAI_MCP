@@ -249,7 +249,7 @@ def test_build_priority_excluded_response_different_categories():
         "product_core",
         "vision_documents",
         "agent_templates",
-        "project_context",
+        "project_description",
         "memory_360",
         "git_history"
     ]
@@ -379,7 +379,7 @@ async def test_build_framed_context_response_with_priority_override(db_manager):
 
     result = await build_framed_context_response(
         raw_result=raw_result,
-        category="project_context",
+        category="project_description",
         tenant_key="tenant_override",
         user_id="user_override",
         db_manager=db_manager,

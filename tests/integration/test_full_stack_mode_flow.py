@@ -137,7 +137,7 @@ class TestFullStackModeFlow:
                 "field_priorities": {
                     "product_core": 1,
                     "agent_templates": 2,
-                    "project_context": 1
+                    "project_description": 1
                 }
             }
         )
@@ -158,7 +158,7 @@ class TestFullStackModeFlow:
             field_priorities={
                 "product_core": 1,
                 "agent_templates": 2,
-                "project_context": 1
+                "project_description": 1
             }
         )
         prompt = result["thin_prompt"]
@@ -363,7 +363,7 @@ class TestFullStackModeFlow:
                 field_priorities={
                     "product_core": 1,
                     "agent_templates": 2,
-                    "project_context": 1
+                    "project_description": 1
                 }
             )
             prompt = result["thin_prompt"]
