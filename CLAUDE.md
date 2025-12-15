@@ -148,40 +148,61 @@ log_file = 'F:/logs/app.log'
 
 **Always use**: `pathlib.Path()` • `Path.cwd()` • Relative paths in configs
 
-## Context Management (v2.0)
+## Context Management (v3.0 - On-Demand Fetch)
 
-GiljoAI uses a 2-dimensional context management model:
+GiljoAI uses an on-demand context fetch architecture to prevent token truncation and enable smart context prioritization.
 
-**Priority Dimension** (WHAT to fetch):
-- Priority 1 (CRITICAL) - Orchestrator MUST call (mandatory)
-- Priority 2 (IMPORTANT) - Orchestrator SHOULD call (recommended)
-- Priority 3 (REFERENCE) - Orchestrator MAY call (optional)
-- Priority 4 (OFF) - Not mentioned (excluded)
+### Architecture Overview
 
-**Depth Dimension** (HOW MUCH detail):
-- Product Core: include/exclude (~100 tokens)
-- Vision Documents: none/light/moderate/heavy (0-30K tokens)
-- Tech Stack: required/all (200-400 tokens)
-- Architecture: overview/detailed (300-1.5K tokens)
-- Testing: none/basic/full (0-400 tokens)
-- 360 Memory: 1/3/5/10 projects (500-5K tokens)
-- Git History: 10/25/50/100 commits (500-5K tokens)
-- Agent Templates: minimal/standard/full (400-2.4K tokens)
+**Problem Solved**: Previous monolithic approach embedded all context in orchestrator instructions, causing truncation when vision documents exceeded 50K tokens.
 
-**9 MCP Context Tools** (with Context Configurator badges):
-1. `fetch_product_context` - Product name, description, features → **"Product Core" badge**
-2. `fetch_vision_document` - Vision document chunks (paginated) → **"Vision Documents" badge**
-3. `fetch_tech_stack` - Programming languages, frameworks, databases → **"Tech Stack" badge**
-4. `fetch_architecture` - Architecture patterns, API style, design patterns → **"Architecture" badge**
-5. `fetch_testing_config` - Quality standards, strategy, frameworks → **"Testing" badge**
-6. `fetch_360_memory` - Project closeout summaries (paginated) → **"360 Memory" badge**
-7. `fetch_git_history` - Aggregated git commits from all projects → **"Git History" badge**
-8. `fetch_agent_templates` - Agent template library → **"Agent Templates" badge**
-9. `fetch_project_context` - Current project metadata → **"Project Context" badge**
+**Solution (Handover 0350a-c)**:
+1. `get_orchestrator_instructions()` returns framing (~500 tokens) with priority indicators
+2. Orchestrator calls unified `fetch_context(categories=[...])` based on priority tier
+3. Context is fetched on-demand, never truncated
+
+### 3-Tier Priority System
+
+| Tier | Label | Framing | Orchestrator Action |
+|------|-------|---------|---------------------|
+| **Priority 1** | CRITICAL | "REQUIRED" | MUST call `fetch_context()` |
+| **Priority 2** | IMPORTANT | "RECOMMENDED" | SHOULD call `fetch_context()` if budget allows |
+| **Priority 3** | REFERENCE | "OPTIONAL" | MAY call `fetch_context()` if project requires |
+| **Priority 4** | OFF | (excluded) | Never call tool |
 
 **Configuration**:
 - Priority: My Settings → Context → Field Priority Configuration
 - Depth: My Settings → Context → Depth Configuration
+
+### Unified fetch_context() Tool
+
+Single MCP tool replaces 9 individual tools (~720 tokens saved in schema overhead):
+
+```python
+fetch_context(
+    categories=["product_core", "tech_stack", "vision_documents"],
+    product_id="uuid",
+    tenant_key="tenant_abc",
+    depth_config={"vision_documents": "light", "memory_360": 5}
+)
+```
+
+**Available Categories**: `product_core`, `vision_documents`, `tech_stack`, `architecture`, `testing`, `memory_360`, `git_history`, `agent_templates`, `project`
+
+### Depth Configuration (HOW MUCH detail)
+
+| Category | Options | Token Range |
+|----------|---------|-------------|
+| Product Core | include/exclude | ~100 tokens |
+| Vision Documents | none/light/medium/full | 0-24K tokens |
+| Tech Stack | required/all | 200-400 tokens |
+| Architecture | overview/detailed | 300-1.5K tokens |
+| Testing | none/basic/full | 0-400 tokens |
+| 360 Memory | 1/3/5/10 projects | 500-5K tokens |
+| Git History | 10/25/50/100 commits | 500-5K tokens |
+| Agent Templates | minimal/standard/full | 400-2.4K tokens |
+
+**See**: [docs/api/context_tools.md](docs/api/context_tools.md) for complete API reference.
 
 ## Orchestrator Workflow Pipeline (v3.2 Handovers 0246a-c)
 
