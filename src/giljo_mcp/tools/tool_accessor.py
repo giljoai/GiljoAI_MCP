@@ -283,21 +283,8 @@ class ToolAccessor:
             title=title, description=description, priority=priority, assigned_to=assigned_to
         )
 
-    async def list_tasks(self, status: Optional[str] = None, assigned_to: Optional[str] = None) -> dict[str, Any]:
-        """List tasks (delegates to TaskService)"""
-        return await self._task_service.list_tasks(status=status, assigned_to=assigned_to)
-
-    async def update_task(self, task_id: str, **kwargs) -> dict[str, Any]:
-        """Update a task (delegates to TaskService)"""
-        return await self._task_service.update_task(task_id, **kwargs)
-
-    async def assign_task(self, task_id: str, agent_name: str) -> dict[str, Any]:
-        """Assign a task to an agent (delegates to TaskService)"""
-        return await self._task_service.assign_task(task_id, agent_name)
-
-    async def complete_task(self, task_id: str) -> dict[str, Any]:
-        """Mark a task as completed (delegates to TaskService)"""
-        return await self._task_service.complete_task(task_id)
+    # Task MCP tools retired Dec 2025 - list_tasks, update_task, assign_task, complete_task removed
+    # Web interface uses REST API (/api/v1/tasks/) via TaskService directly
 
     # Context Tools (delegates to ContextService)
 
@@ -473,8 +460,17 @@ class ToolAccessor:
         return await health_check()
 
     async def get_orchestrator_instructions(self, orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
-        """Fetch orchestrator mission with context prioritization and orchestration"""
-        # Delegate to orchestration module but use our db_manager
+        """
+        Fetch orchestrator mission with framing-based context instructions (Handover 0350b).
+
+        Returns a lean response (~500 tokens) with:
+        - identity: Orchestrator/project identifiers
+        - project_context_inline: Description + mission (always inline)
+        - context_fetch_instructions: Framing pointers to fetch_context() tool
+
+        The orchestrator uses these instructions to call fetch_context() on-demand,
+        avoiding the 50K+ token truncation risk of inline context.
+        """
         try:
             async with self.db_manager.get_session_async() as session:
                 from sqlalchemy import and_
@@ -515,8 +511,6 @@ class ToolAccessor:
 
                 product = None
                 if project.product_id:
-                    # FIX: Eager load vision_documents to avoid lazy loading in async context
-                    # The primary_vision_text property accesses self.vision_documents
                     from sqlalchemy.orm import selectinload
 
                     result = await session.execute(
@@ -526,34 +520,12 @@ class ToolAccessor:
                     )
                     product = result.scalar_one_or_none()
 
-                # Check if Serena is enabled (from config.yaml)
-                # Serena toggle is in My Settings → Integrations
-                include_serena = False
-                try:
-                    from pathlib import Path
-                    import yaml
-
-                    config_path = Path.cwd() / "config.yaml"
-                    if config_path.exists():
-                        with open(config_path, encoding="utf-8") as f:
-                            config_data = yaml.safe_load(f) or {}
-                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-                        if include_serena:
-                            logger.info(
-                                f"[SERENA] Enabled for orchestrator {orchestrator_id}",
-                                extra={"orchestrator_id": orchestrator_id, "project_id": str(project.id)}
-                            )
-                except Exception as e:
-                    logger.warning(f"[SERENA] Failed to read config for Serena toggle: {e}")
-                    include_serena = False
-
-                # Generate condensed mission
+                # Get user configuration
                 planner = MissionPlanner(self.db_manager)
                 metadata = orchestrator.job_metadata or {}
                 user_id = metadata.get("user_id")
 
                 # Handover 0346: Fetch FRESH user config if user_id available
-                # This allows settings changes to take effect immediately without re-staging
                 if user_id:
                     from giljo_mcp.tools.orchestration import _get_user_config
                     user_config = await _get_user_config(user_id, tenant_key, session)
@@ -564,7 +536,6 @@ class ToolAccessor:
                         extra={"orchestrator_id": orchestrator_id, "user_id": user_id}
                     )
                 else:
-                    # Fall back to frozen job_metadata config
                     field_priorities = metadata.get("field_priorities", {})
                     depth_config = metadata.get("depth_config", {})
                     logger.debug(
@@ -572,71 +543,16 @@ class ToolAccessor:
                         extra={"orchestrator_id": orchestrator_id}
                     )
 
-                condensed_mission_data = await planner._build_context_with_priorities(
-                    product=product, project=project, field_priorities=field_priorities, depth_config=depth_config, user_id=user_id, include_serena=include_serena
+                # Handover 0350b: Generate framing instructions (replaces inline context)
+                # This returns ~500 tokens instead of 4-8K (up to 50K with vision)
+                fetch_instructions = planner._build_fetch_instructions(
+                    product=product,
+                    project=project,
+                    field_priorities=field_priorities,
+                    depth_config=depth_config,
                 )
 
-                # Handover 0347b: Convert dict to JSON string for mission text
-                # _build_context_with_priorities now returns a dict with priority-framed structure
-                import json as json_lib
-                if isinstance(condensed_mission_data, dict):
-                    condensed_mission = json_lib.dumps(condensed_mission_data, indent=2)
-                else:
-                    # Fallback for legacy string returns
-                    condensed_mission = str(condensed_mission_data) if condensed_mission_data else ""
-
-                # Handover 0277: Inject simplified Serena MCP notice if enabled
-                if include_serena:
-                    try:
-                        from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
-
-                        serena_instructions = generate_serena_instructions(enabled=True)
-
-                        # Prepend Serena instructions to mission
-                        condensed_mission = serena_instructions + "\n\n---\n\n" + condensed_mission
-                        logger.info(
-                            f"[SERENA] Injected simplified Serena notice into orchestrator mission",
-                            extra={"orchestrator_id": orchestrator_id, "serena_instructions_length": len(serena_instructions)}
-                        )
-                    except Exception as e:
-                        logger.warning(f"[SERENA] Failed to inject Serena notice: {e}")
-                        # Continue without Serena notice if injection fails
-
-                # FIX: Add fallback mission generation if mission is empty
-                if not condensed_mission or condensed_mission.strip() == "":
-                    mission_parts = []
-
-                    # Include product vision if available
-                    if product and product.vision_summary:
-                        mission_parts.append(f"Vision: {product.vision_summary}")
-
-                    # Include project description if available
-                    if project.description:
-                        mission_parts.append(f"Project Goal: {project.description}")
-
-                    # Include tech stack from product config_data if available
-                    if product and product.config_data:
-                        context = product.config_data or {}
-                        tech_stack = context.get("tech_stack")
-                        if tech_stack:
-                            if isinstance(tech_stack, list):
-                                mission_parts.append(f"Tech Stack: {', '.join(tech_stack)}")
-                            elif isinstance(tech_stack, str):
-                                mission_parts.append(f"Tech Stack: {tech_stack}")
-
-                    # Build fallback mission from collected parts
-                    if mission_parts:
-                        condensed_mission = "\n\n".join(mission_parts)
-                    else:
-                        # Final fallback: use project description or a minimal message
-                        condensed_mission = project.description or "No mission defined"
-
-                # Handover 0285: MCP Tool Catalog REMOVED (redundant with enhanced tool descriptions)
-                # Claude Code receives tool definitions via MCP tools/list with enhanced descriptions.
-                # No need to embed catalog in prompts (~3,500 token savings).
-                # ROLLBACK: To restore catalog, git revert this commit and set field_priorities["mcp_tool_catalog"] = 1
-
-                # Get agent templates
+                # Get agent templates for reference
                 result = await session.execute(
                     select(AgentTemplate)
                     .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
@@ -644,109 +560,84 @@ class ToolAccessor:
                 )
                 templates = result.scalars().all()
 
-                template_list = [
-                    {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
-                    for t in templates
-                ]
-
-                estimated_tokens = len(condensed_mission) // 4
-
-                # Build base response
+                # Build framing-based response (Handover 0350b)
                 response = {
-                    "orchestrator_id": orchestrator_id,
-                    "project_id": str(project.id),
-                    "project_name": project.name,
-                    "project_description": project.description or "",
-                    "mission": condensed_mission,
+                    "identity": {
+                        "orchestrator_id": orchestrator_id,
+                        "project_id": str(project.id),
+                        "project_name": project.name,
+                        "tenant_key": tenant_key,
+                        "instance_number": orchestrator.instance_number or 1,
+                    },
+                    "project_context_inline": {
+                        "description": project.description or "",
+                        "mission": orchestrator.mission or "",
+                    },
+                    "context_fetch_instructions": fetch_instructions,
+                    "mcp_tools_available": [
+                        "fetch_context",
+                        "spawn_agent_job",
+                        "get_available_agents",
+                        "send_message",
+                        "check_succession_status",
+                        "create_successor_orchestrator",
+                        "report_progress",
+                        "complete_job",
+                    ],
                     "context_budget": orchestrator.context_budget or 150000,
                     "context_used": orchestrator.context_used or 0,
-                    "agent_templates": template_list,
-                    "agent_discovery_tool": "get_available_agents()",  # Handover 0246c
                     "field_priorities": field_priorities,
-                    "token_reduction_applied": bool(field_priorities),
-                    "estimated_tokens": estimated_tokens,
-                    "instance_number": orchestrator.instance_number or 1,
                     "thin_client": True,
+                    "architecture": "framing_based",
                 }
 
                 # Handover 0335: Add CLI mode rules when execution_mode == 'claude_code_cli'
-                # Handover 0346: Read from Project table for live switching (not frozen metadata)
                 execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
                 if execution_mode == "claude_code_cli":
-                    # Get allowed agent types from active templates
                     allowed_agent_types = [t.name for t in templates]
 
-                    # Handover 0260: Agent spawning constraint (backward compatibility)
                     response["agent_spawning_constraint"] = {
                         "mode": "strict_task_tool",
                         "allowed_agent_types": allowed_agent_types,
                         "instruction": (
                             "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
                             "The agent_type parameter must be EXACTLY one of the allowed template names. "
-                            "Use agent_name for descriptive labels (displayed in UI). "
                             f"Allowed agent types: {allowed_agent_types}"
                         ),
                     }
 
-                    # Handover 0335: CLI mode rules - belt-and-suspenders naming enforcement
                     response["cli_mode_rules"] = {
                         "agent_type_usage": (
                             "MUST match template 'name' field exactly for Task tool. "
-                            "This is the filename without .md extension (e.g., 'implementer', 'analyzer')."
+                            "This is the filename without .md extension."
                         ),
-                        "agent_name_usage": (
-                            "Descriptive label for UI display only - NOT for Task tool. "
-                            "Can be any human-readable name (e.g., 'Folder Structure Implementer')."
-                        ),
-                        "task_tool_mapping": (
-                            "Task(subagent_type=X) where X = agent_type value from spawn_agent_job. "
-                            "Claude Code's Task tool finds agents by filename, so agent_type must match exactly."
-                        ),
-                        "validation": "soft",  # Warn but don't block
+                        "agent_name_usage": "Descriptive label for UI display only.",
+                        "task_tool_mapping": "Task(subagent_type=X) where X = agent_type from spawn_agent_job.",
+                        "validation": "soft",
                         "template_locations": [
-                            "{project}/.claude/agents/ (priority 1 - project agents)",
-                            "~/.claude/agents/ (priority 2 - user agents)",
-                        ],
-                        "agent_type_is_truth": {
-                            "statement": "agent_type is the SINGLE SOURCE OF TRUTH for Task tool operations",
-                            "usage": "spawn_agent_job(agent_type=X) → Task(subagent_type=X)",
-                            "agent_name_purpose": "Display label ONLY - never for tool calling"
-                        },
-                        "forbidden_patterns": [
-                            {"pattern": "Task(subagent_type=agent_name)", "reason": "agent_name is display only"},
-                            {"pattern": "Task(subagent_type='Backend Implementor')", "reason": "Creative variation will fail"},
-                            {"pattern": "Task(subagent_type='frontend-impl')", "reason": "Hyphenated variation will fail"},
-                            {"pattern": "Task(subagent_type='IMPLEMENTER')", "reason": "Case mismatch will fail"},
-                            {"pattern": "Any variation of agent_type", "reason": "Only exact agent_type value works"}
-                        ],
-                        "lifecycle_flow": [
-                            {"phase": 1, "name": "Staging", "operation": "spawn_agent_job(agent_type='X')", "param": "agent_type"},
-                            {"phase": 2, "name": "Job Created", "operation": "Job.agent_type = 'X'", "param": "agent_type"},
-                            {"phase": 3, "name": "Launch", "operation": "Task(subagent_type='X')", "param": "agent_type"},
-                            {"phase": 4, "name": "File Lookup", "operation": "Claude Code finds X.md", "param": "agent_type"}
+                            "{project}/.claude/agents/",
+                            "~/.claude/agents/",
                         ],
                     }
 
-                    # Handover 0335: Spawning examples showing correct agent_type vs agent_name usage
-                    response["spawning_examples"] = [
-                        {
-                            "scenario": "Two implementers with different tasks",
-                            "calls": [
-                                'spawn_agent_job(agent_type="implementer", agent_name="Folder Scaffolder", ...)',
-                                'spawn_agent_job(agent_type="implementer", agent_name="README Writer", ...)',
-                            ],
-                            "note": "Both use agent_type='implementer' - the template name",
-                        },
-                    ]
-
                     logger.info(
-                        f"[CLI_MODE_RULES] Added CLI mode rules and spawning examples for orchestrator {orchestrator_id}",
+                        f"[CLI_MODE_RULES] Added CLI mode rules for orchestrator {orchestrator_id}",
                         extra={
                             "orchestrator_id": orchestrator_id,
                             "execution_mode": execution_mode,
                             "allowed_types": allowed_agent_types,
                         }
                     )
+
+                logger.info(
+                    f"[FRAMING_BASED] Returning framing-based orchestrator instructions",
+                    extra={
+                        "orchestrator_id": orchestrator_id,
+                        "critical_count": len(fetch_instructions.get("critical", [])),
+                        "important_count": len(fetch_instructions.get("important", [])),
+                        "reference_count": len(fetch_instructions.get("reference", [])),
+                    }
+                )
 
                 return response
 
