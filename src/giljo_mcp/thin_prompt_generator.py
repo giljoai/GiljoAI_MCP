@@ -921,13 +921,10 @@ No previous project history available. Starting fresh.
         self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False
     ) -> str:
         """
-        Generate orchestrator staging prompt with framing-based context (Handover 0350b).
+        Generate simple orchestrator staging prompt (Handover 0333).
 
-        The prompt instructs orchestrators to:
-        1. Fetch framing instructions via get_orchestrator_instructions()
-        2. Call fetch_context() for CRITICAL tier items (REQUIRED)
-        3. Call fetch_context() for IMPORTANT tier items (RECOMMENDED)
-        4. Optionally call fetch_context() for REFERENCE tier items
+        Restores the working pattern from commit 051addde with mode awareness.
+        Replaces the broken 7-task workflow with a simple ~50 line prompt.
 
         Args:
             orchestrator_id: Orchestrator job UUID
@@ -935,7 +932,7 @@ No previous project history available. Starting fresh.
             claude_code_mode: Use Claude Code CLI mode (default: False)
 
         Returns:
-            Staging prompt (~60-70 lines)
+            Simple staging prompt (~50-60 lines)
 
         Raises:
             ValueError: If project or product not found
@@ -956,13 +953,14 @@ No previous project history available. Starting fresh.
 
         # Mode-specific instructions
         if claude_code_mode:
+            # Handover 0342: Trimmed CLI mode block - verbose version in get_orchestrator_instructions()
             mode_block = """CLI MODE CRITICAL:
 This project uses Claude Code CLI for implementation. When spawning agents:
 - agent_type: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (e.g., "implementer")
 - agent_name: Descriptive display label only (e.g., "Backend API Implementer")
 
 In implementation phase, Task(subagent_type=X) uses agent_type value, NOT agent_name.
-Full cli_mode_rules and allowed_agent_types are in get_orchestrator_instructions() response."""
+Full cli_mode_rules, allowed_agent_types, and examples are in get_orchestrator_instructions() response."""
         else:
             mode_block = """MULTI-TERMINAL MODE:
 - User will manually copy/paste prompts for each agent
@@ -984,44 +982,19 @@ MCP CONNECTION:
 YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
 You are STAGING the project. Your job:
 1) Analyze requirements
-2) Fetch context using 3-tier priority system
-3) Create mission plan
-4) Assign work to specialist agents
+2) Create mission plan
+3) Assign work to specialist agents
 
 STARTUP SEQUENCE:
-
-1. VERIFY MCP: health_check()
-
-2. FETCH FRAMING: get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
-   Returns:
-   - identity: Your orchestrator/project IDs
-   - project_context_inline: Project description (ALWAYS inline)
-   - context_fetch_instructions: 3-tier framing (critical/important/reference)
-
-3. FETCH CRITICAL CONTEXT (REQUIRED):
-   For each item in context_fetch_instructions.critical:
-   - Call: fetch_context(categories=[item.category], product_id=..., tenant_key=...)
-   - These are REQUIRED - you MUST fetch them before proceeding
-
-4. FETCH IMPORTANT CONTEXT (RECOMMENDED):
-   For each item in context_fetch_instructions.important:
-   - Call: fetch_context(categories=[item.category], product_id=..., tenant_key=...)
-   - These are RECOMMENDED - fetch unless budget constrained
-
-5. FETCH REFERENCE CONTEXT (OPTIONAL):
-   For items in context_fetch_instructions.reference:
-   - Call fetch_context() only if project scope requires
-   - These are OPTIONAL - use as needed
-
-6. CREATE MISSION: Analyze fetched context and generate execution plan
-
-7. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
-
-8. SPAWN AGENTS: spawn_agent_job() for each specialist
-   CRITICAL: agent_type MUST exactly match template name
+1. Verify MCP: health_check()
+2. Fetch context: get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+   Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
+3. CREATE MISSION: Analyze requirements and generate execution plan
+4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
+5. SPAWN AGENTS: spawn_agent_job() for each specialist
+   CRITICAL: agent_type MUST exactly match template name from Step 2
    agent_name can be descriptive (for UI display only)
-
-9. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
+6. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
 {mode_block}
