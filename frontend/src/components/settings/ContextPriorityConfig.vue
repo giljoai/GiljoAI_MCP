@@ -203,7 +203,7 @@ const contexts = [
     key: 'agent_templates',
     label: 'Agent Templates',
     options: ['type_only', 'full'],
-    helpText: 'Type Only = Name/Version | Full = With descriptions'
+    helpText: 'Type Only = Minimal metadata (~250 tokens) | Full = Complete prompts (~12.5K tokens)'
   },
 ]
 
@@ -252,10 +252,10 @@ const config = ref<Record<string, ContextConfig>>({
   tech_stack: { enabled: true, priority: 2 },
   architecture: { enabled: true, priority: 2 },
   testing: { enabled: true, priority: 2 },
-  vision_documents: { enabled: true, priority: 2, depth: 'medium' },  // Handover 0246b: changed from 'moderate'
+  vision_documents: { enabled: true, priority: 2, depth: 'optional' },  // Handover 0347e: default to 'optional' for backward compatibility
   memory_360: { enabled: true, priority: 2, count: 3 },
   git_history: { enabled: false, priority: 4, count: 25 },
-  agent_templates: { enabled: true, priority: 2, depth: 'standard' },
+  agent_templates: { enabled: true, priority: 2, depth: 'type_only' },  // Handover 0347d: default to 'type_only' for token efficiency
 })
 
 const loading = ref(false)
@@ -321,16 +321,51 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  // Handover 0246b: Simplified to 3 depth levels (percentage-based)
-  // Light: 33% of original, Medium: 66% of original, Full: 100%
+  // Handover 0347e: 4-level vision depth system
+  // Optional: Pointer only (~200 tokens), Light: 33% summary (~10-12K), Medium: 66% summary (~20-24K), Full: Mandatory complete read (~200 + fetch)
   if (context.key === 'vision_documents') {
     return [
-      { title: 'Light (~33%)', value: 'light', subtitle: '~13K tokens for 40K doc, 67% compression' },
-      { title: 'Medium (~66%)', value: 'medium', subtitle: '~26K tokens for 40K doc, 34% compression' },
-      { title: 'Full (100%)', value: 'full', subtitle: 'Complete original document, no compression' }
+      {
+        title: 'Optional (Orchestrator decides)',
+        value: 'optional',
+        subtitle: '~200 tokens - Pointer with when-to-fetch guidance'
+      },
+      {
+        title: 'Light (33% summary)',
+        value: 'light',
+        subtitle: '~10-12K tokens - Inline 33% summarized content'
+      },
+      {
+        title: 'Medium (66% summary)',
+        value: 'medium',
+        subtitle: '~20-24K tokens - Inline 66% summarized content'
+      },
+      {
+        title: 'Full (Mandatory complete read)',
+        value: 'full',
+        subtitle: '~200 tokens + fetch cost - MUST read ALL chunks'
+      }
     ]
   }
-  
+
+  // Handover 0347d: Agent templates depth toggle (2-level system)
+  // Type Only: ~50 tokens/agent (~250 for 5 agents) - name, role, description only
+  // Full: ~2500 tokens/agent (~12,500 for 5 agents) - complete agent prompts
+  if (context.key === 'agent_templates') {
+    return [
+      {
+        title: 'Type Only (~250 tokens for 5 agents)',
+        value: 'type_only',
+        subtitle: 'Name, role, description only - token efficient'
+      },
+      {
+        title: 'Full (~12,500 tokens for 5 agents)',
+        value: 'full',
+        subtitle: 'Complete agent prompts - for nuanced task assignment'
+      }
+    ]
+  }
+
   if (!context.options) return []
 
   return context.options.map((opt) => {
@@ -423,8 +458,9 @@ async function fetchConfig() {
       if (depthData.vision_documents && config.value.vision_documents) {
         config.value.vision_documents.depth = depthData.vision_documents
       }
-      if (depthData.agent_template_detail && config.value.agent_templates) {
-        config.value.agent_templates.depth = depthData.agent_template_detail
+      // Handover 0347d: Load agent_templates depth (backend uses "agent_templates" key)
+      if (depthData.agent_templates && config.value.agent_templates) {
+        config.value.agent_templates.depth = depthData.agent_templates
       }
 
       console.log('[CONTEXT PRIORITY CONFIG] Field priorities and depth config loaded from server')
@@ -456,8 +492,8 @@ async function saveConfig() {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
-          vision_documents: config.value.vision_documents?.depth || 'medium',
-          agent_template_detail: config.value.agent_templates?.depth || 'standard',
+          vision_documents: config.value.vision_documents?.depth || 'optional',  // Handover 0347e
+          agent_templates: config.value.agent_templates?.depth || 'type_only',  // Handover 0347d
         }
       })
       console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
