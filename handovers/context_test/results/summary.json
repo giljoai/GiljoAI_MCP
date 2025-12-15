@@ -1,0 +1,625 @@
+{
+  "test_run_timestamp": "2025-12-15T01:46:36.150148",
+  "total_tests": 51,
+  "successful_tests": 51,
+  "failed_tests": 0,
+  "test_credentials": {
+    "orchestrator_id": "6792fae5-c46b-4ed7-86d6-df58aa833df3",
+    "tenant_key": "***REMOVED***",
+    "project_id": "97d95e5a-51dd-47ae-92de-7f8839de503a"
+  },
+  "results": [
+    {
+      "combo_id": 1,
+      "test_name": "Baseline - Default Configuration",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 2,
+      "test_name": "Priority Sweep - product_core = Critical",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 3,
+      "test_name": "Priority Sweep - product_core = Important",
+      "success": true,
+      "estimated_tokens": 2723,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 4,
+      "test_name": "Priority Sweep - product_core = Reference",
+      "success": true,
+      "estimated_tokens": 2721,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 5,
+      "test_name": "Priority Sweep - product_core = OFF",
+      "success": true,
+      "estimated_tokens": 2427,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 6,
+      "test_name": "Priority Sweep - vision_documents = Critical",
+      "success": true,
+      "estimated_tokens": 2737,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 7,
+      "test_name": "Priority Sweep - vision_documents = Important",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 8,
+      "test_name": "Priority Sweep - vision_documents = Reference",
+      "success": true,
+      "estimated_tokens": 2728,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 9,
+      "test_name": "Priority Sweep - vision_documents = OFF",
+      "success": true,
+      "estimated_tokens": 2425,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 10,
+      "test_name": "Priority Sweep - tech_stack = Critical",
+      "success": true,
+      "estimated_tokens": 2737,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 11,
+      "test_name": "Priority Sweep - tech_stack = Important",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 12,
+      "test_name": "Priority Sweep - tech_stack = Reference",
+      "success": true,
+      "estimated_tokens": 2728,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 13,
+      "test_name": "Priority Sweep - tech_stack = OFF",
+      "success": true,
+      "estimated_tokens": 2422,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 14,
+      "test_name": "Priority Sweep - architecture = Critical",
+      "success": true,
+      "estimated_tokens": 2738,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 15,
+      "test_name": "Priority Sweep - architecture = Important",
+      "success": true,
+      "estimated_tokens": 2732,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 16,
+      "test_name": "Priority Sweep - architecture = Reference",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 17,
+      "test_name": "Priority Sweep - architecture = OFF",
+      "success": true,
+      "estimated_tokens": 2005,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 18,
+      "test_name": "Priority Sweep - testing = Critical",
+      "success": true,
+      "estimated_tokens": 2738,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 19,
+      "test_name": "Priority Sweep - testing = Important",
+      "success": true,
+      "estimated_tokens": 2732,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 20,
+      "test_name": "Priority Sweep - testing = Reference",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 21,
+      "test_name": "Priority Sweep - testing = OFF",
+      "success": true,
+      "estimated_tokens": 2427,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 22,
+      "test_name": "Priority Sweep - memory_360 = Critical",
+      "success": true,
+      "estimated_tokens": 2737,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 23,
+      "test_name": "Priority Sweep - memory_360 = Important",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 24,
+      "test_name": "Priority Sweep - memory_360 = Reference",
+      "success": true,
+      "estimated_tokens": 2728,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 25,
+      "test_name": "Priority Sweep - memory_360 = OFF",
+      "success": true,
+      "estimated_tokens": 2600,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 26,
+      "test_name": "Priority Sweep - git_history = Critical",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 27,
+      "test_name": "Priority Sweep - git_history = Important",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 28,
+      "test_name": "Priority Sweep - git_history = Reference",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 29,
+      "test_name": "Priority Sweep - git_history = OFF",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 30,
+      "test_name": "Priority Sweep - agent_templates = Critical",
+      "success": true,
+      "estimated_tokens": 2737,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 31,
+      "test_name": "Priority Sweep - agent_templates = Important",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 32,
+      "test_name": "Priority Sweep - agent_templates = Reference",
+      "success": true,
+      "estimated_tokens": 2728,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 33,
+      "test_name": "Priority Sweep - agent_templates = OFF",
+      "success": true,
+      "estimated_tokens": 2325,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 34,
+      "test_name": "Depth Sweep - vision_documents = optional",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 35,
+      "test_name": "Depth Sweep - vision_documents = light",
+      "success": true,
+      "estimated_tokens": 16388,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 36,
+      "test_name": "Depth Sweep - vision_documents = medium",
+      "success": true,
+      "estimated_tokens": 25548,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 37,
+      "test_name": "Depth Sweep - vision_documents = full",
+      "success": true,
+      "estimated_tokens": 2852,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 38,
+      "test_name": "Depth Sweep - memory_last_n_projects = 1",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 39,
+      "test_name": "Depth Sweep - memory_last_n_projects = 3",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 40,
+      "test_name": "Depth Sweep - memory_last_n_projects = 5",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 41,
+      "test_name": "Depth Sweep - memory_last_n_projects = 10",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 42,
+      "test_name": "Depth Sweep - git_commits = 10",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 43,
+      "test_name": "Depth Sweep - git_commits = 25",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 44,
+      "test_name": "Depth Sweep - git_commits = 50",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 45,
+      "test_name": "Depth Sweep - git_commits = 100",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 46,
+      "test_name": "Depth Sweep - agent_templates = type_only",
+      "success": true,
+      "estimated_tokens": 2730,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 47,
+      "test_name": "Depth Sweep - agent_templates = full",
+      "success": true,
+      "estimated_tokens": 20830,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 48,
+      "test_name": "Edge Case - All OFF (minimum context)",
+      "success": true,
+      "estimated_tokens": 551,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 49,
+      "test_name": "Edge Case - All Critical (maximum priority)",
+      "success": true,
+      "estimated_tokens": 2771,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 50,
+      "test_name": "Edge Case - All Reference (minimum priority)",
+      "success": true,
+      "estimated_tokens": 2721,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    },
+    {
+      "combo_id": 51,
+      "test_name": "Edge Case - Mixed priorities (alternating)",
+      "success": true,
+      "estimated_tokens": 2742,
+      "validation": {
+        "has_mission": true,
+        "has_estimated_tokens": true,
+        "has_field_priorities": true,
+        "field_priorities_match": true
+      }
+    }
+  ]
+}
