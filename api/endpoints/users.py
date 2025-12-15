@@ -214,29 +214,29 @@ class ExecutionModeUpdate(BaseModel):
 
 class DepthConfig(BaseModel):
     """
-    Depth configuration for context extraction granularity (Handover 0314).
+    Depth configuration for context extraction granularity (Handovers 0314, 0347d, 0347e).
 
     Controls HOW MUCH detail to extract from each context source.
     Orthogonal to priority system (which controls WHAT to fetch).
 
     Valid values per field:
-    - vision_documents: none, light, moderate, heavy
+    - vision_documents: none, optional, light, medium, full (0347e)
     - memory_last_n_projects: 1, 3, 5, 10
     - git_commits: 10, 25, 50, 100
-    - agent_template_detail: minimal, standard, full
+    - agent_template_detail: type_only, minimal, standard, full (0347d)
     - tech_stack_sections: required, all
     - architecture_depth: overview, detailed
     """
 
-    vision_documents: Literal["none", "light", "medium", "full"] = Field(
-        default="medium", description="Vision document depth level (affects token usage)"
+    vision_documents: Literal["none", "optional", "light", "medium", "full"] = Field(
+        default="medium", description="Vision document depth level: none/optional/light/medium/full (Handover 0347e)"
     )
     memory_last_n_projects: Literal[1, 3, 5, 10] = Field(
         default=3, description="Number of recent projects to include in 360 memory"
     )
     git_commits: Literal[10, 25, 50, 100] = Field(default=25, description="Number of recent git commits to include")
-    agent_template_detail: Literal["minimal", "standard", "full"] = Field(
-        default="standard", description="Detail level for agent templates"
+    agent_template_detail: Literal["type_only", "minimal", "standard", "full"] = Field(
+        default="standard", description="Detail level for agent templates: type_only/minimal/standard/full (Handover 0347d)"
     )
     tech_stack_sections: Literal["required", "all"] = Field(default="all", description="Tech stack sections to include")
     architecture_depth: Literal["overview", "detailed"] = Field(
