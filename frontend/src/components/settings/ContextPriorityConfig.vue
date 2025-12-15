@@ -25,13 +25,13 @@
         </div>
       </v-alert>
 
-      <!-- Locked Project Context -->
+      <!-- Locked Project Description -->
       <div class="context-row locked-row d-flex justify-space-between align-center py-3 mb-2">
         <div class="d-flex align-center">
           <v-icon size="small" color="primary" class="mr-2">mdi-lock</v-icon>
-          <span class="text-subtitle-2 font-weight-medium">Project Context</span>
+          <span class="text-subtitle-2 font-weight-medium">Project Description</span>
         </div>
-        <v-chip size="small" color="primary" variant="flat"> Always Critical </v-chip>
+        <v-chip size="small" color="red-darken-2" variant="flat">CRITICAL (Locked)</v-chip>
       </div>
 
       <v-divider class="mb-4" />
@@ -68,6 +68,8 @@
             :model-value="config[context.key]?.priority"
             @update:model-value="updatePriority(context.key, $event)"
             :items="priorityOptions"
+            item-title="title"
+            item-value="value"
             density="compact"
             variant="outlined"
             hide-details
@@ -142,6 +144,8 @@
             :model-value="config[context.key]?.priority"
             @update:model-value="updatePriority(context.key, $event)"
             :items="priorityOptions"
+            item-title="title"
+            item-value="value"
             density="compact"
             variant="outlined"
             hide-details
@@ -234,9 +238,30 @@ const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
 }
 
 const priorityOptions = [
-  { title: 'Critical', value: 1 },
-  { title: 'Important', value: 2 },
-  { title: 'Reference', value: 3 },
+  {
+    value: 1,
+    title: 'CRITICAL',
+    subtitle: 'Orchestrator MUST call this MCP tool',
+    color: 'red-darken-2'
+  },
+  {
+    value: 2,
+    title: 'IMPORTANT',
+    subtitle: 'Orchestrator SHOULD call if budget allows',
+    color: 'orange-darken-2'
+  },
+  {
+    value: 3,
+    title: 'REFERENCE',
+    subtitle: 'Orchestrator MAY call if project scope requires',
+    color: 'blue-darken-2'
+  },
+  {
+    value: 4,
+    title: 'OFF',
+    subtitle: 'Tool not mentioned in orchestrator instructions',
+    color: 'grey'
+  }
 ]
 
 // State
@@ -522,8 +547,8 @@ function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Rec
     }
   })
 
-  // CRITICAL: Always include project_context with priority 1 (locked field, always CRITICAL)
-  backendPriorities.project_context = 1
+  // CRITICAL: Always include project_description with priority 1 (locked field, always CRITICAL)
+  backendPriorities.project_description = 1
 
   return backendPriorities
 }
@@ -619,8 +644,8 @@ defineExpose({
 }
 
 .priority-select {
-  max-width: 100px;
-  min-width: 90px;
+  max-width: 140px;
+  min-width: 120px;
 }
 
 .priority-select :deep(.v-field__input) {
@@ -631,6 +656,12 @@ defineExpose({
 
 .priority-select :deep(.v-field) {
   min-height: 32px;
+}
+
+.priority-select :deep(.v-select__selection-text) {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 /* Mobile responsive */

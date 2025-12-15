@@ -274,7 +274,7 @@ class TestLeanOrchestratorInstructions:
                 project=mock_project,
                 field_priorities={
                     "product_core": 1,
-                    "project_context": 1,
+                    "project_description": 1,
                     "vision_documents": 2,
                     "tech_stack": 2,
                 },
@@ -309,7 +309,7 @@ class TestLeanOrchestratorInstructions:
                 project=mock_project,
                 field_priorities={
                     "product_core": 1,
-                    "project_context": 1,
+                    "project_description": 1,
                     "vision_documents": 2,
                     "tech_stack": 2,
                 },

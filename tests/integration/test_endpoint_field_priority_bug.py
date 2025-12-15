@@ -59,7 +59,7 @@ async def user_with_correct_priorities_structure(db_session):
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 3,
-                "project_context": 1,
+                "project_description": 1,
                 "memory_360": 2,
                 "git_history": 4
             }
@@ -147,7 +147,7 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
         "product_core": 1,
         "vision_documents": 2,
         "agent_templates": 3,
-        "project_context": 1,
+        "project_description": 1,
         "memory_360": 2,
         "git_history": 4
     }

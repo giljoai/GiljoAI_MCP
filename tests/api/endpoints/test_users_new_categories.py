@@ -75,7 +75,7 @@ class TestNewCategoryValidation:
             "product_core": 1,
             "vision_documents": 1,
             "agent_templates": 2,
-            "project_context": 2,
+            "project_description": 2,
             "memory_360": 2,
             "git_history": 3,
             # New 3 categories

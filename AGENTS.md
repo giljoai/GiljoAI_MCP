@@ -67,7 +67,7 @@ This section summarizes the key behavioural and architectural expectations that 
   - Stdio-based adapters and local FastMCP registrations are deprecated and must not be assumed in new work.
 
 - **Context Management Model (Priority + Depth)**
-  - Priority (WHAT to fetch): `product_core`, `vision_documents`, `tech_stack`, `architecture`, `testing`, `agent_templates`, `project_context`, `memory_360`, `git_history`.
+  - Priority (WHAT to fetch): `product_core`, `vision_documents`, `tech_stack`, `architecture`, `testing`, `agent_templates`, `project_description`, `memory_360`, `git_history`.
   - Depth (HOW MUCH to fetch): per-category knobs such as `vision_chunking`, `memory_last_n_projects`, `git_commits`, `architecture_depth`, etc.
   - Agents and orchestration code should respect `field_priority_config` and `depth_config` when deciding which MCP context tools to call and how much to pull from each.
 

@@ -42,7 +42,7 @@ async def get_project(
     Returns:
         Dict with project info:
         {
-            "source": "project_context",
+            "source": "project_description",
             "data": {
                 "project_name": "Test Project",
                 "project_alias": "A1B2C3",
@@ -71,7 +71,7 @@ async def get_project(
         )
     """
     logger.info(
-        "fetching_project_context",
+        "fetching_project_description",
         project_id=project_id,
         tenant_key=tenant_key,
         include_summary=include_summary
@@ -98,7 +98,7 @@ async def get_project(
                 operation="get_project"
             )
             return {
-                "source": "project_context",
+                "source": "project_description",
                 "data": {},
                 "metadata": {
                     "project_id": project_id,
@@ -127,7 +127,7 @@ async def get_project(
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "project_context_fetched",
+            "project_description_fetched",
             project_id=project_id,
             tenant_key=tenant_key,
             status=project.status,
@@ -136,7 +136,7 @@ async def get_project(
         )
 
         return {
-            "source": "project_context",
+            "source": "project_description",
             "data": data,
             "metadata": {
                 "project_id": project_id,

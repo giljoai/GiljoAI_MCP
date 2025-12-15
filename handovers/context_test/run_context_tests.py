@@ -51,7 +51,7 @@ DELAY_BETWEEN_CALLS = 0.5  # Seconds to avoid rate limiting
 # Default configurations for reference
 DEFAULT_FIELD_PRIORITIES = {
     "product_core": {"toggle": True, "priority": 1},
-    "project_context": {"toggle": True, "priority": 1},
+    "project_description": {"toggle": True, "priority": 1},
     "vision_documents": {"toggle": True, "priority": 2},
     "tech_stack": {"toggle": True, "priority": 2},
     "architecture": {"toggle": True, "priority": 3},
@@ -348,7 +348,7 @@ class TestConfigGenerator:
         # All OFF (except product_core which must be ON for validation)
         all_off = {
             "product_core": {"toggle": True, "priority": 1},  # Required
-            "project_context": {"toggle": False, "priority": 4},
+            "project_description": {"toggle": False, "priority": 4},
             "vision_documents": {"toggle": False, "priority": 4},
             "tech_stack": {"toggle": False, "priority": 4},
             "architecture": {"toggle": False, "priority": 4},
@@ -381,7 +381,7 @@ class TestConfigGenerator:
         # All Reference
         all_reference = {
             "product_core": {"toggle": True, "priority": 1},  # At least one Critical
-            "project_context": {"toggle": True, "priority": 3},
+            "project_description": {"toggle": True, "priority": 3},
             "vision_documents": {"toggle": True, "priority": 3},
             "tech_stack": {"toggle": True, "priority": 3},
             "architecture": {"toggle": True, "priority": 3},
@@ -401,7 +401,7 @@ class TestConfigGenerator:
         # Mixed priorities (alternating 1, 2, 3)
         mixed = {
             "product_core": {"toggle": True, "priority": 1},
-            "project_context": {"toggle": True, "priority": 2},
+            "project_description": {"toggle": True, "priority": 2},
             "vision_documents": {"toggle": True, "priority": 3},
             "tech_stack": {"toggle": True, "priority": 1},
             "architecture": {"toggle": True, "priority": 2},

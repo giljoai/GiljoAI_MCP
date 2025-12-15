@@ -23,7 +23,7 @@ from src.giljo_mcp.tools.agent import (
 
 # TODO: These context functions don't exist yet - commenting out for test collection
 # from src.giljo_mcp.tools.context import (
-#     _get_project_context,
+#     _get_project_description,
 #     _get_vision_overview,
 #     _update_discovery_cache,
 # )
@@ -239,7 +239,7 @@ class TestToolsIntegration:
         assert discovery_result["success"] is True
 
         # 2. Get project context
-        context_result = await _get_project_context(self.db_manager, self.tenant_manager)
+        context_result = await _get_project_description(self.db_manager, self.tenant_manager)
         assert context_result["success"] is True
         assert "agents" in context_result["context"]
         assert "tasks" in context_result["context"]
@@ -422,7 +422,7 @@ class TestToolsIntegration:
         """Test complete project lifecycle with all modules"""
         # 1. Project setup phase
         # Create project context
-        context_result = await _get_project_context(self.db_manager, self.tenant_manager)
+        context_result = await _get_project_description(self.db_manager, self.tenant_manager)
         assert context_result["success"] is True
 
         # 2. Agent creation phase
@@ -487,6 +487,6 @@ class TestToolsIntegration:
             assert messages["success"] is True
 
         # Project should have complete context
-        final_context = await _get_project_context(self.db_manager, self.tenant_manager)
+        final_context = await _get_project_description(self.db_manager, self.tenant_manager)
         assert final_context["success"] is True
         assert len(final_context["context"]["agents"]) >= 3

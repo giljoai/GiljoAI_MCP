@@ -41,7 +41,7 @@ class TestFieldPriorityConfigValidation:
                 "product_core": 1,  # CRITICAL
                 "vision_documents": 2,  # IMPORTANT
                 "agent_templates": 1,  # CRITICAL
-                "project_context": 2,  # IMPORTANT
+                "project_description": 2,  # IMPORTANT
                 "memory_360": 3,  # NICE_TO_HAVE
                 "git_history": 4,  # EXCLUDED
             },
@@ -95,7 +95,7 @@ class TestFieldPriorityConfigValidation:
                 "product_core": 2,  # IMPORTANT (not CRITICAL)
                 "vision_documents": 2,  # IMPORTANT
                 "agent_templates": 3,  # NICE_TO_HAVE
-                "project_context": 3,  # NICE_TO_HAVE
+                "project_description": 3,  # NICE_TO_HAVE
                 "memory_360": 4,  # EXCLUDED
                 "git_history": 4,  # EXCLUDED
             },
@@ -111,7 +111,7 @@ class TestFieldPriorityConfigValidation:
                 "product_core": 4,  # EXCLUDED
                 "vision_documents": 4,  # EXCLUDED
                 "agent_templates": 4,  # EXCLUDED
-                "project_context": 4,  # EXCLUDED
+                "project_description": 4,  # EXCLUDED
                 "memory_360": 4,  # EXCLUDED
                 "git_history": 4,  # EXCLUDED
             },
@@ -141,7 +141,7 @@ class TestFieldPriorityConfigValidation:
             "product_core",
             "vision_documents",
             "agent_templates",
-            "project_context",
+            "project_description",
             "memory_360",
             "git_history",
         ]
@@ -241,7 +241,7 @@ class TestPriorityConfigurationAPI:
                 "product_core": 1,  # CRITICAL
                 "agent_templates": 1,  # CRITICAL
                 "vision_documents": 2,  # IMPORTANT
-                "project_context": 2,  # IMPORTANT
+                "project_description": 2,  # IMPORTANT
                 "memory_360": 3,  # NICE_TO_HAVE
                 "git_history": 4,  # EXCLUDED
             },
@@ -287,7 +287,7 @@ class TestPriorityConfigurationAPI:
                 "product_core": 2,  # All Priority 2 or higher - no Priority 1
                 "vision_documents": 2,
                 "agent_templates": 3,
-                "project_context": 3,
+                "project_description": 3,
                 "memory_360": 4,
                 "git_history": 4,
             },
@@ -314,7 +314,7 @@ class TestPriorityConfigurationAPI:
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 1,
-                "project_context": 3,
+                "project_description": 3,
                 "memory_360": 4,
                 "git_history": 4,
             },
@@ -353,7 +353,7 @@ class TestPriorityConfigurationAPI:
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 1,
-                "project_context": 2,
+                "project_description": 2,
                 "memory_360": 3,
                 "git_history": 4,
             },
@@ -472,7 +472,7 @@ class TestWebSocketEventEmission:
                 "product_core": 1,
                 "vision_documents": 2,
                 "agent_templates": 1,
-                "project_context": 2,
+                "project_description": 2,
                 "memory_360": 3,
                 "git_history": 4,
             },
