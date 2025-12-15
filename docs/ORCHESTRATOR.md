@@ -33,7 +33,7 @@ User Action: "Launch Project"
 │ - MCP Health Check                                  │
 │ - Environment Understanding                         │
 │ - Agent Discovery (get_available_agents)            │
-│ - Context Prioritization (9 MCP context tools)      │
+│ - Context Prioritization (unified fetch_context())  │
 │ - Agent Job Spawning (MCPAgentJob records)          │
 │ - Activation (project → active status)              │
 │ Token Budget: 931 tokens (22% under 1200 limit)     │
@@ -120,12 +120,13 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
    └─ NO EMBEDDED TEMPLATES (fetch dynamically)
 
 5. CONTEXT PRIORITIZATION & MISSION
-   ├─ Apply user's context priority settings
-   ├─ Fetch product context via context tools
-   ├─ Fetch relevant vision documents
-   ├─ Fetch git history for context
+   ├─ Apply user's context priority settings (3-tier: CRITICAL/IMPORTANT/REFERENCE)
+   ├─ Call fetch_context(categories=[...]) based on priority tier
+   ├─ CRITICAL fields: MUST fetch (product_core, project)
+   ├─ IMPORTANT fields: SHOULD fetch if budget allows (tech_stack, vision_documents)
+   ├─ REFERENCE fields: MAY fetch if project requires (memory_360, git_history)
    ├─ Generate unified orchestrator mission
-   └─ Condense into <10K tokens
+   └─ Condense into <10K tokens (See: docs/api/context_tools.md)
 
 6. AGENT JOB SPAWNING
    ├─ Create MCPAgentJob records for each agent
@@ -990,6 +991,7 @@ if not job.handover_context_refs:
 
 ### Core Documentation
 - **Architecture**: [SERVER_ARCHITECTURE_TECH_STACK.md](SERVER_ARCHITECTURE_TECH_STACK.md) - Complete system architecture
+- **Context Tools API**: [api/context_tools.md](api/context_tools.md) - Unified fetch_context() tool reference
 - **Staging Workflow**: [components/STAGING_WORKFLOW.md](components/STAGING_WORKFLOW.md) - 7-task staging details
 - **Services**: [SERVICES.md](SERVICES.md) - OrchestrationService API
 - **Testing**: [TESTING.md](TESTING.md) - Succession test patterns
@@ -1010,4 +1012,4 @@ if not job.handover_context_refs:
 
 ---
 
-**Last Updated**: 2025-11-24 (v3.2 - Handovers 0246a-c integrated)
+**Last Updated**: 2025-12-15 (v3.2 - Handovers 0246a-c, 0350a-c integrated)
