@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config.defaults import DEFAULT_FIELD_PRIORITY
 from .database import DatabaseManager
+from .json_context_builder import JSONContextBuilder
 from .models import Product, Project, User
 from .models.context import MCPContextIndex
 from .orchestration_types import AgentConfig, Mission, RequirementAnalysis
@@ -1214,6 +1215,80 @@ Success Criteria:
         # Fallback: no framing (shouldn't happen with valid priorities)
         return content
 
+    async def _get_active_vision_doc(self, product: Product):
+        """
+        Get active vision document for product (Handover 0347b).
+
+        Args:
+            product: Product model with vision_documents relationship
+
+        Returns:
+            VisionDocument: Active vision document or None
+        """
+        async with self.db_manager.get_session_async() as session:
+            from sqlalchemy import select
+            from src.giljo_mcp.models.products import VisionDocument
+
+            # Get active vision document
+            # Order by display_order first, then created_at DESC (consistent with existing logic)
+            stmt = select(VisionDocument).where(
+                VisionDocument.product_id == product.id,
+                VisionDocument.tenant_key == product.tenant_key,
+                VisionDocument.is_active == True
+            ).order_by(
+                VisionDocument.display_order,
+                VisionDocument.created_at.desc()
+            ).limit(1)
+
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+
+    async def _get_memory_summary(self, product: Product, max_entries: int = 3) -> dict:
+        """
+        Get brief summary of 360 memory for reference tier (Handover 0347b).
+
+        Args:
+            product: Product model with product_memory JSONB field
+            max_entries: Maximum number of project entries to include
+
+        Returns:
+            dict: Summary with project count and fetch tool pointer
+        """
+        if not product.product_memory:
+            return {
+                "total_projects": 0,
+                "summary": "No project history available",
+                "fetch_tool": None
+            }
+
+        sequential_history = product.product_memory.get("sequential_history", [])
+        total_projects = len(sequential_history)
+
+        if total_projects == 0:
+            return {
+                "total_projects": 0,
+                "summary": "No project history available",
+                "fetch_tool": None
+            }
+
+        # Get most recent N projects for brief summary
+        recent_projects = sequential_history[-max_entries:] if total_projects > 0 else []
+
+        return {
+            "total_projects": total_projects,
+            "recent_count": len(recent_projects),
+            "recent_summaries": [
+                {
+                    "sequence": p.get("sequence"),
+                    "project_name": p.get("project_name", "Unnamed Project"),
+                    "timestamp": p.get("timestamp"),
+                }
+                for p in recent_projects
+            ],
+            "fetch_tool": "fetch_360_memory(product_id, offset, limit)",
+            "instruction": f"Call fetch_360_memory() to paginate through all {total_projects} projects"
+        }
+
     async def _build_context_with_priorities(
         self,
         product: Product,
@@ -1222,13 +1297,12 @@ Success Criteria:
         depth_config: dict = None,
         user_id: Optional[str] = None,
         include_serena: bool = False,
-    ) -> str:
+    ) -> dict:
         """
-        Build context respecting user's field priorities and depth configuration.
+        Build JSON context respecting user's field priorities and depth configuration (Handover 0347b).
 
         This method orchestrates the field priority system and depth controls to generate
-        condensed context that includes only the most relevant information at appropriate
-        detail levels based on user preferences.
+        structured JSON context organized by priority tiers (critical/important/reference).
 
         Args:
             product: Product model with vision document and config_data
@@ -1243,59 +1317,47 @@ Success Criteria:
             include_serena: Whether to fetch and include Serena codebase context (MANDATORY if enabled in config.yaml)
 
         Returns:
-            Formatted context string with priority-based and depth-based filtering.
-            Sections are intelligently abbreviated or excluded based on priorities and depth.
+            dict: JSON structure with priority-based organization:
+                {
+                    "priority_map": {
+                        "critical": ["product_core", "tech_stack"],
+                        "important": ["architecture", "testing"],
+                        "reference": ["vision_documents", "memory_360"]
+                    },
+                    "critical": {
+                        "product_core": {...},  # Full inline content
+                        "tech_stack": {...}
+                    },
+                    "important": {
+                        "architecture": {...},  # Condensed + fetch pointer
+                        "testing": {...}
+                    },
+                    "reference": {
+                        "vision_documents": {...},  # Summary + fetch tool
+                        "memory_360": {...}
+                    }
+                }
 
         Priority Level Mapping (v2.0):
-            Priority 1: CRITICAL - Always included with full detail
-            Priority 2: IMPORTANT - Included with high priority
-            Priority 3: NICE_TO_HAVE - Included if space allows
-            Priority 4: EXCLUDED - Omitted entirely (returns empty string)
+            Priority 1: CRITICAL - Always included with full detail (in critical tier)
+            Priority 2: IMPORTANT - Condensed content + fetch pointers (in important tier)
+            Priority 3: NICE_TO_HAVE - Summaries + fetch tools (in reference tier)
+            Priority 4: EXCLUDED - Omitted entirely
 
-        Depth Level Mapping (Handover 0283):
-            360 Memory: 1/3/5/10 projects (number of sequential history entries)
-            Git History: 5/10/25/50/100 commits (number in git log examples)
-            Agent Templates: "type_only" or "full" (name/type/version vs full description)
-
-        Multi-Tenant Isolation:
-            All data access uses product/project models which are already tenant-filtered
-            by upstream code. No additional tenant filtering needed here.
-
-        Example Usage:
-            context = await planner._build_context_with_priorities(
-                product=product,
-                project=project,
-                field_priorities={
-                    "vision_documents": 2,     # IMPORTANT - include vision docs
-                    "project_description": 8,  # Full detail
-                    "tech_stack": 8,           # Moderate-high detail
-                    "config_data.architecture": 4,  # Abbreviated (50% tokens)
-                },
-                depth_config={
-                    "memory_360": 3,            # Show 3 most recent projects
-                    "git_history": 10,          # Show 10 commits in examples
-                    "agent_templates": "full"   # Full agent descriptions
-                },
-                user_id=str(user.id)
-            )
+        Token Target: <2,000 tokens (down from ~21,000 markdown approach)
         """
         # Default to empty dict if not provided
         if field_priorities is None:
             field_priorities = {}
-
-        # Handover 0283: Default depth configuration for backward compatibility
         if depth_config is None:
             depth_config = {
-                "memory_360": 5,  # Default: 5 projects (moderate)
-                "git_history": 20,  # Default: 20 commits (moderate)
+                "memory_360": 5,  # Default: 5 projects
+                "git_history": 20,  # Default: 20 commits
                 "agent_templates": "full",  # Default: full descriptions
             }
 
-        # Fix #1: Apply default field priorities when user has no config
-        # This ensures meaningful context even for new users who haven't customized priorities
-        # User-provided priorities take precedence via dict merge
+        # Apply default field priorities when user has no config
         if not field_priorities:
-            # Empty dict - use defaults
             effective_priorities = DEFAULT_FIELD_PRIORITIES.copy()
             logger.debug(
                 "No user field priorities configured - applying defaults",
@@ -1305,8 +1367,6 @@ Success Criteria:
                 },
             )
         else:
-            # User has configured priorities - use them (no defaults)
-            # This maintains user control and avoids unexpected behavior
             effective_priorities = field_priorities
             logger.debug(
                 "Using user-configured field priorities",
@@ -1316,511 +1376,166 @@ Success Criteria:
                 },
             )
 
-        # Structured logging for debugging and analytics
-        logger.info(
-            "Building context with field priorities and depth configuration",
-            extra={
-                "product_id": str(product.id),
-                "project_id": str(project.id),
-                "tenant_key": product.tenant_key,
-                "priorities": field_priorities,
-                "depth_config": depth_config,
-                "user_id": user_id,
-                "operation": "build_context_with_priorities",
-            },
-        )
+        # Initialize JSONContextBuilder
+        builder = JSONContextBuilder()
 
-        context_sections = []
-        total_tokens = 0
-        tokens_before_reduction = 0  # Track original size for metrics
+        # === CRITICAL TIER (Priority 1): Full inline content ===
 
-        # === Product Name/Description (product_core priority) ===
-        # Get priority for product_core (defaults to 1 if not specified)
+        # Product Core (name, description, features)
         product_core_priority = effective_priorities.get("product_core", 1)
+        if product_core_priority == 1:
+            builder.add_critical("product_core")
+            builder.add_critical_content("product_core", {
+                "name": product.name,
+                "description": product.description or "",
+                "tenant_key": product.tenant_key
+            })
 
-        if product_core_priority != 4:  # Not excluded
-            product_content = f"**Name**: {product.name}"
-            if product.description:
-                product_content += f"\n**Description**: {product.description}"
+        # Project Description (MANDATORY - always included)
+        builder.add_critical("project_description")
+        builder.add_critical_content("project_description", {
+            "name": project.name,
+            "description": project.description or ""
+        })
 
-            # Apply priority framing
-            framed_product = self._apply_priority_framing(
-                section_name=self.SECTION_NAMES.get("product_core", "Product Context"),
-                content=product_content,
-                priority=product_core_priority,
-                category_key="product_core",
-            )
-
-            if framed_product:
-                context_sections.append(framed_product)
-            name_tokens = self._count_tokens(framed_product if framed_product else product_content)
-            total_tokens += name_tokens
-            tokens_before_reduction += name_tokens
-
-            logger.debug(
-                f"Product name/description: {name_tokens} tokens (priority={product_core_priority})",
-                extra={
-                    "field": "product_core",
-                    "priority": product_core_priority,
-                    "tokens": name_tokens,
-                },
-            )
-
-        # === Product Vision (vision_documents priority) ===
-        # Handover 0246b: Simplified depth configuration
-        # Levels: light (33%), medium (66%), full (complete document)
-        # Removed: heavy level, chunk-based assembly for full mode
-        # Handover 0282: Fixed key from "product_vision" to "vision_documents" (v2.0 field name)
-
-        vision_priority = effective_priorities.get("vision_documents", 4)  # Default: EXCLUDED (user opt-in)
-        if vision_priority > 0 and vision_priority != 4:  # Not excluded
-            # Get depth configuration (Handover 0246b: default changed to medium)
-            vision_depth = depth_config.get("vision_documents", "medium")  # Default to medium
-            # Backward compatibility: map old values to new (Handover 0246b)
-            if vision_depth == "moderate":
-                vision_depth = "medium"
-            elif vision_depth == "heavy":
-                vision_depth = "medium"  # Heavy maps to medium (closest match)
-
-            # DEBUG: Handover 0346 - Trace vision depth configuration
-            logger.info(
-                f"[VISION_DEPTH_DEBUG] depth_config received: {depth_config}",
-                extra={"operation": "_build_context_with_priorities"}
-            )
-            logger.info(
-                f"[VISION_DEPTH_DEBUG] vision_depth value: '{vision_depth}' (from depth_config.get('vision_documents'))",
-                extra={"operation": "_build_context_with_priorities"}
-            )
-
-            # Check if product has vision documents
-            if product.vision_documents:
-                async with self.db_manager.get_session_async() as session:
-                    from sqlalchemy import select
-                    from src.giljo_mcp.models.products import VisionDocument
-
-                    # Get active vision document with summaries
-                    # Handover 0346: Order by display_order first (user intent),
-                    # then created_at DESC (newest document wins when display_order equal)
-                    # This ensures deterministic behavior and prefers recently uploaded documents
-                    stmt = select(VisionDocument).where(
-                        VisionDocument.product_id == product.id,
-                        VisionDocument.tenant_key == product.tenant_key,
-                        VisionDocument.is_active == True
-                    ).order_by(
-                        VisionDocument.display_order,
-                        VisionDocument.created_at.desc()
-                    ).limit(1)
-
-                    result = await session.execute(stmt)
-                    vision_doc = result.scalar_one_or_none()
-
-                    if vision_doc:
-                        vision_content = None
-                        estimated_original_tokens = vision_doc.original_token_count or 0
-
-                        # DEBUG: Handover 0346 - Trace summarization state
-                        logger.info(
-                            f"[VISION_DEPTH_DEBUG] vision_doc.is_summarized: {vision_doc.is_summarized}",
-                            extra={"has_light": vision_doc.summary_light is not None, "has_mod": vision_doc.summary_moderate is not None, "has_heavy": vision_doc.summary_heavy is not None}
-                        )
-
-                        # Handover 0347: Restore pagination for Full mode (Claude Code 25K limit)
-                        # Full mode returns overview + fetch instruction for chunked docs
-                        # Light/Medium modes use pre-computed summaries
-                        if vision_depth == "full":
-                            # Full: Check if document has chunks for pagination
-                            logger.info("[VISION_DEPTH_DEBUG] Taking FULL path")
-                            estimated_original_tokens = vision_doc.original_token_count or self._count_tokens(vision_doc.vision_document or "")
-
-                            # Check if document is chunked (supports pagination)
-                            if vision_doc.chunked and vision_doc.chunk_count > 0:
-                                # Return overview + fetch instruction (NOT full content)
-                                # Claude Code has 25K token limit on tool outputs
-                                logger.info(f"[VISION_DEPTH_DEBUG] Document chunked: {vision_doc.chunk_count} chunks, returning pagination instructions")
-                                vision_content = f"""## Vision Document Overview
-
-**Document**: {vision_doc.document_name or 'Product Vision'}
-**Total Content**: {estimated_original_tokens:,} tokens across {vision_doc.chunk_count} chunks
-**Status**: Full content available via pagination
-
-### How to Read Full Content
-
-Call the MCP tool `fetch_vision_document` with pagination:
-
-```
-fetch_vision_document(product_id="{product.id}", offset=0, limit=1)  # Page 1 (~20K tokens)
-fetch_vision_document(product_id="{product.id}", offset=1, limit=1)  # Page 2
-# ... continue until has_more=false
-```
-
-Each page returns ~20K tokens (under Claude Code's 25K limit).
-The response includes `has_more` and `next_offset` fields to guide pagination.
-
-**Note**: Light/Medium depth modes return summarized content directly.
-For full content, use pagination as shown above.
-"""
-                            else:
-                                # No chunks - return first ~20K tokens with truncation warning
-                                logger.info("[VISION_DEPTH_DEBUG] Document not chunked, returning truncated content")
-                                max_chars = 80000  # ~20K tokens
-                                full_content = vision_doc.vision_document or ""
-                                if len(full_content) > max_chars:
-                                    vision_content = full_content[:max_chars] + f"\n\n---\n**[CONTENT TRUNCATED]**\nDocument has {estimated_original_tokens:,} tokens but only ~20K shown.\nRe-upload document to enable chunking for full pagination support."
-                                else:
-                                    vision_content = full_content
-                        elif vision_depth == "medium":
-                            # Medium: Use summary_medium (66% of original) or fallback to summary_moderate
-                            logger.info("[VISION_DEPTH_DEBUG] Taking MEDIUM path")
-                            vision_content = vision_doc.summary_medium or vision_doc.summary_moderate
-                            if vision_content:
-                                logger.info("[VISION_DEPTH_DEBUG] Using summary_medium")
-                            else:
-                                # Fallback to full document if no summary available
-                                logger.info("[VISION_DEPTH_DEBUG] No medium summary, falling back to vision_document")
-                                vision_content = vision_doc.vision_document
-                            estimated_original_tokens = vision_doc.original_token_count or 0
-                        elif vision_depth == "light":
-                            # Light: Use summary_light (33% of original)
-                            logger.info("[VISION_DEPTH_DEBUG] Taking LIGHT path")
-                            vision_content = vision_doc.summary_light
-                            if vision_content:
-                                logger.info("[VISION_DEPTH_DEBUG] Using summary_light")
-                            else:
-                                # Fallback to medium, then full
-                                vision_content = vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
-                                logger.info("[VISION_DEPTH_DEBUG] No light summary, using fallback")
-                            estimated_original_tokens = vision_doc.original_token_count or 0
-                        else:
-                            # Unknown depth - use medium as default
-                            logger.info(f"[VISION_DEPTH_DEBUG] Unknown depth '{vision_depth}', defaulting to medium")
-                            vision_content = vision_doc.summary_medium or vision_doc.summary_moderate or vision_doc.vision_document
-                            estimated_original_tokens = vision_doc.original_token_count or 0
-
-                        if vision_content:
-                            # Apply priority framing
-                            formatted_vision = self._apply_priority_framing(
-                                section_name=self.SECTION_NAMES.get("vision_documents", "Product Vision"),
-                                content=vision_content,
-                                priority=vision_priority,
-                                category_key="vision_documents",
-                            )
-
-                            if formatted_vision:
-                                context_sections.append(formatted_vision)
-                            vision_tokens = self._count_tokens(formatted_vision)
-                            total_tokens += vision_tokens
-                            tokens_before_reduction += estimated_original_tokens
-
-                            logger.info(
-                                f"Product vision ({vision_depth} depth): {vision_tokens} tokens "
-                                f"(compressed from ~{estimated_original_tokens:,} tokens)",
-                                extra={
-                                    "field": "vision_documents",
-                                    "priority": vision_priority,
-                                    "depth": vision_depth,
-                                    "tokens": vision_tokens,
-                                    "original_tokens": estimated_original_tokens,
-                                    "tokens_saved": estimated_original_tokens - vision_tokens,
-                                    "is_summarized": vision_doc.is_summarized,
-                                },
-                            )
-
-        # === MANDATORY: Project Description (ALWAYS included - non-negotiable) ===
-        desc_text = project.description or ""
-        if desc_text:
-            formatted_desc = f"## Project Description\n{desc_text}"
-            context_sections.append(formatted_desc)
-            desc_tokens = self._count_tokens(formatted_desc)
-            total_tokens += desc_tokens
-            tokens_before_reduction += desc_tokens
-
-            logger.debug(
-                f"Project description: {desc_tokens} tokens (MANDATORY - full content)",
-                extra={
-                    "field": "project_description",
-                    "priority": "MANDATORY",
-                    "detail_level": "full",
-                    "tokens": desc_tokens,
-                },
-            )
-
-        # === Config Data Fields Section (Handover 0303) ===
-        # Generic extraction for all config_data fields that are prioritized
-        # Replaces hardcoded architecture extraction with scalable pattern
-        config_fields_to_extract = [
-            "architecture",  # System architecture
-            "test_methodology",  # Testing approach (TDD, BDD, etc.)
-            "coding_standards",  # Code quality standards
-            "deployment_strategy",  # Deployment approach
-            "agent_execution_methodologies",  # How agents should execute work
-        ]
-
-        for field_name in config_fields_to_extract:
-            # Check both old key format (backward compat) and new config_data.* format
-            field_key = f"config_data.{field_name}"
-            legacy_key = field_name if field_name == "architecture" else None
-
-            # Try new format first, then fall back to legacy
-            field_priority = effective_priorities.get(field_key, 0)
-            if field_priority == 0 and legacy_key:
-                field_priority = effective_priorities.get(legacy_key, 0)
-
-            if self._should_include_field(field_priority):
-                field_detail = self._get_detail_level(field_priority)
-                field_text = self._extract_config_field(product, field_name, field_detail)
-
-                if field_text:
-                    # Get human-readable label
-                    field_label = self.FIELD_LABELS.get(field_key, field_name.replace("_", " ").title())
-
-                    # Apply priority framing
-                    formatted_section = self._apply_priority_framing(
-                        section_name=field_label, content=field_text, priority=field_priority, category_key=field_key
-                    )
-
-                    # Add to context sections (if not excluded)
-                    if formatted_section:
-                        context_sections.append(formatted_section)
-
-                    field_tokens = self._count_tokens(formatted_section)
-                    total_tokens += field_tokens
-
-                    # Track token metrics (use full text for "before" comparison)
-                    full_text = self._extract_config_field(product, field_name, "full")
-                    if full_text:
-                        tokens_before_reduction += self._count_tokens(f"## {field_label}\n{full_text}")
-
-                    logger.debug(
-                        f"{field_label}: {field_tokens} tokens (priority={field_priority}, detail={field_detail})",
-                        extra={
-                            "field": field_key,
-                            "priority": field_priority,
-                            "detail_level": field_detail,
-                            "tokens": field_tokens,
-                        },
-                    )
-
-        # === Tech Stack Section ===
-        # Extract from product.config_data (JSONB field) - Handover 0302
-        tech_stack_priority = effective_priorities.get("tech_stack", 0)
-        if tech_stack_priority > 0 and product.config_data:
-            tech_stack_detail = self._get_detail_level(tech_stack_priority)
-
-            # Extract tech_stack from config_data (may be dict, list, or string)
+        # Tech Stack (if priority 1)
+        tech_stack_priority = effective_priorities.get("tech_stack", 2)
+        if tech_stack_priority == 1 and product.config_data:
             tech_stack_raw = product.config_data.get("tech_stack", {})
-
-            # Normalize to dict format for _format_tech_stack
+            
+            # Normalize to dict format
             if isinstance(tech_stack_raw, list):
-                # Convert list format ["Python 3.11+", "PostgreSQL"] to dict
                 tech_stack_data = {"technologies": tech_stack_raw}
             elif isinstance(tech_stack_raw, str):
-                # Convert string format to dict
                 tech_stack_data = {"technologies": [tech_stack_raw]}
             elif isinstance(tech_stack_raw, dict):
-                # Normalize dict values to ensure they're lists (not strings)
-                # This prevents character-by-character iteration in _format_tech_stack
-                tech_stack_data = {}
-                for key, value in tech_stack_raw.items():
-                    if isinstance(value, list):
-                        tech_stack_data[key] = value
-                    elif isinstance(value, str):
-                        # Don't split strings - keep as single item list
-                        tech_stack_data[key] = [value] if value else []
-                    elif value is not None:
-                        # Convert other types to single-item list
-                        tech_stack_data[key] = [str(value)]
-                    else:
-                        tech_stack_data[key] = []
+                tech_stack_data = tech_stack_raw
             else:
                 tech_stack_data = {}
 
-            if tech_stack_data and isinstance(tech_stack_data, dict):
-                # Format using specialized formatter
-                formatted_tech_stack = self._format_tech_stack(tech_stack_data, tech_stack_detail)
+            if tech_stack_data:
+                builder.add_critical("tech_stack")
+                builder.add_critical_content("tech_stack", tech_stack_data)
 
-                if formatted_tech_stack:
-                    # Apply priority framing
-                    formatted_section = self._apply_priority_framing(
-                        section_name=self.SECTION_NAMES.get("tech_stack", "Tech Stack"),
-                        content=formatted_tech_stack,
-                        priority=tech_stack_priority,
-                        category_key="tech_stack",
-                    )
+        # === IMPORTANT TIER (Priority 2): Condensed content + fetch pointers ===
 
-                    # Add to context sections (if not excluded)
-                    if formatted_section:
-                        context_sections.append(formatted_section)
-                    tech_stack_tokens = self._count_tokens(formatted_section)
-                    total_tokens += tech_stack_tokens
+        # Architecture
+        arch_priority = effective_priorities.get("architecture", 2)
+        if arch_priority == 2 and product.config_data:
+            arch_text = product.config_data.get("architecture", "")
+            if arch_text:
+                builder.add_important("architecture")
+                builder.add_important_content("architecture", {
+                    "summary": arch_text[:500] + "..." if len(arch_text) > 500 else arch_text,
+                    "fetch_tool": "fetch_architecture(product_id)",
+                    "detail_level": "condensed"
+                })
 
-                    # Calculate original tokens for reduction metrics
-                    original_tech_stack = self._format_tech_stack(tech_stack_data, "full")
-                    tokens_before_reduction += self._count_tokens(f"## Tech Stack\n{original_tech_stack}")
+        # Testing Configuration
+        testing_priority = effective_priorities.get("testing", 2)
+        if testing_priority == 2 and product.config_data:
+            testing_data = product.config_data.get("testing", {})
+            if testing_data:
+                builder.add_important("testing")
+                builder.add_important_content("testing", {
+                    "methodology": testing_data.get("methodology", ""),
+                    "coverage_target": testing_data.get("coverage_target", 80),
+                    "fetch_tool": "fetch_testing_config(product_id)",
+                    "detail_level": "condensed"
+                })
 
-                    logger.debug(
-                        f"Tech stack: {tech_stack_tokens} tokens (priority={tech_stack_priority}, detail={tech_stack_detail})",
-                        extra={
-                            "field": "tech_stack",
-                            "priority": tech_stack_priority,
-                            "detail_level": tech_stack_detail,
-                            "tokens": tech_stack_tokens,
-                        },
-                    )
+        # Agent Templates (if priority 2)
+        agent_templates_priority = effective_priorities.get("agent_templates", 2)
+        if agent_templates_priority == 2:
+            builder.add_important("agent_templates")
+            builder.add_important_content("agent_templates", {
+                "summary": "Agent templates available via get_available_agents() MCP tool",
+                "fetch_tool": "get_available_agents(tenant_key, active_only=True)",
+                "instruction": "Call get_available_agents() to discover all available specialist agents"
+            })
 
-        # === Testing Configuration Section (Handover 0271) ===
-        # Provides testing standards, quality expectations, and TDD guidance
-        # Handover 0282: Fixed key from "testing_config" to "testing" (v2.0 field name)
-        testing_priority = effective_priorities.get("testing", 4)  # Default: EXCLUDED (user opt-in)
-        if testing_priority > 0:
-            testing_context = await self._extract_testing_config(product, testing_priority)
+        # === REFERENCE TIER (Priority 3): Summaries + fetch tools ===
 
-            if testing_context:
-                # Apply priority framing
-                framed_testing = self._apply_priority_framing(
-                    section_name=self.SECTION_NAMES.get("testing", "Testing Configuration"),
-                    content=testing_context,
-                    priority=testing_priority,
-                    category_key="testing",  # Handover 0282: v2.0 field name
-                )
+        # Vision Documents
+        vision_priority = effective_priorities.get("vision_documents", 4)
+        if vision_priority == 3:
+            vision_doc = await self._get_active_vision_doc(product)
+            if vision_doc:
+                builder.add_reference("vision_documents")
+                
+                # Get depth configuration
+                vision_depth = depth_config.get("vision_documents", "medium")
+                
+                builder.add_reference_content("vision_documents", {
+                    "document_name": vision_doc.document_name or "Product Vision",
+                    "total_tokens": vision_doc.original_token_count or 0,
+                    "is_chunked": vision_doc.chunked,
+                    "chunk_count": vision_doc.chunk_count or 0,
+                    "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
+                    "instruction": f"Call fetch_vision_document() to paginate through vision content. Depth: {vision_depth}",
+                    "depth": vision_depth
+                })
 
-                if framed_testing:  # Only add if not excluded
-                    context_sections.append(framed_testing)
-                testing_tokens = self._count_tokens(framed_testing if framed_testing else testing_context)
-                total_tokens += testing_tokens
+        # 360 Memory
+        memory_priority = effective_priorities.get("memory_360", 4)
+        if memory_priority == 3:
+            memory_depth = depth_config.get("memory_360", 5)
+            memory_summary = await self._get_memory_summary(product, max_entries=memory_depth)
+            
+            builder.add_reference("memory_360")
+            builder.add_reference_content("memory_360", memory_summary)
 
-                # Calculate original tokens for reduction metrics
-                full_testing_context = await self._extract_testing_config(product, priority=1)
-                tokens_before_reduction += self._count_tokens(full_testing_context)
+        # Git History
+        git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
+        if git_config.get("enabled"):
+            git_depth = depth_config.get("git_history", 20)
+            
+            builder.add_reference("git_history")
+            builder.add_reference_content("git_history", {
+                "enabled": True,
+                "commit_limit": git_depth,
+                "fetch_tool": "fetch_git_history(product_id, limit)",
+                "instruction": f"Call fetch_git_history() to get last {git_depth} commits"
+            })
 
-                logger.debug(
-                    f"Testing configuration: {testing_tokens} tokens (priority={testing_priority})",
-                    extra={
-                        "field": "testing",  # Handover 0282: v2.0 field name
-                        "priority": testing_priority,
-                        "tokens": testing_tokens,
-                        "product_id": str(product.id),
-                    },
-                )
-
-        # === MANDATORY: Serena Codebase Context (if enabled) ===
-        # Serena integration is controlled by user toggle in My Settings → Integrations
-        # When enabled, provides intelligent codebase symbols/structure overview
+        # Serena Codebase Context (MANDATORY if enabled)
         if include_serena:
             serena_context = await self._fetch_serena_codebase_context(
                 project_id=str(project.id), tenant_key=product.tenant_key
             )
             if serena_context:
-                formatted_serena = f"## Codebase Context (Serena)\n{serena_context}"
-                context_sections.append(formatted_serena)
-                serena_tokens = self._count_tokens(formatted_serena)
-                total_tokens += serena_tokens
+                builder.add_critical("serena_context")
+                builder.add_critical_content("serena_context", {
+                    "summary": serena_context[:1000] + "..." if len(serena_context) > 1000 else serena_context,
+                    "full_content_chars": len(serena_context)
+                })
 
-                logger.debug(
-                    f"Serena codebase context: {serena_tokens} tokens (MANDATORY when enabled)",
-                    extra={
-                        "field": "serena_context",
-                        "priority": "MANDATORY",
-                        "tokens": serena_tokens,
-                    },
-                )
-            else:
-                logger.info(
-                    "Serena enabled but no context returned (graceful degradation)",
-                    extra={
-                        "project_id": str(project.id),
-                        "operation": "build_context_with_priorities",
-                    },
-                )
+        # Build final JSON structure
+        result = builder.build()
 
-        # === CONTEXT SOURCE 9: 360 Memory + Git Integration ===
-        # 360 Memory provides historical context from previous projects (Handovers 0135-0139)
-        # Git integration adds CLI command instructions for commit history (Handover 013B)
-        # Both are controlled by field priorities and user toggles
-        # Handover 0283: Apply depth configuration to control detail level
-
-        # 360 Memory extraction (priority-based with depth control)
-        # Handover 0282: Fixed key from "product_memory.sequential_history" to "memory_360" (v2.0 field name)
-        history_priority = effective_priorities.get("memory_360", 4)  # Default: EXCLUDED (user opt-in)
-        if history_priority > 0:
-            # Handover 0283: Apply depth configuration (number of projects to show)
-            memory_depth = depth_config.get("memory_360", 5)  # Default: 5 projects
-
-            history_context = await self._extract_product_history(product, history_priority, max_entries=memory_depth)
-            if history_context:
-                # Apply priority framing
-                framed_history = self._apply_priority_framing(
-                    section_name=self.SECTION_NAMES.get("memory_360", "360 Memory"),
-                    content=history_context,
-                    priority=history_priority,
-                    category_key="memory_360",
-                )
-
-                if framed_history:  # Only add if not excluded
-                    context_sections.append(framed_history)
-                history_tokens = self._count_tokens(framed_history if framed_history else history_context)
-                total_tokens += history_tokens
-
-                logger.debug(
-                    f"Added 360 Memory context: {history_tokens} tokens (priority={history_priority}, depth={memory_depth} projects)",
-                    extra={
-                        "field": "memory_360",  # Handover 0282: v2.0 field name
-                        "priority": history_priority,
-                        "depth": memory_depth,
-                        "tokens": history_tokens,
-                        "product_id": str(product.id),
-                    },
-                )
-
-        # Git integration (toggle-based, not priority-driven)
-        # Handover 0283: Apply depth configuration to git commit limit
-        git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
-        if git_config.get("enabled"):
-            # Handover 0283: Override commit_limit with depth configuration
-            git_depth = depth_config.get("git_history", 20)  # Default: 20 commits
-            git_config_with_depth = git_config.copy()
-            git_config_with_depth["commit_limit"] = git_depth
-
-            git_instructions = self._inject_git_instructions(git_config_with_depth)
-            context_sections.append(git_instructions)
-            git_tokens = self._count_tokens(git_instructions)
-            total_tokens += git_tokens
-
-            logger.debug(
-                f"Added Git instructions: {git_tokens} tokens (depth={git_depth} commits)",
-                extra={
-                    "field": "git_integration",
-                    "priority": "TOGGLE",
-                    "depth": git_depth,
-                    "tokens": git_tokens,
-                    "product_id": str(product.id),
-                },
-            )
-
-        # === Token Reduction Metrics ===
-        # Calculate and log context prioritization percentage for analytics
-        reduction_pct = 0.0
-        if tokens_before_reduction > 0:
-            reduction_pct = ((tokens_before_reduction - total_tokens) / tokens_before_reduction) * 100
+        # Calculate token estimate
+        import json
+        json_str = json.dumps(result)
+        estimated_tokens = len(json_str) // 4
 
         logger.info(
-            f"Context built: {total_tokens} tokens ({reduction_pct:.1f}% reduction)",
+            f"JSON context built: {estimated_tokens} tokens",
             extra={
                 "product_id": str(product.id),
                 "project_id": str(project.id),
-                "total_tokens": total_tokens,
-                "tokens_before_reduction": tokens_before_reduction,
-                "reduction_percentage": reduction_pct,
+                "estimated_tokens": estimated_tokens,
                 "priorities": field_priorities,
                 "depth_config": depth_config,
                 "user_id": user_id,
-                "sections_included": len(context_sections),
+                "critical_fields": len(result.get("critical", {})),
+                "important_fields": len(result.get("important", {})),
+                "reference_fields": len(result.get("reference", {})),
                 "serena_enabled": include_serena,
-                "operation": "build_context_with_priorities",
+                "operation": "build_context_with_priorities_json",
             },
         )
 
-        # Join all sections with double newlines for readability
-        return "\n\n".join(context_sections)
+        return result
 
     async def _extract_product_history(self, product: Product, priority: int, max_entries: int = 10) -> str:
         """
