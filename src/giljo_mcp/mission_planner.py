@@ -48,7 +48,7 @@ DEFAULT_FIELD_PRIORITIES = {
     "product_core": 1,  # CRITICAL - Always include product name, description, features
     "vision_documents": 2,  # IMPORTANT - Include vision docs if budget allows
     "agent_templates": 2,  # IMPORTANT - Agent templates for spawning
-    "project_context": 1,  # CRITICAL - Current project metadata
+    "project_description": 1,  # CRITICAL - Current project metadata (locked field)
     "memory_360": 3,  # NICE_TO_HAVE - Historical project outcomes
     "git_history": 3,  # NICE_TO_HAVE - Recent commits
     "tech_stack": 2,  # IMPORTANT - Programming languages, frameworks, databases
@@ -1142,7 +1142,7 @@ Success Criteria:
     SECTION_NAMES = {
         "product_core": "Product Context",
         "vision_documents": "Product Vision",
-        "project_context": "Project Context",
+        "project_description": "Project Description",
         "agent_templates": "Agent Templates",
         "memory_360": "360 Memory",
         "git_history": "Git History",
