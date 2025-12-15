@@ -1,11 +1,9 @@
-"""MCP tool for fetching architecture documentation with depth control.
+"""MCP tool for fetching architecture documentation.
 
 NEW TOOL - No existing code to reuse.
-Fetches Product.architecture_notes field.
+Fetches Product.config_data.architecture JSONB field.
 
-Token Budget by Depth:
-- "overview": First 500 chars (~300 tokens)
-- "detailed": Full architecture notes (~1500 tokens)
+Always returns FULL architecture data (no truncation).
 """
 
 import structlog
@@ -29,44 +27,35 @@ def estimate_tokens(data: Any) -> int:
 async def get_architecture(
     product_id: str,
     tenant_key: str,
-    depth: str = "overview",
-    offset: int = 0,
-    limit: int = None,
     db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
-    Fetch architecture documentation for given product with depth control.
+    Fetch architecture documentation for given product.
 
     Handover 0316: Reads from Product.config_data.architecture JSONB object.
     Returns architecture fields: pattern, design_patterns, api_style, notes.
 
+    Handover 0351: Removed depth parameter - always returns FULL data.
+
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
-        depth: Detail level ("overview" or "detailed")
-        offset: Skip first N items (reserved for future pagination)
-        limit: Max items to return (reserved for future pagination)
         db_manager: Database manager instance
-    Pagination (Future):
-        offset and limit parameters are reserved for future implementation.
-        Currently ignored - full implementation deferred to future handover.
 
     Returns:
         Dict with architecture from config_data.architecture:
         {
             "source": "architecture",
-            "depth": "overview",
             "data": {
                 "primary_pattern": "Microservices",
                 "design_patterns": "Repository, Service Layer",
                 "api_style": "RESTful",
-                "architecture_notes": "..."
+                "architecture_notes": "Full architecture notes..."
             },
             "metadata": {
                 "product_id": "uuid",
                 "tenant_key": "...",
-                "estimated_tokens": 300,
-                "truncated": true
+                "estimated_tokens": 300
             }
         }
 
@@ -76,15 +65,13 @@ async def get_architecture(
     Example:
         result = await get_architecture(
             product_id="123e4567-e89b-12d3-a456-426614174000",
-            tenant_key="tenant_abc",
-            depth="overview"
+            tenant_key="tenant_abc"
         )
     """
     logger.info(
         "fetching_architecture_context",
         product_id=product_id,
-        tenant_key=tenant_key,
-        depth=depth
+        tenant_key=tenant_key
     )
 
     if db_manager is None:
@@ -109,13 +96,11 @@ async def get_architecture(
             )
             return {
                 "source": "architecture",
-                "depth": depth,
-                "data": "",
+                "data": {},
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
                     "estimated_tokens": 0,
-                    "truncated": False,
                     "error": "product_not_found"
                 }
             }
@@ -146,7 +131,6 @@ Notes: {arch_notes}
             )
             return {
                 "source": "architecture",
-                "depth": depth,
                 "data": {
                     "primary_pattern": "",
                     "design_patterns": "",
@@ -156,29 +140,17 @@ Notes: {arch_notes}
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
-                    "estimated_tokens": 0,
-                    "truncated": False
+                    "estimated_tokens": 0
                 }
             }
 
-        truncated = False
-        if depth == "overview":
-            # v2.0 backward compatibility: Return abbreviated version
-            data = {
-                "primary_pattern": primary_pattern,
-                "design_patterns": design_patterns[:100] + "..." if len(design_patterns) > 100 else design_patterns,
-                "api_style": api_style,
-                "architecture_notes": arch_notes[:200] + "..." if len(arch_notes) > 200 else arch_notes
-            }
-            truncated = len(design_patterns) > 100 or len(arch_notes) > 200
-        else:  # "detailed"
-            # v2.0 backward compatibility: Return full architecture
-            data = {
-                "primary_pattern": primary_pattern,
-                "design_patterns": design_patterns,
-                "api_style": api_style,
-                "architecture_notes": arch_notes
-            }
+        # Handover 0351: Always return FULL architecture data (no truncation)
+        data = {
+            "primary_pattern": primary_pattern,
+            "design_patterns": design_patterns,
+            "api_style": api_style,
+            "architecture_notes": arch_notes
+        }
 
         # Calculate token estimate
         total_tokens = estimate_tokens(data)
@@ -189,20 +161,15 @@ Notes: {arch_notes}
             tenant_key=tenant_key,
             has_config_data=bool(product.config_data),
             has_architecture=bool(config_data.get("architecture")),
-            depth=depth,
-            estimated_tokens=total_tokens,
-            truncated=truncated
+            estimated_tokens=total_tokens
         )
 
         return {
             "source": "architecture",
-            "depth": depth,
             "data": data,
             "metadata": {
                 "product_id": product_id,
                 "tenant_key": tenant_key,
-                "estimated_tokens": total_tokens,
-                "truncated": truncated,
-                "pagination_supported": False  # Reserved for future implementation
+                "estimated_tokens": total_tokens
             }
         }
