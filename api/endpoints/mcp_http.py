@@ -525,6 +525,46 @@ async def handle_tools_list(
         {"name": "gil_fetch", "description": "Stage agent templates and return download URL", "inputSchema": {"type": "object", "properties": {}}},
         {"name": "gil_activate", "description": "Activate a project and ensure orchestrator exists", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
         {"name": "gil_launch", "description": "Launch project execution after staging", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
+        # Unified Context Tool (Handover 0350a)
+        {
+            "name": "fetch_context",
+            "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300). Use apply_user_config=true to respect user's saved settings. Single tool replaces 9 individual tools for 720 token savings in MCP schema overhead.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "string", "description": "Product UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "project_id": {"type": "string", "description": "Project UUID (required for 'project' category)"},
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["all", "product_core", "vision_documents", "tech_stack",
+                                     "architecture", "testing", "memory_360", "git_history",
+                                     "agent_templates", "project"]
+                        },
+                        "description": "Categories to fetch. ['all'] for everything.",
+                        "default": ["all"]
+                    },
+                    "depth_config": {
+                        "type": "object",
+                        "description": "Override depth per category. Example: {\"vision_documents\": \"light\"}"
+                    },
+                    "apply_user_config": {
+                        "type": "boolean",
+                        "description": "Apply user's saved settings (default: true)",
+                        "default": True
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["structured", "flat"],
+                        "description": "Response format (default: structured)",
+                        "default": "structured"
+                    }
+                },
+                "required": ["product_id", "tenant_key"]
+            }
+        },
     ]
 
     logger.debug(f"Listed {len(tools)} tools for session {session_id}")
@@ -606,6 +646,8 @@ async def handle_tools_call(
         "gil_fetch": state.tool_accessor.gil_fetch,
         "gil_activate": state.tool_accessor.gil_activate,
         "gil_launch": state.tool_accessor.gil_launch,
+        # Unified Context Tool (Handover 0350a)
+        "fetch_context": state.tool_accessor.fetch_context,
     }
 
     if tool_name not in tool_map:
