@@ -1391,6 +1391,97 @@ Partial reading defeats the purpose of this configuration."""
         target_length = int(len(vision_content) * ratio)
         return vision_content[:target_length]
 
+    def _create_priority_frame(self, priority: int, field_name: str) -> dict:
+        """
+        Create priority framing metadata for orchestrator clarity (Handover 0347 fix).
+
+        This ensures the consuming agent understands the priority level and required action
+        for each context field, regardless of which tier it's placed in.
+
+        Args:
+            priority: Priority level (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE)
+            field_name: Name of the field for context
+
+        Returns:
+            dict: Priority framing metadata with clear instructions
+
+        Example:
+            >>> frame = self._create_priority_frame(1, "vision_documents")
+            >>> frame["tier"]
+            'critical'
+            >>> "MUST" in frame["instruction"]
+            True
+        """
+        PRIORITY_FRAMES = {
+            1: {
+                "level": 1,
+                "tier": "critical",
+                "label": "CRITICAL",
+                "instruction": f"🔴 CRITICAL: '{field_name}' is essential context. You MUST read and internalize this before creating your mission plan.",
+                "action": "MUST_READ_IMMEDIATELY",
+                "skip_allowed": False
+            },
+            2: {
+                "level": 2,
+                "tier": "important",
+                "label": "IMPORTANT",
+                "instruction": f"🟡 IMPORTANT: '{field_name}' contains high-priority context. Read this for informed decision-making.",
+                "action": "SHOULD_READ",
+                "skip_allowed": False
+            },
+            3: {
+                "level": 3,
+                "tier": "reference",
+                "label": "REFERENCE",
+                "instruction": f"🟢 REFERENCE: '{field_name}' is available for deeper context. Fetch on-demand when needed.",
+                "action": "FETCH_IF_NEEDED",
+                "skip_allowed": True
+            }
+        }
+
+        return PRIORITY_FRAMES.get(priority, PRIORITY_FRAMES[3])
+
+    def _add_to_tier_by_priority(
+        self, 
+        builder: "JSONContextBuilder", 
+        field_name: str, 
+        priority: int, 
+        content: dict
+    ) -> None:
+        """
+        Add field to appropriate tier based on priority value (Handover 0347 fix).
+
+        This helper enables fields to be placed in ANY tier (critical/important/reference)
+        based on user configuration, fixing the bug where fields were hardcoded to single tiers.
+
+        Args:
+            builder: JSONContextBuilder instance
+            field_name: Name of the field to add
+            priority: Priority level (1=critical, 2=important, 3=reference)
+            content: Field content dict (will have priority frame added)
+
+        Example:
+            # User sets vision_documents to priority 1 (CRITICAL)
+            >>> self._add_to_tier_by_priority(builder, "vision_documents", 1, vision_content)
+            # Field is now in critical tier with priority framing
+        """
+        # Add priority framing to content
+        framed_content = {
+            "_priority_frame": self._create_priority_frame(priority, field_name),
+            **content
+        }
+
+        if priority == 1:
+            builder.add_critical(field_name)
+            builder.add_critical_content(field_name, framed_content)
+        elif priority == 2:
+            builder.add_important(field_name)
+            builder.add_important_content(field_name, framed_content)
+        elif priority == 3:
+            builder.add_reference(field_name)
+            builder.add_reference_content(field_name, framed_content)
+        # Priority 4 (EXCLUDED) - do nothing
+
     async def _get_full_agent_templates(self, tenant_key: str, session: AsyncSession) -> list[dict]:
         """
         Fetch full agent templates for tenant (Handover 0347d).
@@ -1446,7 +1537,7 @@ Partial reading defeats the purpose of this configuration."""
                 "name": template.name,
                 "role": template.role,
                 "description": template.description or "",
-                "content": template.content or "",  # Full prompt content
+                "content": template.template_content or "",  # Full prompt content
                 "cli_tool": template.cli_tool or "claude-code",
                 "background_color": template.background_color or "#808080",
                 "category": template.category or "general",
@@ -1619,44 +1710,41 @@ Partial reading defeats the purpose of this configuration."""
                 })
 
         # Agent Templates (Handover 0347d: 2-level depth system)
+        # FIX (0347 production bug): Handle ALL priority tiers (1/2/3), not just priority 2
         agent_templates_priority = effective_priorities.get("agent_templates", 2)
-        if agent_templates_priority == 2:
-            builder.add_important("agent_templates")
-
+        if agent_templates_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
             # Get depth configuration (default: type_only for token efficiency)
             agent_depth = depth_config.get("agent_templates", "type_only")
 
-            if agent_depth == "full":
-                # Full mode: Fetch complete agent templates with prompts (~2500 tokens/agent)
-                async with self.db_manager.get_session_async() as session:
-                    full_templates = await self._get_full_agent_templates(product.tenant_key, session)
+            # Fetch templates from database
+            async with self.db_manager.get_session_async() as session:
+                full_templates = await self._get_full_agent_templates(product.tenant_key, session)
 
-                builder.add_important_content("agent_templates", {
+            if agent_depth == "full":
+                # Full mode: Complete agent templates with prompts (~2500 tokens/agent)
+                agent_content = {
                     "depth": "full",
                     "detail_level": "complete_prompts",
                     "templates": full_templates,
-                    "instruction": "All agent templates included with full prompts for nuanced task assignment",
-                    "token_impact": f"~{len(full_templates) * 2500} tokens (full prompts)"
-                })
+                    "instruction": "All agent templates included with full prompts for nuanced task assignment.",
+                    "token_impact": f"~{len(full_templates) * 2500} tokens (full prompts)",
+                    "usage_note": "Review agent capabilities before spawning. Match task requirements to agent strengths."
+                }
 
                 logger.info(
-                    f"Agent templates: FULL mode - included {len(full_templates)} complete prompts",
+                    f"Agent templates: FULL mode (priority {agent_templates_priority}) - {len(full_templates)} complete prompts",
                     extra={
                         "template_count": len(full_templates),
                         "depth": "full",
+                        "priority": agent_templates_priority,
                         "estimated_tokens": len(full_templates) * 2500,
                     }
                 )
             else:
                 # Type-only mode (default): Minimal metadata only (~50 tokens/agent)
-                # Fetch minimal template data
-                async with self.db_manager.get_session_async() as session:
-                    full_templates = await self._get_full_agent_templates(product.tenant_key, session)
-
-                # Truncate descriptions to ~200 chars for type_only
                 minimal_templates = []
                 for template in full_templates:
-                    desc = template["description"]
+                    desc = template.get("description", "")
                     truncated_desc = desc[:200] + "..." if len(desc) > 200 else desc
 
                     minimal_templates.append({
@@ -1665,40 +1753,46 @@ Partial reading defeats the purpose of this configuration."""
                         "description": truncated_desc,
                     })
 
-                builder.add_important_content("agent_templates", {
+                agent_content = {
                     "depth": "type_only",
                     "detail_level": "minimal_metadata",
                     "templates": minimal_templates,
                     "fetch_tool": "get_available_agents(tenant_key, active_only=True)",
                     "instruction": "Agent templates listed with basic metadata. Call get_available_agents() for complete details if needed.",
                     "token_impact": f"~{len(minimal_templates) * 50} tokens (type only)"
-                })
+                }
 
                 logger.info(
-                    f"Agent templates: TYPE_ONLY mode - included {len(minimal_templates)} minimal entries",
+                    f"Agent templates: TYPE_ONLY mode (priority {agent_templates_priority}) - {len(minimal_templates)} minimal entries",
                     extra={
                         "template_count": len(minimal_templates),
                         "depth": "type_only",
+                        "priority": agent_templates_priority,
                         "estimated_tokens": len(minimal_templates) * 50,
                     }
                 )
 
+            # Add to appropriate tier based on user's priority setting
+            self._add_to_tier_by_priority(builder, "agent_templates", agent_templates_priority, agent_content)
+
         # === REFERENCE TIER (Priority 3): Summaries + fetch tools ===
 
         # Vision Documents (Handover 0347e: 4-level depth system)
+        # FIX (0347 production bug): Handle ALL priority tiers (1/2/3), not just priority 3
         vision_priority = effective_priorities.get("vision_documents", 4)
-        if vision_priority == 3:
+        if vision_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
             vision_doc = await self._get_active_vision_doc(product)
             if vision_doc:
-                builder.add_reference("vision_documents")
-
                 # Get depth configuration (default: optional for backward compatibility)
                 vision_depth = depth_config.get("vision_documents", "optional")
 
-                # Handle 4 depth levels
+                # Build vision content based on depth configuration
+                # Depth handling is INDEPENDENT of priority tier - user controls both dimensions
+                vision_content_data = None
+
                 if vision_depth == "optional":
                     # Pointer + pagination only (~200 tokens)
-                    builder.add_reference_content("vision_documents", {
+                    vision_content_data = {
                         "status": "AVAILABLE_ON_REQUEST",
                         "document_name": vision_doc.document_name or "Product Vision",
                         "total_tokens": vision_doc.original_token_count or 0,
@@ -1710,19 +1804,17 @@ Partial reading defeats the purpose of this configuration."""
                             "When making architecture decisions aligned with vision"
                         ],
                         "depth": "optional"
-                    })
+                    }
 
                 elif vision_depth == "light":
                     # 33% summarized content inline (~10-12K tokens)
-                    # Fetch vision content if available
                     vision_content = vision_doc.content if hasattr(vision_doc, 'content') and vision_doc.content else ""
                     if not vision_content and vision_doc.text_content:
                         vision_content = vision_doc.text_content
 
-                    # Summarize to 33%
                     summary_content = self._summarize_vision_content(vision_content, 0.33)
 
-                    builder.add_reference_content("vision_documents", {
+                    vision_content_data = {
                         "status": "INLINE_SUMMARY",
                         "coverage": "33% of original vision",
                         "inline_content": summary_content,
@@ -1732,7 +1824,7 @@ Partial reading defeats the purpose of this configuration."""
                         "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                         "note": "This is a 33% summary. Use fetch_vision_document() for complete content.",
                         "depth": "light"
-                    })
+                    }
 
                 elif vision_depth == "medium":
                     # 66% summarized content inline (~20-24K tokens)
@@ -1740,10 +1832,9 @@ Partial reading defeats the purpose of this configuration."""
                     if not vision_content and vision_doc.text_content:
                         vision_content = vision_doc.text_content
 
-                    # Summarize to 66%
                     summary_content = self._summarize_vision_content(vision_content, 0.66)
 
-                    builder.add_reference_content("vision_documents", {
+                    vision_content_data = {
                         "status": "INLINE_SUMMARY",
                         "coverage": "66% of original vision",
                         "inline_content": summary_content,
@@ -1753,14 +1844,15 @@ Partial reading defeats the purpose of this configuration."""
                         "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                         "note": "This is a 66% summary. Use fetch_vision_document() for complete content.",
                         "depth": "medium"
-                    })
+                    }
 
                 elif vision_depth == "full":
                     # Pointer + MANDATORY read instruction (~200 tokens + fetch cost)
+                    # This is the user's explicit request for complete vision document reading
                     mandatory_instruction = self._generate_mandatory_read_instruction(product, vision_doc)
                     fetch_commands = self._generate_fetch_commands(str(product.id), vision_doc.chunk_count or 0)
 
-                    builder.add_reference_content("vision_documents", {
+                    vision_content_data = {
                         "status": "REQUIRED_READING",
                         "mandatory_instruction": mandatory_instruction,
                         "document_name": vision_doc.document_name or "Product Vision",
@@ -1768,8 +1860,9 @@ Partial reading defeats the purpose of this configuration."""
                         "chunk_count": vision_doc.chunk_count or 0,
                         "fetch_commands": fetch_commands,
                         "warning": "User explicitly configured FULL depth. You MUST fetch ALL chunks before proceeding.",
+                        "reading_sequence": f"Execute fetch commands in order: chunks 0 to {(vision_doc.chunk_count or 1) - 1}",
                         "depth": "full"
-                    })
+                    }
 
                 else:
                     # Unknown depth - fallback to optional
@@ -1777,36 +1870,61 @@ Partial reading defeats the purpose of this configuration."""
                         f"Unknown vision depth '{vision_depth}', falling back to 'optional'",
                         extra={"vision_depth": vision_depth, "product_id": str(product.id)}
                     )
-                    builder.add_reference_content("vision_documents", {
+                    vision_content_data = {
                         "status": "AVAILABLE_ON_REQUEST",
                         "document_name": vision_doc.document_name or "Product Vision",
                         "total_tokens": vision_doc.original_token_count or 0,
                         "chunk_count": vision_doc.chunk_count or 0,
                         "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                         "depth": "optional"
-                    })
+                    }
+
+                # Add to appropriate tier based on user's priority setting
+                if vision_content_data:
+                    self._add_to_tier_by_priority(builder, "vision_documents", vision_priority, vision_content_data)
+
+                    logger.info(
+                        f"Vision documents: depth={vision_depth}, priority={vision_priority} - added to tier",
+                        extra={
+                            "vision_depth": vision_depth,
+                            "priority": vision_priority,
+                            "chunk_count": vision_doc.chunk_count or 0,
+                            "total_tokens": vision_doc.original_token_count or 0,
+                        }
+                    )
 
         # 360 Memory
+        # FIX (0347 production bug): Handle ALL priority tiers (1/2/3), not just priority 3
         memory_priority = effective_priorities.get("memory_360", 4)
-        if memory_priority == 3:
+        if memory_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
             memory_depth = depth_config.get("memory_360", 5)
             memory_summary = await self._get_memory_summary(product, max_entries=memory_depth)
-            
-            builder.add_reference("memory_360")
-            builder.add_reference_content("memory_360", memory_summary)
+
+            # Add depth information to the summary
+            memory_content = {
+                **memory_summary,
+                "depth_config": memory_depth,
+                "fetch_tool": f"fetch_360_memory(product_id, limit={memory_depth})",
+            }
+
+            self._add_to_tier_by_priority(builder, "memory_360", memory_priority, memory_content)
 
         # Git History
+        # FIX (0347 production bug): Check priority AND enabled status
+        git_priority = effective_priorities.get("git_history", 4)
         git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
-        if git_config.get("enabled"):
+        if git_priority in [1, 2, 3] and git_config.get("enabled"):  # Process if priority set AND enabled
             git_depth = depth_config.get("git_history", 20)
-            
-            builder.add_reference("git_history")
-            builder.add_reference_content("git_history", {
+
+            git_content = {
                 "enabled": True,
                 "commit_limit": git_depth,
+                "repository": git_config.get("repository", ""),
                 "fetch_tool": "fetch_git_history(product_id, limit)",
                 "instruction": f"Call fetch_git_history() to get last {git_depth} commits"
-            })
+            }
+
+            self._add_to_tier_by_priority(builder, "git_history", git_priority, git_content)
 
         # Serena Codebase Context (MANDATORY if enabled)
         if include_serena:
