@@ -560,7 +560,14 @@ class ToolAccessor:
                 )
                 templates = result.scalars().all()
 
+                # Build agent template summary (needed for spawning - staging prompt references this)
+                template_list = [
+                    {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
+                    for t in templates
+                ]
+
                 # Build framing-based response (Handover 0350b)
+                # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
                     "identity": {
                         "orchestrator_id": orchestrator_id,
@@ -574,6 +581,7 @@ class ToolAccessor:
                         "mission": orchestrator.mission or "",
                     },
                     "context_fetch_instructions": fetch_instructions,
+                    "agent_templates": template_list,  # Staging prompt: "Returns: ... AVAILABLE AGENT TEMPLATES"
                     "mcp_tools_available": [
                         "fetch_context",
                         "spawn_agent_job",
