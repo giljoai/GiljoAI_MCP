@@ -70,10 +70,8 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "send_message": state.tool_accessor.send_message,
             "receive_messages": state.tool_accessor.receive_messages,
             "list_messages": state.tool_accessor.list_messages,
-            # Task tools
+            # Task tools (MCP tools retired Dec 2025 - only create_task kept)
             "create_task": state.tool_accessor.create_task,
-            "list_tasks": state.tool_accessor.list_tasks,
-            "update_task": state.tool_accessor.update_task,
             # Template tools
             "list_templates": state.tool_accessor.list_templates,
             "get_template": state.tool_accessor.get_template,
@@ -325,62 +323,7 @@ async def list_mcp_tools():
                     },
                 ],
             },
-            {
-                "name": "list_tasks",
-                "description": "List tasks with product isolation and filtering",
-                "arguments": {
-                    "product_id": "string (UUID) OPTIONAL - Filter by product",
-                    "project_id": "string (UUID) OPTIONAL - Filter by project",
-                    "status": "string OPTIONAL - Filter by status: 'pending', 'in_progress', 'completed'",
-                    "priority": "string OPTIONAL - Filter by priority: 'low', 'medium', 'high', 'critical'",
-                    "category": "string OPTIONAL - Filter by category",
-                    "limit": "integer OPTIONAL - Maximum tasks to return (default: 50)",
-                },
-                "examples": [
-                    {
-                        "description": "List high-priority pending tasks",
-                        "payload": {
-                            "status": "pending",
-                            "priority": "high",
-                        },
-                    },
-                    {
-                        "description": "List tasks for specific project",
-                        "payload": {
-                            "project_id": "proj-abc123-def456",
-                            "limit": 10,
-                        },
-                    },
-                ],
-            },
-            {
-                "name": "update_task",
-                "description": "Update task status or details",
-                "arguments": {
-                    "task_id": "string (UUID) REQUIRED - Task ID to update",
-                    "status": "string OPTIONAL - New status: 'pending', 'in_progress', 'completed'",
-                    "updates": "object OPTIONAL - Additional fields to update (title, description, priority)",
-                },
-                "examples": [
-                    {
-                        "description": "Mark task as completed",
-                        "payload": {
-                            "task_id": "task-abc123-def456",
-                            "status": "completed",
-                        },
-                    },
-                    {
-                        "description": "Update task priority and description",
-                        "payload": {
-                            "task_id": "task-abc123-def456",
-                            "updates": {
-                                "priority": "critical",
-                                "description": "Updated: Security vulnerability requires immediate fix",
-                            },
-                        },
-                    },
-                ],
-            },
+            # list_tasks and update_task removed - Task MCP tools retired Dec 2025
         ],
         "template_management": [
             {
