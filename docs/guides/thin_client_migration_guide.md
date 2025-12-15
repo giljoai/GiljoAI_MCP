@@ -2,8 +2,8 @@
 
 **Author**: GiljoAI Development Team
 **Date**: 2025-11-02
-**Last Updated**: 2025-01-05 (Harmonized)
-**Version**: v3.1
+**Last Updated**: 2025-12-15 (On-Demand Fetch v3.0)
+**Version**: v3.2
 **Handover**: 0088 - Thin Client Stage Project Architecture Fix
 **Status**: Completed — Thin client is the default
 **Harmonization Status**: ✅ Aligned with codebase
@@ -168,6 +168,22 @@ const missionTokens = ref(0)            // ~6,000 tokens
 1. **Before**: Copy/paste 3000 lines
 2. **After**: Copy/paste 10 lines
 3. **Same functionality**, better experience
+
+### Context Fetching (v3.0 - On-Demand)
+
+Orchestrators now fetch context on-demand using the unified `fetch_context()` tool:
+
+```python
+# Orchestrator calls get_orchestrator_instructions() and receives framing
+# Then fetches context based on priority tier:
+result = await fetch_context(
+    categories=["product_core", "tech_stack", "vision_documents"],
+    product_id=product_id,
+    tenant_key=tenant_key
+)
+```
+
+**See**: [Context Tools API Reference](../api/context_tools.md) for complete documentation.
 
 ---
 
@@ -377,6 +393,6 @@ Contact: GiljoAI Development Team
 
 ---
 
-**Last Updated**: 2025-11-02
-**Version**: v3.1
+**Last Updated**: 2025-12-15
+**Version**: v3.2
 **Status**: Active Migration Guide

@@ -1,97 +1,461 @@
-# Context Tools API - DEPRECATED
+# Context Tools API Reference
 
-**Status:** ❌ DEPRECATED as of v3.2 (Handover 0280-0281)
+**Version**: v3.0 (On-Demand Fetch Architecture)
+**Last Updated**: 2025-12-15
+**Implementation**: Handover 0350a-c
 
-The individual `fetch_*` context tools have been replaced with monolithic context architecture.
+## Overview
 
-## Migration Guide
+GiljoAI uses an on-demand context fetch architecture with a **single unified `fetch_context()` tool** that replaces 9 individual tools. This approach:
 
-**Old Approach (v3.1 and earlier):**
-```python
-vision = await fetch_vision_document(product_id, tenant_key, chunking='moderate')
-memory = await fetch_360_memory(product_id, tenant_key, last_n_projects=3)
-git = await fetch_git_history(product_id, tenant_key, commits=25)
+- Saves ~720 tokens in MCP schema overhead
+- Prevents context truncation for large vision documents
+- Enables smart priority-based fetching
+
+## Architecture
+
+### On-Demand Fetch Pattern
+
+```
+1. Orchestrator calls get_orchestrator_instructions()
+           ↓
+2. Receives framing (~500 tokens) with priority indicators:
+   {
+     "context_fetch_instructions": {
+       "critical": [{"field": "product_core", "tool": "fetch_context", ...}],
+       "important": [{"field": "tech_stack", ...}],
+       "reference": [{"field": "memory_360", ...}]
+     }
+   }
+           ↓
+3. Orchestrator calls fetch_context(categories=["product_core", "tech_stack", ...])
+           ↓
+4. Context assembled without truncation risk
 ```
 
-**New Approach (v3.2+):**
+### 3-Tier Priority System
+
+| Tier | Label | Framing | Orchestrator Action |
+|------|-------|---------|---------------------|
+| **Priority 1** | CRITICAL | "REQUIRED" | MUST call `fetch_context()` |
+| **Priority 2** | IMPORTANT | "RECOMMENDED" | SHOULD call if budget allows |
+| **Priority 3** | REFERENCE | "OPTIONAL" | MAY call if project requires |
+| **Priority 4** | OFF | (excluded) | Never call tool |
+
+---
+
+## Unified fetch_context() Tool
+
+### Signature
+
 ```python
-mission = await get_orchestrator_instructions(orchestrator_id, tenant_key)
-# Returns complete prioritized context in one call
+async def fetch_context(
+    product_id: str,              # Product UUID (required)
+    tenant_key: str,              # Tenant isolation key (required)
+    project_id: Optional[str],    # Project UUID (required for 'project' category)
+    categories: List[str],        # Categories to fetch, or ["all"]
+    depth_config: Optional[Dict], # Override depth settings
+    apply_user_config: bool,      # Apply saved priority/depth settings (default: True)
+    format: str,                  # "structured" (nested) or "flat" (merged)
+    db_manager: Optional[...]     # Database manager instance
+) -> Dict[str, Any]
 ```
 
-## Why This Change?
+### Available Categories
 
-The individual `fetch_*` tools had several limitations:
+| Category | Description | Token Range |
+|----------|-------------|-------------|
+| `product_core` | Product name, description, features | ~100 tokens |
+| `vision_documents` | Vision document chunks (paginated) | 0-24K tokens |
+| `tech_stack` | Programming languages, frameworks, databases | 200-400 tokens |
+| `architecture` | Architecture patterns, API style | 300-1.5K tokens |
+| `testing` | Testing strategy, frameworks | 0-400 tokens |
+| `memory_360` | Sequential project history (closeouts) | 500-5K tokens |
+| `git_history` | Aggregated git commits | 500-5K tokens |
+| `agent_templates` | Agent template library | 400-2.4K tokens |
+| `project` | Current project metadata | ~300 tokens |
 
-1. **Token Inefficiency**: Orchestrators had to call 9+ separate tools (3,500+ tokens)
-2. **Context Fragmentation**: Each tool returned data in isolation
-3. **Priority Configuration Complexity**: User had to configure 9 separate priorities
-4. **Maintenance Burden**: 9 separate tools with overlapping functionality
+### Depth Options
 
-## What Replaced Them?
+| Category | Depth Options | Default |
+|----------|--------------|---------|
+| `vision_documents` | none / light / medium / full | medium |
+| `tech_stack` | required / all | all |
+| `architecture` | overview / detailed | overview |
+| `testing` | none / basic / full | full |
+| `memory_360` | 1 / 3 / 5 / 10 (projects) | 5 |
+| `git_history` | 10 / 25 / 50 / 100 (commits) | 25 |
+| `agent_templates` | minimal / standard / full | standard |
 
-**Monolithic Context Architecture (Handover 0280)**:
+---
 
-- Single MCP tool: `get_orchestrator_instructions(orchestrator_id, tenant_key)`
-- Returns complete context in one call (~450-550 tokens vs 3,500)
-- User priorities automatically applied server-side
-- Depth configuration integrated
-- 85% token reduction
+## Usage Examples
 
-## Timeline
+### Basic Usage
 
-- **v3.1 and earlier**: Individual `fetch_*` tools active
-- **v3.2 (Nov 2025)**: Monolithic context architecture introduced (Handover 0280)
-- **v3.2.1 (Dec 2025)**: Individual `fetch_*` tools removed (Handover 0281)
-- **v4.0 (Future)**: Cleanup complete, documentation archived
+```python
+# Fetch specific categories
+result = await fetch_context(
+    product_id="123e4567-e89b-12d3-a456-426614174000",
+    tenant_key="tenant_abc",
+    categories=["product_core", "tech_stack"]
+)
+```
 
-## Deprecated Tools
+### With Depth Configuration
 
-All of these tools have been removed:
+```python
+# Fetch with custom depth settings
+result = await fetch_context(
+    product_id="123e4567-e89b-12d3-a456-426614174000",
+    tenant_key="tenant_abc",
+    categories=["vision_documents", "memory_360"],
+    depth_config={
+        "vision_documents": "light",   # Summaries only
+        "memory_360": 3                # Last 3 projects
+    }
+)
+```
 
-1. ❌ `fetch_product_context` - Product vision, architecture, tech stack
-2. ❌ `fetch_vision_document` - Vision document chunks
-3. ❌ `fetch_tech_stack` - Technology stack configuration
-4. ❌ `fetch_architecture` - Architecture configuration
-5. ❌ `fetch_testing_config` - Testing strategy and quality standards
-6. ❌ `fetch_360_memory` - Sequential project history
-7. ❌ `fetch_git_history` - Aggregated git commits
-8. ❌ `fetch_agent_templates` - Agent template library
-9. ❌ `fetch_project_context` - Current project metadata
+### Fetch All Categories
 
-## Current MCP Tools (v3.2+)
+```python
+# Fetch everything (use sparingly)
+result = await fetch_context(
+    product_id="123e4567-e89b-12d3-a456-426614174000",
+    tenant_key="tenant_abc",
+    categories=["all"]
+)
+```
 
-### Orchestration Tools
-- `get_orchestrator_instructions()` - Fetch complete context for orchestrator
-- `spawn_agent_job()` - Create agent job and return thin prompt
-- `get_workflow_status()` - Monitor spawned agents
+### With Project Context
 
-### Context Tools
-- `get_agent_mission()` - Fetch agent-specific mission
-- `get_available_agents()` - Discover available specialist agents
+```python
+# Include project-specific data
+result = await fetch_context(
+    product_id="123e4567-e89b-12d3-a456-426614174000",
+    tenant_key="tenant_abc",
+    project_id="9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    categories=["project", "tech_stack", "architecture"]
+)
+```
 
-### Communication Tools
-- `send_message()` - Send message to specific agent
-- `broadcast_message()` - Send message to all agents
-- `get_messages()` - Fetch messages sent to agent
-- `acknowledge_message()` - Mark message as read
+---
 
-### Task Tools
-- `update_job_progress()` - Update agent job progress
-- `complete_agent_job()` - Mark agent job as complete
-- `report_job_error()` - Report error or blocker
-- `get_job_status()` - Fetch detailed agent job status
+## Response Schema
 
-### Project Tools
-- `update_project_mission()` - Update project mission
-- `get_project_context()` - Fetch project metadata
-- `activate_project()` - Activate project for orchestration
-- `close_project()` - Close project and update 360-memory
-- `get_project_members()` - Get list of all agents assigned to project
+### Structured Format (default)
+
+```json
+{
+  "source": "fetch_context",
+  "categories_requested": ["product_core", "tech_stack"],
+  "categories_returned": ["product_core", "tech_stack"],
+  "data": {
+    "product_core": {
+      "product_name": "GiljoAI MCP",
+      "product_description": "Multi-tenant server orchestrating...",
+      "core_features": ["Feature 1", "Feature 2"]
+    },
+    "tech_stack": {
+      "languages": ["Python", "JavaScript"],
+      "frameworks": {
+        "backend": ["FastAPI", "SQLAlchemy"],
+        "frontend": ["Vue 3", "Vuetify"]
+      },
+      "databases": ["PostgreSQL"]
+    }
+  },
+  "metadata": {
+    "product_id": "uuid",
+    "tenant_key": "tenant_abc",
+    "estimated_tokens": 450,
+    "format": "structured",
+    "apply_user_config": true,
+    "depth_config_applied": {
+      "tech_stack": "all"
+    }
+  }
+}
+```
+
+### Individual Category Schemas
+
+#### product_core
+
+```json
+{
+  "product_name": "GiljoAI MCP",
+  "product_description": "Multi-tenant server orchestrating AI agents...",
+  "project_path": "/path/to/project",
+  "core_features": ["Feature 1", "Feature 2"],
+  "is_active": true,
+  "created_at": "2025-11-01T10:00:00"
+}
+```
+
+#### vision_documents
+
+```json
+{
+  "documents": [
+    {
+      "name": "product_vision.md",
+      "summary": "Overview of product goals...",
+      "content": "# Vision\n\n...",
+      "tokens": 1500
+    }
+  ],
+  "total": 3,
+  "page": 1,
+  "has_more": false
+}
+```
+
+#### tech_stack
+
+```json
+{
+  "languages": ["Python", "JavaScript"],
+  "frameworks": {
+    "backend": ["FastAPI", "SQLAlchemy"],
+    "frontend": ["Vue 3", "Vuetify"]
+  },
+  "databases": ["PostgreSQL"],
+  "tools": ["pytest", "ruff", "black"],
+  "version_constraints": {
+    "python": "3.11+",
+    "node": "18+"
+  }
+}
+```
+
+#### architecture
+
+```json
+{
+  "primary_pattern": "Modular monolith with service layer",
+  "api_style": "REST + JSON, WebSockets for real-time",
+  "design_patterns": ["Repository", "Dependency Injection", "Factory"],
+  "notes": "Local-first, zero-config deployment..."
+}
+```
+
+#### testing
+
+```json
+{
+  "strategy": "TDD with >80% coverage",
+  "coverage_target": 80,
+  "frameworks": ["pytest", "pytest-asyncio", "Vitest"],
+  "quality_standards": "Production-grade code required"
+}
+```
+
+#### memory_360
+
+```json
+{
+  "sequential_history": [
+    {
+      "sequence": 1,
+      "type": "project_closeout",
+      "project_id": "uuid",
+      "summary": "Completed feature X...",
+      "git_commits": [...],
+      "timestamp": "2025-11-16T10:00:00Z"
+    }
+  ],
+  "total": 10,
+  "returned": 5
+}
+```
+
+#### git_history
+
+```json
+{
+  "commits": [
+    {
+      "hash": "59db3da6",
+      "message": "fix: Complete dynamic tier assignment...",
+      "author": "Claude Opus",
+      "date": "2025-12-15T10:00:00Z",
+      "project_id": "uuid"
+    }
+  ],
+  "total": 100,
+  "returned": 25
+}
+```
+
+#### agent_templates
+
+```json
+{
+  "templates": [
+    {
+      "name": "backend-integration-tester",
+      "description": "Tests backend integrations...",
+      "protocol": "6-phase lifecycle...",
+      "capabilities": ["api_testing", "db_validation"]
+    }
+  ],
+  "total": 12
+}
+```
+
+#### project
+
+```json
+{
+  "project_name": "Setup project structure",
+  "project_description": "This project is about setting up...",
+  "project_path": "F:\\TinyContacts",
+  "status": "active",
+  "created_at": "2025-12-01T10:00:00Z"
+}
+```
+
+---
+
+## Multi-Tenant Isolation
+
+All context tools enforce multi-tenant isolation:
+
+```python
+# All queries filter by tenant_key
+stmt = select(Product).where(
+    Product.id == product_id,
+    Product.tenant_key == tenant_key
+)
+```
+
+**Security**: Agents cannot access context from other tenants, even with valid product_id.
+
+---
+
+## Error Handling
+
+### Common Error Responses
+
+```json
+{
+  "source": "fetch_context",
+  "categories_requested": ["product_core"],
+  "categories_returned": [],
+  "data": {},
+  "metadata": {
+    "error": "product_not_found",
+    "estimated_tokens": 0
+  }
+}
+```
+
+**Error Codes**:
+- `product_not_found`: Product ID + tenant key combination invalid
+- `project_not_found`: Project ID not found for tenant
+- `invalid_category`: Category name not recognized
+- `invalid_depth`: Depth parameter not recognized
+- `database_error`: Database query failed
+
+---
+
+## Token Estimation
+
+Token estimates use the heuristic: **1 token ≈ 4 characters**
+
+```python
+def estimate_tokens(data: Any) -> int:
+    import json
+    text = json.dumps(data)
+    return len(text) // 4
+```
+
+**Accuracy**: ~90% accurate for JSON responses, may vary for markdown content.
+
+---
+
+## Priority System Integration
+
+When `get_orchestrator_instructions()` returns framing, it includes priority indicators:
+
+```json
+{
+  "context_fetch_instructions": {
+    "critical": [
+      {"field": "product_core", "tool": "fetch_context", "framing": "REQUIRED: Call fetch_context(['product_core'])"}
+    ],
+    "important": [
+      {"field": "tech_stack", "tool": "fetch_context", "framing": "RECOMMENDED: Call fetch_context(['tech_stack'])"}
+    ],
+    "reference": [
+      {"field": "memory_360", "tool": "fetch_context", "framing": "OPTIONAL: Call fetch_context(['memory_360']) if project requires"}
+    ]
+  }
+}
+```
+
+### Orchestrator Decision Logic
+
+```python
+# Example orchestrator logic
+context_to_fetch = []
+
+# CRITICAL: Always fetch
+for field in context_fetch_instructions["critical"]:
+    context_to_fetch.append(field["field"])
+
+# IMPORTANT: Fetch if budget allows
+if tokens_remaining > 10000:
+    for field in context_fetch_instructions["important"]:
+        context_to_fetch.append(field["field"])
+
+# REFERENCE: Fetch only if specifically needed
+for field in context_fetch_instructions["reference"]:
+    if mission_requires(field["field"]):
+        context_to_fetch.append(field["field"])
+
+# Single call with all categories
+result = await fetch_context(categories=context_to_fetch, ...)
+```
+
+---
+
+## Internal Architecture
+
+The `fetch_context()` tool internally dispatches to specialized helper functions (not exposed via MCP):
+
+```
+fetch_context(categories=["product_core", "tech_stack"])
+    ↓
+┌─────────────────────────────────────────────────┐
+│ Internal Dispatch (NOT MCP-exposed)             │
+│                                                 │
+│  get_product_context()  → product_core          │
+│  get_vision_document()  → vision_documents      │
+│  get_tech_stack()       → tech_stack            │
+│  get_architecture()     → architecture          │
+│  get_testing()          → testing               │
+│  get_360_memory()       → memory_360            │
+│  get_git_history()      → git_history           │
+│  get_agent_templates()  → agent_templates       │
+│  get_project()          → project               │
+└─────────────────────────────────────────────────┘
+    ↓
+Aggregated response
+```
+
+**Token Savings**: ~720 tokens (9 tool schemas × ~80 tokens vs 1 schema × ~180 tokens)
+
+---
 
 ## See Also
 
-- [Handover 0280: Monolithic Context Architecture Roadmap](../../handovers/0280_monolithic_context_architecture_roadmap.md)
-- [Handover 0281: Complete fetch_* Tool Cleanup](../../handovers/0281_complete_fetch_tools_cleanup.md)
-- [Orchestrator Documentation](../ORCHESTRATOR.md)
-- [MCP Tools Catalog](../components/MCP_TOOLS_CATALOG.md)
+- [CLAUDE.md](../../CLAUDE.md#context-management-v30---on-demand-fetch) - Context Management section
+- [ORCHESTRATOR.md](../ORCHESTRATOR.md) - Orchestrator workflow documentation
+- [thin_client_migration_guide.md](../guides/thin_client_migration_guide.md) - Migration from fat prompts
+
+---
+
+**Code Reference**: `src/giljo_mcp/tools/context_tools/fetch_context.py`
