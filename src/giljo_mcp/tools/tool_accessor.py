@@ -607,28 +607,29 @@ class ToolAccessor:
                     "architecture": "framing_based",
                 }
 
-                # Handover 0335: Add CLI mode rules when execution_mode == 'claude_code_cli'
+                # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
+                # agent_name is SINGLE SOURCE OF TRUTH for template matching
                 execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
                 if execution_mode == "claude_code_cli":
-                    allowed_agent_types = [t.name for t in templates]
+                    allowed_agent_names = [t.name for t in templates]
 
                     response["agent_spawning_constraint"] = {
                         "mode": "strict_task_tool",
-                        "allowed_agent_types": allowed_agent_types,
+                        "allowed_agent_names": allowed_agent_names,
                         "instruction": (
                             "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
-                            "The agent_type parameter must be EXACTLY one of the allowed template names. "
-                            f"Allowed agent types: {allowed_agent_types}"
+                            "The agent_name parameter must be EXACTLY one of the allowed template names. "
+                            f"Allowed agent names: {allowed_agent_names}"
                         ),
                     }
 
                     response["cli_mode_rules"] = {
-                        "agent_type_usage": (
-                            "MUST match template 'name' field exactly for Task tool. "
-                            "This is the filename without .md extension."
+                        "agent_name_usage": (
+                            "SINGLE SOURCE OF TRUTH - MUST match template filename exactly for Task tool. "
+                            "This is the filename without .md extension (e.g., 'implementer-frontend')."
                         ),
-                        "agent_name_usage": "Descriptive label for UI display only.",
-                        "task_tool_mapping": "Task(subagent_type=X) where X = agent_type from spawn_agent_job.",
+                        "agent_type_usage": "Display category label for UI only (e.g., 'implementer').",
+                        "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
                         "validation": "soft",
                         "template_locations": [
                             "{project}/.claude/agents/",
@@ -641,7 +642,7 @@ class ToolAccessor:
                         extra={
                             "orchestrator_id": orchestrator_id,
                             "execution_mode": execution_mode,
-                            "allowed_types": allowed_agent_types,
+                            "allowed_names": allowed_agent_names,
                         }
                     )
 
