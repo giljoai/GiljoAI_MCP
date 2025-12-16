@@ -2401,6 +2401,7 @@ async def _spawn_agent_job_impl(
             status="waiting",  # Use 'waiting' instead of 'pending'
             context_budget=10000,
             context_used=0,
+            spawned_by=parent_job_id,  # Link to parent orchestrator job
         )
 
         session.add(agent_job)
