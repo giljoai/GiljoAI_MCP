@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-12 (Comprehensive harmonization with git history)
+**Last Updated:** 2025-12-15 (Added 0351 Agent Name as Single Source of Truth)
 
 ---
 
@@ -30,6 +30,7 @@
 | 0344 | CLI Mode Play Button API Fix | Ready | Critical | api.get bug + wrong URL |
 | 0346 | Depth Config Field Standardization | Ready | High | Prerequisite for 0347 |
 | 0347 | Mission Response YAML Restructuring | Ready | High | Depends on 0346, 93% token reduction |
+| 0351 | Agent Name as Single Source of Truth | Ready | High | Semantic swap: agent_name for templates |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
@@ -241,16 +242,17 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0347
+**0301-0400** (Services): 0300-0316, 0318-0347, 0351
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
+- **0348-0350**: Gaps in 0301-0400 range
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
-- **0348+**: Next sequential after current development
+- **0352+**: Next sequential after current development
 
 ### Naming Format
 ```
@@ -291,6 +293,7 @@ completed/reference/
 
 ### December 2025
 - **Harmonization audit**: Cross-referenced all handovers with git commits
+- 0351: Agent Name as Single Source of Truth (ready for implementation)
 - 0338, 0345a-e: Vision Document Context Optimization Series (COMPLETE)
 - 0344: CLI Mode Play Button API Fix (ready for implementation)
 - 0341: CLI Mode Stage 2 Implementation Prompt (ready for agent)
