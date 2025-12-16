@@ -155,11 +155,10 @@ function detectServerInfo() {
 
 function detectAITool() {
   const ua = navigator.userAgent || ''
-  const isWindows = /Windows/i.test(ua)
 
   if (/Claude/i.test(ua)) return 'claude'
   if (/Cursor/i.test(ua)) return 'cursor'
-  if (/Codex|GitHub/i.test(ua)) return isWindows ? 'codex_windows' : 'codex_linux'
+  if (/Codex|GitHub/i.test(ua)) return 'codex'
   if (/Gemini|Google/i.test(ua)) return 'gemini'
   return 'claude'
 }
@@ -173,8 +172,7 @@ const generatedPrompt = ref('')
 
 const aiTools = [
   { name: 'Claude Code', value: 'claude' },
-  { name: 'Codex CLI (Linux/macOS)', value: 'codex_linux' },
-  { name: 'Codex CLI (Windows)', value: 'codex_windows' },
+  { name: 'Codex CLI', value: 'codex' },
   { name: 'Gemini Code Assist', value: 'gemini' },
   { name: 'Cursor', value: 'cursor' },
 ]
@@ -191,8 +189,7 @@ const detectedServer = computed(() => `${serverIp.value}:${serverPort.value}`)
 const toolLogo = computed(() => {
   const logos = {
     claude: '/claude_pix.svg',
-    codex_linux: '/icons/codex_mark.svg',
-    codex_windows: '/icons/codex_mark.svg',
+    codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
     cursor: '/claude_pix.svg', // Using Claude pix for Cursor too
   }
@@ -202,8 +199,7 @@ const toolLogo = computed(() => {
 function makeKeyName(tool) {
   const map = {
     claude: 'Claude Code',
-    codex_linux: 'Codex CLI',
-    codex_windows: 'Codex CLI',
+    codex: 'Codex CLI',
     gemini: 'Gemini',
     cursor: 'Cursor',
   }
@@ -238,15 +234,10 @@ function claudePrompt(serverUrl, apiKey) {
   return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
 }
 
-function codexPrompt(tool, serverUrl, apiKey) {
+function codexPrompt(serverUrl, apiKey) {
   // StdIO proxy with env managed by Codex (no shell restart required)
-  // Use OS-specific proxy path; backend installer writes the proxy script there.
-  const proxyPath =
-    tool === 'codex_windows'
-      ? '%USERPROFILE%\\.giljo_mcp\\codex\\giljo_codex_proxy.py'
-      : '${HOME}/.giljo_mcp/codex/giljo_codex_proxy.py'
-
-  return `codex mcp add giljo-mcp --env GILJO_MCP_SERVER_URL="${serverUrl}" --env GILJO_API_KEY="${apiKey}" -- python "${proxyPath}"`
+  // Proxy module is provided by the giljo-mcp wheel installed via pip.
+  return `codex mcp add giljo-mcp --env GILJO_MCP_SERVER_URL="${serverUrl}" --env GILJO_API_KEY="${apiKey}" -- python -m giljo_mcp.mcp_http_stdin_proxy`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
@@ -264,9 +255,8 @@ function buildPromptFor(tool, serverUrl, apiKey) {
   switch (tool) {
     case 'claude':
       return claudePrompt(serverUrl, apiKey)
-    case 'codex_linux':
-    case 'codex_windows':
-      return codexPrompt(tool, serverUrl, apiKey)
+    case 'codex':
+      return codexPrompt(serverUrl, apiKey)
     case 'gemini':
       return geminiPrompt(serverUrl, apiKey)
     case 'cursor':

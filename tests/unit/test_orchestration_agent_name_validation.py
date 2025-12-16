@@ -61,7 +61,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
             )
             session.add(self.product)
 
-            # Create test project
+            # Create test project with CLI execution mode
             self.project = Project(
                 id=str(uuid.uuid4()),
                 name="Agent Name Validation Project",
@@ -70,6 +70,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 tenant_key=self.tenant_key,
                 product_id=self.product.id,
                 status="active",
+                execution_mode="claude_code_cli",  # Set CLI mode on Project (Handover 0346)
             )
             session.add(self.project)
             await session.commit()
@@ -139,7 +140,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 tool_type="claude-code",
                 job_metadata={
                     "field_priorities": {},
-                    "execution_mode": "claude_code_cli",  # CLI mode
+                    # execution_mode read from Project.execution_mode (Handover 0346)
                 },
             )
             session.add(orchestrator)
@@ -205,7 +206,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
-                job_metadata={"execution_mode": "claude_code_cli"},
+                job_metadata={},  # execution_mode read from Project.execution_mode (Handover 0346)
             )
             session.add(orchestrator)
             await session.commit()
@@ -253,7 +254,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
-                job_metadata={"execution_mode": "claude_code_cli"},
+                job_metadata={},  # execution_mode read from Project.execution_mode (Handover 0346)
             )
             session.add(orchestrator)
             await session.commit()
@@ -306,7 +307,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
-                job_metadata={"execution_mode": "claude_code_cli"},
+                job_metadata={},  # execution_mode read from Project.execution_mode (Handover 0346)
             )
             session.add(orchestrator)
             await session.commit()

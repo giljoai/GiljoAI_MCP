@@ -12,15 +12,14 @@ Test-Driven Development (TDD) Approach:
 3. REFACTOR: Optimize and clean up
 """
 
-import pytest
-from typing import Dict, Any
 from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.products import VisionDocument
-from src.giljo_mcp.models.context import MCPContextIndex
+import pytest
+
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product
+from src.giljo_mcp.models.context import MCPContextIndex
+from src.giljo_mcp.models.products import VisionDocument
 from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
 
@@ -28,9 +27,7 @@ from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_doc
 class TestVisionDocumentDepthLightSummary:
     """Test depth='light' uses VisionDocument.summary_light field."""
 
-    async def test_depth_light_returns_summary_light_field(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_light_returns_summary_light_field(self, db_manager: DatabaseManager):
         """
         GIVEN a product with vision document containing summary_light
         WHEN get_vision_document() is called with depth="light"
@@ -43,10 +40,7 @@ class TestVisionDocumentDepthLightSummary:
         async with db_manager.get_session_async() as session:
             # Create product
             product = Product(
-                id=product_id,
-                tenant_key=tenant_key,
-                name="Test Product",
-                description="Test product for light summary"
+                id=product_id, tenant_key=tenant_key, name="Test Product", description="Test product for light summary"
             )
             session.add(product)
 
@@ -64,17 +58,14 @@ class TestVisionDocumentDepthLightSummary:
                 chunk_count=12,
                 summary_light="Light summary content (~33% of original)",
                 summary_light_tokens=5000,
-                original_token_count=15000
+                original_token_count=15000,
             )
             session.add(vision_doc)
             await session.commit()
 
         # Execute test
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="light",
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="light", db_manager=db_manager
         )
 
         # Assertions
@@ -85,9 +76,7 @@ class TestVisionDocumentDepthLightSummary:
         assert result["data"]["compression"] == "33%"
         assert result["pagination"] is None, "Light summary should not be paginated"
 
-    async def test_depth_light_no_summary_falls_back_gracefully(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_light_no_summary_falls_back_gracefully(self, db_manager: DatabaseManager):
         """
         GIVEN a vision document WITHOUT summary_light field populated
         WHEN depth="light" is requested
@@ -97,11 +86,7 @@ class TestVisionDocumentDepthLightSummary:
         product_id = str(uuid4())
 
         async with db_manager.get_session_async() as session:
-            product = Product(
-                id=product_id,
-                tenant_key=tenant_key,
-                name="Test Product"
-            )
+            product = Product(id=product_id, tenant_key=tenant_key, name="Test Product")
             session.add(product)
 
             vision_doc = VisionDocument(
@@ -117,16 +102,13 @@ class TestVisionDocumentDepthLightSummary:
                 chunk_count=5,
                 # No summary_light field populated
                 summary_light=None,
-                summary_light_tokens=None
+                summary_light_tokens=None,
             )
             session.add(vision_doc)
             await session.commit()
 
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="light",
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="light", db_manager=db_manager
         )
 
         assert result["source"] == "vision_documents"
@@ -139,9 +121,7 @@ class TestVisionDocumentDepthLightSummary:
 class TestVisionDocumentDepthMediumSummary:
     """Test depth='medium' uses VisionDocument.summary_medium field."""
 
-    async def test_depth_medium_returns_summary_medium_field(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_medium_returns_summary_medium_field(self, db_manager: DatabaseManager):
         """
         GIVEN a product with vision document containing summary_medium
         WHEN get_vision_document() is called with depth="medium"
@@ -152,11 +132,7 @@ class TestVisionDocumentDepthMediumSummary:
         product_id = str(uuid4())
 
         async with db_manager.get_session_async() as session:
-            product = Product(
-                id=product_id,
-                tenant_key=tenant_key,
-                name="Test Product"
-            )
+            product = Product(id=product_id, tenant_key=tenant_key, name="Test Product")
             session.add(product)
 
             vision_doc = VisionDocument(
@@ -172,16 +148,13 @@ class TestVisionDocumentDepthMediumSummary:
                 chunk_count=12,
                 summary_medium="Medium summary content (~66% of original)",
                 summary_medium_tokens=10000,
-                original_token_count=15000
+                original_token_count=15000,
             )
             session.add(vision_doc)
             await session.commit()
 
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="medium",
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="medium", db_manager=db_manager
         )
 
         assert result["source"] == "vision_documents"
@@ -191,9 +164,7 @@ class TestVisionDocumentDepthMediumSummary:
         assert result["data"]["compression"] == "66%"
         assert result["pagination"] is None, "Medium summary should not be paginated"
 
-    async def test_depth_medium_no_summary_falls_back_gracefully(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_medium_no_summary_falls_back_gracefully(self, db_manager: DatabaseManager):
         """
         GIVEN a vision document WITHOUT summary_medium field populated
         WHEN depth="medium" is requested
@@ -203,11 +174,7 @@ class TestVisionDocumentDepthMediumSummary:
         product_id = str(uuid4())
 
         async with db_manager.get_session_async() as session:
-            product = Product(
-                id=product_id,
-                tenant_key=tenant_key,
-                name="Test Product"
-            )
+            product = Product(id=product_id, tenant_key=tenant_key, name="Test Product")
             session.add(product)
 
             vision_doc = VisionDocument(
@@ -223,16 +190,13 @@ class TestVisionDocumentDepthMediumSummary:
                 chunk_count=5,
                 # No summary_medium field populated
                 summary_medium=None,
-                summary_medium_tokens=None
+                summary_medium_tokens=None,
             )
             session.add(vision_doc)
             await session.commit()
 
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="medium",
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="medium", db_manager=db_manager
         )
 
         assert result["source"] == "vision_documents"
@@ -245,9 +209,7 @@ class TestVisionDocumentDepthMediumSummary:
 class TestVisionDocumentDepthFullChunks:
     """Test depth='full' uses MCPContextIndex chunks with pagination."""
 
-    async def test_depth_full_uses_chunk_pagination(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_full_uses_chunk_pagination(self, db_manager: DatabaseManager):
         """
         GIVEN a product with 12 vision document chunks in MCPContextIndex
         WHEN get_vision_document() is called with depth="full"
@@ -259,11 +221,7 @@ class TestVisionDocumentDepthFullChunks:
         vision_doc_id = str(uuid4())
 
         async with db_manager.get_session_async() as session:
-            product = Product(
-                id=product_id,
-                tenant_key=tenant_key,
-                name="Test Product"
-            )
+            product = Product(id=product_id, tenant_key=tenant_key, name="Test Product")
             session.add(product)
 
             vision_doc = VisionDocument(
@@ -279,7 +237,7 @@ class TestVisionDocumentDepthFullChunks:
                 chunk_count=12,
                 # Has summaries but should NOT use them for depth="full"
                 summary_light="Light summary",
-                summary_medium="Medium summary"
+                summary_medium="Medium summary",
             )
             session.add(vision_doc)
 
@@ -290,20 +248,15 @@ class TestVisionDocumentDepthFullChunks:
                     product_id=product_id,
                     vision_document_id=vision_doc_id,
                     content=f"Chunk {i+1} content with substantial text...",
-                    chunk_order=i+1,
-                    token_count=2000
+                    chunk_order=i + 1,
+                    token_count=2000,
                 )
                 session.add(chunk)
 
             await session.commit()
 
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="full",
-            offset=0,
-            limit=3,
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="full", offset=0, limit=3, db_manager=db_manager
         )
 
         # Verify chunk-based response (NOT summary)
@@ -321,9 +274,7 @@ class TestVisionDocumentDepthFullChunks:
         assert result["pagination"]["has_more"] is True
         assert result["pagination"]["next_offset"] == 3
 
-    async def test_depth_full_respects_25k_token_limit(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_full_respects_25k_token_limit(self, db_manager: DatabaseManager):
         """
         GIVEN vision chunks that would exceed 25K tokens
         WHEN depth="full" is requested
@@ -334,11 +285,7 @@ class TestVisionDocumentDepthFullChunks:
         vision_doc_id = str(uuid4())
 
         async with db_manager.get_session_async() as session:
-            product = Product(
-                id=product_id,
-                tenant_key=tenant_key,
-                name="Test Product"
-            )
+            product = Product(id=product_id, tenant_key=tenant_key, name="Test Product")
             session.add(product)
 
             vision_doc = VisionDocument(
@@ -351,7 +298,7 @@ class TestVisionDocumentDepthFullChunks:
                 vision_document="Full content",
                 is_active=True,
                 chunked=True,
-                chunk_count=20
+                chunk_count=20,
             )
             session.add(vision_doc)
 
@@ -362,18 +309,15 @@ class TestVisionDocumentDepthFullChunks:
                     product_id=product_id,
                     vision_document_id=vision_doc_id,
                     content="x" * 32000,  # ~8K tokens (4 chars per token)
-                    chunk_order=i+1,
-                    token_count=8000
+                    chunk_order=i + 1,
+                    token_count=8000,
                 )
                 session.add(chunk)
 
             await session.commit()
 
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="full",
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="full", db_manager=db_manager
         )
 
         # Calculate total tokens returned
@@ -387,9 +331,7 @@ class TestVisionDocumentDepthFullChunks:
 class TestVisionDocumentDepthNone:
     """Test depth='none' returns empty response."""
 
-    async def test_depth_none_returns_empty_response(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_none_returns_empty_response(self, db_manager: DatabaseManager):
         """
         GIVEN a product with vision documents
         WHEN depth="none" is requested
@@ -399,10 +341,7 @@ class TestVisionDocumentDepthNone:
         product_id = str(uuid4())
 
         result = await get_vision_document(
-            product_id=product_id,
-            tenant_key=tenant_key,
-            chunking="none",
-            db_manager=db_manager
+            product_id=product_id, tenant_key=tenant_key, chunking="none", db_manager=db_manager
         )
 
         assert result["source"] == "vision_documents"
@@ -416,9 +355,7 @@ class TestVisionDocumentDepthNone:
 class TestVisionDocumentMultiTenantIsolation:
     """Test multi-tenant isolation for all depth levels."""
 
-    async def test_depth_light_respects_tenant_isolation(
-        self, db_manager: DatabaseManager
-    ):
+    async def test_depth_light_respects_tenant_isolation(self, db_manager: DatabaseManager):
         """
         GIVEN two products in different tenants with summary_light
         WHEN tenant A requests depth="light"
@@ -431,11 +368,7 @@ class TestVisionDocumentMultiTenantIsolation:
 
         async with db_manager.get_session_async() as session:
             # Tenant A product
-            product_a = Product(
-                id=product_a_id,
-                tenant_key=tenant_a,
-                name="Product A"
-            )
+            product_a = Product(id=product_a_id, tenant_key=tenant_a, name="Product A")
             vision_a = VisionDocument(
                 id=str(uuid4()),
                 tenant_key=tenant_a,
@@ -448,15 +381,11 @@ class TestVisionDocumentMultiTenantIsolation:
                 chunked=True,
                 chunk_count=5,
                 summary_light="Summary A (Tenant A)",
-                summary_light_tokens=1000
+                summary_light_tokens=1000,
             )
 
             # Tenant B product
-            product_b = Product(
-                id=product_b_id,
-                tenant_key=tenant_b,
-                name="Product B"
-            )
+            product_b = Product(id=product_b_id, tenant_key=tenant_b, name="Product B")
             vision_b = VisionDocument(
                 id=str(uuid4()),
                 tenant_key=tenant_b,
@@ -469,7 +398,7 @@ class TestVisionDocumentMultiTenantIsolation:
                 chunked=True,
                 chunk_count=5,
                 summary_light="Summary B (Tenant B)",
-                summary_light_tokens=1000
+                summary_light_tokens=1000,
             )
 
             session.add_all([product_a, vision_a, product_b, vision_b])
@@ -477,10 +406,7 @@ class TestVisionDocumentMultiTenantIsolation:
 
         # Request from Tenant A
         result = await get_vision_document(
-            product_id=product_a_id,
-            tenant_key=tenant_a,
-            chunking="light",
-            db_manager=db_manager
+            product_id=product_a_id, tenant_key=tenant_a, chunking="light", db_manager=db_manager
         )
 
         assert result["data"]["summary"] == "Summary A (Tenant A)"
@@ -488,10 +414,7 @@ class TestVisionDocumentMultiTenantIsolation:
 
         # Request from Tenant B
         result_b = await get_vision_document(
-            product_id=product_b_id,
-            tenant_key=tenant_b,
-            chunking="light",
-            db_manager=db_manager
+            product_id=product_b_id, tenant_key=tenant_b, chunking="light", db_manager=db_manager
         )
 
         assert result_b["data"]["summary"] == "Summary B (Tenant B)"
