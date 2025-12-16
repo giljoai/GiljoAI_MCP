@@ -588,19 +588,28 @@
     <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <span class="text-h5">Confirm Delete</span>
+          <v-icon color="error" class="mr-2">mdi-alert</v-icon>
+          <span class="text-h5">Permanently Delete Template</span>
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" aria-label="Close" />
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete the template "{{ deletingTemplate?.name }}"? This will
-          archive the template and it can be restored from the version history.
+          <v-alert type="error" variant="tonal" class="mb-4">
+            <strong>This action cannot be undone.</strong>
+          </v-alert>
+          <p>
+            Are you sure you want to permanently delete the template
+            "<strong>{{ deletingTemplate?.name }}</strong>"?
+          </p>
+          <p class="text-caption text-grey mt-2">
+            This will remove the template and all its version history.
+          </p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
           <v-btn color="error" variant="flat" @click="deleteTemplate" :loading="deleting">
-            Delete
+            Delete Permanently
           </v-btn>
         </v-card-actions>
       </v-card>
