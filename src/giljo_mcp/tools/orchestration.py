@@ -144,6 +144,7 @@ async def _get_user_config(
         - Returns user's custom config if exists
         - Falls back to DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG if None
         - Ensures multi-tenant isolation (user must belong to tenant_key)
+        - Normalizes depth_config keys from UI format to internal format
     """
     from giljo_mcp.models.auth import User
 
@@ -173,7 +174,30 @@ async def _get_user_config(
         else:
             field_priorities = DEFAULT_FIELD_PRIORITIES.copy()
 
-        depth_config = user.depth_config if user.depth_config is not None else DEFAULT_DEPTH_CONFIG.copy()
+        # Get depth config and normalize keys from UI format to internal format
+        raw_depth_config = user.depth_config
+        if raw_depth_config is not None:
+            # Key mapping: UI/database keys → internal code keys
+            key_mapping = {
+                "memory_last_n_projects": "memory_360",
+                "git_commits": "git_history",
+                # These keys match, but include for completeness
+                "agent_templates": "agent_templates",
+                "vision_documents": "vision_documents",
+            }
+            
+            depth_config = {}
+            for db_key, value in raw_depth_config.items():
+                # Map to internal key if mapping exists, otherwise keep original
+                internal_key = key_mapping.get(db_key, db_key)
+                depth_config[internal_key] = value
+            
+            logger.debug(
+                "[USER_CONFIG] Normalized depth_config keys",
+                extra={"raw_keys": list(raw_depth_config.keys()), "normalized_keys": list(depth_config.keys())},
+            )
+        else:
+            depth_config = DEFAULT_DEPTH_CONFIG.copy()
 
         logger.info(
             "[USER_CONFIG] Fetched user configuration",
@@ -182,6 +206,7 @@ async def _get_user_config(
                 "tenant_key": tenant_key,
                 "has_custom_field_priorities": user.field_priority_config is not None,
                 "has_custom_depth_config": user.depth_config is not None,
+                "depth_config": depth_config,
             },
         )
 

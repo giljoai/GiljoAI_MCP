@@ -86,8 +86,11 @@ def render_claude_agent(template: AgentTemplate) -> str:
     return f"---\n{yaml_header}\n---\n\n{body_text}"
 
 
-def select_templates_for_packaging(templates: Iterable[AgentTemplate], max_roles: int = 8) -> list[AgentTemplate]:
-    """Select up to max_roles distinct roles using precedence rules.
+def select_templates_for_packaging(templates: Iterable[AgentTemplate], max_count: int = 8) -> list[AgentTemplate]:
+    """Select up to max_count templates using precedence rules.
+
+    No role-based deduplication - users control which templates are enabled via UI toggle.
+    The max_count cap (default 8) prevents context budget overflow.
 
     Precedence order:
       1) is_default templates first
@@ -108,17 +111,8 @@ def select_templates_for_packaging(templates: Iterable[AgentTemplate], max_roles
 
     sorted_list = sorted(templates, key=sort_key, reverse=True)
 
-    selected: list[AgentTemplate] = []
-    seen_roles = set()
-    for t in sorted_list:
-        role = t.role or t.name  # fallback to name if role missing
-        if role in seen_roles:
-            continue
-        selected.append(t)
-        seen_roles.add(role)
-        if len(seen_roles) >= max_roles:
-            break
-    return selected
+    # Return first max_count templates (no role deduplication)
+    return sorted_list[:max_count]
 
 
 def render_generic_agent(template: AgentTemplate) -> str:
