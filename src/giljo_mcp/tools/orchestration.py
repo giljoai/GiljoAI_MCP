@@ -122,7 +122,7 @@ DEFAULT_DEPTH_CONFIG = {
     "memory_360": 5,  # Number of projects in 360 Memory (1/3/5/10)
     "git_history": 20,  # Number of commits in git log examples (5/10/25/50/100)
     "agent_templates": "type_only",  # Agent template detail level ("type_only", "full") - Handover 0347d
-    "vision_documents": "optional",  # Vision document depth ("optional", "light", "medium", "full") - Handover 0347e
+    "vision_documents": "light",  # Vision document depth ("light", "medium", "full") - Handover 0352
 }
 
 
@@ -191,7 +191,15 @@ async def _get_user_config(
                 # Map to internal key if mapping exists, otherwise keep original
                 internal_key = key_mapping.get(db_key, db_key)
                 depth_config[internal_key] = value
-            
+
+            # Handover 0352: Normalize deprecated 'optional' value to 'light'
+            if depth_config.get("vision_documents") == "optional":
+                depth_config["vision_documents"] = "light"
+                logger.debug(
+                    "[USER_CONFIG] Normalized vision_documents 'optional' → 'light'",
+                    extra={"user_id": user_id}
+                )
+
             logger.debug(
                 "[USER_CONFIG] Normalized depth_config keys",
                 extra={"raw_keys": list(raw_depth_config.keys()), "normalized_keys": list(depth_config.keys())},

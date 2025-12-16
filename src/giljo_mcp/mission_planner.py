@@ -1626,9 +1626,13 @@ Partial reading defeats the purpose of this configuration."""
             # Add depth-specific params if applicable
             if config.get("depth_aware"):
                 if field == "vision_documents":
-                    # Vision docs use offset/limit for pagination
-                    instruction["params"]["offset"] = 0
-                    instruction["params"]["limit"] = depth_config.get("vision_documents", 10)
+                    # Vision docs use depth for summary level (light/medium/full)
+                    # Handover 0352: light=33% summary, medium=66% summary, full=paginated chunks
+                    vision_depth = depth_config.get("vision_documents", "light")
+                    instruction["params"]["depth"] = vision_depth
+                    # Only add pagination params for full depth
+                    if vision_depth == "full":
+                        instruction["params"]["offset"] = 0
                 elif field == "memory_360":
                     instruction["params"]["limit"] = depth_config.get("memory_360", 5)
                 elif field == "git_history":
@@ -1951,8 +1955,9 @@ Partial reading defeats the purpose of this configuration."""
         if vision_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
             vision_doc = await self._get_active_vision_doc(product)
             if vision_doc:
-                # Get depth configuration (default: optional for backward compatibility)
-                vision_depth = depth_config.get("vision_documents", "optional")
+                # Get depth configuration (default: light)
+                # Handover 0352: 'optional' deprecated, normalized to 'light' in _get_user_config
+                vision_depth = depth_config.get("vision_documents", "light")
 
                 # Build vision content based on depth configuration
                 # Depth handling is INDEPENDENT of priority tier - user controls both dimensions
