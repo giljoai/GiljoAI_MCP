@@ -138,11 +138,12 @@ async def get_agent_templates(
                 }
 
             else:  # "full"
-                # Full: complete template data
+                # Full: complete template data including template_content (the actual prompt)
                 template_dict = {
                     "name": template.name,
                     "role": template.role or "Specialized agent",
                     "description": template.description,
+                    "template_content": template.template_content,  # The actual agent prompt text
                     "capabilities": template.meta_data.get("capabilities", []) if template.meta_data else [],
                     "expertise": template.meta_data.get("expertise", []) if template.meta_data else [],
                     "typical_tasks": template.meta_data.get("typical_tasks", []) if template.meta_data else [],

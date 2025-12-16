@@ -1836,7 +1836,7 @@ def _get_error_handling() -> dict:
         Dict with error handling guidance
     """
     return {
-        "invalid_agent_type": "Verify against allowed_agent_types list before calling spawn_agent_job",
+        "invalid_agent_name": "Verify against allowed_agent_names list before calling spawn_agent_job",
         "spawn_failure": "Log via report_error(), do not proceed with remaining agents",
         "mcp_connection_lost": "Abort staging, notify user",
     }
