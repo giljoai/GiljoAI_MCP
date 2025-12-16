@@ -18,6 +18,9 @@
     <v-main>
       <router-view :current-user="currentUser" />
     </v-main>
+
+    <!-- Global Toast Notifications -->
+    <ToastManager position="top center" />
   </v-app>
 </template>
 
@@ -30,6 +33,7 @@ import { useMessageStore } from '@/stores/messages'
 import { setupWebSocketIntegrations } from '@/stores/websocketIntegrations'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
+import ToastManager from '@/components/ToastManager.vue'
 import api from '@/services/api'
 
 const route = useRoute()

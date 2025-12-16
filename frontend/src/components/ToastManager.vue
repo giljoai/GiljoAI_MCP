@@ -47,15 +47,15 @@ import { useSettingsStore } from '@/stores/settings'
 const props = defineProps({
   position: {
     type: String,
-    default: 'bottom-right',
+    default: 'bottom end',
     validator: (value) =>
       [
-        'top-left',
-        'top-center',
-        'top-right',
-        'bottom-left',
-        'bottom-center',
-        'bottom-right',
+        'top start',
+        'top center',
+        'top end',
+        'bottom start',
+        'bottom center',
+        'bottom end',
       ].includes(value),
   },
   defaultTimeout: {
@@ -144,6 +144,19 @@ function clearToasts() {
   toasts.value = []
 }
 
+// Register global toast immediately after functions are defined
+// This prevents race conditions where showToast is called before onMounted runs
+if (typeof window !== 'undefined') {
+  window.$toast = {
+    show: showToast,
+    success: (message, options = {}) => showToast({ ...options, message, type: 'success' }),
+    error: (message, options = {}) => showToast({ ...options, message, type: 'error' }),
+    warning: (message, options = {}) => showToast({ ...options, message, type: 'warning' }),
+    info: (message, options = {}) => showToast({ ...options, message, type: 'info' }),
+    clear: clearToasts,
+  }
+}
+
 function handleAction(toast) {
   if (toast.action && typeof toast.action.callback === 'function') {
     toast.action.callback()
@@ -164,18 +177,8 @@ defineExpose({
 
 // Lifecycle
 onMounted(() => {
-  // Listen for global toast events
+  // Listen for global toast events (fallback for event-based dispatching)
   window.addEventListener('show-toast', handleToastEvent)
-
-  // Register toast methods globally
-  window.$toast = {
-    show: showToast,
-    success: (message, options = {}) => showToast({ ...options, message, type: 'success' }),
-    error: (message, options = {}) => showToast({ ...options, message, type: 'error' }),
-    warning: (message, options = {}) => showToast({ ...options, message, type: 'warning' }),
-    info: (message, options = {}) => showToast({ ...options, message, type: 'info' }),
-    clear: clearToasts,
-  }
 })
 
 onUnmounted(() => {

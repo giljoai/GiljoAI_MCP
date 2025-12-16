@@ -303,6 +303,17 @@
       @close="showCloseoutModal = false"
       @complete="handleCloseoutProject"
     />
+
+    <!-- Local Snackbar for immediate feedback -->
+    <v-snackbar
+      v-model="localSnackbar.show"
+      :color="localSnackbar.color"
+      :timeout="localSnackbar.timeout"
+      location="top center"
+    >
+      <v-icon v-if="localSnackbar.icon" class="mr-2">{{ localSnackbar.icon }}</v-icon>
+      {{ localSnackbar.message }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -408,6 +419,41 @@ const showAgentDetailsModal = ref(false)
 const showMessageAuditModal = ref(false)
 const messageAuditInitialTab = ref('waiting')
 const selectedAgent = ref(null)
+
+/**
+ * Local snackbar state for immediate feedback (fixes first-click race condition)
+ * Pattern from ClaudeCodeExport.vue - local v-snackbar works on first click
+ */
+const localSnackbar = ref({
+  show: false,
+  message: '',
+  color: 'success',
+  icon: 'mdi-check-circle',
+  timeout: 3000
+})
+
+/**
+ * Show local toast for immediate feedback
+ * Bypasses global toast system's race condition on first click
+ */
+function showLocalToast(options) {
+  const typeConfig = {
+    success: { color: 'success', icon: 'mdi-check-circle' },
+    error: { color: 'error', icon: 'mdi-alert-circle' },
+    warning: { color: 'warning', icon: 'mdi-alert' },
+    info: { color: 'info', icon: 'mdi-information' }
+  }
+
+  const config = typeConfig[options.type] || typeConfig.success
+
+  localSnackbar.value = {
+    show: true,
+    message: options.message || '',
+    color: options.color || config.color,
+    icon: options.icon || config.icon,
+    timeout: options.duration || options.timeout || 3000
+  }
+}
 
 /**
  * Get current tenant key for multi-tenant isolation
@@ -603,17 +649,17 @@ async function handlePlay(agent) {
       // CLI mode: Generate implementation prompt
       if (props.project?.execution_mode === 'claude_code_cli') {
         try {
-          const response = await api.prompts.implementation(props.project.id)
+          const response = await api.prompts.implementation(props.project.project_id || props.project.id)
           const prompt = response.data.prompt
-          await navigator.clipboard.writeText(prompt)
-          showToast({
+          await copyToClipboard(prompt)
+          showLocalToast({
             message: `Implementation prompt copied! (${response.data.agent_count} agents ready)`,
             type: 'success',
             duration: 5000
           })
         } catch (error) {
           const errorMsg = error.response?.data?.detail || 'Failed to generate implementation prompt'
-          showToast({
+          showLocalToast({
             message: errorMsg,
             type: 'error',
             duration: 6000
@@ -623,7 +669,7 @@ async function handlePlay(agent) {
       }
 
       // Multi-terminal mode: Redirect to Launch tab
-      showToast({
+      showLocalToast({
         message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
         type: 'info',
         duration: 3000
@@ -641,13 +687,13 @@ async function handlePlay(agent) {
     }
 
     await copyToClipboard(promptText)
-    showToast({ message: 'Launch prompt copied to clipboard', type: 'success', duration: 3000 })
+    showLocalToast({ message: 'Launch prompt copied to clipboard', type: 'success', duration: 3000 })
 
     emit('launch-agent', agent)
   } catch (error) {
     console.error('[JobsTab] Failed to prepare launch prompt:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to prepare launch prompt'
-    showToast({ message: msg, type: 'error', duration: 5000 })
+    showLocalToast({ message: msg, type: 'error', duration: 5000 })
   }
 }
 
