@@ -1630,9 +1630,29 @@ Partial reading defeats the purpose of this configuration."""
                     # Handover 0352: light=33% summary, medium=66% summary, full=paginated chunks
                     vision_depth = depth_config.get("vision_documents", "light")
                     instruction["params"]["depth"] = vision_depth
+
+                    # Update framing and token estimate based on depth
+                    vision_framing = {
+                        "light": "33% summarized vision document (single response).",
+                        "medium": "66% summarized vision document (single response).",
+                        "full": "Complete vision document (paginated, call until has_more=false).",
+                    }
+                    vision_tokens = {
+                        "light": 4000,   # ~33% of typical vision doc
+                        "medium": 8000,  # ~66% of typical vision doc
+                        "full": 25000,   # Full content, paginated
+                    }
+                    base_framing = vision_framing.get(vision_depth, vision_framing["light"])
+                    instruction["framing"] = self._get_tier_framing(tier, base_framing)
+                    instruction["estimated_tokens"] = vision_tokens.get(vision_depth, 4000)
+
                     # Only add pagination params for full depth
                     if vision_depth == "full":
                         instruction["params"]["offset"] = 0
+                        instruction["supports_pagination"] = True
+                    else:
+                        # Remove pagination flag for light/medium (single response)
+                        instruction.pop("supports_pagination", None)
                 elif field == "memory_360":
                     instruction["params"]["limit"] = depth_config.get("memory_360", 5)
                 elif field == "git_history":

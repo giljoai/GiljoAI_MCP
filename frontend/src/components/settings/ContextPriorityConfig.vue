@@ -271,7 +271,7 @@ const config = ref<Record<string, ContextConfig>>({
   tech_stack: { enabled: true, priority: 2 },
   architecture: { enabled: true, priority: 2 },
   testing: { enabled: true, priority: 2 },
-  vision_documents: { enabled: true, priority: 2, depth: 'optional' },  // Handover 0347e: default to 'optional' for backward compatibility
+  vision_documents: { enabled: true, priority: 2, depth: 'light' },  // Handover 0352: default to 'light' (3-option system)
   memory_360: { enabled: true, priority: 2, count: 3 },
   git_history: { enabled: false, priority: 4, count: 25 },
   agent_templates: { enabled: true, priority: 2, depth: 'type_only' },  // Handover 0347d: default to 'type_only' for token efficiency
@@ -340,29 +340,24 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  // Handover 0347e: 4-level vision depth system
-  // Optional: Pointer only (~200 tokens), Light: 33% summary (~10-12K), Medium: 66% summary (~20-24K), Full: Mandatory complete read (~200 + fetch)
+  // Handover 0352: 3-level vision depth system
+  // Light: 33% summary, Medium: 66% summary, Full: 100% complete (paginated ≤25K/call)
   if (context.key === 'vision_documents') {
     return [
       {
-        title: 'Optional (Orchestrator decides)',
-        value: 'optional',
-        subtitle: '~200 tokens - Pointer with when-to-fetch guidance'
-      },
-      {
-        title: 'Light (33% summary)',
+        title: 'Light (33% Summary)',
         value: 'light',
-        subtitle: '~10-12K tokens - Inline 33% summarized content'
+        subtitle: 'Compressed overview'
       },
       {
-        title: 'Medium (66% summary)',
+        title: 'Medium (66% Summary)',
         value: 'medium',
-        subtitle: '~20-24K tokens - Inline 66% summarized content'
+        subtitle: 'More detail, still compressed'
       },
       {
-        title: 'Full (Mandatory complete read)',
+        title: 'Full (100% Complete)',
         value: 'full',
-        subtitle: '~200 tokens + fetch cost - MUST read ALL chunks'
+        subtitle: 'All content, paginated ≤25K/call'
       }
     ]
   }
@@ -511,7 +506,7 @@ async function saveConfig() {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
-          vision_documents: config.value.vision_documents?.depth || 'optional',  // Handover 0347e
+          vision_documents: config.value.vision_documents?.depth || 'light',  // Handover 0352
           agent_templates: config.value.agent_templates?.depth || 'type_only',  // Handover 0347d
         }
       })
