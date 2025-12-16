@@ -344,7 +344,7 @@ async def download_agent_templates(
         select_templates_for_packaging,
     )
 
-    selected = select_templates_for_packaging(templates, max_roles=8)
+    selected = select_templates_for_packaging(templates, max_count=8)
 
     files = {}
     for template in selected:
@@ -398,7 +398,7 @@ async def download_agent_templates(
 
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
     logger.info(
-        f"Agent templates ZIP generated ({user_info}): {len(files)} files (capped to distinct roles), {len(zip_bytes)} bytes"
+        f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes"
     )
 
     return Response(

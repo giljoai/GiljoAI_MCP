@@ -198,10 +198,10 @@ class FileStaging:
                 logger.warning(msg)
                 return (None, msg)
 
-            # Apply packaging selection (cap to 8 distinct roles)
+            # Apply packaging selection (cap to 8 templates)
             from .template_renderer import _slugify_filename, render_claude_agent, select_templates_for_packaging
 
-            selected = select_templates_for_packaging(all_active, max_roles=8)
+            selected = select_templates_for_packaging(all_active, max_count=8)
 
             # Create ZIP file with Claude-compatible YAML/Markdown
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
