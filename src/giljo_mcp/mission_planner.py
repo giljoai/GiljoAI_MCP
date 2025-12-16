@@ -1658,7 +1658,16 @@ Partial reading defeats the purpose of this configuration."""
                 elif field == "git_history":
                     instruction["params"]["limit"] = depth_config.get("git_history", 20)
                 elif field == "agent_templates":
-                    instruction["params"]["depth"] = depth_config.get("agent_templates", "type_only")
+                    agent_depth = depth_config.get("agent_templates", "type_only")
+                    # Handover 0351: Skip fetch for type_only (already inline in response)
+                    # Only include fetch instruction when full templates needed
+                    if agent_depth == "type_only":
+                        continue  # Already inline - no fetch needed
+                    instruction["params"]["depth"] = agent_depth
+                    instruction["estimated_tokens"] = 18000  # Full templates are ~18K tokens
+                    instruction["framing"] = self._get_tier_framing(
+                        tier, "Full agent templates with complete prompts for spawning."
+                    )
 
             instructions[tier].append(instruction)
 
