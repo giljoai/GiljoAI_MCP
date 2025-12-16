@@ -956,11 +956,15 @@ No previous project history available. Starting fresh.
             # Handover 0342: Trimmed CLI mode block - verbose version in get_orchestrator_instructions()
             mode_block = """CLI MODE CRITICAL:
 This project uses Claude Code CLI for implementation. When spawning agents:
-- agent_type: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (e.g., "implementer")
-- agent_name: Descriptive display label only (e.g., "Backend API Implementer")
+- agent_name: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (e.g., "implementer-frontend")
+- agent_type: Display category label (e.g., "implementer")
+- Template file: Each agent_name requires .claude/agents/{agent_name}.md
 
-In implementation phase, Task(subagent_type=X) uses agent_type value, NOT agent_name.
-Full cli_mode_rules, allowed_agent_types, and examples are in get_orchestrator_instructions() response."""
+Example Task call:
+  Task(subagent_type="{agent_name}", instructions="...")
+
+In implementation phase, Task(subagent_type=X) uses agent_name value, NOT agent_type.
+Full cli_mode_rules, allowed_agent_names, and examples are in get_orchestrator_instructions() response."""
         else:
             mode_block = """MULTI-TERMINAL MODE:
 - User will manually copy/paste prompts for each agent
@@ -992,8 +996,8 @@ STARTUP SEQUENCE:
 3. CREATE MISSION: Analyze requirements and generate execution plan
 4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
 5. SPAWN AGENTS: spawn_agent_job() for each specialist
-   CRITICAL: agent_type MUST exactly match template name from Step 2
-   agent_name can be descriptive (for UI display only)
+   CRITICAL: agent_name MUST exactly match template name from Step 2
+   agent_type can be descriptive category (for UI display only)
 6. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
@@ -1097,7 +1101,8 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
                 agent_spawn_lines.extend(
                     [
                         f"**{idx}. {agent.agent_name}**",
-                        f"   - Agent Type: `{agent.agent_type}` (matches .claude/agents/{agent.agent_type}.md)",
+                        f"   - Agent Name: `{agent.agent_name}` (matches .claude/agents/{agent.agent_name}.md)",
+                        f"   - Agent Type: `{agent.agent_type}` (display category)",
                         f"   - Job ID: `{agent.job_id}`",
                         f"   - Status: {agent.status}",
                         f"   - Mission Summary: {mission_summary}",
@@ -1124,7 +1129,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "```python",
             "Task(",
-            '    subagent_type="{agent_type}",  # CRITICAL: Use agent_type, NOT agent_name',
+            '    subagent_type="{agent_name}",  # CRITICAL: Use agent_name (template filename)',
             '    instructions="""',
             "    You are {agent_name} (job_id: {job_id})",
             "    Tenant: {tenant_key}",
@@ -1145,7 +1150,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
                     "### Example: First Agent",
                     "```python",
                     "Task(",
-                    f'    subagent_type="{first.agent_type}",',
+                    f'    subagent_type="{first.agent_name}",',
                     '    instructions="""',
                     f"    You are {first.agent_name} (job_id: {first.job_id})",
                     f"    Tenant: {self.tenant_key}",
@@ -1213,15 +1218,15 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "## CLI Mode Constraints",
             "",
             "**WARNING: Agent Template Files Required**",
-            "- Each agent_type needs a file: `.claude/agents/{agent_type}.md`",
+            "- Each agent_name needs a file: `.claude/agents/{agent_name}.md`",
             '- If file is missing: "Subagent type not found" error',
-            '- Example: agent_type="implementer" requires `.claude/agents/implementer.md`',
+            '- Example: agent_name="implementer-frontend" requires `.claude/agents/implementer-frontend.md`',
             "",
             "**WARNING: Exact Naming Required**",
-            "- Task tool parameter `subagent_type` expects `agent_type`, NOT `agent_name`",
-            '- agent_type: Technical ID (e.g., "implementer")',
-            '- agent_name: Display name (e.g., "Folder Structure Implementer")',
-            '- Using agent_name will fail with "Subagent type not found"',
+            "- Task tool parameter `subagent_type` expects `agent_name`, NOT `agent_type`",
+            '- agent_name: Template filename (e.g., "implementer-frontend")',
+            '- agent_type: Display category (e.g., "implementer")',
+            '- Using agent_type will fail with "Subagent type not found"',
             "",
             "**WARNING: MCP Communication Only**",
             "- All agents run in THIS terminal (Claude Code CLI mode)",

@@ -104,15 +104,16 @@ class AgentSelector:
 
         for agent_type, priority in work_types.items():
             # Get template with priority cascade
+            # Note: agent_type from work_types is used as agent_name for template lookup
             template = await self._get_template(
-                agent_type=agent_type,
+                agent_name=agent_type,
                 tenant_key=tenant_key,
                 product_id=product_id,
             )
 
             if template is None:
                 logger.warning(
-                    f"No template found for agent_type='{agent_type}', "
+                    f"No template found for agent_name='{agent_type}', "
                     f"tenant_key='{tenant_key}', product_id='{product_id}'. Skipping."
                 )
                 continue
@@ -140,7 +141,7 @@ class AgentSelector:
 
     async def _get_template(
         self,
-        agent_type: str,
+        agent_name: str,
         tenant_key: str,
         product_id: Optional[str] = None,
     ) -> Optional[AgentTemplate]:
@@ -153,7 +154,7 @@ class AgentSelector:
         3. System default template
 
         Args:
-            agent_type: Type/role of agent (e.g., 'implementer', 'tester')
+            agent_name: Template name to match (e.g., 'implementer', 'implementer-frontend')
             tenant_key: Tenant identifier
             product_id: Optional product identifier
 
@@ -170,50 +171,50 @@ class AgentSelector:
             if product_id is not None:
                 template = await self._query_template(
                     session=session,
-                    agent_type=agent_type,
+                    agent_name=agent_name,
                     tenant_key=tenant_key,
                     product_id=product_id,
                 )
                 if template is not None:
                     logger.debug(
                         f"Found product-specific template: {template.id} "
-                        f"for agent_type='{agent_type}', product_id='{product_id}'"
+                        f"for agent_name='{agent_name}', product_id='{product_id}'"
                     )
                     return template
 
             # 2. Try tenant-specific template
             template = await self._query_template(
                 session=session,
-                agent_type=agent_type,
+                agent_name=agent_name,
                 tenant_key=tenant_key,
                 product_id=None,  # Explicitly None to match tenant templates
             )
             if template is not None:
                 logger.debug(
                     f"Found tenant-specific template: {template.id} "
-                    f"for agent_type='{agent_type}', tenant_key='{tenant_key}'"
+                    f"for agent_name='{agent_name}', tenant_key='{tenant_key}'"
                 )
                 return template
 
             # 3. Try system default template (fallback)
             template = await self._query_template(
                 session=session,
-                agent_type=agent_type,
+                agent_name=agent_name,
                 tenant_key="system",
                 product_id=None,
                 is_default=True,
             )
             if template is not None:
-                logger.debug(f"Found system default template: {template.id} for agent_type='{agent_type}'")
+                logger.debug(f"Found system default template: {template.id} for agent_name='{agent_name}'")
                 return template
 
-        logger.warning(f"No template found for agent_type='{agent_type}' after checking all priority levels")
+        logger.warning(f"No template found for agent_name='{agent_name}' after checking all priority levels")
         return None
 
     async def _query_template(
         self,
         session: AsyncSession,
-        agent_type: str,
+        agent_name: str,
         tenant_key: str,
         product_id: Optional[str] = None,
         is_default: bool = False,
@@ -223,7 +224,7 @@ class AgentSelector:
 
         Args:
             session: Active database session
-            agent_type: Agent type/role name
+            agent_name: Template name to match
             tenant_key: Tenant identifier
             product_id: Product identifier (None for tenant/system templates)
             is_default: Whether to filter for default templates
@@ -234,7 +235,7 @@ class AgentSelector:
         # Build query with filters
         query = select(AgentTemplate).where(
             AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.name == agent_type,
+            AgentTemplate.name == agent_name,
             AgentTemplate.is_active,  # Only active templates
         )
 

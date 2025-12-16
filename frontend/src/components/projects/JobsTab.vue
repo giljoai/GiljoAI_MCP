@@ -24,7 +24,15 @@
               <v-avatar :color="getAgentColor(agent.agent_type)" size="32" class="agent-avatar">
                 <span class="avatar-text">{{ getAgentAbbr(agent.agent_type) }}</span>
               </v-avatar>
-              <span class="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
+              <div class="agent-info">
+                <span class="agent-name-primary">{{ agent.agent_name || agent.agent_type }}</span>
+                <span
+                  v-if="agent.agent_name && agent.agent_name !== agent.agent_type"
+                  class="agent-type-secondary"
+                >
+                  {{ agent.agent_type }}
+                </span>
+              </div>
             </td>
 
             <!-- Agent ID: FULL UUID -->
@@ -1206,8 +1214,20 @@ onUnmounted(() => {
             }
           }
 
-          .agent-name {
-            text-transform: capitalize;
+          .agent-info {
+            display: flex;
+            flex-direction: column;
+
+            .agent-name-primary {
+              font-weight: 500;
+              text-transform: capitalize;
+            }
+
+            .agent-type-secondary {
+              font-size: 0.75rem;
+              color: #999;
+              text-transform: capitalize;
+            }
           }
         }
 
