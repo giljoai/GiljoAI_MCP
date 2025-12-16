@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-15 (Added 0351 Agent Name as Single Source of Truth)
+**Last Updated:** 2025-12-15 (Retired 0346, 0347, 0350 series - all complete)
 
 ---
 
@@ -28,8 +28,6 @@
 | 0340 | CLI Mode Two-Phase Architecture Summary | Ready (Stage 2) | High | Stage 1 complete |
 | 0341 | CLI Mode Stage 2 Implementation Prompt | Ready for Agent | High | TDD spec ready |
 | 0344 | CLI Mode Play Button API Fix | Ready | Critical | api.get bug + wrong URL |
-| 0346 | Depth Config Field Standardization | Ready | High | Prerequisite for 0347 |
-| 0347 | Mission Response YAML Restructuring | Ready | High | Depends on 0346, 93% token reduction |
 | 0351 | Agent Name as Single Source of Truth | Ready | High | Semantic swap: agent_name for templates |
 
 ### In Progress / Partial
@@ -84,6 +82,9 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0346 | Depth Config Field Standardization | **COMPLETE** |
+| 0347 | Mission Response JSON Restructuring (10 files) | **COMPLETE** |
+| 0350 | On-Demand Context Fetch Architecture (7 files) | **COMPLETE** |
 | 0260 | Claude Code CLI Mode | **COMPLETE** |
 | 0262 | Agent Mission Protocol Merge Analysis | **COMPLETE** |
 | 0286 | Jobs Dashboard WebSocket Wiring | **COMPLETE** |
@@ -129,6 +130,34 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### On-Demand Context Fetch Architecture (0350 Series)
+**Status:** 100% Complete (December 2025)
+- 0350: Research → unified `fetch_context()` architecture decision
+- 0350a: Unified fetch_context() MCP tool (~720 token savings)
+- 0350b: Framing-based get_orchestrator_instructions() (~500 tokens vs 4-8K)
+- 0350c: 3-Tier UI Labels + Field Rename (project_context → project_description)
+- 0350d: Documentation Update (CLAUDE.md v3.0, API reference)
+- Commits: 18c5fe19, cc17f382, 05c3429a, eb20bf88
+
+### Mission Response JSON Restructuring (0347 Series)
+**Status:** 100% Complete (December 2025)
+- 0347: Parent orchestration document
+- 0347a: JSONContextBuilder class (38 unit tests)
+- 0347b: MissionPlanner JSON refactor (93% token reduction: 21K → ~2.7K)
+- 0347c: Response Fields Enhancement (6 guidance fields)
+- 0347d: Agent Templates Depth Toggle (type_only/full)
+- 0347e: Vision Document 4-Level Depth (optional/light/medium/full)
+- 0347f: Integration & E2E Testing (61 total tests)
+- Bug fixes: Dynamic tier assignment, testing field key mismatch
+- Commits: c239c70d, fbf74f21, 16e54673, d343473d, 5b949044, 884052ed
+
+### Depth Config Field Standardization (0346)
+**Status:** 100% Complete (December 2025)
+- Canonical field name: `vision_documents` (replaces vision_chunking, vision_document_depth)
+- 9 commits, 19 tests
+- Root cause: Vision document selection ordering bug (created_at DESC)
+- Commits: 8a9482af, f2680bd8, f05441ba
 
 ### Vision Document Optimization (0338, 0345a-e)
 **Status:** 100% Complete
@@ -248,7 +277,7 @@ completed/reference/
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
-- **0348-0350**: Gaps in 0301-0400 range
+- **0348-0349**: Gaps in 0301-0400 range (0350 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
@@ -292,6 +321,10 @@ completed/reference/
 ## History
 
 ### December 2025
+- **0346, 0347, 0350 Series RETIRED**: All complete with full git evidence
+  - 0350: On-Demand Context Fetch (7 files → completed/)
+  - 0347: Mission Response JSON Restructuring (10 files → completed/)
+  - 0346: Depth Config Field Standardization (duplicate removed)
 - **Harmonization audit**: Cross-referenced all handovers with git commits
 - 0351: Agent Name as Single Source of Truth (ready for implementation)
 - 0338, 0345a-e: Vision Document Context Optimization Series (COMPLETE)
