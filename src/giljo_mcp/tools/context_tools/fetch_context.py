@@ -5,11 +5,17 @@ Handover 0350a: Single entry point for all context fetching.
 Dispatches to internal get_* tools based on categories parameter.
 
 Handover 0351: Removed depth params for tech_stack, architecture, testing.
+Handover 0351: ENFORCED single-category calls to prevent token budget overflow.
 
 Token Budget Savings:
 - Before: 9 tool schemas x ~100 tokens = ~900 tokens consumed at agent startup
 - After: 1 tool schema x ~180 tokens = ~180 tokens consumed at agent startup
 - Savings: ~720 tokens available for actual work
+
+Security (SaaS):
+- Single category per call enforced in code (not prompt instructions)
+- Prevents token budget overflow from aggregated multi-category calls
+- LLM cannot bypass - code-level enforcement
 """
 
 from typing import Any, Dict, List, Optional
@@ -145,23 +151,54 @@ async def fetch_context(
         format=format
     )
 
+    # Handover 0351: ENFORCE single-category calls (SaaS security)
+    # Code-level enforcement - LLM cannot bypass via prompt injection
     if categories is None:
-        categories = ["all"]
+        logger.warning("fetch_context_missing_category", tenant_key=tenant_key)
+        return {
+            "error": "SINGLE_CATEGORY_REQUIRED",
+            "message": "fetch_context requires exactly ONE category per call. Call multiple times for multiple categories.",
+            "valid_categories": ALL_CATEGORIES,
+            "example": "fetch_context(categories=['tech_stack'], ...)",
+            "metadata": {"estimated_tokens": 0}
+        }
 
-    # Expand "all" to full category list
+    # Reject "all" - forces sequential calls
     if "all" in categories:
-        categories = ALL_CATEGORIES.copy()
+        logger.warning("fetch_context_all_rejected", tenant_key=tenant_key)
+        return {
+            "error": "ALL_NOT_ALLOWED",
+            "message": "categories=['all'] is not allowed. Call fetch_context once per category to stay within token budget.",
+            "valid_categories": ALL_CATEGORIES,
+            "example": "fetch_context(categories=['vision_documents'], ...)",
+            "metadata": {"estimated_tokens": 0}
+        }
 
-    # Validate categories
-    invalid = [c for c in categories if c not in CATEGORY_TOOLS]
-    if invalid:
+    # Reject multi-category calls
+    if len(categories) > 1:
         logger.warning(
-            "invalid_categories",
-            invalid_categories=invalid,
+            "fetch_context_multi_category_rejected",
+            tenant_key=tenant_key,
+            categories_requested=categories
+        )
+        return {
+            "error": "SINGLE_CATEGORY_REQUIRED",
+            "message": f"Only ONE category per call allowed. You requested {len(categories)}: {categories}",
+            "valid_categories": ALL_CATEGORIES,
+            "example": "Call fetch_context separately for each category",
+            "metadata": {"estimated_tokens": 0}
+        }
+
+    # Validate the single category
+    category = categories[0]
+    if category not in CATEGORY_TOOLS:
+        logger.warning(
+            "invalid_category",
+            invalid_category=category,
             valid_categories=ALL_CATEGORIES
         )
         return {
-            "error": f"Invalid categories: {invalid}",
+            "error": f"Invalid category: {category}",
             "valid_categories": ALL_CATEGORIES,
             "metadata": {"estimated_tokens": 0}
         }
@@ -173,54 +210,52 @@ async def fetch_context(
     if depth_config:
         effective_depths.update(depth_config)
 
-    # Fetch each category
-    results = {}
-    total_tokens = 0
-    errors = []
-
-    for category in categories:
-        try:
-            result = await _fetch_category(
-                category=category,
-                product_id=product_id,
-                tenant_key=tenant_key,
-                project_id=project_id,
-                depth=effective_depths.get(category),
-                db_manager=db_manager
-            )
-            results[category] = result.get("data", {})
-            total_tokens += result.get("metadata", {}).get("estimated_tokens", 0)
-        except Exception as e:
-            logger.error(
-                "category_fetch_error",
-                category=category,
-                error=str(e),
-                exc_info=True
-            )
-            errors.append({"category": category, "error": str(e)})
+    # Fetch the single category (enforced above)
+    try:
+        result = await _fetch_category(
+            category=category,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            project_id=project_id,
+            depth=effective_depths.get(category),
+            db_manager=db_manager
+        )
+        data = result.get("data", {})
+        total_tokens = result.get("metadata", {}).get("estimated_tokens", 0)
+        error = None
+    except Exception as e:
+        logger.error(
+            "category_fetch_error",
+            category=category,
+            error=str(e),
+            exc_info=True
+        )
+        data = {}
+        total_tokens = 0
+        error = {"category": category, "error": str(e)}
 
     # Build response
     response = {
         "source": "fetch_context",
-        "categories_requested": categories,
-        "categories_returned": list(results.keys()),
-        "data": results if format == "structured" else _flatten_results(results),
+        "categories_requested": [category],
+        "categories_returned": [category] if data else [],
+        "data": {category: data} if format == "structured" else data,
         "metadata": {
             "estimated_tokens": total_tokens,
             "format": format,
             "apply_user_config": apply_user_config,
-            "depth_config_applied": effective_depths,
+            "depth_config_applied": {category: effective_depths.get(category)},
         }
     }
 
-    if errors:
-        response["errors"] = errors
+    if error:
+        response["errors"] = [error]
 
     logger.info(
         "fetch_context_completed",
-        categories_returned=len(results),
+        category=category,
         total_tokens=total_tokens,
-        had_errors=len(errors) > 0
+        had_error=error is not None
     )
 
     return response
