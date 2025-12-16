@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-15 (Retired 0346, 0347, 0350 series - all complete)
+**Last Updated:** 2025-12-16 (Retired 0351, 0352 - all complete)
 
 ---
 
@@ -28,7 +28,6 @@
 | 0340 | CLI Mode Two-Phase Architecture Summary | Ready (Stage 2) | High | Stage 1 complete |
 | 0341 | CLI Mode Stage 2 Implementation Prompt | Ready for Agent | High | TDD spec ready |
 | 0344 | CLI Mode Play Button API Fix | Ready | Critical | api.get bug + wrong URL |
-| 0351 | Agent Name as Single Source of Truth | Ready | High | Semantic swap: agent_name for templates |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
@@ -82,6 +81,8 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0351 | Agent Name as Single Source of Truth | **COMPLETE** |
+| 0352 | Vision Document Depth Refactor | **COMPLETE** |
 | 0346 | Depth Config Field Standardization | **COMPLETE** |
 | 0347 | Mission Response JSON Restructuring (10 files) | **COMPLETE** |
 | 0350 | On-Demand Context Fetch Architecture (7 files) | **COMPLETE** |
@@ -130,6 +131,20 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### Agent Name Single Source of Truth (0351)
+**Status:** 100% Complete (December 2025)
+- agent_name becomes template filename match field
+- agent_type becomes display category only
+- Single-category fetch_context calls (SaaS security)
+- Commits: 7ff8c06e, 766af2dd, ea58b2c8
+
+### Vision Document Depth Refactor (0352)
+**Status:** 100% Complete (December 2025)
+- Depth-based source selection (light/medium/full)
+- Summary keys fix (moderate → medium)
+- Migration from 'optional' to 'light' depth
+- Commits: 0e3d7dca, c9592f45, d7cddaef
 
 ### On-Demand Context Fetch Architecture (0350 Series)
 **Status:** 100% Complete (December 2025)
@@ -321,6 +336,9 @@ completed/reference/
 ## History
 
 ### December 2025
+- **0351, 0352 RETIRED**: Both complete with full git evidence
+  - 0351: Agent Name as Single Source of Truth (7 commits)
+  - 0352: Vision Document Depth Refactor (8 commits)
 - **0346, 0347, 0350 Series RETIRED**: All complete with full git evidence
   - 0350: On-Demand Context Fetch (7 files → completed/)
   - 0347: Mission Response JSON Restructuring (10 files → completed/)
