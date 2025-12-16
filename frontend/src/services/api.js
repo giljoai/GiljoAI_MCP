@@ -418,11 +418,10 @@ export const api = {
   // Templates
   templates: {
     list: (params) => apiClient.get('/api/v1/templates/', { params }),
-    get: (id) => apiClient.get(`/api/v1/templates/${id}/`),
+    get: (id) => apiClient.get(`/api/v1/templates/${id}`),
     create: (data) => apiClient.post('/api/v1/templates/', data),
     update: (id, data) => apiClient.put(`/api/v1/templates/${id}`, data),
-    delete: (id, archive = false) =>
-      apiClient.delete(`/api/v1/templates/${id}/`, { params: { archive } }),
+    delete: (id) => apiClient.delete(`/api/v1/templates/${id}`),
     history: (id, limit = 10) =>
       apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
     restore: (templateId, archiveId) =>
