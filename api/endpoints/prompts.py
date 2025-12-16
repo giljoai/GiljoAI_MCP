@@ -768,12 +768,12 @@ async def get_implementation_prompt(
                 detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode."
             )
 
-        # 3. Fetch active orchestrator job (status = 'working')
+        # 3. Fetch orchestrator job (waiting after staging, or working during execution)
         orchestrator_stmt = select(MCPAgentJob).where(
             MCPAgentJob.project_id == project_id,
             MCPAgentJob.tenant_key == current_user.tenant_key,
             MCPAgentJob.agent_type == 'orchestrator',
-            MCPAgentJob.status == 'working'
+            MCPAgentJob.status.in_(['waiting', 'working'])
         ).order_by(MCPAgentJob.created_at.desc())
 
         orchestrator_result = await db.execute(orchestrator_stmt)
@@ -782,10 +782,11 @@ async def get_implementation_prompt(
         if not orchestrator_job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No active orchestrator found for this project. Please run staging first."
+                detail="No orchestrator found for this project. Please ensure staging has been completed."
             )
 
         # 4. Fetch spawned agent jobs (waiting or working status)
+        # First try by spawned_by, then fallback to project_id for legacy data
         agent_jobs_stmt = select(MCPAgentJob).where(
             MCPAgentJob.spawned_by == orchestrator_job.job_id,
             MCPAgentJob.tenant_key == current_user.tenant_key,
@@ -794,6 +795,18 @@ async def get_implementation_prompt(
 
         agent_jobs_result = await db.execute(agent_jobs_stmt)
         agent_jobs = agent_jobs_result.scalars().all()
+
+        # Fallback: Query by project_id for agents without spawned_by set (legacy data)
+        if not agent_jobs:
+            fallback_stmt = select(MCPAgentJob).where(
+                MCPAgentJob.project_id == project_id,
+                MCPAgentJob.tenant_key == current_user.tenant_key,
+                MCPAgentJob.agent_type != 'orchestrator',  # Exclude orchestrator itself
+                MCPAgentJob.status.in_(['waiting', 'working'])
+            ).order_by(MCPAgentJob.created_at)
+
+            fallback_result = await db.execute(fallback_stmt)
+            agent_jobs = fallback_result.scalars().all()
 
         if not agent_jobs:
             raise HTTPException(
