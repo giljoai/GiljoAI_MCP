@@ -16,7 +16,15 @@
             {{ getAgentAbbreviation(item.agent_type) }}
           </span>
         </v-avatar>
-        <span class="text-capitalize">{{ item.agent_type }}</span>
+        <div class="d-flex flex-column">
+          <span class="font-weight-medium text-capitalize">{{ item.agent_name || item.agent_type }}</span>
+          <span
+            v-if="item.agent_name && item.agent_name !== item.agent_type"
+            class="text-caption text-grey text-capitalize"
+          >
+            {{ item.agent_type }}
+          </span>
+        </div>
       </div>
     </template>
 
