@@ -408,10 +408,19 @@ async def delete_template(
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """
-    Soft delete a template.
+    Hard delete a template and all related records.
 
-    NOTE: Currently uses direct DB access. Future work: Add delete_template to TemplateService.
+    Deletes:
+    - TemplateAugmentation records
+    - TemplateUsageStats records
+    - TemplateArchive records (version history)
+    - Sets MCPAgentJob.template_id to NULL for historical jobs
+    - The template itself
     """
+    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.templates import TemplateArchive, TemplateAugmentation, TemplateUsageStats
+    from sqlalchemy import update, delete as sql_delete
+
     try:
         context = get_tenant_and_product_from_user(current_user)
 
@@ -430,18 +439,46 @@ async def delete_template(
         if _is_system_managed_role(template.role):
             raise HTTPException(status_code=403, detail="Cannot delete system-managed templates")
 
-        # Soft delete
-        template.is_active = False
+        template_name = template.name
+
+        # 1. Set MCPAgentJob.template_id to NULL for historical jobs
+        await session.execute(
+            update(MCPAgentJob)
+            .where(MCPAgentJob.template_id == template_id)
+            .values(template_id=None)
+        )
+
+        # 2. Delete related TemplateAugmentation records
+        await session.execute(
+            sql_delete(TemplateAugmentation)
+            .where(TemplateAugmentation.template_id == template_id)
+        )
+
+        # 3. Delete related TemplateUsageStats records
+        await session.execute(
+            sql_delete(TemplateUsageStats)
+            .where(TemplateUsageStats.template_id == template_id)
+        )
+
+        # 4. Delete related TemplateArchive records (version history)
+        await session.execute(
+            sql_delete(TemplateArchive)
+            .where(TemplateArchive.template_id == template_id)
+        )
+
+        # 5. Delete the template itself
+        await session.delete(template)
         await session.commit()
 
-        logger.info(f"Deleted template {template_id}")
+        logger.info(f"Hard deleted template {template_id} ({template_name})")
 
-        return {"message": "Template deleted successfully", "template_id": template_id}
+        return {"message": f"Template '{template_name}' permanently deleted", "template_id": template_id}
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to delete template: {e}")
+        await session.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete template: {str(e)}")
 
 
