@@ -192,8 +192,11 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
 
     BEHAVIOR: The validation should ONLY apply to orchestrator type,
     other agent types can have multiple instances.
+
+    Handover 0351: agent_name must match template name for validation.
     """
     from src.giljo_mcp.tools.orchestration import spawn_agent_job
+    from src.giljo_mcp.models import AgentTemplate
 
     # Setup
     tenant_key = "test_tenant_multi"
@@ -209,6 +212,20 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         status="active"
     )
     db_session.add(project)
+
+    # Handover 0351: Create agent template for validation
+    implementer_template = AgentTemplate(
+        id=str(uuid4()),
+        name="implementer",  # Template name
+        role="Code Implementer",
+        description="Implements features",
+        tenant_key=tenant_key,
+        product_id=None,  # No product link needed for this test
+        is_active=True,
+        version="1.0.0",
+        template_content="# Implementer\n\nImplements code."
+    )
+    db_session.add(implementer_template)
     await db_session.commit()
 
     # Create existing orchestrator
@@ -228,8 +245,8 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         job_id=str(uuid4()),
         project_id=project_id,
         tenant_key=tenant_key,
-        agent_type="implementer",
-        agent_name="Implementer #1",
+        agent_type="worker",  # agent_type for categorization
+        agent_name="implementer",  # agent_name matches template (SSOT)
         status="working",
         mission="First implementer"
     )
@@ -237,9 +254,10 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
     await db_session.commit()
 
     # Attempt to create second implementer (should succeed)
+    # Handover 0351: Use template name in agent_name
     result = await spawn_agent_job(
-        agent_type="implementer",
-        agent_name="Implementer #2",
+        agent_type="worker",  # agent_type for categorization
+        agent_name="implementer",  # agent_name matches template (SSOT)
         mission="Second implementer mission",
         project_id=project_id,
         tenant_key=tenant_key,
