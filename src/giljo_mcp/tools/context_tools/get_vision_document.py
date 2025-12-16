@@ -87,6 +87,79 @@ def get_max_chunks(chunking: str) -> int:
     return mapping.get(chunking, 4)
 
 
+async def _get_summary_response(
+    active_docs: list,
+    depth: str,
+    summary_field: str,
+    token_field: str,
+    compression: str,
+    product_id: str,
+    tenant_key: str
+) -> Dict[str, Any]:
+    """
+    Helper function to retrieve summary-based response (Handover 0352).
+
+    Args:
+        active_docs: List of active VisionDocument instances
+        depth: Depth level ("light" or "medium")
+        summary_field: Database field name for summary ("summary_light" or "summary_medium")
+        token_field: Database field name for token count
+        compression: Compression ratio label ("33%" or "66%")
+        product_id: Product UUID
+        tenant_key: Tenant key
+
+    Returns:
+        Dict with summary content (no pagination)
+    """
+    # Get first active document with the requested summary field
+    summary_text = None
+    token_count = None
+
+    for doc in active_docs:
+        summary_value = getattr(doc, summary_field, None)
+        if summary_value:
+            summary_text = summary_value
+            token_count = getattr(doc, token_field, None)
+            break
+
+    if not summary_text:
+        logger.warning(
+            "summary_not_available",
+            product_id=product_id,
+            depth=depth,
+            summary_field=summary_field,
+            operation="get_vision_document"
+        )
+        return {
+            "source": "vision_documents",
+            "depth": depth,
+            "data": {
+                "error": "summary_not_available",
+                "message": f"No {summary_field} available for this product"
+            },
+            "pagination": None
+        }
+
+    logger.info(
+        "vision_summary_fetched",
+        product_id=product_id,
+        depth=depth,
+        tokens=token_count,
+        compression=compression
+    )
+
+    return {
+        "source": "vision_documents",
+        "depth": depth,
+        "data": {
+            "summary": summary_text,
+            "tokens": token_count,
+            "compression": compression
+        },
+        "pagination": None
+    }
+
+
 async def get_vision_document(
     product_id: str,
     tenant_key: str,
@@ -96,57 +169,70 @@ async def get_vision_document(
     db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
-    Fetch vision document chunks for given product with depth control and pagination.
+    Fetch vision document with depth-based source selection (Handover 0352).
 
-    Reuses chunking logic from mission_planner._get_relevant_vision_chunks().
-    Queries mcp_context_index for pre-chunked vision documents.
+    Depth-Based Source Selection:
+    - "light": Returns VisionDocument.summary_light (single response, ~33% compression)
+    - "medium": Returns VisionDocument.summary_medium (single response, ~66% compression)
+    - "full": Returns MCPContextIndex chunks (paginated, ≤25K tokens per call)
+    - "none": Returns empty response
 
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
         chunking: Depth level ("none", "light", "medium", "full")
-        offset: Number of chunks to skip (for pagination)
-        limit: Max chunks to return (None = use chunking default)
+        offset: Number of chunks to skip (for pagination, full depth only)
+        limit: Max chunks to return (for pagination, full depth only)
         db_manager: Database manager instance
 
     Returns:
-        Dict with vision chunks and metadata:
+        For light/medium depth:
         {
             "source": "vision_documents",
-            "depth": "moderate",
+            "depth": "light",
+            "data": {
+                "summary": "Light summary content",
+                "tokens": 5000,
+                "compression": "33%"
+            },
+            "pagination": None
+        }
+
+        For full depth:
+        {
+            "source": "vision_documents",
+            "depth": "full",
             "data": [
                 {"content": "...", "chunk_order": 1, "tokens": 1200},
                 {"content": "...", "chunk_order": 2, "tokens": 950}
             ],
-            "metadata": {
-                "product_id": "uuid",
-                "tenant_key": "...",
+            "pagination": {
                 "total_chunks": 12,
                 "offset": 0,
-                "limit": 4,
-                "returned_chunks": 4,
+                "limit": 3,
                 "has_more": true,
-                "next_offset": 4,
-                "estimated_tokens": 5000
+                "next_offset": 3
             }
         }
 
     Multi-Tenant Isolation:
         All queries filter by tenant_key and product_id.
 
-    Pagination Example:
-        # Fetch first batch
-        batch1 = await get_vision_document(chunking='heavy', offset=0, limit=4)
-        # Fetch next batch if has_more=True
-        batch2 = await get_vision_document(chunking='heavy', offset=4, limit=4)
-
     Example:
+        # Light summary (no pagination)
         result = await get_vision_document(
-            product_id="123e4567-e89b-12d3-a456-426614174000",
+            product_id="uuid",
             tenant_key="tenant_abc",
-            chunking="light",
+            chunking="light"
+        )
+
+        # Full chunks with pagination
+        result = await get_vision_document(
+            product_id="uuid",
+            tenant_key="tenant_abc",
+            chunking="full",
             offset=0,
-            limit=2
+            limit=3
         )
     """
     logger.info(
@@ -215,7 +301,7 @@ async def get_vision_document(
                 }
             }
 
-        # Check if product has chunked vision documents
+        # Check if product has vision documents
         if not product.vision_documents:
             logger.debug(
                 "no_vision_documents",
@@ -238,6 +324,57 @@ async def get_vision_document(
                     "estimated_tokens": 0
                 }
             }
+
+        # Get active vision documents
+        active_docs = [doc for doc in product.vision_documents if doc.is_active]
+        if not active_docs:
+            logger.debug(
+                "no_active_vision_documents",
+                product_id=product_id,
+                operation="get_vision_document"
+            )
+            return {
+                "source": "vision_documents",
+                "depth": chunking,
+                "data": [],
+                "metadata": {
+                    "product_id": product_id,
+                    "tenant_key": tenant_key,
+                    "total_chunks": 0,
+                    "offset": offset,
+                    "limit": limit or 0,
+                    "returned_chunks": 0,
+                    "has_more": False,
+                    "next_offset": None,
+                    "estimated_tokens": 0
+                }
+            }
+
+        # Handover 0352: Depth-based source selection
+        # For "light" and "medium" depths, use summary fields (no pagination)
+        if chunking == "light":
+            return await _get_summary_response(
+                active_docs=active_docs,
+                depth="light",
+                summary_field="summary_light",
+                token_field="summary_light_tokens",
+                compression="33%",
+                product_id=product_id,
+                tenant_key=tenant_key
+            )
+
+        if chunking == "medium":
+            return await _get_summary_response(
+                active_docs=active_docs,
+                depth="medium",
+                summary_field="summary_medium",
+                token_field="summary_medium_tokens",
+                compression="66%",
+                product_id=product_id,
+                tenant_key=tenant_key
+            )
+
+        # For "full" depth, use chunk-based pagination (existing logic below)
 
         # Get active chunked vision documents (reuse pattern from mission_planner)
         chunked_docs = [
@@ -306,22 +443,13 @@ async def get_vision_document(
                 }
             }
 
-        # Apply depth filtering with pagination
+        # Apply depth filtering with pagination (full depth only)
         max_chunks = get_max_chunks(chunking) if limit is None else limit
         max_tokens = get_max_tokens(chunking)
         total_chunks = len(all_chunks)
 
         # Apply pagination: skip offset chunks, take up to limit chunks
         paginated_chunks = all_chunks[offset:offset + max_chunks] if offset < total_chunks else []
-
-        # Handle summary_* depths: include summary from first chunked document
-        summary_text = None
-        if chunking.startswith('summary_'):
-            # Get summary from first active chunked vision document
-            for doc in chunked_docs:
-                if doc.summary_text:
-                    summary_text = doc.summary_text.strip()
-                    break
 
         selected_chunks = []
         total_tokens = 0
@@ -365,25 +493,16 @@ async def get_vision_document(
             max_tokens=max_tokens
         )
 
-        # Build response data
-        response_data = {"source": "vision_documents", "depth": chunking}
-        
-        # Include summary if available (for summary_* depths)
-        if summary_text:
-            response_data["summary"] = summary_text
-            
-        response_data["data"] = selected_chunks
-        response_data["metadata"] = {
-            "product_id": product_id,
-            "tenant_key": tenant_key,
-            "total_chunks": total_chunks,
-            "offset": offset,
-            "limit": max_chunks,
-            "returned_chunks": len(selected_chunks),
-            "has_more": has_more,
-            "next_offset": next_offset,
-            "estimated_tokens": total_tokens,
-            "has_summary": bool(summary_text)
+        # Build response data (Handover 0352: consistent format)
+        return {
+            "source": "vision_documents",
+            "depth": chunking,
+            "data": selected_chunks,
+            "pagination": {
+                "total_chunks": total_chunks,
+                "offset": offset,
+                "limit": max_chunks,
+                "has_more": has_more,
+                "next_offset": next_offset
+            }
         }
-        
-        return response_data
