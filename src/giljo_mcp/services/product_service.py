@@ -1216,20 +1216,18 @@ class ProductService:
                         # Re-attach doc to session after previous commit (fixes detached state)
                         session.add(doc)
 
-                        # Store all three summary levels
+                        # Store summary levels (Handover 0352: light and medium only)
                         doc.summary_light = summaries["light"]["summary"]
-                        doc.summary_moderate = summaries["moderate"]["summary"]
-                        doc.summary_heavy = summaries["heavy"]["summary"]
+                        doc.summary_medium = summaries["medium"]["summary"]
                         doc.summary_light_tokens = summaries["light"]["tokens"]
-                        doc.summary_moderate_tokens = summaries["moderate"]["tokens"]
-                        doc.summary_heavy_tokens = summaries["heavy"]["tokens"]
+                        doc.summary_medium_tokens = summaries["medium"]["tokens"]
                         doc.is_summarized = True
                         doc.original_token_count = summaries["original_tokens"]
 
-                        # Backward compatibility: set summary_text to heavy summary
-                        doc.summary_text = summaries["heavy"]["summary"]
+                        # Backward compatibility: set summary_text to medium summary
+                        doc.summary_text = summaries["medium"]["summary"]
                         doc.compression_ratio = (
-                            (summaries["original_tokens"] - summaries["heavy"]["tokens"])
+                            (summaries["original_tokens"] - summaries["medium"]["tokens"])
                             / summaries["original_tokens"]
                             if summaries["original_tokens"] > 0 else 0.0
                         )
@@ -1239,8 +1237,7 @@ class ProductService:
                         self._logger.info(
                             f"Vision document {doc.id} summarized: "
                             f"Light={summaries['light']['tokens']} tokens, "
-                            f"Moderate={summaries['moderate']['tokens']} tokens, "
-                            f"Heavy={summaries['heavy']['tokens']} tokens "
+                            f"Medium={summaries['medium']['tokens']} tokens "
                             f"(from {summaries['original_tokens']} tokens) "
                             f"in {summaries['processing_time_ms']}ms"
                         )
