@@ -10,12 +10,15 @@ Tests verify:
 4. New users get 'light' as default
 5. mission_planner.py handles defaults correctly
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
-from giljo_mcp.tools.orchestration import DEFAULT_DEPTH_CONFIG, _get_user_config
-from giljo_mcp.models.auth import User
+
 import uuid
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from giljo_mcp.models.auth import User
+from giljo_mcp.tools.orchestration import DEFAULT_DEPTH_CONFIG, _get_user_config
 
 
 class TestVisionDepthDefaults:
@@ -49,7 +52,7 @@ class TestRuntimeNormalization:
             "vision_documents": "optional",  # Old value
             "memory_last_n_projects": 5,
             "git_commits": 25,
-            "agent_templates": "type_only"
+            "agent_templates": "type_only",
         }
 
         # Mock database query
@@ -80,10 +83,7 @@ class TestRuntimeNormalization:
             mock_user.tenant_key = tenant_key
             mock_user.is_active = True
             mock_user.field_priority_config = None
-            mock_user.depth_config = {
-                "vision_documents": depth_value,
-                "memory_last_n_projects": 5
-            }
+            mock_user.depth_config = {"vision_documents": depth_value, "memory_last_n_projects": 5}
 
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = mock_user
@@ -145,6 +145,7 @@ class TestMissionPlannerDefault:
         # and that the default value is used correctly
         try:
             from giljo_mcp import mission_planner
+
             # If import succeeds, basic syntax is correct
             assert hasattr(mission_planner, "MissionPlanner")
         except ImportError as e:
