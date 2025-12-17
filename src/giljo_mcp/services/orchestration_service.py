@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 def _generate_agent_protocol(job_id: str, tenant_key: str) -> str:
     """
-    Generate the 6-phase agent lifecycle protocol (Handover 0334).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
@@ -57,48 +57,37 @@ def _generate_agent_protocol(job_id: str, tenant_key: str) -> str:
         tenant_key: Tenant key for MCP tool calls
 
     Returns:
-        Multi-line protocol string with 6 phases and MCP tool references
+        Multi-line protocol string with 5 phases and MCP tool references
     """
-    return f"""## Agent Lifecycle Protocol (6 Phases)
+    return f"""## Agent Lifecycle Protocol (5 Phases)
 
-### Phase 1: STARTUP
-- Acknowledge mission receipt by calling `mcp__giljo-mcp__get_agent_mission`
-- Parse mission objectives and requirements
-- Set up local workspace if needed
+### Phase 1: STARTUP (BEFORE ANY WORK)
+1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
+2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="your-type")` - Mark as WORKING
+3. Call `mcp__giljo-mcp__receive_messages(agent_id="your-type")` - Check for instructions
+4. Review any messages and incorporate feedback BEFORE starting work
 
 ### Phase 2: EXECUTION
 - Execute assigned tasks from mission
 - Use todo lists to track progress internally
 - Maintain focus on mission objectives
 
-### Phase 3: PROGRESS REPORTING
-- Report progress periodically via `mcp__giljo-mcp__report_progress`:
-  ```
-  report_progress(job_id="{job_id}", progress={{"percent": 50, "message": "Completed X of Y tasks"}})
-  ```
-- Include: percent complete, current step, any blockers
+### Phase 3: PROGRESS REPORTING (After each milestone)
+1. Call `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "..."}})`
+2. Call `mcp__giljo-mcp__receive_messages(agent_id="your-type")` - Check for new instructions
+3. Incorporate any orchestrator feedback before continuing
 
-### Phase 4: COMMUNICATION
-- Check for messages via `mcp__giljo-mcp__get_next_instruction`
-- Respond to orchestrator instructions promptly
-- Broadcast completion updates if needed
+### Phase 4: COMPLETION
+1. Call `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
+2. Await acknowledgment or further instructions
 
-### Phase 5: COMPLETION
-- Complete job via `mcp__giljo-mcp__complete_job`:
-  ```
-  complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})
-  ```
-- Include: summary of work done, artifacts created, any follow-up needed
-
-### Phase 6: CLEANUP
-- Ensure all files are committed/saved
-- Close any open resources
-- Await acknowledgment or further instructions
+### Phase 5: ERROR HANDLING (If blocked)
+1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="description")` - Marks job as BLOCKED
+2. STOP work and await orchestrator guidance
 
 ---
-**Job Context:**
-- Job ID: `{job_id}`
-- Tenant Key: `{tenant_key}`
+**CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
+**Do NOT use curl, HTTP, or SDK calls.**
 """
 
 
@@ -393,19 +382,39 @@ class OrchestrationService:
                 # Generate THIN agent prompt (~10 lines)
                 thin_agent_prompt = f"""I am {agent_name} (Agent {agent_type}) for Project "{project.name}".
 
-IDENTITY:
-- Agent ID: {agent_job_id}
-- Agent Type: {agent_type}
-- Project ID: {project_id}
-- Parent Orchestrator: {parent_job_id or "None"}
+## CRITICAL: MCP TOOL USAGE
 
-INSTRUCTIONS:
-1. Fetch mission: get_agent_mission(agent_job_id='{agent_job_id}', tenant_key='{tenant_key}')
-2. Execute mission
-3. Report progress: update_job_progress('{agent_job_id}', percent, message)
-4. Coordinate via: send_message(to_agent_id, content)
+MCP tools are **NATIVE tool calls** - identical to Read, Write, Bash, Glob.
+- CORRECT: Call `mcp__giljo-mcp__get_agent_mission` directly as a tool
+- WRONG: curl, HTTP, fetch, requests, SDK calls
 
-Begin by fetching your mission.
+## MANDATORY STARTUP SEQUENCE
+
+Execute these IN ORDER before starting your mission:
+
+1. **Get Mission:**
+   Tool: mcp__giljo-mcp__get_agent_mission
+   Parameters: {{"agent_job_id": "{agent_job_id}", "tenant_key": "{tenant_key}"}}
+
+2. **Acknowledge Job (marks you as WORKING):**
+   Tool: mcp__giljo-mcp__acknowledge_job
+   Parameters: {{"job_id": "{agent_job_id}", "agent_id": "{agent_type}"}}
+
+3. **Check Messages (BEFORE starting work):**
+   Tool: mcp__giljo-mcp__receive_messages
+   Parameters: {{"agent_id": "{agent_type}"}}
+
+4. **Execute your mission** (details in get_agent_mission response)
+
+5. **Report Progress** (after each milestone):
+   Tool: mcp__giljo-mcp__report_progress
+   Parameters: {{"job_id": "{agent_job_id}", "progress": {{"percent": X, "message": "..."}}}}
+
+6. **Complete Job** (when done):
+   Tool: mcp__giljo-mcp__complete_job
+   Parameters: {{"job_id": "{agent_job_id}", "result": {{"summary": "...", "artifacts": [...]}}}}
+
+Your full mission is in the database. Call get_agent_mission to retrieve it.
 """
 
                 # Calculate token estimates
