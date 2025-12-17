@@ -815,19 +815,39 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 # Generate THIN agent prompt (~10 lines)
                 thin_agent_prompt = f"""I am {agent_name} (Agent {agent_type}) for Project "{project.name}".
 
-IDENTITY:
-- Agent ID: {agent_job_id}
-- Agent Type: {agent_type}
-- Project ID: {project_id}
-- Parent Orchestrator: {parent_job_id or "None"}
+## CRITICAL: MCP TOOL USAGE
 
-INSTRUCTIONS:
-1. Fetch mission: get_agent_mission(agent_job_id='{agent_job_id}', tenant_key='{tenant_key}')
-2. Execute mission
-3. Report progress: update_job_progress('{agent_job_id}', percent, message)
-4. Coordinate via: send_message(to_agent_id, content)
+MCP tools are **NATIVE tool calls** - identical to Read, Write, Bash, Glob.
+- CORRECT: Call `mcp__giljo-mcp__get_agent_mission` directly as a tool
+- WRONG: curl, HTTP, fetch, requests, SDK calls
 
-Begin by fetching your mission.
+## MANDATORY STARTUP SEQUENCE
+
+Execute these IN ORDER before starting your mission:
+
+1. **Get Mission:**
+   Tool: mcp__giljo-mcp__get_agent_mission
+   Parameters: {{"agent_job_id": "{agent_job_id}", "tenant_key": "{tenant_key}"}}
+
+2. **Acknowledge Job (marks you as WORKING):**
+   Tool: mcp__giljo-mcp__acknowledge_job
+   Parameters: {{"job_id": "{agent_job_id}", "agent_id": "{agent_type}"}}
+
+3. **Check Messages (BEFORE starting work):**
+   Tool: mcp__giljo-mcp__receive_messages
+   Parameters: {{"agent_id": "{agent_type}"}}
+
+4. **Execute your mission** (details in get_agent_mission response)
+
+5. **Report Progress** (after each milestone):
+   Tool: mcp__giljo-mcp__report_progress
+   Parameters: {{"job_id": "{agent_job_id}", "progress": {{"percent": X, "message": "..."}}}}
+
+6. **Complete Job** (when done):
+   Tool: mcp__giljo-mcp__complete_job
+   Parameters: {{"job_id": "{agent_job_id}", "result": {{"summary": "...", "artifacts": [...]}}}}
+
+Your full mission is in the database. Call get_agent_mission to retrieve it.
 """
 
                 # Calculate token estimates
