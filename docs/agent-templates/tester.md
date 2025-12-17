@@ -52,25 +52,25 @@ You MUST use MCP tools at these checkpoints:
 
 ### Phase 1: Job Acknowledgment (BEFORE ANY WORK)
 
-1. Call `mcp__giljo_mcp__get_pending_jobs(agent_type="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
+1. Call `mcp__giljo-mcp__get_pending_jobs(agent_type="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
 2. Find your assigned job in the response
-3. Call `mcp__giljo_mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
-4. **CRITICAL**: Update job status to 'active' when starting work:
-   - Call `mcp__giljo_mcp__update_job_status(job_id=<job_id>, new_status="active")`
+3. Call `mcp__giljo-mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
+3. **CRITICAL**: Acknowledge job when starting work:
+   - Call `mcp__giljo-mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>")`
    - This moves your job card from "Pending" to "Active" column in Kanban dashboard
    - Developer will see you've started working
 
 ### Phase 2: Incremental Progress (AFTER EACH TODO)
 
 1. Complete one actionable todo item
-2. Call `mcp__giljo_mcp__report_progress()`:
+2. Call `mcp__giljo-mcp__report_progress()`:
    - job_id: Your job ID from acknowledgment
    - completed_todo: Description of what you completed
    - files_modified: List of file paths changed
    - context_used: Estimated tokens consumed
    - tenant_key: "<TENANT_KEY>"
 
-3. Call `mcp__giljo_mcp__get_next_instruction()`:
+3. Call `mcp__giljo-mcp__get_next_instruction()`:
    - job_id: Your job ID
    - agent_type: "<AGENT_TYPE>"
    - tenant_key: "<TENANT_KEY>"
@@ -80,49 +80,45 @@ You MUST use MCP tools at these checkpoints:
 ### Phase 3: Completion
 
 1. Complete all mission objectives
-2. **CRITICAL**: Update job status to 'completed':
-   - Call `mcp__giljo_mcp__update_job_status(job_id=<job_id>, new_status="completed")`
-   - This moves your job card to "Completed" column in Kanban dashboard
-3. Call `mcp__giljo_mcp__complete_job()`:
-   - job_id: Your job ID
+2. **CRITICAL**: Mark job as complete:
+   - Call `mcp__giljo-mcp__complete_job(job_id=<job_id>, result={...})`
    - result: {summary, files_created, files_modified, tests_written, coverage}
+   - This moves your job card to "Completed" column in Kanban dashboard
    - tenant_key: "<TENANT_KEY>"
 
 ### Error Handling & Blocked Status
 
 On ANY error or if you need human input:
-1. **CRITICAL**: Update job status to 'blocked':
-   - Call `mcp__giljo_mcp__update_job_status(job_id=<job_id>, new_status="blocked", reason="Describe the issue")`
+1. **CRITICAL**: Report blocking error:
+   - Call `mcp__giljo-mcp__report_error(job_id=<job_id>, error="Describe the issue")`
    - This moves your job card to "BLOCKED" column in Kanban dashboard
    - Developer will be notified you need help
-2. Call `mcp__giljo_mcp__report_error()` with detailed error information
-3. STOP work and await orchestrator guidance
+2. STOP work and await orchestrator guidance
 
 ### Status Update Examples
 
 **When starting work:**
-```python
-mcp.call_tool("mcp__giljo_mcp__update_job_status", {
-    "job_id": "your-job-id",
-    "new_status": "active"
-})
+```
+Tool: mcp__giljo-mcp__acknowledge_job
+Parameters:
+  - job_id: "your-job-id"
+  - agent_id: "analyzer"
 ```
 
 **When blocked (need database schema clarification):**
-```python
-mcp.call_tool("mcp__giljo_mcp__update_job_status", {
-    "job_id": "your-job-id",
-    "new_status": "blocked",
-    "reason": "Need database schema clarification for user authentication table"
-})
+```
+Tool: mcp__giljo-mcp__report_error
+Parameters:
+  - job_id: "your-job-id"
+  - error: "Need database schema clarification for user authentication table"
 ```
 
 **When completing work:**
-```python
-mcp.call_tool("mcp__giljo_mcp__update_job_status", {
-    "job_id": "your-job-id",
-    "new_status": "completed"
-})
+```
+Tool: mcp__giljo-mcp__complete_job
+Parameters:
+  - job_id: "your-job-id"
+  - result: {"summary": "Analysis complete", "files_created": [...]}
 ```
 
 ### IMPORTANT: Agent Self-Navigation
