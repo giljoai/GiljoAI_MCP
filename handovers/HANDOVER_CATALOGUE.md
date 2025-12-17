@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-16 (Retired 0351, 0352 - all complete)
+**Last Updated:** 2025-12-16 (Bulk cleanup: retired 0117, 0256, 0331, 0340, 0341, 0344)
 
 ---
 
@@ -24,17 +24,13 @@
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0331 | Message Audit Modal | Ready | High | UI feature, not started |
-| 0340 | CLI Mode Two-Phase Architecture Summary | Ready (Stage 2) | High | Stage 1 complete |
-| 0341 | CLI Mode Stage 2 Implementation Prompt | Ready for Agent | High | TDD spec ready |
-| 0344 | CLI Mode Play Button API Fix | Ready | Critical | api.get bug + wrong URL |
+| 0246b | Vision Document Storage Simplification | Ready | Medium | New Dec 2025 feature |
+| 0348 | Product Context Gap Analysis | Ready | Medium | Analysis/planning doc |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done, not complete |
-| 0256 | Task Templates Cleanup Followup | Partial | Low | Followup to earlier work |
-| 0298 | Legacy Messaging Queue Cleanup | Not Started | Medium | Cleanup task |
 
 ### Reference Documents (Not Actionable)
 | ID | Title | Type | Notes |
@@ -53,26 +49,11 @@
 ### Deferred / Low Priority
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0083 | Harmonize Slash Commands | Deferred | Low | Filename says "Not_Done" |
-| 0117 | Agent Role Refactor (8-Role System) | Assessment | Low | Research/assessment only |
+| 0083 | Harmonize Slash Commands | Deferred | Low | Future enhancement |
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
 | 0284 | Address get_available_agents | Not Started | Medium | Enhancement |
+| 0298 | Legacy Messaging Queue Cleanup | Not Started | Medium | Cleanup task |
 | 9999 | One-Liner Installation System | Deferred | Low | Explicitly deferred |
-
-### Should Be Archived (Complete but in Root)
-| ID | Title | Evidence | Action |
-|----|-------|----------|--------|
-| 0260 | Claude Code CLI Mode Implementation | Commits: 907b4ad4, c3b5c1b8 | Move to completed/ |
-| 0260d | Phase 4 Test Results | Test output doc | Move to completed/reference/ |
-| 0261 | Claude Code CLI Implementation Prompt | Superseded by 0334 | Move to completed/ |
-| 0261 | Task MCP Surface Rationalization | Superseded by 0334 | Move to completed/ |
-| 0275 | Orchestrator Metadata Bug Fix | Part of 0274 series | Move to completed/reference/ |
-| 0276 | Stage Project Refresh Complete | Commits: 44142e1f, 32c950de | Move to completed/ |
-| 0279 | Context Priority Integration Fix | Commits: 57f11b0b, 92d05336 | Move to completed/ |
-| 0287 | Launch Button Staging Complete Signal | Commits: 38b198cb, 31674721 | Move to completed/ |
-| 0291 | Staging Complete Broadcast Signal | Commits: 1c32aff4, a336f1b3 | Move to completed/ |
-| 0336 | Tech Stack Encoding and Token Estimation Fix | Commits: 62c5e86f, 30a8099a | Move to completed/ |
-| 0343 | Frontend Execution Mode Lock TDD | Commits: 917db50a, a7553ff4, 25b60ec0 | Move to completed/ |
 
 ---
 
@@ -81,6 +62,12 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0117 | Agent Role Refactor (8-Role System) | **SUPERSEDED** by 0515 |
+| 0256 | Task Templates Cleanup Followup | **COMPLETE** |
+| 0331 | Message Audit Modal | **COMPLETE** |
+| 0340 | CLI Mode Two-Phase Architecture Summary | **COMPLETE** |
+| 0341 | CLI Mode Stage 2 Implementation | **COMPLETE** |
+| 0344 | CLI Mode Play Button API Fix | **COMPLETE** |
 | 0351 | Agent Name as Single Source of Truth | **COMPLETE** |
 | 0352 | Vision Document Depth Refactor | **COMPLETE** |
 | 0346 | Depth Config Field Standardization | **COMPLETE** |
@@ -308,43 +295,19 @@ completed/reference/
 
 ---
 
-## Cleanup Actions Needed
-
-### Files to Move from Root to completed/
-1. `0260_claude_code_cli_mode_implementation.md` -> Add -C, move
-2. `0260d_phase4_test_results.md` -> Move to reference
-3. `0261_claude_code_cli_implementation_prompt.md` -> Mark superseded, move
-4. `0261_task_mcp_surface_rationalization.md` -> Mark superseded, move
-5. `0275_orchestrator_metadata_bug_fix.md` -> Move to reference
-6. `0276_stage_project_refresh_complete.md` -> Add -C, move
-7. `0279_context_priority_integration_fix.md` -> Add -C, move
-8. `0287_launch_button_staging_complete_signal.md` -> Add -C, move
-9. `0291_staging_complete_broadcast_signal.md` -> Add -C, move
-10. `0336_TECH_STACK_ENCODING_AND_TOKEN_ESTIMATION_FIX.md` -> Add -C, move
-11. `0343_FRONTEND_EXECUTION_MODE_LOCK_TDD.md` -> Add -C, move
-
-### Files in completed/ Needing Fixes
-1. `0289_message_routing_architecture_fix.md` -> Add `-C` suffix
-
-### Series to Consolidate in Reference
-1. **0294 series** (6 files) -> Create `reference/0201-0300/0294_series/`
-2. **0335 series** (4 files) -> Create `reference/0301-0400/0335_series/`
-3. **0345 series** (4 files) -> Create `reference/0301-0400/0345_series/`
-
----
-
 ## History
 
 ### December 2025
+- **Bulk Cleanup**: Retired 0117, 0256, 0331, 0340, 0341, 0344, MCPreport_nov28
+  - 0331: Message Audit Modal (implemented)
+  - 0341: CLI Mode Stage 2 (implemented)
+  - 0344: Play Button API Fix (fixed)
+  - 0256: Task Templates Cleanup (code removed)
+  - 0117: Agent Role Refactor (superseded by 0515)
+  - 0340: CLI Mode Summary (reference doc)
 - **0351, 0352 RETIRED**: Both complete with full git evidence
-  - 0351: Agent Name as Single Source of Truth (7 commits)
-  - 0352: Vision Document Depth Refactor (8 commits)
 - **0346, 0347, 0350 Series RETIRED**: All complete with full git evidence
-  - 0350: On-Demand Context Fetch (7 files → completed/)
-  - 0347: Mission Response JSON Restructuring (10 files → completed/)
-  - 0346: Depth Config Field Standardization (duplicate removed)
 - **Harmonization audit**: Cross-referenced all handovers with git commits
-- 0351: Agent Name as Single Source of Truth (ready for implementation)
 - 0338, 0345a-e: Vision Document Context Optimization Series (COMPLETE)
 - 0344: CLI Mode Play Button API Fix (ready for implementation)
 - 0341: CLI Mode Stage 2 Implementation Prompt (ready for agent)
