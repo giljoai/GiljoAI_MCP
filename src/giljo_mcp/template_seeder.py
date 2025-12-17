@@ -35,6 +35,80 @@ from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 logger = logging.getLogger(__name__)
 
 
+async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key: str) -> int:
+    """
+    Refresh system_instructions for existing templates without overwriting user customizations.
+
+    This function updates ONLY the system_instructions field (MCP coordination protocol)
+    for all templates belonging to a tenant. User customizations in user_instructions
+    are preserved.
+
+    Use this to apply MCP protocol fixes to existing installations without requiring
+    template deletion and re-seeding.
+
+    Args:
+        session: AsyncSession - Database session for operations
+        tenant_key: str - Tenant key to refresh templates for
+
+    Returns:
+        int - Number of templates updated
+
+    Raises:
+        ValueError: If tenant_key is None or empty
+    """
+    if not tenant_key:
+        raise ValueError("tenant_key must be non-empty string")
+
+    try:
+        # Get the updated MCP coordination sections
+        mcp_section = _get_mcp_coordination_section()
+        check_in_section = _get_check_in_protocol_section()
+        context_request_section = _get_context_request_section()
+        agent_messaging_section = _get_agent_messaging_protocol_section()
+        orchestrator_messaging_section = _get_orchestrator_messaging_protocol_section()
+
+        # Query existing templates for tenant
+        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
+        result = await session.execute(stmt)
+        templates = result.scalars().all()
+
+        if not templates:
+            logger.info(f"No templates found for tenant '{tenant_key}'")
+            return 0
+
+        updated_count = 0
+        for template in templates:
+            # Build new system_instructions based on role
+            if template.role == "orchestrator":
+                new_system_instructions = (
+                    f"{mcp_section}\n\n{context_request_section}\n\n"
+                    f"{check_in_section}\n\n{orchestrator_messaging_section}"
+                )
+            else:
+                new_system_instructions = (
+                    f"{mcp_section}\n\n{context_request_section}\n\n"
+                    f"{check_in_section}\n\n{agent_messaging_section}"
+                )
+
+            # Update only system_instructions (preserves user_instructions)
+            template.system_instructions = new_system_instructions
+
+            # Update legacy template_content for backward compatibility
+            if template.user_instructions:
+                template.template_content = f"{template.user_instructions}\n\n{new_system_instructions}"
+
+            updated_count += 1
+            logger.debug(f"Updated system_instructions for template '{template.name}' (tenant: {tenant_key})")
+
+        await session.commit()
+        logger.info(f"Refreshed {updated_count} templates for tenant '{tenant_key}'")
+        return updated_count
+
+    except Exception as e:
+        logger.error(f"Failed to refresh templates for tenant '{tenant_key}': {e}", exc_info=True)
+        raise
+
+
 async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     """
     Seed default agent templates for a tenant.
@@ -645,6 +719,15 @@ def _get_mcp_coordination_section() -> str:
 
 You have access to comprehensive MCP tools for agent coordination. Use these tools at the proper checkpoints:
 
+## CRITICAL: MCP TOOL USAGE
+
+**MCP tools are NATIVE tool calls - use them like Read, Write, Bash, Glob.**
+
+- CORRECT: Call `mcp__giljo-mcp__get_agent_mission` directly as a tool
+- WRONG: curl, HTTP requests, fetch(), requests.post(), SDK calls
+
+The tools are already connected. Just call them directly.
+
 ### Available MCP Tools
 
 **Startup Tools:**
@@ -666,25 +749,19 @@ You MUST use MCP tools at these checkpoints:
 
 ### Phase 1: Job Acknowledgment (BEFORE ANY WORK)
 
-1. Call `mcp__giljo_mcp__get_pending_jobs(agent_type="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
-2. Find your assigned job in the response
-3. Call `mcp__giljo_mcp__acknowledge_job(job_id=<job_id>, agent_id="<AGENT_TYPE>", tenant_key="<TENANT_KEY>")`
-4. **CRITICAL**: Update job status to 'active' when starting work:
-   - Call `mcp__giljo_mcp__update_job_status(job_id=<job_id>, new_status="active")`
-   - This moves your job card from "Pending" to "Active" column in Kanban dashboard
-   - Developer will see you've started working
+1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` - Get your mission
+2. Call `mcp__giljo-mcp__acknowledge_job(job_id, agent_id)` - Marks you as WORKING
+3. Call `mcp__giljo-mcp__receive_messages(agent_id)` - Check for orchestrator instructions
+4. Review any messages and incorporate feedback BEFORE starting work
 
 ### Phase 2: Incremental Progress (AFTER EACH TODO)
 
 1. Complete one actionable todo item
-2. Call `mcp__giljo_mcp__report_progress()`:
+2. Call `mcp__giljo-mcp__report_progress()`:
    - job_id: Your job ID from acknowledgment
-   - completed_todo: Description of what you completed
-   - files_modified: List of file paths changed
-   - context_used: Estimated tokens consumed
-   - tenant_key: "<TENANT_KEY>"
+   - progress: {completed_todo, files_modified, context_used}
 
-3. Call `mcp__giljo_mcp__get_next_instruction()`:
+3. Call `mcp__giljo-mcp__get_next_instruction()`:
    - job_id: Your job ID
    - agent_type: "<AGENT_TYPE>"
    - tenant_key: "<TENANT_KEY>"
@@ -694,53 +771,56 @@ You MUST use MCP tools at these checkpoints:
 ### Phase 3: Completion
 
 1. Complete all mission objectives
-2. **CRITICAL**: Update job status to 'completed':
-   - Call `mcp__giljo_mcp__update_job_status(job_id=<job_id>, new_status="completed")`
-   - This moves your job card to "Completed" column in Kanban dashboard
-3. Call `mcp__giljo_mcp__complete_job()`:
+2. Call `mcp__giljo-mcp__complete_job()`:
    - job_id: Your job ID
    - result: {summary, files_created, files_modified, tests_written, coverage}
-   - tenant_key: "<TENANT_KEY>"
+   - This marks job as 'completed' and moves card to "Completed" column in Kanban dashboard
 
 ### Error Handling & Blocked Status
 
 On ANY error or if you need human input:
-1. **CRITICAL**: Update job status to 'blocked':
-   - Call `mcp__giljo_mcp__update_job_status(job_id=<job_id>, new_status="blocked", reason="Describe the issue")`
-   - This moves your job card to "BLOCKED" column in Kanban dashboard
+1. Call `mcp__giljo-mcp__report_error(job_id=<job_id>, error="Describe the issue")`
+   - This marks job as 'blocked' and moves card to "BLOCKED" column in Kanban dashboard
    - Developer will be notified you need help
-2. Call `mcp__giljo_mcp__report_error()` with detailed error information
-3. STOP work and await orchestrator guidance
+2. STOP work and await orchestrator guidance
 
-### Status Update Examples
+### Tool Call Examples
 
 **When starting work:**
-```python
-mcp.call_tool("mcp__giljo_mcp__update_job_status", {
-    "job_id": "your-job-id",
-    "new_status": "active"
-})
+```
+Tool: mcp__giljo-mcp__acknowledge_job
+Parameters:
+  - job_id: "your-job-id"
+  - agent_id: "your-agent-type"
+
+NOTE: MCP tools are NATIVE tool calls (like Read/Write/Bash).
+Do NOT use curl, HTTP, or Python SDK calls.
 ```
 
 **When blocked (need database schema clarification):**
-```python
-mcp.call_tool("mcp__giljo_mcp__update_job_status", {
-    "job_id": "your-job-id",
-    "new_status": "blocked",
-    "reason": "Need database schema clarification for user authentication table"
-})
+```
+Tool: mcp__giljo-mcp__report_error
+Parameters:
+  - job_id: "your-job-id"
+  - error: "Need database schema clarification for user authentication table"
+
+NOTE: MCP tools are NATIVE tool calls (like Read/Write/Bash).
+Do NOT use curl, HTTP, or Python SDK calls.
 ```
 
 **When completing work:**
-```python
-mcp.call_tool("mcp__giljo_mcp__update_job_status", {
-    "job_id": "your-job-id",
-    "new_status": "completed"
-})
+```
+Tool: mcp__giljo-mcp__complete_job
+Parameters:
+  - job_id: "your-job-id"
+  - result: {summary: "...", files_created: [...], files_modified: [...]}
+
+NOTE: MCP tools are NATIVE tool calls (like Read/Write/Bash).
+Do NOT use curl, HTTP, or Python SDK calls.
 ```
 
 ### IMPORTANT: Agent Self-Navigation
-- You control your own Kanban column position via status updates
+- You control your own Kanban column position via tool calls
 - Developer CANNOT drag your card - you must update status yourself
 - Always update status at proper checkpoints (start, blocked, completed)
 - Status updates provide real-time visibility to developer and orchestrator
