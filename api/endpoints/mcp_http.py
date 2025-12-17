@@ -121,6 +121,20 @@ async def handle_initialize(
     }
 
 
+# Tools hidden from MCP schema but still callable via slash commands or REST API
+# These tools are accessible when explicitly invoked (e.g., via allowed-tools in slash commands)
+# but don't consume context budget by being advertised in the main tool list.
+# - gil_import_productagents: Use /gil_get_claude_agents slash command
+# - gil_import_personalagents: Use /gil_get_claude_agents slash command
+# - gil_fetch: Use /gil_get_claude_agents slash command
+# Web UI access unaffected (uses REST API with JWT auth)
+HIDDEN_FROM_SCHEMA_TOOLS = {
+    "gil_import_productagents",
+    "gil_import_personalagents",
+    "gil_fetch",
+}
+
+
 async def handle_tools_list(
     params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
 ) -> Dict[str, Any]:
@@ -128,6 +142,7 @@ async def handle_tools_list(
     Handle tools/list request
 
     Returns list of available tools with schemas.
+    Tools in HIDDEN_FROM_SCHEMA_TOOLS are excluded from the response but remain callable.
     """
     # Get session to extract tenant context
     session = await session_manager.get_session(session_id)
@@ -517,9 +532,12 @@ async def handle_tools_list(
         },
     ]
 
-    logger.debug(f"Listed {len(tools)} tools for session {session_id}")
+    # Filter out hidden tools (still callable, just not advertised)
+    visible_tools = [t for t in tools if t["name"] not in HIDDEN_FROM_SCHEMA_TOOLS]
 
-    return {"tools": tools}
+    logger.debug(f"Listed {len(visible_tools)} tools for session {session_id} ({len(tools) - len(visible_tools)} hidden)")
+
+    return {"tools": visible_tools}
 
 
 async def handle_tools_call(
