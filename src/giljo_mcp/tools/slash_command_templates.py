@@ -144,67 +144,67 @@ Call the tool with project_id to begin.
 GIL_GET_CLAUDE_AGENTS_MD = """---
 name: gil_get_claude_agents
 description: Download and install GiljoAI agent templates to Claude Code
-allowed-tools: ["mcp__giljo-mcp__gil_import_productagents", "mcp__giljo-mcp__gil_import_personalagents"]
+allowed-tools: ["mcp__giljo-mcp__get_agent_download_url"]
 ---
 
 Install GiljoAI agent templates to your Claude Code environment.
 
-## STEP 1: Ask User
+## STEP 1: Get Download URL
 
-Ask the user: "Where should I install the agent templates?"
+Call the MCP tool to stage templates and get download URL:
+
+```
+Tool: mcp__giljo-mcp__get_agent_download_url
+Parameters: {}
+```
+
+Returns: `download_url` (valid 15 minutes, one-time use) and `template_count`
+
+## STEP 2: Download Templates
+
+Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no headers needed:
+
+```bash
+curl -o /tmp/agents.zip "{download_url}"
+```
+
+## STEP 3: Ask User Install Location
+
+Ask: "Where should I install the {template_count} agent templates?"
 
 Options:
-- **Project agents** (`.claude/agents/` in current directory) - Available only in this project
+- **Project agents** (`.claude/agents/`) - Available only in this project
 - **User agents** (`~/.claude/agents/`) - Available across all your projects
 
-## STEP 2: Get Download URL
+## STEP 4: Extract to Chosen Location
 
-Based on user choice, call the appropriate MCP tool:
+Use Bash to extract based on user choice:
 
 **For Project agents:**
-```
-Tool: mcp__giljo-mcp__gil_import_productagents
-Parameters: {}
+```bash
+mkdir -p .claude/agents && unzip -o /tmp/agents.zip -d .claude/agents/ && rm /tmp/agents.zip
 ```
 
 **For User agents:**
-```
-Tool: mcp__giljo-mcp__gil_import_personalagents
-Parameters: {}
-```
-
-The tool returns a `download_url` (valid for 15 minutes, one-time use).
-
-## STEP 3: Download and Extract
-
-Use Bash to download and extract. The download URL includes authentication via token - no API key header needed.
-
-**For Project agents (cross-platform):**
 ```bash
-curl -o agents.zip "{download_url}" && mkdir -p .claude/agents && unzip -o agents.zip -d .claude/agents/ && rm agents.zip
+mkdir -p ~/.claude/agents && unzip -o /tmp/agents.zip -d ~/.claude/agents/ && rm /tmp/agents.zip
 ```
 
-**For User agents (cross-platform):**
-```bash
-curl -o agents.zip "{download_url}" && mkdir -p ~/.claude/agents && unzip -o agents.zip -d ~/.claude/agents/ && rm agents.zip
-```
-
-## STEP 4: Confirm and Restart Notice
+## STEP 5: Confirm and Restart Notice
 
 Tell the user:
-1. How many agent templates were installed
+1. How many templates were installed (from `template_count`)
 2. Where they were installed
-3. **IMPORTANT: They must restart their Claude Code session** for the new agents to be available
-4. After restart, they can use agents via `@agent-name` in Claude Code
+3. **They must restart Claude Code** (Ctrl+C and relaunch) for agents to become available
+4. After restart, use agents via `@agent-name` in Claude Code
 
-Example completion message:
-"Installed 6 agent templates to .claude/agents/. **Please restart Claude Code** (Ctrl+C and relaunch) for the agents to become available. After restart, you can use them with @orchestrator, @implementer, etc."
+Example: "Installed 6 agent templates to ~/.claude/agents/. **Please restart Claude Code** for the agents to become available."
 
 ## IMPORTANT
 
-- MCP tools are NATIVE tool calls - call them directly like Read, Write, or Bash
-- Do NOT use curl or HTTP requests to call MCP tools
-- The download URL already contains authentication (token-based) - no X-API-Key header needed
+- Use the Bash tool for curl/unzip commands (works on Windows via Git Bash, Linux, macOS)
+- Unix paths (/tmp, ~/.claude/) work on ALL platforms
+- Do NOT use PowerShell or Windows-style paths
 """
 
 
