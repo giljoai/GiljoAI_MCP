@@ -44,16 +44,21 @@
           <!-- Template Overview Card -->
           <v-card variant="outlined" class="mb-4">
             <v-list density="compact">
-              <!-- Role -->
-              <v-list-item v-if="templateData.role">
+              <!-- Name (with Role suffix if different) -->
+              <v-list-item>
                 <template #prepend>
                   <v-icon color="primary">mdi-account-badge</v-icon>
                 </template>
-                <v-list-item-title class="font-weight-bold">Role</v-list-item-title>
-                <v-list-item-subtitle>{{ templateData.role }}</v-list-item-subtitle>
+                <v-list-item-title class="font-weight-bold">Name</v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ templateData.name }}
+                  <span v-if="templateData.role && templateData.role !== templateData.name" class="text-medium-emphasis">
+                    ({{ templateData.role }})
+                  </span>
+                </v-list-item-subtitle>
               </v-list-item>
 
-              <v-divider v-if="templateData.role"></v-divider>
+              <v-divider></v-divider>
 
               <!-- CLI Tool -->
               <v-list-item v-if="templateData.cli_tool">
@@ -308,11 +313,12 @@ const getAgentTypeColor = (agentType) => {
 }
 
 const fetchTemplateData = async () => {
-  // Handover 0358: Support fetching by template_id OR agent_type
+  // Handover 0358: Support fetching by template_id OR agent_type/agent_name
   const hasTemplateId = !!props.agent?.template_id
-  const hasAgentType = !!props.agent?.agent_type
+  const agentType = props.agent?.agent_type
+  const agentName = props.agent?.agent_name
 
-  if (!hasTemplateId && !hasAgentType) {
+  if (!hasTemplateId && !agentType && !agentName) {
     error.value = null
     return
   }
@@ -326,18 +332,32 @@ const fetchTemplateData = async () => {
       // Fetch by template_id directly
       const response = await apiClient.templates.get(props.agent.template_id)
       templateData.value = response.data
-    } else if (hasAgentType) {
-      // Fetch by agent_type from templates list
-      const response = await apiClient.templates.list({ agent_type: props.agent.agent_type })
-      const templates = response.data?.templates || response.data || []
-      // Find matching template by agent_type or name
-      const match = templates.find(t =>
-        t.agent_type === props.agent.agent_type ||
-        t.name === props.agent.agent_type ||
-        t.name === props.agent.agent_name
-      )
+    } else {
+      // Fetch all active templates and find matching one by name
+      const response = await apiClient.templates.list({ is_active: true })
+      const templates = Array.isArray(response.data) ? response.data : (response.data?.templates || [])
+
+      console.log('[AgentDetailsModal] Searching for template matching:', { agentType, agentName })
+      console.log('[AgentDetailsModal] Available templates:', templates.map(t => t.name))
+
+      // Find matching template by name (case-insensitive)
+      const searchTerms = [agentType, agentName].filter(Boolean).map(s => s.toLowerCase())
+      const match = templates.find(t => {
+        const templateName = (t.name || '').toLowerCase()
+        const templateRole = (t.role || '').toLowerCase()
+        return searchTerms.some(term =>
+          templateName === term ||
+          templateRole === term ||
+          templateName.includes(term) ||
+          term.includes(templateName)
+        )
+      })
+
       if (match) {
+        console.log('[AgentDetailsModal] Found matching template:', match.name)
         templateData.value = match
+      } else {
+        console.log('[AgentDetailsModal] No matching template found')
       }
     }
   } catch (err) {
@@ -387,7 +407,8 @@ watch(
       // Fetch appropriate data
       if (isOrchestrator.value) {
         fetchOrchestratorPrompt()
-      } else if (props.agent.template_id) {
+      } else {
+        // Handover 0358: Fetch template by template_id OR agent_type/agent_name
         fetchTemplateData()
       }
     }
