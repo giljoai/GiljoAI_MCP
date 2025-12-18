@@ -125,13 +125,12 @@ async def handle_initialize(
 # These tools are accessible when explicitly invoked (e.g., via allowed-tools in slash commands)
 # but don't consume context budget by being advertised in the main tool list.
 # - gil_import_productagents: Use /gil_get_claude_agents slash command
-# - gil_import_personalagents: Use /gil_get_claude_agents slash command
-# - gil_fetch: Use /gil_get_claude_agents slash command
+# - gil_fetch: Redundant with gil_import_* tools, hidden to reduce schema size
+# Note: gil_import_productagents and gil_import_personalagents must be VISIBLE
+# because /gil_get_claude_agents slash command needs to call them
 # Web UI access unaffected (uses REST API with JWT auth)
 HIDDEN_FROM_SCHEMA_TOOLS = {
-    "gil_import_productagents",
-    "gil_import_personalagents",
-    "gil_fetch",
+    "gil_fetch",  # Redundant - use gil_import_productagents or gil_import_personalagents
 }
 
 
