@@ -141,6 +141,72 @@ Launch will:
 Call the tool with project_id to begin.
 """
 
+GIL_GET_CLAUDE_AGENTS_MD = """---
+name: gil_get_claude_agents
+description: Download and install GiljoAI agent templates to Claude Code
+allowed-tools: ["mcp__giljo-mcp__gil_import_productagents", "mcp__giljo-mcp__gil_import_personalagents"]
+---
+
+Install GiljoAI agent templates to your Claude Code environment.
+
+## STEP 1: Ask User
+
+Ask the user: "Where should I install the agent templates?"
+
+Options:
+- **Project agents** (`.claude/agents/` in current directory) - Available only in this project
+- **User agents** (`~/.claude/agents/`) - Available across all your projects
+
+## STEP 2: Get Download URL
+
+Based on user choice, call the appropriate MCP tool:
+
+**For Project agents:**
+```
+Tool: mcp__giljo-mcp__gil_import_productagents
+Parameters: {}
+```
+
+**For User agents:**
+```
+Tool: mcp__giljo-mcp__gil_import_personalagents
+Parameters: {}
+```
+
+The tool returns a `download_url` (valid for 15 minutes, one-time use).
+
+## STEP 3: Download and Extract
+
+Use Bash to download and extract. The download URL includes authentication via token - no API key header needed.
+
+**For Project agents (cross-platform):**
+```bash
+curl -o agents.zip "{download_url}" && mkdir -p .claude/agents && unzip -o agents.zip -d .claude/agents/ && rm agents.zip
+```
+
+**For User agents (cross-platform):**
+```bash
+curl -o agents.zip "{download_url}" && mkdir -p ~/.claude/agents && unzip -o agents.zip -d ~/.claude/agents/ && rm agents.zip
+```
+
+## STEP 4: Confirm and Restart Notice
+
+Tell the user:
+1. How many agent templates were installed
+2. Where they were installed
+3. **IMPORTANT: They must restart their Claude Code session** for the new agents to be available
+4. After restart, they can use agents via `@agent-name` in Claude Code
+
+Example completion message:
+"Installed 6 agent templates to .claude/agents/. **Please restart Claude Code** (Ctrl+C and relaunch) for the agents to become available. After restart, you can use them with @orchestrator, @implementer, etc."
+
+## IMPORTANT
+
+- MCP tools are NATIVE tool calls - call them directly like Read, Write, or Bash
+- Do NOT use curl or HTTP requests to call MCP tools
+- The download URL already contains authentication (token-based) - no X-API-Key header needed
+"""
+
 
 def get_all_templates() -> dict[str, str]:
     """
@@ -157,4 +223,5 @@ def get_all_templates() -> dict[str, str]:
         "gil_update_agents.md": GIL_UPDATE_AGENTS_MD,
         "gil_activate.md": GIL_ACTIVATE_MD,
         "gil_launch.md": GIL_LAUNCH_MD,
+        "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
     }
