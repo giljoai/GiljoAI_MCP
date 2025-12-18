@@ -1444,7 +1444,36 @@ class ToolAccessor:
 
             logger.info(f"Staged {template_count} agent templates for download: {zip_path}")
 
-            # 5. Build download URL (token IS auth - no API key needed)
+            # 5. Update last_exported_at for all exported templates (Handover 0356)
+            from datetime import datetime, timezone
+            from sqlalchemy import select
+            from giljo_mcp.models import AgentTemplate
+
+            async with self.db_manager.get_session_async() as session:
+                stmt = select(AgentTemplate).where(
+                    AgentTemplate.tenant_key == tenant_key,
+                    AgentTemplate.is_active == True
+                )
+                result = await session.execute(stmt)
+                templates = result.scalars().all()
+
+                export_timestamp = datetime.now(timezone.utc)
+                template_ids = []
+                for template in templates:
+                    template.last_exported_at = export_timestamp
+                    template_ids.append(template.id)
+
+                await session.commit()
+                logger.info(f"Updated last_exported_at for {len(templates)} templates")
+
+                # Emit WebSocket event for real-time UI update
+                if self._websocket_manager and template_ids:
+                    await self._websocket_manager.broadcast_template_export(
+                        tenant_key=tenant_key,
+                        template_ids=template_ids
+                    )
+
+            # 6. Build download URL (token IS auth - no API key needed)
             if not _server_url:
                 config = get_config()
                 config_path = Path.cwd() / "config.yaml"
