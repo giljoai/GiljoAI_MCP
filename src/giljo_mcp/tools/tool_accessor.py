@@ -977,18 +977,35 @@ class ToolAccessor:
 
             download_url = f"{_server_url}/api/download/temp/{download_token}/slash_commands.zip"
 
-            # 6. Return natural language instructions for AI agents
+            # 6. Return explicit bash commands for AI agents
+            # Cross-platform: Bash tool uses Git Bash on Windows, bash on Linux/macOS
+            # Unix-style paths work on ALL platforms via the Bash tool
+            bash_cmd = (
+                f'curl -o /tmp/slash_commands.zip "{download_url}" && '
+                "mkdir -p ~/.claude/commands && "
+                "unzip -o /tmp/slash_commands.zip -d ~/.claude/commands/ && "
+                "rm /tmp/slash_commands.zip"
+            )
             return {
                 "success": True,
-                "instructions": f"Download the slash commands from {download_url}, extract the zip file, and install the contents to your ~/.claude/commands/ folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window. The user must restart their CLI tool. After restart verify the slash commands appear by initiating with '/'.",
+                "instructions": (
+                    "IMPORTANT: Use the Bash tool (not PowerShell) to run this command. "
+                    "This works on Windows, Linux, and macOS:\n\n"
+                    f"{bash_cmd}\n\n"
+                    "After running, tell the user: 'Slash commands installed to ~/.claude/commands/. "
+                    "Please restart Claude Code (Ctrl+C and relaunch) for the commands to become available. "
+                    "After restart, type / to see available commands.'"
+                ),
+                "bash_command": bash_cmd,
                 "download_url": download_url,
                 "expires_minutes": 15,
                 "unlimited_downloads": True,
-                "technical_details": {
-                    "filename": "slash_commands.zip",
-                    "install_location": "~/.claude/commands/",
-                    "windows_location": "%USERPROFILE%\\.claude\\commands\\",
-                },
+                "install_location": "~/.claude/commands/",
+                "cross_platform_note": (
+                    "The Bash tool uses Git Bash on Windows and bash on Linux/macOS. "
+                    "Unix-style paths (/tmp, ~/.claude/) work on ALL platforms. "
+                    "Do NOT use PowerShell or Windows paths like %TEMP%."
+                ),
             }
 
         except Exception as e:
