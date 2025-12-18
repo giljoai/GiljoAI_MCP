@@ -94,8 +94,12 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
             template.system_instructions = new_system_instructions
 
             # Update legacy template_content for backward compatibility
+            # CRITICAL section (in new_system_instructions) must come FIRST for agent comprehension
+            # ALWAYS update template_content (fixed: was only updating when user_instructions existed)
             if template.user_instructions:
-                template.template_content = f"{template.user_instructions}\n\n{new_system_instructions}"
+                template.template_content = f"{new_system_instructions}\n\n---\n\n## Role-Specific Instructions\n\n{template.user_instructions}"
+            else:
+                template.template_content = new_system_instructions
 
             updated_count += 1
             logger.debug(f"Updated system_instructions for template '{template.name}' (tenant: {tenant_key})")
@@ -217,8 +221,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 orchestrator_response_section = _get_orchestrator_context_response_section()
                 user_instructions = f"{user_instructions}\n\n{orchestrator_response_section}"
 
-            # Legacy template_content = system + user (backward compatibility)
-            legacy_template_content = f"{user_instructions}\n\n{system_instructions}"
+            # Legacy template_content = CRITICAL (system) first, then role-specific (user)
+            # CRITICAL section must be at TOP for agent comprehension
+            legacy_template_content = f"{system_instructions}\n\n---\n\n## Role-Specific Instructions\n\n{user_instructions}"
 
             # Create template instance with Handover 0106 dual-field format
             template = AgentTemplate(
@@ -707,6 +712,7 @@ def _get_mcp_coordination_section() -> str:
     proper checkpoints during agent execution. Added in Phase 7 (Handover 0045).
     Enhanced in Handover 0066 with Kanban status update instructions.
     Enhanced in Handover 0090 with comprehensive tool catalog.
+    Enhanced in Handover 0356 with CRITICAL section at top.
 
     Returns:
         str - MCP coordination section in markdown format
@@ -715,18 +721,29 @@ def _get_mcp_coordination_section() -> str:
         Uses placeholders (<AGENT_TYPE>, <TENANT_KEY>) that the orchestrator
         will fill in during mission generation.
     """
-    return """## MCP COMMUNICATION PROTOCOL (Handover 0090)
+    return """## CRITICAL: MCP TOOLS ARE NATIVE TOOL CALLS
 
-You have access to comprehensive MCP tools for agent coordination. Use these tools at the proper checkpoints:
+**STOP** - Read this before doing ANYTHING:
 
-## CRITICAL: MCP TOOL USAGE
+MCP tools (prefixed `mcp__giljo-mcp__`) are **NATIVE** tools identical to Read, Write, Bash, Glob.
 
-**MCP tools are NATIVE tool calls - use them like Read, Write, Bash, Glob.**
+**CORRECT**: Invoke directly as a tool call
+**WRONG**: curl, HTTP requests, Python SDK, CLI commands, fetch(), requests.post()
 
-- CORRECT: Call `mcp__giljo-mcp__get_agent_mission` directly as a tool
-- WRONG: curl, HTTP requests, fetch(), requests.post(), SDK calls
+Example - to get your mission, call the tool directly:
+```
+Tool: mcp__giljo-mcp__get_agent_mission
+Parameters: {"agent_job_id": "...", "tenant_key": "..."}
+```
 
-The tools are already connected. Just call them directly.
+DO NOT wrap in Python, curl, fetch, requests, or any HTTP mechanism.
+The tools are already connected. Just call them.
+
+---
+
+## MCP COMMUNICATION PROTOCOL
+
+You have access to MCP tools for agent coordination. Use these tools at the proper checkpoints:
 
 ### Available MCP Tools
 
@@ -737,15 +754,11 @@ The tools are already connected. Just call them directly.
 **Working Tools:**
 - `mcp__giljo-mcp__report_progress(job_id, progress)` - Report incremental progress
 - `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` - Check for instructions
-- `mcp__giljo-mcp__send_message(to_agent, message, priority)` - Message orchestrator
+- `mcp__giljo-mcp__send_message(to_agents, content, project_id)` - Message orchestrator
 
 **Completion Tools:**
 - `mcp__giljo-mcp__complete_job(job_id, result)` - Mark work complete
 - `mcp__giljo-mcp__report_error(job_id, error)` - Report blocking errors
-
-### CRITICAL CHECKPOINTS
-
-You MUST use MCP tools at these checkpoints:
 
 ### Phase 1: Job Acknowledgment (BEFORE ANY WORK)
 
@@ -774,49 +787,25 @@ You MUST use MCP tools at these checkpoints:
 2. Call `mcp__giljo-mcp__complete_job()`:
    - job_id: Your job ID
    - result: {summary, files_created, files_modified, tests_written, coverage}
-   - This marks job as 'completed' and moves card to "Completed" column in Kanban dashboard
+   - This marks job as 'completed' and moves card to "Completed" column
 
 ### Error Handling & Blocked Status
 
 On ANY error or if you need human input:
-1. Call `mcp__giljo-mcp__report_error(job_id=<job_id>, error="Describe the issue")`
-   - This marks job as 'blocked' and moves card to "BLOCKED" column in Kanban dashboard
+1. Call `mcp__giljo-mcp__report_error(job_id, error)` with description
+   - This marks job as 'blocked' and moves card to "BLOCKED" column
    - Developer will be notified you need help
 2. STOP work and await orchestrator guidance
 
-### Tool Call Examples
+### Tool Call Format
 
-**When starting work:**
+All MCP tool calls use this format (NOT Python, NOT curl, NOT HTTP):
+
 ```
-Tool: mcp__giljo-mcp__acknowledge_job
+Tool: mcp__giljo-mcp__<tool_name>
 Parameters:
-  - job_id: "your-job-id"
-  - agent_id: "your-agent-type"
-
-NOTE: MCP tools are NATIVE tool calls (like Read/Write/Bash).
-Do NOT use curl, HTTP, or Python SDK calls.
-```
-
-**When blocked (need database schema clarification):**
-```
-Tool: mcp__giljo-mcp__report_error
-Parameters:
-  - job_id: "your-job-id"
-  - error: "Need database schema clarification for user authentication table"
-
-NOTE: MCP tools are NATIVE tool calls (like Read/Write/Bash).
-Do NOT use curl, HTTP, or Python SDK calls.
-```
-
-**When completing work:**
-```
-Tool: mcp__giljo-mcp__complete_job
-Parameters:
-  - job_id: "your-job-id"
-  - result: {summary: "...", files_created: [...], files_modified: [...]}
-
-NOTE: MCP tools are NATIVE tool calls (like Read/Write/Bash).
-Do NOT use curl, HTTP, or Python SDK calls.
+  param1: value1
+  param2: value2
 ```
 
 ### IMPORTANT: Agent Self-Navigation
