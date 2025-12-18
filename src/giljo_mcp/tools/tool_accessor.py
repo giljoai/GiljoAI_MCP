@@ -1378,6 +1378,94 @@ class ToolAccessor:
             logger.exception(f"gil_launch failed: {e}")
             return {"success": False, "error": str(e)}
 
+    async def get_agent_download_url(
+        self, _api_key: str = None, _server_url: str = None
+    ) -> dict[str, Any]:
+        """
+        Generate one-time download link for active agent templates.
+
+        Stages active agent templates as ZIP and returns download URL.
+        Token-based authentication - no API key header needed for download.
+        Slash command handles user prompt for install location.
+
+        Args:
+            _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
+            _server_url: Server URL from HTTP request (injected by MCP HTTP handler)
+
+        Returns:
+            dict with success, download_url, expires_minutes, template_count
+        """
+        try:
+            from giljo_mcp.config_manager import get_config
+            from giljo_mcp.downloads.token_manager import TokenManager
+            from giljo_mcp.file_staging import FileStaging
+
+            # 1. Verify API key (injected by MCP HTTP handler)
+            if not _api_key:
+                return {
+                    "success": False,
+                    "error": "API key not provided - connect via MCP with valid API key",
+                }
+
+            # 2. Get tenant context
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
+
+            # 3. Generate token and stage agent templates
+            async with self.db_manager.get_session_async() as session:
+                token_manager = TokenManager(db_session=session)
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="agent_templates",
+                    filename="agent_templates.zip",
+                )
+
+            # 4. Stage files in temp directory
+            file_staging = FileStaging(db_session=None)
+            async with self.db_manager.get_session_async() as session:
+                file_staging.db_session = session
+                staging_path = await file_staging.create_staging_directory(tenant_key, token)
+                zip_path, message = await file_staging.stage_agent_templates(
+                    staging_path, tenant_key, db_session=session
+                )
+
+                if not zip_path:
+                    await token_manager.mark_failed(token, message)
+                    await file_staging.cleanup(tenant_key, token)
+                    return {"success": False, "error": f"Staging failed: {message}"}
+
+                await token_manager.mark_ready(token)
+
+            # Count templates in ZIP
+            import zipfile
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                template_count = len(zf.namelist())
+
+            logger.info(f"Staged {template_count} agent templates for download: {zip_path}")
+
+            # 5. Build download URL (token IS auth - no API key needed)
+            if not _server_url:
+                config = get_config()
+                config_path = Path.cwd() / "config.yaml"
+                with open(config_path) as f:
+                    config_data = yaml.safe_load(f)
+                host = config_data.get("services", {}).get("external_host", "localhost")
+                _server_url = f"http://{host}:{config.server.api_port}"
+
+            download_url = f"{_server_url}/api/download/temp/{token}/agent_templates.zip"
+
+            return {
+                "success": True,
+                "download_url": download_url,
+                "expires_minutes": 15,
+                "template_count": template_count,
+            }
+
+        except Exception as e:
+            logger.exception(f"get_agent_download_url failed: {e}")
+            return {"success": False, "error": str(e)}
+
     async def close_project_and_update_memory(
         self,
         project_id: str,
