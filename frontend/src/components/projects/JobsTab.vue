@@ -7,8 +7,8 @@
           <tr>
             <th>Agent Type</th>
             <th>Agent ID</th>
-            <th>Job Acknowledged</th>
             <th>Agent Status</th>
+            <th>Job Acknowledged</th>
             <th>Steps</th>
             <th>Messages Sent</th>
             <th>Messages waiting</th>
