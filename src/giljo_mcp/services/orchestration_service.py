@@ -45,16 +45,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _generate_agent_protocol(job_id: str, tenant_key: str) -> str:
+def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
 
+    Handover 0359: Added agent_name parameter to replace "your-type" placeholder,
+    mandatory TodoWrite in Phase 2, and steps_completed/steps_total in progress.
+
     Args:
         job_id: Agent job UUID for MCP tool calls
         tenant_key: Tenant key for MCP tool calls
+        agent_name: Agent name for message routing (matches template filename)
 
     Returns:
         Multi-line protocol string with 5 phases and MCP tool references
@@ -63,22 +67,26 @@ def _generate_agent_protocol(job_id: str, tenant_key: str) -> str:
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
-2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="your-type")` - Mark as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id="your-type")` - Check for instructions
+2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
+3. Call `mcp__giljo-mcp__receive_messages(agent_id="{agent_name}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
 
 ### Phase 2: EXECUTION
-- Execute assigned tasks from mission
-- Use todo lists to track progress internally
+**MANDATORY FIRST STEP:**
+1. Use TodoWrite to create 3-7 concrete tasks from your mission
+2. Mark each todo as completed when finished
+
+Then execute assigned tasks:
 - Maintain focus on mission objectives
+- Update todos as you progress
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
-1. Call `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "..."}})`
-2. Call `mcp__giljo-mcp__receive_messages(agent_id="your-type")` - Check for new instructions
+1. Call `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
+2. Call `mcp__giljo-mcp__receive_messages(agent_id="{agent_name}")` - Check for new instructions
 3. Incorporate any orchestrator feedback before continuing
 
 ### Phase 4: COMPLETION
-1. Call `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
+1. Call `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` 
 2. Await acknowledgment or further instructions
 
 ### Phase 5: ERROR HANDLING (If blocked)
@@ -610,8 +618,8 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
 
             estimated_tokens = len(agent_job.mission or "") // 4
 
-            # Generate 6-phase lifecycle protocol (Handover 0334)
-            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key)
+            # Generate 5-phase lifecycle protocol (Handover 0334, 0359)
+            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key, agent_job.agent_type)
 
             return {
                 "success": True,
