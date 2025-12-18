@@ -195,7 +195,8 @@ class TestMessageCreationAndJSONBMirroring:
         assert db_message is not None, "Message should exist in database"
         assert db_message.project_id == project.id
         assert db_message.tenant_key == project.tenant_key
-        assert db_message.to_agents == [recipient.agent_type]
+        # Message stores resolved job_ids, not agent_types (message_service resolves agent_type → job_id)
+        assert db_message.to_agents == [recipient.job_id]
         assert db_message.content == "Analyze the codebase for patterns"
         assert db_message.message_type == "direct"
         assert db_message.priority == "high"
