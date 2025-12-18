@@ -220,8 +220,8 @@
           </div>
         </div>
 
-        <!-- No Template ID -->
-        <div v-else-if="!isOrchestrator && !agent.template_id && !loading">
+        <!-- No Template Data (after attempting fetch) - Handover 0358 -->
+        <div v-else-if="!isOrchestrator && !templateData && !loading">
           <v-alert type="info" variant="tonal" density="compact">
             No template information available for this agent.
           </v-alert>
@@ -308,7 +308,11 @@ const getAgentTypeColor = (agentType) => {
 }
 
 const fetchTemplateData = async () => {
-  if (!props.agent?.template_id) {
+  // Handover 0358: Support fetching by template_id OR agent_type
+  const hasTemplateId = !!props.agent?.template_id
+  const hasAgentType = !!props.agent?.agent_type
+
+  if (!hasTemplateId && !hasAgentType) {
     error.value = null
     return
   }
@@ -318,8 +322,24 @@ const fetchTemplateData = async () => {
   templateData.value = null
 
   try {
-    const response = await apiClient.templates.get(props.agent.template_id)
-    templateData.value = response.data
+    if (hasTemplateId) {
+      // Fetch by template_id directly
+      const response = await apiClient.templates.get(props.agent.template_id)
+      templateData.value = response.data
+    } else if (hasAgentType) {
+      // Fetch by agent_type from templates list
+      const response = await apiClient.templates.list({ agent_type: props.agent.agent_type })
+      const templates = response.data?.templates || response.data || []
+      // Find matching template by agent_type or name
+      const match = templates.find(t =>
+        t.agent_type === props.agent.agent_type ||
+        t.name === props.agent.agent_type ||
+        t.name === props.agent.agent_name
+      )
+      if (match) {
+        templateData.value = match
+      }
+    }
   } catch (err) {
     console.error('[AgentDetailsModal] Failed to fetch template:', err)
     error.value = err.response?.data?.detail || err.message || 'Failed to fetch template data'

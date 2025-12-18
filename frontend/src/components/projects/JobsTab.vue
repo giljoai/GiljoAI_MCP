@@ -118,31 +118,51 @@
                 </template>
               </v-tooltip>
 
-              <!-- Folder button: always show (Handover 0243d + 0331) -->
-              <v-tooltip text="Open workspace">
+              <!-- Messages button: opens Message Audit Modal (Handover 0358) -->
+              <v-tooltip text="View messages">
                 <template #activator="{ props: tooltipProps }">
                   <v-btn
                     v-bind="tooltipProps"
-                    icon="mdi-folder"
+                    icon="mdi-message-outline"
                     size="small"
                     variant="text"
                     color="yellow-darken-2"
-                    data-testid="jobs-folder-btn"
-                    @click="handleFolder(agent)"
+                    data-testid="jobs-messages-btn"
+                    @click="handleMessages(agent)"
                   />
                 </template>
               </v-tooltip>
 
-              <!-- Info button: always show (Handover 0243d) -->
-              <v-tooltip text="View details">
+              <!-- GiljoAI Face button: shows agent role/template (Handover 0358) -->
+              <v-tooltip text="View agent role">
                 <template #activator="{ props: tooltipProps }">
                   <v-btn
                     v-bind="tooltipProps"
-                    icon="mdi-information"
+                    size="small"
+                    variant="text"
+                    data-testid="jobs-role-btn"
+                    @click="handleAgentRole(agent)"
+                  >
+                    <img
+                      :src="giljoFaceIcon"
+                      alt="Agent Role"
+                      class="giljo-face-icon"
+                    />
+                  </v-btn>
+                </template>
+              </v-tooltip>
+
+              <!-- Job button: shows agent job/mission (Handover 0358) -->
+              <v-tooltip text="View assigned job">
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-briefcase-outline"
                     size="small"
                     variant="text"
                     color="white"
-                    @click="handleInfo(agent)"
+                    data-testid="jobs-info-btn"
+                    @click="handleAgentJob(agent)"
                   />
                 </template>
               </v-tooltip>
@@ -280,13 +300,54 @@
       @succession-triggered="handleSuccessorCreated"
     />
 
-    <!-- Agent Details Modal (Info button) -->
+    <!-- Agent Details Modal (GiljoAI face - shows role/template) -->
     <AgentDetailsModal
       v-model="showAgentDetailsModal"
       :agent="selectedAgent"
     />
 
-    <!-- Message Audit Modal (Folder icon - Handover 0331) -->
+    <!-- Agent Job Modal (Info button - shows assigned job/mission) - Handover 0358 -->
+    <v-dialog v-model="showAgentJobModal" max-width="700" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-briefcase-outline</v-icon>
+          <span>Assigned Job: {{ selectedAgent?.agent_name || selectedAgent?.agent_type }}</span>
+          <v-spacer></v-spacer>
+          <v-btn icon variant="text" @click="showAgentJobModal = false" aria-label="Close">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <div v-if="selectedAgent" class="agent-job-content">
+            <!-- Agent Info -->
+            <div class="d-flex align-center gap-2 mb-4">
+              <v-chip size="small" :color="getAgentColor(selectedAgent.agent_type)" label>
+                {{ selectedAgent.agent_type }}
+              </v-chip>
+              <span class="text-caption text-medium-emphasis">ID: {{ selectedAgent.job_id }}</span>
+            </div>
+
+            <!-- Mission Content -->
+            <div class="mission-section">
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Mission</h4>
+              <v-card variant="outlined" class="pa-3">
+                <pre class="mission-text">{{ selectedAgent.mission || 'No mission assigned yet.' }}</pre>
+              </v-card>
+            </div>
+          </div>
+          <div v-else class="text-center py-4 text-medium-emphasis">
+            No agent selected
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" @click="showAgentJobModal = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Message Audit Modal (Chat bubble - Handover 0358) -->
     <MessageAuditModal
       :show="showMessageAuditModal"
       :agent="selectedAgent"
@@ -319,6 +380,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useTheme } from 'vuetify'
 import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
@@ -399,6 +461,15 @@ const emit = defineEmits([
 const { showToast } = useToast()
 const { on, off } = useWebSocketV2()
 const userStore = useUserStore()
+const theme = useTheme()
+
+/**
+ * GiljoAI face icon - theme-aware (Handover 0358)
+ */
+const giljoFaceIcon = computed(() => {
+  const isDark = theme.global.current.value.dark
+  return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+})
 
 /**
  * State
@@ -416,6 +487,7 @@ const showCloseoutModal = ref(false)
 const showCancelDialog = ref(false)
 const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
+const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
 const messageAuditInitialTab = ref('waiting')
 const selectedAgent = ref(null)
@@ -698,11 +770,11 @@ async function handlePlay(agent) {
 }
 
 /**
- * Handle Folder button click
- * Handover 0331: Opens Message Audit Modal for selected agent (Waiting tab)
+ * Handle Messages button click (Handover 0358)
+ * Opens Message Audit Modal for selected agent (Waiting tab)
  */
-function handleFolder(agent) {
-  console.log('[JobsTab] Folder action (message audit):', agent.agent_type)
+function handleMessages(agent) {
+  console.log('[JobsTab] Messages action:', agent.agent_type)
   selectedAgent.value = agent
   messageAuditInitialTab.value = 'waiting'
   showMessageAuditModal.value = true
@@ -727,13 +799,23 @@ function handleStepsClick(agent) {
 }
 
 /**
- * Handle Info button click
+ * Handle Agent Role button click (GiljoAI face icon) - Handover 0358
  * Opens AgentDetailsModal to show template or orchestrator prompt
  */
-function handleInfo(agent) {
-  console.log('[JobsTab] Info action:', agent.agent_type)
+function handleAgentRole(agent) {
+  console.log('[JobsTab] Agent role action:', agent.agent_type)
   selectedAgent.value = agent
   showAgentDetailsModal.value = true
+}
+
+/**
+ * Handle Agent Job button click (info icon) - Handover 0358
+ * Opens modal to show agent's assigned job/mission
+ */
+function handleAgentJob(agent) {
+  console.log('[JobsTab] Agent job action:', agent.agent_type)
+  selectedAgent.value = agent
+  showAgentJobModal.value = true
 }
 
 /**
@@ -1441,6 +1523,26 @@ onUnmounted(() => {
       background: rgba(76, 175, 80, 0.2);
       color: #4caf50;
     }
+  }
+
+  /* GiljoAI Face Icon - Handover 0358 */
+  .giljo-face-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+
+  /* Agent Job Modal - Handover 0358 */
+  .mission-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    max-height: 400px;
+    overflow-y: auto;
   }
 }
 </style>
