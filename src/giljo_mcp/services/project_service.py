@@ -226,6 +226,7 @@ class ProjectService:
                 agents = agent_result.scalars().all()
 
                 # Convert agents to simple dicts (matching AgentSimple schema)
+                # Include messages for JobsTab WebSocket refresh fix (Handover 0358)
                 agent_dicts = [
                     {
                         "id": agent.job_id,
@@ -233,6 +234,7 @@ class ProjectService:
                         "agent_type": agent.agent_type,
                         "agent_name": agent.agent_name,
                         "status": agent.status,
+                        "messages": agent.messages or [],
                         "thin_client": True,
                     }
                     for agent in agents
