@@ -835,7 +835,7 @@ Execute these IN ORDER before starting your mission:
 
 3. **Check Messages (BEFORE starting work):**
    Tool: mcp__giljo-mcp__receive_messages
-   Parameters: {{"agent_id": "{agent_type}"}}
+   Parameters: {{"agent_id": "{agent_job_id}"}}
 
 4. **Execute your mission** (details in get_agent_mission response)
 
