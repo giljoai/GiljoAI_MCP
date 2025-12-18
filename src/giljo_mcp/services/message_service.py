@@ -240,13 +240,21 @@ class MessageService:
                         # Determine recipient job IDs
                         recipient_job_ids = []
                         if to_agents[0] == 'all':
-                            # Broadcast: Get ALL agent job IDs in the project
+                            # Broadcast: Get ALL agent job IDs in the project, EXCLUDING sender
                             result = await session.execute(
                                 select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
                             )
                             all_agents = result.scalars().all()
-                            recipient_job_ids = [agent.job_id for agent in all_agents]
-                            self._logger.info(f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_job_ids)} recipients")
+                            # Exclude sender from recipients to prevent self-notification
+                            sender_agent_type = from_agent or "orchestrator"
+                            recipient_job_ids = [
+                                agent.job_id for agent in all_agents
+                                if agent.agent_type != sender_agent_type
+                            ]
+                            self._logger.info(
+                                f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_job_ids)} recipients "
+                                f"(excluded sender: {sender_agent_type})"
+                            )
                         else:
                             # Direct message: Resolve agent_type to job_id if needed
                             # to_agents can contain job_ids (UUIDs) or agent_types (like "analyzer")
@@ -641,7 +649,8 @@ class MessageService:
         project_id: Optional[str] = None,
         status: Optional[str] = None,
         agent_id: Optional[str] = None,
-        tenant_key: Optional[str] = None
+        tenant_key: Optional[str] = None,
+        limit: Optional[int] = None
     ) -> dict[str, Any]:
         """
         List messages in a project or for a specific agent.
@@ -653,6 +662,7 @@ class MessageService:
             status: Optional message status filter
             agent_id: Optional agent job ID filter
             tenant_key: Optional tenant key (uses current if not provided)
+            limit: Optional maximum number of messages to retrieve
 
         Returns:
             Dict with success status and list of messages or error
@@ -660,7 +670,8 @@ class MessageService:
         Example:
             >>> result = await service.list_messages(
             ...     project_id="project-123",
-            ...     status="pending"
+            ...     status="pending",
+            ...     limit=50
             ... )
         """
         try:
@@ -711,6 +722,10 @@ class MessageService:
                             )
                         )
                     ).order_by(Message.created_at)
+
+                    # Apply limit if provided
+                    if limit:
+                        query = query.limit(limit)
 
                     result = await session.execute(query)
                     messages = result.scalars().all()
@@ -773,6 +788,10 @@ class MessageService:
                 # Apply status filter
                 if status:
                     query = query.where(Message.status == status)
+
+                # Apply limit if provided
+                if limit:
+                    query = query.limit(limit)
 
                 result = await session.execute(query)
                 messages = result.scalars().all()

@@ -430,42 +430,52 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                 prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
                 mission_tokens = len(mission) // 4  # ~2000 tokens
 
-                # Broadcast agent creation via WebSocket HTTP bridge
-                self._logger.info(f"[WEBSOCKET DEBUG] About to broadcast agent:created for {agent_name} ({agent_type})")
+                # Broadcast agent creation via direct WebSocket (FIX: Bug 2 - Race condition elimination)
+                # Previously used HTTP bridge (slow, queued) which caused race condition where
+                # message:received arrived before agent:created, breaking counter updates.
+                # Now using same direct WebSocket pattern as MessageService for immediate broadcast.
+                self._logger.info(f"[WEBSOCKET] Broadcasting agent:created for {agent_name} ({agent_type}) via direct WebSocket")
                 try:
-                    import httpx
-
-                    self._logger.info(f"[WEBSOCKET DEBUG] httpx imported for agent creation broadcast")
-
-                    # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
-                    async with httpx.AsyncClient() as client:
-                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                        self._logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url} for agent:created")
-
-                        response = await client.post(
-                            bridge_url,
-                            json={
-                                "event_type": "agent:created",
-                                "tenant_key": tenant_key,
-                                "data": {
-                                    "project_id": project_id,
-                                    "agent_id": agent_job_id,
-                                    "agent_job_id": agent_job_id,
-                                    "agent_type": agent_type,
-                                    "agent_name": agent_name,
-                                    "status": "waiting",
-                                    "thin_client": True,
-                                    "prompt_tokens": prompt_tokens,
-                                    "mission_tokens": mission_tokens,
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                                },
-                            },
-                            timeout=5.0,
+                    # Use direct WebSocket broadcast if available (same pattern as MessageService)
+                    if self._message_service and self._message_service._websocket_manager:
+                        created_at = datetime.now(timezone.utc)
+                        await self._message_service._websocket_manager.broadcast_job_created(
+                            job_id=agent_job_id,
+                            agent_type=agent_type,
+                            tenant_key=tenant_key,
+                            spawned_by=parent_job_id,
+                            mission_preview=mission[:100] if mission else None,
+                            created_at=created_at,
                         )
-                        self._logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response for agent:created: {response.status_code}")
-                        self._logger.info(f"[WEBSOCKET] Broadcasted agent:created for {agent_name} ({agent_type}) via HTTP bridge")
+                        self._logger.info(f"[WEBSOCKET] Successfully broadcast agent:created for {agent_name} ({agent_type}) via direct WebSocket")
+                    else:
+                        # Fallback to HTTP bridge if WebSocket manager not available (testing scenarios)
+                        import httpx
+                        async with httpx.AsyncClient() as client:
+                            bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
+                            response = await client.post(
+                                bridge_url,
+                                json={
+                                    "event_type": "agent:created",
+                                    "tenant_key": tenant_key,
+                                    "data": {
+                                        "project_id": project_id,
+                                        "agent_id": agent_job_id,
+                                        "agent_job_id": agent_job_id,
+                                        "agent_type": agent_type,
+                                        "agent_name": agent_name,
+                                        "status": "waiting",
+                                        "thin_client": True,
+                                        "prompt_tokens": prompt_tokens,
+                                        "mission_tokens": mission_tokens,
+                                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    },
+                                },
+                                timeout=5.0,
+                            )
+                        self._logger.warning(f"[WEBSOCKET] Used HTTP bridge fallback for agent:created (WebSocket manager unavailable)")
                 except Exception as ws_error:
-                    self._logger.error(f"[WEBSOCKET ERROR] Failed to broadcast agent:created via HTTP bridge: {ws_error}", exc_info=True)
+                    self._logger.error(f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True)
 
                 return {
                     "success": True,
@@ -479,7 +489,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                 }
 
         except Exception as e:
-            self._logger.exception(f"Failed to spawn agent job: {e}")
+            self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
             return {"error": "INTERNAL_ERROR", "message": f"Failed to spawn agent: {e!s}", "severity": "ERROR"}
 
     async def get_agent_mission(

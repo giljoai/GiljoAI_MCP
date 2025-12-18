@@ -263,10 +263,11 @@ class ToolAccessor:
         project_id: Optional[str] = None,
         status: Optional[str] = None,
         agent_id: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> dict[str, Any]:
         """List messages in a project or for a specific agent (delegates to MessageService)"""
         return await self._message_service.list_messages(
-            project_id=project_id, status=status, agent_id=agent_id
+            project_id=project_id, status=status, agent_id=agent_id, limit=limit
         )
 
     # Task Tools
