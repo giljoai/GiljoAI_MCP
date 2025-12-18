@@ -315,14 +315,16 @@ class TestMessageAcknowledgedEvent:
         ws_manager.auth_contexts["client-1"] = {"tenant_key": tenant_key}
 
         message_id = str(uuid.uuid4())
-        job_id = str(uuid.uuid4())
-        agent_id = "implementer-1"
+        project_id = str(uuid.uuid4())
+        agent_id = str(uuid.uuid4())  # Agent job_id who acknowledged
+        message_ids = [message_id, str(uuid.uuid4())]
 
         await ws_manager.broadcast_message_acknowledged(
             message_id=message_id,
-            job_id=job_id,
-            tenant_key=tenant_key,
             agent_id=agent_id,
+            tenant_key=tenant_key,
+            project_id=project_id,
+            message_ids=message_ids,
         )
 
         sent_message = mock_websocket.send_json.call_args[0][0]
@@ -333,13 +335,14 @@ class TestMessageAcknowledgedEvent:
         # Verify critical data for counter updates
         data = sent_message["data"]
         assert data["message_id"] == message_id
-        assert data["job_id"] == job_id  # Critical for counter update
+        assert data["message_ids"] == message_ids
         assert data["agent_id"] == agent_id
+        assert data["project_id"] == project_id
         assert data["tenant_key"] == tenant_key
-        assert "acknowledged_at" in data
+        assert "timestamp" in data
 
-    async def test_message_acknowledged_with_response_data(self):
-        """message:acknowledged event can include optional response data."""
+    async def test_message_acknowledged_with_multiple_messages(self):
+        """message:acknowledged event should handle multiple message IDs."""
         from api.websocket import WebSocketManager
 
         ws_manager = WebSocketManager()
@@ -349,18 +352,19 @@ class TestMessageAcknowledgedEvent:
         ws_manager.active_connections["client-1"] = mock_websocket
         ws_manager.auth_contexts["client-1"] = {"tenant_key": tenant_key}
 
-        response_data = {"status": "completed", "result": "success"}
+        message_ids = [str(uuid.uuid4()) for _ in range(5)]
 
         await ws_manager.broadcast_message_acknowledged(
-            message_id=str(uuid.uuid4()),
-            job_id=str(uuid.uuid4()),
+            message_id=message_ids[0],
+            agent_id=str(uuid.uuid4()),
             tenant_key=tenant_key,
-            agent_id="implementer-1",
-            response_data=response_data,
+            project_id=str(uuid.uuid4()),
+            message_ids=message_ids,
         )
 
         sent_message = mock_websocket.send_json.call_args[0][0]
-        assert sent_message["data"]["response_data"] == response_data
+        assert sent_message["data"]["message_ids"] == message_ids
+        assert len(sent_message["data"]["message_ids"]) == 5
 
     async def test_message_acknowledged_tenant_isolation(self):
         """message:acknowledged event should respect tenant boundaries."""
@@ -376,11 +380,13 @@ class TestMessageAcknowledgedEvent:
         ws_manager.auth_contexts["client-1"] = {"tenant_key": "tenant-X"}
         ws_manager.auth_contexts["client-2"] = {"tenant_key": "tenant-Y"}
 
+        message_id = str(uuid.uuid4())
         await ws_manager.broadcast_message_acknowledged(
-            message_id=str(uuid.uuid4()),
-            job_id=str(uuid.uuid4()),
+            message_id=message_id,
+            agent_id=str(uuid.uuid4()),
             tenant_key="tenant-X",
-            agent_id="implementer-1",
+            project_id=str(uuid.uuid4()),
+            message_ids=[message_id],
         )
 
         # Only tenant-X client receives
@@ -440,51 +446,15 @@ class TestMessageServiceIntegration:
         assert call_kwargs["from_agent"] == "orchestrator"
         assert call_kwargs["tenant_key"] == "tenant-123"
 
+    @pytest.mark.skip(reason="MessageService.acknowledge_message method was removed - acknowledgment happens via receive_messages")
     async def test_acknowledge_message_emits_acknowledged_event(self):
-        """MessageService.acknowledge_message should emit message:acknowledged event."""
-        from src.giljo_mcp.services.message_service import MessageService
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant import TenantManager
-        from api.websocket import WebSocketManager
-        from src.giljo_mcp.models import Message
+        """MessageService.acknowledge_message should emit message:acknowledged event.
 
-        # Mock dependencies
-        db_manager = MagicMock(spec=DatabaseManager)
-        tenant_manager = MagicMock(spec=TenantManager)
-        ws_manager = AsyncMock(spec=WebSocketManager)
-
-        service = MessageService(db_manager=db_manager, tenant_manager=tenant_manager, websocket_manager=ws_manager)
-
-        # Mock database session and message lookup
-        mock_session = AsyncMock()
-        mock_message = MagicMock(spec=Message)
-        mock_message.id = str(uuid.uuid4())
-        mock_message.tenant_key = "tenant-123"
-        mock_message.acknowledged_by = []
-        mock_message.meta_data = {"job_id": str(uuid.uuid4())}
-
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=mock_message)
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.commit = AsyncMock()
-
-        # Mock async context manager properly
-        async_context_manager = AsyncMock()
-        async_context_manager.__aenter__ = AsyncMock(return_value=mock_session)
-        async_context_manager.__aexit__ = AsyncMock(return_value=None)
-        db_manager.get_session_async = MagicMock(return_value=async_context_manager)
-
-        # Acknowledge message
-        result = await service.acknowledge_message(
-            message_id=str(mock_message.id),
-            agent_name="implementer-1",
-        )
-
-        # Verify WebSocket broadcast was called
-        assert ws_manager.broadcast_message_acknowledged.called
-        call_kwargs = ws_manager.broadcast_message_acknowledged.call_args[1]
-        assert call_kwargs["agent_id"] == "implementer-1"
-        assert call_kwargs["tenant_key"] == "tenant-123"
+        NOTE: This test is skipped because the acknowledge_message method was removed.
+        Message acknowledgment is now handled via receive_messages() which calls
+        broadcast_message_acknowledged. See Handover 0326 for details.
+        """
+        pass
 
 
 class TestEventDataSufficiencyForCounters:
@@ -534,14 +504,16 @@ class TestEventDataSufficiencyForCounters:
         assert received_event["data"]["job_id"] == job_id
 
         # Test message:acknowledged
+        ack_message_id = str(uuid.uuid4())
         await ws_manager.broadcast_message_acknowledged(
-            message_id=str(uuid.uuid4()),
-            job_id=job_id,
+            message_id=ack_message_id,
+            agent_id=job_id,  # agent_id is the job_id of acknowledging agent
             tenant_key=tenant_key,
-            agent_id="implementer-1",
+            project_id=str(uuid.uuid4()),
+            message_ids=[ack_message_id],
         )
         ack_event = mock_ws.send_json.call_args_list[2][0][0]
-        assert ack_event["data"]["job_id"] == job_id
+        assert ack_event["data"]["agent_id"] == job_id
 
     async def test_all_events_include_tenant_key(self):
         """All events must include tenant_key for multi-tenant isolation."""
@@ -581,11 +553,13 @@ class TestEventDataSufficiencyForCounters:
         )
         assert mock_ws.send_json.call_args_list[1][0][0]["data"]["tenant_key"] == tenant_key
 
+        ack_message_id = str(uuid.uuid4())
         await ws_manager.broadcast_message_acknowledged(
-            message_id=str(uuid.uuid4()),
-            job_id=str(uuid.uuid4()),
+            message_id=ack_message_id,
+            agent_id=str(uuid.uuid4()),
             tenant_key=tenant_key,
-            agent_id="implementer-1",
+            project_id=str(uuid.uuid4()),
+            message_ids=[ack_message_id],
         )
         assert mock_ws.send_json.call_args_list[2][0][0]["data"]["tenant_key"] == tenant_key
 
