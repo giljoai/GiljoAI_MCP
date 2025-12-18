@@ -44,10 +44,10 @@
           <!-- Template Overview Card -->
           <v-card variant="outlined" class="mb-4">
             <v-list density="compact">
-              <!-- Name (with Role suffix if different) -->
+              <!-- Name (with Role suffix if different) - Handover 0358: giljo yellow -->
               <v-list-item>
                 <template #prepend>
-                  <v-icon color="primary">mdi-account-badge</v-icon>
+                  <v-icon color="#FFD700">mdi-account-badge</v-icon>
                 </template>
                 <v-list-item-title class="font-weight-bold">Name</v-list-item-title>
                 <v-list-item-subtitle>
@@ -60,10 +60,16 @@
 
               <v-divider></v-divider>
 
-              <!-- CLI Tool -->
+              <!-- CLI Tool (Handover 0358: use actual tool icons) -->
               <v-list-item v-if="templateData.cli_tool">
                 <template #prepend>
-                  <v-icon color="secondary">mdi-console</v-icon>
+                  <img
+                    v-if="getCliToolIcon(templateData.cli_tool)"
+                    :src="getCliToolIcon(templateData.cli_tool)"
+                    alt="CLI Tool"
+                    class="cli-tool-icon"
+                  />
+                  <v-icon v-else color="secondary">mdi-console</v-icon>
                 </template>
                 <v-list-item-title class="font-weight-bold">CLI Tool</v-list-item-title>
                 <v-list-item-subtitle>{{ templateData.cli_tool }}</v-list-item-subtitle>
@@ -71,10 +77,14 @@
 
               <v-divider v-if="templateData.cli_tool"></v-divider>
 
-              <!-- Model -->
+              <!-- Model (Handover 0358: use giljo face icon) -->
               <v-list-item v-if="templateData.model">
                 <template #prepend>
-                  <v-icon color="tertiary">mdi-robot</v-icon>
+                  <img
+                    :src="giljoFaceIcon"
+                    alt="Model"
+                    class="giljo-face-icon"
+                  />
                 </template>
                 <v-list-item-title class="font-weight-bold">Model</v-list-item-title>
                 <v-list-item-subtitle>{{ templateData.model }}</v-list-item-subtitle>
@@ -82,10 +92,10 @@
 
               <v-divider v-if="templateData.model"></v-divider>
 
-              <!-- Description -->
+              <!-- Description - Handover 0358: giljo yellow -->
               <v-list-item v-if="templateData.description">
                 <template #prepend>
-                  <v-icon color="info">mdi-text</v-icon>
+                  <v-icon color="#FFD700">mdi-text</v-icon>
                 </template>
                 <v-list-item-title class="font-weight-bold">Description</v-list-item-title>
                 <v-list-item-subtitle class="text-wrap">
@@ -259,6 +269,7 @@
 
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue'
+import { useTheme } from 'vuetify'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -277,6 +288,13 @@ const emit = defineEmits(['update:modelValue'])
 // Get API instance (use injected $api if available, otherwise use imported api)
 const instance = getCurrentInstance()
 const apiClient = instance?.appContext.config.globalProperties.$api || api
+
+// Theme-aware giljo face icon (Handover 0358)
+const theme = useTheme()
+const giljoFaceIcon = computed(() => {
+  const isDark = theme.global.current.value.dark
+  return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+})
 
 // State
 const loading = ref(false)
@@ -300,16 +318,35 @@ const handleClose = () => {
   emit('update:modelValue', false)
 }
 
+/**
+ * Get agent avatar color - matches BRANDING_GUIDE.md (Handover 0358)
+ */
 const getAgentTypeColor = (agentType) => {
   const colors = {
-    orchestrator: 'purple',
-    implementer: 'blue',
-    tester: 'green',
-    architect: 'orange',
-    reviewer: 'cyan',
-    documenter: 'indigo',
+    orchestrator: '#D4A574', // Tan/Beige - Project coordination
+    analyzer: '#E74C3C', // Red - Analysis & research
+    implementer: '#3498DB', // Blue - Code implementation
+    implementor: '#3498DB', // Blue - Code implementation (alias)
+    tester: '#FFC300', // Yellow - Testing & QA
+    reviewer: '#9B59B6', // Purple - Code review
+    documenter: '#27AE60', // Green - Documentation
+    researcher: '#27AE60', // Green - Research (alias)
   }
   return colors[agentType] || 'grey'
+}
+
+/**
+ * Get CLI tool icon path (Handover 0358)
+ */
+const getCliToolIcon = (cliTool) => {
+  const icons = {
+    claude: '/Claude_AI_symbol.svg',
+    'claude-code': '/Claude_AI_symbol.svg',
+    codex: '/codex_logo.svg',
+    gemini: '/gemini-icon.svg',
+    openai: '/openai-logo.svg',
+  }
+  return icons[cliTool?.toLowerCase()] || null // null = use mdi-console for generic
 }
 
 const fetchTemplateData = async () => {
@@ -437,5 +474,18 @@ watch(
 
 .gap-2 {
   gap: 8px;
+}
+
+/* Handover 0358: Icon styling for CLI tools and giljo face */
+.cli-tool-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.giljo-face-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 </style>
