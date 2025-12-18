@@ -105,7 +105,8 @@ class FileStaging:
         Stage slash commands as a ZIP file.
 
         Creates a ZIP file containing GiljoAI slash command files (.md) for CLI tools.
-        Includes core commands: gil_fetch, gil_update_agents, gil_activate, gil_launch, gil_handover
+        Includes core commands: gil_get_claude_agents (unified agent installer),
+        gil_fetch, gil_update_agents, gil_activate, gil_launch, gil_handover
 
         Args:
             staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
@@ -122,8 +123,9 @@ class FileStaging:
 
             # Get all templates
             all_templates = get_all_templates()
-            # Select a stable subset
+            # Select a stable subset - core commands for CLI users
             wanted = [
+                "gil_get_claude_agents.md",  # Unified agent installer (interactive)
                 "gil_fetch.md",
                 "gil_update_agents.md",
                 "gil_activate.md",
