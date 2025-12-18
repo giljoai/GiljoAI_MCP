@@ -122,15 +122,15 @@ async def handle_initialize(
 
 
 # Tools hidden from MCP schema but still callable via slash commands or REST API
-# These tools are accessible when explicitly invoked (e.g., via allowed-tools in slash commands)
-# but don't consume context budget by being advertised in the main tool list.
-# - gil_import_productagents: Use /gil_get_claude_agents slash command
-# - gil_fetch: Redundant with gil_import_* tools, hidden to reduce schema size
-# Note: gil_import_productagents and gil_import_personalagents must be VISIBLE
-# because /gil_get_claude_agents slash command needs to call them
+# These tools are callable but hidden from MCP schema to save context tokens (~150 per tool).
+# - get_agent_download_url: VISIBLE - used by /gil_get_claude_agents slash command
+# - gil_import_*: HIDDEN - replaced by get_agent_download_url (simpler workflow)
+# - gil_fetch: HIDDEN - redundant with get_agent_download_url
 # Web UI access unaffected (uses REST API with JWT auth)
 HIDDEN_FROM_SCHEMA_TOOLS = {
-    "gil_fetch",  # Redundant - use gil_import_productagents or gil_import_personalagents
+    "gil_fetch",  # Redundant - use get_agent_download_url
+    "gil_import_productagents",  # Replaced by get_agent_download_url
+    "gil_import_personalagents",  # Replaced by get_agent_download_url
 }
 
 
@@ -450,10 +450,16 @@ async def handle_tools_list(
         # Slash Command Setup Tool (Handover 0093)
         {
             "name": "setup_slash_commands",
-            "description": "Install GiljoAI slash commands to local CLI. Creates .md files in ~/.claude/commands/ for /gil_import_productagents, /gil_import_personalagents, and /gil_handover.",
+            "description": "Install GiljoAI slash commands to local CLI. Creates .md files in ~/.claude/commands/.",
             "inputSchema": {"type": "object", "properties": {}},
         },
-        # Slash Command Handlers (Handover 0084b)
+        # Agent Template Download Tool (Handover 0355)
+        {
+            "name": "get_agent_download_url",
+            "description": "Generate one-time download link for active agent templates. Returns URL for /gil_get_claude_agents slash command.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        # Slash Command Handlers (Handover 0084b) - HIDDEN from schema, callable via slash commands
         {
             "name": "gil_import_productagents",
             "description": "Import GiljoAI agent templates to current product's .claude/agents folder. Requires active product with project_path configured.",
@@ -601,7 +607,9 @@ async def handle_tools_call(
         "check_succession_status": state.tool_accessor.check_succession_status,
         # Slash Command Setup Tool (Handover 0093)
         "setup_slash_commands": state.tool_accessor.setup_slash_commands,
-        # Slash Command Handlers (Handover 0084b)
+        # Agent Template Download Tool (Handover 0355)
+        "get_agent_download_url": state.tool_accessor.get_agent_download_url,
+        # Slash Command Handlers (Handover 0084b) - HIDDEN from schema
         "gil_import_productagents": state.tool_accessor.gil_import_productagents,
         "gil_import_personalagents": state.tool_accessor.gil_import_personalagents,
         "gil_handover": state.tool_accessor.gil_handover,
@@ -619,7 +627,7 @@ async def handle_tools_call(
     try:
         # Inject API key for download tools (HTTP mode support)
         # These tools need API key to download from server endpoints
-        download_tools = {"setup_slash_commands", "gil_import_productagents", "gil_import_personalagents"}
+        download_tools = {"setup_slash_commands", "get_agent_download_url", "gil_import_productagents", "gil_import_personalagents"}
         if tool_name in download_tools:
             # Get API key from request headers
             api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace(
