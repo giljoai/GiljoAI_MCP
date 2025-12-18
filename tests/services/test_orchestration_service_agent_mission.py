@@ -105,10 +105,10 @@ class TestGetAgentMissionFullProtocol:
         assert len(response["full_protocol"]) > 0
 
     @pytest.mark.asyncio
-    async def test_full_protocol_contains_six_phases(
+    async def test_full_protocol_contains_five_phases(
         self, orchestration_service, mock_db_manager, mock_agent_job
     ):
-        """Test that full_protocol contains all 6 lifecycle phases."""
+        """Test that full_protocol contains all 5 lifecycle phases (Handover 0359)."""
         db_manager, session = mock_db_manager
         job = mock_agent_job
 
@@ -132,13 +132,12 @@ class TestGetAgentMissionFullProtocol:
 
         protocol = response["full_protocol"]
 
-        # Verify all 6 phases are present
+        # Verify all 5 phases are present (Handover 0359: consolidated from 6 to 5)
         assert "Phase 1" in protocol or "STARTUP" in protocol.upper(), "Protocol must include Phase 1 (Startup)"
         assert "Phase 2" in protocol or "EXECUTION" in protocol.upper(), "Protocol must include Phase 2 (Execution)"
         assert "Phase 3" in protocol or "PROGRESS" in protocol.upper(), "Protocol must include Phase 3 (Progress)"
-        assert "Phase 4" in protocol or "COMMUNICATION" in protocol.upper(), "Protocol must include Phase 4 (Communication)"
-        assert "Phase 5" in protocol or "COMPLETION" in protocol.upper(), "Protocol must include Phase 5 (Completion)"
-        assert "Phase 6" in protocol or "CLEANUP" in protocol.upper(), "Protocol must include Phase 6 (Cleanup)"
+        assert "Phase 4" in protocol or "COMPLETION" in protocol.upper(), "Protocol must include Phase 4 (Completion)"
+        assert "Phase 5" in protocol or "ERROR" in protocol.upper(), "Protocol must include Phase 5 (Error Handling)"
 
     @pytest.mark.asyncio
     async def test_full_protocol_references_mcp_tools(
