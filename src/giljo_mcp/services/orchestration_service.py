@@ -52,13 +52,14 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> s
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
 
-    Handover 0359: Added agent_name parameter to replace "your-type" placeholder,
-    mandatory TodoWrite in Phase 2, and steps_completed/steps_total in progress.
+    Handover 0359: Added agent_name parameter for acknowledge_job, fixed
+    receive_messages to use job_id (UUID), mandatory TodoWrite in Phase 2,
+    and steps_completed/steps_total in progress.
 
     Args:
         job_id: Agent job UUID for MCP tool calls
         tenant_key: Tenant key for MCP tool calls
-        agent_name: Agent name for message routing (matches template filename)
+        agent_name: Agent name for acknowledge_job (matches template filename)
 
     Returns:
         Multi-line protocol string with 5 phases and MCP tool references
@@ -68,7 +69,7 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> s
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id="{agent_name}")` - Check for instructions
+3. Call `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
 
 ### Phase 2: EXECUTION
@@ -82,7 +83,7 @@ Then execute assigned tasks:
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
 1. Call `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
-2. Call `mcp__giljo-mcp__receive_messages(agent_id="{agent_name}")` - Check for new instructions
+2. Call `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")` - Check for new instructions
 3. Incorporate any orchestrator feedback before continuing
 
 ### Phase 4: COMPLETION
