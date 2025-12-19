@@ -257,10 +257,53 @@ Create a clean three-layer execution architecture for **individual agents only**
 
 ## Progress Updates
 
-> To be filled in by implementing agents.
+### 2025-12-19 – Agent: TDD-Implementor (Execution Layer Refactor)
+
+**Status:** Completed (code + local tests; global coverage gate still enforced)
+
+**Work Done:**
+- **Centralized behavior:** Left `_generate_agent_protocol()` and `get_agent_mission()` as the single behavioral authority returning `full_protocol` (no behavior changes here, only consumers adjusted).
+- **Generic agent template:** Replaced the embedded 6-phase lifecycle in `src/giljo_mcp/templates/generic_agent_template.py` with:
+  - Identity section (agent_id, job_id, product_id, project_id, tenant_key).
+  - MCP wiring section (native tools, key MCP tool names).
+  - Clear bootstrap: “First action: call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`; then follow `full_protocol` for lifecycle.”
+- **Thin prompts (spawn_agent_job):**
+  - Updated HTTP orchestration service path in `src/giljo_mcp/services/orchestration_service.py` to:
+    - Keep identity and “MCP tools are native” reminder.
+    - Replace the long 6-step startup sequence with a short startup block:
+      - Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`.
+      - Read response and follow `full_protocol` for all lifecycle behavior.
+  - Updated MCP tool variant in `src/giljo_mcp/tools/orchestration.py` to use the same lean startup text.
+- **Claude Code Task instructions:**
+  - In `src/giljo_mcp/thin_prompt_generator.py::_build_claude_code_execution_prompt`, rewrote the `Task(...)` instructions and example to:
+    - Call `mcp__giljo-mcp__get_agent_mission` as a tool with `agent_job_id` and `tenant_key`.
+    - Explicitly mention that this returns `mission` and `full_protocol`.
+    - Instruct subagents to follow `full_protocol` for startup, planning, progress, messaging, completion, and error handling.
+- **Seeder MCP section:**
+  - Updated `_get_mcp_coordination_section()` in `src/giljo_mcp/template_seeder.py` to:
+    - Keep the CRITICAL “MCP tools are native” warning.
+    - Replace the detailed multi-phase protocol with:
+      - A concise MCP tool summary.
+      - A “Bootstrap Sequence” that directs agents to call `get_agent_mission`, read `full_protocol`, and follow it for lifecycle behavior.
+    - Keep generic tool-call format and self-navigation notes, but no longer restate lifecycle details.
+- **Tests:**
+  - Updated `tests/unit/test_generic_agent_template.py` to:
+    - Assert that all identity variables appear in the rendered template.
+    - Assert that the template mentions `get_agent_mission` and `full_protocol`.
+    - Assert that MCP tools are referenced by their full names: `mcp__giljo-mcp__get_agent_mission`, `mcp__giljo-mcp__report_progress`, `mcp__giljo-mcp__complete_job`, `mcp__giljo-mcp__report_error`.
+    - Adjust the token-budget assertion to a slightly smaller but still non-trivial range (approx. 400–4000 tokens).
+  - Ran `pytest tests/unit/test_generic_agent_template.py -q`. All tests in that file passed; the overall run failed only on the global coverage gate (expected when running a single file in this project).
+
+**Final Notes / Behavior Summary:**
+- Templates (generic + seeded/Claude) now:
+  - Teach *how* to talk to MCP (tool wiring + identity).
+  - Explicitly direct agents to `mcp__giljo-mcp__get_agent_mission` and to follow `full_protocol`.
+  - No longer embed a separate, competing lifecycle spec.
+- Behavior (what to do across phases) remains solely in `_generate_agent_protocol()` and is delivered via `full_protocol` from `get_agent_mission()`.
+- Missions (what to build/test/review/document) remain in the DB and are fetched via `get_agent_mission()` as before.
+
 
 - **[YYYY-MM-DD] – [Agent]**  
   Status: Not Started / In Progress / Blocked / Completed  
   Notes:
   - …
-
