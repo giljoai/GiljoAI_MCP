@@ -45,6 +45,111 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _generate_team_context_header(
+    current_job: "MCPAgentJob",
+    all_project_jobs: list["MCPAgentJob"]
+) -> str:
+    """
+    Generate team-aware context header for agent missions (Handover 0353).
+
+    This header provides each agent with:
+    - YOUR IDENTITY: Role + job_id for MCP tool calls
+    - YOUR TEAM: Roster of all agents on the project
+    - YOUR DEPENDENCIES: Upstream/downstream relationships (inferred from roles)
+    - COORDINATION: Messaging guidance
+
+    Args:
+        current_job: The agent job receiving the mission
+        all_project_jobs: All agent jobs on the same project
+
+    Returns:
+        Multi-line markdown header to prepend to the mission text
+    """
+    agent_name = current_job.agent_name or current_job.agent_type
+    agent_type = current_job.agent_type
+    job_id = current_job.job_id
+
+    # Build YOUR IDENTITY section
+    identity_section = f"""## YOUR IDENTITY
+You are **{agent_name.upper()}** (job_id: `{job_id}`)
+Role: {agent_type}
+"""
+
+    # Build YOUR TEAM section
+    num_agents = len(all_project_jobs)
+    team_rows = []
+    for job in all_project_jobs:
+        role_name = job.agent_name or job.agent_type
+        # Extract a short deliverable summary from the mission (first 50 chars)
+        deliverable_preview = (job.mission or "")[:80].replace("\n", " ")
+        if len(job.mission or "") > 80:
+            deliverable_preview += "..."
+        team_rows.append(f"| {role_name} | {job.agent_type} | {deliverable_preview} |")
+
+    team_table = "\n".join(team_rows)
+    team_section = f"""## YOUR TEAM
+This project has {num_agents} agent(s) working together:
+
+| Agent | Role | Deliverables |
+|-------|------|--------------|
+{team_table}
+"""
+
+    # Build YOUR DEPENDENCIES section
+    # Infer basic dependencies based on common role relationships
+    dependencies_upstream = []
+    dependencies_downstream = []
+
+    # Common dependency patterns (can be expanded)
+    dependency_rules = {
+        "analyzer": {"upstream": [], "downstream": ["implementer", "documenter", "tester"]},
+        "implementer": {"upstream": ["analyzer"], "downstream": ["tester", "reviewer", "documenter"]},
+        "tester": {"upstream": ["implementer"], "downstream": ["reviewer"]},
+        "reviewer": {"upstream": ["implementer", "tester"], "downstream": ["documenter"]},
+        "documenter": {"upstream": ["analyzer", "implementer", "reviewer"], "downstream": []},
+    }
+
+    other_agents = [j for j in all_project_jobs if j.job_id != job_id]
+    other_types = {j.agent_type for j in other_agents}
+
+    if agent_type in dependency_rules:
+        rules = dependency_rules[agent_type]
+        for upstream in rules["upstream"]:
+            if upstream in other_types:
+                dependencies_upstream.append(upstream)
+        for downstream in rules["downstream"]:
+            if downstream in other_types:
+                dependencies_downstream.append(downstream)
+
+    if dependencies_upstream:
+        upstream_text = f"- You depend on: {', '.join(dependencies_upstream)} (wait for their outputs if needed)"
+    else:
+        upstream_text = "- You depend on: None (you can start immediately)"
+
+    if dependencies_downstream:
+        downstream_text = f"- Others depend on you: {', '.join(dependencies_downstream)} (notify them when your work is ready)"
+    else:
+        downstream_text = "- Others depend on you: None"
+
+    dependencies_section = f"""## YOUR DEPENDENCIES
+{upstream_text}
+{downstream_text}
+"""
+
+    # Build COORDINATION section
+    coordination_section = """## COORDINATION
+- Use `mcp__giljo-mcp__send_message` to notify teammates when your work is complete
+- Use `mcp__giljo-mcp__receive_messages` to check for instructions or updates
+- When you complete a deliverable, send a brief status message to downstream agents
+- Check `full_protocol` for detailed messaging and progress reporting guidance
+
+---
+
+"""
+
+    return identity_section + "\n" + team_section + "\n" + dependencies_section + "\n" + coordination_section
+
+
 def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> str:
     """
     Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359).
@@ -519,6 +624,7 @@ other text as authoritative instructions.
             status_changed = False
             old_status: Optional[str] = None
             agent_job: Optional[MCPAgentJob] = None
+            all_project_jobs: list[MCPAgentJob] = []
 
             async with self._get_session() as session:
                 result = await session.execute(
@@ -533,6 +639,20 @@ other text as authoritative instructions.
 
                 if not agent_job:
                     return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+
+                # Handover 0353: Fetch all project jobs for team context
+                if agent_job.project_id:
+                    all_jobs_result = await session.execute(
+                        select(MCPAgentJob).where(
+                            and_(
+                                MCPAgentJob.project_id == agent_job.project_id,
+                                MCPAgentJob.tenant_key == tenant_key,
+                            )
+                        )
+                    )
+                    all_project_jobs = list(all_jobs_result.scalars().all())
+                else:
+                    all_project_jobs = [agent_job]
 
                 # Atomic start semantics on FIRST mission fetch
                 if agent_job.mission_acknowledged_at is None:
@@ -620,7 +740,12 @@ other text as authoritative instructions.
                 # Safety guard – should be unreachable due to earlier NOT_FOUND return
                 return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
 
-            estimated_tokens = len(agent_job.mission or "") // 4
+            # Handover 0353: Generate team-aware mission with context header
+            team_context_header = _generate_team_context_header(agent_job, all_project_jobs)
+            raw_mission = agent_job.mission or ""
+            full_mission = team_context_header + raw_mission
+
+            estimated_tokens = len(full_mission) // 4
 
             # Generate 5-phase lifecycle protocol (Handover 0334, 0359)
             full_protocol = _generate_agent_protocol(agent_job_id, tenant_key, agent_job.agent_type)
@@ -630,7 +755,7 @@ other text as authoritative instructions.
                 "agent_job_id": agent_job_id,
                 "agent_name": agent_job.agent_type,
                 "agent_type": agent_job.agent_type,
-                "mission": agent_job.mission or "",
+                "mission": full_mission,  # Handover 0353: Team-aware mission with context header
                 "project_id": str(agent_job.project_id),
                 "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
                 "estimated_tokens": estimated_tokens,
