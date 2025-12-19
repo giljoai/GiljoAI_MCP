@@ -673,3 +673,52 @@ Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
+
+---
+
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **Event Persistence Strategy**
+   - Option A: New `websocket_event_log` table with 7-day retention (proposed)
+   - Option B: Redis-based event queue with TTL
+   - Option C: No persistence, rely on REST API for initial state
+   - **Trade-offs**: Storage vs complexity vs real-time accuracy
+
+2. **State Synchronization Approach**
+   - Option A: Centralized Pinia store (proposed)
+   - Option B: Component-level state with shared composables
+   - Option C: Hybrid (store for critical state, local for UI-only)
+   - **Trade-offs**: Consistency vs performance vs complexity
+
+3. **Orchestrator Idempotency**
+   - Option A: Check for existing active orchestrator in `launch_project()` (proposed)
+   - Option B: Database unique constraint on (project_id, status='active')
+   - Option C: Frontend-only prevention (disable button if orchestrator exists)
+   - **Trade-offs**: Safety vs simplicity vs user experience
+
+4. **Scope Decision**
+   - Full overhaul (10-14 hours) vs surgical fix (3-4 hours)?
+   - Can we ship quick fix for duplicate orchestrator bug first?
+
+### Questions for Developer
+
+- [ ] Is 7-day event retention acceptable? Too long? Too short?
+- [ ] Should we implement WebSocket reconnection with exponential backoff?
+- [ ] Are there other pages affected by stale state issues?
+- [ ] Can we phase this: Bug fix first, then full overhaul?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- Dashboard showed documenter "working" then reverted to "Waiting" on focus change
+- Closeout button appeared then disappeared on refresh
+- Each refresh spawned a new orchestrator instance
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.

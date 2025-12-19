@@ -1056,4 +1056,52 @@ jobs:
 
 ---
 
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **Quick Reference Format**
+   - Option A: Single markdown file (~750 tokens) (proposed)
+   - Option B: Interactive web page in dashboard
+   - Option C: Embed in agent spawn prompt (larger token cost)
+   - **Trade-offs**: Accessibility vs token budget vs maintainability
+
+2. **Documentation Location**
+   - Option A: `docs/guides/mcp_protocol_quick_reference.md` (proposed)
+   - Option B: In-app help modal
+   - Option C: Claude Code slash command (/protocol-help)
+   - **Trade-offs**: Discoverability vs integration vs maintenance
+
+3. **tenant_key Documentation Scope**
+   - Option A: Table of all 30+ tools with requirements (proposed)
+   - Option B: General rule explanation only
+   - Option C: Auto-generated from tool schemas
+   - **Trade-offs**: Completeness vs maintenance burden vs accuracy
+
+4. **Message Convention Standardization**
+   - Should READY:, BLOCKER:, COMPLETE: be enforced or just recommended?
+   - Should we add more prefixes (QUESTION:, WARNING:, etc.)?
+
+### Questions for Developer
+
+- [ ] Where should the quick reference live for best discoverability?
+- [ ] Should we auto-generate the tenant_key table from code?
+- [ ] Are there other documentation gaps not captured here?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- `F:\TinyContacts\analyzer_feedback.md` - Lines 264-316 (Documentation Suggestions)
+- `F:\TinyContacts\documenter_feedback.md` - Lines 104-114 (Documentation Gaps)
+- Issue #13 and #15 comments in this document (Raw Alpha Feedback section)
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.
+
+---
+
 **End of Handover Document**
