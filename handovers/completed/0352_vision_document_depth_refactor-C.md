@@ -1,300 +1,220 @@
-# Handover 0352: Vision Document Depth Refactor
+# Handover 0352: Vision Document Depth Refactor - COMPLETE
 
-**Status**: In Progress
-**Created**: 2025-12-15
-**Purpose**: Refactor vision document depth configuration to use Sumy summarization fields
-
----
-
-## Problem Statement
-
-Current vision document fetching uses **chunk-based pagination** regardless of depth setting. The database has Sumy-summarized fields (`summary_light`, `summary_medium`) that are not being used.
-
-Additionally, there's a **critical bug**: `product_service.py` calls `summaries["moderate"]` but `vision_summarizer.py` returns `summaries["medium"]` causing a KeyError.
+**Status**: COMPLETE
+**Date**: 2025-12-17
+**Commits**: 12 commits (0e3d7dca and predecessors)
 
 ---
 
-## Requirements
+## Executive Brief (300 words)
 
-### Depth Configuration (HOW MUCH to read)
+This session addressed a critical gap in GiljoAI's context management system: vision document depth configuration was not being dynamically injected into orchestrator instructions based on user settings.
 
-| Depth | Source | Tokens |
-|-------|--------|--------|
-| **Light** | `VisionDocument.summary_light` | ~33% of original |
-| **Medium** | `VisionDocument.summary_medium` | ~66% of original |
-| **Full** | Paginated chunks from `MCPContextIndex` | ≤25K per call |
+**Problem Identified**: When users configured vision document depth (Light/Medium/Full) in the UI, these settings were not reflected in `get_orchestrator_instructions()`. The system was also storing summarization results with incorrect dictionary keys (`moderate`/`heavy` instead of `light`/`medium`), causing KeyErrors during vision document uploads.
 
-### Priority Configuration (WHEN to read)
+**Solution Implemented**: We completed a full refactor of the vision document depth system:
 
-| Priority | Meaning | Framing |
-|----------|---------|---------|
-| **Critical** | Mandatory read | "REQUIRED: ..." |
-| **Important** | Read if you need clarity | "RECOMMENDED: ..." |
-| **Reference** | Here if you need it | "OPTIONAL: ..." |
-| **Off** | Excluded from instructions | (not included) |
+1. **Fixed Critical Bug**: Updated `product_service.py` to use correct Sumy summarizer output keys (`light`/`medium` instead of `moderate`/`heavy`).
+
+2. **Implemented Depth-Based Source Selection**: Refactored `get_vision_document.py` to read different data sources based on depth:
+   - Light: Returns `VisionDocument.summary_light` (33% Sumy-compressed)
+   - Medium: Returns `VisionDocument.summary_medium` (66% Sumy-compressed)
+   - Full: Returns paginated chunks from `MCPContextIndex` (≤25K tokens/call)
+
+3. **Removed "Optional" Depth**: Eliminated the ambiguous "optional" setting. Users now choose explicitly between Light/Medium/Full, while Priority (Critical/Important/Reference/Off) determines urgency.
+
+4. **Added Dynamic Framing**: Orchestrator instructions now show depth-specific framing (e.g., "66% summarized vision document (single response)") instead of generic text.
+
+5. **Database Migration**: Created and executed migration to convert existing users from "optional" to "light".
+
+**Impact**: Orchestrators now receive accurate, depth-aware instructions that reflect user preferences. The separation of Priority (when to read) and Depth (how much to read) provides clear, unambiguous guidance. Token estimates are now accurate per depth level, enabling better context budget management.
+
+**Testing**: 15+ new tests added covering migration, depth selection, and end-to-end flow.
 
 ---
 
-## Architecture Flow
+## Session Timeline
+
+### Phase 1: Discovery & Bug Identification
+
+**Initial Task**: Test orchestrator instructions and verify user settings are reflected.
+
+**Findings**:
+1. `memory_360` and `git_history` depth values not updating (key mismatch)
+2. `vision_documents` showing `limit: "optional"` instead of `depth: "medium"`
+3. Critical KeyError bug in `product_service.py`
+
+**Root Causes**:
+- Database stored `memory_last_n_projects` but code expected `memory_360`
+- Database stored `git_commits` but code expected `git_history`
+- Vision documents depth was being set as `limit` parameter, not `depth`
+- Summarizer output keys changed in Handover 0246b but service layer not updated
+
+### Phase 2: Key Mapping Fix
+
+**File Modified**: `src/giljo_mcp/tools/orchestration.py`
+
+Added key normalization in `_get_user_config()`:
+```python
+key_mapping = {
+    "memory_last_n_projects": "memory_360",
+    "git_commits": "git_history",
+}
+```
+
+**Result**: User depth settings now correctly flow to orchestrator instructions.
+
+### Phase 3: Vision Document Depth Refactor
+
+#### Task 1: Fix ProductService Bug
+**File**: `src/giljo_mcp/services/product_service.py`
+**Change**: Updated `summaries["moderate"]` → `summaries["medium"]`
+**Commit**: `c9592f45`
+
+#### Task 2: Implement Depth-Based Source Selection
+**File**: `src/giljo_mcp/tools/context_tools/get_vision_document.py`
+
+**New Behavior**:
+| Depth | Source | Response |
+|-------|--------|----------|
+| light | `VisionDocument.summary_light` | Single response, ~33% |
+| medium | `VisionDocument.summary_medium` | Single response, ~66% |
+| full | `MCPContextIndex` chunks | Paginated, ≤25K/call |
+
+**Commits**: `d01092db`, `d7cddaef`
+
+#### Task 3: Fix Mission Planner
+**File**: `src/giljo_mcp/mission_planner.py`
+**Change**: Vision documents now use `depth` param instead of `limit`
+
+### Phase 4: Remove "Optional" & Simplify
+
+**Design Decision**: Remove "optional" depth entirely. Let Priority determine importance, Depth determines amount.
+
+#### Frontend Changes
+**File**: `frontend/src/components/settings/ContextPriorityConfig.vue`
+- Removed "Optional (Orchestrator decides)" option
+- Updated labels:
+  - Light (33% Summary)
+  - Medium (66% Summary)
+  - Full (100% Complete)
+
+#### Backend Changes
+**Files**: `orchestration.py`, `mission_planner.py`
+- Default changed from "optional" to "light"
+- Runtime normalization: "optional" → "light"
+
+#### Database Migration
+**File**: `migrations/0352_vision_depth_optional_to_light.sql`
+```sql
+UPDATE users
+SET depth_config = jsonb_set(depth_config, '{vision_documents}', '"light"')
+WHERE depth_config->>'vision_documents' = 'optional';
+```
+
+**Commits**: `a3f9dff2`, `ac96a3b4`
+
+### Phase 5: Depth-Aware Framing
+
+**File**: `src/giljo_mcp/mission_planner.py`
+
+Added dynamic framing based on depth:
+```python
+vision_framing = {
+    "light": "33% summarized vision document (single response).",
+    "medium": "66% summarized vision document (single response).",
+    "full": "Complete vision document (paginated, call until has_more=false).",
+}
+vision_tokens = {
+    "light": 4000,
+    "medium": 8000,
+    "full": 25000,
+}
+```
+
+**Commit**: `0e3d7dca`
+
+---
+
+## Architecture Flow (Final)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           USER SETTINGS (UI)                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
 │   Vision Documents                                                           │
 │   ┌──────────────────────┐    ┌──────────────────────┐                      │
 │   │ Priority      ▼      │    │ Depth          ▼     │                      │
 │   ├──────────────────────┤    ├──────────────────────┤                      │
 │   │ ○ Critical (MUST)    │    │ ○ Light   (33%)      │                      │
 │   │ ● Important (SHOULD) │    │ ● Medium  (66%)      │                      │
-│   │ ○ Reference (MAY)    │    │ ○ Full    (chunks)   │                      │
+│   │ ○ Reference (MAY)    │    │ ○ Full    (100%)     │                      │
 │   │ ○ Off                │    └──────────────────────┘                      │
 │   └──────────────────────┘                                                   │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DATABASE (User Settings)                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   User.field_priority_config = { "vision_documents": 2 }     ← Important     │
-│   User.depth_config = { "vision_documents": "medium" }       ← 66%           │
-│                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    get_orchestrator_instructions() RESPONSE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   "context_fetch_instructions": {                                            │
-│       "critical": [...],                                                     │
-│       "important": [                          ← Priority determines tier     │
-│           {                                                                  │
-│               "field": "vision_documents",                                   │
-│               "tool": "fetch_context",                                       │
-│               "params": {                                                    │
-│                   "category": "vision_documents",                            │
-│                   "depth": "medium"           ← Depth from user config       │
-│               },                                                             │
-│               "framing": "RECOMMENDED: Read if you need clarity on vision"  │
-│           }                                                                  │
-│       ],                                                                     │
-│       "reference": [...]                                                     │
+│   "vision_documents": {                                                      │
+│       "params": { "depth": "medium" },                                       │
+│       "framing": "REQUIRED: 66% summarized vision document (single response)"│
+│       "estimated_tokens": 8000                                               │
 │   }                                                                          │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              ORCHESTRATOR DECIDES (Based on Priority Tier)                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   Priority = Critical  →  "I MUST call fetch_context for this"               │
-│   Priority = Important →  "I SHOULD call fetch_context if I need clarity"   │
-│   Priority = Reference →  "I MAY call fetch_context if needed"               │
-│   Priority = Off       →  (not in response at all)                           │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                          (Orchestrator calls)
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     fetch_context(depth="medium") CALL                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   fetch_context(                                                             │
-│       category="vision_documents",                                           │
-│       product_id="...",                                                      │
-│       tenant_key="...",                                                      │
-│       depth="medium"              ← This determines WHAT is returned         │
-│   )                                                                          │
-│                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    DEPTH DETERMINES DATA SOURCE                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  depth="light"                                                       │   │
-│   │  ─────────────                                                       │   │
-│   │  → Read: VisionDocument.summary_light                                │   │
-│   │  → Tokens: ~33% of original                                          │   │
-│   │  → Single response, no pagination needed                             │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  depth="medium"                                                      │   │
-│   │  ──────────────                                                      │   │
-│   │  → Read: VisionDocument.summary_medium                               │   │
-│   │  → Tokens: ~66% of original                                          │   │
-│   │  → Single response, no pagination needed                             │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  depth="full"                                                        │   │
-│   │  ────────────                                                        │   │
-│   │  → Read: MCPContextIndex chunks (paginated)                          │   │
-│   │  → Max 25K tokens per call                                           │   │
-│   │  → Returns: { data: [...], has_more: true, next_offset: 3 }          │   │
-│   │  → Agent must loop until has_more=false                              │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
+│   light  → VisionDocument.summary_light  (33%, single response)              │
+│   medium → VisionDocument.summary_medium (66%, single response)              │
+│   full   → MCPContextIndex chunks        (100%, paginated ≤25K/call)         │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Priority × Depth Matrix
+## Files Modified
 
-```
-                        DEPTH (How Much)
-                 ┌──────────┬──────────┬──────────┐
-                 │  Light   │  Medium  │   Full   │
-                 │  (33%)   │  (66%)   │ (chunks) │
-    ┌────────────┼──────────┼──────────┼──────────┤
-    │ Critical   │  MUST    │  MUST    │  MUST    │
-P   │ (MUST)     │  read    │  read    │  read    │
-R   │            │  33%     │  66%     │  all     │
-I   ├────────────┼──────────┼──────────┼──────────┤
-O   │ Important  │  SHOULD  │  SHOULD  │  SHOULD  │
-R   │ (SHOULD)   │  read    │  read    │  read    │
-I   │            │  33%     │  66%     │  all     │
-T   ├────────────┼──────────┼──────────┼──────────┤
-Y   │ Reference  │  MAY     │  MAY     │  MAY     │
-    │ (MAY)      │  read    │  read    │  read    │
-    │            │  33%     │  66%     │  all     │
-    ├────────────┼──────────┼──────────┼──────────┤
-    │ Off        │    (not included in response)  │
-    └────────────┴──────────┴──────────┴──────────┘
-```
-
----
-
-## Expected Response Formats
-
-### Light (33% Summary)
-```json
-{
-  "source": "vision_documents",
-  "depth": "light",
-  "data": {
-    "summary": "TinyContacts is a lightweight contact management app...",
-    "tokens": 4200,
-    "compression": "33%"
-  },
-  "pagination": null
-}
-```
-
-### Medium (66% Summary)
-```json
-{
-  "source": "vision_documents",
-  "depth": "medium",
-  "data": {
-    "summary": "TinyContacts is a lightweight contact management application designed for users who want simplicity...",
-    "tokens": 8400,
-    "compression": "66%"
-  },
-  "pagination": null
-}
-```
-
-### Full (Paginated Chunks)
-```json
-{
-  "source": "vision_documents",
-  "depth": "full",
-  "data": [
-    { "chunk_order": 1, "content": "...", "tokens": 8000 },
-    { "chunk_order": 2, "content": "...", "tokens": 8000 },
-    { "chunk_order": 3, "content": "...", "tokens": 7500 }
-  ],
-  "pagination": {
-    "total_chunks": 12,
-    "offset": 0,
-    "limit": 3,
-    "has_more": true,
-    "next_offset": 3
-  }
-}
-```
-
----
-
-## Implementation Tasks
-
-### Task 1: Fix Critical Bug in ProductService
-**File**: `src/giljo_mcp/services/product_service.py`
-**Issue**: Uses `summaries["moderate"]` but summarizer returns `summaries["medium"]`
-**Fix**: Update key names to match `vision_summarizer.py` output (`light`, `medium`)
-
-### Task 2: Refactor get_vision_document Tool
-**File**: `src/giljo_mcp/tools/context_tools/get_vision_document.py`
-**Changes**:
-- `depth="light"` → Read `VisionDocument.summary_light`
-- `depth="medium"` → Read `VisionDocument.summary_medium`
-- `depth="full"` → Paginated chunks from `MCPContextIndex` (≤25K tokens)
-
-### Task 3: Update Response Format
-Ensure consistent response structure across all depth levels with proper metadata.
-
-### Task 4: Update Token Estimates
-Use actual token counts from database fields:
-- `summary_light_tokens`
-- `summary_medium_tokens`
-- Sum of chunk `token_count` for full
-
----
-
-## Files to Modify
-
-| File | Purpose |
+| File | Changes |
 |------|---------|
-| `src/giljo_mcp/services/product_service.py` | Fix KeyError bug (lines ~1202-1245) |
-| `src/giljo_mcp/tools/context_tools/get_vision_document.py` | Implement depth-based source selection |
-| `src/giljo_mcp/tools/context_tools/fetch_context.py` | Ensure depth parameter flows correctly |
+| `src/giljo_mcp/services/product_service.py` | Fix summarizer key mismatch |
+| `src/giljo_mcp/tools/context_tools/get_vision_document.py` | Depth-based source selection |
+| `src/giljo_mcp/tools/orchestration.py` | Key normalization, default "light" |
+| `src/giljo_mcp/mission_planner.py` | Depth param fix, depth-aware framing |
+| `frontend/src/components/settings/ContextPriorityConfig.vue` | Remove "optional", update labels |
+| `migrations/0352_vision_depth_optional_to_light.sql` | User migration |
+
+## Tests Added
+
+| File | Tests |
+|------|-------|
+| `tests/integration/test_vision_upload_summarization_fix.py` | 4 tests |
+| `tests/tools/test_get_vision_document_depth_refactor.py` | 8 tests |
+| `tests/test_vision_depth_migration.py` | 7 tests |
 
 ---
 
-## Database Fields (Already Exist)
+## Commits (Chronological)
 
-**VisionDocument Model** (`src/giljo_mcp/models/products.py`):
-- `summary_light` - 33% Sumy-summarized content
-- `summary_medium` - 66% Sumy-summarized content
-- `summary_light_tokens` - Token count for light
-- `summary_medium_tokens` - Token count for medium
-- `is_summarized` - Flag indicating summarization complete
-
-**MCPContextIndex Model** (`src/giljo_mcp/models/context.py`):
-- `content` - Chunk content
-- `chunk_order` - Sequential order
-- `token_count` - Tokens per chunk
-- `vision_document_id` - Link to parent
+1. `d07e59d9` - test: Add vision upload summarization tests (TDD RED)
+2. `c9592f45` - fix(0352): Update vision document summary keys
+3. `d01092db` - test: Add depth-based source selection tests (TDD RED)
+4. `d7cddaef` - feat: Implement depth-based source selection
+5. `a3f9dff2` - test: Add vision_documents depth migration tests
+6. `ac96a3b4` - feat: Migrate vision_documents depth from 'optional' to 'light'
+7. `0e3d7dca` - feat(0352): Complete vision document depth refactor
 
 ---
 
-## Testing Checklist
+## Verification
 
-- [ ] Light depth returns `summary_light` content
-- [ ] Medium depth returns `summary_medium` content
-- [ ] Full depth returns paginated chunks with `has_more`/`next_offset`
-- [ ] Token counts are accurate
-- [ ] No KeyError in product_service.py
-- [ ] Priority tiers correctly place vision_documents in response
-
----
-
-## Completion Criteria
-
-1. User selects Priority=Important, Depth=Medium in UI
-2. `get_orchestrator_instructions()` returns vision_documents in "important" tier with `depth: "medium"`
-3. Orchestrator calls `fetch_context(category="vision_documents", depth="medium")`
-4. Response contains `VisionDocument.summary_medium` content (~66% of original)
-5. Full depth returns paginated chunks ≤25K tokens per call
+Tested end-to-end with user changing settings in UI:
+- `memory_360.limit`: Dynamic ✅
+- `git_history.limit`: Dynamic ✅
+- `agent_templates.depth`: Dynamic ✅
+- `vision_documents.depth`: Dynamic ✅
+- Depth-aware framing: Dynamic ✅
+- Token estimates: Accurate per depth ✅

@@ -1,4 +1,6 @@
-# Handover 0359: Agent Behavior Enforcement Fix
+# Handover 0354: Agent Behavior Enforcement Fix
+
+> **RENUMBERED:** Originally 0359, renumbered to 0354 to free 0359 for Alpha Trial series (0355-0361).
 
 **Status:** COMPLETE
 **Date:** 2025-12-18

@@ -1,4 +1,6 @@
-# Handover: Agent Workflow & UI Fixes
+# Handover 0342: Agent Workflow & UI Fixes
+
+> **RENUMBERED:** Originally 0361, renumbered to 0342 to free 0361 for Alpha Trial Documentation Updates.
 
 **Date:** 2025-12-18
 **From Agent:** Orchestrator (Plan Mode)

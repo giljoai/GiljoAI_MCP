@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-16 (Bulk cleanup: retired 0117, 0256, 0331, 0340, 0341, 0344)
+**Last Updated:** 2025-12-19 (Numbering cleanup: renumbered 0354←0359, 0342←0361, 0363←0353; added Alpha Trial series 0355-0362)
 
 ---
 
@@ -21,16 +21,52 @@
 
 ## Active Handovers (In Root Folder)
 
+### Alpha Trial Remediation Series (0355-0362) - HIGH PRIORITY
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| 0355 | Protocol Message Handling Fix | Ready | HIGH | 4-6h |
+| 0356 | MCP Tool Parameter Consistency | Ready | HIGH | 3-4h |
+| 0357 | Agent Template Context Loading | Ready | HIGH | 2-3h |
+| 0358 | WebSocket & UI State Overhaul | Ready | HIGH | 10-14h |
+| 0359 | Steps/Progress Tracking Fix | Ready | HIGH | 3-4h |
+| 0360 | Medium Priority Tool Enhancements | Ready | MEDIUM | 4-5h |
+| 0361 | Documentation Updates | Ready | LOW | 2h |
+| 0362 | WebSocket Message Counter Fixes | Ready | HIGH | 3-4h |
+
+> **Recommended Order**: 0355 → 0356 → 0359 → 0357 → 0358 → 0360 → 0361
+> See `alpha_trial_remediation_roadmap.md` for full context from TinyContacts alpha trial.
+
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0246b | Vision Document Storage Simplification | Ready | Medium | New Dec 2025 feature |
 | 0348 | Product Context Gap Analysis | Ready | Medium | Analysis/planning doc |
+| 0349 | Agent Execution Context Refactor | Ready | Medium | 3-layer separation |
+| 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done, not complete |
+
+### Greptile Security Series (1000-1014) - SECURITY
+| ID | Title | Status | Priority | Notes |
+|----|-------|--------|----------|-------|
+| 1000 | Greptile Remediation Roadmap | Ready | HIGH | Master roadmap |
+| 1001 | Greptile Project Index | Reference | - | Index document |
+| 1002 | Fix Bare Except | Ready | HIGH | Security fix |
+| 1003 | Sanitize Paths | Ready | HIGH | Security fix |
+| 1004 | Secure Cookies | Ready | HIGH | Security fix |
+| 1005 | Sync pyproject | Ready | MEDIUM | Maintenance |
+| 1006 | Pip Audit | Ready | HIGH | Security fix |
+| 1007 | CSP Nonces | Ready | MEDIUM | Security enhancement |
+| 1008 | Security Headers | Ready | MEDIUM | Security enhancement |
+| 1009 | Rate Limiting | Ready | MEDIUM | Security enhancement |
+| 1010 | Lifespan Refactor | Ready | LOW | Refactoring |
+| 1011 | Repository Pattern | Ready | LOW | Architecture |
+| 1012 | Bandit Linting | Ready | MEDIUM | Tooling |
+| 1013 | Structured Logging | Ready | LOW | Observability |
+| 1014 | Security Auditing | Ready | MEDIUM | Documentation |
 
 ### Reference Documents (Not Actionable)
 | ID | Title | Type | Notes |
@@ -67,10 +103,13 @@
 | 0331 | Message Audit Modal | **COMPLETE** |
 | 0340 | CLI Mode Two-Phase Architecture Summary | **COMPLETE** |
 | 0341 | CLI Mode Stage 2 Implementation | **COMPLETE** |
+| 0342 | Agent Workflow & UI Fixes | **COMPLETE** (renumbered from 0361) |
 | 0344 | CLI Mode Play Button API Fix | **COMPLETE** |
 | 0351 | Agent Name as Single Source of Truth | **COMPLETE** |
 | 0352 | Vision Document Depth Refactor | **COMPLETE** |
-| 0359 | Agent Behavior Enforcement Fix | **COMPLETE** |
+| 0354 | Agent Behavior Enforcement Fix | **COMPLETE** (renumbered from 0359) |
+| 0355 | MCP Tool Template Fixes & Slash Command | **COMPLETE** |
+| 0363 | Session: Agent Instruction Slimming | **COMPLETE** (renumbered from 0353 session doc) |
 | 0346 | Depth Config Field Standardization | **COMPLETE** |
 | 0347 | Mission Response JSON Restructuring (10 files) | **COMPLETE** |
 | 0350 | On-Demand Context Fetch Architecture (7 files) | **COMPLETE** |
@@ -274,17 +313,17 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0347, 0351
+**0301-0400** (Services): 0300-0316, 0318-0363 (includes Alpha Trial 0355-0362)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
+**1000-1014** (Greptile Security): 1000-1014
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
-- **0348-0349**: Gaps in 0301-0400 range (0350 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
-- **0352+**: Next sequential after current development
+- **0364+**: Next sequential after current development
 
 ### Naming Format
 ```
@@ -299,6 +338,11 @@ completed/reference/
 ## History
 
 ### December 2025
+- **Numbering Cleanup (2025-12-19)**: Resolved conflicts for Alpha Trial series
+  - Renumbered: 0359→0354, 0361→0342, 0353 session→0363
+  - Added: Alpha Trial series 0355-0362 (from TinyContacts feedback)
+  - Added: Greptile Security series 1000-1014
+  - Moved to completed: 0352, 0355 (MCP tool template fixes), 0363
 - **Bulk Cleanup**: Retired 0117, 0256, 0331, 0340, 0341, 0344, MCPreport_nov28
   - 0331: Message Audit Modal (implemented)
   - 0341: CLI Mode Stage 2 (implemented)
