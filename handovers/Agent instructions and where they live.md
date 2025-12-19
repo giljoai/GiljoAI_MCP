@@ -2,6 +2,8 @@ Agent instructions and where they live
 
 This document summarizes where agent instructions live after 0349/0353 and how we plan to **slim** templates while keeping behavior centralized on the server.
 
+> **Note:** Session memory for 0353 implementation is documented in `completed/0363_session_agent_instruction_slimming-C.md` (renumbered from 0353 to avoid conflict with `0353_agent_team_awareness_and_mission_context.md`).
+
 ---
 
 1. Instruction Layers (Post-0349)
