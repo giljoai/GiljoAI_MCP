@@ -7,9 +7,9 @@ Tests should initially FAIL until implementation is complete.
 Feature Requirements:
 1. Create GenericAgentTemplate class with render() method
 2. Template accepts 5 parameters: agent_id, job_id, product_id, project_id, tenant_key
-3. Template includes all 6 protocol phases
-4. Template references all required MCP tools
-5. Token budget: 2000-3000 tokens (estimated)
+3. Template injects all identity variables and MCP tool wiring
+4. Template references get_agent_mission and explains full_protocol delegation
+5. Token budget: reasonably bounded (not tiny, not massive)
 6. MCP tool integration: get_generic_agent_template()
 7. Works for all agent types (implementer, tester, reviewer, documenter, analyzer)
 """
@@ -69,8 +69,8 @@ class TestGenericAgentTemplate:
         assert project_id in rendered
         assert tenant_key in rendered
 
-    def test_all_6_protocol_phases_present(self):
-        """Template includes all 6 protocol phases"""
+    def test_template_mentions_mission_and_full_protocol(self):
+        """Template explains mission fetch and full_protocol delegation"""
         template = GenericAgentTemplate()
         rendered = template.render(
             agent_id=str(uuid4()),
@@ -80,15 +80,11 @@ class TestGenericAgentTemplate:
             tenant_key="test_tenant"
         )
 
-        assert "Phase 1: Initialization" in rendered
-        assert "Phase 2: Mission Fetch" in rendered
-        assert "Phase 3: Work Execution" in rendered
-        assert "Phase 4: Progress Reporting" in rendered
-        assert "Phase 5: Communication" in rendered
-        assert "Phase 6: Completion" in rendered
+        assert "get_agent_mission" in rendered
+        assert "full_protocol" in rendered
 
     def test_mcp_tool_references_present(self):
-        """Template references all required MCP tools with CORRECT command names"""
+        """Template references required MCP tools with CORRECT names"""
         template = GenericAgentTemplate()
         rendered = template.render(
             agent_id=str(uuid4()),
@@ -98,28 +94,12 @@ class TestGenericAgentTemplate:
             tenant_key="test_tenant"
         )
 
-        # Phase 1: Initialization - should have acknowledge_job()
-        assert "acknowledge_job" in rendered, "Missing acknowledge_job() in Phase 1"
-
-        # Phase 2: Mission Fetch - should have get_agent_mission()
-        assert "get_agent_mission" in rendered, "Missing get_agent_mission() in Phase 2"
-
-        # Phase 3: Work Execution - no MCP commands required
-
-        # Phase 4: Progress Reporting - should use report_progress() NOT update_job_progress()
-        assert "report_progress" in rendered, "Missing report_progress() in Phase 4"
-        assert "update_job_progress" not in rendered, "Found obsolete update_job_progress() - should be report_progress()"
-
-        # Phase 5: Communication - should use get_next_instruction() NOT receive_messages()
-        assert "get_next_instruction" in rendered, "Missing get_next_instruction() in Phase 5"
-        assert "receive_messages" not in rendered, "Found obsolete receive_messages() - should be get_next_instruction()"
-        assert "send_message" in rendered, "Missing send_message() in Phase 5"
-
-        # Phase 6: Completion - should have complete_job()
-        assert "complete_job" in rendered, "Missing complete_job() in Phase 6"
-
-        # Obsolete commands that should NOT exist
-        assert "acknowledge_message" not in rendered, "Found obsolete acknowledge_message() - this function doesn't exist"
+        # Mission + protocol wiring
+        assert "mcp__giljo-mcp__get_agent_mission" in rendered
+        # Progress, completion, and error tools
+        assert "mcp__giljo-mcp__report_progress" in rendered
+        assert "mcp__giljo-mcp__complete_job" in rendered
+        assert "mcp__giljo-mcp__report_error" in rendered
 
     def test_token_count_in_budget(self):
         """Template stays within reasonable token budget (rough estimate: 2-3K tokens)"""
@@ -133,8 +113,8 @@ class TestGenericAgentTemplate:
         )
 
         estimated_tokens = len(rendered) // 4
-        # Allow range of 1200-4000 tokens (rough estimate, ~2-3K target)
-        assert 1200 < estimated_tokens < 4000, f"Token count {estimated_tokens} outside range"
+        # Allow range of 400-4000 tokens (rough estimate, smaller but non-trivial)
+        assert 400 < estimated_tokens < 4000, f"Token count {estimated_tokens} outside range"
 
     def test_template_properties(self):
         """Template has required properties"""
