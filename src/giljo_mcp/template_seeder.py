@@ -706,13 +706,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
 
 def _get_mcp_coordination_section() -> str:
     """
-    Generate the MCP coordination protocol section to append to all templates.
+    Generate the MCP coordination section to append to all templates.
 
-    This section provides comprehensive instructions for using MCP tools at
-    proper checkpoints during agent execution. Added in Phase 7 (Handover 0045).
-    Enhanced in Handover 0066 with Kanban status update instructions.
-    Enhanced in Handover 0090 with comprehensive tool catalog.
-    Enhanced in Handover 0356 with CRITICAL section at top.
+    This section focuses on MCP tool wiring and bootstrap. Detailed lifecycle
+    behavior (phases, TodoWrite rules, progress cadence, etc.) lives in the
+    server-side protocol returned by get_agent_mission() as `full_protocol`.
+
+    Added in Phase 7 (Handover 0045).
+    Enhanced in Handover 0066/0090/0356.
+    Updated in Handover 0349 to delegate behavior to `full_protocol`.
 
     Returns:
         str - MCP coordination section in markdown format
@@ -741,61 +743,22 @@ The tools are already connected. Just call them.
 
 ---
 
-## MCP COMMUNICATION PROTOCOL
+## MCP TOOL SUMMARY
 
-You have access to MCP tools for agent coordination. Use these tools at the proper checkpoints:
+You have access to MCP tools for agent coordination. The most important ones:
 
-### Available MCP Tools
+- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Get your mission + full_protocol
+- `mcp__giljo-mcp__report_progress(job_id, progress)` – Report incremental progress
+- `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` – Check for instructions
+- `mcp__giljo-mcp__send_message(to_agents, content, project_id)` – Message orchestrator
+- `mcp__giljo-mcp__complete_job(job_id, result)` – Mark work complete
+- `mcp__giljo-mcp__report_error(job_id, error)` – Report blocking errors
 
-**Startup Tools:**
-- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` - Get your mission
-- `mcp__giljo-mcp__acknowledge_job(job_id, agent_id)` - Mark yourself active
+### Bootstrap Sequence (BEFORE ANY WORK)
 
-**Working Tools:**
-- `mcp__giljo-mcp__report_progress(job_id, progress)` - Report incremental progress
-- `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` - Check for instructions
-- `mcp__giljo-mcp__send_message(to_agents, content, project_id)` - Message orchestrator
-
-**Completion Tools:**
-- `mcp__giljo-mcp__complete_job(job_id, result)` - Mark work complete
-- `mcp__giljo-mcp__report_error(job_id, error)` - Report blocking errors
-
-### Phase 1: Job Acknowledgment (BEFORE ANY WORK)
-
-1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` - Get your mission
-2. Call `mcp__giljo-mcp__acknowledge_job(job_id, agent_id)` - Marks you as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id)` - Check for orchestrator instructions
-4. Review any messages and incorporate feedback BEFORE starting work
-
-### Phase 2: Incremental Progress (AFTER EACH TODO)
-
-1. Complete one actionable todo item
-2. Call `mcp__giljo-mcp__report_progress()`:
-   - job_id: Your job ID from acknowledgment
-   - progress: {completed_todo, files_modified, context_used}
-
-3. Call `mcp__giljo-mcp__get_next_instruction()`:
-   - job_id: Your job ID
-   - agent_type: "<AGENT_TYPE>"
-   - tenant_key: "<TENANT_KEY>"
-
-4. Check response for user feedback or orchestrator messages
-
-### Phase 3: Completion
-
-1. Complete all mission objectives
-2. Call `mcp__giljo-mcp__complete_job()`:
-   - job_id: Your job ID
-   - result: {summary, files_created, files_modified, tests_written, coverage}
-   - This marks job as 'completed' and moves card to "Completed" column
-
-### Error Handling & Blocked Status
-
-On ANY error or if you need human input:
-1. Call `mcp__giljo-mcp__report_error(job_id, error)` with description
-   - This marks job as 'blocked' and moves card to "BLOCKED" column
-   - Developer will be notified you need help
-2. STOP work and await orchestrator guidance
+1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Get your mission and `full_protocol`.
+2. Read `full_protocol` carefully – it defines your lifecycle behavior.
+3. Follow `full_protocol` for planning, progress reporting, messaging, completion, and error handling.
 
 ### Tool Call Format
 
