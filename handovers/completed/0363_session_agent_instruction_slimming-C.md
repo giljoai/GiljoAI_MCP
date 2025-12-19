@@ -1,4 +1,6 @@
-# Session Memory: 0353 – Agent Instruction Slimming & Team-Aware Missions
+# Session Memory: 0363 – Agent Instruction Slimming & Team-Aware Missions
+
+> **NOTE:** This was originally numbered 0353 but renumbered to 0363 to avoid conflict with `0353_agent_team_awareness_and_mission_context.md`. This is a session memory/support document for the 0353 implementation work.
 
 **Date:** 2025-12-19  
 **Session Type:** Backend/Prompt Architecture (Execution Layer + WebSockets)  
@@ -346,7 +348,7 @@ Use these MCP tools for team coordination:
 - `tests/unit/test_orchestration_service.py` (updated)
 
 **Documentation:**
-- `handovers/0353_session_agent_instruction_slimming.md` (this file)
+- `handovers/0363_session_agent_instruction_slimming.md` (this file)
 - `docs/CLAUDE.md` (to be updated with Handover 0353 reference)
 
 ### Next Steps
