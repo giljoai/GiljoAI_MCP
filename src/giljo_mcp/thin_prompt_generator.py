@@ -1262,8 +1262,6 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "- Or call orchestrator succession MCP tool",
             "- A new orchestrator will continue from where you left off",
             "",
-            "---",
-            "Reference: See Handover 0106b for full sub-agent spawn instructions",
         ]
 
         # Combine all sections
