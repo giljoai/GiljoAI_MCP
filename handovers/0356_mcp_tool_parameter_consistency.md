@@ -776,3 +776,44 @@ pytest tests/ -k message --cov=src/giljo_mcp/services/message_service
 - [ ] TDD Implementor (test coverage)
 - [ ] Documentation Manager (agent identification guide)
 - [ ] Orchestrator Coordinator (alpha trial validation)
+
+---
+
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **tenant_key Parameter Strategy**
+   - Option A: Add tenant_key to send_message for consistency (proposed)
+   - Option B: Remove tenant_key requirement from other tools where possible
+   - Option C: Document clearly which tools need it vs which don't
+   - **Trade-offs**: Consistency vs backward compatibility vs API simplicity
+
+2. **Agent Identification Standardization**
+   - Option A: Standardize on job_id universally
+   - Option B: Keep both job_id and agent_type, document when to use each
+   - Option C: Add wrapper functions that accept either format
+   - **Trade-offs**: Breaking changes vs clarity vs flexibility
+
+3. **Error Message Improvements**
+   - Should we add more descriptive errors when wrong identifier type is used?
+   - Example: "Expected job_id (UUID), got agent_type 'analyzer'. Use job_id for this operation."
+
+### Questions for Developer
+
+- [ ] Is backward compatibility required for existing integrations?
+- [ ] Should we deprecate agent_type parameters or keep them?
+- [ ] What's the migration strategy if we standardize on job_id?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- `F:\TinyContacts\analyzer_feedback.md` - Lines 129-141 (Agent ID Confusion)
+- `F:\TinyContacts\documenter_feedback.md` - Lines 93-97 (tenant_key error)
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.
