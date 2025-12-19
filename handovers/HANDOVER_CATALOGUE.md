@@ -70,6 +70,7 @@
 | 0344 | CLI Mode Play Button API Fix | **COMPLETE** |
 | 0351 | Agent Name as Single Source of Truth | **COMPLETE** |
 | 0352 | Vision Document Depth Refactor | **COMPLETE** |
+| 0359 | Agent Behavior Enforcement Fix | **COMPLETE** |
 | 0346 | Depth Config Field Standardization | **COMPLETE** |
 | 0347 | Mission Response JSON Restructuring (10 files) | **COMPLETE** |
 | 0350 | On-Demand Context Fetch Architecture (7 files) | **COMPLETE** |
