@@ -1468,10 +1468,12 @@ class ToolAccessor:
                 logger.info(f"Updated last_exported_at for {len(templates)} templates")
 
                 # Emit WebSocket event for real-time UI update
+                # Use existing WebSocketManager API (broadcast_templates_exported)
                 if self._websocket_manager and template_ids:
-                    await self._websocket_manager.broadcast_template_export(
+                    await self._websocket_manager.broadcast_templates_exported(
                         tenant_key=tenant_key,
-                        template_ids=template_ids
+                        template_ids=template_ids,
+                        export_type="manual_zip",
                     )
 
             # 6. Build download URL (token IS auth - no API key needed)
