@@ -673,4 +673,47 @@ def validate_protocol_format():
 
 ---
 
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **Fix Location**
+   - Option A: Fix protocol string only (proposed - single line change)
+   - Option B: Also fix backend to accept both formats
+   - Option C: Add transformation layer to normalize either format
+   - **Trade-offs**: Simplicity vs robustness vs backward compatibility
+
+2. **Step Reporting Granularity**
+   - Option A: Report after each TodoWrite update (current protocol)
+   - Option B: Report only at phase boundaries
+   - Option C: Automatic tracking from TodoWrite (no manual reporting)
+   - **Trade-offs**: Visibility vs token usage vs agent burden
+
+3. **Frontend Display Format**
+   - Current: "3/5" format
+   - Alternative: Progress bar visualization
+   - Alternative: "60% complete" percentage display
+
+### Questions for Developer
+
+- [ ] Is the single-line protocol fix acceptable, or do you want a more robust solution?
+- [ ] Should agents report steps for every task or only significant milestones?
+- [ ] Would you like the Steps column to be more prominent in the UI?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- Dashboard Steps column showed 0/0 throughout both agent executions
+- Agents DID call report_progress but with wrong format
+- `F:\TinyContacts\analyzer_feedback.md` - Lines 117-119 (Progress Reporting)
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.
+
+---
+
 **End of Handover 0359**
