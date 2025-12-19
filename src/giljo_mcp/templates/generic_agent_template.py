@@ -3,15 +3,16 @@ Generic Agent Template - Unified prompt for all agents in multi-terminal mode.
 
 This template is used by ALL agent types (implementer, tester, reviewer, etc.)
 in Generic/Legacy mode. The Orchestrator injects agent-specific IDs, and the
-agent fetches its actual mission from the database.
+agent fetches its actual mission and behavior protocol from the database.
 
 Handover 0246b: Generic Agent Template Implementation
+Handover 0349: Delegate lifecycle behavior to get_agent_mission/full_protocol
 """
 
 
 class GenericAgentTemplate:
     """
-    Generic template providing unified protocol for multi-terminal agent execution.
+    Generic template providing unified wiring for multi-terminal agent execution.
 
     Variable Injection (by Orchestrator):
     - {agent_id}: UUID of this agent instance
@@ -20,13 +21,13 @@ class GenericAgentTemplate:
     - {project_id}: UUID of the project context
     - {tenant_key}: Tenant isolation key
 
-    Mission Fetching (by Agent):
-    - Agent calls: get_agent_mission(job_id, tenant_key)
-    - Receives: Full mission, context, and requirements
-    - Executes: According to fetched mission
+    Mission + Protocol (by Agent):
+    - Agent calls: mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)
+    - Receives: mission (what to do) + full_protocol (how to behave)
+    - Executes: According to mission and full_protocol returned by server
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.version = "1.0"
         self.name = "generic_agent"
         self.mode = "generic_legacy"
@@ -41,11 +42,6 @@ class GenericAgentTemplate:
     ) -> str:
         """
         Render generic agent template with injected variables.
-
-        This method performs variable injection for the generic template,
-        creating a unified prompt that works for all agent types (implementer,
-        tester, reviewer, documenter, analyzer). The agent fetches its actual
-        mission from the database using the injected job_id.
 
         Args:
             agent_id: UUID of agent instance (must be non-empty)
@@ -71,6 +67,9 @@ class GenericAgentTemplate:
             raise ValueError("project_id must be a non-empty string")
         if not tenant_key or not tenant_key.strip():
             raise ValueError("tenant_key must be a non-empty string")
+
+        # NOTE: This template intentionally delegates lifecycle behavior to
+        # the server-side protocol returned by get_agent_mission()
         template = f"""# GENERIC AGENT - MULTI-TERMINAL MODE
 
 ## Your Identity
@@ -83,190 +82,82 @@ class GenericAgentTemplate:
 
 ---
 
-## Standard Protocol (ALL Agents Follow This)
+## MCP Tool Wiring (How to Talk to the Server)
 
-### Phase 1: Initialization
-1. Verify your identity using IDs above
-2. Check MCP health: `health_check()`
-3. Claim this job: `acknowledge_job(job_id='{job_id}', agent_id='{agent_id}')`
-4. Read CLAUDE.md for project context and standards
-5. Confirm you understand this protocol
+MCP tools are **native tools** (like Read/Write/Bash/Glob), already connected in this environment.
 
-### Phase 2: Mission Fetch
-1. Call MCP tool: `get_agent_mission(job_id='{job_id}', tenant_key='{tenant_key}')`
-2. Parse received mission and requirements
-3. Understand scope: What are you building/testing/reviewing/documenting?
-4. Identify deliverables: What constitutes success?
+- CORRECT: Call `mcp__giljo-mcp__*` tools directly
+- WRONG: Use of `curl`, raw HTTP requests, SDKs, or custom clients
 
-### Phase 3: Work Execution
-1. Execute the mission as specified
-2. Follow GiljoAI standards (see CLAUDE.md)
-3. Track progress at 25%, 50%, 75%, 100%
-4. Collect all outputs (code, tests, documentation, reports)
+Key tools used by this agent:
+- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Fetches mission + protocol
+- `mcp__giljo-mcp__report_progress(job_id, progress)` – Progress and check-ins
+- `mcp__giljo-mcp__complete_job(job_id, result)` – Completion
+- `mcp__giljo-mcp__report_error(job_id, error)` – Blocking errors
 
-### Phase 4: Progress Reporting
-Report progress after each major milestone:
-- Call: `report_progress(job_id='{job_id}', progress={{'status': 'in_progress', 'percent_complete': 25, 'message': 'Initialization phase complete'}})`
-- Include specific details about what was accomplished
-- Report any blockers or decisions made
-- At 100%: Provide comprehensive summary
+---
 
-### Phase 5: Communication
-When coordinating with other agents or orchestrator:
-- Send: `send_message(to_agent_id='<uuid>', message='<content>')`
-- Check for instructions: `get_next_instruction(job_id='{job_id}', agent_type='<your_type>', tenant_key='{tenant_key}')`
+## Standard Protocol (Behavior Comes From Server)
 
-### Phase 6: Completion
-When finished:
-1. Call: `complete_job(job_id='{job_id}', result={{
-    'status': 'success' or 'partial' or 'failed',
-    'summary': '<brief summary of work>',
-    'deliverables': ['<list of outputs>'],
-    'test_results': {{'passed': N, 'failed': N}} or null,
-    'documentation_updated': true/false,
-    'notes': '<any important notes for next agent>'
-}})`
-2. Provide actionable information for successor agents
-3. Document any technical decisions or blockers
+Your **authoritative behavior and lifecycle** are defined by the server and
+returned with your mission.
+
+1. **First action (mandatory)**
+   Call:
+   ```python
+   result = mcp__giljo-mcp__get_agent_mission(
+       agent_job_id="{job_id}",
+       tenant_key="{tenant_key}"
+   )
+   ```
+
+2. **Read the response**
+   You will receive at least:
+   - `mission`: Full text of your assignment
+   - `full_protocol`: Multi-phase lifecycle protocol (startup, planning,
+     execution, progress, messaging, completion, error handling)
+
+3. **Follow `full_protocol` exactly**
+   - Use `full_protocol` as your single source of truth for:
+     - Startup and TodoWrite planning
+     - Progress reporting and check-ins
+     - Message handling and context requests
+     - Completion and error handling
+   - Do **not** invent a different lifecycle; if you are unsure, re-read
+     `full_protocol`.
 
 ---
 
 ## Your Mission
 
-Your actual mission is stored in the database. To retrieve it:
+Your mission is stored in the database and fetched via
+`mcp__giljo-mcp__get_agent_mission`. After the call above:
 
-**MCP Tool Call**:
-```python
-result = get_agent_mission(
-    job_id='{job_id}',
-    tenant_key='{tenant_key}'
-)
+- Use `result["mission"]` as the concrete work you must perform.
+- Use any additional context fields in the response
+  (project/product/agent metadata) to guide decisions.
 
-if result['success']:
-    mission = result['mission']
-    context = result['context']
-    # Execute according to mission
-else:
-    # Handle error: report and check job_id
-```
-
-**What You'll Receive**:
-```json
-{{
-    "success": true,
-    "mission": "<full mission text for this job>",
-    "context": {{
-        "project_id": "{project_id}",
-        "product_id": "{product_id}",
-        "agent_type": "<your agent type>",
-        "priority": "high/medium/low",
-        "deadline": "ISO timestamp or null",
-        "related_agents": ["<list of other agents>"]
-    }},
-    "previous_work": [
-        {{"agent": "implementer", "summary": "..."}},
-        {{"agent": "tester", "summary": "..."}}
-    ]
-}}
-```
+If `result["success"]` is false:
+- Report the error via:
+  ```python
+  mcp__giljo-mcp__report_error(
+      job_id="{job_id}",
+      error="describe what failed and why"
+  )
+  ```
+- Do not proceed until the issue is resolved.
 
 ---
 
-## GiljoAI Standards & Expectations
+## Expectations (Role-Agnostic)
 
-### Code Quality
-- Follow Python standards: `ruff check` + `black format`
-- Type hints on all functions
-- Docstrings for public APIs
-- Cross-platform paths: use `pathlib.Path()`
+Regardless of agent type (implementer, tester, reviewer, analyzer, documenter):
 
-### Testing
-- Write tests FIRST (TDD: Red → Green → Refactor)
-- Aim for >80% code coverage
-- Test both happy path and edge cases
-- Integration tests for critical workflows
-
-### Documentation
-- Update CLAUDE.md if standards change
-- Add docstrings to new code
-- Document non-obvious decisions
-- Keep examples current and tested
-
-### Multi-Tenant Safety
-- Every database query filtered by `tenant_key`
-- No cross-tenant data leakage
-- Test isolation between tenants
-
-### Database & Services
-- Use SQLAlchemy AsyncSession for database
-- Use Service layer for business logic (don't query models directly)
-- Follow patterns in: `src/giljo_mcp/services/`
-- Reuse existing services - don't create new ones
-
-### Version Control
-- Commit early and often
-- Use descriptive commit messages
-- Reference handover number: "feat: ... (Handover 0246b)"
-- Include test coverage in commit
-
----
-
-## Communication Protocol
-
-### Receiving Instructions
-```python
-# Check for new instructions from Orchestrator
-result = get_next_instruction(
-    job_id='{job_id}',
-    agent_type='<your_type>',
-    tenant_key='{tenant_key}'
-)
-
-if result['new_instruction']:
-    # Parse and execute new instruction
-    # Report completion when done
-```
-
-### Reporting Errors
-```python
-# If something goes wrong:
-report_error(
-    job_id='{job_id}',
-    error='<description of what failed and why>'
-)
-# Orchestrator will pause job and review
-```
-
-### Coordination Example
-```python
-# Implementer sends work to Tester:
-send_message(
-    to_agent_id='<tester_uuid>',
-    message=f"Testing request: {{code_files}}"
-)
-
-# Tester checks for new instructions:
-instruction = get_next_instruction(
-    job_id='{job_id}',
-    agent_type='tester',
-    tenant_key='{tenant_key}'
-)
-if instruction['new_instruction']:
-    # Process the instruction
-    # Report progress via report_progress()
-```
-
----
-
-## Success Criteria
-
-You will know you are done when:
-- ✅ All tests pass
-- ✅ Code follows GiljoAI standards
-- ✅ Changes are committed with descriptive message
-- ✅ Documentation is updated
-- ✅ Multi-tenant isolation is enforced
-- ✅ No cross-tenant data leakage
+- Obey `full_protocol` from the server.
+- Keep work within the mission scope.
+- Include `tenant_key` on all MCP tool calls to maintain tenant isolation.
+- Favor small, incremental changes with clear progress reports.
 """
 
         return template
+
