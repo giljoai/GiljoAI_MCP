@@ -202,7 +202,12 @@ class TestClaudeCodePrompt:
         mock_project,
         mock_agent_jobs
     ):
-        """Test Claude Code subagent mode prompt generation."""
+        """Test Claude Code subagent mode prompt generation.
+
+        NOTE: generate_execution_prompt() is deprecated and now returns staging prompt.
+        This test verifies the deprecated method still works (for backward compatibility)
+        and that outdated references are removed (Issue 0361).
+        """
         # Create generator
         mock_db = MagicMock()
         generator = ThinClientPromptGenerator(db=mock_db, tenant_key=tenant_key)
@@ -214,38 +219,20 @@ class TestClaudeCodePrompt:
             agents=mock_agent_jobs
         )
 
-        # Generate prompt
+        # Generate prompt (deprecated method now returns staging prompt)
         prompt = await generator.generate_execution_prompt(
             orchestrator_job_id=orchestrator_job_id,
             project_id=project_id,
             claude_code_mode=True
         )
 
-        # Verify prompt structure
-        assert "PROJECT EXECUTION PHASE - CLAUDE CODE SUBAGENT MODE" in prompt
+        # Verify basic structure (staging prompt format)
         assert orchestrator_job_id in prompt
-        assert mock_project.name in prompt
+        assert "staging" in prompt.lower() or "STAGING" in prompt
 
-        # Verify role description
-        assert "SPAWN & COORDINATE SUB-AGENTS" in prompt
-        assert "STEP 1: ACTIVATE AGENT TEAM" in prompt
-
-        # Verify agent missions included
-        for agent in mock_agent_jobs:
-            assert agent.agent_name in prompt
-            assert agent.mission in prompt
-
-        # Verify check-in protocol
-        assert "STEP 2: REMIND EACH SUB-AGENT" in prompt
-        # CLI execution prompt should emphasize get_agent_mission as the atomic start
-        assert "get_agent_mission" in prompt
-        assert "report_progress" in prompt
-
-        # Verify coordination step
-        assert "STEP 3: COORDINATE WORKFLOW" in prompt
-
-        # Verify reference
-        assert "Handover 0106b" in prompt
+        # Verify 0106b reference NOT present (Issue 0361)
+        assert "Handover 0106b" not in prompt
+        assert "0106b" not in prompt
 
 
 class TestPromptValidation:
