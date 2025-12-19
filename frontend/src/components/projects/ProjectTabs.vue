@@ -49,6 +49,20 @@
         >
           Launch jobs
         </v-btn>
+
+        <!-- Close Out Project Button (Handover 0361) -->
+        <v-btn
+          v-if="showCloseoutButton"
+          class="closeout-btn"
+          color="yellow-darken-2"
+          variant="flat"
+          prepend-icon="mdi-check-circle"
+          rounded
+          data-testid="close-project-btn"
+          @click="openCloseoutModal"
+        >
+          Close Out Project
+        </v-btn>
       </div>
     </div>
 
@@ -106,6 +120,15 @@
         <v-btn variant="text" @click="toastVisible = false"> Close </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Project Closeout Modal (Handover 0361) -->
+    <CloseoutModal
+      :show="showCloseoutModal"
+      :project-id="project.project_id || project.id"
+      :project-name="project.name"
+      @close="showCloseoutModal = false"
+      @complete="handleCloseoutComplete"
+    />
   </v-card>
 </template>
 
@@ -119,6 +142,7 @@ import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
+import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 
 /**
  * Props
@@ -210,6 +234,9 @@ const toastMessage = ref('')
 const toastColor = ref('success')
 const toastDuration = ref(3000)
 
+// Closeout modal state (Handover 0361)
+const showCloseoutModal = ref(false)
+
 /**
  * Computed: Ready to launch - ALIGNED with store's readyToLaunch getter
  *
@@ -231,6 +258,17 @@ const readyToLaunch = computed(() => {
  * - "Launch Jobs" button enables
  */
 const hasActiveOrchestrator = computed(() => store.stagingComplete)
+
+/**
+ * Computed: Show closeout button when all agents complete and orchestrator is done
+ * Handover 0361: Moved from JobsTab.vue to header for persistent visibility
+ */
+const showCloseoutButton = computed(() => {
+  if (!store.allAgentsComplete) return false
+
+  const orchestrator = store.sortedAgents?.find((a) => a.agent_type === 'orchestrator')
+  return Boolean(orchestrator && orchestrator.status === 'complete')
+})
 
 /**
  * Watch for errors
@@ -600,6 +638,32 @@ async function handleSendMessage(message, recipient) {
     console.error('Send message failed:', error)
   }
 }
+
+/**
+ * Open closeout modal (Handover 0361)
+ */
+function openCloseoutModal() {
+  showCloseoutModal.value = true
+  console.log('[ProjectTabs] Opening closeout modal for project:', props.project.project_id || props.project.id)
+}
+
+/**
+ * Handle project closeout completion (Handover 0361)
+ */
+function handleCloseoutComplete(closeoutData) {
+  const normalized =
+    typeof closeoutData === 'string'
+      ? { project_id: closeoutData, sequence_number: 0 }
+      : closeoutData || {}
+
+  toastMessage.value = `Project closed out successfully (Memory entry #${normalized.sequence_number ?? 0})`
+  toastColor.value = 'success'
+  toastDuration.value = 5000
+  toastVisible.value = true
+
+  showCloseoutModal.value = false
+  emit('closeout-project', normalized)
+}
 </script>
 
 <style scoped lang="scss">
@@ -650,6 +714,16 @@ async function handleSendMessage(message, recipient) {
   .launch-button {
     text-transform: none;
     font-weight: 500;
+  }
+
+  .closeout-btn {
+    text-transform: none;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+
+    &:hover {
+      background: #ffed4e !important;
+    }
   }
 }
 

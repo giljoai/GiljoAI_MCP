@@ -837,6 +837,16 @@ Execute these IN ORDER before starting your mission:
    Tool: mcp__giljo-mcp__receive_messages
    Parameters: {{"agent_id": "{agent_job_id}"}}
 
+## WORKFLOW REQUIREMENTS (MANDATORY)
+
+BEFORE implementing ANY code, you MUST:
+1. Create TodoWrite task list with 3-7 specific tasks
+2. Count and announce: "X steps to complete: [list items]"
+3. Mark tasks in_progress when starting, completed when finishing
+4. Report progress: "Completed step X of Y: [description]"
+5. NEVER skip planning - poor planning leads to poor execution
+
+
 4. **Execute your mission** (details in get_agent_mission response)
 
 5. **Report Progress** (after each milestone):
@@ -2430,10 +2440,49 @@ async def _spawn_agent_job_impl(
         # Generate thin prompt (not full mission)
         thin_prompt = f"""I am {agent_name} for Project.
 
-FETCH MISSION:
-mcp__giljo-mcp__get_agent_mission('{agent_job_id}', '{tenant_key}')
+## CRITICAL: MCP TOOL USAGE
 
-Execute mission and report back."""
+MCP tools are **NATIVE tool calls** - identical to Read, Write, Bash, Glob.
+- CORRECT: Call `mcp__giljo-mcp__get_agent_mission` directly as a tool
+- WRONG: curl, HTTP, fetch, requests, SDK calls
+
+## MANDATORY STARTUP SEQUENCE
+
+Execute these IN ORDER before starting your mission:
+
+1. **Get Mission:**
+   Tool: mcp__giljo-mcp__get_agent_mission
+   Parameters: {{"agent_job_id": "{agent_job_id}", "tenant_key": "{tenant_key}"}}
+
+2. **Acknowledge Job (marks you as WORKING):**
+   Tool: mcp__giljo-mcp__acknowledge_job
+   Parameters: {{"job_id": "{agent_job_id}", "agent_id": "{agent_name}"}}
+
+3. **Check Messages (BEFORE starting work):**
+   Tool: mcp__giljo-mcp__receive_messages
+   Parameters: {{"agent_id": "{agent_job_id}"}}
+
+## WORKFLOW REQUIREMENTS (MANDATORY)
+
+BEFORE implementing ANY code, you MUST:
+1. Create TodoWrite task list with 3-7 specific tasks
+2. Count and announce: "X steps to complete: [list items]"
+3. Mark tasks in_progress when starting, completed when finishing
+4. Report progress: "Completed step X of Y: [description]"
+5. NEVER skip planning - poor planning leads to poor execution
+
+4. **Execute your mission** (details in get_agent_mission response)
+
+5. **Report Progress** (after each milestone):
+   Tool: mcp__giljo-mcp__report_progress
+   Parameters: {{"job_id": "{agent_job_id}", "progress": {{"percent": X, "message": "..."}}}}
+
+6. **Complete Job** (when done):
+   Tool: mcp__giljo-mcp__complete_job
+   Parameters: {{"job_id": "{agent_job_id}", "result": {{"summary": "...", "artifacts": [...]}}}}
+
+Your full mission is in the database. Call get_agent_mission to retrieve it."""
+
 
         mission_tokens = len(mission) // 4
         prompt_tokens = len(thin_prompt) // 4

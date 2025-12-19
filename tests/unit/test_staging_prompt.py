@@ -420,3 +420,24 @@ class TestWebSocketStatus:
             prompt_lower = prompt.lower()
             assert "websocket" in prompt_lower, \
                 "Prompt must include WebSocket status reference"
+
+
+class TestOutdatedReferencesRemoved:
+    """Test that outdated handover references are removed (Issue 0361)."""
+
+    @pytest.mark.asyncio
+    async def test_0106b_reference_not_in_prompt(self, prompt_generator, mock_project, mock_product):
+        """Verify outdated 'Handover 0106b' reference is not in staging prompt."""
+        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
+             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
+
+            prompt = await prompt_generator.generate_staging_prompt(
+                orchestrator_id=str(uuid4()),
+                project_id=mock_project.id
+            )
+
+            # Verify no outdated handover references
+            assert "0106b" not in prompt, \
+                "Staging prompt must NOT contain outdated '0106b' reference"
+            assert "Handover 0106b" not in prompt, \
+                "Staging prompt must NOT contain 'Handover 0106b' reference"
