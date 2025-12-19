@@ -778,7 +778,7 @@ class WebSocketManager:
             f"({export_type}) to {sent_count} client(s) for tenant {tenant_key}"
         )
 
-    # Agent Job Event Broadcasts (Handover 0019)
+    # Agent Job Event Broadcasts (Handover 0019, 0286, 0362)
 
     async def broadcast_job_created(
         self,
@@ -788,10 +788,16 @@ class WebSocketManager:
         spawned_by: Optional[str] = None,
         mission_preview: Optional[str] = None,
         created_at: Optional[datetime] = None,
+        project_id: Optional[str] = None,
+        agent_name: Optional[str] = None,
+        status: str = "waiting",
     ):
         """
         Broadcast agent job creation event.
-        Event type: 'agent_job:created'
+
+        Events:
+        - 'agent_job:created'  → internal/job-focused event (status board, tests)
+        - 'agent:created'      → UI-friendly event used by LaunchTab/ProjectTabs
 
         Args:
             job_id: Unique job identifier
@@ -800,17 +806,38 @@ class WebSocketManager:
             spawned_by: Optional parent agent ID that spawned this job
             mission_preview: First 100 characters of mission
             created_at: Job creation timestamp
+            project_id: Project UUID (required for project-specific UI filters)
+            agent_name: Human-friendly agent name (template name, if available)
+            status: Initial job status (defaults to 'waiting')
         """
-        message = {
+        created_ts = (created_at or datetime.now(timezone.utc)).isoformat()
+
+        # Internal job event (used by backend tests and some dashboards)
+        job_message = {
             "type": "agent_job:created",
             "data": {
                 "job_id": job_id,
                 "agent_type": agent_type,
                 "spawned_by": spawned_by,
                 "mission_preview": mission_preview,
-                "created_at": (created_at or datetime.now(timezone.utc)).isoformat(),
+                "created_at": created_ts,
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # UI-facing event (matches existing frontend expectations for agent:created)
+        agent_message = {
+            "type": "agent:created",
+            "data": {
+                "tenant_key": tenant_key,
+                "project_id": project_id,
+                "agent_id": job_id,
+                "agent_job_id": job_id,
+                "agent_type": agent_type,
+                "agent_name": agent_name,
+                "status": status,
+            },
+            "timestamp": created_ts,
         }
 
         # Multi-tenant isolation - only broadcast to same tenant
@@ -819,16 +846,21 @@ class WebSocketManager:
             auth_context = self.auth_contexts.get(client_id, {})
             if auth_context.get("tenant_key") == tenant_key:
                 try:
-                    await websocket.send_json(message)
+                    await websocket.send_json(job_message)
+                    # Only send agent:created if we know the project (needed for UI filters)
+                    if project_id:
+                        await websocket.send_json(agent_message)
                 except Exception:
-                    logger.exception(f"Error broadcasting agent_job:created to {client_id}")
+                    logger.exception(f"Error broadcasting agent_job:created/agent:created to {client_id}")
                     disconnected.append(client_id)
 
         # Clean up disconnected clients
         for client_id in disconnected:
             self.disconnect(client_id)
 
-        logger.info(f"Broadcast agent_job:created - {job_id} (type: {agent_type}, spawned_by: {spawned_by})")
+        logger.info(
+            f"Broadcast agent_job:created - {job_id} (type: {agent_type}, spawned_by: {spawned_by}, project_id: {project_id})"
+        )
 
     async def broadcast_job_status_update(
         self,
