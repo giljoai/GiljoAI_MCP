@@ -113,7 +113,6 @@ class TestOrchestrationServiceJobManagement:
         assert "error" in result
         assert "NOT_FOUND" in result["error"]
 
-    @pytest.mark.asyncio
     async def test_get_agent_mission_success(self, mock_db_manager):
         """Test successful mission retrieval"""
         # Arrange
@@ -128,18 +127,27 @@ class TestOrchestrationServiceJobManagement:
         mock_job.project_id = "project-id"
         mock_job.spawned_by = "parent-job-id"
         mock_job.status = "waiting"
+        mock_job.mission_acknowledged_at = None  # First fetch
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=mock_job)
-        )
+        # Two queries: 1) fetch agent_job, 2) fetch all project jobs
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_job]))))
+        ]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_agent_mission(
-            agent_job_id="job-123",
-            tenant_key="test-tenant"
-        )
+        # Mock httpx for WebSocket broadcast (first acknowledgement triggers events)
+        with patch('httpx.AsyncClient') as mock_client:
+            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
+                return_value=Mock(status_code=200)
+            )
+
+            # Act
+            result = await service.get_agent_mission(
+                agent_job_id="job-123",
+                tenant_key="test-tenant"
+            )
 
         # Assert
         assert result["success"] is True
