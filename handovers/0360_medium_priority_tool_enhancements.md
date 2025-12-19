@@ -705,3 +705,50 @@ Recommended implementation sequence:
 **Breaking Changes**: None (backward compatible)
 
 This handover can be implemented independently without coordination with other ongoing work.
+
+---
+
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **Message Filtering Defaults**
+   - Option A: `exclude_self=True, exclude_progress=True` by default (proposed)
+   - Option B: All false by default (explicit opt-in)
+   - Option C: Configurable per-agent defaults
+   - **Trade-offs**: Convenience vs explicit control vs complexity
+
+2. **get_team_agents Scope**
+   - Option A: Return all agents in project (proposed)
+   - Option B: Return only active/running agents
+   - Option C: Add filter parameter for status
+   - **Trade-offs**: Completeness vs relevance vs API simplicity
+
+3. **file_exists Tool**
+   - Option A: Simple exists/is_file/is_dir response (proposed)
+   - Option B: Include file size, modified time, permissions
+   - Option C: Skip this tool entirely (agents can use Bash)
+   - **Trade-offs**: Utility vs scope creep vs agent capability
+
+4. **Priority Decision**
+   - All three enhancements or pick subset?
+   - Which is most impactful for next alpha trial?
+
+### Questions for Developer
+
+- [ ] Are all three enhancements needed, or should we prioritize?
+- [ ] Should message filtering be automatic for receive_messages?
+- [ ] Is get_team_agents useful enough to justify the implementation?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- `F:\TinyContacts\analyzer_feedback.md` - Lines 222-260 (MCP Server Improvements)
+- `F:\TinyContacts\documenter_feedback.md` - Lines 119-138 (Workflow Friction)
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.

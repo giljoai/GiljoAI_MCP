@@ -540,3 +540,44 @@ If implementation causes regressions:
 - **Token Impact**: Full agent templates add ~12,500 tokens to orchestrator mission. Ensure context budget (150K tokens) can accommodate this when enabled.
 - **Default Rationale**: Default is `"type_only"` to minimize token usage for new users. Power users can opt into "full" mode for nuanced task assignment.
 - **Future Enhancement**: Consider adding `"medium"` depth level (name + role + truncated description ~500 chars) for balance between tokens and detail.
+
+---
+
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **Root Cause Resolution**
+   - Option A: Fix UI settings persistence (if that's the issue)
+   - Option B: Fix backend key matching (if UI is correct but backend ignores)
+   - Option C: Add explicit flag `agent_templates_complete: false` to prompt fetch
+   - **Trade-offs**: Complexity vs reliability vs debugging ease
+
+2. **Template Depth Levels**
+   - Option A: Keep current 2 levels (type_only, full)
+   - Option B: Add "medium" level (~500 chars truncated description)
+   - Option C: Add "custom" level (user picks which fields)
+   - **Trade-offs**: Simplicity vs flexibility vs token control
+
+3. **Default Behavior**
+   - Should "full" ever be the default for any user class?
+   - How should we handle migration for users who had "full" but weren't getting it?
+
+### Questions for Developer
+
+- [ ] Have you noticed agents making suboptimal task assignments?
+- [ ] Is the 12,500 token overhead for full templates acceptable?
+- [ ] Should we add a "preview" of what orchestrator will receive in settings UI?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- `F:\TinyContacts\analyzer_feedback.md` - Lines 175-217 (Agent Prompt Quality)
+- Alpha orchestrator staging feedback (context_fetch_instructions showed "full" but only received summaries)
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.

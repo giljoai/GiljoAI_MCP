@@ -656,3 +656,43 @@ Analyzer -> [Working in Phase 2, no message check] -> Message ignored
 **Handover prepared by**: Documentation Manager Agent
 **Review requested from**: Orchestrator Coordinator, System Architect
 **Implementation assigned to**: TDD Implementor (backend), Frontend Tester (documentation updates)
+
+---
+
+## ⚠️ DEVELOPER DISCUSSION REQUIRED
+
+**Before implementing this handover, discuss the following with the developer:**
+
+### Options to Review
+
+1. **Message Polling Frequency**
+   - Option A: After each TodoWrite task completion (proposed)
+   - Option B: Time-based polling (every N minutes)
+   - Option C: Hybrid (task-based + periodic heartbeat)
+   - **Trade-offs**: Token usage vs responsiveness vs complexity
+
+2. **Enforcement Strategy**
+   - Option A: Protocol-only (strong language in prompts)
+   - Option B: Server-side enforcement (reject complete_job if unread messages)
+   - Option C: Warning system (allow completion but log/alert)
+
+3. **Token Budget Impact**
+   - Protocol grows +14-27% - is this acceptable?
+   - Alternative: Move detailed examples to external docs
+
+### Questions for Developer
+
+- [ ] Should orchestrator message polling be mandatory or recommended?
+- [ ] What's the acceptable latency for agents detecting blocked peers?
+- [ ] Should we add WebSocket alerts for unread messages?
+
+### Alpha Trial Reference
+
+Review agent feedback for real-world context:
+- `F:\TinyContacts\analyzer_feedback.md` - Lines 97-168 (MCP Protocol Experience)
+- `F:\TinyContacts\documenter_feedback.md` - Lines 84-115 (Protocol Issues)
+
+### Session Context
+
+This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
+See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.
