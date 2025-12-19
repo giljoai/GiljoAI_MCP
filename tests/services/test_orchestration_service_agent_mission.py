@@ -241,3 +241,39 @@ class TestGetAgentMissionFullProtocol:
         assert "status" in response
         # NEW field
         assert "full_protocol" in response
+
+    @pytest.mark.asyncio
+    async def test_protocol_includes_message_handling_instructions(
+        self, orchestration_service, mock_db_manager, mock_agent_job
+    ):
+        """Test that protocol includes message handling instructions (Issue 0361-5)."""
+        db_manager, session = mock_db_manager
+        job = mock_agent_job
+
+        # Mock database query
+        result = MagicMock()
+        result.scalar_one_or_none = MagicMock(return_value=job)
+        session.execute = AsyncMock(return_value=result)
+
+        with patch("httpx.AsyncClient") as MockHttpxClient:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            MockHttpxClient.return_value = mock_client
+
+            response = await orchestration_service.get_agent_mission(
+                agent_job_id=job.job_id,
+                tenant_key="tenant-test"
+            )
+
+        assert response.get("success") is True
+        protocol = response.get("full_protocol", "")
+
+        # Verify message handling instructions present (Issue 0361-5)
+        assert "MESSAGE HANDLING" in protocol
+        assert "receive_messages()" in protocol
+        assert "list_messages()" in protocol
+        assert "auto-acknowledges" in protocol or "auto-acknowledge" in protocol

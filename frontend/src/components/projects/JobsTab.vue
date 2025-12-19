@@ -245,33 +245,6 @@
       />
     </div>
 
-    <!-- Close Out Project Button (Handover 0249c) -->
-    <div v-if="showCloseoutButton" class="closeout-button-container">
-      <v-btn
-        class="closeout-btn"
-        color="yellow-darken-2"
-        variant="flat"
-        size="large"
-        prepend-icon="mdi-check-circle"
-        data-testid="close-project-btn"
-        @click="openCloseoutModal"
-      >
-        Close Out Project
-      </v-btn>
-      <v-tooltip location="top">
-        <template #activator="{ props: tooltipProps }">
-          <v-icon
-            v-bind="tooltipProps"
-            size="small"
-            class="ml-2 help-icon"
-          >
-            mdi-help-circle-outline
-          </v-icon>
-        </template>
-        <span>Complete the project and update 360 Memory with learnings</span>
-      </v-tooltip>
-    </div>
-
     <!-- Cancel Job Confirmation Dialog (Handover 0243d) -->
     <v-dialog v-model="showCancelDialog" max-width="500">
       <v-card>
@@ -356,15 +329,6 @@
       @close="showMessageAuditModal = false"
     />
 
-    <!-- Project Closeout Modal (Handover 0249c) -->
-    <CloseoutModal
-      :show="showCloseoutModal"
-      :project-id="project.project_id || project.id"
-      :project-name="project.name"
-      @close="showCloseoutModal = false"
-      @complete="handleCloseoutProject"
-    />
-
     <!-- Local Snackbar for immediate feedback -->
     <v-snackbar
       v-model="localSnackbar.show"
@@ -390,7 +354,6 @@ import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
-import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 
 /**
  * JobsTab Component - Handover 0241 + 0243c
@@ -481,9 +444,8 @@ const selectedRecipient = ref('orchestrator')
 const sending = ref(false)
 
 /**
- * Closeout / dialog modal state (Handover 0249c, 0243d, 0331)
+ * Dialog modal state (Handover 0243d, 0331)
  */
-const showCloseoutModal = ref(false)
 const showCancelDialog = ref(false)
 const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
@@ -569,16 +531,6 @@ const sortedAgents = computed(() => {
     // Tertiary sort: by agent_type alphabetically
     return (a.agent_type || '').localeCompare(b.agent_type || '')
   })
-})
-
-/**
- * Show closeout button when orchestrator has completed (Handover 0249c)
- */
-const showCloseoutButton = computed(() => {
-  if (!props.allAgentsComplete) return false
-
-  const orchestrator = props.agents?.find((a) => a.agent_type === 'orchestrator')
-  return Boolean(orchestrator && orchestrator.status === 'complete')
 })
 
 /**
@@ -968,33 +920,6 @@ async function copyToClipboard(text) {
   } finally {
     document.body.removeChild(textArea)
   }
-}
-
-/**
- * Open closeout modal (Handover 0249c)
- */
-function openCloseoutModal() {
-  showCloseoutModal.value = true
-  console.log('[JobsTab] Opening closeout modal for project:', props.project.project_id || props.project.id)
-}
-
-/**
- * Handle project closeout completion (Handover 0249c)
- */
-function handleCloseoutProject(closeoutData) {
-  const normalized =
-    typeof closeoutData === 'string'
-      ? { project_id: closeoutData, sequence_number: 0 }
-      : closeoutData || {}
-
-  showToast({
-    message: `Project closed out successfully (Memory entry #${normalized.sequence_number ?? 0})`,
-    type: 'success',
-    duration: 5000
-  })
-
-  showCloseoutModal.value = false
-  emit('closeout-project', normalized)
 }
 
 /**
@@ -1468,38 +1393,6 @@ onUnmounted(() => {
 
       &:disabled {
         opacity: 0.4;
-      }
-    }
-  }
-
-  .closeout-button-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 16px;
-    background: rgba(20, 35, 50, 0.6);
-    border-radius: 12px;
-    margin-top: 20px;
-    gap: 8px;
-
-    .closeout-btn {
-      text-transform: none;
-      font-size: 16px;
-      font-weight: 600;
-      padding: 12px 32px;
-      letter-spacing: 0.5px;
-
-      &:hover {
-        background: #ffed4e !important;
-      }
-    }
-
-    .help-icon {
-      color: rgba(255, 215, 0, 0.6);
-      cursor: help;
-
-      &:hover {
-        color: rgba(255, 215, 0, 0.9);
       }
     }
   }

@@ -1,0 +1,23 @@
+Reference: See Handover 0106b for full sub-agent spawn instructions  WTF?
+
+
+closeout spawns another orchestrator
+
+broadcast messages should not include self
+
+Steps still not working, 
+
+Need to test websockets
+
+agent idle is annyong
+
+
+
+need to fix "Reading messages" 'to force acknowledgement they ahve been read. 
+
+Close out project button disappeared. 
+
+
+
+
+

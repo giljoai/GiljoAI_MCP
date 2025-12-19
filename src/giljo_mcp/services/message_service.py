@@ -542,9 +542,9 @@ class MessageService:
                 # Query messages using native SQLAlchemy queries
                 # Include messages where:
                 # 1. Direct message to this agent (to_agents contains agent_id as JSON array element)
-                # 2. Broadcast message (to_agents contains 'all')
+                # 2. Broadcast message (to_agents contains 'all') BUT exclude sender (Issue 0361-3)
                 # 3. Only pending messages (unread_only=True by default)
-                from sqlalchemy import or_, func
+                from sqlalchemy import or_, func, String
                 from sqlalchemy.dialects.postgresql import JSONB
 
                 query = select(Message).where(
@@ -557,8 +557,15 @@ class MessageService:
                             # Use PostgreSQL JSONB containment operator @>
                             # Cast both sides to JSONB to avoid type mismatch
                             func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
-                            # Broadcast: JSONB array contains 'all'
-                            func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB))
+                            # Broadcast: JSONB array contains 'all' BUT exclude sender (Issue 0361-3)
+                            # Filter: from_agent != current agent's type to prevent self-delivery
+                            and_(
+                                func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB)),
+                                func.coalesce(
+                                    Message.meta_data.op('->')('_from_agent').astext,
+                                    func.cast('', String)
+                                ) != job.agent_type
+                            )
                         )
                     )
                 ).order_by(Message.created_at)

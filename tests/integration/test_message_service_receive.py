@@ -86,7 +86,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="direct",
                 content="Direct message to agent 1",
                 priority="normal",
-                status="waiting",
+                status="pending",
                 meta_data={"_from_agent": "orchestrator"}
             ),
             # Broadcast message to all
@@ -98,7 +98,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="broadcast",
                 content="Broadcast to all agents",
                 priority="high",
-                status="waiting",
+                status="pending",
                 meta_data={"_from_agent": "orchestrator"}
             ),
             # Direct message to agent-2
@@ -110,7 +110,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="direct",
                 content="Direct message to agent 2",
                 priority="normal",
-                status="waiting",
+                status="pending",
                 meta_data={"_from_agent": agent1_id}
             ),
             # Acknowledged message to agent-1
@@ -136,7 +136,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 message_type="direct",
                 content="Message to multiple agents",
                 priority="high",
-                status="waiting",
+                status="pending",
                 meta_data={"_from_agent": "orchestrator"}
             ),
         ]
@@ -318,7 +318,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             project_id=project1.id,
             to_agents=[agent1_id],
             content="Message for tenant 1",
-            status="waiting"
+            status="pending"
         )
         msg2 = Message(
             id=msg2_id,
@@ -326,7 +326,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             project_id=project2.id,
             to_agents=[agent2_id],
             content="Message for tenant 2",
-            status="waiting"
+            status="pending"
         )
         session.add_all([msg1, msg2])
 
@@ -408,7 +408,7 @@ async def test_list_messages_by_status(db_manager, tenant_manager, setup_test_da
     # Filter for pending messages only
     result = await service.list_messages(
         project_id=data["project"].id,
-        status="waiting"
+        status="pending"
     )
 
     assert result["success"] is True
@@ -453,3 +453,99 @@ async def test_receive_messages_native_queries_no_legacy(db_manager, tenant_mana
     assert "content" in first_message
     assert "priority" in first_message
     assert "acknowledged" in first_message
+
+
+@pytest.mark.asyncio
+async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant_key):
+    """
+    TEST FOR ISSUE 0361-3: Verify broadcast messages exclude sender.
+
+    When an agent sends a broadcast message, calling receive_messages()
+    should NOT return their own broadcast message.
+    """
+    service = MessageService(db_manager, tenant_manager)
+    tenant_key = test_tenant_key
+
+    # Generate unique IDs for this test
+    project_id = f"proj-broadcast-{uuid4().hex[:8]}"
+    sender_agent_id = f"sender-{uuid4().hex[:8]}"
+    other_agent_id = f"other-{uuid4().hex[:8]}"
+
+    async with db_manager.get_session_async() as session:
+        # Create test project
+        project = Project(
+            id=project_id,
+            tenant_key=tenant_key,
+            name="Broadcast Test Project",
+            description="Test project for broadcast self-exclusion",
+            mission="Test mission",
+            status="active"
+        )
+        session.add(project)
+
+        # Create sender agent
+        sender_agent = MCPAgentJob(
+            job_id=sender_agent_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            agent_type="orchestrator",
+            agent_name="Orchestrator",
+            mission="Coordinate agents",
+            status="working"
+        )
+
+        # Create other agent
+        other_agent = MCPAgentJob(
+            job_id=other_agent_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            agent_type="implementer",
+            agent_name="Implementer",
+            mission="Implement features",
+            status="working"
+        )
+        session.add_all([sender_agent, other_agent])
+
+        # Commit agents
+        await session.commit()
+
+    # Sender agent sends broadcast message
+    broadcast_result = await service.send_message(
+        to_agents=["all"],
+        content="Status update: All agents complete staging",
+        project_id=project_id,
+        from_agent=sender_agent.agent_type,
+        message_type="broadcast"
+    )
+
+    assert broadcast_result["success"] is True
+
+    # CRITICAL TEST: Sender agent receives messages
+    # Should NOT get their own broadcast
+    sender_messages = await service.receive_messages(
+        agent_id=sender_agent_id,
+        limit=10
+    )
+
+    assert sender_messages["success"] is True
+    # Sender should NOT receive own broadcast
+    assert sender_messages["count"] == 0, \
+        f"Sender should not receive own broadcast, but got {sender_messages['count']} messages"
+
+    # Other agent receives messages
+    # SHOULD get the broadcast
+    other_messages = await service.receive_messages(
+        agent_id=other_agent_id,
+        limit=10
+    )
+
+    assert other_messages["success"] is True
+    # Other agent SHOULD receive the broadcast
+    assert other_messages["count"] == 1, \
+        f"Other agent should receive broadcast, but got {other_messages['count']} messages"
+
+    # Verify it's the broadcast message
+    if other_messages["count"] > 0:
+        msg = other_messages["messages"][0]
+        assert msg["content"] == "Status update: All agents complete staging"
+        assert msg["type"] == "broadcast"
