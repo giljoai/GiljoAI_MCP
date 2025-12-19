@@ -72,12 +72,13 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> s
 3. Call `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
 
-### Phase 2: EXECUTION
-**MANDATORY FIRST STEP:**
-1. Use TodoWrite to create 3-7 concrete tasks from your mission
-2. Mark each todo as completed when finished
+5. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
+   - Break mission into 3-7 specific, actionable tasks
+   - Count and announce: "X steps to complete: [list items]"
+   - NEVER skip this step - planning prevents poor execution
 
-Then execute assigned tasks:
+### Phase 2: EXECUTION
+Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
 
@@ -85,6 +86,11 @@ Then execute assigned tasks:
 1. Call `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
 2. Call `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")` - Check for new instructions
 3. Incorporate any orchestrator feedback before continuing
+
+**MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
+- ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
+- `receive_messages()` auto-acknowledges and removes messages from queue
+- `list_messages()` is read-only - messages stay pending (use for debugging only)
 
 ### Phase 4: COMPLETION
 1. Call `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` 
