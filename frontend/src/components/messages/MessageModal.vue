@@ -37,6 +37,7 @@
       <v-card-actions class="pa-4">
         <MessageInput
           :job-id="jobId"
+          :agents="agents"
           position="modal"
           class="flex-grow-1"
           @message-sent="handleMessageSent"
@@ -66,6 +67,11 @@ const props = defineProps({
   messages: {
     type: Array,
     default: () => [],
+  },
+  agents: {
+    type: Array,
+    default: () => [],
+    // Each agent: { agent_id, agent_type, instance_number }
   },
 })
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="message-detail" data-test="audit-message-detail">
+  <div class="message-detail" data-test="audit-message-detail" data-testid="message-detail">
     <h3 class="text-subtitle-1 mb-2">Message Details</h3>
 
     <div v-if="!message" class="text-body-2 text-medium-emphasis">
@@ -10,6 +10,14 @@
       <div class="meta-row">
         <strong>From:</strong>
         <span>{{ message.from || 'unknown' }}</span>
+      </div>
+      <div class="meta-row">
+        <strong>From Agent ID:</strong>
+        <code class="text-mono">{{ message.from_agent_id || 'User' }}</code>
+      </div>
+      <div class="meta-row">
+        <strong>To Agent ID:</strong>
+        <code class="text-mono">{{ message.to_agent_id || 'Broadcast' }}</code>
       </div>
       <div class="meta-row">
         <strong>Direction:</strong>
@@ -77,6 +85,14 @@ const formattedTimestamp = computed(() => {
   font-size: 0.85rem;
   background-color: rgba(0, 0, 0, 0.03);
   padding: 8px;
+  border-radius: 4px;
+}
+
+.text-mono {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
   border-radius: 4px;
 }
 </style>
