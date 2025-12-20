@@ -1000,6 +1000,13 @@ STARTUP SEQUENCE:
    agent_type can be descriptive category (for UI display only)
 6. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
+7. EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
+
+   **Sequential Pattern**: Spawn agent → Poll via `receive_messages()` → Wait for completion → Send handoff message → Spawn next agent
+
+   **Parallel Pattern**: Spawn all agents → Poll ALL via `receive_messages()` every 2-3 minutes → Coordinate as agents finish
+
+   **MANDATORY**: Before calling `complete_job()`, you MUST call `receive_messages()` to process any blocking issues or agent error reports.
 
 {mode_block}
 
