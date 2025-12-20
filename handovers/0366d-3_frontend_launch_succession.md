@@ -796,4 +796,65 @@ This handover does NOT cover:
 
 ---
 
+## TDD Approach: LITE Variant
+
+**For frontend/UI work, use TDD-Lite** (not full RED-GREEN-REFACTOR):
+
+1. **Verify current state** - Check component renders without errors
+2. **Make changes** - Update component per spec
+3. **Test manually** - Verify in browser
+4. **Add data-testid** - For future E2E testing
+5. **One simple E2E test** - Verify basic functionality
+
+**Why TDD-Lite for frontend?**
+- Full TDD is overkill for display-only changes
+- Vue components are declarative (less logic to test)
+- Manual verification catches visual issues tests miss
+- data-testid enables future test expansion
+
+**NOT required:**
+- ❌ Writing tests FIRST
+- ❌ Comprehensive test suites
+- ❌ Unit tests for every component
+- ❌ Mocking complex dependencies
+
+---
+
+## Kickoff Prompt
+
+Copy this prompt to start execution:
+
+---
+
+**Mission**: Execute Handover 0366d-3 - Frontend Launch & Succession Components
+
+**Context**: Read `handovers/0366d-3_frontend_launch_succession.md` for complete specification.
+
+**Approach**: TDD-Lite (verify → change → test manually → add data-testid → 1 E2E test)
+
+**Scope**: 4 files only:
+1. `frontend/src/components/projects/SuccessionTimeline.vue` - Visualize execution chains with agent_id and job_id
+2. `frontend/src/components/projects/LaunchTab.vue` - Display orchestrator agent_id and instance number
+3. `frontend/src/components/projects/LaunchSuccessorDialog.vue` - Clarify job_id vs agent_id in succession dialog
+4. `frontend/src/components/projects/AgentMissionEditModal.vue` - Show job_id in mission editor header
+
+**NOT in scope**:
+- ❌ JobsTab.vue (covered in 0366d-1)
+- ❌ Message components (covered in 0366d-2)
+- ❌ Backend succession logic (completed in 0366c)
+- ❌ New succession features
+- ❌ Auto-succession triggers
+- ❌ Comprehensive test suites
+
+**Acceptance Criteria**: See handover document section "Acceptance Criteria"
+
+**References**:
+- Models: `src/giljo_mcp/models/agent_identity.py`
+- Memory: `handovers/0366c_context_tools_agent_id_red_phase.md` (Serena)
+- Prior work: 0366a (models), 0366b (services), 0366c (backend)
+
+**First Step**: Read the handover file completely, then verify current state of SuccessionTimeline.vue component.
+
+---
+
 **END OF HANDOVER 0366d-3**
