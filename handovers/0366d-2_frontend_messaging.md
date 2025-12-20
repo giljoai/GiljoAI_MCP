@@ -305,4 +305,65 @@ const activeAgents = computed(() => {
 
 ---
 
+## TDD Approach: LITE Variant
+
+**For frontend/UI work, use TDD-Lite** (not full RED-GREEN-REFACTOR):
+
+1. **Verify current state** - Check component renders without errors
+2. **Make changes** - Update component per spec
+3. **Test manually** - Verify in browser
+4. **Add data-testid** - For future E2E testing
+5. **One simple E2E test** - Verify basic functionality
+
+**Why TDD-Lite for frontend?**
+- Full TDD is overkill for display-only changes
+- Vue components are declarative (less logic to test)
+- Manual verification catches visual issues tests miss
+- data-testid enables future test expansion
+
+**NOT required:**
+- ❌ Writing tests FIRST
+- ❌ Comprehensive test suites
+- ❌ Unit tests for every component
+- ❌ Mocking complex dependencies
+
+---
+
+## Kickoff Prompt
+
+Copy this prompt to start execution:
+
+---
+
+**Mission**: Execute Handover 0366d-2 - Frontend Messaging Agent ID Display
+
+**Context**: Read `handovers/0366d-2_frontend_messaging.md` for complete specification.
+
+**Approach**: TDD-Lite (verify → change → test manually → add data-testid → 1 E2E test)
+
+**Scope**: 4 files only:
+1. `frontend/src/components/projects/MessageStream.vue` - Display agent IDs in message sender/recipient
+2. `frontend/src/components/projects/MessageInput.vue` - Target messages by agent ID in dropdown
+3. `frontend/src/components/projects/MessageDetailView.vue` - Show full agent IDs in detail view
+4. `frontend/src/components/projects/MessageAuditModal.vue` - Include agent IDs in message metadata
+
+**NOT in scope**:
+- ❌ JobsTab.vue (covered in 0366d-1)
+- ❌ AgentTableView.vue (covered in 0366d-1)
+- ❌ Launch components (covered in 0366d-3)
+- ❌ Backend message service (already done in 0366b)
+- ❌ New messaging features
+- ❌ Comprehensive test suites
+
+**Acceptance Criteria**: See handover document section "Acceptance Criteria"
+
+**References**:
+- Models: `src/giljo_mcp/models/agent_identity.py`
+- Memory: `handovers/0366c_context_tools_agent_id_red_phase.md` (Serena)
+- Prior work: 0366a (models), 0366b (services), 0366c (backend)
+
+**First Step**: Read the handover file completely, then verify current state of MessageStream.vue component.
+
+---
+
 **End of Handover 0366d-2**
