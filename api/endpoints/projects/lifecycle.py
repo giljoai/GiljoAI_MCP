@@ -490,9 +490,10 @@ async def launch_project(
     """
     logger.info(f"User {current_user.username} launching project {project_id}")
 
-    # Launch via ProjectService
+    # Launch via ProjectService - pass user_id for depth_config lookup (Handover 0357)
     result = await project_service.launch_project(
         project_id=project_id,
+        user_id=str(current_user.id),
         launch_config=launch_config
     )
 
