@@ -242,13 +242,19 @@ function getMessagePreview(message) {
 }
 
 function formatMessageMeta(message) {
-  const direction = message.direction || 'unknown'
+  const fromId = message.from_agent_id
+    ? message.from_agent_id.slice(0, 8) + '...'
+    : 'user'
+  const toId = message.to_agent_id
+    ? message.to_agent_id.slice(0, 8) + '...'
+    : 'broadcast'
   const status = message.status || 'unknown'
   const timestamp = message.timestamp || message.created_at
   const date = timestamp ? new Date(timestamp) : null
   const timePart =
-    date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : 'Unknown time'
-  return `${direction} · ${status} · ${timePart}`
+    date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString() : 'Unknown time'
+
+  return `${timePart} | ${fromId} → ${toId} (${status})`
 }
 </script>
 

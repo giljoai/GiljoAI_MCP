@@ -32,11 +32,12 @@
       </div>
 
       <!-- Messages List -->
-      <div v-else class="message-stream__list">
+      <div v-else class="message-stream__list" data-testid="message-list">
         <div
           v-for="message in messages"
           :key="message.id"
           class="message-stream__message"
+          data-testid="message-item"
           :class="{
             'message-stream__message--user': isUserMessage(message),
             'message-stream__message--agent': !isUserMessage(message),
@@ -69,8 +70,15 @@
               <span v-if="isBroadcast(message)" class="text-subtitle-2 font-weight-bold">
                 → Broadcast:
               </span>
-              <span v-else-if="message.to_agent" class="text-subtitle-2 font-weight-bold">
-                → To {{ formatAgentName(message.to_agent) }}:
+              <span v-else-if="message.to_agent_id || message.to_agent" class="text-subtitle-2 font-weight-bold">
+                → To
+                <v-tooltip v-if="message.to_agent_id" location="bottom">
+                  <template #activator="{ props: tooltipProps }">
+                    <span v-bind="tooltipProps" class="agent-id-truncated">{{ truncateUuid(message.to_agent_id) }}</span>
+                  </template>
+                  <span>{{ message.to_agent_id }}</span>
+                </v-tooltip>
+                <span v-else>{{ formatAgentName(message.to_agent) }}</span>:
               </span>
             </div>
 
@@ -228,6 +236,16 @@ function getInstanceNumber(message) {
 function formatAgentName(agentType) {
   if (!agentType) return 'Unknown'
   return agentType.charAt(0).toUpperCase() + agentType.slice(1)
+}
+
+/**
+ * Truncate UUID to first 8 characters for display
+ * @param {string} uuid - Full UUID
+ * @returns {string} Truncated UUID (e.g., "abc12345...")
+ */
+function truncateUuid(uuid) {
+  if (!uuid || typeof uuid !== 'string') return 'unknown'
+  return uuid.slice(0, 8) + '...'
 }
 
 /**
@@ -550,6 +568,17 @@ onBeforeUnmount(() => {
     color: var(--color-text-secondary, rgba(0, 0, 0, 0.6));
     cursor: help;
   }
+}
+
+/* Agent ID truncated styling */
+.agent-id-truncated {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: help;
+}
 
   &__scroll-button {
     position: absolute;

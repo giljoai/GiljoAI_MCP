@@ -14,6 +14,7 @@
         ref="textareaRef"
         v-model="messageText"
         class="message-input__textarea"
+        data-testid="message-input"
         placeholder="Type your message... (Shift+Enter for new line, Enter to send)"
         rows="1"
         auto-grow
@@ -30,6 +31,7 @@
       <v-select
         v-model="recipient"
         class="message-input__recipient"
+        data-testid="recipient-select"
         :items="recipientOptions"
         item-title="label"
         item-value="value"
@@ -101,6 +103,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /**
+   * Array of active agents
+   * Each agent: { agent_id, agent_type, instance_number }
+   */
+  agents: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['send', 'message-sent'])
@@ -111,17 +121,26 @@ const emit = defineEmits(['send', 'message-sent'])
 const messageText = ref('')
 
 /**
- * Recipient selection state
+ * Recipient selection state (defaults to 'broadcast')
  */
-const recipient = ref('orchestrator')
+const recipient = ref('broadcast')
 
 /**
- * Recipient dropdown options
+ * Recipient dropdown options (computed dynamically from agents prop)
  */
-const recipientOptions = [
-  { label: 'Orchestrator', value: 'orchestrator' },
-  { label: 'Broadcast', value: 'broadcast' },
-]
+const recipientOptions = computed(() => {
+  const options = [{ label: 'Broadcast', value: 'broadcast' }]
+
+  props.agents.forEach((agent) => {
+    const instanceNum = agent.instance_number || 1
+    const agentType = agent.agent_type || 'Unknown'
+    const truncatedId = agent.agent_id ? agent.agent_id.slice(0, 8) + '...' : 'unknown'
+    const label = `${agentType} (Instance ${instanceNum}) - ${truncatedId}`
+    options.push({ label, value: agent.agent_id })
+  })
+
+  return options
+})
 
 /**
  * Textarea ref for focus management
@@ -139,7 +158,7 @@ const canSend = computed(() => {
  * Get recipient label for display
  */
 function getRecipientLabel(value) {
-  const option = recipientOptions.find((opt) => opt.value === value)
+  const option = recipientOptions.value.find((opt) => opt.value === value)
   return option?.label || 'Unknown'
 }
 
@@ -164,12 +183,16 @@ function handleSubmit() {
   const trimmedMessage = messageText.value.trim()
   if (trimmedMessage.length === 0) return
 
-  // Emit send event with message and recipient
+  // Determine if recipient is an agent_id (UUID format) or keyword (broadcast)
+  const isAgentId = recipient.value !== 'broadcast' && recipient.value.length > 10
+
+  // Emit send event with message and recipient (backward compatible)
   emit('send', trimmedMessage, recipient.value)
 
-  // Also emit message-sent for modal usage
+  // Also emit message-sent for modal usage with to_agent_id field
   emit('message-sent', {
     content: trimmedMessage,
+    to_agent_id: isAgentId ? recipient.value : null,
     recipient: recipient.value,
     jobId: props.jobId,
   })
