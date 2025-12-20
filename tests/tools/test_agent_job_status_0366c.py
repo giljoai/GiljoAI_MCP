@@ -589,6 +589,51 @@ async def test_get_job_status_shows_current_executor(job_status_setup, db_manage
 
 
 # ============================================================================
+# TDD BUG FIX TESTS (Added for Handover 0366c Bug Fix)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_get_job_status_does_not_raise_name_error(db_session, db_manager, tenant_manager):
+    """Calling get_job_status should not raise NameError for undefined variables."""
+    from src.giljo_mcp.tools.agent_job_status import get_job_status
+
+    test_tenant_key = "test-name-error"
+
+    # Should not raise NameError - even if job doesn't exist
+    result = await get_job_status(
+        job_id="nonexistent-job",
+        tenant_key=test_tenant_key,
+        db_manager=db_manager
+    )
+
+    # Behavior: Returns error dict, not exception
+    assert result["success"] is False
+    assert "not found" in result.get("error", "").lower()
+
+
+@pytest.mark.asyncio
+async def test_update_job_status_uses_correct_model_import(db_session, db_manager, tenant_manager):
+    """
+    Test that update_job_status imports AgentJob (not deprecated Job model).
+
+    This is a code inspection test - we verify the import statement is correct.
+    We're not testing the full execution path (which has other session management issues).
+    """
+    import inspect
+    from src.giljo_mcp.tools.agent_job_status import update_job_status
+
+    # Get the source code of the function
+    source = inspect.getsource(update_job_status)
+
+    # Verify correct import is used
+    assert "from giljo_mcp.models.agent_identity import AgentJob" in source
+
+    # Verify deprecated import is NOT used
+    assert "from giljo_mcp.models import Job" not in source
+
+
+# ============================================================================
 # EXPECTED FAILURES
 # ============================================================================
 
