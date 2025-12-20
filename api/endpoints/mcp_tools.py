@@ -371,14 +371,14 @@ async def list_mcp_tools():
                 "name": "get_orchestrator_instructions",
                 "description": "Fetch orchestrator mission with context prioritization and orchestration (thin client architecture)",
                 "arguments": {
-                    "orchestrator_id": "string (UUID) REQUIRED - Orchestrator job UUID",
+                    "job_id": "string (UUID) REQUIRED - Orchestrator job UUID",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
                 },
                 "examples": [
                     {
                         "description": "Orchestrator fetches condensed mission on startup",
                         "payload": {
-                            "orchestrator_id": "orch-abc123-def456",
+                            "job_id": "orch-abc123-def456",
                             "tenant_key": "tk-tenant123-456",
                         },
                     },

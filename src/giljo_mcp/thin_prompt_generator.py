@@ -18,7 +18,7 @@ Token Reduction:
 - Reduction: ~82% token savings on initial prompt
 
 MCP Tools (Handover 0280-0281 Monolithic Context):
-- get_orchestrator_instructions(orchestrator_id, tenant_key): Complete mission with prioritized context
+- get_orchestrator_instructions(job_id, tenant_key): Complete mission with prioritized context
 
 Priority System (Handover 0313):
 - Priority 1 (CRITICAL): Fetch first, essential for mission planning
@@ -85,7 +85,7 @@ class ThinClientPromptGenerator:
     3. Generate thin prompt with orchestrator_id
     4. Return prompt to user
     5. User pastes into Claude Code CLI
-    6. Orchestrator calls get_orchestrator_instructions(orchestrator_id)
+    6. Orchestrator calls get_orchestrator_instructions(job_id)
     7. MCP tool generates condensed mission with field priorities (6K tokens)
 
     Benefits:
@@ -471,7 +471,7 @@ Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work 
 
 MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
 ✓ health_check() - Verify MCP connection
-✓ get_orchestrator_instructions(orchestrator_id, tenant_key) - Fetch context
+✓ get_orchestrator_instructions(job_id, tenant_key) - Fetch context
 ✓ update_project_mission(project_id, mission) - Save mission plan
 ✓ spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key) - Create agents
 ✓ get_workflow_status(project_id, tenant_key) - Check spawned agents
@@ -991,7 +991,7 @@ You are STAGING the project. Your job:
 
 STARTUP SEQUENCE:
 1. Verify MCP: health_check()
-2. Fetch context: get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+2. Fetch context: get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
    Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
 3. CREATE MISSION: Analyze requirements and generate execution plan
 4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
@@ -1224,7 +1224,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "If you need to re-read your orchestrator mission:",
             "```python",
-            f'get_orchestrator_instructions(orchestrator_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            f'get_orchestrator_instructions(job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
             "```",
             "",
             "This MCP tool fetches your original staging mission and context.",

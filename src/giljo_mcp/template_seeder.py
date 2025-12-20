@@ -798,7 +798,7 @@ As an orchestrator, you have access to comprehensive MCP tools for project orche
 **Essential startup tools** (use these first):
 
 1. `mcp__giljo-mcp__health_check()` - Verify MCP connection
-2. `mcp__giljo-mcp__get_orchestrator_instructions(orchestrator_id, tenant_key)` - Get your mission
+2. `mcp__giljo-mcp__get_orchestrator_instructions(job_id, tenant_key)` - Get your mission
 3. `mcp__giljo-mcp__discover_context(project_id)` - Analyze product documentation
 4. `mcp__giljo-mcp__get_context_summary(project_id)` - Get high-level overview
 
