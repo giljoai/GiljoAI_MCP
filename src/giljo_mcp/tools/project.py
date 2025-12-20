@@ -20,6 +20,109 @@ from giljo_mcp.tenant import TenantManager, current_tenant
 logger = logging.getLogger(__name__)
 
 
+# Module-level variables for test injection (Handover 0366c)
+_db_manager_instance: Optional[DatabaseManager] = None
+_test_session: Optional[Any] = None
+
+
+def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
+    """
+    Initialize module for testing with shared session (Handover 0366c).
+
+    This allows project tools to use the same database session as test fixtures,
+    preventing session isolation issues during testing.
+
+    Args:
+        db_manager: DatabaseManager instance for tests
+        db_session: Shared AsyncSession for test transaction isolation
+
+    Usage:
+        @pytest_asyncio.fixture(scope="function", autouse=True)
+        async def setup_project_tools(db_manager, db_session):
+            from src.giljo_mcp.tools import project
+            project.init_for_testing(db_manager, db_session)
+            yield
+    """
+    global _db_manager_instance, _test_session
+    _db_manager_instance = db_manager
+    _test_session = db_session
+
+
+class _SessionWrapper:
+    """
+    Wrapper for database session that intercepts commit() in test mode.
+
+    In tests: Converts commit() to flush() for transaction isolation
+    In production: Passes through to real session
+    """
+
+    def __init__(self, session, test_mode=False):
+        self._session = session
+        self._test_mode = test_mode
+
+    async def commit(self):
+        """Commit in production, flush in tests."""
+        if self._test_mode:
+            await self._session.flush()
+            # Don't expire all - let SQLAlchemy's session manage object state
+            # Objects will be refreshed when accessed if needed
+        else:
+            await self._session.commit()
+
+    async def flush(self):
+        """Always flush."""
+        await self._session.flush()
+
+    async def refresh(self, *args, **kwargs):
+        """Delegate to session."""
+        return await self._session.refresh(*args, **kwargs)
+
+    def add(self, *args, **kwargs):
+        """Delegate to session."""
+        return self._session.add(*args, **kwargs)
+
+    async def execute(self, *args, **kwargs):
+        """Delegate to session."""
+        return await self._session.execute(*args, **kwargs)
+
+    def __getattr__(self, name):
+        """Delegate all other attributes to the wrapped session."""
+        return getattr(self._session, name)
+
+
+class _SessionContext:
+    """
+    Context manager for database sessions that handles both test and production modes.
+
+    In tests: Uses injected test session (no commit, uses flush)
+    In production: Creates new session via db_manager (commits)
+    """
+
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
+        self.test_mode = _test_session is not None
+        self.session = None
+        self.context_manager = None
+
+    async def __aenter__(self):
+        if self.test_mode:
+            # Test mode - use injected session with wrapper
+            self.session = _SessionWrapper(_test_session, test_mode=True)
+        else:
+            # Production mode - create new session
+            self.context_manager = self.db_manager.get_session_async()
+            real_session = await self.context_manager.__aenter__()
+            self.session = _SessionWrapper(real_session, test_mode=False)
+        return self.session
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if not self.test_mode and self.context_manager:
+            # Production mode - let context manager handle cleanup
+            return await self.context_manager.__aexit__(exc_type, exc_val, exc_tb)
+        # Test mode - do nothing, test fixture handles cleanup
+        return False
+
+
 def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register project management tools with the MCP server"""
 
@@ -27,6 +130,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     async def create_project(
         name: str,
         mission: str,
+        description: Optional[str] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
         auto_create_orchestrator_job: bool = False,
@@ -37,6 +141,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         Args:
             name: Project name
             mission: Project mission statement
+            description: User-written project description (defaults to mission if not provided)
             product_id: Optional product ID to associate the project with
             tenant_key: Optional tenant key to use (generates new one if not provided)
             auto_create_orchestrator_job: If True, creates AgentJob and AgentExecution for orchestrator
@@ -46,14 +151,19 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             If auto_create_orchestrator_job=True, also includes job_id and agent_id.
         """
         try:
-            async with db_manager.get_session_async() as session:
+            async with _SessionContext(db_manager) as session:
                 # Use provided tenant key or generate a new one
                 if not tenant_key:
                     tenant_key = f"tk_{uuid4().hex}"
 
+                # Use mission as description if not provided (for backward compatibility)
+                if not description:
+                    description = mission
+
                 # Create project
                 project = Project(
                     name=name,
+                    description=description,
                     mission=mission,
                     tenant_key=tenant_key,
                     product_id=product_id,
@@ -66,8 +176,14 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 session.add(project)
                 await session.flush()
 
-                # Create initial session
-                initial_session = Session(project_id=project.id, started_at=datetime.now(timezone.utc), status="active")
+                # Create initial session (Session model doesn't have status field)
+                initial_session = Session(
+                    project_id=project.id,
+                    tenant_key=tenant_key,
+                    session_number=1,
+                    title=f"Initial Session - {name}",
+                    started_at=datetime.now(timezone.utc)
+                )
                 session.add(initial_session)
 
                 result = {
@@ -113,13 +229,16 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     result["job_id"] = agent_job.job_id
                     result["agent_id"] = agent_execution.agent_id
 
+                # Save project_id before commit (which expires objects in test mode)
+                project_id_str = str(project.id)
+
                 await session.commit()
 
-                # Set as current project in tenant manager
-                tenant_manager.set_current_tenant(tenant_key)
+                # Note: Not setting current tenant here since tenant may not exist in User table yet
+                # Tenant context will be set when switching to this project via switch_project()
 
                 logger.info(
-                    f"Created project '{name}' with ID {project.id}"
+                    f"Created project '{name}' with ID {project_id_str}"
                     + (f" under product {product_id}" if product_id else "")
                     + (f" with orchestrator job {result.get('job_id')}" if auto_create_orchestrator_job else "")
                 )
@@ -142,7 +261,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             List of projects with details including execution-level aggregates
         """
         try:
-            async with db_manager.get_session_async() as session:
+            async with _SessionContext(db_manager) as session:
                 query = select(Project)
 
                 if status:
@@ -209,7 +328,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Project details and activation status
         """
         try:
-            async with db_manager.get_session_async() as session:
+            async with _SessionContext(db_manager) as session:
                 # Find project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
@@ -225,19 +344,29 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 tenant_manager.set_current_tenant(project.tenant_key)
                 current_tenant.set(project.tenant_key)
 
-                # Create new session if needed
-                session_query = select(Session).where(Session.project_id == project.id, Session.status == "active")
+                # Get the latest session or create new one if needed
+                session_query = (
+                    select(Session)
+                    .where(Session.project_id == project.id)
+                    .order_by(Session.session_number.desc())
+                )
                 session_result = await session.execute(session_query)
-                active_session = session_result.scalar_one_or_none()
+                latest_session = session_result.scalar_one_or_none()
 
-                if not active_session:
+                if not latest_session:
+                    # Create first session
                     active_session = Session(
                         project_id=project.id,
+                        tenant_key=project.tenant_key,
+                        session_number=1,
+                        title=f"Session 1 - {project.name}",
                         started_at=datetime.now(timezone.utc),
-                        status="active",
                     )
                     session.add(active_session)
                     await session.commit()
+                else:
+                    # Use latest session
+                    active_session = latest_session
 
                 logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
 
@@ -272,7 +401,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Closure confirmation
         """
         try:
-            async with db_manager.get_session_async() as session:
+            async with _SessionContext(db_manager) as session:
                 # Find project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
@@ -295,11 +424,19 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 project.summary = summary
                 project.completed_at = datetime.now(timezone.utc)
 
-                # Close all active sessions
+                # Flush to persist project changes first
+                await session.flush()
+
+                # Save values for return (needed before commit in test mode)
+                project_id_str = str(project.id)
+                project_name = project.name
+                project_completed_at = project.completed_at
+
+                # Close all sessions without ended_at timestamp
                 session_update = (
                     update(Session)
-                    .where(Session.project_id == project.id, Session.status == "active")
-                    .values(status="completed", ended_at=datetime.now(timezone.utc))
+                    .where(Session.project_id == project.id, Session.ended_at.is_(None))
+                    .values(ended_at=datetime.now(timezone.utc))
                 )
                 await session.execute(session_update)
 
@@ -311,6 +448,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         AgentJob.status == "active",
                     )
                     .values(status="completed", completed_at=datetime.now(timezone.utc))
+                    .execution_options(synchronize_session='fetch')
                 )
                 await session.execute(job_update)
 
@@ -329,19 +467,20 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             AgentExecution.status.in_(["waiting", "working", "blocked"]),
                         )
                         .values(status="decommissioned", decommissioned_at=datetime.now(timezone.utc))
+                        .execution_options(synchronize_session='fetch')
                     )
                     await session.execute(exec_update)
 
                 await session.commit()
 
-                logger.info(f"Closed project '{project.name}' (ID: {project_id})")
+                logger.info(f"Closed project '{project_name}' (ID: {project_id_str})")
 
                 return {
                     "success": True,
-                    "project_id": str(project.id),
-                    "name": project.name,
+                    "project_id": project_id_str,
+                    "name": project_name,
                     "summary": summary,
-                    "closed_at": project.completed_at.isoformat(),
+                    "closed_at": project_completed_at.isoformat(),
                 }
 
         except Exception as e:
@@ -472,7 +611,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Detailed project status including jobs and executions (nested structure)
         """
         try:
-            async with db_manager.get_session_async() as session:
+            async with _SessionContext(db_manager) as session:
                 # Get project ID from tenant context if not provided
                 if not project_id:
                     tenant_key = tenant_manager.get_current_tenant()
