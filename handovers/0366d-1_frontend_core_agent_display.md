@@ -525,6 +525,66 @@ test('JobsTab displays both agent_id and job_id columns', async ({ page }) => {
 
 ---
 
+## TDD Approach: LITE Variant
+
+**For frontend/UI work, use TDD-Lite** (not full RED-GREEN-REFACTOR):
+
+1. **Verify current state** - Check component renders without errors
+2. **Make changes** - Update component per spec
+3. **Test manually** - Verify in browser
+4. **Add data-testid** - For future E2E testing
+5. **One simple E2E test** - Verify basic functionality
+
+**Why TDD-Lite for frontend?**
+- Full TDD is overkill for display-only changes
+- Vue components are declarative (less logic to test)
+- Manual verification catches visual issues tests miss
+- data-testid enables future test expansion
+
+**NOT required:**
+- ❌ Writing tests FIRST
+- ❌ Comprehensive test suites
+- ❌ Unit tests for every component
+- ❌ Mocking complex dependencies
+
+---
+
+## Kickoff Prompt
+
+Copy this prompt to start execution:
+
+---
+
+**Mission**: Execute Handover 0366d-1 - Frontend Core Agent Display
+
+**Context**: Read `handovers/0366d-1_frontend_core_agent_display.md` for complete specification.
+
+**Approach**: TDD-Lite (verify → change → test manually → add data-testid → 1 E2E test)
+
+**Scope**: 4 files only:
+1. `frontend/src/components/projects/JobsTab.vue` - Update table to display both agent_id and job_id
+2. `frontend/src/components/orchestration/AgentTableView.vue` - Add instance_number and dual ID columns
+3. `frontend/src/components/projects/AgentDetailsModal.vue` - NEW FILE - Modal for execution details
+4. `api/endpoints/jobs.py` - Add GET /jobs/{job_id}/executions endpoint
+
+**NOT in scope**:
+- ❌ Message components (0366d-2)
+- ❌ Launch & succession components (0366d-3)
+- ❌ Installation flow (0366d-4)
+- ❌ Comprehensive test suites
+- ❌ Refactoring unrelated code
+
+**Acceptance Criteria**: See handover document section "Acceptance Criteria"
+
+**References**:
+- Models: `src/giljo_mcp/models/agent_identity.py`
+- Memory: `handovers/0366c_context_tools_agent_id_red_phase.md` (Serena)
+- Prior work: 0366a (models), 0366b (services), 0366c (backend)
+
+**First Step**: Read the handover file completely, then verify current state of JobsTab.vue component.
+
+---
+
 ## Handover Complete
 
 This specification is ready for execution by the Frontend Tester agent. All changes are scoped, measurable, and have clear acceptance criteria.
