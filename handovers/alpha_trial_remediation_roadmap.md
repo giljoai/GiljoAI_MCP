@@ -8,7 +8,9 @@
 
 ## Executive Summary
 
-This document captures the outcomes of the Alpha Trial Remediation Session, where we analyzed feedback from the TinyContacts project alpha trial and created 7 remediation handovers (0355-0361).
+This document captures the outcomes of the Alpha Trial Remediation Session, where we analyzed feedback from the TinyContacts project alpha trial and created remediation handovers (0356-0362, 0364-0365).
+
+> **Note**: Original 0355 renumbered to 0364 (conflict with existing completed handover). 0363 renumbered to 0365.
 
 **Trial Project**: TinyContacts (F:\TinyContacts)
 **Agents Used**: Analyzer, Documenter
