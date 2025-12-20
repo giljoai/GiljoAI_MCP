@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 # Handover 0366b: Import dual-model architecture
@@ -106,7 +106,7 @@ class OrchestratorSuccessionManager:
     # Valid succession reasons
     VALID_REASONS = {"context_limit", "manual", "phase_transition"}
 
-    def __init__(self, db_session: Session, tenant_key: str):
+    def __init__(self, db_session: AsyncSession, tenant_key: str):
         """
         Initialize OrchestratorSuccessionManager.
 
@@ -202,20 +202,10 @@ class OrchestratorSuccessionManager:
                 f"manager initialized for {self.tenant_key}"
             )
 
-        # Get parent job (via relationship or query)
-        if hasattr(current_execution, 'job') and current_execution.job is not None:
-            job = current_execution.job
-        else:
-            # Load job if not already loaded
-            result = await self.db_session.execute(
-                select(AgentJob).where(AgentJob.job_id == current_execution.job_id)
-            )
-            job = result.scalar_one()
-
-        # Create NEW execution on SAME job
+        # Create NEW execution on SAME job (no need to load job relationship)
         successor_execution = AgentExecution(
             agent_id=str(uuid4()),  # New executor ID
-            job_id=job.job_id,  # SAME work order
+            job_id=current_execution.job_id,  # SAME work order
             tenant_key=self.tenant_key,
             agent_type=current_execution.agent_type,
             instance_number=current_execution.instance_number + 1,
@@ -240,7 +230,7 @@ class OrchestratorSuccessionManager:
         logger.info(
             f"Created successor execution {successor_execution.agent_id} "
             f"(instance {successor_execution.instance_number}) for {current_execution.agent_id}, "
-            f"job_id: {job.job_id}, reason: {reason}"
+            f"job_id: {current_execution.job_id}, reason: {reason}"
         )
 
         return successor_execution
@@ -300,6 +290,10 @@ class OrchestratorSuccessionManager:
             "unresolved_blockers": unresolved_blockers,
             "next_steps": next_steps,
             "instance_number": execution.instance_number,
+            # Top-level context fields (for backward compatibility)
+            "context_used": execution.context_used,
+            "context_budget": execution.context_budget,
+            # Structured context object (preferred)
             "context_usage": {
                 "used": execution.context_used,
                 "budget": execution.context_budget,
