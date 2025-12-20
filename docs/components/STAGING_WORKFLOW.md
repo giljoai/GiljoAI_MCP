@@ -6,11 +6,13 @@
 
 ## Overview
 
-The **Orchestrator Staging Workflow** is a 7-task validation sequence that prepares projects for multi-agent execution. This workflow ensures environment readiness, validates agent availability, and establishes proper execution context before spawning any agent jobs.
+The **Orchestrator Staging Workflow** is a 7-task validation sequence that prepares projects for multi-agent execution. This workflow ensures environment readiness, validates agent availability, and establishes proper execution context before spawning any agent jobs. After staging completes, orchestrators proceed to **Task 8: Execution Phase Monitoring** where active agent coordination occurs.
 
 **Purpose**: Prevent execution failures through comprehensive pre-flight validation
 
 **Token Budget**: 931 tokens (22% under 1200-token staging limit)
+
+**Complete Workflow**: Tasks 1-7 (Staging) → Task 8 (Execution Phase Monitoring)
 
 **Complete 0246 Series Integration**:
 - **Handover 0246a**: 7-task staging workflow implementation (931 tokens)
@@ -458,6 +460,101 @@ Orchestration Start:
 
 🎯 STAGING COMPLETE - Ready for execution
 ```
+
+---
+
+### Task 8: Execution Phase Monitoring (Handover 0355)
+
+**Purpose**: Actively monitor spawned agents, coordinate handoffs, and handle real-time issues during project execution.
+
+**Actions**:
+1. Enter execution monitoring mode after activation (Task 7)
+2. Choose execution pattern based on agent dependencies:
+   - **Sequential**: Agents must complete in specific order
+   - **Parallel**: Agents can work simultaneously
+3. Poll agent status every 2-3 minutes via `receive_messages()`
+4. Coordinate handoffs between dependent agents
+5. Process error reports and blocked agent messages
+6. Provide mid-flight corrections and guidance
+7. Continue monitoring until all agents complete
+8. Perform final message check before calling `complete_job()`
+
+**Sequential Execution Pattern**:
+```
+1. Spawn Agent A
+2. Poll Agent A status every 2-3 minutes
+3. Wait for Agent A completion
+4. Send handoff message to Agent B
+5. Spawn Agent B
+6. Repeat until all agents complete
+```
+
+**Parallel Execution Pattern**:
+```
+1. Spawn all agents (A, B, C) simultaneously
+2. Poll ALL agent statuses every 2-3 minutes
+3. As agents finish, send follow-up guidance
+4. Continue until ALL agents complete
+```
+
+**Validation Criteria**:
+- Message polling active (interval: 2-3 minutes)
+- Agent completions detected in real-time
+- Handoff messages sent within 1 minute of prerequisite completion
+- All error/blocker messages processed
+- Final message check performed before orchestrator completion
+
+**Failure Modes**:
+- Agent timeout (>30 min no progress) → Warning: Agent may be blocked
+- Blocked message ignored → Error: Orchestrator not monitoring
+- Message queue overflow → Warning: Too many pending messages
+- Completion without final check → Error: Skipped mandatory message check
+
+**Message Handling Rules**:
+- **ALWAYS** use `receive_messages()` (auto-acknowledges and removes from queue)
+- **NEVER** use `list_messages()` during execution (read-only, debugging only)
+- Empty queue = All agents progressing normally
+- Non-empty queue = Process ALL messages before continuing
+- Blocked messages = Pause, send guidance, wait for unblock
+
+**Example Output**:
+```
+✓ Execution phase monitoring: ACTIVE
+
+Execution Pattern: Sequential
+Agents in Pipeline: 3 (analyzer → implementer → tester)
+
+Current Status:
+- Analyzer: WORKING (75% complete, 4 of 5 tasks done)
+- Implementer: WAITING (pending analyzer completion)
+- Tester: WAITING (pending implementer completion)
+
+Message Queue Status:
+- Orchestrator queue: EMPTY (all clear)
+- Analyzer queue: 1 message pending (sent 2min ago)
+- Last poll: 2025-11-24T14:45:32Z (2 minutes ago)
+- Next poll: 2025-11-24T14:47:32Z (in 1 minute)
+
+Recent Activity:
+- T+2min: Spawned analyzer agent
+- T+5min: Polled status (analyzer 25% complete)
+- T+8min: Polled status (analyzer 50% complete)
+- T+11min: Sent guidance message to analyzer
+- T+14min: Polled status (analyzer 75% complete)
+
+🔄 Monitoring continues...
+```
+
+**MANDATORY Final Message Check**:
+Before calling `complete_job()`, orchestrators MUST:
+1. Call `receive_messages()` one final time
+2. Process any blocking issues or error reports
+3. Verify all spawned agents have completed successfully
+4. Only complete after queue is empty and no blockers exist
+
+**Related Documentation**:
+- Complete details: [ORCHESTRATOR.md](../ORCHESTRATOR.md#execution-phase-monitoring-handover-0355)
+- Implementation: [Handover 0355](../../handovers/0355_protocol_message_handling_fix.md)
 
 ---
 

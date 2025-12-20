@@ -152,7 +152,7 @@ This project has {num_agents} agent(s) working together:
 
 def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359, 0355).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
@@ -160,6 +160,10 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> s
     Handover 0359: Added agent_name parameter for acknowledge_job, fixed
     receive_messages to use job_id (UUID), mandatory TodoWrite in Phase 2,
     and steps_completed/steps_total in progress.
+
+    Handover 0355: Enhanced message checking - Phase 2 checks after each task,
+    Phase 3 reordered to check before reporting, Phase 4 gates on empty queue,
+    plus "When to Check Messages" guidance section.
 
     Args:
         job_id: Agent job UUID for MCP tool calls
@@ -186,11 +190,17 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> s
 Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
+- **MESSAGE CHECK**: Call `receive_messages()` after completing each TodoWrite task
+  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")`
+  - If queue not empty: Process messages BEFORE continuing
+  - If queue empty: Safe to proceed
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
-1. Call `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
-2. Call `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")` - Check for new instructions
-3. Incorporate any orchestrator feedback before continuing
+1. Call `receive_messages()` - MANDATORY before reporting
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")`
+2. Process ALL pending messages
+3. Call `report_progress()` with current status
+   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
 
 **MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
 - ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
@@ -198,14 +208,23 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 - `list_messages()` is read-only - messages stay pending (use for debugging only)
 
 ### Phase 4: COMPLETION
-1. Call `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` 
-2. Await acknowledgment or further instructions
+1. Call `receive_messages()` - Final message check
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")`
+2. Process any pending messages - ensure queue is empty
+3. Call `complete_job()` - ONLY after queue is empty
+   - Full call: `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
 
 ### Phase 5: ERROR HANDLING (If blocked)
 1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="description")` - Marks job as BLOCKED
 2. STOP work and await orchestrator guidance
 
 ---
+**When to Check Messages:**
+- Phase 1 (STARTUP): Before starting work
+- Phase 2 (EXECUTION): After each TodoWrite task
+- Phase 3 (PROGRESS): Before reporting progress
+- Phase 4 (COMPLETION): Before calling complete_job()
+
 **CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
 **Do NOT use curl, HTTP, or SDK calls.**
 """
