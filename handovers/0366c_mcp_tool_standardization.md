@@ -9,6 +9,57 @@
 
 ---
 
+## ⚠️ PHASE A+B COMPLETION STATUS (Updated 2025-12-19)
+
+**Both phases are COMMITTED and ready. Here's what was actually built:**
+
+### Phase A - Models (Commit `a568336c`)
+- **New file**: `src/giljo_mcp/models/agent_identity.py`
+  - `AgentJob` (10 columns): job_id PK, tenant_key, project_id, mission, job_type, status, created_at, completed_at, job_metadata, template_id
+  - `AgentExecution` (28 columns): agent_id PK, job_id FK, tenant_key, agent_type, instance_number, status, spawned_by, succeeded_by, progress, health_status, context_used, messages, etc.
+- **Exports added** to `src/giljo_mcp/models/__init__.py`
+- **Migration**: `migrations/0366a_split_agent_job.py`
+
+### Phase B - Services (Commit `a599dd14`)
+**IMPORTANT**: Services were created as NEW files (not replacing originals):
+
+| New Service File | Purpose | Import Path |
+|------------------|---------|-------------|
+| `src/giljo_mcp/services/message_service_0366b.py` | Agent-ID based message routing | `from giljo_mcp.services.message_service_0366b import MessageService0366b` |
+| `src/giljo_mcp/services/agent_job_manager.py` | Coordinated CRUD for job+execution | `from giljo_mcp.services.agent_job_manager import AgentJobManager` |
+
+**Updated file**:
+- `src/giljo_mcp/orchestrator_succession.py` - Now uses AgentJob + AgentExecution
+
+**Original `message_service.py` unchanged** - Tools currently import from this. Phase C must update imports.
+
+### Key Imports for Phase C Tools
+```python
+# Models (use these for type hints and queries)
+from giljo_mcp.models import AgentJob, AgentExecution
+
+# Services (use these for business logic)
+from giljo_mcp.services.message_service_0366b import MessageService0366b
+from giljo_mcp.services.agent_job_manager import AgentJobManager
+
+# Orchestration (already updated)
+from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
+```
+
+### Test Pattern (All tests must be async)
+```python
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+@pytest.mark.asyncio
+async def test_example(db_session: AsyncSession):
+    # Use await for all DB operations
+    await db_session.commit()
+    await db_session.refresh(obj)
+```
+
+---
+
 ## Prerequisites & Reference Documents
 
 **MUST READ before starting this phase:**
