@@ -6,6 +6,7 @@
         <thead>
           <tr>
             <th>Agent Type</th>
+            <th>Instance</th>
             <th>Agent ID</th>
             <th>Agent Status</th>
             <th>Job Acknowledged</th>
@@ -35,8 +36,26 @@
               </div>
             </td>
 
-            <!-- Agent ID: FULL UUID -->
-            <td class="agent-id-cell">{{ agent.job_id || agent.agent_id }}</td>
+            <!-- Instance Number: NEW COLUMN -->
+            <td class="instance-cell" data-testid="instance-number">
+              <v-chip size="small" color="blue-grey" label>
+                #{{ agent.instance_number || 1 }}
+              </v-chip>
+            </td>
+
+            <!-- Agent ID: Dual display -->
+            <td class="agent-id-cell" data-testid="agent-id">
+              <div class="id-container">
+                <div class="id-row">
+                  <span class="id-label">Agent:</span>
+                  <code class="id-value">{{ (agent.agent_id || agent.job_id || '—').slice(0, 8) }}</code>
+                </div>
+                <div class="id-row">
+                  <span class="id-label">Job:</span>
+                  <code class="id-value">{{ (agent.job_id || '—').slice(0, 8) }}</code>
+                </div>
+              </div>
+            </td>
 
             <!-- Agent Status: Dynamic binding from agent.status -->
             <td
@@ -1284,10 +1303,38 @@ onUnmounted(() => {
           }
         }
 
+        &.instance-cell {
+          text-align: center;
+        }
+
         &.agent-id-cell {
           color: #999;
           font-family: 'Courier New', monospace;
           font-size: 11px;
+
+          .id-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+
+          .id-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+
+          .id-label {
+            color: #666;
+            font-size: 10px;
+            min-width: 35px;
+          }
+
+          .id-value {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1px 4px;
+            border-radius: 2px;
+          }
         }
 
         &.status-cell {
