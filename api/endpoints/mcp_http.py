@@ -198,10 +198,10 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "orchestrator_id": {"type": "string", "description": "Orchestrator job UUID"},
+                    "job_id": {"type": "string", "description": "Orchestrator job UUID (work order identifier)"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["orchestrator_id", "tenant_key"],
+                "required": ["job_id", "tenant_key"],
             },
         },
         # Message Communication Tools
@@ -234,8 +234,9 @@ async def handle_tools_list(
                         "type": "string",
                         "description": "Sender agent ID (default: orchestrator)",
                     },
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["to_agents", "content", "project_id"],
+                "required": ["to_agents", "content", "project_id", "tenant_key"],
             },
         },
         {
@@ -246,7 +247,9 @@ async def handle_tools_list(
                 "properties": {
                     "agent_id": {"type": "string", "description": "Receiving agent ID"},
                     "limit": {"type": "integer", "description": "Maximum messages to retrieve"},
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
+                "required": ["tenant_key"],
             },
         },
         {
@@ -258,7 +261,9 @@ async def handle_tools_list(
                     "agent_id": {"type": "string", "description": "Filter by agent"},
                     "status": {"type": "string", "description": "Filter by message status"},
                     "limit": {"type": "integer", "description": "Maximum messages to retrieve"},
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
+                "required": ["tenant_key"],
             },
         },
         # Task Management Tools (MCP tools retired Dec 2025 - only create_task kept)
@@ -312,8 +317,9 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID to acknowledge"},
                     "agent_id": {"type": "string", "description": "Agent identifier"},
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "agent_id"],
+                "required": ["job_id", "agent_id", "tenant_key"],
             },
         },
         {
@@ -324,8 +330,9 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID being worked on"},
                     "progress": {"type": "object", "description": "Progress details"},
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "progress"],
+                "required": ["job_id", "progress", "tenant_key"],
             },
         },
         {
@@ -349,8 +356,9 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID to complete"},
                     "result": {"type": "object", "description": "Completion result/notes"},
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "result"],
+                "required": ["job_id", "result", "tenant_key"],
             },
         },
         {
@@ -361,8 +369,9 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "Job ID encountering error"},
                     "error": {"type": "string", "description": "Error message"},
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "error"],
+                "required": ["job_id", "error", "tenant_key"],
             },
         },
         # Orchestration Tools (Handover 0088)
@@ -482,13 +491,15 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "current_job_id": {"type": "string", "description": "Current orchestrator job UUID"},
+                    "job_id": {"type": "string", "description": "Current orchestrator job UUID"},
                     "reason": {
                         "type": "string",
                         "enum": ["context_limit", "manual", "phase_transition"],
                         "description": "Succession reason",
                     },
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
+                "required": ["tenant_key"],
             },
         },
         # Handover 0083: core /gil_* commands
