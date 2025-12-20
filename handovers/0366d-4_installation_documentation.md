@@ -748,9 +748,9 @@ pytest tests/templates/test_template_seeder_messaging_contract.py -v
 
 ### Must Complete First
 - ✅ Handover 0366a (Database migrations)
-- ⏳ Handover 0366d-1 (Backend endpoints implementation)
-- ⏳ Handover 0366d-2 (Frontend UI updates)
-- ⏳ Handover 0366d-3 (Testing infrastructure)
+- ✅ Handover 0366d-1 (Backend endpoints implementation) - Commit `2a99feb2`
+- ✅ Handover 0366d-2 (Frontend messaging UI) - Commit `fecfc397`
+- ✅ Handover 0366d-3 (Frontend launch/succession) - Commit `ba28f2a6`
 
 ### Blocks
 - Nothing (documentation is terminal node)
@@ -821,6 +821,71 @@ pytest tests/templates/test_template_seeder_messaging_contract.py -v
 
 ---
 
+## Learnings from 0366d-1/2/3 (Session 2025-12-20)
+
+These patterns were established during the prior frontend handovers:
+
+### 1. UUID Display Pattern
+All frontend components use consistent UUID truncation:
+```javascript
+// Truncate to first 8 chars with ellipsis
+const truncateUuid = (uuid) => uuid?.slice(0, 8) + '...'
+```
+
+### 2. data-testid Naming Convention
+```
+data-testid="agent-id"           // Agent ID display
+data-testid="job-id"             // Job ID display
+data-testid="execution-node"     // Timeline execution item
+data-testid="message-item"       // Message list item
+data-testid="recipient-select"   // Dropdown for agent selection
+```
+
+### 3. Executions Endpoint Already Created
+The executions endpoint was added in `api/endpoints/agent_jobs/executions.py`:
+- `GET /api/agent-jobs/{job_id}/executions` - List executions by job
+- Already imported in `api/endpoints/agent_jobs/__init__.py`
+
+### 4. Pre-existing Test Failures
+Frontend test suite shows ~930 failures (68% pass rate) from pre-existing issues:
+- WebSocket V2 store tests (timing/fake timers)
+- SerenaIntegrationCard (missing props)
+- Pinia setup conflicts
+These are NOT related to 0366 changes and should not block this handover.
+
+### 5. TDD-Lite Worked Well
+For frontend/documentation work, the TDD-Lite approach was effective:
+- Verify → Change → Add data-testid → Manual test
+- Full TDD overkill for display-only changes
+- Subagents (tdd-implementor, frontend-tester) useful for parallel verification
+
+### 6. Files Added/Modified in Prior Handovers
+```
+0366d-1:
+  M api/endpoints/agent_jobs/__init__.py
+  A api/endpoints/agent_jobs/executions.py
+  M api/endpoints/agent_jobs/models.py
+  M frontend/src/components/orchestration/AgentTableView.vue
+  A frontend/src/components/projects/AgentExecutionModal.vue
+  M frontend/src/components/projects/JobsTab.vue
+
+0366d-2:
+  M frontend/src/components/messages/MessageModal.vue
+  M frontend/src/components/projects/MessageAuditModal.vue
+  M frontend/src/components/projects/MessageDetailView.vue
+  M frontend/src/components/projects/MessageInput.vue
+  M frontend/src/components/projects/MessageStream.vue
+  A frontend/src/components/projects/__tests__/MessageInput.agent-id.spec.js
+
+0366d-3:
+  M frontend/src/components/projects/AgentMissionEditModal.vue
+  M frontend/src/components/projects/LaunchSuccessorDialog.vue
+  M frontend/src/components/projects/LaunchTab.vue
+  M frontend/src/components/projects/SuccessionTimeline.vue
+```
+
+---
+
 ## Kickoff Prompt
 
 Copy this prompt to start execution:
@@ -829,9 +894,14 @@ Copy this prompt to start execution:
 
 **Mission**: Execute Handover 0366d-4 - Installation & Documentation Updates
 
-**Context**: Read `handovers/0366d-4_installation_documentation.md` for complete specification.
+**Context**: This is the FINAL handover in the 0366d series. Prior handovers 0366d-1/2/3 are complete and committed.
 
-**Approach**: TDD-Lite (verify → change → test manually → add data-testid → 1 E2E test)
+**Prior Commits** (already on master):
+```
+ba28f2a6 feat(0366d-3): update launch & succession components
+fecfc397 feat(0366d-2): implement messaging UI agent ID display
+2a99feb2 feat(0366d-1): implement frontend dual-ID display for agent executions
+```
 
 **Scope**: 4 items only:
 1. `install.py` - Add demo data seeding for AgentJob + AgentExecution
@@ -840,21 +910,23 @@ Copy this prompt to start execution:
 4. `docs/api/agent_jobs_endpoints.md` - NEW FILE - Document executions API endpoints
 
 **NOT in scope**:
-- ❌ Frontend changes (covered in 0366d-1/2/3)
-- ❌ Backend code changes (covered in 0366d-1)
+- ❌ Frontend changes (already complete in 0366d-1/2/3)
+- ❌ Backend code changes (already complete)
 - ❌ Database migrations (already complete in 0366a)
 - ❌ Comprehensive documentation overhaul
 - ❌ New installation features
-- ❌ Multi-platform installer updates
+
+**Key Info**:
+- Executions endpoint already exists: `api/endpoints/agent_jobs/executions.py`
+- Frontend tests have pre-existing failures (~930) - not related to 0366
+- Use documentation-manager subagent for docs, installation-flow-agent for install.py
 
 **Acceptance Criteria**: See handover document section "Acceptance Criteria"
 
-**References**:
-- Models: `src/giljo_mcp/models/agent_identity.py`
-- Memory: `handovers/0366c_context_tools_agent_id_red_phase.md` (Serena)
-- Prior work: 0366a (models), 0366b (services), 0366c (backend)
-
-**First Step**: Read the handover file completely, then verify current state of install.py seeding logic.
+**First Step**:
+1. Check `install.py` for existing seeding patterns
+2. Review `api/endpoints/agent_jobs/executions.py` for accurate API docs
+3. Implement seeding function, then documentation
 
 ---
 
