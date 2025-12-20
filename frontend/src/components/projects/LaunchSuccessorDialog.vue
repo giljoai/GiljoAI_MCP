@@ -9,13 +9,20 @@
     <v-card>
       <v-card-title>
         Launch Successor Orchestrator
-        <v-chip class="ml-2" size="small"> Instance {{ nextInstanceNumber }} </v-chip>
+        <v-chip class="ml-2" size="small" color="primary">
+          Instance {{ nextInstanceNumber }}
+        </v-chip>
       </v-card-title>
 
       <v-card-text>
-        <v-alert type="info" class="mb-4">
-          This will create a new orchestrator instance ({{ nextInstanceNumber }}) to continue the
-          mission with a fresh context window.
+        <v-alert type="info" class="mb-4" variant="tonal">
+          <div class="text-subtitle-2 mb-2">Creating New Agent Execution</div>
+          <ul class="text-body-2 pl-4">
+            <li>✓ Same job_id ({{ currentJob.job_id?.slice(0, 8) }}...)</li>
+            <li>✓ New agent_id (fresh execution)</li>
+            <li>✓ Instance #{{ nextInstanceNumber }} in succession chain</li>
+            <li>✓ Fresh context window (resets to 0 tokens)</li>
+          </ul>
         </v-alert>
 
         <!-- Succession Reason -->
@@ -40,6 +47,8 @@
           <v-card-subtitle>Current Instance Summary</v-card-subtitle>
           <v-card-text>
             <div class="text-body-2">
+              <div><strong>Job ID:</strong> <code data-testid="current-job-id">{{ currentJob.job_id }}</code></div>
+              <div><strong>Agent ID:</strong> <code data-testid="current-agent-id">{{ currentJob.agent_id }}</code></div>
               <div><strong>Instance:</strong> {{ currentJob.instance_number || 1 }}</div>
               <div><strong>Status:</strong> {{ currentJob.status }}</div>
               <div v-if="currentJob.context_used">
@@ -242,5 +251,23 @@ export default {
   background: #f5f5f5;
   padding: 12px;
   border-radius: 4px;
+}
+
+code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.text-body-2 ul {
+  list-style: none;
+  margin: 0;
+}
+
+.text-body-2 ul li {
+  margin-bottom: 4px;
 }
 </style>

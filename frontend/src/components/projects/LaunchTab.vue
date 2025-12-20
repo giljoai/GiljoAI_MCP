@@ -64,7 +64,13 @@
               <v-avatar :color="orchestratorAvatarColor" size="40" class="agent-avatar">
                 <span class="orchestrator-text">OR</span>
               </v-avatar>
-              <span class="agent-name">ORCHESTRATOR</span>
+              <div class="orchestrator-info">
+                <span class="agent-name">ORCHESTRATOR</span>
+                <div v-if="currentOrchestrator" class="text-caption text-medium-emphasis">
+                  Instance #{{ currentOrchestrator.instance_number || 1 }} •
+                  ID: <code data-testid="orchestrator-agent-id">{{ currentOrchestrator.agent_id?.slice(0, 8) }}...</code>
+                </div>
+              </div>
               <v-icon size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
               <v-icon
                 size="small"
@@ -212,6 +218,20 @@ const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from bran
  */
 const nonOrchestratorAgents = computed(() => {
   return agents.value.filter(agent => agent.agent_type !== 'orchestrator')
+})
+
+/**
+ * Get current orchestrator execution (most recent instance)
+ */
+const currentOrchestrator = computed(() => {
+  if (!agents.value || agents.value.length === 0) return null
+
+  // Find orchestrator jobs
+  const orchestrators = agents.value
+    .filter(agent => agent.agent_type === 'orchestrator')
+    .sort((a, b) => (b.instance_number || 0) - (a.instance_number || 0))
+
+  return orchestrators[0] || null
 })
 
 /**
@@ -839,8 +859,22 @@ defineExpose({
       font-size: 14px;
     }
 
-    .agent-name {
+    .orchestrator-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
       flex: 1;
+
+      code {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.7rem;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+    }
+
+    .agent-name {
       color: $color-text-primary;
       font-size: $typography-font-size-body;
     }
