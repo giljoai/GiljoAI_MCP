@@ -462,6 +462,11 @@ async def test_close_project_updates_job_and_execution_statuses(project_tools, d
     job_data = test_project_with_job["job"]
     execution_data = test_project_with_job["execution"]
 
+    # Store IDs before any session operations (expire_all would trigger lazy-load errors)
+    project_id = project_data.id
+    job_id = job_data.job_id
+    agent_id = execution_data.agent_id
+
     # Close project
     result = await project_tools.call_tool(
         "close_project",
@@ -475,7 +480,10 @@ async def test_close_project_updates_job_and_execution_statuses(project_tools, d
     # Verify Project status updated
     from sqlalchemy import select
 
-    project_query = select(Project).where(Project.id == project_data.id)
+    # Clear SQLAlchemy identity map cache to see committed changes
+    db_session.expire_all()
+
+    project_query = select(Project).where(Project.id == project_id)
     project_result = await db_session.execute(project_query)
     updated_project = project_result.scalar_one_or_none()
 
@@ -483,7 +491,7 @@ async def test_close_project_updates_job_and_execution_statuses(project_tools, d
     assert updated_project.completed_at is not None, "Project completed_at should be set"
 
     # Verify AgentJob status updated
-    job_query = select(AgentJob).where(AgentJob.job_id == job_data.job_id)
+    job_query = select(AgentJob).where(AgentJob.job_id == job_id)
     job_result = await db_session.execute(job_query)
     updated_job = job_result.scalar_one_or_none()
 
@@ -491,7 +499,7 @@ async def test_close_project_updates_job_and_execution_statuses(project_tools, d
     assert updated_job.completed_at is not None, "Job completed_at should be set"
 
     # Verify AgentExecution status updated (NEW behavior)
-    exec_query = select(AgentExecution).where(AgentExecution.agent_id == execution_data.agent_id)
+    exec_query = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
     exec_result = await db_session.execute(exec_query)
     updated_execution = exec_result.scalar_one_or_none()
 

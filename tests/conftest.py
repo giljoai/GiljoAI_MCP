@@ -100,6 +100,19 @@ async def setup_agent_job_status(db_manager, db_session):
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_project_tools(db_manager, db_session):
+    """
+    Auto-setup fixture to inject db_manager and session into project module.
+
+    This allows project tools to use the same database session as test fixtures,
+    preventing session isolation issues (Handover 0366c GREEN phase).
+    """
+    from src.giljo_mcp.tools import project
+    project.init_for_testing(db_manager, db_session)
+    yield
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_context_module(db_manager):
     """
     Auto-setup fixture to inject db_manager into context module.
