@@ -797,6 +797,67 @@ pytest tests/templates/test_template_seeder_messaging_contract.py -v
 
 ---
 
+## TDD Approach: LITE Variant
+
+**For frontend/UI work, use TDD-Lite** (not full RED-GREEN-REFACTOR):
+
+1. **Verify current state** - Check component renders without errors
+2. **Make changes** - Update component per spec
+3. **Test manually** - Verify in browser
+4. **Add data-testid** - For future E2E testing
+5. **One simple E2E test** - Verify basic functionality
+
+**Why TDD-Lite for frontend?**
+- Full TDD is overkill for display-only changes
+- Vue components are declarative (less logic to test)
+- Manual verification catches visual issues tests miss
+- data-testid enables future test expansion
+
+**NOT required:**
+- ❌ Writing tests FIRST
+- ❌ Comprehensive test suites
+- ❌ Unit tests for every component
+- ❌ Mocking complex dependencies
+
+---
+
+## Kickoff Prompt
+
+Copy this prompt to start execution:
+
+---
+
+**Mission**: Execute Handover 0366d-4 - Installation & Documentation Updates
+
+**Context**: Read `handovers/0366d-4_installation_documentation.md` for complete specification.
+
+**Approach**: TDD-Lite (verify → change → test manually → add data-testid → 1 E2E test)
+
+**Scope**: 4 items only:
+1. `install.py` - Add demo data seeding for AgentJob + AgentExecution
+2. `src/giljo_mcp/template_seeder.py` - Review and update imports if needed
+3. `docs/user_guides/agent_monitoring_guide.md` - Add agent_id vs job_id explanation sections
+4. `docs/api/agent_jobs_endpoints.md` - NEW FILE - Document executions API endpoints
+
+**NOT in scope**:
+- ❌ Frontend changes (covered in 0366d-1/2/3)
+- ❌ Backend code changes (covered in 0366d-1)
+- ❌ Database migrations (already complete in 0366a)
+- ❌ Comprehensive documentation overhaul
+- ❌ New installation features
+- ❌ Multi-platform installer updates
+
+**Acceptance Criteria**: See handover document section "Acceptance Criteria"
+
+**References**:
+- Models: `src/giljo_mcp/models/agent_identity.py`
+- Memory: `handovers/0366c_context_tools_agent_id_red_phase.md` (Serena)
+- Prior work: 0366a (models), 0366b (services), 0366c (backend)
+
+**First Step**: Read the handover file completely, then verify current state of install.py seeding logic.
+
+---
+
 **Document Version**: 1.0
 **Created**: 2025-12-20
 **Author**: Documentation Manager Agent
