@@ -491,6 +491,178 @@ complete_job(
 
 ---
 
+## Execution Phase Monitoring (Handover 0355)
+
+After completing the 7-task staging workflow (Tasks 1-7), orchestrators enter the **execution phase monitoring** stage. This is effectively Task 8 of the orchestrator workflow, where active coordination of spawned agents occurs.
+
+### Step 7: EXECUTION PHASE MONITORING
+
+**Purpose**: Actively monitor spawned agents, coordinate handoffs, and handle real-time issues during project execution.
+
+**Implementation**: Handover 0355 (Protocol Message Handling Fix)
+
+#### Sequential Execution Pattern
+
+Use this pattern when agents must complete in a specific order (dependencies between tasks):
+
+```
+1. Spawn Agent A
+2. Poll Agent A status every 2-3 minutes via receive_messages()
+3. Wait for Agent A completion
+4. Send handoff message to Agent B if needed
+5. Spawn Agent B
+6. Repeat polling pattern until all agents complete
+```
+
+**Example**:
+```python
+# Sequential: Analyzer must complete before Implementer starts
+
+# 1. Spawn analyzer
+spawn_agent_job(agent_type="analyzer", mission="Analyze requirements...")
+
+# 2. Poll analyzer status
+while True:
+    messages = receive_messages(agent_id=orchestrator_id)
+    if any(msg.get("type") == "agent_completed" and msg.get("agent") == "analyzer" for msg in messages):
+        break
+    time.sleep(180)  # Poll every 3 minutes
+
+# 3. Send handoff message
+send_message(
+    to_agent=implementer_id,
+    message="Analyzer complete. You may proceed with implementation."
+)
+
+# 4. Spawn implementer
+spawn_agent_job(agent_type="implementer", mission="Implement features...")
+```
+
+#### Parallel Execution Pattern
+
+Use this pattern when multiple agents can work simultaneously (no dependencies):
+
+```
+1. Spawn all agents (A, B, C) simultaneously
+2. Poll ALL agent statuses every 2-3 minutes via receive_messages()
+3. As agents finish, check results and send follow-up guidance
+4. Continue polling until ALL agents complete
+```
+
+**Example**:
+```python
+# Parallel: Analyzer and Documenter work simultaneously
+
+# 1. Spawn both agents
+spawn_agent_job(agent_type="analyzer", mission="Analyze codebase...")
+spawn_agent_job(agent_type="documenter", mission="Update documentation...")
+
+# 2. Poll both agents
+completed_agents = set()
+while len(completed_agents) < 2:
+    messages = receive_messages(agent_id=orchestrator_id)
+
+    # Check for completions
+    for msg in messages:
+        if msg.get("type") == "agent_completed":
+            agent_name = msg.get("agent")
+            completed_agents.add(agent_name)
+
+            # Send follow-up guidance if needed
+            if agent_name == "analyzer":
+                send_message(
+                    to_agent=documenter_id,
+                    message="Analysis complete. Focus on documenting new features."
+                )
+
+    time.sleep(180)  # Poll every 3 minutes
+```
+
+#### Mandatory Final Message Check
+
+**CRITICAL**: Before calling `complete_job()`, orchestrators MUST call `receive_messages()` to process any blocking issues or agent error reports.
+
+```python
+# Before completion
+final_messages = receive_messages(agent_id=orchestrator_id)
+
+# Process any errors or blockers
+for msg in final_messages:
+    if msg.get("status") == "blocked":
+        # Handle blocked agent
+        send_message(to_agent=msg["from_agent"], message="Provide guidance...")
+    elif msg.get("status") == "error":
+        # Handle error condition
+        log_error(f"Agent {msg['from_agent']} reported error: {msg['error']}")
+
+# Only complete after all issues resolved
+if all_agents_completed and no_blocking_issues:
+    complete_job(job_id=orchestrator_id, result=final_summary)
+```
+
+#### Agent Coordination Patterns
+
+**Dependency Handoff** (A must finish before B starts):
+```python
+# 1. Spawn Agent A
+# 2. Poll A until status = COMPLETED
+# 3. Send Agent B: "Agent A completed, you may proceed"
+# 4. Spawn Agent B
+```
+
+**Parallel with Convergence** (A and B work independently, C waits for both):
+```python
+# 1. Spawn Agents A + B
+# 2. Poll until BOTH complete
+# 3. Send Agent C: "Prerequisites complete, proceed with integration"
+# 4. Spawn Agent C
+```
+
+**Progress Broadcasting** (all agents need status updates):
+```python
+# After each agent milestone
+send_message(to_agent="all", message="Milestone X completed, team status update...")
+# This keeps team aligned without blocking individual agents
+```
+
+### Message Handling During Execution
+
+**When to Check Messages**:
+- Every 2-3 minutes during active execution
+- After each agent reports completion
+- Before spawning a new agent (check for blockers)
+- Before calling `complete_job()` (final check)
+
+**Tool Usage**:
+- **ALWAYS** use `receive_messages()` for message checks (auto-acknowledges and removes from queue)
+- **NEVER** use `list_messages()` during execution (read-only, messages stay pending - debugging only)
+
+**Queue Management**:
+- Empty queue = All agents progressing normally, safe to continue monitoring
+- Non-empty queue = Process ALL messages before making coordination decisions
+- Blocked messages = Pause execution, send guidance, wait for unblock confirmation
+
+### Why Execution Phase Monitoring Matters
+
+**Without active monitoring**:
+- Orchestrator spawns agents and waits passively
+- No opportunity for mid-flight corrections
+- Agent blockers go undetected until timeout
+- Missed opportunities for coordination and handoffs
+
+**With active monitoring**:
+- Real-time detection of agent completion/blockers
+- Immediate guidance when agents need course correction
+- Coordinated handoffs between dependent agents
+- Faster overall project completion through active coordination
+
+**Related Documentation**:
+- Implementation Details: [Handover 0355](../handovers/0355_protocol_message_handling_fix.md)
+- Staging Workflow: [STAGING_WORKFLOW.md](components/STAGING_WORKFLOW.md#task-8-execution-phase-monitoring)
+- Message Tools API: [MCP Tools Manual](manuals/MCP_TOOLS_MANUAL.md)
+
+---
+
 ## Context Tracking Architecture
 
 ### **How It Works**
